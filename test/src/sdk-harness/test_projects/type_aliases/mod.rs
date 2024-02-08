@@ -6,13 +6,13 @@ use fuels::{
 
 abigen!(Contract(
     name = "TypeAliasesTestContract",
-    abi = "test_projects/type_aliases/out/debug/type_aliases-abi.json"
+    abi = "test_projects/type_aliases/out/release/type_aliases-abi.json"
 ));
 
 async fn get_type_aliases_instance() -> (TypeAliasesTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/type_aliases/out/debug/type_aliases.bin",
+        "test_projects/type_aliases/out/release/type_aliases.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

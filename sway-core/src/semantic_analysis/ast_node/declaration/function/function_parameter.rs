@@ -105,7 +105,7 @@ impl ty::TyFunctionParameter {
     pub fn insert_into_namespace(&self, handler: &Handler, ctx: TypeCheckContext) {
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx.namespace.insert_symbol(
+        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
             handler,
             self.name.clone(),
             ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {

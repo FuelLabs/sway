@@ -59,7 +59,7 @@ impl Type {
         Self::get_or_create_unique_type(context, TypeContent::Slice);
     }
 
-    /// Get the content for this Type.
+    /// Get the content for this [Type].
     pub fn get_content<'a>(&self, context: &'a Context) -> &'a TypeContent {
         &context.types[self.0]
     }
@@ -199,7 +199,6 @@ impl Type {
             (TypeContent::Union(l), _) => l.iter().any(|field_ty| other.eq(context, field_ty)),
             (TypeContent::Slice, TypeContent::Slice) => true,
             (TypeContent::Pointer(l), TypeContent::Pointer(r)) => l.eq(context, r),
-
             _ => false,
         }
     }
@@ -293,17 +292,18 @@ impl Type {
         self.is_struct(context) || self.is_union(context) || self.is_array(context)
     }
 
-    /// Returns true if this is a slice type.
+    /// Returns true if `self` is a slice type.
     pub fn is_slice(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Slice)
     }
 
-    /// Returns true if this is a pointer type.
+    // TODO-IG: Check all the usages of `is_ptr`.
+    /// Returns true if `self` is a pointer type.
     pub fn is_ptr(&self, context: &Context) -> bool {
         matches!(*self.get_content(context), TypeContent::Pointer(_))
     }
 
-    /// Get pointed to type iff self is a Pointer.
+    /// Get pointed to type iff `self`` is a pointer.
     pub fn get_pointee_type(&self, context: &Context) -> Option<Type> {
         if let TypeContent::Pointer(to_ty) = self.get_content(context) {
             Some(*to_ty)
@@ -643,7 +643,7 @@ mod tests {
     /// Unit tests in this module document and assert decisions on memory layout.
     mod memory_layout {
         use super::*;
-        use crate::Context;
+        use crate::{Context, ExperimentalFlags};
         use once_cell::sync::Lazy;
         use sway_types::SourceEngine;
 
@@ -927,7 +927,7 @@ mod tests {
         static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
 
         fn create_context() -> Context<'static> {
-            Context::new(&SOURCE_ENGINE)
+            Context::new(&SOURCE_ENGINE, ExperimentalFlags::default())
         }
 
         /// Creates sample types that are not aggregates and do not point to

@@ -1,10 +1,5 @@
 script;
 
-fn revert<T>() -> T {
-    let code = 1u64;
-    __revert(code)
-}
-
 fn diverge_in_let_body() -> u64 {
     let _x: bool =  {
         return 5;

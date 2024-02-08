@@ -5,7 +5,7 @@ use std::hash::*;
 pub type IdentityAlias = Identity;
 
 pub struct IdentityAliasWrapper {
-    i: IdentityAlias,
+    pub i: IdentityAlias,
 }
 
 pub type Array = [IdentityAlias; 2];
@@ -37,7 +37,7 @@ impl core::ops::Eq for IdentityAliasWrapperAlias {
 }
 
 pub struct Generic<T> {
-    f: T,
+    pub f: T,
 }
 
 abi MyContract {

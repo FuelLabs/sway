@@ -167,7 +167,7 @@ pub(crate) fn type_check_method_application(
     let mut is_method_call_syntax_used = false;
     if !method.is_contract_call {
         if let MethodName::FromModule { ref method_name } = method_name_binding.inner {
-            if let Some(first_arg) = args_buf.get(0) {
+            if let Some(first_arg) = args_buf.front() {
                 // check if the user calls an ABI supertrait's method (those are private)
                 // as a contract method
                 if let TypeInfo::ContractCaller { .. } = &*type_engine.get(first_arg.return_type) {
@@ -182,7 +182,7 @@ pub(crate) fn type_check_method_application(
             is_method_call_syntax_used = true;
             let is_first_param_self = method
                 .parameters
-                .get(0)
+                .first()
                 .map(|f| f.is_self())
                 .unwrap_or_default();
             if !is_first_param_self {
@@ -244,7 +244,7 @@ pub(crate) fn type_check_method_application(
             expression: exp, ..
         }),
         Some(ty::TyFunctionParameter { is_mutable, .. }),
-    ) = (args_buf.get(0), method.parameters.get(0))
+    ) = (args_buf.front(), method.parameters.first())
     {
         if *is_mutable {
             mutability_check(handler, &ctx, &method_name_binding, &span, exp)?;
@@ -439,8 +439,7 @@ pub(crate) fn resolve_method_name(
                 .namespace
                 .find_module_path(&call_path_binding.inner.prefixes);
             ctx.namespace
-                .root()
-                .check_submodule(handler, &type_info_prefix)?;
+                .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -463,8 +462,8 @@ pub(crate) fn resolve_method_name(
             } else {
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), Some(root_name)) = (
-                    module_path.get(0).cloned(),
-                    ctx.namespace.root().name.clone(),
+                    module_path.first().cloned(),
+                    ctx.namespace.root_module_name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);
@@ -475,7 +474,7 @@ pub(crate) fn resolve_method_name(
 
             // find the type of the first argument
             let type_id = arguments
-                .get(0)
+                .front()
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
@@ -499,7 +498,7 @@ pub(crate) fn resolve_method_name(
 
             // find the type of the first argument
             let type_id = arguments
-                .get(0)
+                .front()
                 .map(|x| x.return_type)
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 

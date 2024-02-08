@@ -105,10 +105,6 @@ pub enum ConvertParseTreeError {
     CannotAnnotateDependency { span: Span },
     #[error("Expected dependency at the beginning before any other items.")]
     ExpectedDependencyAtBeginning { span: Span },
-    #[error("Ref expressions are not supported yet.")]
-    RefExprNotYetSupported { span: Span },
-    #[error("Deref expressions are not supported yet.")]
-    DerefExprNotYetSupported { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
     #[error("Constant requires type ascription.")]
@@ -121,6 +117,8 @@ pub enum ConvertParseTreeError {
     InvalidCfgProgramTypeArgValue { span: Span, value: String },
     #[error("Expected a value for the program_type argument")]
     ExpectedCfgProgramTypeArgValue { span: Span },
+    #[error("Expected \"true\" or \"false\" for experimental_new_encoding")]
+    ExpectedExperimentalNewEncodingArgValue { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
@@ -177,14 +175,13 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
             ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
             ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
-            ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
-            ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
+            ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue { span } => span.clone(),
         }
     }
 }

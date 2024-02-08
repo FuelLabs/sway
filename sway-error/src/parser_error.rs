@@ -94,6 +94,8 @@ pub enum ParseErrorKind {
     UnexpectedTokenAfterSliceType,
     #[error("Expected a path type.")]
     ExpectedPathType,
+    #[error("Expected ':'. Enum variants must be in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`. E.g., `Foo: (), or `Bar: (bool, u32)`.")]
+    MissingColonInEnumTypeField,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]

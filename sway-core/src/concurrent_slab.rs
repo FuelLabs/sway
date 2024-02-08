@@ -1,11 +1,15 @@
 use std::{
+    collections::HashMap,
     fmt,
     sync::{Arc, RwLock},
 };
 
+use itertools::Itertools;
+
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
-    inner: RwLock<Vec<Arc<T>>>,
+    inner: RwLock<HashMap<usize, Arc<T>>>,
+    last_id: Arc<RwLock<usize>>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -16,6 +20,7 @@ where
         let inner = self.inner.read().unwrap();
         Self {
             inner: RwLock::new(inner.clone()),
+            last_id: self.last_id.clone(),
         }
     }
 }
@@ -24,6 +29,7 @@ impl<T> Default for ConcurrentSlab<T> {
     fn default() -> Self {
         Self {
             inner: Default::default(),
+            last_id: Default::default(),
         }
     }
 }
@@ -52,38 +58,46 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
-    pub fn len(&self) -> usize {
+    pub fn values(&self) -> Vec<Arc<T>> {
         let inner = self.inner.read().unwrap();
-        inner.len()
+        inner.values().cloned().collect_vec()
     }
 
     pub fn insert(&self, value: T) -> usize {
         let mut inner = self.inner.write().unwrap();
-        let ret = inner.len();
-        inner.push(Arc::new(value));
-        ret
+        let mut last_id = self.last_id.write().unwrap();
+        *last_id += 1;
+        inner.insert(*last_id, Arc::new(value));
+        *last_id
     }
 
     pub fn insert_arc(&self, value: Arc<T>) -> usize {
         let mut inner = self.inner.write().unwrap();
-        let ret = inner.len();
-        inner.push(value);
-        ret
+        let mut last_id = self.last_id.write().unwrap();
+        *last_id += 1;
+        inner.insert(*last_id, value);
+        *last_id
     }
 
     pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
         let mut inner = self.inner.write().unwrap();
-        inner[index] = Arc::new(new_value);
+        inner.insert(index, Arc::new(new_value));
         None
     }
 
     pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read().unwrap();
-        inner[index].clone()
+        inner[&index].clone()
     }
 
-    pub fn retain(&self, predicate: impl Fn(&Arc<T>) -> bool) {
+    pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {
         let mut inner = self.inner.write().unwrap();
         inner.retain(predicate);
+    }
+
+    pub fn clear(&self) {
+        let mut inner = self.inner.write().unwrap();
+        inner.clear();
+        inner.shrink_to(0);
     }
 }

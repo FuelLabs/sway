@@ -244,6 +244,20 @@ impl<T: Spanned> Spanned for CallPath<T> {
 }
 
 impl CallPath {
+    pub fn absolute(path: &[&str]) -> Self {
+        assert!(!path.is_empty());
+
+        CallPath {
+            prefixes: path
+                .iter()
+                .take(path.len() - 1)
+                .map(|&x| Ident::new_no_span(x.into()))
+                .collect(),
+            suffix: path.last().map(|&x| Ident::new_no_span(x.into())).unwrap(),
+            is_absolute: true,
+        }
+    }
+
     /// Shifts the last prefix into the suffix, and removes the old suffix.
     /// Does nothing if prefixes are empty.
     pub fn rshift(&self) -> CallPath {
@@ -299,10 +313,10 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(use_synonym) = namespace.use_synonyms.get(&self.suffix) {
+            if let Some(use_synonym) = namespace.module().items().use_synonyms.get(&self.suffix) {
                 synonym_prefixes = use_synonym.0.clone();
                 is_absolute = use_synonym.3;
-                let submodule = namespace.submodule(&[use_synonym.0[0].clone()]);
+                let submodule = namespace.module().submodule(&[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
                     is_external = submodule.is_external;
                 }
@@ -311,7 +325,7 @@ impl CallPath {
             let mut prefixes: Vec<Ident> = vec![];
 
             if !is_external {
-                if let Some(pkg_name) = &namespace.root().module.name {
+                if let Some(pkg_name) = &namespace.root_module().name {
                     prefixes.push(pkg_name.clone());
                 }
 
@@ -329,12 +343,12 @@ impl CallPath {
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
-        } else if let Some(m) = namespace.submodule(&[self.prefixes[0].clone()]) {
+        } else if let Some(m) = namespace.module().submodule(&[self.prefixes[0].clone()]) {
             // If some prefixes are already present, attempt to complete the path by adding the
             // package name and the path to the current submodule.
             //
             // If the path starts with an external module (i.e. a module that is imported in
-            // `Forc.toml`, then do not change it since it's a complete path already.
+            // `Forc.toml`), then do not change it since it's a complete path already.
             if m.is_external {
                 CallPath {
                     prefixes: self.prefixes.clone(),
@@ -343,7 +357,7 @@ impl CallPath {
                 }
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
-                if let Some(pkg_name) = &namespace.root().module.name {
+                if let Some(pkg_name) = &namespace.root_module().name {
                     prefixes.push(pkg_name.clone());
                 }
                 for mod_path in namespace.mod_path() {
@@ -377,7 +391,7 @@ impl CallPath {
         let converted = self.to_fullpath(namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root().name == Some(first.clone()) {
+            if namespace.root_module().name == Some(first.clone()) {
                 return converted.lshift();
             }
         }

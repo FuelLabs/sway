@@ -19,8 +19,16 @@ fn reverts() {
 
 #[allow(dead_code)]
 // ANCHOR: assert_eq
-fn compare(a: u64, b: u64) {
+fn compare_eq(a: u64, b: u64) {
     assert_eq(a, b);
     // code
 }
 // ANCHOR_END: assert_eq
+
+#[allow(dead_code)]
+// ANCHOR: assert_ne
+fn compare_ne(a: u64, b: u64) {
+    assert_ne(a, b);
+    // code
+}
+// ANCHOR_END: assert_ne

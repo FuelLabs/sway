@@ -4,7 +4,15 @@ use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
+use pkg::manifest::ExperimentalFlags;
 use tracing::info;
+
+forc_util::cli_examples! {
+    [ Run test => forc "test" => ".*could not find `Forc.toml`.*" ]
+    [ Run test with a filter => forc "test $filter" => ".*could not find `Forc.toml`.*" ]
+    [ Run test without any output => forc "test --silent" => "^$" ]
+    [ Run test without creating or update the lock file  => forc "test --locked" => ".*could not find `Forc.toml`.*" ]
+}
 
 /// Run the Sway unit tests for the current project.
 ///
@@ -38,10 +46,15 @@ pub struct Command {
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
     pub test_threads: Option<usize>,
+
+    #[clap(long)]
+    /// Experimental flag for the "new encoding" feature
+    pub experimental_new_encoding: bool,
 }
 
 /// The set of options provided for controlling output of a test.
 #[derive(Parser, Debug, Clone)]
+#[clap(after_help = help())]
 pub struct TestPrintOpts {
     #[clap(long = "pretty-print", short = 'r')]
     /// Pretty-print the logs emiited from tests.
@@ -215,6 +228,9 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
+        experimental: ExperimentalFlags {
+            new_encoding: cmd.experimental_new_encoding,
+        },
     }
 }
 

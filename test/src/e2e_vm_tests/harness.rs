@@ -1,11 +1,12 @@
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
+use forc::cli::shared::BuildProfile;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{Built, BuiltPackage};
+use forc_pkg::{manifest::ExperimentalFlags, Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
@@ -72,6 +73,10 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         default_salt: true,
+        build_profile: BuildProfile {
+            release: run_config.release,
+            ..Default::default()
+        },
         ..Default::default()
     })
     .await
@@ -189,6 +194,7 @@ pub(crate) fn runs_in_vm(
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
+
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),
@@ -251,6 +257,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
         build_target: run_config.build_target,
+        release: run_config.release,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
@@ -259,6 +266,9 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             json_abi_with_callpaths: true,
             ..Default::default()
+        },
+        experimental: ExperimentalFlags {
+            new_encoding: run_config.experimental.new_encoding,
         },
         ..Default::default()
     };

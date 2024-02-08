@@ -43,14 +43,18 @@ pub enum EcRecoverError {
 ///     let signature: B512 = B512::from((hi, lo));
 ///     // A recovered public key pair.
 ///     let public_key = ec_recover(signature, msg_hash).unwrap();
-/// 
+///
 ///     assert(public_key.bytes[0] == pub_hi);
 ///     assert(public_key.bytes[1] == pub_lo);
 /// }
 /// ```
 pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
-    let was_error = asm(buffer: public_key.bytes, sig: signature.bytes, hash: msg_hash) {
+    let was_error = asm(
+        buffer: public_key.bytes,
+        sig: signature.bytes,
+        hash: msg_hash,
+    ) {
         eck1 buffer sig hash;
         err
     };
@@ -92,14 +96,18 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 ///     let signature: B512 = B512::from((hi, lo));
 ///     // A recovered public key pair.
 ///     let public_key = ec_recover_r1(signature, msg_hash).unwrap();
-/// 
+///
 ///     assert(public_key.bytes[0] == pub_hi);
 ///     assert(public_key.bytes[1] == pub_lo);
 /// }
 /// ```
 pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
-    let was_error = asm(buffer: public_key.bytes, sig: signature.bytes, hash: msg_hash) {
+    let was_error = asm(
+        buffer: public_key.bytes,
+        sig: signature.bytes,
+        hash: msg_hash,
+    ) {
         ecr1 buffer sig hash;
         err
     };
@@ -141,12 +149,16 @@ pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverE
 ///     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
 ///     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;
 ///     let signature: B512 = B512::from((hi, lo));
-///     // A verified public key with signature 
+///     // A verified public key with signature
 ///     let verified = ed_verify(pub_key, signature, msg_hash).unwrap();
 ///     assert(verified);
 /// }
 /// ```
-pub fn ed_verify(public_key: b256, signature: B512, msg_hash: b256) -> Result<bool, EcRecoverError> {
+pub fn ed_verify(
+    public_key: b256,
+    signature: B512,
+    msg_hash: b256,
+) -> Result<bool, EcRecoverError> {
     let was_error = asm(buffer: public_key, sig: signature.bytes, hash: msg_hash) {
         ed19 buffer sig hash;
         err
@@ -252,7 +264,7 @@ pub fn ec_recover_address_r1(signature: B512, msg_hash: b256) -> Result<Address,
 #[test]
 fn test_ec_recover_r1() {
     use ::assert::assert;
-    
+
     let hi = 0xbd0c9b8792876712afadbff382e1bf31c44437823ed761cc3600d0016de511ac;
     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3da360c695edb27dc3b64d621e122fea23d;
     let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
@@ -270,7 +282,7 @@ fn test_ec_recover_r1() {
 fn test_revert_ec_recover_r1() {
     use ::assert::assert;
     use ::constants::ZERO_B256;
-    
+
     let hi = ZERO_B256;
     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3da360c695edb27dc3b64d621e122fea23d;
     let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
@@ -281,7 +293,7 @@ fn test_revert_ec_recover_r1() {
 #[test]
 fn test_ec_recover_address_r1() {
     use ::assert::assert;
-    
+
     let hi = 0xbd0c9b8792876713afa8bf3383eebf31c43437823ed761cc3600d0016de5110c;
     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
@@ -296,7 +308,7 @@ fn test_ec_recover_address_r1() {
 fn test_revert_ec_recover_address_r1() {
     use ::assert::assert;
     use ::constants::ZERO_B256;
-    
+
     let hi = ZERO_B256;
     let lo = 0x44ac566bd156b4fc71a4a4cb2655d3dd360c695edb17dc3b64d611e122fea23d;
     let msg_hash = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;

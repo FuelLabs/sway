@@ -1,0 +1,17 @@
+category = "fail"
+
+#check: $()Private struct field is inaccessible
+#check: $()ls.y = 0;
+#nextln: $()Private field "y" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private fields can only be accessed within the module in which their struct is declared.
+#check: $()y: u64,
+#nextln: $()Field "y" is declared here as private.
+#check: $()Consider declaring the field "y" as public in "LibStruct": `pub y: ...,`.
+
+#check: $()Private struct field is inaccessible
+#check: $()ls.nested.y = 0;
+#nextln: $()Private field "y" of the struct "LibNestedStruct" is inaccessible in this module.
+#nextln: $()Private fields can only be accessed within the module in which their struct is declared.
+#check: $()y: u64,
+#nextln: $()Field "y" is declared here as private.
+#check: $()Consider declaring the field "y" as public in "LibNestedStruct": `pub y: ...,`.

@@ -22,11 +22,12 @@ macro_rules! calldata {
 abigen!(
     Contract(
         name = "TestContract",
-        abi = "test_artifacts/low_level_callee_contract/out/debug/low_level_callee_contract-abi.json"
+        abi =
+            "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract-abi.json"
     ),
     Script(
         name = "TestScript",
-        abi = "test_projects/low_level_call/out/debug/low_level_call-abi.json"
+        abi = "test_projects/low_level_call/out/release/low_level_call-abi.json"
     )
 );
 
@@ -40,7 +41,7 @@ async fn low_level_call(
     // Build the script instance
     let script_instance = TestScript::new(
         wallet,
-        "test_projects/low_level_call/out/debug/low_level_call.bin",
+        "test_projects/low_level_call/out/release/low_level_call.bin",
     );
 
     // Add the contract being called to the inputs and outputs
@@ -84,7 +85,7 @@ async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, W
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(
-        "test_artifacts/low_level_callee_contract/out/debug/low_level_callee_contract.bin",
+        "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

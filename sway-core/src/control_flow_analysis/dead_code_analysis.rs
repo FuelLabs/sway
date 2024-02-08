@@ -353,34 +353,6 @@ fn connect_node<'eng: 'cfg, 'cfg>(
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
-        ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            let this_index = graph.add_node(ControlFlowGraphNode::from_node_with_parent(
-                node,
-                options.parent_node,
-            ));
-            for leaf_ix in leaves {
-                graph.add_edge(*leaf_ix, this_index, "".into());
-            }
-            // evaluate the expression
-
-            let return_contents = connect_expression(
-                engines,
-                &expr.expression,
-                graph,
-                &[this_index],
-                exit_node,
-                "",
-                tree_type,
-                expr.span.clone(),
-                options,
-            )?;
-
-            // connect return to the exit node
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
-            }
-            (return_contents, None)
-        }
         ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: expr_variant,
             span,
@@ -408,7 +380,10 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                     span.clone(),
                     options,
                 )?,
-                exit_node,
+                match expr_variant {
+                    ty::TyExpressionVariant::ImplicitReturn(_) => None,
+                    _ => exit_node,
+                },
             )
         }
         ty::TyAstNodeContent::SideEffect(_) => (leaves.to_vec(), exit_node),
@@ -1832,7 +1807,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
-        Return(exp) => {
+        ImplicitReturn(exp) | Return(exp) => {
             let this_index = graph.add_node("return entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, this_index, "".into());
@@ -1848,16 +1823,31 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 exp.span.clone(),
                 options,
             )?;
-            // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
-            // node?
-            for leaf in return_contents {
-                graph.add_edge(this_index, leaf, "".into());
+            if let Return(_) = expr_variant {
+                // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
+                // node?
+                for leaf in return_contents {
+                    graph.add_edge(this_index, leaf, "".into());
+                }
+                if let Some(exit_node) = exit_node {
+                    graph.add_edge(this_index, exit_node, "return".into());
+                }
+                Ok(vec![])
+            } else {
+                Ok(return_contents)
             }
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
-            }
-            Ok(vec![])
         }
+        Ref(exp) | Deref(exp) => connect_expression(
+            engines,
+            &exp.expression,
+            graph,
+            leaves,
+            exit_node,
+            "",
+            tree_type,
+            exp.span.clone(),
+            options,
+        ),
     }
 }
 
@@ -2119,10 +2109,7 @@ fn construct_dead_code_warning_from_node(
         // Otherwise, this is unreachable.
         ty::TyAstNode {
             span,
-            content:
-                ty::TyAstNodeContent::ImplicitReturnExpression(_)
-                | ty::TyAstNodeContent::Expression(_)
-                | ty::TyAstNodeContent::SideEffect(_),
+            content: ty::TyAstNodeContent::Expression(_) | ty::TyAstNodeContent::SideEffect(_),
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
@@ -2293,7 +2280,6 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::StorageDecl { .. } => false,
         },
         ty::TyAstNodeContent::Expression(_) => false,
-        ty::TyAstNodeContent::ImplicitReturnExpression(_) => false,
         ty::TyAstNodeContent::SideEffect(_) => false,
         ty::TyAstNodeContent::Error(_, _) => false,
     }

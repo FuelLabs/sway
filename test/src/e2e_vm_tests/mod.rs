@@ -10,6 +10,7 @@ use anyhow::{anyhow, bail, Result};
 use assert_matches::assert_matches;
 use colored::*;
 use core::fmt;
+use forc_pkg::BuildProfile;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
@@ -68,6 +69,7 @@ struct TestDescription {
     validate_abi: bool,
     validate_storage_slots: bool,
     supported_targets: HashSet<BuildTarget>,
+    unsupported_profiles: Vec<&'static str>,
     checker: filecheck::Checker,
 }
 
@@ -77,12 +79,131 @@ struct TestContext {
     deployed_contracts: Arc<Mutex<HashMap<String, ContractId>>>,
 }
 
-fn print_receipt(receipt: &Receipt) {
-    if let Receipt::ReturnData {
-        data: Some(data), ..
-    } = receipt
-    {
-        println!("Data: {:?}", data);
+fn print_receipts(output: &mut String, receipts: &[Receipt]) {
+    use std::fmt::Write;
+    let _ = writeln!(output, "  {}", "Receipts".green().bold());
+    for (i, receipt) in receipts.iter().enumerate() {
+        let _ = write!(output, "    {}", format!("#{i}").bold());
+        match receipt {
+            Receipt::LogData {
+                id,
+                ra,
+                rb,
+                ptr,
+                len,
+                digest,
+                pc,
+                is,
+                data,
+            } => {
+                let _ = write!(output, " LogData\n      ID: {id:?}\n      RA: {ra:?}\n      RB: {rb:?}\n      Ptr: {ptr:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Data: {data:?}\n");
+            }
+            Receipt::ReturnData {
+                id,
+                ptr,
+                len,
+                digest,
+                pc,
+                is,
+                data,
+            } => {
+                let _ = write!(output, " ReturnData\n      ID: {id:?}\n      Ptr: {ptr:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Data: {data:?}\n");
+            }
+            Receipt::Call {
+                id,
+                to,
+                amount,
+                asset_id,
+                gas,
+                param1,
+                param2,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Call\n      ID: {id:?}\n      To: {to:?}\n      Amount: {amount:?}\n      Asset ID: {asset_id:?}\n      Gas: {gas:?}\n      Param #1: {param1:?}\n      Param #2: {param2:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Return { id, val, pc, is } => {
+                let _ = write!(output, " Return\n      ID: {id:?}\n      Value: {val:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Panic {
+                id,
+                reason,
+                pc,
+                is,
+                contract_id,
+            } => {
+                let _ = write!(output, " Panic\n      ID: {id:?}\n      Reason: {reason:?}\n      PC: {pc:?}\n      IS: {is:?}\n      Contract ID: {contract_id:?}\n");
+            }
+            Receipt::Revert { id, ra, pc, is } => {
+                let _ = write!(output, " Revert\n      ID: {id:?}\n      RA: {ra:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Log {
+                id,
+                ra,
+                rb,
+                rc,
+                rd,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Log\n      ID: {id:?}\n      RA: {ra:?}\n      RB: {rb:?}\n      RC: {rc:?}\n      RD: {rd:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Transfer {
+                id,
+                to,
+                amount,
+                asset_id,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Transfer\n      ID: {id:?}\n      To: {to:?}\n      Amount: {amount:?}\n      Asset ID: {asset_id:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::TransferOut {
+                id,
+                to,
+                amount,
+                asset_id,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " TransferOut\n      ID: {id:?}\n      To: {to:?}\n      Amount: {amount:?}\n      Asset ID: {asset_id:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::ScriptResult { result, gas_used } => {
+                let _ = write!(
+                    output,
+                    " ScriptResult\n      Result: {result:?}\n      Gas Used: {gas_used:?}\n"
+                );
+            }
+            Receipt::MessageOut {
+                sender,
+                recipient,
+                amount,
+                nonce,
+                len,
+                digest,
+                data,
+            } => {
+                let _ = write!(output, " MessageOut\n      Sender: {sender:?}\n      Recipient: {recipient:?}\n      Amount: {amount:?}\n      Nonce: {nonce:?}\n      Len: {len:?}\n      Digest: {digest:?}\n      Data: {data:?}\n");
+            }
+            Receipt::Mint {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Mint\n      Sub ID: {sub_id:?}\n      Contract ID: {contract_id:?}\n      Val: {val:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+            Receipt::Burn {
+                sub_id,
+                contract_id,
+                val,
+                pc,
+                is,
+            } => {
+                let _ = write!(output, " Burn\n      Sub ID: {sub_id:?}\n      Contract ID: {contract_id:?}\n      Val: {val:?}\n      PC: {pc:?}\n      IS: {is:?}\n");
+            }
+        }
     }
 }
 
@@ -154,12 +275,7 @@ impl TestContext {
                 let result = harness::runs_in_vm(compiled.clone(), script_data, witness_data)?;
                 let result = match result {
                     harness::VMExecutionResult::Fuel(state, receipts) => {
-                        if verbose {
-                            for receipt in receipts.iter() {
-                                print_receipt(receipt);
-                            }
-                        }
-
+                        print_receipts(output, &receipts);
                         match state {
                             ProgramState::Return(v) => TestResult::Return(v),
                             ProgramState::ReturnData(digest) => {
@@ -425,6 +541,12 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     if filter_config.first_only && !tests.is_empty() {
         tests = vec![tests.remove(0)];
     }
+    let cur_profile = if run_config.release {
+        BuildProfile::RELEASE
+    } else {
+        BuildProfile::DEBUG
+    };
+    tests.retain(|t| !t.unsupported_profiles.contains(&cur_profile));
 
     // Run tests
     let context = TestContext {
@@ -447,6 +569,8 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             continue;
         }
 
+        use std::fmt::Write;
+        let _ = writeln!(output, " {}", "Verbose Output".green().bold());
         let result = if !filter_config.first_only {
             context
                 .run(test, &mut output, run_config.verbose)
@@ -466,7 +590,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             println!(" {}", "ok".green().bold());
 
             // If verbosity is requested then print it out.
-            if run_config.verbose {
+            if run_config.verbose && !output.is_empty() {
                 println!("{}", textwrap::indent(&output, "     "));
             }
         }
@@ -750,6 +874,15 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         .map(get_test_abi_from_value)
         .collect::<Result<Vec<BuildTarget>>>()?;
 
+    // Check for not supported build profiles. Default is empty.
+    let unsupported_profiles = toml_content
+        .get("unsupported_profiles")
+        .map(|v| v.as_array().cloned().unwrap_or_default())
+        .unwrap_or_default()
+        .iter()
+        .map(get_build_profile_from_value)
+        .collect::<Result<Vec<&'static str>>>()?;
+
     let supported_targets = HashSet::from_iter(if supported_targets.is_empty() {
         vec![BuildTarget::Fuel]
     } else {
@@ -767,6 +900,7 @@ fn parse_test_toml(path: &Path) -> Result<TestDescription> {
         validate_abi,
         validate_storage_slots,
         supported_targets,
+        unsupported_profiles,
         checker,
     })
 }
@@ -776,6 +910,17 @@ fn get_test_abi_from_value(value: &toml::Value) -> Result<BuildTarget> {
         Some(target) => match BuildTarget::from_str(target) {
             Ok(target) => Ok(target),
             _ => Err(anyhow!(format!("Unknown build target: {target}"))),
+        },
+        None => Err(anyhow!("Invalid TOML value")),
+    }
+}
+
+fn get_build_profile_from_value(value: &toml::Value) -> Result<&'static str> {
+    match value.as_str() {
+        Some(profile) => match profile {
+            BuildProfile::DEBUG => Ok(BuildProfile::DEBUG),
+            BuildProfile::RELEASE => Ok(BuildProfile::RELEASE),
+            _ => Err(anyhow!(format!("Unknown build profile"))),
         },
         None => Err(anyhow!("Invalid TOML value")),
     }

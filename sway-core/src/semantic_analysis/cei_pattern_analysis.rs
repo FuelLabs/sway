@@ -178,8 +178,7 @@ fn analyze_code_block_entry(
         ty::TyAstNodeContent::Declaration(decl) => {
             analyze_codeblock_decl(engines, decl, block_name, warnings)
         }
-        ty::TyAstNodeContent::Expression(expr)
-        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
+        ty::TyAstNodeContent::Expression(expr) => {
             analyze_expression(engines, expr, block_name, warnings)
         }
         ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
@@ -303,10 +302,13 @@ fn analyze_expression(
         }
         StructFieldAccess { prefix: expr, .. }
         | TupleElemAccess { prefix: expr, .. }
+        | ImplicitReturn(expr)
         | Return(expr)
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
-        | AbiCast { address: expr, .. } => analyze_expression(engines, expr, block_name, warnings),
+        | AbiCast { address: expr, .. }
+        | Ref(expr)
+        | Deref(expr) => analyze_expression(engines, expr, block_name, warnings),
         EnumInstantiation { contents, .. } => match contents {
             Some(expr) => analyze_expression(engines, expr, block_name, warnings),
             None => HashSet::new(),
@@ -471,10 +473,7 @@ fn warn_after_interaction(
 fn effects_of_codeblock_entry(engines: &Engines, ast_node: &ty::TyAstNode) -> HashSet<Effect> {
     match &ast_node.content {
         ty::TyAstNodeContent::Declaration(decl) => effects_of_codeblock_decl(engines, decl),
-        ty::TyAstNodeContent::Expression(expr)
-        | ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            effects_of_expression(engines, expr)
-        }
+        ty::TyAstNodeContent::Expression(expr) => effects_of_expression(engines, expr),
         ty::TyAstNodeContent::SideEffect(_) | ty::TyAstNodeContent::Error(_, _) => HashSet::new(),
     }
 }
@@ -556,7 +555,10 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
         | TupleElemAccess { prefix: expr, .. }
         | EnumTag { exp: expr }
         | UnsafeDowncast { exp: expr, .. }
-        | Return(expr) => effects_of_expression(engines, expr),
+        | ImplicitReturn(expr)
+        | Return(expr)
+        | Ref(expr)
+        | Deref(expr) => effects_of_expression(engines, expr),
         EnumInstantiation { contents, .. } => match contents {
             Some(expr) => effects_of_expression(engines, expr),
             None => HashSet::new(),

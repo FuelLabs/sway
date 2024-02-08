@@ -675,7 +675,7 @@ fn single_reg(
         });
     }
 
-    let reg = match args.get(0) {
+    let reg = match args.first() {
         Some(reg) => reg,
         _ => {
             return Err(
@@ -711,7 +711,7 @@ fn two_regs(
         });
     }
 
-    let (reg, reg2) = match (args.get(0), args.get(1)) {
+    let (reg, reg2) = match (args.first(), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             return Err(
@@ -755,7 +755,7 @@ fn four_regs(
         });
     }
 
-    let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
+    let (reg, reg2, reg3, reg4) = match (args.first(), args.get(1), args.get(2), args.get(3)) {
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
             return Err(
@@ -820,7 +820,7 @@ fn three_regs(
         });
     }
 
-    let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
+    let (reg, reg2, reg3) = match (args.first(), args.get(1), args.get(2)) {
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
             return Err(
@@ -892,7 +892,7 @@ fn single_reg_imm_18(
             received: args.len(),
         });
     }
-    let reg = match args.get(0) {
+    let reg = match args.first() {
         Some(reg) => reg,
         _ => {
             return Err(
@@ -942,7 +942,7 @@ fn two_regs_imm_12(
             received: args.len(),
         });
     }
-    let (reg, reg2) = match (args.get(0), args.get(1)) {
+    let (reg, reg2) = match (args.first(), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             return Err(

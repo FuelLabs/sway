@@ -1,17 +1,29 @@
-use std::{collections::HashMap, fmt::Display, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    fs,
+};
 
 use graph_cycles::Cycles;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_types::{BaseIdent, Named};
 
 use crate::{
+    decl_engine::DeclEngineGet,
     engine_threading::DebugWithEngines,
-    language::{parsed::*, ty, ModName},
+    language::{
+        parsed::*,
+        ty::{self, TyAstNodeContent, TyDecl},
+        CallPath, ModName,
+    },
     semantic_analysis::*,
-    Engines,
+    Engines, TypeInfo,
 };
+
+use super::declaration::auto_impl::AutoImplAbiEncodeContext;
 
 #[derive(Clone, Debug)]
 pub struct ModuleDepGraphEdge();
@@ -256,16 +268,90 @@ impl ty::TyModule {
         })
     }
 
+    // Filter and gather impl items
+    fn get_all_impls(
+        ctx: TypeCheckContext<'_>,
+        nodes: &[AstNode],
+        predicate: fn(&ImplTrait) -> bool,
+    ) -> HashMap<BaseIdent, HashSet<CallPath>> {
+        let engines = ctx.engines();
+        // Check which structs and enums needs to have auto impl for AbiEncode
+        // We need to do this before type checking, because the impls must be right after
+        // the declarations
+        let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();
+
+        for node in nodes.iter() {
+            if let AstNodeContent::Declaration(Declaration::ImplTrait(decl_id)) = &node.content {
+                let decl = &*engines.pe().get_impl_trait(decl_id);
+                let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
+                let implementing_for = match &*implementing_for {
+                    TypeInfo::Struct(decl) => {
+                        Some(ctx.engines().de().get(decl.id()).name().clone())
+                    }
+                    TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl.id()).name().clone()),
+                    TypeInfo::Custom {
+                        qualified_call_path,
+                        ..
+                    } => Some(qualified_call_path.call_path.suffix.clone()),
+                    _ => None,
+                };
+
+                if let Some(implementing_for) = implementing_for {
+                    if predicate(decl) {
+                        impls
+                            .entry(implementing_for)
+                            .or_default()
+                            .insert(decl.trait_name.clone());
+                    }
+                }
+            }
+        }
+
+        impls
+    }
+
     fn type_check_nodes(
         handler: &Handler,
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
-        let typed_nodes = nodes
-            .into_iter()
-            .map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node))
-            .filter_map(|res| res.ok())
-            .collect();
+        let engines = ctx.engines();
+        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
+            decl.trait_name.suffix.as_str() == "AbiEncode"
+        });
+
+        let mut typed_nodes = vec![];
+        for node in nodes {
+            let auto_impl_abiencode = match &node.content {
+                AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_struct(decl_id);
+                    all_abiencode_impls.get(&decl.name).is_none()
+                }
+                AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_enum(decl_id);
+                    all_abiencode_impls.get(&decl.name).is_none()
+                }
+                _ => false,
+            };
+
+            let Ok(node) = ty::TyAstNode::type_check(handler, ctx.by_ref(), node) else {
+                continue;
+            };
+
+            match (auto_impl_abiencode, AutoImplAbiEncodeContext::new(&mut ctx)) {
+                (true, Some(mut ctx)) => match &node.content {
+                    TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
+                    | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
+                        ctx.auto_impl_abi_encode(engines, decl)
+                    }
+                    _ => None,
+                },
+                _ => None,
+            };
+
+            typed_nodes.push(node);
+        }
+
         Ok(typed_nodes)
     }
 }
@@ -300,7 +386,6 @@ impl ty::TySubmodule {
                 }
                 AstNodeContent::Declaration(_) => {}
                 AstNodeContent::Expression(_) => {}
-                AstNodeContent::ImplicitReturnExpression(_) => {}
                 AstNodeContent::IncludeStatement(_) => {}
                 AstNodeContent::Error(_, _) => {}
             }

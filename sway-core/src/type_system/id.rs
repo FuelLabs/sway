@@ -15,6 +15,8 @@ use std::{
     fmt,
 };
 
+const EXTRACT_ANY_MAX_DEPTH: usize = 128;
+
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
@@ -48,7 +50,7 @@ impl CollectTypesMetadata for TypeId {
                 || matches!(type_info, TypeInfo::Placeholder(_))
         }
         let engines = ctx.engines;
-        let possible = self.extract_any_including_self(engines, &filter_fn, vec![]);
+        let possible = self.extract_any_including_self(engines, &filter_fn, vec![], 0);
         let mut res = vec![];
         for (type_id, _) in possible.into_iter() {
             match &*ctx.engines.te().get(type_id) {
@@ -167,13 +169,14 @@ impl TypeId {
         engines: &Engines,
         filter_fn: &F,
         trait_constraints: Vec<TraitConstraint>,
+        depth: usize,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
         let type_engine = engines.te();
         let type_info = type_engine.get(*self);
-        let mut found = self.extract_any(engines, filter_fn);
+        let mut found = self.extract_any(engines, filter_fn, depth + 1);
         if filter_fn(&type_info) {
             found.insert(*self, trait_constraints);
         }
@@ -184,10 +187,15 @@ impl TypeId {
         &self,
         engines: &Engines,
         filter_fn: &F,
+        depth: usize,
     ) -> HashMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
+        if depth >= EXTRACT_ANY_MAX_DEPTH {
+            panic!("Possible infinite recursion at extract_any");
+        }
+
         fn extend(
             hashmap: &mut HashMap<TypeId, Vec<TraitConstraint>>,
             hashmap_other: HashMap<TypeId, Vec<TraitConstraint>>,
@@ -227,6 +235,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             type_param.trait_constraints.clone(),
+                            depth + 1,
                         ),
                     );
                 }
@@ -237,6 +246,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
+                            depth + 1,
                         ),
                     );
                 }
@@ -250,6 +260,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             type_param.trait_constraints.clone(),
+                            depth + 1,
                         ),
                     );
                 }
@@ -260,6 +271,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
+                            depth + 1,
                         ),
                     );
                 }
@@ -268,8 +280,12 @@ impl TypeId {
                 for elem in elems.iter() {
                     extend(
                         &mut found,
-                        elem.type_id
-                            .extract_any_including_self(engines, filter_fn, vec![]),
+                        elem.type_id.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
                     );
                 }
             }
@@ -280,9 +296,12 @@ impl TypeId {
                 if let Some(address) = address {
                     extend(
                         &mut found,
-                        address
-                            .return_type
-                            .extract_any_including_self(engines, filter_fn, vec![]),
+                        address.return_type.extract_any_including_self(
+                            engines,
+                            filter_fn,
+                            vec![],
+                            depth + 1,
+                        ),
                     );
                 }
             }
@@ -295,9 +314,12 @@ impl TypeId {
                     for type_arg in type_arguments.iter() {
                         extend(
                             &mut found,
-                            type_arg
-                                .type_id
-                                .extract_any_including_self(engines, filter_fn, vec![]),
+                            type_arg.type_id.extract_any_including_self(
+                                engines,
+                                filter_fn,
+                                vec![],
+                                depth + 1,
+                            ),
                         );
                     }
                 }
@@ -306,7 +328,7 @@ impl TypeId {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::Storage { fields } => {
@@ -317,6 +339,7 @@ impl TypeId {
                             engines,
                             filter_fn,
                             vec![],
+                            depth + 1,
                         ),
                     );
                 }
@@ -325,7 +348,7 @@ impl TypeId {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::UnknownGeneric {
@@ -344,6 +367,7 @@ impl TypeId {
                                     engines,
                                     filter_fn,
                                     vec![],
+                                    depth + 1,
                                 ),
                             );
                         }
@@ -354,14 +378,21 @@ impl TypeId {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
             TypeInfo::Slice(ty) => {
                 extend(
                     &mut found,
                     ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![]),
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
+                );
+            }
+            TypeInfo::Ref(ty) => {
+                extend(
+                    &mut found,
+                    ty.type_id
+                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
         }
@@ -374,7 +405,7 @@ impl TypeId {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
-        self.extract_any(engines, &filter_fn)
+        self.extract_any(engines, &filter_fn, 0)
             .keys()
             .cloned()
             .collect()
@@ -387,7 +418,7 @@ impl TypeId {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
-        self.extract_any(engines, &filter_fn)
+        self.extract_any(engines, &filter_fn, 0)
     }
 
     /// Given a `TypeId` `self`, analyze `self` and return all nested
@@ -408,12 +439,10 @@ impl TypeId {
         engines: &'a Engines,
     ) -> HashSet<WithEngines<'a, TypeInfo>> {
         let nested_types = (*self).extract_nested_types(engines);
-        HashSet::from_iter(
-            nested_types
-                .into_iter()
-                .filter(|x| matches!(x, TypeInfo::UnknownGeneric { .. }))
-                .map(|thing| WithEngines::new(thing, engines)),
-        )
+        HashSet::from_iter(nested_types.into_iter().filter_map(|x| match x {
+            TypeInfo::UnknownGeneric { .. } => Some(WithEngines::new(x, engines)),
+            _ => None,
+        }))
     }
 
     /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
@@ -548,6 +577,8 @@ impl TypeId {
         let mut found_error = false;
         let generic_trait_constraints_trait_names_and_args = ctx
             .namespace
+            .module()
+            .items()
             .implemented_traits
             .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
         for structure_trait_constraint in structure_trait_constraints {

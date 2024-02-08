@@ -51,6 +51,15 @@ pub struct QueryEngine {
     programs_cache: RwLock<ProgramsCacheMap>,
 }
 
+impl Clone for QueryEngine {
+    fn clone(&self) -> Self {
+        Self {
+            parse_module_cache: RwLock::new(self.parse_module_cache.read().unwrap().clone()),
+            programs_cache: RwLock::new(self.programs_cache.read().unwrap().clone()),
+        }
+    }
+}
+
 impl QueryEngine {
     pub fn get_parse_module_cache_entry(&self, path: &ModuleCacheKey) -> Option<ModuleCacheEntry> {
         let cache = self.parse_module_cache.read().unwrap();
@@ -58,16 +67,18 @@ impl QueryEngine {
     }
 
     pub fn insert_parse_module_cache_entry(&self, entry: ModuleCacheEntry) {
-        let mut cache = self.parse_module_cache.write().unwrap();
         let path = entry.path.clone();
         let include_tests = entry.include_tests;
-
         let key = ModuleCacheKey::new(path, include_tests);
+        let mut cache = self.parse_module_cache.write().unwrap();
         cache.insert(key, entry);
     }
 
     pub fn get_programs_cache_entry(&self, path: &Arc<PathBuf>) -> Option<ProgramsCacheEntry> {
-        let cache = self.programs_cache.read().unwrap();
+        let cache = self
+            .programs_cache
+            .read()
+            .expect("Failed to read programs cache");
         cache.get(path).cloned()
     }
 

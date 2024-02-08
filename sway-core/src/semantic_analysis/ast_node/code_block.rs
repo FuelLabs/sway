@@ -41,7 +41,10 @@ impl ty::TyCodeBlock {
             .contents
             .iter()
             .find_map(|x| match &x.content {
-                TyAstNodeContent::ImplicitReturnExpression(expr) => Some(Some(expr.span.clone())),
+                TyAstNodeContent::Expression(ty::TyExpression {
+                    expression: ty::TyExpressionVariant::ImplicitReturn(expr),
+                    ..
+                }) => Some(Some(expr.span.clone())),
                 _ => None,
             })
             .flatten();
@@ -61,8 +64,9 @@ impl ty::TyCodeBlock {
                 match node {
                     ty::TyAstNode {
                         content:
-                            ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                                ref return_type,
+                            ty::TyAstNodeContent::Expression(ty::TyExpression {
+                                expression: ty::TyExpressionVariant::ImplicitReturn(_expr),
+                                return_type,
                                 ..
                             }),
                         ..
@@ -80,8 +84,7 @@ impl ty::TyCodeBlock {
 
                     let never_decl_opt = ctx
                         .namespace
-                        .root()
-                        .resolve_symbol(
+                        .resolve_root_symbol(
                             &Handler::default(),
                             engines,
                             &never_mod_path,

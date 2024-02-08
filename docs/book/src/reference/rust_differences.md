@@ -19,7 +19,7 @@ enum Foo {
 }
 ```
 
-In Sway, enums are simplified. Enums variants must all specify exactly one type. This type represents their interior data. This is actually isomorphic to what Rust offers, just with a different syntax. I'll now rewrite the above enum but with Sway syntax:
+In Sway, enums are simplified. Enums variants must all specify exactly one type. This type represents their interior data. This is actually isomorphic to what Rust offers, but with a different syntax. You can see the above enum but with Sway syntax below:
 
 ```sway
 // This is equivalent Sway syntax for the above Rust enum.

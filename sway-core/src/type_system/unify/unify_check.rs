@@ -325,6 +325,11 @@ impl<'a> UnifyCheck<'a> {
                     && self.check_multiple(&l_types, &r_types)
                     && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
             }
+
+            (Ref(l_ty), Ref(r_ty)) => {
+                return self.check_inner(l_ty.type_id, r_ty.type_id);
+            }
+
             _ => {}
         }
 
@@ -486,7 +491,7 @@ impl<'a> UnifyCheck<'a> {
                 }
             }
             NonDynamicEquality => match (&*left_info, &*right_info) {
-                // when a type alias is encoutered, defer the decision to the type it contains (i.e. the
+                // when a type alias is encountered, defer the decision to the type it contains (i.e. the
                 // type it aliases with)
                 (Alias { ty, .. }, _) => self.check_inner(ty.type_id, right),
                 (_, Alias { ty, .. }) => self.check_inner(left, ty.type_id),

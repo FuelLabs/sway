@@ -1,9 +1,9 @@
 //! The base descriptor for various values within the IR.
 //!
-//! [`Value`]s can be function arguments, constants and instructions.  [`Instruction`]s generally
+//! [`Value`]s can be function arguments, constants and instructions. [`Instruction`]s generally
 //! refer to each other and to constants via the [`Value`] wrapper.
 //!
-//! Like most IR data structures they are `Copy` and cheap to pass around by value.  They are
+//! Like most IR data structures they are `Copy` and cheap to pass around by value. They are
 //! therefore also easy to replace, a common practice for optimization passes.
 
 use rustc_hash::FxHashMap;
@@ -123,19 +123,6 @@ impl Value {
                     | InstOp::ConditionalBranch { .. }
                     | InstOp::Ret(_, _)
                     | InstOp::FuelVm(FuelVmInstruction::Revert(_))
-            ),
-            _ => false,
-        }
-    }
-
-    pub fn is_diverging(&self, context: &Context) -> bool {
-        match &context.values[self.0].value {
-            ValueDatum::Instruction(Instruction { op, .. }) => matches!(
-                op,
-                InstOp::Branch(..)
-                    | InstOp::ConditionalBranch { .. }
-                    | InstOp::Ret(..)
-                    | InstOp::FuelVm(FuelVmInstruction::Revert(..))
             ),
             ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
                 false

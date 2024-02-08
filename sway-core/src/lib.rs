@@ -27,7 +27,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget};
+pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
@@ -35,13 +35,15 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
-    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME,
-    MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME,
+    create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
+    MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME,
+    SROA_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -64,6 +66,7 @@ pub mod fuel_prelude {
     pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
 }
 
+pub use build_config::ExperimentalFlags;
 pub use engine_threading::Engines;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
@@ -97,6 +100,7 @@ pub fn parse(
             None,
             config.build_target,
             config.include_tests,
+            config.experimental,
         )
         .map(
             |ParsedModuleTree {
@@ -229,6 +233,7 @@ pub struct Submodule {
 pub type Submodules = Vec<Submodule>;
 
 /// Parse all dependencies `deps` as submodules.
+#[allow(clippy::too_many_arguments)]
 fn parse_submodules(
     handler: &Handler,
     engines: &Engines,
@@ -237,6 +242,7 @@ fn parse_submodules(
     module_dir: &Path,
     build_target: BuildTarget,
     include_tests: bool,
+    experimental: ExperimentalFlags,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
@@ -269,6 +275,7 @@ fn parse_submodules(
             Some(submod.name.as_str()),
             build_target,
             include_tests,
+            experimental,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
@@ -312,6 +319,7 @@ pub struct ParsedModuleTree {
 
 /// Given the source of the module along with its path,
 /// parse this module including all of its submodules.
+#[allow(clippy::too_many_arguments)]
 fn parse_module_tree(
     handler: &Handler,
     engines: &Engines,
@@ -320,6 +328,7 @@ fn parse_module_tree(
     module_name: Option<&str>,
     build_target: BuildTarget,
     include_tests: bool,
+    experimental: ExperimentalFlags,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
@@ -338,11 +347,12 @@ fn parse_module_tree(
         module_dir,
         build_target,
         include_tests,
+        experimental,
     );
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::new(build_target),
+        &mut to_parsed_lang::Context::new(build_target, experimental),
         handler,
         engines,
         module.value.clone(),
@@ -467,7 +477,11 @@ pub fn parsed_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
+    let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
+    let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
+
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -475,7 +489,17 @@ pub fn parsed_to_ast(
         parse_program,
         initial_namespace,
         package_name,
+        build_config,
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
+    // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
+    // LSP needs these to build its token map, and they are cleared by `clear_module` as
+    // part of the LSP garbage collection functionality instead.
+    if lsp_config.is_none() {
+        engines.pe().clear();
+    }
 
     let mut typed_program = match typed_program_opt {
         Ok(typed_program) => typed_program,
@@ -492,49 +516,70 @@ pub fn parsed_to_ast(
         }
     };
 
-    // Collect information about the types used in this program
-    let types_metadata_result = typed_program
-        .collect_types_metadata(handler, &mut CollectTypesMetadataContext::new(engines));
-    let types_metadata = match types_metadata_result {
-        Ok(types_metadata) => types_metadata,
-        Err(e) => {
-            handler.dedup();
-            return Err(e);
-        }
+    // Skip collecting metadata if we triggered an optimised build from LSP.
+    let types_metadata = if !lsp_config
+        .as_ref()
+        .map(|lsp| lsp.optimized_build)
+        .unwrap_or(false)
+    {
+        // Collect information about the types used in this program
+        let types_metadata_result = typed_program.collect_types_metadata(
+            handler,
+            &mut CollectTypesMetadataContext::new(engines, experimental),
+        );
+        let types_metadata = match types_metadata_result {
+            Ok(types_metadata) => types_metadata,
+            Err(e) => {
+                handler.dedup();
+                return Err(e);
+            }
+        };
+
+        typed_program
+            .logged_types
+            .extend(types_metadata.iter().filter_map(|m| match m {
+                TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
+                _ => None,
+            }));
+
+        typed_program
+            .messages_types
+            .extend(types_metadata.iter().filter_map(|m| match m {
+                TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
+                _ => None,
+            }));
+
+        let (print_graph, print_graph_url_format) = match build_config {
+            Some(cfg) => (
+                cfg.print_dca_graph.clone(),
+                cfg.print_dca_graph_url_format.clone(),
+            ),
+            None => (None, None),
+        };
+
+        check_should_abort(handler, retrigger_compilation.clone())?;
+
+        // Perform control flow analysis and extend with any errors.
+        let _ = perform_control_flow_analysis(
+            handler,
+            engines,
+            &typed_program,
+            print_graph,
+            print_graph_url_format,
+        );
+
+        types_metadata
+    } else {
+        vec![]
     };
-
-    typed_program
-        .logged_types
-        .extend(types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
-            _ => None,
-        }));
-
-    typed_program
-        .messages_types
-        .extend(types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
-            _ => None,
-        }));
-
-    let (print_graph, print_graph_url_format) = match build_config {
-        Some(cfg) => (
-            cfg.print_dca_graph.clone(),
-            cfg.print_dca_graph_url_format.clone(),
-        ),
-        None => (None, None),
-    };
-    // Perform control flow analysis and extend with any errors.
-    let _ = perform_control_flow_analysis(
-        handler,
-        engines,
-        &typed_program,
-        print_graph,
-        print_graph_url_format,
-    );
 
     // Evaluate const declarations, to allow storage slots initialization with consts.
-    let mut ctx = Context::new(engines.se());
+    let mut ctx = Context::new(
+        engines.se(),
+        sway_ir::ExperimentalFlags {
+            new_encoding: experimental.new_encoding,
+        },
+    );
     let mut md_mgr = MetadataManager::default();
     let module = Module::new(&mut ctx, Kind::Contract);
     if let Err(e) = ir_generation::compile::compile_constants(
@@ -542,7 +587,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        &typed_program.root.namespace,
+        typed_program.root.namespace.module(),
     ) {
         handler.emit_err(e);
     }
@@ -596,7 +641,10 @@ pub fn compile_to_ast(
     initial_namespace: namespace::Module,
     build_config: Option<&BuildConfig>,
     package_name: &str,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
+    check_should_abort(handler, retrigger_compilation.clone())?;
+
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
 
@@ -612,7 +660,6 @@ pub fn compile_to_ast(
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
-
             return Ok(entry.programs);
         };
     }
@@ -625,6 +672,8 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -639,7 +688,7 @@ pub fn compile_to_ast(
         .map(|config| !config.include_tests)
         .unwrap_or(true)
     {
-        parsed_program.exclude_tests();
+        parsed_program.exclude_tests(engines);
     }
 
     // Type check (+ other static analysis) the CST to a typed AST.
@@ -653,10 +702,13 @@ pub fn compile_to_ast(
             initial_namespace,
             build_config,
             package_name,
+            retrigger_compilation.clone(),
         ),
         build_config,
         metrics
     );
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
 
@@ -664,7 +716,6 @@ pub fn compile_to_ast(
 
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
-
         let cache_entry = ProgramsCacheEntry {
             path,
             programs: programs.clone(),
@@ -672,6 +723,8 @@ pub fn compile_to_ast(
         };
         query_engine.insert_programs_cache_entry(cache_entry);
     }
+
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     Ok(programs)
 }
@@ -693,6 +746,7 @@ pub fn compile_to_asm(
         initial_namespace,
         Some(&build_config),
         package_name,
+        None,
     )?;
     ast_to_asm(handler, engines, &ast_res, &build_config)
 }
@@ -726,7 +780,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
-    // the IR pipeline relies on type information being fully resolved.
+    // The IR pipeline relies on type information being fully resolved.
     // If type information is found to still be generic or unresolved inside of
     // IR, this is considered an internal compiler error. To resolve this situation,
     // we need to explicitly ensure all types are resolved before going into IR.
@@ -737,8 +791,12 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // errors and then hold as a runtime invariant that none of the types will be unresolved in the
     // IR phase.
 
-    let mut ir = match ir_generation::compile_program(program, build_config.include_tests, engines)
-    {
+    let mut ir = match ir_generation::compile_program(
+        program,
+        build_config.include_tests,
+        engines,
+        build_config.experimental,
+    ) {
         Ok(ir) => ir,
         Err(errors) => {
             let mut last = None;
@@ -768,7 +826,17 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     // Initialize the pass manager and register known passes.
     let mut pass_mgr = PassManager::default();
     register_known_passes(&mut pass_mgr);
-    let mut pass_group = create_o1_pass_group();
+    let mut pass_group = PassGroup::default();
+
+    match build_config.optimization_level {
+        OptLevel::Opt1 => {
+            pass_group.append_group(create_o1_pass_group());
+        }
+        OptLevel::Opt0 => {
+            // Inlining is necessary until #4899 is resolved.
+            pass_group.append_pass(INLINE_MODULE_NAME);
+        }
+    }
 
     // Target specific transforms should be moved into something more configured.
     if build_config.build_target == BuildTarget::Fuel {
@@ -787,9 +855,15 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);
         pass_group.append_pass(SIMPLIFYCFG_NAME);
-        pass_group.append_pass(SROA_NAME);
-        pass_group.append_pass(MEM2REG_NAME);
-        pass_group.append_pass(DCE_NAME);
+
+        match build_config.optimization_level {
+            OptLevel::Opt1 => {
+                pass_group.append_pass(SROA_NAME);
+                pass_group.append_pass(MEM2REG_NAME);
+                pass_group.append_pass(DCE_NAME);
+            }
+            OptLevel::Opt0 => {}
+        }
     }
 
     if build_config.print_ir {
@@ -942,6 +1016,20 @@ fn module_return_path_analysis(
     }
 }
 
+/// Check if the retrigger compilation flag has been set to true in the language server.
+/// If it has, there is a new compilation request, so we should abort the current compilation.
+fn check_should_abort(
+    handler: &Handler,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
+) -> Result<(), ErrorEmitted> {
+    if let Some(ref retrigger_compilation) = retrigger_compilation {
+        if retrigger_compilation.load(Ordering::SeqCst) {
+            return Err(handler.cancel());
+        }
+    }
+    Ok(())
+}
+
 #[test]
 fn test_basic_prog() {
     let handler = Handler::default();
@@ -1076,12 +1164,11 @@ fn test_unary_ordering() {
     // expression should be `&&`
     if let parsed::AstNode {
         content:
-            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(
-                parsed::FunctionDeclaration { body, .. },
-            )),
+            parsed::AstNodeContent::Declaration(parsed::Declaration::FunctionDeclaration(decl_id)),
         ..
     } = &prog.root.tree.root_nodes[0]
     {
+        let fn_decl = engines.pe().get_function(decl_id);
         if let parsed::AstNode {
             content:
                 parsed::AstNodeContent::Expression(parsed::Expression {
@@ -1092,7 +1179,7 @@ fn test_unary_ordering() {
                     ..
                 }),
             ..
-        } = &body.contents[2]
+        } = &fn_decl.body.contents[2]
         {
             assert_eq!(op, &language::LazyOp::And)
         } else {

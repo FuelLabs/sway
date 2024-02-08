@@ -4,11 +4,18 @@ use forc_pkg::source::IPFSNode;
 use forc_util::{forc_result_bail, ForcResult};
 use sway_core::{BuildTarget, Engines};
 
+forc_util::cli_examples! {
+    [ Check the current project => forc "check" => r#".*could not find `Forc.toml`.*"# ]
+    [ Check the current project with a different path => forc "check --path ../tests/" => r#".*could not find `Forc.toml`.*"# ]
+    [ Check the current project without updating dependencies => forc "check --locked" => r#".*could not find `Forc.toml`.*"# ]
+}
+
 /// Check the current or target project and all of its dependencies for errors.
 ///
 /// This will essentially compile the packages without performing the final step of code generation,
 /// which is faster than running forc build.
 #[derive(Debug, Default, Parser)]
+#[clap(bin_name = "forc check", version, after_help = help())]
 pub struct Command {
     /// Build target to use for code generation.
     #[clap(value_enum, default_value_t=BuildTarget::default(), alias="target")]

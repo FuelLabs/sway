@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-EC2C1FC903667D61"
+
+[[package]]
+name = "enum_rust_like"
+source = "member"
+dependencies = ["core"]
