@@ -291,6 +291,9 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
+            ForLoop { desugared } => {
+                res.append(&mut desugared.collect_types_metadata(handler, ctx)?);
+            }
             ImplicitReturn(exp) | Return(exp) => {
                 res.append(&mut exp.collect_types_metadata(handler, ctx)?)
             }
@@ -394,6 +397,9 @@ impl DeterministicallyAborts for TyExpression {
                 condition.deterministically_aborts(decl_engine, check_call_body)
                     || body.deterministically_aborts(decl_engine, check_call_body)
             }
+            ForLoop { desugared } => {
+                desugared.deterministically_aborts(decl_engine, check_call_body)
+            }
             Break => false,
             Continue => false,
             Reassignment(reassignment) => reassignment
@@ -422,14 +428,6 @@ impl TyExpression {
             return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None),
             span,
         }
-    }
-
-    /// recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type
-    /// This does _not_ extract implicit return statements as those are not control flow! This is
-    /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
-        self.expression.gather_return_statements()
     }
 
     /// gathers the mutability of the expressions within
