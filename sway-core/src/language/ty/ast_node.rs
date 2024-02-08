@@ -154,22 +154,6 @@ impl GetDeclIdent for TyAstNode {
 }
 
 impl TyAstNode {
-    /// recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type
-    /// This does _not_ extract implicit return statements as those are not control flow! This is
-    /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
-        match &self.content {
-            // assignments and  reassignments can happen during control flow and can abort
-            TyAstNodeContent::Declaration(TyDecl::VariableDecl(decl)) => {
-                decl.body.gather_return_statements()
-            }
-            TyAstNodeContent::Expression(exp) => exp.gather_return_statements(),
-            TyAstNodeContent::Error(_, _) => vec![],
-            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Declaration(_) => vec![],
-        }
-    }
-
     /// Returns `true` if this AST node will be exported in a library, i.e. it is a public declaration.
     pub(crate) fn is_public(&self, decl_engine: &DeclEngine) -> bool {
         match &self.content {
