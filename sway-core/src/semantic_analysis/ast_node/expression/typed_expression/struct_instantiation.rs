@@ -80,8 +80,7 @@ pub(crate) fn struct_instantiation(
     // find the module that the struct decl is in
     let type_info_prefix = ctx.namespace.find_module_path(&prefixes);
     ctx.namespace
-        .root()
-        .check_submodule(handler, &type_info_prefix)?;
+        .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
@@ -255,6 +254,8 @@ pub(crate) fn struct_instantiation(
         // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
         // that we wish to encourage.
         namespace
+            .module()
+            .items()
             .get_items_for_type(engines, struct_type_id)
             .iter()
             .filter_map(|item| match item {

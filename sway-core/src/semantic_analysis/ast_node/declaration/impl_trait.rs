@@ -620,6 +620,8 @@ fn type_check_trait_implementation(
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
     ctx.namespace
+        .module_mut()
+        .items_mut()
         .implemented_traits
         .check_if_trait_constraints_are_satisfied_for_type(
             handler,
