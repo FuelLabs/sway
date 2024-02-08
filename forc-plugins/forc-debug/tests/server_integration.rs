@@ -1,8 +1,8 @@
 use dap::{
-    events::Event,
+    events::{Event, OutputEventBody},
     requests::{Command, LaunchRequestArguments, SetBreakpointsArguments, VariablesArguments},
     responses::ResponseBody,
-    types::{Source, SourceBreakpoint, StoppedEventReason, Variable},
+    types::{OutputEventCategory, Source, SourceBreakpoint, StoppedEventReason, Variable},
 };
 use forc_debug::server::{
     AdditionalData, DapServer, INSTRUCTIONS_VARIABLE_REF, REGISTERS_VARIABLE_REF,
@@ -49,6 +49,25 @@ impl EventCapture {
         }
         None
     }
+}
+
+#[test]
+fn test_server_attach_mode() {
+    let output_capture = EventCapture::default();
+    let input = Box::new(std::io::stdin());
+    let output = Box::new(output_capture.clone());
+    let mut server = DapServer::new(input, output);
+
+    // Initialize request
+    let (result, exit_code) = server.handle_command(Command::Initialize(Default::default()));
+    assert!(matches!(result, Ok(ResponseBody::Initialize(_))));
+    assert!(exit_code.is_none());
+
+    // Attach request
+    let (result, exit_code) = server.handle_command(Command::Attach(Default::default()));
+    assert!(matches!(result, Ok(ResponseBody::Attach)));
+    assert_eq!(exit_code, Some(0));
+    assert_not_supported_event(output_capture.take_event());
 }
 
 #[test]
@@ -187,6 +206,18 @@ fn test_server_launch_mode() {
     assert!(exit_code.is_none());
     assert_stopped_next_event(output_capture.take_event());
 
+    // // Step In request
+    // let (result, exit_code) = server.handle_command(Command::StepIn(Default::default()));
+    // assert!(result.is_ok());
+    // assert!(exit_code.is_none());
+    // assert_not_supported_event(output_capture.take_event());
+
+    // // Step Out request
+    // let (result, exit_code) = server.handle_command(Command::StepOut(Default::default()));
+    // assert!(result.is_ok());
+    // assert!(exit_code.is_none());
+    // assert_not_supported_event(output_capture.take_event());
+
     // Continue request, should hit 2nd breakpoint
     let (result, exit_code) = server.handle_command(Command::Continue(Default::default()));
     assert!(result.is_ok());
@@ -205,16 +236,12 @@ fn test_server_launch_mode() {
     assert_eq!(exit_code, Some(0));
 
     // Test results should be logged
-    match output_capture.take_event().expect("received event") {
-        Event::Output(body) => {
-            assert!(body.category.is_none());
-            assert!(body.output.contains("test test_1 ... ok"));
-            assert!(body.output.contains("test test_2 ... ok"));
-            assert!(body.output.contains("test test_3 ... ok"));
-            assert!(body.output.contains("Result: OK. 3 passed. 0 failed"));
-        }
-        other => panic!("Expected Output event, got {:?}", other),
-    };
+    let body = assert_output_event_body(output_capture.take_event());
+    assert!(body.category.is_none());
+    assert!(body.output.contains("test test_1 ... ok"));
+    assert!(body.output.contains("test test_2 ... ok"));
+    assert!(body.output.contains("test test_3 ... ok"));
+    assert!(body.output.contains("Result: OK. 3 passed. 0 failed"));
 }
 
 /// Asserts that the given event is a Stopped event with a breakpoint reason and the given breakpoint ID.
@@ -237,6 +264,21 @@ fn assert_stopped_next_event(event: Option<Event>) {
         }
         other => panic!("Expected Stopped event, got {:?}", other),
     };
+}
+
+fn assert_output_event_body(event: Option<Event>) -> OutputEventBody {
+    match event.expect("received event") {
+        Event::Output(body) => {
+            return body;
+        }
+        other => panic!("Expected Output event, got {:?}", other),
+    };
+}
+
+fn assert_not_supported_event(event: Option<Event>) {
+    let body = assert_output_event_body(event);
+    assert_eq!(body.output, "This feature is not currently supported.");
+    assert!(matches!(body.category, Some(OutputEventCategory::Stderr)));
 }
 
 /// Asserts that the given variables match the expected (name, value) pairs.

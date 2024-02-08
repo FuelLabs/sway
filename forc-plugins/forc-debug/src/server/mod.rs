@@ -118,7 +118,8 @@ impl DapServer {
         match command {
             Command::Attach(_) => {
                 self.state.mode = Some(StartDebuggingRequestKind::Attach);
-                (Ok(ResponseBody::Attach), None)
+                self.error("This feature is not currently supported.".into());
+                (Ok(ResponseBody::Attach), Some(0))
             }
             Command::BreakpointLocations(ref args) => {
                 match self.handle_breakpoint_locations(args) {
@@ -243,8 +244,14 @@ impl DapServer {
                 ),
                 Err(e) => (Err(e), None),
             },
-            Command::StepIn(_) => (Ok(ResponseBody::StepIn), None), // Not supported
-            Command::StepOut(_) => (Ok(ResponseBody::StepOut), None), // Not supported
+            Command::StepIn(_) => {
+                self.error("This feature is not currently supported.".into());
+                (Ok(ResponseBody::StepIn), None)
+            }
+            Command::StepOut(_) => {
+                self.error("This feature is not currently supported.".into());
+                (Ok(ResponseBody::StepOut), None)
+            }
             Command::Terminate(_) => (Ok(ResponseBody::Terminate), Some(0)),
             Command::TerminateThreads(_) => (Ok(ResponseBody::TerminateThreads), Some(0)),
             Command::Threads => (
