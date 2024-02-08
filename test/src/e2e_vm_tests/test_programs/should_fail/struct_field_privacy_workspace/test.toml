@@ -1,11 +1,11 @@
-category = "disabled" # Until struct field privacy warnings do not become hard errors.
+category = "fail"
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #nextln: $()test.sw
 #check: $()let _ = Lib01PublicStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #check: $()Consider implementing a public constructor for "Lib01PublicStruct".
 #nextln: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicStruct": `pub y: ...,`.
 
@@ -19,8 +19,8 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()test.sw
 #check: $()let _ = Lib01PublicNestedStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicNestedStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #check: $()Consider implementing a public constructor for "Lib01PublicNestedStruct".
 #nextln: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicNestedStruct": `pub y: ...,`.
 
@@ -34,8 +34,8 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()test.sw
 #check: $()let _ = ExternalLib01PublicStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #not: $()Consider implementing a public constructor for "Lib01PublicStruct".
 #not: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicStruct": `pub y: ...,`.
 
@@ -49,8 +49,8 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()test.sw
 #check: $()let _ = ExternalLib01PublicNestedStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicNestedStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #not: $()Consider implementing a public constructor for "Lib01PublicNestedStruct".
 #not: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicNestedStruct": `pub y: ...,`.
 
@@ -64,8 +64,8 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = Lib01PublicStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #check: $()Consider implementing a public constructor for "Lib01PublicStruct".
 #nextln: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicStruct": `pub y: ...,`.
 
@@ -79,8 +79,8 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = Lib01PublicNestedStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicNestedStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #check: $()Consider implementing a public constructor for "Lib01PublicNestedStruct".
 #nextln: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicNestedStruct": `pub y: ...,`.
 
@@ -96,8 +96,8 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = ExternalLib01PublicStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #not: $()Consider implementing a public constructor for "Lib01PublicStruct".
 #not: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicStruct": `pub y: ...,`.
 
@@ -111,8 +111,8 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #nextln: $()main.sw
 #check: $()let _ = ExternalLib01PublicNestedStruct { x: 0, y: 0 };
 #nextln: $()"Lib01PublicNestedStruct" cannot be directly instantiated in this module, due to an inaccessible private field.
-#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated only within the module in which they are declared.
 #not: $()Consider implementing a public constructor for "Lib01PublicNestedStruct".
 #not: $()Alternatively, consider declaring the field "y" as public in "Lib01PublicNestedStruct": `pub y: ...,`.
 
