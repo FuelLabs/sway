@@ -2,7 +2,6 @@ use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -134,34 +133,19 @@ pub(crate) fn struct_instantiation(
             ctx.storage_declaration(),
         );
 
-        // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-        //       https://github.com/FuelLabs/sway/issues/5520
-        // handler.emit_err(CompileError::StructCannotBeInstantiated {
-        //     struct_name: struct_name.clone(),
-        //     span: inner_span.clone(),
-        //     struct_decl_span: struct_decl.span.clone(),
-        //     private_fields: struct_fields.iter().filter(|field| field.is_private()).map(|field| field.name.clone()).collect(),
-        //     constructors,
-        //     all_fields_are_private,
-        //     is_in_storage_declaration: ctx.storage_declaration(),
-        //     struct_can_be_changed,
-        // });
-        handler.emit_warn(CompileWarning {
+        handler.emit_err(CompileError::StructCannotBeInstantiated {
+            struct_name: struct_name.clone(),
             span: inner_span.clone(),
-            warning_content: Warning::StructCannotBeInstantiated {
-                struct_name: struct_name.clone(),
-                span: inner_span.clone(),
-                struct_decl_span: struct_decl.span.clone(),
-                private_fields: struct_fields
-                    .iter()
-                    .filter(|field| field.is_private())
-                    .map(|field| field.name.clone())
-                    .collect(),
-                constructors,
-                all_fields_are_private,
-                is_in_storage_declaration: ctx.storage_declaration(),
-                struct_can_be_changed,
-            },
+            struct_decl_span: struct_decl.span.clone(),
+            private_fields: struct_fields
+                .iter()
+                .filter(|field| field.is_private())
+                .map(|field| field.name.clone())
+                .collect(),
+            constructors,
+            all_fields_are_private,
+            is_in_storage_declaration: ctx.storage_declaration(),
+            struct_can_be_changed,
         });
     }
 
@@ -211,35 +195,19 @@ pub(crate) fn struct_instantiation(
         for field in fields {
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
                 if ty_field.is_private() {
-                    // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                    //       https://github.com/FuelLabs/sway/issues/5520
-                    // handler.emit_err(CompileError::StructFieldIsPrivate {
-                    //     field_name: (&field.name).into(),
-                    //     struct_name: struct_name.clone(),
-                    //     field_decl_span: ty_field.name.span(),
-                    //     struct_can_be_changed,
-                    //     usage_context: if ctx.storage_declaration() {
-                    //         StructFieldUsageContext::StorageDeclaration { struct_can_be_instantiated }
-                    //     } else {
-                    //         StructFieldUsageContext::StructInstantiation { struct_can_be_instantiated }
-                    //     }
-                    // });
-                    handler.emit_warn(CompileWarning {
-                        span: field.name.span(),
-                        warning_content: Warning::StructFieldIsPrivate {
-                            field_name: (&field.name).into(),
-                            struct_name: struct_name.clone(),
-                            field_decl_span: ty_field.name.span(),
-                            struct_can_be_changed,
-                            usage_context: if ctx.storage_declaration() {
-                                StructFieldUsageContext::StorageDeclaration {
-                                    struct_can_be_instantiated,
-                                }
-                            } else {
-                                StructFieldUsageContext::StructInstantiation {
-                                    struct_can_be_instantiated,
-                                }
-                            },
+                    handler.emit_err(CompileError::StructFieldIsPrivate {
+                        field_name: (&field.name).into(),
+                        struct_name: struct_name.clone(),
+                        field_decl_span: ty_field.name.span(),
+                        struct_can_be_changed,
+                        usage_context: if ctx.storage_declaration() {
+                            StructFieldUsageContext::StorageDeclaration {
+                                struct_can_be_instantiated,
+                            }
+                        } else {
+                            StructFieldUsageContext::StructInstantiation {
+                                struct_can_be_instantiated,
+                            }
                         },
                     });
                 }
