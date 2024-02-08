@@ -2055,12 +2055,14 @@ fn expr_to_expression(
         } => {
             // Desugar for loop into:
             //      let mut iterable = iterator;
-            //      let mut value_opt = iterable.next();
-            //      while value_opt.is_some() {
-            //          let value = value_opt.unwrap();
-            //          value_opt = iterable.next();
-            //          code_block
-            //      }
+            //    while true {
+            //        let value_opt = iterable.next();
+            //        if value_opt.is_none() {
+            //             break;
+            //        }
+            //        let value = value_opt.unwrap();
+            //        code_block
+            //    }
             let value_opt_ident = Ident::new_no_span("__for_value_opt".into());
             let value_opt_expr = Expression {
                 kind: ExpressionKind::Variable(value_opt_ident.clone()),
@@ -2109,7 +2111,7 @@ fn expr_to_expression(
             };
 
             // Declare value_opt = iterable.next()
-            let value_opt_decl = engines.pe().insert(VariableDeclaration {
+            let value_opt_to_next_decl = engines.pe().insert(VariableDeclaration {
                 type_ascription: {
                     let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
                     TypeArgument {
@@ -2124,27 +2126,13 @@ fn expr_to_expression(
                 body: set_value_opt_to_next_body_expr.clone(),
             });
 
-            // Set value_opt = iterable.next()
-            let set_value_opt_to_next_node = AstNode {
-                content: AstNodeContent::Expression(Expression {
-                    kind: ExpressionKind::Reassignment(ReassignmentExpression {
-                        lhs: ReassignmentTarget::VariableExpression(Box::new(
-                            value_opt_expr.clone(),
-                        )),
-                        rhs: Box::new(set_value_opt_to_next_body_expr),
-                    }),
-                    span: Span::dummy(),
-                }),
-                span: Span::dummy(),
-            };
-
-            // Call value_opt.is_some()
-            let value_opt_is_some = Expression {
+            // Call value_opt.is_none()
+            let value_opt_is_none = Expression {
                 kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
                     arguments: vec![value_opt_expr.clone()],
                     method_name_binding: TypeBinding {
                         inner: MethodName::FromModule {
-                            method_name: Ident::new_no_span("is_some".into()),
+                            method_name: Ident::new_no_span("is_none".into()),
                         },
                         type_arguments: TypeArgs::Regular(vec![]),
                         span: Span::dummy(),
@@ -2185,15 +2173,58 @@ fn expr_to_expression(
                 braced_code_block_contents_to_code_block(context, handler, engines, block)?;
 
             //At the beginning of while block do:
-            //  let value_pattern = value_opt.unwrap()
-            //  value_opt = iterable.next()
+            //    let value_opt = iterable.next();
+            //    if value_opt.is_none() {
+            //        break;
+            //    }
+            //    let value = value_opt.unwrap();
             // Note: Inserting in reverse order
-            while_body
-                .contents
-                .insert(0, set_value_opt_to_next_node.clone());
+
+            //    let value = value_opt.unwrap();
             for node in pattern_ast_nodes.iter().rev() {
                 while_body.contents.insert(0, node.clone());
             }
+
+            //    if value_opt.is_none() {
+            //        break;
+            //    }
+            while_body.contents.insert(
+                0,
+                AstNode {
+                    content: AstNodeContent::Expression(Expression {
+                        kind: ExpressionKind::If(IfExpression {
+                            condition: Box::new(value_opt_is_none),
+                            then: Box::new(Expression {
+                                kind: ExpressionKind::CodeBlock(CodeBlock {
+                                    contents: vec![AstNode {
+                                        content: AstNodeContent::Expression(Expression {
+                                            kind: ExpressionKind::Break,
+                                            span: Span::dummy(),
+                                        }),
+                                        span: Span::dummy(),
+                                    }],
+                                    whole_block_span: Span::dummy(),
+                                }),
+                                span: Span::dummy(),
+                            }),
+                            r#else: None,
+                        }),
+                        span: Span::dummy(),
+                    }),
+                    span: Span::dummy(),
+                },
+            );
+
+            //    let value_opt = iterable.next();
+            while_body.contents.insert(
+                0,
+                AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        value_opt_to_next_decl,
+                    )),
+                    span: Span::dummy(),
+                },
+            );
 
             let desugared = Expression {
                 kind: ExpressionKind::CodeBlock(CodeBlock {
@@ -2205,15 +2236,12 @@ fn expr_to_expression(
                             span: Span::dummy(),
                         },
                         AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                value_opt_decl,
-                            )),
-                            span: Span::dummy(),
-                        },
-                        AstNode {
                             content: AstNodeContent::Expression(Expression {
                                 kind: ExpressionKind::WhileLoop(WhileLoopExpression {
-                                    condition: Box::new(value_opt_is_some),
+                                    condition: Box::new(Expression {
+                                        kind: ExpressionKind::Literal(Literal::Boolean(true)),
+                                        span: Span::dummy(),
+                                    }),
                                     body: while_body,
                                 }),
                                 span: Span::dummy(),
