@@ -607,11 +607,10 @@ impl AllocatedOp {
             MEQ(a, b, c, d) => {
                 op::MEQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
-            // PSHH(mask) => op::PSHH::new(mask.value.into()).into(),
-            // PSHL(mask) => op::PSHL::new(mask.value.into()).into(),
-            // POPH(mask) => op::POPH::new(mask.value.into()).into(),
-            // POPL(mask) => op::POPL::new(mask.value.into()).into(),
-            PSHH(_) | PSHL(_) | POPH(_) | POPL(_) => todo!(),
+            PSHH(mask) => op::PSHH::new(mask.value.into()).into(),
+            PSHL(mask) => op::PSHL::new(mask.value.into()).into(),
+            POPH(mask) => op::POPH::new(mask.value.into()).into(),
+            POPL(mask) => op::POPL::new(mask.value.into()).into(),
             SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
 

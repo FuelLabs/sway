@@ -84,7 +84,7 @@ impl AllocatedAbstractInstructionSet {
         fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImmediate24) {
             let mask = regs.iter().fold((0, 0), |mut accum, reg| {
                 let reg_id = reg.to_reg_id().to_u8();
-                assert!(reg_id >= 16 && reg_id < 64);
+                assert!((16..64).contains(&reg_id));
                 let reg_id = reg_id - 16;
                 let (mask_ref, bit) = if reg_id < 24 {
                     (&mut accum.0, reg_id)
