@@ -1,11 +1,6 @@
 category = "fail"
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:7:12
-# check: $()pub struct S { x : u64, y : u64, }
-# nextln: $()This struct is never used.
-
-# check: $()warning
 # check: return_in_strange_positions/src/main.sw:7:16
 # check: $()pub struct S { x : u64, y : u64, }
 # nextln: $()This struct field is never accessed.
@@ -14,16 +9,6 @@ category = "fail"
 # check: return_in_strange_positions/src/main.sw:7:25
 # check: $()pub struct S { x : u64, y : u64, }
 # nextln: $()This struct field is never accessed.
-
-# check: $()warning
-# check: return_in_strange_positions/src/main.sw:8:10
-# check: $()pub enum Enum {
-# nextln: $()This enum is never used.
-
-# check: $()warning
-# check: return_in_strange_positions/src/main.sw:13:10
-# check: $()pub enum Enum_multivariant {
-# nextln: $()This enum is never used.
 
 # check: $()warning
 # check: return_in_strange_positions/src/main.sw:21:5
@@ -298,68 +283,3 @@ category = "fail"
 # nextln: $()expected: u64
 # nextln: $()found:    ().
 # nextln: $()help: Return statement must return the declared function return type.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:171:18
-# check: $()assert(42 != in_init());
-# nextln: $()Could not find symbol "in_init" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:172:18
-# check: $()assert(42 != in_array());
-# nextln: $()Could not find symbol "in_array" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:173:18
-# check: $()assert(42 != in_length_1_array());
-# nextln: $()Could not find symbol "in_length_1_array" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:174:18
-# check: $()assert(42 != in_length_2_array_first());
-# nextln: $()Could not find symbol "in_length_2_array_first" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:175:18
-# check: $()assert(42 != in_length_2_array_second());
-# nextln: $()Could not find symbol "in_length_2_array_second" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:176:18
-# check: $()assert(42 != in_tuple());
-# nextln: $()Could not find symbol "in_tuple" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:177:18
-# check: $()assert(42 != in_struct());
-# nextln: $()Could not find symbol "in_struct" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:178:18
-# check: $()assert(42 != in_parentheses());
-# nextln: $()Could not find symbol "in_parentheses" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:184:18
-# check: $()assert(42 != in_enum());
-# nextln: $()Could not find symbol "in_enum" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:185:18
-# check: $()assert(42 != in_enum_multivariant());
-# nextln: $()Could not find symbol "in_enum_multivariant" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:186:18
-# check: $()assert(42 != in_fun_arg());
-# nextln: $()Could not find symbol "in_fun_arg" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:188:18
-# check: $()assert(42 != in_lazy_and_typecheck());
-# nextln: $()Could not find symbol "in_lazy_and_typecheck" in this scope.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:190:18
-# check: $()assert(42 != in_lazy_or_typecheck());
-# nextln: $()Could not find symbol "in_lazy_or_typecheck" in this scope.
