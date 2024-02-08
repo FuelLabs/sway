@@ -13,7 +13,7 @@ forc_util::cli_examples! {
         use std::io::Write;
 
         let mut f = File::create(format!("{}/mint.json", forc_util::cli::get_cwd())).unwrap();
-        f.write_all(include_bytes!("../../mint.json")).unwrap();
+        f.write_all(include_bytes!("../../test/mint.json")).unwrap();
     }
 }
 
