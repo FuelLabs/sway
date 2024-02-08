@@ -3,11 +3,11 @@ name: Benchmark LSP
 on:
   pull_request:
     types: [ready_for_review]
-    paths:
-      - forc-plugins/forc-lsp/**
-      - sway-lsp/**
-      - forc-pkg/**
-      - sway-core/**
+    # paths:
+    #   - forc-plugins/forc-lsp/**
+    #   - sway-lsp/**
+    #   - forc-pkg/**
+    #   - sway-core/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -17,6 +17,7 @@ jobs:
   compare-master:
     runs-on: ubuntu-latest
     steps:
+      - run: echo "$GITHUB_CONTEXT" 
       - uses: Swatinem/rust-cache@v2
       - uses: actions/checkout@v3
       - uses: boa-dev/criterion-compare-action@v3.2.4
