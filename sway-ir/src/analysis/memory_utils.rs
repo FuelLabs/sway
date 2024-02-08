@@ -198,7 +198,7 @@ pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
         InstOp::Store { dst_val_ptr: _, .. } => vec![],
         InstOp::FuelVm(FuelVmInstruction::Gtf { .. })
         | InstOp::FuelVm(FuelVmInstruction::ReadRegister(_))
-        | InstOp::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
+        | InstOp::FuelVm(FuelVmInstruction::Revert(_) | FuelVmInstruction::JmpToSsp) => vec![],
         InstOp::FuelVm(FuelVmInstruction::WideUnaryOp { arg, .. }) => vec![*arg],
         InstOp::FuelVm(FuelVmInstruction::WideBinaryOp { arg1, arg2, .. })
         | InstOp::FuelVm(FuelVmInstruction::WideCmpOp { arg1, arg2, .. }) => {
@@ -249,6 +249,7 @@ pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
             | FuelVmInstruction::Log { .. }
             | FuelVmInstruction::ReadRegister(_)
             | FuelVmInstruction::Revert(_)
+            | FuelVmInstruction::JmpToSsp
             | FuelVmInstruction::Smo { .. }
             | FuelVmInstruction::StateClear { .. } => vec![],
             FuelVmInstruction::StateLoadQuadWord { load_val, .. } => vec![*load_val],

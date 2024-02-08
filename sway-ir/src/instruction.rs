@@ -194,6 +194,7 @@ pub enum FuelVmInstruction {
         arg1: Value,
         arg2: Value,
     },
+    JmpToSsp,
 }
 
 /// Comparison operations.
@@ -298,7 +299,7 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpToSsp)
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -408,6 +409,7 @@ impl InstOp {
                 } => vec![*log_val, *log_id],
                 FuelVmInstruction::ReadRegister(_) => vec![],
                 FuelVmInstruction::Revert(v) => vec![*v],
+                FuelVmInstruction::JmpToSsp => vec![],
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -544,6 +546,7 @@ impl InstOp {
                 }
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
+                FuelVmInstruction::JmpToSsp => (),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -629,7 +632,7 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. })
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpToSsp)
             | InstOp::MemCopyBytes { .. }
             | InstOp::MemCopyVal { .. }
             | InstOp::Store { .. }
@@ -1070,6 +1073,18 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
             .instructions
             .push(revert_val);
         revert_val
+    }
+
+    pub fn jmp_to_ssp(self) -> Value {
+        let jmp_to_ssp_val = Value::new_instruction(
+            self.context,
+            self.block,
+            InstOp::FuelVm(FuelVmInstruction::JmpToSsp),
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(jmp_to_ssp_val);
+        jmp_to_ssp_val
     }
 
     pub fn smo(self, recipient: Value, message: Value, message_size: Value, coins: Value) -> Value {

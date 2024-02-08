@@ -83,6 +83,9 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
+            Intrinsic::JmpToSsp => {
+                type_check_jmp_to_ssp(handler, ctx, kind, arguments, type_arguments, span)
+            }
         }
     }
 }
@@ -1168,6 +1171,47 @@ fn type_check_revert(
         },
         type_engine.insert(engines, TypeInfo::Unknown, None), // TODO: change this to the `Never` type when
                                                               // available
+    ))
+}
+
+/// Signature: `__jmp_to_ssp()`
+/// Description: Jumps to $ssp.
+/// Constraints: None.
+fn type_check_jmp_to_ssp(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![],
+            type_arguments: vec![],
+            span,
+        },
+        type_engine.insert(engines, TypeInfo::Tuple(vec![]), None),
     ))
 }
 

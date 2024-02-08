@@ -305,6 +305,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg2,
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
+                    FuelVmInstruction::JmpToSsp => self.compile_jmp_to_ssp(instr_val),
                 },
                 InstOp::GetElemPtr {
                     base,
@@ -1446,6 +1447,20 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             owning_span,
             opcode: Either::Left(VirtualOp::RVRT(revert_reg)),
             comment: "".into(),
+        });
+
+        Ok(())
+    }
+
+    fn compile_jmp_to_ssp(&mut self, instr_val: &Value) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
+        self.cur_bytecode.push(Op {
+            owning_span,
+            opcode: Either::Left(VirtualOp::JMP(VirtualRegister::Constant(
+                ConstantRegister::StackStartPointer,
+            ))),
+            comment: "Jump to $ssp".into(),
         });
 
         Ok(())

@@ -1082,6 +1082,16 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }
+            Intrinsic::JmpToSsp => {
+                // The `revert` instruction
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let val = self
+                    .current_block
+                    .append(context)
+                    .jmp_to_ssp()
+                    .add_metadatum(context, span_md_idx);
+                Ok(TerminatorValue::new(val, context))
+            }
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 let op = match kind {
                     Intrinsic::PtrAdd => BinaryOpKind::Add,

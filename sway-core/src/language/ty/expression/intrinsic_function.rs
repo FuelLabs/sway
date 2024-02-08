@@ -101,7 +101,7 @@ impl DebugWithEngines for TyIntrinsicFunctionKind {
 
 impl DeterministicallyAborts for TyIntrinsicFunctionKind {
     fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
-        matches!(self.kind, Intrinsic::Revert)
+        matches!(self.kind, Intrinsic::Revert | Intrinsic::JmpToSsp)
             || self
                 .arguments
                 .iter()
