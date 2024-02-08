@@ -570,6 +570,9 @@ impl Parse for ty::TyExpression {
                 condition.parse(ctx);
                 body.contents.par_iter().for_each(|node| node.parse(ctx));
             }
+            ty::TyExpressionVariant::ForLoop { desugared, .. } => {
+                desugared.parse(ctx);
+            }
             ty::TyExpressionVariant::Break => (),
             ty::TyExpressionVariant::Continue => (),
             ty::TyExpressionVariant::Reassignment(reassignment) => {
