@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()Self::method()
+# nextln: $()Mismatched types.
+# nextln: $()expected: T
+# nextln: $()found:    trait type Self::T
+# nextln: $()help: Function return type does not match up with local type annotation.
+

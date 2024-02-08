@@ -6,17 +6,17 @@ use fuels::{
 
 abigen!(Contract(
     name = "TypeAliasesTestContract",
-    abi = "test_projects/type_aliases/out/debug/type_aliases-abi.json"
+    abi = "test_projects/type_aliases/out/release/type_aliases-abi.json"
 ));
 
 async fn get_type_aliases_instance() -> (TypeAliasesTestContract<WalletUnlocked>, ContractId) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/type_aliases/out/debug/type_aliases.bin",
+        "test_projects/type_aliases/out/release/type_aliases.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = TypeAliasesTestContract::new(id.clone(), wallet);
@@ -31,7 +31,10 @@ async fn test_foo() -> Result<()> {
 
     let x = Bits256([1u8; 32]);
 
-    let y = [Identity::ContractId(ContractId::new([1u8; 32])), Identity::ContractId(ContractId::new([1u8; 32]))];
+    let y = [
+        Identity::ContractId(ContractId::new([1u8; 32])),
+        Identity::ContractId(ContractId::new([1u8; 32])),
+    ];
 
     let z = IdentityAliasWrapper { i: y[0].clone() };
 
@@ -42,7 +45,7 @@ async fn test_foo() -> Result<()> {
     let s = SizedAsciiString::try_from("fuelfuel0").unwrap();
 
     let (x_result, y_result, z_result, w_result, u_result, s_result) = contract_methods
-        .foo(x, y.clone(), z.clone(), w.clone(), u.clone(), s.clone())
+        .foo(x, y.clone(), z.clone(), w.clone(), u, s.clone())
         .call()
         .await
         .unwrap()

@@ -1,6 +1,5 @@
 use crate::{
     comments::{has_comments_in_formatter, rewrite_with_comments, write_comments},
-    config::items::ItemBraceStyle,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -81,25 +80,14 @@ impl CurlyBrace for ItemFn {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                writeln!(line, "\n{open_brace}")?;
+        match formatter.shape.code_line.has_where_clause {
+            true => {
+                write!(line, "{open_brace}")?;
+                formatter.shape.code_line.update_where_clause(false);
             }
-            ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
-                true => {
-                    write!(line, "{open_brace}")?;
-                    formatter.shape.code_line.update_where_clause(false);
-                }
-                false => {
-                    write!(line, " {open_brace}")?;
-                }
-            },
-            _ => {
-                // TODO: implement PreferSameLine
-                writeln!(line, " {open_brace}")?;
+            false => {
+                write!(line, " {open_brace}")?;
             }
         }
 
@@ -206,6 +194,7 @@ fn format_fn_args(
     match fn_args {
         FnArgs::Static(args) => match formatter.shape.code_line.line_style {
             LineStyle::Multiline => {
+                formatter.shape.code_line.update_expr_new_line(true);
                 if !args.value_separator_pairs.is_empty() || args.final_value_opt.is_some() {
                     formatter.indent();
                     args.format(formatted_code, formatter)?;
@@ -223,6 +212,7 @@ fn format_fn_args(
         } => {
             match formatter.shape.code_line.line_style {
                 LineStyle::Multiline => {
+                    formatter.shape.code_line.update_expr_new_line(true);
                     formatter.indent();
                     write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
                     format_self(self_token, ref_self, mutable_self, formatted_code)?;

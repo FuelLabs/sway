@@ -3,12 +3,10 @@ use std::{io::Write, str::FromStr};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use forc_tracing::println_warning;
-use fuel_core_client::client::FuelClient;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
     field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
 };
-use fuel_vm::prelude::SerializableVec;
 use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
@@ -22,11 +20,11 @@ use forc_wallet::{
         collect_accounts_with_verification, print_account_balances, AccountBalances,
         AccountVerification, AccountsMap,
     },
-    new::new_wallet_cli,
+    new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
 
-use crate::constants::BETA_4_FAUCET_URL;
+use crate::constants::BETA_FAUCET_URL;
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
@@ -97,7 +95,7 @@ pub trait TransactionBuilderExt<Tx> {
     ) -> Result<&mut Self>;
     async fn finalize_signed(
         &mut self,
-        client: FuelClient,
+        client: Provider,
         unsigned: bool,
         signing_key: Option<SecretKey>,
         wallet_mode: WalletSelectionMode,
@@ -105,9 +103,7 @@ pub trait TransactionBuilderExt<Tx> {
 }
 
 #[async_trait]
-impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuilderExt<Tx>
-    for TransactionBuilder<Tx>
-{
+impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for TransactionBuilder<Tx> {
     fn add_contract(&mut self, contract_id: ContractId) -> &mut Self {
         let input_index = self
             .inputs()
@@ -121,11 +117,13 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
             fuel_tx::TxPointer::new(0u32.into(), 0),
             contract_id,
         ))
-        .add_output(fuel_tx::Output::Contract {
-            input_index,
-            balance_root: fuel_tx::Bytes32::zeroed(),
-            state_root: fuel_tx::Bytes32::zeroed(),
-        })
+        .add_output(fuel_tx::Output::Contract(
+            fuel_tx::output::contract::Contract {
+                input_index,
+                balance_root: fuel_tx::Bytes32::zeroed(),
+                state_root: fuel_tx::Bytes32::zeroed(),
+            },
+        ))
     }
     fn add_contracts(&mut self, contract_ids: Vec<ContractId>) -> &mut Self {
         for contract_id in contract_ids {
@@ -168,12 +166,12 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
     }
     async fn finalize_signed(
         &mut self,
-        client: FuelClient,
+        provider: Provider,
         default_sign: bool,
         signing_key: Option<SecretKey>,
         wallet_mode: WalletSelectionMode,
     ) -> Result<Tx> {
-        let params = client.chain_info().await?.consensus_parameters.into();
+        let params = provider.chain_info().await?.consensus_parameters;
         let signing_key = match (wallet_mode, signing_key, default_sign) {
             (WalletSelectionMode::ForcWallet, None, false) => {
                 // TODO: This is a very simple TUI, we should consider adding a nice TUI
@@ -182,8 +180,9 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 if !wallet_path.exists() {
                     let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
                     let accepted = ask_user_yes_no_question(&question)?;
+                    let new_options = New { force: false };
                     if accepted {
-                        new_wallet_cli(&wallet_path)?;
+                        new_wallet_cli(&wallet_path, new_options)?;
                         println!("Wallet created successfully.");
                         // Derive first account for the fresh wallet we created.
                         new_at_index_cli(&wallet_path, 0)?;
@@ -197,8 +196,16 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     );
                 let password = rpassword::prompt_password(prompt)?;
                 let verification = AccountVerification::Yes(password.clone());
-                let accounts = collect_accounts_with_verification(&wallet_path, verification)?;
-                let provider = Provider::new(client.clone(), params);
+                let accounts = collect_accounts_with_verification(&wallet_path, verification)
+                    .map_err(|e| {
+                        if e.to_string().contains("Mac Mismatch") {
+                            anyhow::anyhow!(
+                                "Failed to access forc-wallet vault. Please check your password"
+                            )
+                        } else {
+                            e
+                        }
+                    })?;
                 let account_balances = collect_account_balances(&accounts, &provider).await?;
 
                 let total_balance = account_balances
@@ -209,7 +216,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                     let first_account = accounts
                         .get(&0)
                         .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
-                    let faucet_link = format!("{}/?address={first_account}", BETA_4_FAUCET_URL);
+                    let faucet_link = format!("{}/?address={first_account}", BETA_FAUCET_URL);
                     anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
                                       \n\nIf you are interacting with a testnet consider using the faucet.\
                                       \n-> beta-4 network faucet: {faucet_link}\
@@ -217,11 +224,23 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
                 }
                 print_account_balances(&accounts, &account_balances);
 
-                print!("\nPlease provide the index of account to use for signing: ");
-                std::io::stdout().flush()?;
-                let mut account_index = String::new();
-                std::io::stdin().read_line(&mut account_index)?;
-                let account_index = account_index.trim().parse::<usize>()?;
+                let mut account_index;
+                loop {
+                    print!("\nPlease provide the index of account to use for signing: ");
+                    std::io::stdout().flush()?;
+                    let mut input_account_index = String::new();
+                    std::io::stdin().read_line(&mut input_account_index)?;
+                    account_index = input_account_index.trim().parse::<usize>()?;
+                    if accounts.contains_key(&account_index) {
+                        break;
+                    }
+                    let options: Vec<String> = accounts.keys().map(|key| key.to_string()).collect();
+                    println_warning(&format!(
+                        "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
+                        account_index,
+                        options.join(","),
+                    ));
+                }
 
                 let secret_key = derive_secret_key(&wallet_path, account_index, &password)
                     .map_err(|e| {
@@ -280,7 +299,7 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
         // Add input coin and output change
         self.fund(
                 address,
-                Provider::new(client, params),
+                provider,
                 signature_witness_index,
             )
             .await.map_err(|e| if e.to_string().contains("not enough coins to fit the target") {
@@ -300,7 +319,8 @@ impl<Tx: Buildable + SerializableVec + field::Witnesses + Send> TransactionBuild
 
         let witness = Witness::from(signature.as_ref());
         tx.replace_witness(signature_witness_index, witness);
-        tx.precompute(&params.chain_id)?;
+        tx.precompute(&params.chain_id)
+            .map_err(anyhow::Error::msg)?;
 
         Ok(tx)
     }

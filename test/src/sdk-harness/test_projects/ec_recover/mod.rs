@@ -8,7 +8,7 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 
 abigen!(Contract(
     name = "EcRecoverContract",
-    abi = "test_projects/ec_recover/out/debug/ec_recover-abi.json"
+    abi = "test_projects/ec_recover/out/release/ec_recover-abi.json"
 ));
 
 async fn setup_env() -> Result<(
@@ -37,15 +37,17 @@ async fn setup_env() -> Result<(
         coins_per_asset,
         amount_per_coin,
     );
-    let (provider, _socket_addr) = setup_test_provider(coins.clone(), vec![], None, None).await;
+    let provider = setup_test_provider(coins.clone(), vec![], None, None)
+        .await
+        .unwrap();
     wallet.set_provider(provider);
 
     let contract_id = Contract::load_from(
-        "test_projects/ec_recover/out/debug/ec_recover.bin",
+        "test_projects/ec_recover/out/release/ec_recover.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

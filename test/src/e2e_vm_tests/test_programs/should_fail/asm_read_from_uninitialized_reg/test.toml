@@ -1,0 +1,9 @@
+category = "fail"
+
+# check: $()Returning an uninitialized register is not ok
+# nextln: $()let _ = asm(r1)
+# nextln: $()Uninitialized register is being read before being written
+
+# check: $()Reading uninitialized register is not ok
+# nextln: $()asm(r2)
+# nextln: $()Uninitialized register is being read before being written

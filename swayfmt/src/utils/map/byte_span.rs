@@ -177,7 +177,11 @@ impl LeafSpans for CommaToken {
 
 impl LeafSpans for TypeField {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        let mut collected_spans = vec![ByteSpan::from(self.name.span())];
+        let mut collected_spans = Vec::new();
+        if let Some(visibility) = &self.visibility {
+            collected_spans.push(ByteSpan::from(visibility.span()));
+        }
+        collected_spans.push(ByteSpan::from(self.name.span()));
         collected_spans.push(ByteSpan::from(self.colon_token.span()));
         collected_spans.append(&mut self.ty.leaf_spans());
         collected_spans

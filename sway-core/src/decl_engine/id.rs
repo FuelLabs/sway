@@ -1,3 +1,5 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
 
@@ -23,9 +25,23 @@ impl<T> fmt::Debug for DeclId<T> {
     }
 }
 
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct DeclUniqueId(u64);
+
 impl<T> DeclId<T> {
     pub(crate) fn inner(&self) -> DeclIdIndexType {
         self.0
+    }
+
+    pub fn unique_id(&self) -> DeclUniqueId
+    where
+        T: 'static,
+    {
+        let mut hasher = DefaultHasher::default();
+        std::any::TypeId::of::<T>().hash(&mut hasher);
+        self.0.hash(&mut hasher);
+
+        DeclUniqueId(hasher.finish())
     }
 }
 
@@ -83,7 +99,7 @@ impl<T> Into<usize> for DeclId<T> {
 impl SubstTypes for DeclId<TyFunctionDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
@@ -91,7 +107,7 @@ impl SubstTypes for DeclId<TyFunctionDecl> {
 impl SubstTypes for DeclId<TyTraitDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
@@ -99,7 +115,7 @@ impl SubstTypes for DeclId<TyTraitDecl> {
 impl SubstTypes for DeclId<TyTraitFn> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
@@ -107,7 +123,7 @@ impl SubstTypes for DeclId<TyTraitFn> {
 impl SubstTypes for DeclId<TyImplTrait> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
@@ -115,7 +131,7 @@ impl SubstTypes for DeclId<TyImplTrait> {
 impl SubstTypes for DeclId<TyStructDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
@@ -123,7 +139,7 @@ impl SubstTypes for DeclId<TyStructDecl> {
 impl SubstTypes for DeclId<TyEnumDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
@@ -131,7 +147,7 @@ impl SubstTypes for DeclId<TyEnumDecl> {
 impl SubstTypes for DeclId<TyTypeAliasDecl> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }
@@ -140,7 +156,7 @@ impl SubstTypes for DeclId<TyTypeAliasDecl> {
 impl SubstTypes for DeclId<TyTraitType> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
+        let mut decl = (*decl_engine.get(self)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(*self, decl);
     }

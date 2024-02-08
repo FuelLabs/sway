@@ -47,7 +47,7 @@ impl u32 {
     }
 }
 
-// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
 impl u32 {
     /// Extends a `u32` to a `u256`.
     ///
@@ -116,7 +116,7 @@ impl u16 {
     }
 }
 
-// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
 impl u16 {
     /// Extends a `u16` to a `u256`.
     ///
@@ -206,7 +206,7 @@ impl u8 {
     }
 }
 
-// TODO: This must be in a seperate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
 impl u8 {
     /// Extends a `u8` to a `u256`.
     ///
@@ -287,7 +287,9 @@ fn assert(condition: bool) {
 fn test_u64_as_u256() {
     let val = 2;
     let result = val.as_u256();
-    assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }
 
 #[test]
@@ -301,7 +303,9 @@ fn test_u32_as_u64() {
 fn test_u32_as_u256() {
     let val = 2u32;
     let result = val.as_u256();
-    assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }
 
 #[test]
@@ -322,7 +326,9 @@ fn test_u16_as_u32() {
 fn test_u16_as_u256() {
     let val = 2u16;
     let result = val.as_u256();
-    assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }
 
 #[test]
@@ -350,12 +356,16 @@ fn test_u8_as_u16() {
 fn test_u8_as_u256() {
     let val = 2u8;
     let result = val.as_u256();
-    assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }
 
 #[test]
 fn test_b256_as_u256() {
     let val = 0x0000000000000000000000000000000000000000000000000000000000000002;
     let result = val.as_u256();
-    assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }

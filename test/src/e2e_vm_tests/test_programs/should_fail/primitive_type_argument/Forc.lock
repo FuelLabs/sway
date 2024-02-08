@@ -1,3 +1,3 @@
 [[package]]
-name = 'unused_generic'
-source = 'member'
+name = "primitive_type_argument"
+source = "member"

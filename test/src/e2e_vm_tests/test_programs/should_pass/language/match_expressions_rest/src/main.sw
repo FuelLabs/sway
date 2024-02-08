@@ -22,28 +22,70 @@ enum Kind {
     Line: Line
 }
 
-fn main() -> u64 {
-    let p = Point {
-        x: 1u64,
-        y: 2u64,
-    };
-
+fn match_point(p: Point) -> u64 {
     match p {
+        Point { x: 11, .. } => { 11 },
+        Point { y: 22, .. } => { 22 },
+        Point { x: 111, .. } | Point { y: 222, .. } => { 111222 },
+        Point { x: 333 | 444, .. } | Point { y: 555 | 666, .. } => { 3456 },
         Point { x, .. } => { x },
-    };
+    }
+}
 
-    let p2 = Point3D {
-        x: 1u64,
-        y: 2u64,
-        z: 3u64,
-    };
+fn match_point_3d(p: Point3D) -> u64 {
+    match p {
+        Point3D { x: 11, y, .. } => { y },
+        Point3D { y: 22, x: y, .. } => { y },
+        Point3D { x: 111, z, .. } | Point3D { y: 222, x: z, .. } => { z },
+        Point3D { z, .. } => { z },
+        _ => 9999, // TODO: Remove once bugs in exhaustiveness algorithm are fixed: Non-exhaustive match expression. Missing patterns `Point3D { x: _, y: _ }`
+    }
+}
 
-    match p2 {
-        Point3D { x, .. } => { x },
-    };
+fn main() -> u64 {
+    let m = match_point(Point { x: 11, y: 0 });
+    assert(m == 11);
 
-    let l = Line { p1: p, p2: p };
+    let m = match_point(Point { x: 0, y: 22 });
+    assert(m == 22);
 
+    let m = match_point(Point { x: 111, y: 0 });
+    assert(m == 111222);
+
+    let m = match_point(Point { x: 0, y: 222 });
+    assert(m == 111222);
+
+    let m = match_point(Point { x: 333, y: 0 });
+    assert(m == 3456);
+
+    let m = match_point(Point { x: 444, y: 0 });
+    assert(m == 3456);
+
+    let m = match_point(Point { x: 0, y: 555 });
+    assert(m == 3456);
+
+    let m = match_point(Point { x: 0, y: 666 });
+    assert(m == 3456);
+
+    let m = match_point(Point { x: 42, y: 0 });
+    assert(m == 42);
+
+    let m = match_point_3d(Point3D { x: 11, y: 42, z: 0 });
+    assert(m == 42);
+
+    let m = match_point_3d(Point3D { x: 42, y: 22, z: 0 });
+    assert(m == 42);
+
+    let m = match_point_3d(Point3D { x: 111, y: 0, z: 42 });
+    assert(m == 42);
+
+    let m = match_point_3d(Point3D { x: 42, y: 222, z: 0 });
+    assert(m == 42);
+    
+    let m = match_point_3d(Point3D { x: 0, y: 0 , z: 42});
+    assert(m == 42);
+
+    let l = Line { p1: Point { x: 0, y: 0 }, p2: Point { x: 1, y: 1 } };
     match l {
         Line { p1: _p1, .. } => {}
     }
@@ -52,7 +94,7 @@ fn main() -> u64 {
         Line { p1: Point { .. }, p2: Point { .. } } => {}
     }
 
-    let k = Kind::Point(p);
+    let k = Kind::Point(Point { x: 0, y: 0 });
 
     match k {
         Kind::Point(Point { x: _x, .. }) => {},
@@ -60,5 +102,5 @@ fn main() -> u64 {
         Kind::Line(Line { p1: Point { .. }, p2: Point { .. } }) => {},
     }
 
-    0
+    42
 }

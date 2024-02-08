@@ -1,13 +1,13 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-22C1B8FFEA31F7F0'
+name = "core"
+source = "path+from-root-905B8C522C0BD730"
 
 [[package]]
-name = 'new_alloc'
-source = 'member'
-dependencies = ['std']
+name = "new_allocator_test"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'std'
-source = 'path+from-root-22C1B8FFEA31F7F0'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-905B8C522C0BD730"
+dependencies = ["core"]

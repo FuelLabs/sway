@@ -1,10 +1,7 @@
-use crate::{
-    asm_generation::from_ir::ir_type_size_in_bytes,
-    fuel_prelude::{
-        fuel_crypto::Hasher,
-        fuel_tx::StorageSlot,
-        fuel_types::{Bytes32, Bytes8},
-    },
+use crate::fuel_prelude::{
+    fuel_crypto::Hasher,
+    fuel_tx::StorageSlot,
+    fuel_types::{Bytes32, Bytes8},
 };
 use sway_ir::{
     constant::{Constant, ConstantValue},
@@ -13,9 +10,17 @@ use sway_ir::{
 };
 use sway_types::state::StateIndex;
 
+/// Determines how values that are less then a word in length
+/// has to be padded to word boundary when in structs or enums.
+#[derive(Default)]
+enum InByte8Padding {
+    #[default]
+    Right,
+    Left,
+}
+
 /// Hands out storage keys using a state index and a list of subfield indices.
 /// Basically returns sha256("storage_<state_index>_<idx1>_<idx2>_..")
-///
 pub(super) fn get_storage_key<T>(ix: &StateIndex, indices: &[T]) -> Bytes32
 where
     T: std::fmt::Display,
@@ -55,7 +60,6 @@ pub(super) fn add_to_b256(x: Bytes32, y: u64) -> Bytes32 {
 ///
 /// This behavior matches the behavior of how storage slots are assigned for storage reads and
 /// writes (i.e. how `state_read_*` and `state_write_*` instructions are generated).
-///
 pub fn serialize_to_storage_slots(
     constant: &Constant,
     context: &Context,
@@ -65,6 +69,8 @@ pub fn serialize_to_storage_slots(
 ) -> Vec<StorageSlot> {
     match &constant.value {
         ConstantValue::Undef => vec![],
+        // If not being a part of an aggregate, single byte values like `bool`, `u8`, and unit
+        // are stored as a byte at the beginning of the storage slot.
         ConstantValue::Unit if ty.is_unit(context) => vec![StorageSlot::new(
             get_storage_key(ix, indices),
             Bytes32::new([0; 32]),
@@ -72,18 +78,52 @@ pub fn serialize_to_storage_slots(
         ConstantValue::Bool(b) if ty.is_bool(context) => {
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
-                Bytes32::new(
-                    [0; 7]
-                        .iter()
-                        .cloned()
-                        .chain([u8::from(*b)].iter().cloned())
-                        .chain([0; 24].iter().cloned())
-                        .collect::<Vec<u8>>()
-                        .try_into()
-                        .unwrap(),
-                ),
+                Bytes32::new([
+                    if *b { 1 } else { 0 },
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ]),
             )]
         }
+        ConstantValue::Uint(b) if ty.is_uint8(context) => {
+            vec![StorageSlot::new(
+                get_storage_key(ix, indices),
+                Bytes32::new([
+                    *b as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                ]),
+            )]
+        }
+        // Similarly, other uint values are stored at the beginning of the storage slot.
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![StorageSlot::new(
                 get_storage_key(ix, indices),
@@ -116,7 +156,9 @@ pub fn serialize_to_storage_slots(
         _ if ty.is_string_array(context) || ty.is_struct(context) || ty.is_union(context) => {
             // Serialize the constant data in words and add zero words until the number of words
             // is a multiple of 4. This is useful because each storage slot is 4 words.
-            let mut packed = serialize_to_words(constant, context, ty);
+            // Regarding padding, the top level type in the call is either a string array, struct, or
+            // a union. They will properly set the initial padding for the further recursive calls.
+            let mut packed = serialize_to_words(constant, context, ty, InByte8Padding::default());
             packed.extend(vec![
                 Bytes8::new([0; 8]);
                 ((packed.len() + 3) / 4) * 4 - packed.len()
@@ -126,7 +168,21 @@ pub fn serialize_to_storage_slots(
 
             // Return a list of `StorageSlot`s
             // First get the keys then get the values
-            (0..(ir_type_size_in_bytes(context, ty) + 31) / 32)
+            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of
+            //       string arrays, structs, and enum.
+            //       The assumption is that they are rounded to word boundaries
+            //       which will very likely always be the case.
+            //       We will not refactor the Storage API at the moment to remove this
+            //       assumption. It is a questionable effort because we anyhow
+            //       want to improve and refactor Storage API in the future.
+            let type_size_in_bytes = ty.size(context).in_bytes();
+            assert!(
+                type_size_in_bytes % 8 == 0,
+                "Expected string arrays, structs, and enums to be aligned to word boundary. The type size in bytes was {} and the type was {}.",
+                type_size_in_bytes,
+                ty.as_string(context)
+            );
+            (0..(type_size_in_bytes + 31) / 32)
                 .map(|i| add_to_b256(get_storage_key(ix, indices), i))
                 .zip((0..packed.len() / 4).map(|i| {
                     Bytes32::new(
@@ -143,23 +199,28 @@ pub fn serialize_to_storage_slots(
 }
 
 /// Given a constant value `constant` and a type `ty`, serialize the constant into a vector of
-/// words and add left padding up to size of `ty`.
-///
-pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> Vec<Bytes8> {
+/// words and apply the requested padding if needed.
+fn serialize_to_words(
+    constant: &Constant,
+    context: &Context,
+    ty: &Type,
+    padding: InByte8Padding,
+) -> Vec<Bytes8> {
     match &constant.value {
         ConstantValue::Undef => vec![],
         ConstantValue::Unit if ty.is_unit(context) => vec![Bytes8::new([0; 8])],
-        ConstantValue::Bool(b) if ty.is_bool(context) => {
-            vec![Bytes8::new(
-                [0; 7]
-                    .iter()
-                    .cloned()
-                    .chain([u8::from(*b)].iter().cloned())
-                    .collect::<Vec<u8>>()
-                    .try_into()
-                    .unwrap(),
-            )]
-        }
+        ConstantValue::Bool(b) if ty.is_bool(context) => match padding {
+            InByte8Padding::Right => {
+                vec![Bytes8::new([if *b { 1 } else { 0 }, 0, 0, 0, 0, 0, 0, 0])]
+            }
+            InByte8Padding::Left => {
+                vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, if *b { 1 } else { 0 }])]
+            }
+        },
+        ConstantValue::Uint(n) if ty.is_uint8(context) => match padding {
+            InByte8Padding::Right => vec![Bytes8::new([*n as u8, 0, 0, 0, 0, 0, 0, 0])],
+            InByte8Padding::Left => vec![Bytes8::new([0, 0, 0, 0, 0, 0, 0, *n as u8])],
+        },
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![Bytes8::new(n.to_be_bytes())]
         }
@@ -172,13 +233,13 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
             Vec::from_iter((0..4).map(|i| Bytes8::new(b[8 * i..8 * i + 8].try_into().unwrap())))
         }
         ConstantValue::String(s) if ty.is_string_array(context) => {
-            // Turn the bytes into serialized words (Bytes8).
+            // Turn the bytes into serialized words (Bytes8) and right pad it to the word boundary.
             let mut s = s.clone();
             s.extend(vec![0; ((s.len() + 7) / 8) * 8 - s.len()]);
 
             assert!(s.len() % 8 == 0);
 
-            // Group into words
+            // Group into words.
             Vec::from_iter((0..s.len() / 8).map(|i| {
                 Bytes8::new(
                     Vec::from_iter((0..8).map(|j| s[8 * i + j]))
@@ -194,21 +255,29 @@ pub fn serialize_to_words(constant: &Constant, context: &Context, ty: &Type) -> 
             let field_tys = ty.get_field_types(context);
             vec.iter()
                 .zip(field_tys.iter())
-                .flat_map(|(f, ty)| serialize_to_words(f, context, ty))
+                // TODO-MEMLAY: Warning! Again, making an assumption about the memory layout
+                //       of struct fields.
+                .flat_map(|(f, ty)| serialize_to_words(f, context, ty, InByte8Padding::Right))
                 .collect()
         }
         _ if ty.is_union(context) => {
-            let value_size_in_words = ir_type_size_in_bytes(context, ty) / 8;
-            let constant_size_in_words = ir_type_size_in_bytes(context, &constant.ty) / 8;
+            let value_size_in_words = ty.size(context).in_words();
+            let constant_size_in_words = constant.ty.size(context).in_words();
             assert!(value_size_in_words >= constant_size_in_words);
 
             // Add enough left padding to satisfy the actual size of the union
+            // TODO-MEMLAY: Warning! Here we make an assumption about the memory layout of enums,
+            //       that they are left padded.
+            //       The memory layout of enums can be changed in the future.
+            //       We will not refactor the Storage API at the moment to remove this
+            //       assumption. It is a questionable effort because we anyhow
+            //       want to improve and refactor Storage API in the future.
             let padding_size_in_words = value_size_in_words - constant_size_in_words;
             vec![Bytes8::new([0; 8]); padding_size_in_words as usize]
                 .iter()
                 .cloned()
                 .chain(
-                    serialize_to_words(constant, context, &constant.ty)
+                    serialize_to_words(constant, context, &constant.ty, InByte8Padding::Left)
                         .iter()
                         .cloned(),
                 )

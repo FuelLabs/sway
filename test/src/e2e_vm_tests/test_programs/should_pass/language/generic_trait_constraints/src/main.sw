@@ -25,7 +25,7 @@ pub trait MyFrom<T> {
 
 
 pub trait MyInto<T> {
-    fn into(self) -> T;
+    fn my_into(self) -> T;
 }
 
 
@@ -33,7 +33,7 @@ impl<T, U> MyInto<U> for T
 where
     U: MyFrom<T>,
 {
-    fn into(self) -> U {
+    fn my_into(self) -> U {
         U::from(self)
     }
 }
@@ -48,6 +48,16 @@ impl MyFrom<u64> for Struct3 {
     }
 }
 
+struct Struct4 {
+    data: u64,
+}
+
+impl MyFrom<Struct4> for Struct3 {
+    fn from(i: Struct4) -> Struct3 {
+        Struct3 {data: i.data}
+    }
+}
+
 fn main() -> bool {
     let s1 = Struct {data: 1_u64 };
     assert_eq(s1.data.my_add(1,2),3);
@@ -56,8 +66,11 @@ fn main() -> bool {
     assert_eq(s2.data_a.my_add(1,2),3);
     assert_eq(s2.data_b.my_add(1,2),3);
 
-    // TODO Uncomment this after #5208 is fixed
-    //let _i: Struct3 = 1_u64.into();
+    let s3: Struct3 = 42_u64.my_into();
+    assert_eq(s3.data,42);
+
+    let s4: Struct3 = Struct4{data:42}.my_into();
+    assert_eq(s4.data,42);
 
     true
 }

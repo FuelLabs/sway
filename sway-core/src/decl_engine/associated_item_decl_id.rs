@@ -1,9 +1,11 @@
 use sway_error::error::CompileError;
-use sway_types::Span;
+use sway_types::{Named, Span, Spanned};
 
 use crate::{
     decl_engine::*,
+    engine_threading::DisplayWithEngines,
     language::ty::{self, TyFunctionDecl},
+    Engines,
 };
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
@@ -12,6 +14,17 @@ pub enum AssociatedItemDeclId {
     Function(DeclId<ty::TyFunctionDecl>),
     Constant(DeclId<ty::TyConstantDecl>),
     Type(DeclId<ty::TyTraitType>),
+}
+
+impl AssociatedItemDeclId {
+    pub fn span(&self, engines: &Engines) -> Span {
+        match self {
+            Self::TraitFn(decl_id) => engines.de().get(decl_id).span(),
+            Self::Function(decl_id) => engines.de().get(decl_id).span(),
+            Self::Constant(decl_id) => engines.de().get(decl_id).span(),
+            Self::Type(decl_id) => engines.de().get(decl_id).span(),
+        }
+    }
 }
 
 impl From<DeclId<ty::TyFunctionDecl>> for AssociatedItemDeclId {
@@ -92,6 +105,29 @@ impl std::fmt::Display for AssociatedItemDeclId {
             }
             Self::Type(_) => {
                 write!(f, "decl(type)",)
+            }
+        }
+    }
+}
+
+impl DisplayWithEngines for AssociatedItemDeclId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
+        match self {
+            Self::TraitFn(decl_id) => {
+                write!(
+                    f,
+                    "decl(trait function {})",
+                    engines.de().get(decl_id).name()
+                )
+            }
+            Self::Function(decl_id) => {
+                write!(f, "decl(function {})", engines.de().get(decl_id).name())
+            }
+            Self::Constant(decl_id) => {
+                write!(f, "decl(constant {})", engines.de().get(decl_id).name())
+            }
+            Self::Type(decl_id) => {
+                write!(f, "decl(type {})", engines.de().get(decl_id).name())
             }
         }
     }

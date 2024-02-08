@@ -1,0 +1,41 @@
+category = "fail"
+
+#check: $()error
+#nextln: $()main.sw:7
+#check: $()use lib::Struct;
+#check: $()The imported symbol "Struct" shadows another symbol with the same name.
+
+#check: $()error
+#nextln: $()main.sw:8
+#check: $()use lib::Struct;
+#check: $()The imported symbol "Struct" shadows another symbol with the same name.
+
+#check: $()Constants cannot be shadowed
+#nextln: $()main.sw:13
+#check: $()let X = 1;
+#nextln: $()Variable "X" shadows constant of the same name.
+
+#check: $()Constants cannot shadow variables
+#nextln: $()main.sw:18
+#check: $()const y = 4;
+#nextln: $()Constant "y" shadows variable of the same name.
+
+#check: $()Constants cannot shadow variables
+#nextln: $()main.sw:22
+#check: $()const y = 6;
+#nextln: $()Constant "y" shadows variable of the same name.
+
+#check: $()Constants cannot be shadowed
+#nextln: $()main.sw:27
+#check: $()let X = 3;
+#nextln: $()Variable "X" shadows constant of the same name.
+
+#check: $()error
+#nextln: $()main.sw:30:15
+#check: $()fn generic<T, T, T>(_x: T) { }
+#check: $()The name "T" is already used for a generic parameter in this scope.
+
+#check: $()error
+#nextln: $()main.sw:30:18
+#check: $()fn generic<T, T, T>(_x: T) { }
+#check: $()The name "T" is already used for a generic parameter in this scope.

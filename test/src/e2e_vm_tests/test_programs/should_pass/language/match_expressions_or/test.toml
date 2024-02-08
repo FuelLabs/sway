@@ -1,4 +1,4 @@
 category = "run"
-expected_result = { action = "return", value = 0}
+expected_result = { action = "return", value = 42}
 validate_abi = true
-expected_warnings = 2
+expected_warnings = 7 #TODO: Set number of warnings to minimum once TODOs in tests are solved.

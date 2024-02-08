@@ -11,6 +11,11 @@ use crate::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use sway_core::{
+    compiler_generated::{
+        is_generated_any_match_expression_var_name, is_generated_destructured_struct_var_name,
+        is_generated_tuple_var_name,
+    },
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
@@ -33,7 +38,6 @@ use sway_core::{
     type_system::{TypeArgument, TypeParameter},
     TraitConstraint, TypeInfo,
 };
-use sway_types::constants::{DESTRUCTURE_PREFIX, MATCH_RETURN_VAR_NAME_PREFIX, TUPLE_NAME_PREFIX};
 use sway_types::{Ident, Span, Spanned};
 
 pub struct ParsedTree<'a> {
@@ -102,8 +106,7 @@ impl Parse for AstNode {
     fn parse(&self, ctx: &ParseContext) {
         match &self.content {
             AstNodeContent::Declaration(declaration) => declaration.parse(ctx),
-            AstNodeContent::Expression(expression)
-            | AstNodeContent::ImplicitReturnExpression(expression) => {
+            AstNodeContent::Expression(expression) => {
                 expression.parse(ctx);
             }
             AstNodeContent::UseStatement(use_statement) => use_statement.parse(ctx),
@@ -116,18 +119,18 @@ impl Parse for AstNode {
 impl Parse for Declaration {
     fn parse(&self, ctx: &ParseContext) {
         match self {
-            Declaration::VariableDeclaration(decl) => decl.parse(ctx),
-            Declaration::FunctionDeclaration(decl) => decl.parse(ctx),
-            Declaration::TraitDeclaration(decl) => decl.parse(ctx),
-            Declaration::StructDeclaration(decl) => decl.parse(ctx),
-            Declaration::EnumDeclaration(decl) => decl.parse(ctx),
-            Declaration::ImplTrait(decl) => decl.parse(ctx),
-            Declaration::ImplSelf(decl) => decl.parse(ctx),
-            Declaration::AbiDeclaration(decl) => decl.parse(ctx),
-            Declaration::ConstantDeclaration(decl) => decl.parse(ctx),
-            Declaration::StorageDeclaration(decl) => decl.parse(ctx),
-            Declaration::TypeAliasDeclaration(decl) => decl.parse(ctx),
-            Declaration::TraitTypeDeclaration(decl) => decl.parse(ctx),
+            Declaration::VariableDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::FunctionDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::TraitDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::StructDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::EnumDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::ImplTrait(decl_id) => decl_id.parse(ctx),
+            Declaration::ImplSelf(decl_id) => decl_id.parse(ctx),
+            Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::TraitTypeDeclaration(decl_id) => decl_id.parse(ctx),
         }
     }
 }
@@ -205,10 +208,10 @@ impl Parse for Expression {
                 rhs.parse(ctx);
             }
             ExpressionKind::Variable(name) => {
-                if !name.as_str().contains(TUPLE_NAME_PREFIX)
-                    && !name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+                if !(is_generated_tuple_var_name(name.as_str())
+                    || is_generated_any_match_expression_var_name(name.as_str()))
                 {
-                    let symbol_kind = if name.as_str().contains(DESTRUCTURE_PREFIX) {
+                    let symbol_kind = if is_generated_destructured_struct_var_name(name.as_str()) {
                         SymbolKind::Struct
                     } else if name.as_str() == "self" {
                         SymbolKind::SelfKeyword
@@ -338,7 +341,10 @@ impl Parse for Expression {
             ExpressionKind::Reassignment(reassignment) => {
                 reassignment.parse(ctx);
             }
-            ExpressionKind::Return(expr) => {
+            ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
+                expr.parse(ctx);
+            }
+            ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
                 expr.parse(ctx);
             }
             // We are collecting these tokens in the lexed phase.
@@ -683,14 +689,16 @@ impl Parse for FunctionApplicationExpression {
     }
 }
 
-impl Parse for VariableDeclaration {
+impl Parse for ParsedDeclId<VariableDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
-        // Don't collect tokens if the ident's name contains __tuple_ || __match_return_var_name_
-        // The individual elements are handled in the subsequent VariableDeclaration's
-        if !self.name.as_str().contains(TUPLE_NAME_PREFIX)
-            && !self.name.as_str().contains(MATCH_RETURN_VAR_NAME_PREFIX)
+        let var_decl = ctx.engines.pe().get_variable(self);
+
+        // Don't collect tokens if the idents are generated tuple or match desugaring names.
+        // The individual elements are handled in the subsequent VariableDeclaration's.
+        if !(is_generated_tuple_var_name(var_decl.name.as_str())
+            || is_generated_any_match_expression_var_name(var_decl.name.as_str()))
         {
-            let symbol_kind = if self.name.as_str().contains(DESTRUCTURE_PREFIX) {
+            let symbol_kind = if is_generated_destructured_struct_var_name(var_decl.name.as_str()) {
                 SymbolKind::Struct
             } else {
                 SymbolKind::Variable
@@ -698,61 +706,65 @@ impl Parse for VariableDeclaration {
             // We want to use the span from variable.name to construct a
             // new Ident as the name_override_opt can be set to one of the
             // const prefixes and not the actual token name.
-            let ident = if self.name.is_raw_ident() {
-                Ident::new_with_raw(self.name.span(), true)
+            let ident = if var_decl.name.is_raw_ident() {
+                Ident::new_with_raw(var_decl.name.span(), true)
             } else {
-                Ident::new(self.name.span())
+                Ident::new(var_decl.name.span())
             };
             ctx.tokens.insert(
                 ctx.ident(&ident),
                 Token::from_parsed(
-                    AstToken::Declaration(Declaration::VariableDeclaration(self.clone())),
+                    AstToken::Declaration(Declaration::VariableDeclaration(*self)),
                     symbol_kind,
                 ),
             );
-            self.type_ascription.parse(ctx);
+            var_decl.type_ascription.parse(ctx);
         }
-        self.body.parse(ctx);
+        var_decl.body.parse(ctx);
     }
 }
 
-impl Parse for FunctionDeclaration {
+impl Parse for ParsedDeclId<FunctionDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
         let token = Token::from_parsed(
-            AstToken::Declaration(Declaration::FunctionDeclaration(self.clone())),
+            AstToken::Declaration(Declaration::FunctionDeclaration(*self)),
             SymbolKind::Function,
         );
-        ctx.tokens.insert(ctx.ident(&self.name), token.clone());
-        self.body.contents.par_iter().for_each(|node| {
+        let fn_decl = ctx.engines.pe().get_function(self);
+
+        ctx.tokens.insert(ctx.ident(&fn_decl.name), token.clone());
+        fn_decl.body.contents.par_iter().for_each(|node| {
             node.parse(ctx);
         });
-        self.parameters.par_iter().for_each(|param| {
+        fn_decl.parameters.par_iter().for_each(|param| {
             param.parse(ctx);
         });
-        self.type_parameters.par_iter().for_each(|type_param| {
+        fn_decl.type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
-        for (ident, constraints) in &self.where_clause {
+        for (ident, constraints) in &fn_decl.where_clause {
             ctx.tokens.insert(ctx.ident(ident), token.clone());
             constraints.par_iter().for_each(|constraint| {
                 constraint.parse(ctx);
             });
         }
-        self.return_type.parse(ctx);
-        self.attributes.parse(ctx);
+        fn_decl.return_type.parse(ctx);
+        fn_decl.attributes.parse(ctx);
     }
 }
 
-impl Parse for TraitDeclaration {
+impl Parse for ParsedDeclId<TraitDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let trait_decl = ctx.engines.pe().get_trait(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&trait_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::TraitDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::TraitDeclaration(*self)),
                 SymbolKind::Trait,
             ),
         );
-        self.interface_surface
+        trait_decl
+            .interface_surface
             .par_iter()
             .for_each(|item| match item {
                 TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
@@ -760,73 +772,82 @@ impl Parse for TraitDeclaration {
                 TraitItem::Type(trait_type) => trait_type.parse(ctx),
                 TraitItem::Error(_, _) => {}
             });
-        self.methods.par_iter().for_each(|func_dec| {
+        trait_decl.methods.par_iter().for_each(|func_dec| {
             func_dec.parse(ctx);
         });
-        self.supertraits.par_iter().for_each(|supertrait| {
+        trait_decl.supertraits.par_iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
     }
 }
 
-impl Parse for StructDeclaration {
+impl Parse for ParsedDeclId<StructDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let struct_decl = ctx.engines.pe().get_struct(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&struct_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::StructDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::StructDeclaration(*self)),
                 SymbolKind::Struct,
             ),
         );
-        self.fields.par_iter().for_each(|field| {
+        struct_decl.fields.par_iter().for_each(|field| {
             field.parse(ctx);
         });
-        self.type_parameters.par_iter().for_each(|type_param| {
-            type_param.parse(ctx);
-        });
-        self.attributes.parse(ctx);
+        struct_decl
+            .type_parameters
+            .par_iter()
+            .for_each(|type_param| {
+                type_param.parse(ctx);
+            });
+        struct_decl.attributes.parse(ctx);
     }
 }
 
-impl Parse for EnumDeclaration {
+impl Parse for ParsedDeclId<EnumDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let enum_decl = ctx.engines.pe().get_enum(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&enum_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::EnumDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::EnumDeclaration(*self)),
                 SymbolKind::Enum,
             ),
         );
-        self.type_parameters.par_iter().for_each(|type_param| {
+        enum_decl.type_parameters.par_iter().for_each(|type_param| {
             type_param.parse(ctx);
         });
-        self.variants.par_iter().for_each(|variant| {
+        enum_decl.variants.par_iter().for_each(|variant| {
             variant.parse(ctx);
         });
-        self.attributes.parse(ctx);
+        enum_decl.attributes.parse(ctx);
     }
 }
 
-impl Parse for ImplTrait {
+impl Parse for ParsedDeclId<ImplTrait> {
     fn parse(&self, ctx: &ParseContext) {
-        self.trait_name.prefixes.par_iter().for_each(|ident| {
+        let impl_trait = ctx.engines.pe().get_impl_trait(self);
+        impl_trait.trait_name.prefixes.par_iter().for_each(|ident| {
             ctx.tokens.insert(
                 ctx.ident(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
             );
         });
         ctx.tokens.insert(
-            ctx.ident(&self.trait_name.suffix),
+            ctx.ident(&impl_trait.trait_name.suffix),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::ImplTrait(self.clone())),
+                AstToken::Declaration(Declaration::ImplTrait(*self)),
                 SymbolKind::Trait,
             ),
         );
-        self.implementing_for.parse(ctx);
-        self.impl_type_parameters.par_iter().for_each(|type_param| {
-            type_param.parse(ctx);
-        });
-        self.items.par_iter().for_each(|item| match item {
+        impl_trait.implementing_for.parse(ctx);
+        impl_trait
+            .impl_type_parameters
+            .par_iter()
+            .for_each(|type_param| {
+                type_param.parse(ctx);
+            });
+        impl_trait.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
             ImplItem::Type(type_decl) => type_decl.parse(ctx),
@@ -834,18 +855,19 @@ impl Parse for ImplTrait {
     }
 }
 
-impl Parse for ImplSelf {
+impl Parse for ParsedDeclId<ImplSelf> {
     fn parse(&self, ctx: &ParseContext) {
+        let impl_self = ctx.engines.pe().get_impl_self(self);
         if let TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
             root_type_id: _,
-        } = &ctx.engines.te().get(self.implementing_for.type_id)
+        } = &&*ctx.engines.te().get(impl_self.implementing_for.type_id)
         {
             ctx.tokens.insert(
                 ctx.ident(&qualified_call_path.call_path.suffix),
                 Token::from_parsed(
-                    AstToken::Declaration(Declaration::ImplSelf(self.clone())),
+                    AstToken::Declaration(Declaration::ImplSelf(*self)),
                     SymbolKind::Struct,
                 ),
             );
@@ -855,10 +877,13 @@ impl Parse for ImplSelf {
                 });
             }
         }
-        self.impl_type_parameters.par_iter().for_each(|type_param| {
-            type_param.parse(ctx);
-        });
-        self.items.par_iter().for_each(|item| match item {
+        impl_self
+            .impl_type_parameters
+            .par_iter()
+            .for_each(|type_param| {
+                type_param.parse(ctx);
+            });
+        impl_self.items.par_iter().for_each(|item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
             ImplItem::Type(type_decl) => type_decl.parse(ctx),
@@ -866,16 +891,18 @@ impl Parse for ImplSelf {
     }
 }
 
-impl Parse for AbiDeclaration {
+impl Parse for ParsedDeclId<AbiDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let abi_decl = ctx.engines.pe().get_abi(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&abi_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::AbiDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::AbiDeclaration(*self)),
                 SymbolKind::Trait,
             ),
         );
-        self.interface_surface
+        abi_decl
+            .interface_surface
             .par_iter()
             .for_each(|item| match item {
                 TraitItem::TraitFn(trait_fn) => trait_fn.parse(ctx),
@@ -883,52 +910,55 @@ impl Parse for AbiDeclaration {
                 TraitItem::Type(type_decl) => type_decl.parse(ctx),
                 TraitItem::Error(_, _) => {}
             });
-        self.supertraits.par_iter().for_each(|supertrait| {
+        abi_decl.supertraits.par_iter().for_each(|supertrait| {
             supertrait.parse(ctx);
         });
-        self.attributes.parse(ctx);
+        abi_decl.attributes.parse(ctx);
     }
 }
 
-impl Parse for ConstantDeclaration {
+impl Parse for ParsedDeclId<ConstantDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let const_decl = ctx.engines.pe().get_constant(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&const_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::ConstantDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::ConstantDeclaration(*self)),
                 SymbolKind::Const,
             ),
         );
-        self.type_ascription.parse(ctx);
-        if let Some(value) = &self.value {
+        const_decl.type_ascription.parse(ctx);
+        if let Some(value) = &const_decl.value {
             value.parse(ctx);
         }
-        self.attributes.parse(ctx);
+        const_decl.attributes.parse(ctx);
     }
 }
 
-impl Parse for TraitTypeDeclaration {
+impl Parse for ParsedDeclId<TraitTypeDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let trait_type_decl = ctx.engines.pe().get_trait_type(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&trait_type_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::TraitTypeDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::TraitTypeDeclaration(*self)),
                 SymbolKind::TraitType,
             ),
         );
-        if let Some(ty) = &self.ty_opt {
+        if let Some(ty) = &trait_type_decl.ty_opt {
             ty.parse(ctx);
         }
-        self.attributes.parse(ctx);
+        trait_type_decl.attributes.parse(ctx);
     }
 }
 
-impl Parse for StorageDeclaration {
+impl Parse for ParsedDeclId<StorageDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
-        self.fields.par_iter().for_each(|field| {
+        let storage_decl = ctx.engines.pe().get_storage(self);
+        storage_decl.fields.par_iter().for_each(|field| {
             field.parse(ctx);
         });
-        self.attributes.parse(ctx);
+        storage_decl.attributes.parse(ctx);
     }
 }
 
@@ -1038,7 +1068,7 @@ impl Parse for TypeParameter {
 impl Parse for TypeArgument {
     fn parse(&self, ctx: &ParseContext) {
         let type_info = ctx.engines.te().get(self.type_id);
-        match &type_info {
+        match &*type_info {
             TypeInfo::Array(type_arg, length) => {
                 let ident = Ident::new(length.span());
                 ctx.tokens.insert(
@@ -1064,17 +1094,18 @@ impl Parse for TypeArgument {
     }
 }
 
-impl Parse for TypeAliasDeclaration {
+impl Parse for ParsedDeclId<TypeAliasDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
+        let type_alias_decl = ctx.engines.pe().get_type_alias(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
+            ctx.ident(&type_alias_decl.name),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::TypeAliasDeclaration(self.clone())),
+                AstToken::Declaration(Declaration::TypeAliasDeclaration(*self)),
                 SymbolKind::TypeAlias,
             ),
         );
-        self.ty.parse(ctx);
-        self.attributes.parse(ctx);
+        type_alias_decl.ty.parse(ctx);
+        type_alias_decl.attributes.parse(ctx);
     }
 }
 

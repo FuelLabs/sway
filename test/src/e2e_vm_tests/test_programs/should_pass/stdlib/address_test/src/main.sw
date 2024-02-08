@@ -11,7 +11,7 @@ fn main() -> bool {
     assert(addr.value == bits);
 
     // test into()
-    let new_bits = addr.into();
+    let new_bits:b256 = addr.into();
     assert(new_bits == bits);
 
     // test Eq

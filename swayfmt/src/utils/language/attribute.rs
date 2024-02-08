@@ -1,4 +1,6 @@
 use crate::{
+    comments::write_comments,
+    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -13,16 +15,34 @@ use sway_types::{
     Spanned,
 };
 
-impl<T: Format + Spanned> Format for Annotated<T> {
+impl<T: Format + Spanned + std::fmt::Debug> Format for Annotated<T> {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         // format each `Attribute`
+        let mut start = None;
         for attr in &self.attribute_list {
+            if let Some(start) = start {
+                // Write any comments that may have been defined in between the
+                // attributes and the value
+                write_comments(formatted_code, start..attr.span().start(), formatter)?;
+                if !formatted_code.ends_with(NEW_LINE) {
+                    write!(formatted_code, "{}", NEW_LINE)?;
+                }
+            }
             formatter.write_indent_into_buffer(formatted_code)?;
             attr.format(formatted_code, formatter)?;
+            start = Some(attr.span().end());
+        }
+        if let Some(start) = start {
+            // Write any comments that may have been defined in between the
+            // attributes and the value
+            write_comments(formatted_code, start..self.value.span().start(), formatter)?;
+            if !formatted_code.ends_with(NEW_LINE) {
+                write!(formatted_code, "{}", NEW_LINE)?;
+            }
         }
         // format `ItemKind`
         formatter.write_indent_into_buffer(formatted_code)?;

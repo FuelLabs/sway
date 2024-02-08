@@ -65,7 +65,7 @@ impl AbstractProgram {
             .into_iter()
             .map(|entry| entry.ops)
             .chain(self.non_entries)
-            .map(AbstractInstructionSet::optimize)
+            .map(|ais| ais.optimize(&self.data_section))
             .map(AbstractInstructionSet::verify)
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -197,8 +197,8 @@ impl AbstractProgram {
 
             // Load the data into a register for comparison.
             asm_buf.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::LWDataId(PROG_SELECTOR_REG, data_label)),
-                comment: "load fn selector for comparison".into(),
+                opcode: Either::Left(AllocatedOpcode::LoadDataId(PROG_SELECTOR_REG, data_label)),
+                comment: format!("load fn selector for comparison {}", entry.name),
                 owning_span: None,
             });
 

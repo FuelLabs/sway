@@ -1,4 +1,6 @@
-use fuel_vm::fuel_tx::{Bytes32, ContractId, Output, TxPointer, UtxoId};
+use fuel_vm::fuel_tx::{
+    output::contract::Contract as OutputContract, Bytes32, ContractId, Output, TxPointer, UtxoId,
+};
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
@@ -20,11 +22,12 @@ macro_rules! calldata {
 abigen!(
     Contract(
         name = "TestContract",
-        abi = "test_artifacts/low_level_callee_contract/out/debug/test_contract-abi.json"
+        abi =
+            "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract-abi.json"
     ),
     Script(
         name = "TestScript",
-        abi = "test_projects/low_level_call_bytes/out/debug/test_script_bytes-abi.json"
+        abi = "test_projects/low_level_call_bytes/out/release/low_level_call_bytes-abi.json"
     )
 );
 
@@ -38,7 +41,7 @@ async fn low_level_call(
     // Build the script instance
     let script_instance = TestScript::new(
         wallet,
-        "test_projects/low_level_call_bytes/out/debug/test_script_bytes.bin",
+        "test_projects/low_level_call_bytes/out/release/low_level_call_bytes.bin",
     );
 
     // Add the contract being called to the inputs and outputs
@@ -50,11 +53,11 @@ async fn low_level_call(
         contract_id: id,
     };
 
-    let contract_output = Output::Contract {
+    let contract_output = Output::Contract(OutputContract {
         input_index: 0u8,
         balance_root: Bytes32::zeroed(),
         state_root: Bytes32::zeroed(),
-    };
+    });
 
     // Run the script which will call the contract
     let tx = script_instance
@@ -66,7 +69,7 @@ async fn low_level_call(
         )
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output])
-        .tx_params(TxParameters::default().set_gas_limit(10_000_000));
+        .with_tx_policies(TxPolicies::default());
 
     tx.call().await.unwrap();
 }
@@ -82,15 +85,16 @@ async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, W
         None,
         None,
     )
-    .await;
+    .await
+    .unwrap();
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(
-        "test_artifacts/low_level_callee_contract/out/debug/test_contract.bin",
+        "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 

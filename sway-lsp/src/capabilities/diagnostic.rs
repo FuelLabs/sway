@@ -49,7 +49,7 @@ pub fn get_diagnostics(
             let path = source_engine.get_path(source_id);
             diagnostics
                 .entry(path)
-                .or_insert_with(Diagnostics::default)
+                .or_default()
                 .warnings
                 .push(diagnostic);
         }
@@ -58,11 +58,7 @@ pub fn get_diagnostics(
         let diagnostic = get_error_diagnostic(error);
         if let Some(source_id) = error.span().source_id() {
             let path = source_engine.get_path(source_id);
-            diagnostics
-                .entry(path)
-                .or_insert_with(Diagnostics::default)
-                .errors
-                .push(diagnostic);
+            diagnostics.entry(path).or_default().errors.push(diagnostic);
         }
     }
 
@@ -116,6 +112,9 @@ impl TryFrom<CompileError> for DiagnosticData {
         match value {
             CompileError::SymbolNotFound { name, .. } => Ok(DiagnosticData {
                 unknown_symbol_name: Some(name.to_string()),
+            }),
+            CompileError::TraitNotFound { name, .. } => Ok(DiagnosticData {
+                unknown_symbol_name: Some(name),
             }),
             CompileError::UnknownVariable { var_name, .. } => Ok(DiagnosticData {
                 unknown_symbol_name: Some(var_name.to_string()),

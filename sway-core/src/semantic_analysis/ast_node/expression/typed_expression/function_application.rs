@@ -23,7 +23,7 @@ pub(crate) fn instantiate_function_application(
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let decl_engine = ctx.engines.de();
 
-    let mut function_decl = decl_engine.get_function(&function_decl_ref);
+    let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
 
     if arguments.is_none() {
         return Err(
@@ -62,10 +62,6 @@ pub(crate) fn instantiate_function_application(
         &function_decl.parameters,
     )?;
 
-    // Retrieve the implemented traits for the type of the return type and
-    // insert them in the broader namespace.
-    ctx.insert_trait_implementation_for_type(function_decl.return_type.type_id);
-
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
@@ -73,6 +69,7 @@ pub(crate) fn instantiate_function_application(
         handler,
         ctx.by_ref(),
         &function_decl.type_parameters,
+        function_decl.name.as_str(),
         &call_path_binding.span(),
     )?;
     function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;

@@ -148,7 +148,10 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             expression: ty::TyExpressionVariant::Return(..),
             ..
         })
-        | ty::TyAstNodeContent::ImplicitReturnExpression(_) => {
+        | ty::TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ImplicitReturn(..),
+            ..
+        }) => {
             let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
@@ -220,15 +223,16 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(leaves.to_vec())
         }
         ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
+            let impl_trait = decl_engine.get_impl_trait(decl_id);
             let ty::TyImplTrait {
                 trait_name, items, ..
-            } = decl_engine.get_impl_trait(decl_id);
+            } = &*impl_trait;
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
 
-            connect_impl_trait(engines, &trait_name, graph, &items, entry_node)?;
+            connect_impl_trait(engines, trait_name, graph, items, entry_node)?;
             Ok(leaves.to_vec())
         }
         ty::TyDecl::ErrorRecovery(..) => Ok(leaves.to_vec()),

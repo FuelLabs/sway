@@ -28,10 +28,9 @@ pub(crate) trait GenerateDocCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
 
     /// Formats a vector of lines into a doc comment [String].
     fn format_lines(&self, lines: Vec<String>) -> String {
-        lines
-            .iter()
-            .map(|line| format!("{}/// {}\n", self.indentation(), line))
-            .collect()
+        lines.iter().fold("".to_string(), |output, line| {
+            format!("{}{}/// {}\n", output, self.indentation(), line)
+        })
     }
 
     /// Formats a list item with a name and type into a [String].

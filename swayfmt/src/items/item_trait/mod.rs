@@ -1,6 +1,6 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
-    config::items::ItemBraceStyle,
+    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -55,8 +55,9 @@ impl Format for ItemTrait {
         if trait_items.is_empty() {
             write_comments(formatted_code, self.trait_items.span().into(), formatter)?;
         } else {
-            for item in trait_items {
+            for item in trait_items.iter() {
                 item.format(formatted_code, formatter)?;
+                write!(formatted_code, "{}", NEW_LINE)?;
             }
         }
 
@@ -64,11 +65,14 @@ impl Format for ItemTrait {
         if let Some(trait_defs) = &self.trait_defs_opt {
             write!(formatted_code, " ")?;
             Self::open_curly_brace(formatted_code, formatter)?;
-            for trait_items in trait_defs.get() {
+            for trait_items in trait_defs.get().iter() {
                 // format `Annotated<ItemFn>`
                 trait_items.format(formatted_code, formatter)?;
+                write!(formatted_code, "{}", NEW_LINE)?;
             }
-            writeln!(formatted_code)?;
+            if trait_defs.get().is_empty() {
+                write!(formatted_code, "{}", NEW_LINE)?;
+            }
             Self::close_curly_brace(formatted_code, formatter)?;
         };
 
@@ -93,15 +97,13 @@ impl Format for ItemTraitItem {
         match self {
             ItemTraitItem::Fn(fn_decl, _) => {
                 fn_decl.format(formatted_code, formatter)?;
-                writeln!(formatted_code, ";")?;
+                write!(formatted_code, ";")?;
             }
             ItemTraitItem::Const(const_decl, _) => {
                 const_decl.format(formatted_code, formatter)?;
-                writeln!(formatted_code)?;
             }
             ItemTraitItem::Type(type_decl, _) => {
                 type_decl.format(formatted_code, formatter)?;
-                writeln!(formatted_code)?;
             }
             ItemTraitItem::Error(_, _) => {
                 return Err(FormatterError::SyntaxError);
@@ -116,18 +118,9 @@ impl CurlyBrace for ItemTrait {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                writeln!(line, "\n{open_brace}")?;
-            }
-            _ => {
-                writeln!(line, "{open_brace}")?;
-            }
-        }
+        writeln!(line, "{open_brace}")?;
 
         Ok(())
     }

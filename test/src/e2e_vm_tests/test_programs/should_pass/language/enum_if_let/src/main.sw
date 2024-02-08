@@ -1,10 +1,5 @@
 script;
 
-enum Result<T, E> {
-    Ok: T,
-    Err: E,
-}
-
 const B1 = Address {
     value: 0x0100000000000000000000000000000000000000000000000000000000000010
 };

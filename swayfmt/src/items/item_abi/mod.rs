@@ -1,6 +1,6 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
-    config::items::ItemBraceStyle,
+    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -38,6 +38,7 @@ impl Format for ItemAbi {
         // abi_items
         for trait_item in abi_items.iter() {
             trait_item.format(formatted_code, formatter)?;
+            write!(formatted_code, "{}", NEW_LINE)?;
         }
 
         if abi_items.is_empty() {
@@ -55,8 +56,11 @@ impl Format for ItemAbi {
             Self::open_curly_brace(formatted_code, formatter)?;
             for item in abi_defs.get().iter() {
                 item.format(formatted_code, formatter)?;
+                write!(formatted_code, "{}", NEW_LINE)?;
             }
-            writeln!(formatted_code)?;
+            if abi_defs.get().is_empty() {
+                write!(formatted_code, "{}", NEW_LINE)?;
+            }
             Self::close_curly_brace(formatted_code, formatter)?;
         }
 
@@ -77,19 +81,10 @@ impl CurlyBrace for ItemAbi {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{open_brace}\n")?;
-            }
-            _ => {
-                // Add opening brace to the same line
-                writeln!(line, " {open_brace}")?;
-            }
-        }
+        // Add opening brace to the same line
+        writeln!(line, " {open_brace}")?;
 
         Ok(())
     }

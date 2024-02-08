@@ -8,9 +8,9 @@ use std::collections::{HashMap, HashSet};
 use sway_utils::mapped_stack::MappedStack;
 
 use crate::{
-    AnalysisResults, Block, BranchToWithArgs, Context, DomFronts, DomTree, Function, Instruction,
-    IrError, LocalVar, Pass, PassMutability, PostOrder, ScopedPass, Type, Value, ValueDatum,
-    DOMFRONTS_NAME, DOMINATORS_NAME, POSTORDER_NAME,
+    AnalysisResults, Block, BranchToWithArgs, Context, DomFronts, DomTree, Function, InstOp,
+    Instruction, IrError, LocalVar, Pass, PassMutability, PostOrder, ScopedPass, Type, Value,
+    ValueDatum, DOMFRONTS_NAME, DOMINATORS_NAME, POSTORDER_NAME,
 };
 
 pub const MEM2REG_NAME: &str = "mem2reg";
@@ -31,7 +31,10 @@ fn get_validate_local_var(
     val: &Value,
 ) -> Option<(String, LocalVar)> {
     match context.values[val.0].value {
-        ValueDatum::Instruction(Instruction::GetLocal(local_var)) => {
+        ValueDatum::Instruction(Instruction {
+            op: InstOp::GetLocal(local_var),
+            ..
+        }) => {
             let name = function.lookup_local_name(context, &local_var);
             name.map(|name| (name.clone(), local_var))
         }
@@ -45,24 +48,30 @@ fn filter_usable_locals(context: &mut Context, function: &Function) -> HashSet<S
     // types which can fit in 64-bits.
     let mut locals: HashSet<String> = function
         .locals_iter(context)
-        .filter(|(_, var)| {
+        .filter_map(|(name, var)| {
             let ty = var.get_inner_type(context);
-            ty.is_unit(context)
+            (ty.is_unit(context)
                 || ty.is_bool(context)
-                || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64)
+                || (ty.is_uint(context) && ty.get_uint_width(context).unwrap() <= 64))
+                .then_some(name.clone())
         })
-        .map(|(name, _)| name.clone())
         .collect();
 
     for (_, inst) in function.instruction_iter(context) {
         match context.values[inst.0].value {
-            ValueDatum::Instruction(Instruction::Load(_))
-            | ValueDatum::Instruction(Instruction::Store { .. }) => {
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::Load(_),
+                ..
+            })
+            | ValueDatum::Instruction(Instruction {
+                op: InstOp::Store { .. },
+                ..
+            }) => {
                 // We understand load and store, so no problem.
             }
             _ => {
                 // Make sure that no local escapes into instructions we don't understand.
-                let operands = inst.get_instruction(context).unwrap().get_operands();
+                let operands = inst.get_instruction(context).unwrap().op.get_operands();
                 for opd in operands {
                     if let Some((local, ..)) = get_validate_local_var(context, function, &opd) {
                         locals.remove(&local);
@@ -101,7 +110,10 @@ pub fn compute_livein(
             // Scan the instructions, in reverse.
             for inst in block.instruction_iter(context).rev() {
                 match context.values[inst.0].value {
-                    ValueDatum::Instruction(Instruction::Load(ptr)) => {
+                    ValueDatum::Instruction(Instruction {
+                        op: InstOp::Load(ptr),
+                        ..
+                    }) => {
                         let local_var = get_validate_local_var(context, function, &ptr);
                         match local_var {
                             Some((local, ..)) if locals.contains(&local) => {
@@ -110,7 +122,10 @@ pub fn compute_livein(
                             _ => {}
                         }
                     }
-                    ValueDatum::Instruction(Instruction::Store { dst_val_ptr, .. }) => {
+                    ValueDatum::Instruction(Instruction {
+                        op: InstOp::Store { dst_val_ptr, .. },
+                        ..
+                    }) => {
                         let local_var = get_validate_local_var(context, function, &dst_val_ptr);
                         match local_var {
                             Some((local, _)) if locals.contains(&local) => {
@@ -164,8 +179,10 @@ pub fn promote_to_registers(
         .rev()
         .flat_map(|b| b.instruction_iter(context).map(|i| (*b, i)))
     {
-        if let ValueDatum::Instruction(Instruction::Store { dst_val_ptr, .. }) =
-            context.values[inst.0].value
+        if let ValueDatum::Instruction(Instruction {
+            op: InstOp::Store { dst_val_ptr, .. },
+            ..
+        }) = context.values[inst.0].value
         {
             match get_validate_local_var(context, &function, &dst_val_ptr) {
                 Some((local, var)) if safe_locals.contains(&local) => {
@@ -221,7 +238,10 @@ pub fn promote_to_registers(
 
         for inst in node.instruction_iter(context) {
             match context.values[inst.0].value {
-                ValueDatum::Instruction(Instruction::Load(ptr)) => {
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::Load(ptr),
+                    ..
+                }) => {
                     let local_var = get_validate_local_var(context, function, &ptr);
                     match local_var {
                         Some((local, var)) if safe_locals.contains(&local) => {
@@ -244,9 +264,13 @@ pub fn promote_to_registers(
                         _ => (),
                     }
                 }
-                ValueDatum::Instruction(Instruction::Store {
-                    dst_val_ptr,
-                    stored_val,
+                ValueDatum::Instruction(Instruction {
+                    op:
+                        InstOp::Store {
+                            dst_val_ptr,
+                            stored_val,
+                        },
+                    ..
                 }) => {
                     let local_var = get_validate_local_var(context, function, &dst_val_ptr);
                     match local_var {

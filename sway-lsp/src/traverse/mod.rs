@@ -8,7 +8,7 @@ pub(crate) mod typed_tree;
 
 pub struct ParseContext<'a> {
     tokens: &'a TokenMap,
-    engines: &'a Engines,
+    pub engines: &'a Engines,
     namespace: &'a Module,
 }
 

@@ -9,6 +9,8 @@ use sway_ast::{
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
 
+use super::expr::should_write_multiline;
+
 impl<T, P> Format for Punctuated<T, P>
 where
     T: Format,
@@ -47,18 +49,55 @@ where
                     if !formatted_code.ends_with('\n') {
                         writeln!(formatted_code)?;
                     }
-                    let value_pairs_iter = self.value_separator_pairs.iter();
-                    for (type_field, comma_token) in value_pairs_iter.clone() {
+                    if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
                         formatter.write_indent_into_buffer(formatted_code)?;
-                        type_field.format(formatted_code, formatter)?;
+                    }
 
-                        comma_token.format(formatted_code, formatter)?;
-                        writeln!(formatted_code)?;
+                    let mut is_value_too_long = false;
+                    let value_separator_pairs = formatter.with_shape(
+                        formatter.shape.with_default_code_line(),
+                        |formatter| -> Result<Vec<(String, String)>, FormatterError> {
+                            self.value_separator_pairs
+                                .iter()
+                                .map(|(type_field, comma_token)| {
+                                    let mut field = FormattedCode::new();
+                                    let mut comma = FormattedCode::new();
+                                    type_field.format(&mut field, formatter)?;
+                                    comma_token.format(&mut comma, formatter)?;
+                                    if field.len()
+                                        > formatter.shape.width_heuristics.short_array_element_width
+                                    {
+                                        is_value_too_long = true;
+                                    }
+                                    Ok((
+                                        field.trim_start().to_owned(),
+                                        comma.trim_start().to_owned(),
+                                    ))
+                                })
+                                .collect()
+                        },
+                    )?;
+
+                    let mut iter = value_separator_pairs.iter().peekable();
+
+                    while let Some((type_field, comma_token)) = iter.next() {
+                        write!(formatted_code, "{}{}", type_field, comma_token)?;
+                        if iter.peek().is_none() && self.final_value_opt.is_none() {
+                            break;
+                        }
+                        if is_value_too_long || should_write_multiline(formatted_code, formatter) {
+                            writeln!(formatted_code)?;
+                            formatter.write_indent_into_buffer(formatted_code)?;
+                        } else {
+                            write!(formatted_code, " ")?;
+                        }
                     }
                     if let Some(final_value) = &self.final_value_opt {
-                        write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         final_value.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                        write!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                    }
+                    if !formatted_code.ends_with('\n') {
+                        writeln!(formatted_code)?;
                     }
                 }
             }
@@ -160,6 +199,10 @@ impl Format for TypeField {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // If there is a visibility token add it to the formatted_code with a ` ` after it.
+        if let Some(visibility) = &self.visibility {
+            write!(formatted_code, "{} ", visibility.span().as_str())?;
+        }
         write!(
             formatted_code,
             "{}{} ",

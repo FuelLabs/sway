@@ -1,7 +1,7 @@
 script;
 
 // str in constants is not allowed
-const A: str = "abc"
+const A: str = "abc";
 
 // str in configurable is not allowed
 configurable {

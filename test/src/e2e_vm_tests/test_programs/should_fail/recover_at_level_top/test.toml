@@ -3,3 +3,5 @@ category = "fail"
 # check: $()Expected an item
 # check: $()Expected an item
 # check: $()Expected an opening parenthesis
+# check: $()Expected `;`
+# check: $()Expected `;`

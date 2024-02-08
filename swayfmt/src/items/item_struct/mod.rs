@@ -1,6 +1,6 @@
 use crate::{
     comments::{rewrite_with_comments, write_comments},
-    config::{items::ItemBraceStyle, user_def::FieldAlignment},
+    config::user_def::FieldAlignment,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -41,6 +41,11 @@ impl Format for ItemStruct {
                 if let Some(generics) = &self.generics {
                     generics.format(formatted_code, formatter)?;
                 }
+                if let Some(where_clause) = &self.where_clause_opt {
+                    writeln!(formatted_code)?;
+                    where_clause.format(formatted_code, formatter)?;
+                    formatter.shape.code_line.update_where_clause(true);
+                }
 
                 let fields = self.fields.get();
 
@@ -50,6 +55,8 @@ impl Format for ItemStruct {
                 if fields.final_value_opt.is_none() && fields.value_separator_pairs.is_empty() {
                     write_comments(formatted_code, self.span().into(), formatter)?;
                 }
+
+                formatter.shape.code_line.update_expr_new_line(true);
 
                 // Determine alignment tactic
                 match formatter.config.structures.field_alignment {
@@ -62,9 +69,19 @@ impl Format for ItemStruct {
                             .map(|(type_field, comma_token)| (&type_field.value, comma_token))
                             .collect::<Vec<_>>();
                         // In first iteration we are going to be collecting the lengths of the struct variants.
+                        // We need to include the `pub` keyword in the length, if the field is public,
+                        // together with one space character between the `pub` and the name.
                         let variant_length: Vec<usize> = value_pairs
                             .iter()
-                            .map(|(type_field, _)| type_field.name.as_str().len())
+                            .map(|(type_field, _)| {
+                                type_field
+                                    .visibility
+                                    .as_ref()
+                                    // We don't want to hard code the token here to `pub` or just hardcode 4.
+                                    // This is in case we introduce e.g. `pub(crate)` one day.
+                                    .map_or(0, |token| token.span().as_str().len() + 1)
+                                    + type_field.name.as_str().len()
+                            })
                             .collect();
 
                         // Find the maximum length in the variant_length vector that is still smaller than struct_field_align_threshold.
@@ -80,6 +97,10 @@ impl Format for ItemStruct {
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
                             write!(formatted_code, "{}", formatter.indent_to_str()?)?;
+                            // If there is a visibility token add it to the formatted_code with a ` ` after it.
+                            if let Some(visibility) = &type_field.visibility {
+                                write!(formatted_code, "{} ", visibility.span().as_str())?;
+                            }
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
                             let current_variant_length = variant_length[var_index];
@@ -137,15 +158,14 @@ impl CurlyBrace for ItemStruct {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.indent();
-        let brace_style = formatter.config.items.item_brace_style;
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
+        let open_brace = Delimiter::Brace.as_open_char();
+        match formatter.shape.code_line.has_where_clause {
+            true => {
+                write!(line, "{open_brace}")?;
+                formatter.shape.code_line.update_where_clause(false);
             }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
+            false => {
+                write!(line, " {open_brace}")?;
             }
         }
 

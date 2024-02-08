@@ -1,6 +1,8 @@
-use super::CODE_ACTION_IMPORT_TITLE;
 use crate::{
-    capabilities::{code_actions::CodeActionContext, diagnostic::DiagnosticData},
+    capabilities::{
+        code_actions::{CodeActionContext, CODE_ACTION_IMPORT_TITLE},
+        diagnostic::DiagnosticData,
+    },
     core::token::{get_range_from_span, AstToken, SymbolKind, TypedAstToken},
 };
 use lsp_types::{
@@ -25,10 +27,10 @@ use sway_types::{Ident, Spanned};
 /// Returns a list of [CodeActionOrCommand] suggestions for inserting a missing import.
 pub(crate) fn import_code_action(
     ctx: &CodeActionContext,
-    diagnostics: &mut impl Iterator<Item = DiagnosticData>,
+    diagnostics: &mut impl Iterator<Item = (Range, DiagnosticData)>,
 ) -> Option<Vec<CodeActionOrCommand>> {
     // Find a diagnostic that has the attached metadata indicating we should try to suggest an auto-import.
-    let symbol_name = diagnostics.find_map(|diag| diag.unknown_symbol_name)?;
+    let symbol_name = diagnostics.find_map(|(_, diag)| diag.unknown_symbol_name)?;
 
     // Check if there are any matching call paths to import using the name from the diagnostic data.
     let call_paths = get_call_paths_for_name(ctx, &symbol_name)?;
@@ -38,19 +40,18 @@ pub(crate) fn import_code_action(
     let mut include_statements = Vec::<TyIncludeStatement>::new();
     let mut program_type_keyword = None;
 
-    ctx.tokens
-        .tokens_for_file(ctx.temp_uri)
-        .for_each(|(_, token)| {
-            if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
-                use_statements.push(use_stmt);
-            } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = token.typed {
-                include_statements.push(include_stmt);
-            } else if token.kind == SymbolKind::ProgramTypeKeyword {
-                if let AstToken::Keyword(ident) = token.parsed {
-                    program_type_keyword = Some(ident);
-                }
+    ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
+        if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().typed {
+            use_statements.push(use_stmt.clone());
+        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = &item.value().typed
+        {
+            include_statements.push(include_stmt.clone());
+        } else if item.value().kind == SymbolKind::ProgramTypeKeyword {
+            if let AstToken::Keyword(ident) = &item.value().parsed {
+                program_type_keyword = Some(ident.clone());
             }
-        });
+        }
+    });
 
     // Create a list of code actions, one for each potential call path.
     let actions = call_paths
@@ -85,7 +86,7 @@ pub(crate) fn import_code_action(
 
 /// Returns an [Iterator] of [CallPath]s that match the given symbol name. The [CallPath]s are sorted
 /// alphabetically.
-fn get_call_paths_for_name<'s>(
+pub(crate) fn get_call_paths_for_name<'s>(
     ctx: &'s CodeActionContext,
     symbol_name: &'s String,
 ) -> Option<impl 's + Iterator<Item = CallPath>> {
@@ -93,9 +94,9 @@ fn get_call_paths_for_name<'s>(
     let mut call_paths = ctx
         .tokens
         .tokens_for_name(symbol_name)
-        .filter_map(move |(_, token)| {
+        .filter_map(move |item| {
             // If the typed token is a declaration, then we can import it.
-            match token.typed.as_ref() {
+            match item.value().typed.as_ref() {
                 Some(TypedAstToken::TypedDeclaration(ty_decl)) => {
                     return match ty_decl {
                         TyDecl::StructDecl(decl) => {

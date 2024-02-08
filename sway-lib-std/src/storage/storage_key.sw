@@ -90,12 +90,45 @@ impl<T> StorageKey<T> {
     ///     };
     ///
     ///     // Writes 42 at the third word of storage slot with key 0x000...0
-    ///     let x = r.write(42); 
+    ///     let x = r.write(42);
     /// }
     /// ```
     #[storage(read, write)]
     pub fn write(self, value: T) {
         write(self.slot, self.offset, value);
+    }
+
+    /// Clears the value at `self`.
+    ///
+    /// # Number of Storage Accesses
+    ///
+    /// * Clears: `1`
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let r: StorageKey<u64> = StorageKey {
+    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///         offset: 2,
+    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
+    ///     };
+    ///     r.write(42);
+    ///
+    ///     let cleared = r.clear();
+    ///     assert(cleared);
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn clear(self) -> bool {
+        if __size_of::<T>() == 0 {
+            // If the generic doesn't have a size, this is an empty struct and nothing can be stored at the slot.
+            // This clears the length value for StorageVec, StorageString, and StorageBytes 
+            // or any other Storage type.
+            clear::<u64>(self.field_id, 0)
+        } else {
+            clear::<T>(self.slot, self.offset)
+        }
     }
 
     /// Create a new `StorageKey`.
@@ -122,7 +155,9 @@ impl<T> StorageKey<T> {
     /// ```
     pub fn new(slot: b256, offset: u64, field_id: b256) -> Self {
         Self {
-            slot, offset, field_id
+            slot,
+            offset,
+            field_id,
         }
     }
 }
@@ -131,7 +166,7 @@ impl<T> StorageKey<T> {
 fn test_storage_key_new() {
     use ::constants::ZERO_B256;
     use ::assert::assert;
-    
+
     let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
     assert(key.slot == ZERO_B256);
     assert(key.offset == 0);

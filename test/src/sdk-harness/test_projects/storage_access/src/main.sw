@@ -1,6 +1,6 @@
 contract;
 
-use std::hash::*;
+use std::{constants::ZERO_B256, hash::*};
 
 struct M {
     u: b256,
@@ -108,6 +108,9 @@ abi ExperimentalStorageTest {
 
     #[storage(read, write)]
     fn map_in_struct_write(key: (u64, u64), value: (u64, u64));
+
+    #[storage(read, write)]
+    fn clears_storage_key() -> bool;
 }
 
 impl ExperimentalStorageTest for Contract {
@@ -225,5 +228,17 @@ impl ExperimentalStorageTest for Contract {
     fn map_in_struct_write(key: (u64, u64), value: (u64, u64)) {
         storage.s2.map0.insert(key.0, value.0);
         storage.s2.map1.insert(key.1, value.1);
+    }
+
+    #[storage(read, write)]
+    fn clears_storage_key() -> bool {
+        let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
+        key.write(42);
+
+        assert(key.read() == 42);
+        let cleared = key.clear();
+        assert(cleared);
+        assert(key.try_read().is_none());
+        cleared
     }
 }

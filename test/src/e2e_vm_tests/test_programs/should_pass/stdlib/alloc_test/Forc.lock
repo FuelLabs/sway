@@ -1,0 +1,13 @@
+[[package]]
+name = "alloc_test"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-FC02C7E9001F267F"
+
+[[package]]
+name = "std"
+source = "path+from-root-FC02C7E9001F267F"
+dependencies = ["core"]

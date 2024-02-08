@@ -29,6 +29,7 @@ pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
 pub(crate) const CODE_ACTION_NEW_TITLE: &str = "Generate `new`";
 pub(crate) const CODE_ACTION_DOC_TITLE: &str = "Generate a documentation template";
 pub(crate) const CODE_ACTION_IMPORT_TITLE: &str = "Import";
+pub(crate) const CODE_ACTION_QUALIFY_TITLE: &str = "Qualify as";
 
 #[derive(Clone)]
 pub(crate) struct CodeActionContext<'a> {
@@ -48,15 +49,15 @@ pub fn code_actions(
     temp_uri: &Url,
     diagnostics: &Vec<Diagnostic>,
 ) -> Option<CodeActionResponse> {
-    let engines = session.engines.read();
-    let (_, token) = session
+    let t = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
+    let token = t.value();
 
     let ctx = CodeActionContext {
-        engines: &engines,
+        engines: &session.engines.read(),
         tokens: session.token_map(),
-        token: &token,
+        token,
         uri,
         temp_uri,
         diagnostics,

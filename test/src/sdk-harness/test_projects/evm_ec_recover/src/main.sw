@@ -1,7 +1,7 @@
 contract;
 
 use std::{
-    b512::B512,
+    b512::*,
     ecr::ec_recover,
     vm::evm::{
         ecr::ec_recover_evm_address,

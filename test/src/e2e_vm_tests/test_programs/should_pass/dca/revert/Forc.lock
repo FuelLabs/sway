@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-32A1D8C54897C96A"
+
+[[package]]
+name = "revert"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-32A1D8C54897C96A"
+dependencies = ["core"]

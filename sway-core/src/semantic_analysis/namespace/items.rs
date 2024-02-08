@@ -2,19 +2,20 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     language::{
-        ty::{self, TyDecl, TyStorageDecl},
+        ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
         CallPath,
     },
     namespace::*,
-    semantic_analysis::ast_node::ConstShadowingMode,
+    semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
     type_system::*,
 };
 
 use super::TraitMap;
 
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
 };
 use sway_types::{span::Span, Spanned};
 
@@ -28,6 +29,7 @@ pub(crate) enum GlobImport {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
+// The final `bool` field of `UseSynonyms` is true if the `Vec<Ident>` path is absolute.
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl, bool)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
@@ -61,19 +63,18 @@ impl Items {
         &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         fields: Vec<Ident>,
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
         match self.declared_storage {
             Some(ref decl_ref) => {
-                let storage = decl_engine.get_storage(&decl_ref.id().clone());
+                let storage = engines.de().get_storage(&decl_ref.id().clone());
                 storage.apply_storage_load(
                     handler,
-                    type_engine,
-                    decl_engine,
+                    engines,
+                    namespace,
                     fields,
                     storage_fields,
                     storage_keyword_span,
@@ -109,6 +110,7 @@ impl Items {
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
+        generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
         let append_shadowing_error =
             |ident: &Ident,
@@ -118,7 +120,15 @@ impl Items {
              item: &ty::TyDecl,
              const_shadowing_mode: ConstShadowingMode| {
                 use ty::TyDecl::*;
-                match (ident, decl, is_use, is_alias, &item, const_shadowing_mode) {
+                match (
+                    ident,
+                    decl,
+                    is_use,
+                    is_alias,
+                    &item,
+                    const_shadowing_mode,
+                    generic_shadowing_mode,
+                ) {
                     // variable shadowing a constant
                     (
                         constant_ident,
@@ -127,10 +137,11 @@ impl Items {
                         is_alias,
                         VariableDecl { .. },
                         _,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Variable".to_string(),
-                            name: name.clone(),
+                            name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
                                 constant_decl.decl_span.clone()
@@ -148,10 +159,11 @@ impl Items {
                         is_alias,
                         ConstantDecl { .. },
                         ConstShadowingMode::Sequential,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
                             variable_or_constant: "Constant".to_string(),
-                            name: name.clone(),
+                            name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
                                 constant_decl.decl_span.clone()
@@ -162,9 +174,9 @@ impl Items {
                         });
                     }
                     // constant shadowing a variable
-                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _) => {
+                    (_, VariableDecl(variable_decl), _, _, ConstantDecl { .. }, _, _) => {
                         handler.emit_err(CompileError::ConstantShadowsVariable {
-                            name: name.clone(),
+                            name: (&name).into(),
                             variable_span: variable_decl.name.span(),
                         });
                     }
@@ -176,6 +188,7 @@ impl Items {
                         _,
                         ConstantDecl { .. },
                         ConstShadowingMode::ItemStyle,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
                             name: name.clone(),
@@ -200,6 +213,7 @@ impl Items {
                         | TraitDecl { .. }
                         | AbiDecl { .. },
                         _,
+                        _,
                     ) => {
                         handler.emit_err(CompileError::MultipleDefinitionsOfName {
                             name: name.clone(),
@@ -214,9 +228,11 @@ impl Items {
                         _,
                         GenericTypeForFunctionScope { .. },
                         _,
+                        GenericShadowingMode::Disallow,
                     ) => {
-                        handler
-                            .emit_err(CompileError::GenericShadowsGeneric { name: name.clone() });
+                        handler.emit_err(CompileError::GenericShadowsGeneric {
+                            name: (&name).into(),
+                        });
                     }
                     _ => {}
                 }
@@ -295,7 +311,7 @@ impl Items {
     pub fn get_declared_storage(&self, decl_engine: &DeclEngine) -> Option<TyStorageDecl> {
         self.declared_storage
             .as_ref()
-            .map(|decl_ref| decl_engine.get_storage(decl_ref))
+            .map(|decl_ref| (*decl_engine.get_storage(decl_ref)).clone())
     }
 
     pub(crate) fn get_storage_field_descriptors(
@@ -304,7 +320,7 @@ impl Items {
         decl_engine: &DeclEngine,
     ) -> Result<Vec<ty::TyStorageField>, ErrorEmitted> {
         match self.get_declared_storage(decl_engine) {
-            Some(storage) => Ok(storage.fields),
+            Some(storage) => Ok(storage.fields.clone()),
             None => {
                 let msg = "unknown source location";
                 let span = Span::new(Arc::from(msg), 0, msg.len(), None).unwrap();
@@ -313,12 +329,13 @@ impl Items {
         }
     }
 
-    /// Returns a tuple where the first element is the [ResolvedType] of the actual expression, and
-    /// the second is the [ResolvedType] of its parent, for control-flow analysis.
+    /// Returns a tuple where the first element is the [TypeId] of the actual expression, and
+    /// the second is the [TypeId] of its parent.
     pub(crate) fn find_subfield_type(
         &self,
         handler: &Handler,
         engines: &Engines,
+        namespace: &Namespace,
         base_name: &Ident,
         projections: &[ty::ProjectionKind],
     ) -> Result<(TypeId, TypeId), ErrorEmitted> {
@@ -337,7 +354,6 @@ impl Items {
         let mut symbol = symbol.return_type(handler, engines)?;
         let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
-        let mut full_name_for_error = base_name.to_string();
         let mut full_span_for_error = base_name.span();
         for projection in projections {
             let resolved_type = match type_engine.to_typeinfo(symbol, &symbol_span) {
@@ -352,43 +368,50 @@ impl Items {
                     ty::ProjectionKind::StructField { name: field_name },
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
-                    let field_type_opt = {
-                        struct_decl.fields.iter().find_map(
-                            |ty::TyStructField {
-                                 type_argument,
-                                 name,
-                                 ..
-                             }| {
-                                if name == field_name {
-                                    Some(type_argument.type_id)
-                                } else {
-                                    None
-                                }
-                            },
-                        )
-                    };
-                    let field_type = match field_type_opt {
-                        Some(field_type) => field_type,
-                        None => {
-                            // gather available fields for the error message
-                            let available_fields = struct_decl
-                                .fields
-                                .iter()
-                                .map(|field| field.name.as_str())
-                                .collect::<Vec<_>>();
+                    let (struct_can_be_changed, is_public_struct_access) =
+                        StructAccessInfo::get_info(&struct_decl, namespace).into();
 
-                            return Err(handler.emit_err(CompileError::FieldNotFound {
-                                field_name: field_name.clone(),
-                                struct_name: struct_decl.call_path.suffix,
-                                available_fields: available_fields.join(", "),
-                                span: field_name.span(),
+                    let field_type_id = match struct_decl.find_field(field_name) {
+                        Some(struct_field) => {
+                            if is_public_struct_access && struct_field.is_private() {
+                                // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
+                                //       https://github.com/FuelLabs/sway/issues/5520
+                                // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                //     field_name: field_name.into(),
+                                //     struct_name: struct_decl.call_path.suffix.clone(),
+                                //     field_decl_span: struct_field.name.span(),
+                                //     struct_can_be_changed,
+                                //     usage_context: StructFieldUsageContext::StructFieldAccess,
+                                // }));
+                                handler.emit_warn(CompileWarning {
+                                    span: field_name.span(),
+                                    warning_content: Warning::StructFieldIsPrivate {
+                                        field_name: field_name.into(),
+                                        struct_name: struct_decl.call_path.suffix.clone(),
+                                        field_decl_span: struct_field.name.span(),
+                                        struct_can_be_changed,
+                                        usage_context: StructFieldUsageContext::StructFieldAccess,
+                                    },
+                                });
+                            }
+                            struct_field.type_argument.type_id
+                        }
+                        None => {
+                            return Err(handler.emit_err(CompileError::StructFieldDoesNotExist {
+                                field_name: field_name.into(),
+                                available_fields: struct_decl
+                                    .accessible_fields_names(is_public_struct_access),
+                                is_public_struct_access,
+                                struct_name: struct_decl.call_path.suffix.clone(),
+                                struct_decl_span: struct_decl.span(),
+                                struct_is_empty: struct_decl.is_empty(),
+                                usage_context: StructFieldUsageContext::StructFieldAccess,
                             }));
                         }
                     };
                     parent_rover = symbol;
-                    symbol = field_type;
+                    symbol = field_type_id;
                     symbol_span = field_name.span().clone();
-                    full_name_for_error.push_str(field_name.as_str());
                     full_span_for_error =
                         Span::join(full_span_for_error, field_name.span().clone());
                 }
@@ -404,14 +427,15 @@ impl Items {
                             return Err(handler.emit_err(CompileError::TupleIndexOutOfBounds {
                                 index: *index,
                                 count: fields.len(),
-                                span: Span::join(full_span_for_error, index_span.clone()),
+                                tuple_type: engines.help_out(symbol).to_string(),
+                                span: index_span.clone(),
+                                prefix_span: full_span_for_error.clone(),
                             }));
                         }
                     };
                     parent_rover = symbol;
                     symbol = *field_type;
                     symbol_span = index_span.clone();
-                    full_name_for_error.push_str(&index.to_string());
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
                 (
@@ -421,26 +445,42 @@ impl Items {
                     parent_rover = symbol;
                     symbol = elem_ty.type_id;
                     symbol_span = index_span.clone();
-                    full_span_for_error = index_span.clone();
+                    // `index_span` does not contain the enclosing square brackets.
+                    // Which means, if this array index access is the last one before the
+                    // erroneous expression, the `full_span_for_error` will be missing the
+                    // closing `]`. We can live with this small glitch so far. To fix it,
+                    // we would need to bring the full span of the index all the way from
+                    // the parsing stage. An effort that doesn't pay off at the moment.
+                    // TODO: Include the closing square bracket into the error span.
+                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
-                (actually, ty::ProjectionKind::StructField { .. }) => {
+                (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                        span: full_span_for_error,
                         actually: engines.help_out(actually).to_string(),
+                        storage_variable: None,
+                        field_name: name.into(),
+                        span: full_span_for_error,
                     }));
                 }
-                (actually, ty::ProjectionKind::TupleField { .. }) => {
-                    return Err(handler.emit_err(CompileError::NotATuple {
-                        name: full_name_for_error,
-                        span: full_span_for_error,
-                        actually: engines.help_out(actually).to_string(),
-                    }));
+                (
+                    actually,
+                    ty::ProjectionKind::TupleField {
+                        index, index_span, ..
+                    },
+                ) => {
+                    return Err(
+                        handler.emit_err(CompileError::TupleElementAccessOnNonTuple {
+                            actually: engines.help_out(actually).to_string(),
+                            span: full_span_for_error,
+                            index: *index,
+                            index_span: index_span.clone(),
+                        }),
+                    );
                 }
                 (actually, ty::ProjectionKind::ArrayIndex { .. }) => {
                     return Err(handler.emit_err(CompileError::NotIndexable {
-                        name: full_name_for_error,
-                        span: full_span_for_error,
                         actually: engines.help_out(actually).to_string(),
+                        span: full_span_for_error,
                     }));
                 }
             }

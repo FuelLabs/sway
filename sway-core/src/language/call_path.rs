@@ -168,7 +168,7 @@ impl DebugWithEngines for QualifiedCallPath {
     }
 }
 
-/// in the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
+/// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct CallPath<T = Ident> {
@@ -244,6 +244,20 @@ impl<T: Spanned> Spanned for CallPath<T> {
 }
 
 impl CallPath {
+    pub fn absolute(path: &[&str]) -> Self {
+        assert!(!path.is_empty());
+
+        CallPath {
+            prefixes: path
+                .iter()
+                .take(path.len() - 1)
+                .map(|&x| Ident::new_no_span(x.into()))
+                .collect(),
+            suffix: path.last().map(|&x| Ident::new_no_span(x.into())).unwrap(),
+            is_absolute: true,
+        }
+    }
+
     /// Shifts the last prefix into the suffix, and removes the old suffix.
     /// Does nothing if prefixes are empty.
     pub fn rshift(&self) -> CallPath {
@@ -279,7 +293,7 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
-    /// Convert a given [CallPath] to an symbol to a full [CallPath] from the root of the project
+    /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
     /// `my_project::pkga::SOME_CONST`.
@@ -334,7 +348,7 @@ impl CallPath {
             // package name and the path to the current submodule.
             //
             // If the path starts with an external module (i.e. a module that is imported in
-            // `Forc.toml`, then do not change it since it's a complete path already.
+            // `Forc.toml`), then do not change it since it's a complete path already.
             if m.is_external {
                 CallPath {
                     prefixes: self.prefixes.clone(),

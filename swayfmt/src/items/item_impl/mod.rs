@@ -1,6 +1,6 @@
 use crate::{
     comments::{has_comments_in_formatter, rewrite_with_comments, write_comments},
-    config::items::ItemBraceStyle,
+    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -34,7 +34,7 @@ impl Format for ItemImpl {
         }
         self.ty.format(formatted_code, formatter)?;
         if let Some(where_clause) = &self.where_clause_opt {
-            write!(formatted_code, " ")?;
+            writeln!(formatted_code)?;
             where_clause.format(formatted_code, formatter)?;
             formatter.shape.code_line.update_where_clause(true);
         }
@@ -51,10 +51,10 @@ impl Format for ItemImpl {
         } else {
             Self::open_curly_brace(formatted_code, formatter)?;
             formatter.indent();
-            writeln!(formatted_code)?;
+            write!(formatted_code, "{}", NEW_LINE)?;
             for item in contents.iter() {
                 item.format(formatted_code, formatter)?;
-                writeln!(formatted_code)?;
+                write!(formatted_code, "{}", NEW_LINE)?;
             }
             Self::close_curly_brace(formatted_code, formatter)?;
         }
@@ -90,25 +90,14 @@ impl CurlyBrace for ItemImpl {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                writeln!(line, "\n{open_brace}")?;
+        match formatter.shape.code_line.has_where_clause {
+            true => {
+                write!(line, "{open_brace}")?;
+                formatter.shape.code_line.update_where_clause(false);
             }
-            ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
-                true => {
-                    write!(line, "{open_brace}")?;
-                    formatter.shape.code_line.update_where_clause(false);
-                }
-                false => {
-                    write!(line, " {open_brace}")?;
-                }
-            },
-            _ => {
-                // TODO: implement PreferSameLine
-                writeln!(line, " {open_brace}")?;
+            false => {
+                write!(line, " {open_brace}")?;
             }
         }
 

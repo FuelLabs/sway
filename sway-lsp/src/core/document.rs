@@ -5,6 +5,7 @@ use crate::{
 };
 use lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
 use ropey::Rope;
+use tokio::fs::File;
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {
@@ -17,8 +18,9 @@ pub struct TextDocument {
 }
 
 impl TextDocument {
-    pub fn build_from_path(path: &str) -> Result<Self, DocumentError> {
-        std::fs::read_to_string(path)
+    pub async fn build_from_path(path: &str) -> Result<Self, DocumentError> {
+        tokio::fs::read_to_string(path)
+            .await
             .map(|content| Self {
                 language_id: "sway".into(),
                 version: 1,
@@ -109,33 +111,39 @@ impl TextDocument {
 /// Marks the specified file as "dirty" by creating a corresponding flag file.
 ///
 /// This function ensures the necessary directory structure exists before creating the flag file.
-pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
+pub async fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
     let dirty_file_path = forc_util::is_dirty_path(&path);
     if let Some(dir) = dirty_file_path.parent() {
         // Ensure the directory exists
-        std::fs::create_dir_all(dir).map_err(|_| DirectoryError::LspLocksDirFailed)?;
+        tokio::fs::create_dir_all(dir)
+            .await
+            .map_err(|_| DirectoryError::LspLocksDirFailed)?;
     }
     // Create an empty "dirty" file
-    std::fs::File::create(&dirty_file_path).map_err(|err| DocumentError::UnableToCreateFile {
-        path: uri.path().to_string(),
-        err: err.to_string(),
-    })?;
+    File::create(&dirty_file_path)
+        .await
+        .map_err(|err| DocumentError::UnableToCreateFile {
+            path: uri.path().to_string(),
+            err: err.to_string(),
+        })?;
     Ok(())
 }
 
 /// Removes the corresponding flag file for the specifed Url.
 ///
 /// If the flag file does not exist, this function will do nothing.
-pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
+pub async fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
     let dirty_file_path = forc_util::is_dirty_path(&path);
     if dirty_file_path.exists() {
         // Remove the "dirty" file
-        std::fs::remove_file(dirty_file_path).map_err(|err| DocumentError::UnableToRemoveFile {
-            path: uri.path().to_string(),
-            err: err.to_string(),
-        })?;
+        tokio::fs::remove_file(dirty_file_path)
+            .await
+            .map_err(|err| DocumentError::UnableToRemoveFile {
+                path: uri.path().to_string(),
+                err: err.to_string(),
+            })?;
     }
     Ok(())
 }
@@ -152,17 +160,19 @@ mod tests {
     use super::*;
     use sway_lsp_test_utils::get_absolute_path;
 
-    #[test]
-    fn build_from_path_returns_text_document() {
+    #[tokio::test]
+    async fn build_from_path_returns_text_document() {
         let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
-        let result = TextDocument::build_from_path(&path);
+        let result = TextDocument::build_from_path(&path).await;
         assert!(result.is_ok(), "result = {result:?}");
     }
 
-    #[test]
-    fn build_from_path_returns_document_not_found_error() {
+    #[tokio::test]
+    async fn build_from_path_returns_document_not_found_error() {
         let path = get_absolute_path("not/a/real/file/path");
-        let result = TextDocument::build_from_path(&path).expect_err("expected DocumentNotFound");
+        let result = TextDocument::build_from_path(&path)
+            .await
+            .expect_err("expected DocumentNotFound");
         assert_eq!(result, DocumentError::DocumentNotFound { path });
     }
 }

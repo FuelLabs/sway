@@ -1,10 +1,10 @@
-use std::{collections::BTreeMap, fmt};
-
 use crate::{
     decl_engine::{DeclEngine, DeclEngineInsert},
     engine_threading::*,
     type_system::priv_prelude::*,
 };
+use std::{collections::BTreeMap, fmt};
+use sway_types::Spanned;
 
 type SourceType = TypeId;
 type DestinationType = TypeId;
@@ -77,7 +77,11 @@ impl TypeSubstMap {
             .map(|x| {
                 (
                     x.type_id,
-                    type_engine.insert(engines, TypeInfo::Placeholder(x.clone())),
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::Placeholder(x.clone()),
+                        x.name_ident.span().source_id(),
+                    ),
                 )
             })
             .collect();
@@ -137,7 +141,7 @@ impl TypeSubstMap {
         superset: TypeId,
         subset: TypeId,
     ) -> TypeSubstMap {
-        match (type_engine.get(superset), type_engine.get(subset)) {
+        match (&*type_engine.get(superset), &*type_engine.get(subset)) {
             (TypeInfo::UnknownGeneric { .. }, _) => TypeSubstMap {
                 mapping: BTreeMap::from([(superset, subset)]),
             },
@@ -149,11 +153,13 @@ impl TypeSubstMap {
                 TypeInfo::Custom { type_arguments, .. },
             ) => {
                 let type_parameters = type_parameters
+                    .clone()
                     .unwrap_or_default()
                     .iter()
                     .map(|x| x.type_id)
                     .collect::<Vec<_>>();
                 let type_arguments = type_arguments
+                    .clone()
                     .unwrap_or_default()
                     .iter()
                     .map(|x| x.type_id)
@@ -166,8 +172,8 @@ impl TypeSubstMap {
                 )
             }
             (TypeInfo::Enum(decl_ref_params), TypeInfo::Enum(decl_ref_args)) => {
-                let decl_params = decl_engine.get_enum(&decl_ref_params);
-                let decl_args = decl_engine.get_enum(&decl_ref_args);
+                let decl_params = decl_engine.get_enum(decl_ref_params);
+                let decl_args = decl_engine.get_enum(decl_ref_args);
                 let type_parameters = decl_params
                     .type_parameters
                     .iter()
@@ -186,8 +192,8 @@ impl TypeSubstMap {
                 )
             }
             (TypeInfo::Struct(decl_ref_params), TypeInfo::Struct(decl_ref_args)) => {
-                let decl_params = decl_engine.get_struct(&decl_ref_params);
-                let decl_args = decl_engine.get_struct(&decl_ref_args);
+                let decl_params = decl_engine.get_struct(decl_ref_params);
+                let decl_args = decl_engine.get_struct(decl_ref_args);
 
                 let type_parameters = decl_params
                     .type_parameters
@@ -308,31 +314,34 @@ impl TypeSubstMap {
     /// Given a [TypeId] `type_id`, find (or create) a match for `type_id` in
     /// this [TypeSubstMap] and return it, if there is a match. Importantly, this
     /// function is recursive, so any `type_id` it's given will undergo
-    /// recursive calls this function. For instance, in the case of
+    /// recursive calls of this function. For instance, in the case of
     /// [TypeInfo::Struct], both `fields` and `type_parameters` will recursively
     /// call `find_match` (via calling [SubstTypes]).
     ///
-    /// A match can be found in two different circumstances:
-    /// - `type_id` is a [TypeInfo::Custom] or [TypeInfo::UnknownGeneric]
+    /// A match can be found in these circumstances:
+    /// - `type_id` is one of the following: [TypeInfo::Custom],
+    ///   [TypeInfo::UnknownGeneric], [TypeInfo::Placeholder], or [TypeInfo::TraitType].
     ///
-    /// A match is potentially created (i.e. a new `TypeId` is created) in these
+    /// A match is potentially created (i.e. a new [TypeId] is created) in these
     /// circumstances:
-    /// - `type_id` is a [TypeInfo::Struct], [TypeInfo::Enum],
-    ///     [TypeInfo::Array], or [TypeInfo::Tuple] and one of the sub-types
-    ///     finds a match in a recursive call to `find_match`
+    /// - `type_id` is one of the following: [TypeInfo::Struct], [TypeInfo::Enum],
+    ///    [TypeInfo::Array], [TypeInfo::Tuple], [TypeInfo::Storage], [TypeInfo::Alias],
+    ///    [TypeInfo::Alias], [TypeInfo::Ptr], [TypeInfo::Slice], or [TypeInfo::Ref],
+    ///    and one of the contained types (e.g. a struct field, or a referenced type)
+    ///    finds a match in a recursive call to `find_match`.
     ///
     /// A match cannot be found in any other circumstance.
     pub(crate) fn find_match(&self, type_id: TypeId, engines: &Engines) -> Option<TypeId> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         let type_info = type_engine.get(type_id);
-        match type_info {
+        match (*type_info).clone() {
             TypeInfo::Custom { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::TypeParam(_) => None,
             TypeInfo::Struct(decl_ref) => {
-                let mut decl = decl_engine.get_struct(&decl_ref);
+                let mut decl = (*decl_engine.get_struct(&decl_ref)).clone();
                 let mut need_to_create_new = false;
                 for field in decl.fields.iter_mut() {
                     if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
@@ -348,13 +357,17 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(engines, TypeInfo::Struct(new_decl_ref)))
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::Struct(new_decl_ref.clone()),
+                        new_decl_ref.decl_span().source_id(),
+                    ))
                 } else {
                     None
                 }
             }
             TypeInfo::Enum(decl_ref) => {
-                let mut decl = decl_engine.get_enum(&decl_ref);
+                let mut decl = (*decl_engine.get_enum(&decl_ref)).clone();
                 let mut need_to_create_new = false;
 
                 for variant in decl.variants.iter_mut() {
@@ -372,7 +385,11 @@ impl TypeSubstMap {
                 }
                 if need_to_create_new {
                     let new_decl_ref = decl_engine.insert(decl);
-                    Some(type_engine.insert(engines, TypeInfo::Enum(new_decl_ref)))
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::Enum(new_decl_ref.clone()),
+                        new_decl_ref.decl_span().source_id(),
+                    ))
                 } else {
                     None
                 }
@@ -380,42 +397,54 @@ impl TypeSubstMap {
             TypeInfo::Array(mut elem_ty, count) => {
                 self.find_match(elem_ty.type_id, engines).map(|type_id| {
                     elem_ty.type_id = type_id;
-                    type_engine.insert(engines, TypeInfo::Array(elem_ty, count))
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::Array(elem_ty.clone(), count.clone()),
+                        elem_ty.span.source_id(),
+                    )
                 })
             }
             TypeInfo::Tuple(fields) => {
                 let mut need_to_create_new = false;
+                let mut source_id = None;
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
                         if let Some(type_id) = self.find_match(field.type_id, engines) {
                             need_to_create_new = true;
+                            source_id = field.span.source_id().cloned();
                             field.type_id = type_id;
                         }
-                        field
+                        field.clone()
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(engines, TypeInfo::Tuple(fields)))
+                    Some(type_engine.insert(engines, TypeInfo::Tuple(fields), source_id.as_ref()))
                 } else {
                     None
                 }
             }
             TypeInfo::Storage { fields } => {
                 let mut need_to_create_new = false;
+                let mut source_id = None;
                 let fields = fields
                     .into_iter()
                     .map(|mut field| {
                         if let Some(type_id) = self.find_match(field.type_argument.type_id, engines)
                         {
                             need_to_create_new = true;
+                            source_id = field.span.source_id().cloned();
                             field.type_argument.type_id = type_id;
                         }
-                        field
+                        field.clone()
                     })
                     .collect::<Vec<_>>();
                 if need_to_create_new {
-                    Some(type_engine.insert(engines, TypeInfo::Storage { fields }))
+                    Some(type_engine.insert(
+                        engines,
+                        TypeInfo::Storage { fields },
+                        source_id.as_ref(),
+                    ))
                 } else {
                     None
                 }
@@ -423,18 +452,29 @@ impl TypeSubstMap {
             TypeInfo::Alias { name, mut ty } => {
                 self.find_match(ty.type_id, engines).map(|type_id| {
                     ty.type_id = type_id;
-                    type_engine.insert(engines, TypeInfo::Alias { name, ty })
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::Alias {
+                            name: name.clone(),
+                            ty: ty.clone(),
+                        },
+                        ty.span.source_id(),
+                    )
                 })
             }
             TypeInfo::Ptr(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
                 ty.type_id = type_id;
-                type_engine.insert(engines, TypeInfo::Ptr(ty))
+                type_engine.insert(engines, TypeInfo::Ptr(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::Slice(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
                 ty.type_id = type_id;
-                type_engine.insert(engines, TypeInfo::Slice(ty))
+                type_engine.insert(engines, TypeInfo::Slice(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
+            TypeInfo::Ref(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+                ty.type_id = type_id;
+                type_engine.insert(engines, TypeInfo::Ref(ty.clone()), ty.span.source_id())
+            }),
             TypeInfo::Unknown
             | TypeInfo::StringArray(..)
             | TypeInfo::StringSlice

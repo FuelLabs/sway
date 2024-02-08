@@ -1,7 +1,7 @@
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
-use forc_util::{find_nested_manifest_dir, find_parent_manifest_dir, validate_name};
+use forc_util::validate_name;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{
@@ -9,9 +9,14 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
+use sway_core::{
+    fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget, OptLevel,
+};
 use sway_error::handler::Handler;
-use sway_utils::constants;
+use sway_utils::{
+    constants, find_nested_manifest_dir, find_parent_manifest_dir,
+    find_parent_manifest_dir_with_check,
+};
 
 /// The name of a workspace member package.
 pub type MemberName = String;
@@ -230,6 +235,15 @@ pub struct BuildProfile {
     #[serde(default)]
     pub error_on_warnings: bool,
     pub reverse_results: bool,
+    pub optimization_level: OptLevel,
+    #[serde(default)]
+    pub experimental: ExperimentalFlags,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct ExperimentalFlags {
+    pub new_encoding: bool,
 }
 
 impl DependencyDetails {
@@ -327,7 +341,7 @@ impl PackageManifestFile {
     /// file.
     pub fn from_dir<P: AsRef<Path>>(manifest_dir: P) -> Result<Self> {
         let manifest_dir = manifest_dir.as_ref();
-        let dir = forc_util::find_parent_manifest_dir(manifest_dir)
+        let dir = find_parent_manifest_dir(manifest_dir)
             .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
@@ -612,7 +626,7 @@ impl PackageManifest {
     /// Note: If only `core` is specified, we are unable to implicitly add `std` as we cannot
     /// guarantee that the user's `core` is compatible with the implicit `std`.
     fn implicitly_include_std_if_missing(&mut self) {
-        use crate::{CORE, STD};
+        use sway_types::constants::{CORE, STD};
         // Don't include `std` if:
         // - this *is* `core` or `std`.
         // - either `core` or `std` packages are already specified.
@@ -715,6 +729,10 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            optimization_level: OptLevel::Opt0,
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
         }
     }
 
@@ -733,6 +751,10 @@ impl BuildProfile {
             json_abi_with_callpaths: false,
             error_on_warnings: false,
             reverse_results: false,
+            optimization_level: OptLevel::Opt1,
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
         }
     }
 }
@@ -751,7 +773,19 @@ impl Default for BuildProfile {
 }
 
 /// The definition for the implicit `std` dependency.
+///
+/// This can be configured using environment variables:
+/// - use `FORC_IMPLICIT_STD_PATH` for the path for the std-lib;
+/// - use `FORC_IMPLICIT_STD_GIT`, `FORC_IMPLICIT_STD_GIT_TAG` and/or `FORC_IMPLICIT_STD_GIT_BRANCH` to configure
+/// the git repo of the std-lib.
 fn implicit_std_dep() -> Dependency {
+    if let Ok(path) = std::env::var("FORC_IMPLICIT_STD_PATH") {
+        return Dependency::Detailed(DependencyDetails {
+            path: Some(path),
+            ..Default::default()
+        });
+    }
+
     // Here, we use the `forc-pkg` crate version formatted with the `v` prefix (e.g. "v1.2.3"),
     // or the revision commit hash (e.g. "abcdefg").
     //
@@ -760,24 +794,27 @@ fn implicit_std_dep() -> Dependency {
     //
     // This is important to ensure that the version of `sway-core` that is baked into `forc-pkg` is
     // compatible with the version of the `std` lib.
-    const VERSION: &str = env!("CARGO_PKG_VERSION");
+    let tag = std::env::var("FORC_IMPLICIT_STD_GIT_TAG")
+        .ok()
+        .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION")));
     const SWAY_GIT_REPO_URL: &str = "https://github.com/fuellabs/sway";
 
-    fn rev_from_build_metadata(build_metadata: &str) -> Option<String> {
-        // Nightlies are in the format v<version>+nightly.<date>.<hash>
-        build_metadata.split('.').last().map(|r| r.to_string())
-    }
-
-    let sway_git_tag: String = "v".to_string() + VERSION;
+    // only use tag/rev if the branch is None
+    let branch = std::env::var("FORC_IMPLICIT_STD_GIT_BRANCH").ok();
+    let tag = branch.as_ref().map_or_else(|| Some(tag), |_| None);
 
     let mut det = DependencyDetails {
-        git: Some(SWAY_GIT_REPO_URL.to_string()),
-        tag: Some(sway_git_tag),
+        git: std::env::var("FORC_IMPLICIT_STD_GIT")
+            .ok()
+            .or_else(|| Some(SWAY_GIT_REPO_URL.to_string())),
+        tag,
+        branch,
         ..Default::default()
     };
 
-    if let Some((_tag, build_metadata)) = VERSION.split_once('+') {
-        let rev = rev_from_build_metadata(build_metadata);
+    if let Some((_, build_metadata)) = det.tag.as_ref().and_then(|tag| tag.split_once('+')) {
+        // Nightlies are in the format v<version>+nightly.<date>.<hash>
+        let rev = build_metadata.split('.').last().map(|r| r.to_string());
 
         // If some revision is available and parsed from the 'nightly' build metadata,
         // we always prefer the revision over the tag.
@@ -841,25 +878,24 @@ impl WorkspaceManifestFile {
     /// file.
     pub fn from_dir<T: AsRef<Path>>(manifest_dir: T) -> Result<Self> {
         let manifest_dir = manifest_dir.as_ref();
-        let dir =
-            forc_util::find_parent_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
-                // Check if the found manifest file is a workspace manifest file or a standalone
-                // package manifest file.
-                let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
-                // We should not continue to search if the given manifest is a workspace manifest with
-                // some issues.
-                //
-                // If the error is missing field `workspace` (which happens when trying to read a
-                // package manifest as a workspace manifest), look into the parent directories for a
-                // legitimate workspace manifest. If the error returned is something else this is a
-                // workspace manifest with errors, classify this as a workspace manifest but with
-                // errors so that the erros will be displayed to the user.
-                Self::from_file(possible_path)
-                    .err()
-                    .map(|e| !e.to_string().contains("missing field `workspace`"))
-                    .unwrap_or_else(|| true)
-            })
-            .ok_or_else(|| manifest_file_missing(manifest_dir))?;
+        let dir = find_parent_manifest_dir_with_check(manifest_dir, |possible_manifest_dir| {
+            // Check if the found manifest file is a workspace manifest file or a standalone
+            // package manifest file.
+            let possible_path = possible_manifest_dir.join(constants::MANIFEST_FILE_NAME);
+            // We should not continue to search if the given manifest is a workspace manifest with
+            // some issues.
+            //
+            // If the error is missing field `workspace` (which happens when trying to read a
+            // package manifest as a workspace manifest), look into the parent directories for a
+            // legitimate workspace manifest. If the error returned is something else this is a
+            // workspace manifest with errors, classify this as a workspace manifest but with
+            // errors so that the erros will be displayed to the user.
+            Self::from_file(possible_path)
+                .err()
+                .map(|e| !e.to_string().contains("missing field `workspace`"))
+                .unwrap_or_else(|| true)
+        })
+        .ok_or_else(|| manifest_file_missing(manifest_dir))?;
         let path = dir.join(constants::MANIFEST_FILE_NAME);
         Self::from_file(path)
     }
@@ -976,12 +1012,15 @@ impl WorkspaceManifest {
         // Check for duplicate pkg name entries in member manifests of this workspace.
         let duplciate_pkg_lines = pkg_name_to_paths
             .iter()
-            .filter(|(_, paths)| paths.len() > 1)
-            .map(|(pkg_name, _)| {
-                let duplicate_paths = pkg_name_to_paths
-                    .get(pkg_name)
-                    .expect("missing duplicate paths");
-                format!("{pkg_name}: {duplicate_paths:#?}")
+            .filter_map(|(pkg_name, paths)| {
+                if paths.len() > 1 {
+                    let duplicate_paths = pkg_name_to_paths
+                        .get(pkg_name)
+                        .expect("missing duplicate paths");
+                    Some(format!("{pkg_name}: {duplicate_paths:#?}"))
+                } else {
+                    None
+                }
             })
             .collect::<Vec<_>>();
 
@@ -1009,8 +1048,11 @@ impl std::ops::Deref for WorkspaceManifestFile {
 pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     walkdir::WalkDir::new(dir)
         .into_iter()
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        .filter_map(|entry| {
+            entry
+                .ok()
+                .filter(|entry| entry.path().ends_with(constants::MANIFEST_FILE_NAME))
+        })
         .find_map(|entry| {
             let path = entry.path();
             let manifest = PackageManifest::from_file(path).ok()?;

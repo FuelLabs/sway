@@ -1,0 +1,4 @@
+category = "run"
+expected_result = { action = "return", value = 0 }
+
+expected_warnings = 1

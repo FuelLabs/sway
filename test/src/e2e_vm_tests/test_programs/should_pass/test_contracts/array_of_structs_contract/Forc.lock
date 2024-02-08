@@ -1,8 +1,8 @@
 [[package]]
-name = 'array_of_structs_abi'
-source = 'path+from-root-E723F3A4C3992EF1'
+name = "array_of_structs_abi"
+source = "path+from-root-1DC31120923A1AC6"
 
 [[package]]
-name = 'basic_storage'
-source = 'member'
-dependencies = ['array_of_structs_abi']
+name = "array_of_structs_contract"
+source = "member"
+dependencies = ["array_of_structs_abi"]

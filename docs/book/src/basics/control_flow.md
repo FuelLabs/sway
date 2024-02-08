@@ -37,10 +37,10 @@ Note that all branches of the `if` expression must return a value of the same ty
 
 <!-- This section should explain `match` expressions in Sway -->
 <!-- match:example:start -->
-Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` statement, a `match` expression asserts **at compile** time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your `match` expression is non-exhaustive.
+Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` expression, a `match` expression asserts **at compile time** that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your `match` expression is non-exhaustive.
 <!-- match:example:end -->
 
-The basic syntax of a `match` statement is as follows:
+The basic syntax of a `match` expression is as follows:
 
 ```sway
 let result = match expression {
@@ -52,10 +52,10 @@ let result = match expression {
 }
 ```
 
-Some examples of how you can use a match statement:
+Some examples of how you can use a `match` expression:
 
 ```sway
-{{#include ../../../../examples/match_statements/src/main.sw}}
+{{#include ../../../../examples/match_expressions/src/main.sw}}
 ```
 
 ## Loops

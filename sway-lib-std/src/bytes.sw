@@ -5,10 +5,10 @@ use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
 use ::assert::assert;
 use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
-use ::convert::From;
+use ::convert::{From, Into, *};
 
 struct RawBytes {
-    ptr: raw_ptr,
+    pub ptr: raw_ptr,
     cap: u64,
 }
 
@@ -53,9 +53,9 @@ impl RawBytes {
 /// A type used to represent raw bytes.
 pub struct Bytes {
     /// A barebones struct for the bytes.
-    buf: RawBytes,
+    pub buf: RawBytes,
     /// The number of bytes being stored.
-    len: u64,
+    pub len: u64,
 }
 
 impl Bytes {
@@ -176,10 +176,10 @@ impl Bytes {
     ///
     /// fn foo() {
     ///     let bytes = Bytes::new();
-    /// 
+    ///
     ///     let res = bytes.pop();
     ///     assert(res.is_none());
-    /// 
+    ///
     ///     bytes.push(5);
     ///     let res = bytes.pop();
     ///     assert(res.unwrap() == 5);
@@ -259,11 +259,11 @@ impl Bytes {
     ///     bytes.push(a);
     ///     bytes.push(b);
     ///     bytes.push(c);
-    /// 
+    ///
     ///     let d = 11u8;
-    /// 
+    ///
     ///     bytes.set(1, d);
-    /// 
+    ///
     ///     assert(bytes.len() == 3);
     ///     assert(bytes.get(0).unwrap() == a);
     ///     assert(bytes.get(1).unwrap() == d);
@@ -305,7 +305,7 @@ impl Bytes {
     ///     bytes.push(b);
     ///     bytes.push(c);
     ///     bytes.insert(1, d);
-    /// 
+    ///
     ///     assert(bytes.get(0).unwrap() == a);
     ///     assert(bytes.get(1).unwrap() == d);
     ///     assert(bytes.get(2).unwrap() == b);
@@ -420,9 +420,9 @@ impl Bytes {
     ///     bytes.push(a);
     ///     bytes.push(b);
     ///     bytes.push(c);
-    /// 
+    ///
     ///     bytes.swap(0, 1);
-    /// 
+    ///
     ///     assert(bytes.get(0).unwrap() == b);
     ///     assert(bytes.get(1).unwrap() == a);
     ///     assert(bytes.get(2).unwrap() == c);
@@ -539,7 +539,7 @@ impl Bytes {
     }
 }
 
-// Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
+// Need to use separate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 impl Bytes {
     /// Divides one Bytes into two at an index.
     ///
@@ -582,19 +582,27 @@ impl Bytes {
         let left_len = mid;
         let right_len = self.len - mid;
 
-        let mut left_bytes = Self { buf: RawBytes::with_capacity(left_len), len: left_len };
-        let mut right_bytes = Self { buf: RawBytes::with_capacity(right_len), len: right_len };
+        let mut left_bytes = Self {
+            buf: RawBytes::with_capacity(left_len),
+            len: left_len,
+        };
+        let mut right_bytes = Self {
+            buf: RawBytes::with_capacity(right_len),
+            len: right_len,
+        };
 
         if mid > 0 {
             self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
         };
         if mid != self.len {
-            self.buf.ptr().add_uint_offset(mid).copy_bytes_to(right_bytes.buf.ptr(), right_len);
+            self.buf
+                .ptr()
+                .add_uint_offset(mid)
+                .copy_bytes_to(right_bytes.buf.ptr(), right_len);
         };
 
         left_bytes.len = left_len;
         right_bytes.len = right_len;
-
         (left_bytes, right_bytes)
     }
 
@@ -616,13 +624,13 @@ impl Bytes {
     ///     bytes.push(7u8);
     ///     bytes.push(9u8);
     ///     assert(bytes.len() == 3);
-    /// 
+    ///
     ///     let mut bytes2 = Bytes::new();
     ///     bytes2.push(5u8);
     ///     bytes2.push(7u8);
     ///     bytes2.push(9u8);
     ///     assert(bytes2.len() == 3);
-    /// 
+    ///
     ///     let first_length = bytes.len();
     ///     let second_length = bytes2.len();
     ///     let first_cap = bytes.capacity();
@@ -653,7 +661,9 @@ impl Bytes {
         let mut i = 0;
         while i < other.len {
             let new_ptr = self.buf.ptr().add_uint_offset(other_start);
-            new_ptr.add_uint_offset(i).write_byte(other.buf.ptr.add_uint_offset(i).read_byte());
+            new_ptr
+                .add_uint_offset(i)
+                .write_byte(other.buf.ptr.add_uint_offset(i).read_byte());
             i += 1;
         }
 
@@ -682,7 +692,9 @@ impl core::ops::Eq for Bytes {
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
+        asm(ptr: (self.buf.ptr(), self.len)) {
+            ptr: raw_slice
+        }
     }
 }
 
@@ -697,15 +709,17 @@ impl From<b256> for Bytes {
 
         bytes
     }
+}
 
+impl From<Bytes> for b256 {
     // NOTE: this cas be lossy! Added here as the From trait currently requires it,
     // but the conversion from `Bytes` ->`b256` should be implemented as
     // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
     // https://github.com/FuelLabs/sway/pull/3881
-    fn into(self) -> b256 {
+    fn from(bytes: Bytes) -> b256 {
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
-        self.buf.ptr().copy_to::<b256>(ptr, 1);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
 
         value
     }
@@ -727,7 +741,7 @@ impl From<raw_slice> for Bytes {
     /// vec.push(a);
     /// vec.push(b);
     /// vec.push(c);
-    /// 
+    ///
     /// let vec_as_raw_slice = vec.as_raw_slice();
     /// let bytes = Bytes::from(vec_as_raw_slice);
     ///
@@ -746,7 +760,9 @@ impl From<raw_slice> for Bytes {
             len: number_of_bytes,
         }
     }
+}
 
+impl From<Bytes> for raw_slice {
     /// Creates a `raw_slice` from a `Bytes`.
     ///
     /// ### Examples
@@ -768,8 +784,10 @@ impl From<raw_slice> for Bytes {
     ///
     /// assert(slice.number_of_bytes() == 3);
     /// ```
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
+    fn from(bytes: Bytes) -> raw_slice {
+        asm(ptr: (bytes.buf.ptr(), bytes.len)) {
+            ptr: raw_slice
+        }
     }
 }
 
@@ -806,7 +824,9 @@ impl From<Vec<u8>> for Bytes {
         };
         bytes
     }
+}
 
+impl From<Bytes> for Vec<u8> {
     /// Creates a `Vec<u8>` from a `Bytes`.
     ///
     /// ### Examples
@@ -831,14 +851,27 @@ impl From<Vec<u8>> for Bytes {
     /// assert(vec.get(1).unwrap() == b);
     /// assert(vec.get(2).unwrap() == c);
     /// ```
-    fn into(self) -> Vec<u8> {
-        let mut vec = Vec::with_capacity(self.len);
+    fn from(bytes: Bytes) -> Vec<u8> {
+        let mut vec = Vec::with_capacity(bytes.len);
         let mut i = 0;
-        while i < self.len {
-            vec.push(self.get(i).unwrap());
+        while i < bytes.len {
+            vec.push(bytes.get(i).unwrap());
             i += 1;
         };
         vec
+    }
+}
+
+impl AbiEncode for Bytes {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(self.len);
+
+        let mut i = 0;
+        while i < self.len {
+            let item = self.get(i).unwrap();
+            item.abi_encode(buffer);
+            i += 1;
+        }
     }
 }
 
@@ -1194,7 +1227,6 @@ fn test_append_to_empty_bytes() {
 
     assert(bytes2.len() == 0);
     assert(bytes2.capacity() == 0);
-
 }
 
 #[test()]
@@ -1225,7 +1257,9 @@ fn test_eq() {
 #[test()]
 fn test_as_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) {
+        ptr: raw_slice
+    };
     let mut bytes = Bytes::from(slice_1);
     let slice_2 = bytes.as_raw_slice();
     assert(slice_1.ptr() == slice_2.ptr());
@@ -1236,7 +1270,9 @@ fn test_as_raw_slice() {
 #[test()]
 fn test_from_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) {
+        ptr: raw_slice
+    };
     let mut bytes = Bytes::from(slice_1);
     let slice_2 = bytes.as_raw_slice();
     assert(slice_1.ptr() == slice_2.ptr());

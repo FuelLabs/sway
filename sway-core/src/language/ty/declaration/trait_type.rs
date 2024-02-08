@@ -1,4 +1,7 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -11,6 +14,12 @@ pub struct TyTraitType {
     pub ty: Option<TypeArgument>,
     pub implementing_type: TypeId,
     pub span: Span,
+}
+
+impl DebugWithEngines for TyTraitType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
 
 impl Named for TyTraitType {

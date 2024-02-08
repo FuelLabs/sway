@@ -42,7 +42,7 @@ mod target_fuel;
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{PassGroup, PassManager};
+    use crate::{ExperimentalFlags, PassGroup, PassManager};
     use sway_types::SourceEngine;
 
     /// This function parses the IR text representation and run the specified optimizers passes.
@@ -81,6 +81,7 @@ pub mod tests {
             "
             ),
             &source_engine,
+            ExperimentalFlags::default(),
         )
         .unwrap();
 
