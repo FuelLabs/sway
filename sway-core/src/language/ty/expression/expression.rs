@@ -291,6 +291,9 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
+            ForLoop { desugared } => {
+                res.append(&mut desugared.collect_types_metadata(handler, ctx)?);
+            }
             ImplicitReturn(exp) | Return(exp) => {
                 res.append(&mut exp.collect_types_metadata(handler, ctx)?)
             }
@@ -393,6 +396,9 @@ impl DeterministicallyAborts for TyExpression {
             WhileLoop { condition, body } => {
                 condition.deterministically_aborts(decl_engine, check_call_body)
                     || body.deterministically_aborts(decl_engine, check_call_body)
+            }
+            ForLoop { desugared } => {
+                desugared.deterministically_aborts(decl_engine, check_call_body)
             }
             Break => false,
             Continue => false,

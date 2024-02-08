@@ -10,6 +10,7 @@ pub mod convert;
 pub mod intrinsics;
 pub mod alloc;
 pub mod registers;
+pub mod iterator;
 pub mod vec;
 pub mod bytes;
 pub mod primitive_conversions;

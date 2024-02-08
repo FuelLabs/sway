@@ -153,6 +153,9 @@ pub enum TyExpressionVariant {
         condition: Box<TyExpression>,
         body: TyCodeBlock,
     },
+    ForLoop {
+        desugared: Box<TyExpression>,
+    },
     Break,
     Continue,
     Reassignment(Box<TyReassignment>),
@@ -611,6 +614,9 @@ impl HashWithEngines for TyExpressionVariant {
                 condition.hash(state, engines);
                 body.hash(state, engines);
             }
+            Self::ForLoop { desugared } => {
+                desugared.hash(state, engines);
+            }
             Self::Break | Self::Continue | Self::FunctionParameter => {}
             Self::Reassignment(exp) => {
                 exp.hash(state, engines);
@@ -765,6 +771,9 @@ impl SubstTypes for TyExpressionVariant {
                 condition.subst(type_mapping, engines);
                 body.subst(type_mapping, engines);
             }
+            ForLoop { ref mut desugared } => {
+                desugared.subst(type_mapping, engines);
+            }
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
@@ -903,6 +912,9 @@ impl ReplaceDecls for TyExpressionVariant {
                     condition.replace_decls(decl_mapping, handler, ctx).ok();
                     body.replace_decls(decl_mapping, handler, ctx)?;
                 }
+                ForLoop { ref mut desugared } => {
+                    desugared.replace_decls(decl_mapping, handler, ctx).ok();
+                }
                 Break => (),
                 Continue => (),
                 Reassignment(reassignment) => {
@@ -1017,6 +1029,9 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::WhileLoop { condition, body } => {
                 condition.type_check_analyze(handler, ctx)?;
                 body.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::ForLoop { desugared } => {
+                desugared.type_check_analyze(handler, ctx)?;
             }
             TyExpressionVariant::Break => {}
             TyExpressionVariant::Continue => {}
@@ -1143,6 +1158,9 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     condition.type_check_finalize(handler, ctx)?;
                     body.type_check_finalize(handler, ctx)?;
                 }
+                TyExpressionVariant::ForLoop { desugared } => {
+                    desugared.type_check_finalize(handler, ctx)?;
+                }
                 TyExpressionVariant::Break => {}
                 TyExpressionVariant::Continue => {}
                 TyExpressionVariant::Reassignment(node) => {
@@ -1262,6 +1280,9 @@ impl UpdateConstantExpression for TyExpressionVariant {
             } => {
                 condition.update_constant_expression(engines, implementing_type);
                 body.update_constant_expression(engines, implementing_type);
+            }
+            ForLoop { ref mut desugared } => {
+                desugared.update_constant_expression(engines, implementing_type);
             }
             Break => (),
             Continue => (),
@@ -1413,6 +1434,7 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::WhileLoop { condition, .. } => {
                 format!("while loop on {:?}", engines.help_out(&**condition))
             }
+            TyExpressionVariant::ForLoop { .. } => "for loop".to_string(),
             TyExpressionVariant::Break => "break".to_string(),
             TyExpressionVariant::Continue => "continue".to_string(),
             TyExpressionVariant::Reassignment(reassignment) => {

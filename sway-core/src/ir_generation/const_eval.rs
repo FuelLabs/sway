@@ -673,7 +673,8 @@ fn const_eval_typed_expr(
         | ty::TyExpressionVariant::UnsafeDowncast { .. }
         | ty::TyExpressionVariant::Break
         | ty::TyExpressionVariant::Continue
-        | ty::TyExpressionVariant::WhileLoop { .. } => {
+        | ty::TyExpressionVariant::WhileLoop { .. }
+        | ty::TyExpressionVariant::ForLoop { .. } => {
             return Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: expr.span.clone(),
             })

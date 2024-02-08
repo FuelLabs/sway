@@ -64,7 +64,8 @@ pub fn possibly_nonzero_u64_expression(
         | StructFieldAccess { .. }
         | TupleElemAccess { .. }
         | StorageAccess(_)
-        | WhileLoop { .. } => true,
+        | WhileLoop { .. }
+        | ForLoop { .. } => true,
         // The following expression variants are unreachable, because of the type system
         // but we still consider these as non-zero to be on the safe side
         LazyOperator { .. }
