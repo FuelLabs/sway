@@ -268,9 +268,7 @@ fn assert_stopped_next_event(event: Option<Event>) {
 
 fn assert_output_event_body(event: Option<Event>) -> OutputEventBody {
     match event.expect("received event") {
-        Event::Output(body) => {
-            body
-        }
+        Event::Output(body) => body,
         other => panic!("Expected Output event, got {:?}", other),
     }
 }
