@@ -76,21 +76,6 @@ impl ServerState {
                     }
                 }
 
-                // let line = source_map.iter().find_map(|(&line, &instructions)| {
-                //     // Divide by 4 to get the opcode offset rather than the program counter offset.
-                //     let instruction_offset = pc / 4;
-                //     if instructions
-                //         .into_iter()
-                //         .find(|instruction| instruction_offset == *instruction)
-                //         .is_some()
-                //     {
-                //         return Some(line);
-                //     }
-                //     None
-                // });
-                // if let Some(line) = line {
-                //     return Some((source_path, line));
-                // }
                 None
             })
             .ok_or(AdapterError::MissingSourceMap { pc })
