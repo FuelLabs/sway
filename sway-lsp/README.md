@@ -22,6 +22,10 @@ _Coming Soon_
 - find all references, workspace symbol search
 - ... and many more
 
+
+
+
+
 ## Quick start
 
 1. Install the [Fuel toolchain](https://fuellabs.github.io/fuelup/master/installation/index.html).
