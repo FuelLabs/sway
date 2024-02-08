@@ -1,7 +1,7 @@
 name: Benchmark LSP
 
 on:
-  pull_request:
+  push:
     # paths:
     #   - forc-plugins/forc-lsp/**
     #   - sway-lsp/**
