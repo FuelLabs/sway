@@ -179,7 +179,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub namespace: namespace::Module,
+    pub root_module: namespace::Module,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -1932,7 +1932,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        namespace: namespace.root_module().clone(),
+        root_module: namespace.root_module().clone(),
         warnings,
         metrics,
     };
@@ -2430,9 +2430,9 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            let mut namespace = compiled.namespace;
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            lib_namespace_map.insert(node, namespace);
+            let mut root_module = compiled.root_module;
+            root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
+            lib_namespace_map.insert(node, root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
