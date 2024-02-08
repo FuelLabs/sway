@@ -3,7 +3,7 @@ use crate::{
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use sway_error::error::CompileError;
 use sway_types::Spanned;
 
@@ -81,7 +81,7 @@ pub(crate) fn instantiate_function_application(
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
-            contract_call_params: HashMap::new(),
+            contract_call_params: IndexMap::new(),
             arguments: typed_arguments_with_names,
             fn_ref: new_decl_ref,
             selector: None,

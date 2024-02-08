@@ -1,9 +1,9 @@
 use std::{
-    collections::HashMap,
     fmt::{self, Write},
     hash::{Hash, Hasher},
 };
 
+use indexmap::IndexMap;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
@@ -23,7 +23,7 @@ pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
-        contract_call_params: HashMap<String, TyExpression>,
+        contract_call_params: IndexMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
         fn_ref: DeclRefFunction,
         selector: Option<ContractCallParams>,

@@ -29,10 +29,10 @@ use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
+use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
 use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -137,7 +137,7 @@ fn module_attrs_to_map(
     handler: &Handler,
     attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
-    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+    let mut attrs_map: IndexMap<_, Vec<Attribute>> = IndexMap::new();
     for attr_decl in attribute_list {
         let attrs = attr_decl.attribute.get().into_iter();
         for attr in attrs {
