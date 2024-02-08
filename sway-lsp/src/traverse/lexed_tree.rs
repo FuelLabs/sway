@@ -11,7 +11,7 @@ use sway_ast::{
     MatchBranchKind, ModuleKind, Pattern, PatternStructField, Statement, StatementLet,
     StorageField, TraitType, Ty, TypeField, UseTree,
 };
-use sway_core::language::lexed::LexedProgram;
+use sway_core::language::{lexed::LexedProgram, HasSubmodules};
 use sway_types::{Ident, Span, Spanned};
 
 pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
@@ -25,8 +25,7 @@ pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
 
     lexed_program
         .root
-        .submodules
-        .par_iter()
+        .submodules_recursive()
         .for_each(|(_, dep)| {
             insert_module_kind(ctx, &dep.module.tree.kind);
             dep.module
@@ -40,18 +39,27 @@ pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
 fn insert_module_kind(ctx: &ParseContext, kind: &ModuleKind) {
     match kind {
         ModuleKind::Script { script_token } => {
-            insert_keyword(ctx, script_token.span());
+            insert_program_type_keyword(ctx, script_token.span());
         }
         ModuleKind::Contract { contract_token } => {
-            insert_keyword(ctx, contract_token.span());
+            insert_program_type_keyword(ctx, contract_token.span());
         }
         ModuleKind::Predicate { predicate_token } => {
-            insert_keyword(ctx, predicate_token.span());
+            insert_program_type_keyword(ctx, predicate_token.span());
         }
         ModuleKind::Library { library_token, .. } => {
-            insert_keyword(ctx, library_token.span());
+            insert_program_type_keyword(ctx, library_token.span());
         }
     }
+}
+
+fn insert_program_type_keyword(ctx: &ParseContext, span: Span) {
+    let ident = Ident::new(span);
+    let token = Token::from_parsed(
+        AstToken::Keyword(ident.clone()),
+        SymbolKind::ProgramTypeKeyword,
+    );
+    ctx.tokens.insert(ctx.ident(&ident), token);
 }
 
 fn insert_keyword(ctx: &ParseContext, span: Span) {
@@ -199,12 +207,10 @@ impl Parse for Expr {
             Expr::TupleFieldProjection { target, .. } => {
                 target.parse(ctx);
             }
-            Expr::Ref { ref_token, expr } => {
-                insert_keyword(ctx, ref_token.span());
+            Expr::Ref { expr, .. } => {
                 expr.parse(ctx);
             }
-            Expr::Deref { deref_token, expr } => {
-                insert_keyword(ctx, deref_token.span());
+            Expr::Deref { expr, .. } => {
                 expr.parse(ctx);
             }
             Expr::Not { expr, .. } => {
@@ -479,6 +485,9 @@ impl Parse for UseTree {
 
 impl Parse for TypeField {
     fn parse(&self, ctx: &ParseContext) {
+        if let Some(visibility) = &self.visibility {
+            insert_keyword(ctx, visibility.span());
+        }
         self.ty.parse(ctx);
     }
 }

@@ -67,35 +67,6 @@ pub(crate) struct RealizedOp {
 }
 
 impl Op {
-    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
-    /// [VirtualRegister] `destination_address`
-    pub(crate) fn write_register_to_memory(
-        destination_address: VirtualRegister,
-        value_to_write: VirtualRegister,
-        offset: VirtualImmediate12,
-        span: Span,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
-            comment: String::new(),
-            owning_span: Some(span),
-        }
-    }
-    /// Write value in given [VirtualRegister] `value_to_write` to given memory address that is held within the
-    /// [VirtualRegister] `destination_address`, with the provided comment.
-    pub(crate) fn write_register_to_memory_comment(
-        destination_address: VirtualRegister,
-        value_to_write: VirtualRegister,
-        offset: VirtualImmediate12,
-        span: Span,
-        comment: impl Into<String>,
-    ) -> Self {
-        Op {
-            opcode: Either::Left(VirtualOp::SW(destination_address, value_to_write, offset)),
-            comment: comment.into(),
-            owning_span: Some(span),
-        }
-    }
     /// Moves the stack pointer by the given amount (i.e. allocates stack memory)
     pub(crate) fn unowned_stack_allocate_memory(
         size_to_allocate_in_bytes: VirtualImmediate24,
@@ -148,7 +119,7 @@ impl Op {
         comment: impl Into<String>,
     ) -> Self {
         Op {
-            opcode: Either::Left(VirtualOp::LWDataId(reg, data)),
+            opcode: Either::Left(VirtualOp::LoadDataId(reg, data)),
             comment: comment.into(),
             owning_span: None,
         }
@@ -580,6 +551,14 @@ impl Op {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::ECK1(r1, r2, r3)
             }
+            "ecr1" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ECR1(r1, r2, r3)
+            }
+            "ed19" => {
+                let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::ED19(r1, r2, r3)
+            }
             "k256" => {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::K256(r1, r2, r3)
@@ -638,6 +617,13 @@ impl Op {
         }
     }
 
+    pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
+        match &self.opcode {
+            Either::Left(virt_op) => virt_op.def_const_registers(),
+            Either::Right(org_op) => org_op.def_const_registers(),
+        }
+    }
+
     pub(crate) fn successors(
         &self,
         index: usize,
@@ -689,7 +675,7 @@ fn single_reg(
         });
     }
 
-    let reg = match args.get(0) {
+    let reg = match args.first() {
         Some(reg) => reg,
         _ => {
             return Err(
@@ -725,7 +711,7 @@ fn two_regs(
         });
     }
 
-    let (reg, reg2) = match (args.get(0), args.get(1)) {
+    let (reg, reg2) = match (args.first(), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             return Err(
@@ -769,7 +755,7 @@ fn four_regs(
         });
     }
 
-    let (reg, reg2, reg3, reg4) = match (args.get(0), args.get(1), args.get(2), args.get(3)) {
+    let (reg, reg2, reg3, reg4) = match (args.first(), args.get(1), args.get(2), args.get(3)) {
         (Some(reg), Some(reg2), Some(reg3), Some(reg4)) => (reg, reg2, reg3, reg4),
         _ => {
             return Err(
@@ -834,7 +820,7 @@ fn three_regs(
         });
     }
 
-    let (reg, reg2, reg3) = match (args.get(0), args.get(1), args.get(2)) {
+    let (reg, reg2, reg3) = match (args.first(), args.get(1), args.get(2)) {
         (Some(reg), Some(reg2), Some(reg3)) => (reg, reg2, reg3),
         _ => {
             return Err(
@@ -906,7 +892,7 @@ fn single_reg_imm_18(
             received: args.len(),
         });
     }
-    let reg = match args.get(0) {
+    let reg = match args.first() {
         Some(reg) => reg,
         _ => {
             return Err(
@@ -956,7 +942,7 @@ fn two_regs_imm_12(
             received: args.len(),
         });
     }
-    let (reg, reg2) = match (args.get(0), args.get(1)) {
+    let (reg, reg2) = match (args.first(), args.get(1)) {
         (Some(reg), Some(reg2)) => (reg, reg2),
         _ => {
             return Err(
@@ -1104,6 +1090,8 @@ impl fmt::Display for VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1 {a} {b} {c}"),
+            ECR1(a, b, c) => write!(fmtr, "ecr1 {a} {b} {c}"),
+            ED19(a, b, c) => write!(fmtr, "ed19 {a} {b} {c}"),
             K256(a, b, c) => write!(fmtr, "k256 {a} {b} {c}"),
             S256(a, b, c) => write!(fmtr, "s256 {a} {b} {c}"),
 
@@ -1118,7 +1106,7 @@ impl fmt::Display for VirtualOp {
             DataSectionRegisterLoadPlaceholder => {
                 write!(fmtr, "data section register load placeholder")
             }
-            LWDataId(a, b) => write!(fmtr, "lw {a} {b}"),
+            LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
     }
@@ -1244,6 +1232,10 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         })
         .into_iter()
         .collect()
+    }
+
+    pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
+        BTreeSet::new()
     }
 
     pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {

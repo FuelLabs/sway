@@ -1,7 +1,10 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{
+        ty::{self},
+        CallPath,
+    },
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::priv_prelude::*,
@@ -106,12 +109,19 @@ impl Spanned for TypeParameter {
 
 impl DebugWithEngines for TypeParameter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(
-            f,
-            "{}: {:?}",
-            self.name_ident,
-            engines.help_out(self.type_id)
-        )
+        write!(f, "{}", self.name_ident)?;
+        if !self.trait_constraints.is_empty() {
+            write!(
+                f,
+                ":{}",
+                self.trait_constraints
+                    .iter()
+                    .map(|c| format!("{:?}", engines.help_out(c)))
+                    .collect::<Vec<_>>()
+                    .join("+")
+            )?;
+        }
+        Ok(())
     }
 }
 
@@ -132,6 +142,7 @@ impl TypeParameter {
                 name: name.clone(),
                 trait_constraints: VecSet(vec![]),
             },
+            span.source_id(),
         );
         TypeParameter {
             type_id,
@@ -152,15 +163,21 @@ impl TypeParameter {
         let name_a = Ident::new_with_override("self".into(), self.name_ident.span());
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
+        let generic_shadowing_mode = ctx.generic_shadowing_mode();
         let _ = ctx.namespace.insert_symbol(
             handler,
             name_a,
             type_parameter_decl.clone(),
             const_shadowing_mode,
+            generic_shadowing_mode,
         );
-        let _ =
-            ctx.namespace
-                .insert_symbol(handler, name_b, type_parameter_decl, const_shadowing_mode);
+        let _ = ctx.namespace.insert_symbol(
+            handler,
+            name_b,
+            type_parameter_decl,
+            const_shadowing_mode,
+            generic_shadowing_mode,
+        );
     }
 
     /// Type check a list of [TypeParameter] and return a new list of
@@ -188,11 +205,59 @@ impl TypeParameter {
                 )
             }
 
+            // Type check trait constraints only after type checking all type parameters.
+            // This is required because a trait constraint may use other type parameters.
+            // Ex: `struct Struct2<A, B> where A : MyAdd<B>`
+            for type_param in new_type_params.iter() {
+                TypeParameter::type_check_trait_constraints(
+                    handler,
+                    ctx.by_ref(),
+                    type_param.clone(),
+                )?;
+            }
+
             Ok(new_type_params)
         })
     }
 
-    /// Type checks a [TypeParameter] (including its [TraitConstraint]s) and
+    // Expands a trait constraint to include all its supertraits.
+    // Another way to incorporate this info would be at the level of unification,
+    // we would check that two generic type parameters should unify when
+    // the left one is a supertrait of the right one (at least in the NonDynamicEquality mode)
+    fn expand_trait_constraints(
+        handler: &Handler,
+        ctx: &TypeCheckContext,
+        tc: &TraitConstraint,
+    ) -> Vec<TraitConstraint> {
+        match ctx
+            .namespace
+            .resolve_call_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
+            .ok()
+        {
+            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
+                let trait_decl = ctx.engines.de().get_trait(&decl_id);
+                let mut result = trait_decl
+                    .supertraits
+                    .iter()
+                    .flat_map(|supertrait| {
+                        TypeParameter::expand_trait_constraints(
+                            handler,
+                            ctx,
+                            &TraitConstraint {
+                                trait_name: supertrait.name.clone(),
+                                type_arguments: tc.type_arguments.clone(),
+                            },
+                        )
+                    })
+                    .collect::<Vec<TraitConstraint>>();
+                result.push(tc.clone());
+                result
+            }
+            _ => vec![tc.clone()],
+        }
+    }
+
+    /// Type checks a [TypeParameter] (excluding its [TraitConstraint]s) and
     /// inserts into into the current namespace.
     fn type_check(
         handler: &Handler,
@@ -211,46 +276,50 @@ impl TypeParameter {
             ..
         } = type_parameter;
 
-        // Expands a trait constraint to include all its supertraits.
-        // Another way to incorporate this info would be at the level of unification,
-        // we would check that two generic type parameters should unify when
-        // the left one is a supertrait of the right one (at least in the NonDynamicEquality mode)
-        fn expand_trait_constraints(
-            handler: &Handler,
-            ctx: &TypeCheckContext,
-            tc: &TraitConstraint,
-        ) -> Vec<TraitConstraint> {
-            match ctx
-                .namespace
-                .resolve_call_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
-                .ok()
-            {
-                Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
-                    let trait_decl = ctx.engines.de().get_trait(&decl_id);
-                    let mut result = trait_decl
-                        .supertraits
-                        .iter()
-                        .flat_map(|supertrait| {
-                            expand_trait_constraints(
-                                handler,
-                                ctx,
-                                &TraitConstraint {
-                                    trait_name: supertrait.name.clone(),
-                                    type_arguments: tc.type_arguments.clone(),
-                                },
-                            )
-                        })
-                        .collect::<Vec<TraitConstraint>>();
-                    result.push(tc.clone());
-                    result
-                }
-                _ => vec![tc.clone()],
-            }
-        }
-
-        let mut trait_constraints_with_supertraits: Vec<TraitConstraint> = trait_constraints
+        let trait_constraints_with_supertraits: Vec<TraitConstraint> = trait_constraints
             .iter()
-            .flat_map(|tc| expand_trait_constraints(handler, &ctx, tc))
+            .flat_map(|tc| TypeParameter::expand_trait_constraints(handler, &ctx, tc))
+            .collect();
+
+        // Create type id and type parameter before type checking trait constraints.
+        // This order is required because a trait constraint may depend on its own type parameter.
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::UnknownGeneric {
+                name: name_ident.clone(),
+                trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+            },
+            name_ident.span().source_id(),
+        );
+
+        let type_parameter = TypeParameter {
+            name_ident: name_ident.clone(),
+            type_id,
+            initial_type_id,
+            trait_constraints,
+            trait_constraints_span: trait_constraints_span.clone(),
+            is_from_parent,
+        };
+
+        // Insert the type parameter into the namespace
+        type_parameter.insert_into_namespace_self(handler, ctx.by_ref())?;
+
+        Ok(type_parameter)
+    }
+
+    /// Type checks a [TypeParameter] [TraitConstraint]s and
+    /// inserts them into into the current namespace.
+    fn type_check_trait_constraints(
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+        type_parameter: TypeParameter,
+    ) -> Result<(), ErrorEmitted> {
+        let type_engine = ctx.engines.te();
+
+        let mut trait_constraints_with_supertraits: Vec<TraitConstraint> = type_parameter
+            .trait_constraints
+            .iter()
+            .flat_map(|tc| TypeParameter::expand_trait_constraints(handler, &ctx, tc))
             .collect();
 
         // Type check the trait constraints.
@@ -260,29 +329,37 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
-        let type_id = type_engine.insert(
-            engines,
-            TypeInfo::UnknownGeneric {
-                name: name_ident.clone(),
-                trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+        // Trait constraints mutate so we replace the previous type id associated TypeInfo.
+        type_engine.replace(
+            type_parameter.type_id,
+            TypeSourceInfo {
+                type_info: TypeInfo::UnknownGeneric {
+                    name: type_parameter.name_ident.clone(),
+                    trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+                }
+                .into(),
+                source_id: type_parameter.name_ident.span().source_id().cloned(),
             },
         );
 
+        // Insert the trait constraints into the namespace.
+        type_parameter.insert_into_namespace_constraints(handler, ctx.by_ref())?;
+
         // When type parameter is from parent then it was already inserted.
         // Instead of inserting a type with same name we unify them.
-        if is_from_parent {
-            if let Some(sy) = ctx.namespace.symbols.get(&name_ident) {
+        if type_parameter.is_from_parent {
+            if let Some(sy) = ctx.namespace.symbols.get(&type_parameter.name_ident) {
                 match sy {
                     ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                         type_id: sy_type_id,
                         ..
                     }) => {
-                        ctx.engines().te().unify(
+                        ctx.engines().te().unify_with_generic(
                             handler,
                             ctx.engines(),
-                            type_id,
+                            type_parameter.type_id,
                             *sy_type_id,
-                            &trait_constraints_span,
+                            &type_parameter.trait_constraints_span,
                             "",
                             None,
                         );
@@ -290,25 +367,47 @@ impl TypeParameter {
                     _ => {
                         handler.emit_err(CompileError::Internal(
                             "Unexpected TyDeclaration for TypeParameter.",
-                            name_ident.span(),
+                            type_parameter.name_ident.span(),
                         ));
                     }
                 }
             }
         }
 
-        let type_parameter = TypeParameter {
-            name_ident,
-            type_id,
-            initial_type_id,
-            trait_constraints,
-            trait_constraints_span,
-            is_from_parent,
-        };
-        Ok(type_parameter)
+        Ok(())
     }
 
     pub fn insert_into_namespace(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.insert_into_namespace_constraints(handler, ctx.by_ref())?;
+
+        self.insert_into_namespace_self(handler, ctx.by_ref())?;
+
+        Ok(())
+    }
+
+    fn insert_into_namespace_constraints(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) -> Result<(), ErrorEmitted> {
+        // Insert the trait constraints into the namespace.
+        for trait_constraint in self.trait_constraints.iter() {
+            TraitConstraint::insert_into_namespace(
+                handler,
+                ctx.by_ref(),
+                self.type_id,
+                trait_constraint,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn insert_into_namespace_self(
         &self,
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -319,16 +418,6 @@ impl TypeParameter {
             type_id,
             ..
         } = self;
-
-        // Insert the trait constraints into the namespace.
-        for trait_constraint in self.trait_constraints.iter() {
-            TraitConstraint::insert_into_namespace(
-                handler,
-                ctx.by_ref(),
-                *type_id,
-                trait_constraint,
-            )?;
-        }
 
         if !is_from_parent {
             // Insert the type parameter into the namespace as a dummy type
@@ -346,10 +435,12 @@ impl TypeParameter {
     }
 
     /// Creates a [DeclMapping] from a list of [TypeParameter]s.
+    /// `function_name` and `access_span` are used only for error reporting.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         handler: &Handler,
         ctx: TypeCheckContext,
         type_parameters: &[TypeParameter],
+        function_name: &str,
         access_span: &Span,
     ) -> Result<DeclMapping, ErrorEmitted> {
         let mut interface_item_refs: InterfaceItemMap = BTreeMap::new();
@@ -394,6 +485,8 @@ impl TypeParameter {
                             *type_id,
                             trait_name,
                             trait_type_arguments,
+                            function_name,
+                            access_span.clone(),
                         ) {
                             Ok(res) => res,
                             Err(_) => continue,
@@ -420,6 +513,8 @@ fn handle_trait(
     type_id: TypeId,
     trait_name: &CallPath,
     type_arguments: &[TypeArgument],
+    function_name: &str,
+    access_span: Span,
 ) -> Result<(InterfaceItemMap, ItemMap, ItemMap), ErrorEmitted> {
     let engines = ctx.engines;
     let decl_engine = engines.de();
@@ -431,7 +526,8 @@ fn handle_trait(
     handler.scope(|handler| {
         match ctx
             .namespace
-            .resolve_call_path(handler, engines, trait_name, ctx.self_type())
+            // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
+            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -453,7 +549,15 @@ fn handle_trait(
                         supertrait_interface_item_refs,
                         supertrait_item_refs,
                         supertrait_impld_item_refs,
-                    ) = match handle_trait(handler, ctx, type_id, &supertrait.name, &[]) {
+                    ) = match handle_trait(
+                        handler,
+                        ctx,
+                        type_id,
+                        &supertrait.name,
+                        &[],
+                        function_name,
+                        access_span.clone(),
+                    ) {
                         Ok(res) => res,
                         Err(_) => continue,
                     };
@@ -463,9 +567,27 @@ fn handle_trait(
                 }
             }
             _ => {
-                handler.emit_err(CompileError::TraitNotFound {
-                    name: trait_name.to_string(),
-                    span: trait_name.span(),
+                let trait_candidates = decl_engine
+                    .get_traits_by_name(&trait_name.suffix)
+                    .iter()
+                    .map(|trait_decl| {
+                        // In the case of an internal library, always add :: to the candidate call path.
+                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace);
+                        if import_path == trait_decl.call_path {
+                            // If external library.
+                            import_path.to_string()
+                        } else {
+                            format!("::{import_path}")
+                        }
+                    })
+                    .collect();
+
+                handler.emit_err(CompileError::TraitNotImportedAtFunctionApplication {
+                    trait_name: trait_name.suffix.to_string(),
+                    function_name: function_name.to_string(),
+                    function_call_site_span: access_span.clone(),
+                    trait_constraint_span: trait_name.suffix.span(),
+                    trait_candidates,
                 });
             }
         }

@@ -1,10 +1,15 @@
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 
+use crate::error::StructFieldUsageContext; // TODO: Only temporary. Will be removed once struct field privacy becomes a hard error.
+use crate::error::StructFieldUsageContext::*;
+
+use crate::formatting::*;
+
 use core::fmt;
 
 use either::Either;
 
-use sway_types::{Ident, SourceId, Span, Spanned};
+use sway_types::{Ident, IdentUnique, SourceId, Span, Spanned};
 
 // TODO: since moving to using Idents instead of strings,
 // the warning_content will usually contain a duplicate of the span.
@@ -67,6 +72,9 @@ pub enum Warning {
     ShadowsOtherSymbol {
         name: Ident,
     },
+    UninitializedAsmRegShadowsVariable {
+        name: Ident,
+    },
     OverridingTraitImplementation,
     DeadDeclaration,
     DeadEnumDeclaration,
@@ -117,6 +125,36 @@ pub enum Warning {
     ModulePrivacyDisabled,
     UsingDeprecated {
         message: String,
+    },
+    // TODO: Remove all these warnings once private struct fields violations become a hard error.
+    //       https://github.com/FuelLabs/sway/issues/5520
+    MatchStructPatternMustIgnorePrivateFields {
+        private_fields: Vec<Ident>,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        all_fields_are_private: bool,
+        span: Span,
+    },
+    StructFieldIsPrivate {
+        field_name: IdentUnique,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        field_decl_span: Span,
+        struct_can_be_changed: bool,
+        usage_context: StructFieldUsageContext,
+    },
+    StructCannotBeInstantiated {
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        span: Span,
+        struct_decl_span: Span,
+        private_fields: Vec<Ident>,
+        constructors: Vec<String>,
+        /// True if the struct has only private fields.
+        all_fields_are_private: bool,
+        is_in_storage_declaration: bool,
+        struct_can_be_changed: bool,
     },
 }
 
@@ -202,6 +240,10 @@ impl fmt::Display for Warning {
                 f,
                 "This shadows another symbol in this scope with the same name \"{name}\"."
             ),
+            UninitializedAsmRegShadowsVariable { name } => write!(
+                f,
+                "This unitialized register is shadowing a variable, you probably meant to also initialize it like \"{name}: {name}\"."
+            ),
             OverridingTraitImplementation => write!(
                 f,
                 "This trait implementation overrides another one that was previously defined."
@@ -257,9 +299,24 @@ impl fmt::Display for Warning {
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
             UsingDeprecated { message } => write!(f, "{}", message),
+            MatchStructPatternMustIgnorePrivateFields { private_fields, .. } => write!(f,
+                "Struct pattern must ignore inaccessible private field{} {}.",
+                plural_s(private_fields.len()),
+                sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+            ),
+            StructFieldIsPrivate { field_name, struct_name, .. } => write!(f,
+                "Field \"{field_name}\" of the struct \"{struct_name}\" is private."
+            ),
+            StructCannotBeInstantiated { struct_name, ..} => write!(f,
+                "Struct \"{struct_name}\" cannot be instantiated here because it has private fields."
+            ),
         }
     }
 }
+
+#[allow(dead_code)]
+const FUTURE_HARD_ERROR_HELP: &str =
+    "In future versions of Sway this warning will become a hard error.";
 
 impl ToDiagnostic for CompileWarning {
     fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
@@ -341,6 +398,277 @@ impl ToDiagnostic for CompileWarning {
                     vec![
                         format!("Consider removing the unreachable arm."),
                     ]
+                }
+            },
+            MatchStructPatternMustIgnorePrivateFields { private_fields, struct_name, struct_decl_span, all_fields_are_private, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct pattern must ignore inaccessible private fields".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct pattern must ignore inaccessible private field{} {}.",
+                        plural_s(private_fields.len()),
+                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("To ignore the private field{}, end the struct pattern with `..`.",
+                            plural_s(private_fields.len()),
+                        )
+                    ),
+                    Hint::error(
+                        source_engine,
+                        span.clone(),
+                        FUTURE_HARD_ERROR_HELP.to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "all private fields".to_string()
+                            } else {
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                )
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            StructFieldIsPrivate { field_name, struct_name, field_decl_span, struct_can_be_changed, usage_context } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    field_name.span(),
+                    format!("Private field \"{field_name}\" {}is inaccessible in this module.",
+                        match usage_context {
+                            StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => "".to_string(),
+                            StorageAccess | StructFieldAccess => format!("of the struct \"{struct_name}\" "),
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        field_name.span(),
+                        format!("Private fields can be {} only within the module in which their struct is declared.",
+                            match usage_context {
+                                StructInstantiation { .. } | StorageDeclaration { .. } => "initialized",
+                                StorageAccess | StructFieldAccess => "accessed",
+                                PatternMatching { .. } => "matched",
+                            }
+                        )
+                    ),
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        Hint::help(
+                            source_engine,
+                            field_name.span(),
+                            "Otherwise, they must be ignored by ending the struct pattern with `..`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::error(
+                        source_engine,
+                        field_name.span(),
+                        FUTURE_HARD_ERROR_HELP.to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        field_decl_span.clone(),
+                        format!("Field \"{field_name}\" {}is declared here as private.",
+                            match usage_context {
+                                StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => format!("of the struct \"{struct_name}\" "),
+                                StorageAccess | StructFieldAccess => "".to_string(),
+                            }
+                        )
+                    ),
+                ],
+                help: vec![
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        format!("Consider removing the field \"{field_name}\" from the struct pattern, and ending the pattern with `..`.")
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                    if *struct_can_be_changed {
+                        match usage_context {
+                            StorageAccess | StructFieldAccess | PatternMatching { .. } => {
+                                format!("{} declaring the field \"{field_name}\" as public in \"{struct_name}\": `pub {field_name}: ...,`.",
+                                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                                        "Alternatively, consider"
+                                    } else {
+                                        "Consider"
+                                    }
+                                )
+                            },
+                            // For all other usages, detailed instructions are already given in specific messages.
+                            _ => Diagnostic::help_none(),
+                        }
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                ],
+            },
+            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, constructors, all_fields_are_private, is_in_storage_declaration, struct_can_be_changed } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to inaccessible private fields".to_string())),
+                issue: Issue::warning(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{struct_name}\" cannot be {}instantiated in this {}, due to {}inaccessible private field{}.",
+                        if *is_in_storage_declaration { "" } else { "directly " },
+                        if *is_in_storage_declaration { "storage declaration" } else { "module" },
+                        singular_plural(private_fields.len(), "an ", ""),
+                        plural_s(private_fields.len())
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("Inaccessible field{} {} {}.",
+                            plural_s(private_fields.len()),
+                            is_are(private_fields.len()),
+                            sequence_to_str(private_fields, Enclosing::DoubleQuote, 5)
+                        )
+                    ),
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        if *is_in_storage_declaration {
+                            "Structs with private fields can be instantiated in storage declarations only if they are declared in the same module as the storage.".to_string()
+                        } else {
+                            "Structs with private fields can be instantiated only within the module in which they are declared.".to_string()
+                        }
+                    ),
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can still be initialized in storage declarations if they have public constructors that evaluate to a constant.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can always be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if !*is_in_storage_declaration && !constructors.is_empty() {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{struct_name}\" can be instantiated via public constructors suggested below.")
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::error(
+                        source_engine,
+                        span.clone(),
+                        FUTURE_HARD_ERROR_HELP.to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "all private fields".to_string()
+                            } else {
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                )
+                            }
+                        )
+                    ),
+                ],
+                help: {
+                    let mut help = vec![];
+
+                    if *is_in_storage_declaration {
+                        help.push(format!("Consider initializing \"{struct_name}\" by finding an available constructor that evaluates to a constant{}.",
+                            if *struct_can_be_changed {
+                                ", or implement a new one"
+                            } else {
+                                ""
+                            }
+                        ));
+
+                        if !constructors.is_empty() {
+                            help.push("Check these already available constructors. They might evaluate to a constant:".to_string());
+                            // We always expect a very few candidates here. So let's list all of them by using `usize::MAX`.
+                            for constructor in sequence_to_list(constructors, Indent::Single, usize::MAX) {
+                                help.push(constructor);
+                            }
+                        };
+
+                        help.push(Diagnostic::help_empty_line());
+
+                        help.push(format!("Or you can always store instances of \"{struct_name}\" in the contract storage, by using the `std::storage::storage_api`:"));
+                        help.push(format!("{}use std::storage::storage_api::{{read, write}};", Indent::Single));
+                        help.push(format!("{}write(STORAGE_KEY, 0, my_{});", Indent::Single, to_snake_case(struct_name.as_str())));
+                        help.push(format!("{}let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", Indent::Single, to_snake_case(struct_name.as_str())));
+                    }
+                    else if !constructors.is_empty() {
+                        help.push(format!("Consider instantiating \"{struct_name}\" by using one of the available constructors{}:",
+                            if *struct_can_be_changed {
+                                ", or implement a new one"
+                            } else {
+                                ""
+                            }
+                        ));
+                        for constructor in sequence_to_list(constructors, Indent::Single, 5) {
+                            help.push(constructor);
+                        }
+                    }
+
+                    if *struct_can_be_changed {
+                        if *is_in_storage_declaration || !constructors.is_empty() {
+                            help.push(Diagnostic::help_empty_line());
+                        }
+
+                        if !*is_in_storage_declaration && constructors.is_empty() {
+                            help.push(format!("Consider implementing a public constructor for \"{struct_name}\"."));
+                        };
+
+                        help.push(
+                            // Alternatively, consider declaring the field "f" as public in "Struct": `pub f: ...,`.
+                            //  or
+                            // Alternatively, consider declaring the fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
+                            //  or
+                            // Alternatively, consider declaring all fields as public in "Struct": `pub <field>: ...,`.
+                            format!("Alternatively, consider declaring {} as public in \"{struct_name}\": `pub {}: ...,`.",
+                                if *all_fields_are_private {
+                                    "all fields".to_string()
+                                } else {
+                                    format!("{} {}",
+                                        singular_plural(private_fields.len(), "the field", "the fields"),
+                                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                    )
+                                },
+                                if *all_fields_are_private {
+                                    "<field>".to_string()
+                                } else {
+                                    match &private_fields[..] {
+                                        [field] => format!("{field}"),
+                                        _ => "<field>".to_string(),
+                                    }
+                                },
+                            )
+                        )
+                    };
+
+                    help
                 }
             },
            _ => Diagnostic {

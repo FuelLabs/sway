@@ -1,6 +1,7 @@
 pub mod abi_decl;
 pub mod common;
 pub mod constant_decl;
+pub mod diagnostic;
 pub mod enum_decl;
 pub mod enum_variant;
 pub mod function_decl;
@@ -17,16 +18,18 @@ use crate::core::{
 pub use crate::error::DocumentError;
 use lsp_types::{
     CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
-    CodeActionResponse, Position, Range, TextEdit, Url, WorkspaceEdit,
+    CodeActionResponse, Diagnostic, Position, Range, TextEdit, Url, WorkspaceEdit,
 };
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
-use sway_core::{language::ty, Engines};
+use sway_core::{language::ty, Engines, Namespace};
 use sway_types::Spanned;
 
 pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
 pub(crate) const CODE_ACTION_NEW_TITLE: &str = "Generate `new`";
 pub(crate) const CODE_ACTION_DOC_TITLE: &str = "Generate a documentation template";
+pub(crate) const CODE_ACTION_IMPORT_TITLE: &str = "Import";
+pub(crate) const CODE_ACTION_QUALIFY_TITLE: &str = "Qualify as";
 
 #[derive(Clone)]
 pub(crate) struct CodeActionContext<'a> {
@@ -34,6 +37,9 @@ pub(crate) struct CodeActionContext<'a> {
     tokens: &'a TokenMap,
     token: &'a Token,
     uri: &'a Url,
+    temp_uri: &'a Url,
+    diagnostics: &'a Vec<Diagnostic>,
+    namespace: &'a Option<Namespace>,
 }
 
 pub fn code_actions(
@@ -41,45 +47,61 @@ pub fn code_actions(
     range: &Range,
     uri: &Url,
     temp_uri: &Url,
+    diagnostics: &Vec<Diagnostic>,
 ) -> Option<CodeActionResponse> {
-    let engines = session.engines.read();
-    let (_, token) = session
+    let t = session
         .token_map()
         .token_at_position(temp_uri, range.start)?;
+    let token = t.value();
 
     let ctx = CodeActionContext {
-        engines: &engines,
+        engines: &session.engines.read(),
         tokens: session.token_map(),
-        token: &token,
+        token,
         uri,
+        temp_uri,
+        diagnostics,
+        namespace: &session.namespace(),
     };
 
-    match token.typed.as_ref()? {
-        TypedAstToken::TypedDeclaration(decl) => match decl {
-            ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
-                abi_decl::code_actions(decl_id, ctx)
+    let actions_by_type = token
+        .typed
+        .as_ref()
+        .and_then(|typed_token| match typed_token {
+            TypedAstToken::TypedDeclaration(decl) => match decl {
+                ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
+                    abi_decl::code_actions(decl_id, &ctx)
+                }
+                ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
+                    struct_decl::code_actions(decl_id, &ctx)
+                }
+                ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
+                    enum_decl::code_actions(decl_id, &ctx)
+                }
+                _ => None,
+            },
+            TypedAstToken::TypedFunctionDeclaration(decl) => {
+                function_decl::code_actions(decl, &ctx)
             }
-            ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                struct_decl::code_actions(decl_id, ctx)
+            TypedAstToken::TypedStorageField(decl) => storage_field::code_actions(decl, &ctx),
+            TypedAstToken::TypedConstantDeclaration(decl) => {
+                constant_decl::code_actions(decl, &ctx)
             }
-            ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
-                enum_decl::code_actions(decl_id, ctx)
-            }
+            TypedAstToken::TypedEnumVariant(decl) => enum_variant::code_actions(decl, &ctx),
+            TypedAstToken::TypedStructField(decl) => struct_field::code_actions(decl, &ctx),
+            TypedAstToken::TypedTraitFn(decl) => trait_fn::code_actions(decl, &ctx),
             _ => None,
-        },
-        TypedAstToken::TypedFunctionDeclaration(decl) => function_decl::code_actions(decl, ctx),
-        TypedAstToken::TypedStorageField(decl) => storage_field::code_actions(decl, ctx),
-        TypedAstToken::TypedConstantDeclaration(decl) => constant_decl::code_actions(decl, ctx),
-        TypedAstToken::TypedEnumVariant(decl) => enum_variant::code_actions(decl, ctx),
-        TypedAstToken::TypedStructField(decl) => struct_field::code_actions(decl, ctx),
-        TypedAstToken::TypedTraitFn(decl) => trait_fn::code_actions(decl, ctx),
-        _ => None,
-    }
+        })
+        .unwrap_or_default();
+
+    let actions_by_diagnostic = diagnostic::code_actions(&ctx).unwrap_or_default();
+
+    Some([actions_by_type, actions_by_diagnostic].concat())
 }
 
 pub(crate) trait CodeAction<'a, T: Spanned> {
     /// Creates a new [CodeAction] with the given [Engines], delcaration type, and [Url].
-    fn new(ctx: CodeActionContext<'a>, decl: &'a T) -> Self;
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a T) -> Self;
 
     /// Returns a [String] of text to insert into the document.
     fn new_text(&self) -> String;

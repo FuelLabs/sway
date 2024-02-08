@@ -5,8 +5,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     AnalysisResult, AnalysisResultT, AnalysisResults, BlockArgument, Context, FuelVmInstruction,
-    Function, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type, Value,
-    ValueDatum,
+    Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Type,
+    Value, ValueDatum,
 };
 
 pub const ESCAPED_SYMBOLS_NAME: &str = "escaped_symbols";
@@ -57,12 +57,16 @@ pub fn get_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
         }
         visited.insert(val);
         match context.values[val.0].value {
-            ValueDatum::Instruction(Instruction::GetLocal(local)) => {
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::GetLocal(local),
+                ..
+            }) => {
                 symbols.insert(Symbol::Local(local));
             }
-            ValueDatum::Instruction(Instruction::GetElemPtr { base, .. }) => {
-                get_symbols_rec(context, symbols, visited, base)
-            }
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::GetElemPtr { base, .. },
+                ..
+            }) => get_symbols_rec(context, symbols, visited, base),
             ValueDatum::Argument(b) => {
                 if b.block.get_label(context) == "entry" {
                     symbols.insert(Symbol::Arg(b));
@@ -108,32 +112,32 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
     };
 
     for (_block, inst) in function.instruction_iter(context) {
-        match inst.get_instruction(context).unwrap() {
-            Instruction::AsmBlock(_, args) => {
+        match &inst.get_instruction(context).unwrap().op {
+            InstOp::AsmBlock(_, args) => {
                 for arg_init in args.iter().filter_map(|arg| arg.initializer) {
                     add_from_val(&mut result, &arg_init)
                 }
             }
-            Instruction::UnaryOp { .. } => (),
-            Instruction::BinaryOp { .. } => (),
-            Instruction::BitCast(_, _) => (),
-            Instruction::Branch(_) => (),
-            Instruction::Call(_, args) => args.iter().for_each(|v| add_from_val(&mut result, v)),
-            Instruction::CastPtr(_, _) => (),
-            Instruction::Cmp(_, _, _) => (),
-            Instruction::ConditionalBranch { .. } => (),
-            Instruction::ContractCall { params, .. } => add_from_val(&mut result, params),
-            Instruction::FuelVm(_) => (),
-            Instruction::GetLocal(_) => (),
-            Instruction::GetElemPtr { .. } => (),
-            Instruction::IntToPtr(_, _) => (),
-            Instruction::Load(_) => (),
-            Instruction::MemCopyBytes { .. } => (),
-            Instruction::MemCopyVal { .. } => (),
-            Instruction::Nop => (),
-            Instruction::PtrToInt(v, _) => add_from_val(&mut result, v),
-            Instruction::Ret(_, _) => (),
-            Instruction::Store { .. } => (),
+            InstOp::UnaryOp { .. } => (),
+            InstOp::BinaryOp { .. } => (),
+            InstOp::BitCast(_, _) => (),
+            InstOp::Branch(_) => (),
+            InstOp::Call(_, args) => args.iter().for_each(|v| add_from_val(&mut result, v)),
+            InstOp::CastPtr(_, _) => (),
+            InstOp::Cmp(_, _, _) => (),
+            InstOp::ConditionalBranch { .. } => (),
+            InstOp::ContractCall { params, .. } => add_from_val(&mut result, params),
+            InstOp::FuelVm(_) => (),
+            InstOp::GetLocal(_) => (),
+            InstOp::GetElemPtr { .. } => (),
+            InstOp::IntToPtr(_, _) => (),
+            InstOp::Load(_) => (),
+            InstOp::MemCopyBytes { .. } => (),
+            InstOp::MemCopyVal { .. } => (),
+            InstOp::Nop => (),
+            InstOp::PtrToInt(v, _) => add_from_val(&mut result, v),
+            InstOp::Ret(_, _) => (),
+            InstOp::Store { .. } => (),
         }
     }
 
@@ -142,65 +146,65 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
 
 /// Pointers that may possibly be loaded from.
 pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
-    match val.get_instruction(context).unwrap() {
-        Instruction::UnaryOp { .. }
-        | Instruction::BinaryOp { .. }
-        | Instruction::BitCast(_, _)
-        | Instruction::Branch(_)
-        | Instruction::ConditionalBranch { .. }
-        | Instruction::Cmp(_, _, _)
-        | Instruction::Nop
-        | Instruction::CastPtr(_, _)
-        | Instruction::GetLocal(_)
-        | Instruction::GetElemPtr { .. }
-        | Instruction::IntToPtr(_, _) => vec![],
-        Instruction::PtrToInt(src_val_ptr, _) => vec![*src_val_ptr],
-        Instruction::ContractCall {
+    match &val.get_instruction(context).unwrap().op {
+        InstOp::UnaryOp { .. }
+        | InstOp::BinaryOp { .. }
+        | InstOp::BitCast(_, _)
+        | InstOp::Branch(_)
+        | InstOp::ConditionalBranch { .. }
+        | InstOp::Cmp(_, _, _)
+        | InstOp::Nop
+        | InstOp::CastPtr(_, _)
+        | InstOp::GetLocal(_)
+        | InstOp::GetElemPtr { .. }
+        | InstOp::IntToPtr(_, _) => vec![],
+        InstOp::PtrToInt(src_val_ptr, _) => vec![*src_val_ptr],
+        InstOp::ContractCall {
             params,
             coins,
             asset_id,
             ..
         } => vec![*params, *coins, *asset_id],
-        Instruction::Call(_, args) => args.clone(),
-        Instruction::AsmBlock(_, args) => args.iter().filter_map(|val| val.initializer).collect(),
-        Instruction::MemCopyBytes { src_val_ptr, .. }
-        | Instruction::MemCopyVal { src_val_ptr, .. }
-        | Instruction::Ret(src_val_ptr, _)
-        | Instruction::Load(src_val_ptr)
-        | Instruction::FuelVm(FuelVmInstruction::Log {
+        InstOp::Call(_, args) => args.clone(),
+        InstOp::AsmBlock(_, args) => args.iter().filter_map(|val| val.initializer).collect(),
+        InstOp::MemCopyBytes { src_val_ptr, .. }
+        | InstOp::MemCopyVal { src_val_ptr, .. }
+        | InstOp::Ret(src_val_ptr, _)
+        | InstOp::Load(src_val_ptr)
+        | InstOp::FuelVm(FuelVmInstruction::Log {
             log_val: src_val_ptr,
             ..
         })
-        | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
-        | Instruction::FuelVm(FuelVmInstruction::StateStoreWord {
+        | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
+        | InstOp::FuelVm(FuelVmInstruction::StateStoreWord {
             key: src_val_ptr, ..
         })
-        | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord {
+        | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord {
             key: src_val_ptr, ..
         })
-        | Instruction::FuelVm(FuelVmInstruction::StateClear {
+        | InstOp::FuelVm(FuelVmInstruction::StateClear {
             key: src_val_ptr, ..
         }) => vec![*src_val_ptr],
-        Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord {
+        InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord {
             stored_val: memopd1,
             key: memopd2,
             ..
         })
-        | Instruction::FuelVm(FuelVmInstruction::Smo {
+        | InstOp::FuelVm(FuelVmInstruction::Smo {
             recipient: memopd1,
             message: memopd2,
             ..
         }) => vec![*memopd1, *memopd2],
-        Instruction::Store { dst_val_ptr: _, .. } => vec![],
-        Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
-        | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-        | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
-        Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { arg, .. }) => vec![*arg],
-        Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { arg1, arg2, .. })
-        | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { arg1, arg2, .. }) => {
+        InstOp::Store { dst_val_ptr: _, .. } => vec![],
+        InstOp::FuelVm(FuelVmInstruction::Gtf { .. })
+        | InstOp::FuelVm(FuelVmInstruction::ReadRegister(_))
+        | InstOp::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
+        InstOp::FuelVm(FuelVmInstruction::WideUnaryOp { arg, .. }) => vec![*arg],
+        InstOp::FuelVm(FuelVmInstruction::WideBinaryOp { arg1, arg2, .. })
+        | InstOp::FuelVm(FuelVmInstruction::WideCmpOp { arg1, arg2, .. }) => {
             vec![*arg1, *arg2]
         }
-        Instruction::FuelVm(FuelVmInstruction::WideModularOp {
+        InstOp::FuelVm(FuelVmInstruction::WideModularOp {
             arg1, arg2, arg3, ..
         }) => vec![*arg1, *arg2, *arg3],
     }
@@ -219,28 +223,28 @@ pub fn get_loaded_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
 
 /// Pointers that may possibly be stored to.
 pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
-    match val.get_instruction(context).unwrap() {
-        Instruction::UnaryOp { .. }
-        | Instruction::BinaryOp { .. }
-        | Instruction::BitCast(_, _)
-        | Instruction::Branch(_)
-        | Instruction::ConditionalBranch { .. }
-        | Instruction::Cmp(_, _, _)
-        | Instruction::Nop
-        | Instruction::PtrToInt(_, _)
-        | Instruction::Ret(_, _)
-        | Instruction::CastPtr(_, _)
-        | Instruction::GetLocal(_)
-        | Instruction::GetElemPtr { .. }
-        | Instruction::IntToPtr(_, _) => vec![],
-        Instruction::ContractCall { params, .. } => vec![*params],
-        Instruction::Call(_, args) => args.clone(),
-        Instruction::AsmBlock(_, args) => args.iter().filter_map(|val| val.initializer).collect(),
-        Instruction::MemCopyBytes { dst_val_ptr, .. }
-        | Instruction::MemCopyVal { dst_val_ptr, .. }
-        | Instruction::Store { dst_val_ptr, .. } => vec![*dst_val_ptr],
-        Instruction::Load(_) => vec![],
-        Instruction::FuelVm(vmop) => match vmop {
+    match &val.get_instruction(context).unwrap().op {
+        InstOp::UnaryOp { .. }
+        | InstOp::BinaryOp { .. }
+        | InstOp::BitCast(_, _)
+        | InstOp::Branch(_)
+        | InstOp::ConditionalBranch { .. }
+        | InstOp::Cmp(_, _, _)
+        | InstOp::Nop
+        | InstOp::PtrToInt(_, _)
+        | InstOp::Ret(_, _)
+        | InstOp::CastPtr(_, _)
+        | InstOp::GetLocal(_)
+        | InstOp::GetElemPtr { .. }
+        | InstOp::IntToPtr(_, _) => vec![],
+        InstOp::ContractCall { params, .. } => vec![*params],
+        InstOp::Call(_, args) => args.clone(),
+        InstOp::AsmBlock(_, args) => args.iter().filter_map(|val| val.initializer).collect(),
+        InstOp::MemCopyBytes { dst_val_ptr, .. }
+        | InstOp::MemCopyVal { dst_val_ptr, .. }
+        | InstOp::Store { dst_val_ptr, .. } => vec![*dst_val_ptr],
+        InstOp::Load(_) => vec![],
+        InstOp::FuelVm(vmop) => match vmop {
             FuelVmInstruction::Gtf { .. }
             | FuelVmInstruction::Log { .. }
             | FuelVmInstruction::ReadRegister(_)
@@ -274,11 +278,18 @@ pub fn get_stored_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
 /// Combine a series of GEPs into one.
 pub fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
     match &context.values[val.0].value {
-        ValueDatum::Instruction(Instruction::GetLocal(_)) => Some(vec![]),
-        ValueDatum::Instruction(Instruction::GetElemPtr {
-            base,
-            elem_ptr_ty: _,
-            indices,
+        ValueDatum::Instruction(Instruction {
+            op: InstOp::GetLocal(_),
+            ..
+        }) => Some(vec![]),
+        ValueDatum::Instruction(Instruction {
+            op:
+                InstOp::GetElemPtr {
+                    base,
+                    elem_ptr_ty: _,
+                    indices,
+                },
+            ..
         }) => {
             let mut base_indices = combine_indices(context, *base)?;
             base_indices.append(&mut indices.clone());
@@ -346,5 +357,6 @@ pub fn pointee_size(context: &Context, ptr_val: Value) -> u64 {
         .unwrap()
         .get_pointee_type(context)
         .expect("Expected arg to be a pointer")
-        .size_in_bytes(context)
+        .size(context)
+        .in_bytes()
 }

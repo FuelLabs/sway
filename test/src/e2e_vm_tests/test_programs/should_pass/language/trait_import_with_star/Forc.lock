@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-B3139936C693DF4E'
+name = "core"
+source = "path+from-root-F4B09A090030990E"
 
 [[package]]
-name = 'trait_impl_import'
-source = 'member'
-dependencies = ['core']
+name = "trait_import_with_star"
+source = "member"
+dependencies = ["core"]

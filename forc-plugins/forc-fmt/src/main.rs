@@ -14,15 +14,24 @@ use taplo::formatter as taplo_fmt;
 use tracing::{debug, error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
-use forc_util::{find_parent_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
-use sway_utils::{constants, get_sway_files};
+use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
+
+forc_util::cli_examples! {
+    [ Run the formatter in check mode on the current directory => fmt "--check"]
+    [ Run the formatter in check mode on the current directory with short format => fmt "-c"]
+    [ Run formatter against a given file => fmt "--file src/main.sw"]
+    [ Run formatter against a given file with short format => fmt "-f src/main.sw"]
+    [ Run formatter against a given dir => fmt "--path ../tests/"]
+    [ Run formatter against a given dir with short format => fmt "-p ../tests"]
+}
 
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-fmt",
     about = "Forc plugin for running the Sway code formatter.",
+    after_help = help(),
     version
 )]
 pub struct App {
@@ -35,6 +44,7 @@ pub struct App {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
+    #[clap(short, long)]
     /// Formats a single .sw file with the default settings.
     /// If not specified, current working directory will be formatted using a Forc.toml configuration.
     pub file: Option<String>,
@@ -170,7 +180,11 @@ fn format_file(
                 // TODO: Support formatting for incomplete/invalid sway code.
                 // https://github.com/FuelLabs/sway/issues/5012
                 debug!("{}", err);
-                bail!("Failed to compile: {:?}", file);
+                if let Some(file) = file.to_str() {
+                    bail!("Failed to compile {}\n{}", file, err);
+                } else {
+                    bail!("Failed to compile.\n{}", err);
+                }
             }
         }
     }

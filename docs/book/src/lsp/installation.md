@@ -1,6 +1,6 @@
 # Installation
 
-The Sway language server is contained in the [forc-lsp](../forc/plugins/forc_lsp.md) binary, which is installed as part of the [Fuel toolchain](../introduction/fuel_toolchain.md). Once installed, it can be used with a variety of IDEs. It must be installed for any of the IDE plugins to work.
+The Sway language server is contained in the [`forc-lsp`](../forc/plugins/forc_lsp.md) binary, which is installed as part of the [Fuel toolchain](../introduction/fuel_toolchain.md). Once installed, it can be used with a variety of IDEs. It must be installed for any of the IDE plugins to work.
 
 > **Note**: There is no need to manually run `forc-lsp` (the plugin will automatically start it), however both `forc` and `forc-lsp` must be in your `$PATH`. To check if `forc` is in your `$PATH`, type `forc --help` in your terminal.
 

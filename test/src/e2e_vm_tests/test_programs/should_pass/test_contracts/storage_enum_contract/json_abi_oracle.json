@@ -1,0 +1,33 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [],
+      "name": "read_write_enums",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 0,
+      "typeParameters": null
+    }
+  ]
+}

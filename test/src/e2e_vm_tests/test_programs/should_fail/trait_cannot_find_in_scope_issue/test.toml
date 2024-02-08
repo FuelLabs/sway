@@ -1,0 +1,69 @@
+category = "fail"
+
+#check: $()Trait is not imported
+#check: $()let _ = sha256(123u8);
+#nextln: $()Trait "Hash" is not imported into "main.sw" when calling "sha256".
+#check: $()Import the "Hash" trait into "main.sw" by using: `use std::hash::Hash;`.
+#check: $()T: Hash,
+#nextln: $()In the definition of "sha256", "Hash" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()s.method_01(0u8);
+#nextln: $()Trait "Hash" is not imported into "main.sw" when calling "method_01".
+#check: $()Import the "Hash" trait into "main.sw" by using: `use std::hash::Hash;`.
+#check: $()pub fn method_01<T>(self, t: T) where T: Hash { }
+#nextln: $()In the definition of "method_01", "Hash" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()s.method_02(A {});
+#nextln: $()Trait "FirstTrait" is not imported into "main.sw" when calling "method_02".
+#check: $()Import the "FirstTrait" trait into "main.sw" by using: `use ::lib::FirstTrait;`.
+#check: $()pub fn method_02<T>(self, t: T) where T: FirstTrait { }
+#nextln: $()In the definition of "method_02", "FirstTrait" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()S::associated_function(A {});
+#nextln: $()Trait "FirstTrait" is not imported into "main.sw" when calling "associated_function".
+#check: $()Import the "FirstTrait" trait into "main.sw" by using: `use ::lib::FirstTrait;`.
+#check: $()pub fn associated_function<T>(t: T) where T: FirstTrait { }
+#nextln: $()In the definition of "associated_function", "FirstTrait" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()function(A {});
+#nextln: $()Trait "FirstTrait" is not imported into "main.sw" when calling "function".
+#check: $()Import the "FirstTrait" trait into "main.sw" by using: `use ::lib::FirstTrait;`.
+#check: $()pub fn function<T>(t: T) where T: FirstTrait + GenericTrait<u8> { }
+#nextln: $()In the definition of "function", "FirstTrait" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()function(A {});
+#nextln: $()Trait "GenericTrait" is not imported into "main.sw" when calling "function".
+#check: $()Import the "GenericTrait" trait into "main.sw" by using: `use ::lib::GenericTrait;`.
+#check: $()pub fn function<T>(t: T) where T: FirstTrait + GenericTrait<u8> { }
+#nextln: $()In the definition of "function", "GenericTrait" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()a.trait_method(A {});
+#nextln: $()Trait "FirstTrait" is not imported into "main.sw" when calling "trait_method".
+#check: $()Import the "FirstTrait" trait into "main.sw" by using: `use ::lib::FirstTrait;`.
+#check: $()fn trait_method(self, t: T) where T: FirstTrait { }
+#nextln: $()In the definition of "trait_method", "FirstTrait" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()A::trait_associated_function(A {});
+#nextln: $()Trait "FirstTrait" is not imported into "main.sw" when calling "trait_associated_function".
+#check: $()Import the "FirstTrait" trait into "main.sw" by using: `use ::lib::FirstTrait;`.
+#check: $()fn trait_associated_function(t: T) where T: FirstTrait { }
+#nextln: $()In the definition of "trait_associated_function", "FirstTrait" is used in this trait constraint.
+
+#check: $()Trait is not imported
+#check: $()function_with_duplicated_trait(A {});
+#nextln: $()Trait "DuplicatedTrait" is not imported into "main.sw" when calling "function_with_duplicated_trait".
+#check: $()To import the proper "DuplicatedTrait" into "main.sw" follow the detailed instructions given below.
+#check: $()pub fn function_with_duplicated_trait<T>(t: T) where T: DuplicatedTrait { }
+#nextln: $()In the definition of "function_with_duplicated_trait", "DuplicatedTrait" is used in this trait constraint.
+#check: $()There are these two traits with the name "DuplicatedTrait" available in the modules:
+#check: $()  - ::lib::DuplicatedTrait
+#check: $()  - ::other_lib::DuplicatedTrait
+#check: $()  1. Look at the definition of the "function_with_duplicated_trait" in the "trait_impls.sw".
+#check: $()     E.g., assuming it is the first one on the list, use: `use ::lib::DuplicatedTrait;`

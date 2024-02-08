@@ -1,9 +1,9 @@
 //! The base descriptor for various values within the IR.
 //!
-//! [`Value`]s can be function arguments, constants and instructions.  [`Instruction`]s generally
+//! [`Value`]s can be function arguments, constants and instructions. [`Instruction`]s generally
 //! refer to each other and to constants via the [`Value`] wrapper.
 //!
-//! Like most IR data structures they are `Copy` and cheap to pass around by value.  They are
+//! Like most IR data structures they are `Copy` and cheap to pass around by value. They are
 //! therefore also easy to replace, a common practice for optimization passes.
 
 use rustc_hash::FxHashMap;
@@ -12,10 +12,11 @@ use crate::{
     block::BlockArgument,
     constant::Constant,
     context::Context,
-    instruction::{FuelVmInstruction, Instruction},
+    instruction::{FuelVmInstruction, InstOp},
     irtype::Type,
     metadata::{combine, MetadataIndex},
     pretty::DebugWithContext,
+    Block, Instruction,
 };
 
 /// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
@@ -68,9 +69,12 @@ impl Value {
     }
 
     /// Return a new instruction [`Value`].
-    pub fn new_instruction(context: &mut Context, instruction: Instruction) -> Value {
+    pub fn new_instruction(context: &mut Context, block: Block, instruction: InstOp) -> Value {
         let content = ValueContent {
-            value: ValueDatum::Instruction(instruction),
+            value: ValueDatum::Instruction(Instruction {
+                op: instruction,
+                parent: block,
+            }),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -113,25 +117,12 @@ impl Value {
     /// and is either a branch or return.
     pub fn is_terminator(&self, context: &Context) -> bool {
         match &context.values[self.0].value {
-            ValueDatum::Instruction(ins) => matches!(
-                ins,
-                Instruction::Branch(_)
-                    | Instruction::ConditionalBranch { .. }
-                    | Instruction::Ret(_, _)
-                    | Instruction::FuelVm(FuelVmInstruction::Revert(_))
-            ),
-            _ => false,
-        }
-    }
-
-    pub fn is_diverging(&self, context: &Context) -> bool {
-        match &context.values[self.0].value {
-            ValueDatum::Instruction(ins) => matches!(
-                ins,
-                Instruction::Branch(..)
-                    | Instruction::ConditionalBranch { .. }
-                    | Instruction::Ret(..)
-                    | Instruction::FuelVm(FuelVmInstruction::Revert(..))
+            ValueDatum::Instruction(Instruction { op, .. }) => matches!(
+                op,
+                InstOp::Branch(_)
+                    | InstOp::ConditionalBranch { .. }
+                    | InstOp::Ret(_, _)
+                    | InstOp::FuelVm(FuelVmInstruction::Revert(_))
             ),
             ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
                 false
@@ -145,6 +136,8 @@ impl Value {
         self.replace_instruction_values(context, &FxHashMap::from_iter([(old_val, new_val)]))
     }
 
+    /// If this value is an instruction and if any of its parameters is in `replace_map` as
+    /// a key, replace it with the mapped value.
     pub fn replace_instruction_values(
         &self,
         context: &mut Context,
@@ -153,7 +146,7 @@ impl Value {
         if let ValueDatum::Instruction(instruction) =
             &mut context.values.get_mut(self.0).unwrap().value
         {
-            instruction.replace_values(replace_map);
+            instruction.op.replace_values(replace_map);
         }
     }
 

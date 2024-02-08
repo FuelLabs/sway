@@ -18,7 +18,7 @@ use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::Spanned;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
@@ -29,7 +29,7 @@ pub(super) fn compile_script(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -76,7 +76,7 @@ pub(super) fn compile_predicate(
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -122,7 +122,7 @@ pub(super) fn compile_contract(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Contract);
@@ -170,7 +170,7 @@ pub(super) fn compile_library(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -222,7 +222,7 @@ pub(crate) fn compile_constants(
                     lookup: compile_const_decl,
                 },
                 &call_path,
-                &Some(const_decl),
+                &Some((*const_decl).clone()),
             )?;
         }
     }
@@ -267,7 +267,7 @@ fn compile_declarations(
                         lookup: compile_const_decl,
                     },
                     &call_path,
-                    &Some(decl),
+                    &Some((*decl).clone()),
                 )?;
             }
 
@@ -373,7 +373,7 @@ pub(super) fn compile_tests(
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()
@@ -499,7 +499,7 @@ fn compile_fn(
         logged_types_map,
         messages_types_map,
     );
-    let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
+    let mut ret_val = compiler.compile_code_block_to_value(context, md_mgr, body)?;
 
     // Special case: sometimes the returned value at the end of the function block is hacked
     // together and is invalid.  This can happen with diverging control flow or with implicit
@@ -531,7 +531,10 @@ fn compile_fn(
         if ret_type.is_unit(context) {
             ret_val = Constant::get_unit(context);
         }
-        compiler.current_block.ins(context).ret(ret_val, ret_type);
+        compiler
+            .current_block
+            .append(context)
+            .ret(ret_val, ret_type);
     }
     Ok(func)
 }

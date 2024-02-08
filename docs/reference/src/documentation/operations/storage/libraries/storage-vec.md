@@ -18,7 +18,7 @@ There are two `storage` variables: `balance` & `user`. `balance` takes a single 
 
 ## Reading from Storage
 
-Retrieving data from a storage variable is done through the `.get(index)` method. That is to say that we state which index by specifiying it inside `.get()` and appending that to the end of the storage variable.
+Retrieving data from a storage variable is done through the `.get(index)` method. That is to say that we state which index by specifying it inside `.get()` and appending that to the end of the storage variable.
 
 In this example we look at how we can retrieve a single value `balance` and how we can unpack multiple values from `user`.
 

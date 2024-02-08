@@ -1,0 +1,21 @@
+[[package]]
+name = "call_storage_enum"
+source = "member"
+dependencies = [
+    "std",
+    "storage_enum_abi",
+]
+
+[[package]]
+name = "core"
+source = "path+from-root-6EC9A87C20EA84F4"
+
+[[package]]
+name = "std"
+source = "path+from-root-6EC9A87C20EA84F4"
+dependencies = ["core"]
+
+[[package]]
+name = "storage_enum_abi"
+source = "path+from-root-6EC9A87C20EA84F4"
+dependencies = ["core"]

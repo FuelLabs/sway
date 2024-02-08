@@ -11,7 +11,6 @@ use crate::{
     },
     decl_engine::DeclRef,
     fuel_prelude::fuel_asm::GTFArgs,
-    size_bytes_in_words, size_bytes_round_up_to_word_alignment,
 };
 
 use sway_ir::*;
@@ -21,9 +20,9 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::Ident;
+use sway_types::{Ident, Span};
 
-use super::data_section::DataId;
+use super::{compiler_constants::NUM_ARG_REGISTERS, data_section::DataId};
 
 /// A summary of the adopted calling convention:
 ///
@@ -57,7 +56,11 @@ use super::data_section::DataId;
 ///   - Restore the return address.
 ///   - Restore the general purpose registers from the stack.
 ///   - Jump to the return address.
-
+///
+/// When a function has more than NUM_ARG_REGISTERS, the last arg register
+/// is used to point to the stack location of the remaining arguments.
+/// Stack space for the extra arguments is allocated in the caller when
+/// locals of the caller are allocated.
 impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     pub(super) fn compile_call(
         &mut self,
@@ -66,8 +69,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         args: &[Value],
     ) -> Result<(), CompileError> {
         // Put the args into the args registers.
-        for (idx, arg_val) in args.iter().enumerate() {
-            if idx < compiler_constants::NUM_ARG_REGISTERS as usize {
+        if args.len() <= compiler_constants::NUM_ARG_REGISTERS as usize {
+            for (idx, arg_val) in args.iter().enumerate() {
                 let arg_reg = self.value_to_register(arg_val)?;
                 self.cur_bytecode.push(Op::register_move(
                     VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
@@ -75,12 +78,64 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     format!("pass arg {idx}"),
                     self.md_mgr.val_to_span(self.context, *arg_val),
                 ));
-            } else {
-                todo!(
-                    "can't do more than {} args yet",
-                    compiler_constants::NUM_ARG_REGISTERS
-                );
             }
+        } else {
+            // Put NUM_ARG_REGISTERS - 1 arguments into arg registers and rest into the stack.
+            for (idx, arg_val) in args.iter().enumerate() {
+                let arg_reg = self.value_to_register(arg_val)?;
+                // Except for the last arg register, the others hold an argument.
+                if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
+                    self.cur_bytecode.push(Op::register_move(
+                        VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
+                        arg_reg,
+                        format!("pass arg {idx}"),
+                        self.md_mgr.val_to_span(self.context, *arg_val),
+                    ));
+                } else {
+                    // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
+                    assert!(
+                        self.locals_size_bytes() % 8 == 0,
+                        "The size of locals is not word aligned"
+                    );
+                    let stack_offset_bytes = self.locals_size_bytes()
+                        + (((idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64) * 8);
+                    assert!(
+                        stack_offset_bytes
+                            < self.locals_size_bytes() + (self.max_num_extra_args() * 8)
+                    );
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                            arg_reg,
+                            VirtualImmediate12::new(
+                                // The VM multiples the offset by 8, so we divide it by 8.
+                                stack_offset_bytes / 8,
+                                self.md_mgr
+                                    .val_to_span(self.context, *arg_val)
+                                    .unwrap_or(Span::dummy()),
+                            )
+                            .expect("Too many arguments, cannot handle."),
+                        )),
+                        comment: format!("Pass arg {idx} via its stack slot"),
+                        owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
+                    });
+                }
+            }
+            // Register ARG_REGS[NUM_ARG_REGISTERS-1] must contain LocalsBase + locals_size
+            // so that the callee can index the stack arguments from there.
+            self.cur_bytecode.push(Op {
+                opcode: Either::Left(VirtualOp::ADDI(
+                    VirtualRegister::Constant(
+                        ConstantRegister::ARG_REGS
+                            [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                    ),
+                    VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                    VirtualImmediate12::new(self.locals_size_bytes(), Span::dummy())
+                        .expect("Too many arguments, cannot handle."),
+                )),
+                comment: "Save address of stack arguments in last arg register".to_string(),
+                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+            });
         }
 
         // Set a new return address.
@@ -161,8 +216,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     .get_selector(self.context)
                     .unwrap()
                     .into_iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<String>()
+                    .fold("".to_string(), |output, b| { format!("{output}{b:02x}") })
             )));
         }
 
@@ -290,9 +344,9 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     }
 
     fn compile_fn_call_args(&mut self, function: Function) {
-        // The first n args are passed in registers, but the rest arrive on the stack.
-        for (idx, (_, arg_val)) in function.args_iter(self.context).enumerate() {
-            if idx < compiler_constants::NUM_ARG_REGISTERS as usize {
+        if function.num_args(self.context) <= compiler_constants::NUM_ARG_REGISTERS as usize {
+            // All arguments are passed through registers.
+            for (idx, (_, arg_val)) in function.args_iter(self.context).enumerate() {
                 // Make a copy of the args in case we make calls and need to use the arg registers.
                 let arg_copy_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op::register_move(
@@ -304,11 +358,49 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                 // Remember our arg copy.
                 self.reg_map.insert(*arg_val, arg_copy_reg);
-            } else {
-                todo!(
-                    "can't do more than {} args yet",
-                    compiler_constants::NUM_ARG_REGISTERS
-                );
+            }
+        } else {
+            // Get NUM_ARG_REGISTERS - 1 arguments from arg registers and rest from the stack.
+            for (idx, (_, arg_val)) in function.args_iter(self.context).enumerate() {
+                let arg_copy_reg = self.reg_seqr.next();
+                // Except for the last arg register, the others hold an argument.
+                if idx < compiler_constants::NUM_ARG_REGISTERS as usize - 1 {
+                    // Make a copy of the args in case we make calls and need to use the arg registers.
+                    self.cur_bytecode.push(Op::register_move(
+                        arg_copy_reg.clone(),
+                        VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
+                        format!("save arg {idx}"),
+                        self.md_mgr.val_to_span(self.context, *arg_val),
+                    ));
+                } else {
+                    // All arguments [NUM_ARG_REGISTERS - 1 ..] go into the stack.
+                    assert!(
+                        self.locals_size_bytes() % 8 == 0,
+                        "The size of locals is not word aligned"
+                    );
+                    let stack_offset =
+                        (idx as u64 + 1) - compiler_constants::NUM_ARG_REGISTERS as u64;
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LW(
+                            arg_copy_reg.clone(),
+                            VirtualRegister::Constant(
+                                ConstantRegister::ARG_REGS
+                                    [compiler_constants::NUM_ARG_REGISTERS as usize - 1],
+                            ),
+                            VirtualImmediate12::new(
+                                stack_offset,
+                                self.md_mgr
+                                    .val_to_span(self.context, *arg_val)
+                                    .unwrap_or(Span::dummy()),
+                            )
+                            .expect("Too many arguments, cannot handle."),
+                        )),
+                        comment: format!("Load arg {idx} from its stack slot"),
+                        owning_span: self.md_mgr.val_to_span(self.context, *arg_val),
+                    });
+                }
+                // Remember our arg copy.
+                self.reg_map.insert(*arg_val, arg_copy_reg);
             }
         }
     }
@@ -382,7 +474,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         .get_type(self.context)
                         .map(|ty| ty.get_pointee_type(self.context).unwrap_or(ty))
                         .unwrap();
-                    let arg_type_size_bytes = ir_type_size_in_bytes(self.context, &arg_type);
+                    let arg_type_size = arg_type.size(self.context);
                     if self.is_copy_type(&arg_type) {
                         if arg_word_offset > compiler_constants::TWELVE_BITS {
                             let offs_reg = self.reg_seqr.next();
@@ -395,11 +487,36 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                                 comment: format!("get offset for arg {name}"),
                                 owning_span: None,
                             });
+
+                            if arg_type_size.in_bytes() == 1 {
+                                self.cur_bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::LB(
+                                        current_arg_reg.clone(),
+                                        offs_reg,
+                                        VirtualImmediate12 { value: 0 },
+                                    )),
+                                    comment: format!("get arg {name}"),
+                                    owning_span: None,
+                                });
+                            } else {
+                                self.cur_bytecode.push(Op {
+                                    opcode: Either::Left(VirtualOp::LW(
+                                        current_arg_reg.clone(),
+                                        offs_reg,
+                                        VirtualImmediate12 { value: 0 },
+                                    )),
+                                    comment: format!("get arg {name}"),
+                                    owning_span: None,
+                                });
+                            }
+                        } else if arg_type_size.in_bytes() == 1 {
                             self.cur_bytecode.push(Op {
-                                opcode: Either::Left(VirtualOp::LW(
+                                opcode: Either::Left(VirtualOp::LB(
                                     current_arg_reg.clone(),
-                                    offs_reg,
-                                    VirtualImmediate12 { value: 0 },
+                                    args_base_reg.clone(),
+                                    VirtualImmediate12 {
+                                        value: arg_word_offset as u16 * 8,
+                                    },
                                 )),
                                 comment: format!("get arg {name}"),
                                 owning_span: None,
@@ -427,7 +544,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         );
                     }
 
-                    arg_word_offset += size_bytes_in_words!(arg_type_size_bytes);
+                    arg_word_offset += arg_type_size.in_words();
                     self.reg_map.insert(*val, current_arg_reg);
                 }
 
@@ -614,60 +731,80 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     ) -> (
         u64,
         virtual_register::VirtualRegister,
-        Vec<(u64, u64, DataId)>,
+        Vec<InitMutVars>,
+        u64,
     ) {
+        // Scan the function to see if there are any calls to functions with more than
+        // NUM_ARG_REGISTERS. The extra args will need stack allocation too.
+        let mut max_num_extra_args = 0u64;
+        for (_block, inst) in function.instruction_iter(self.context) {
+            if let Some(Instruction {
+                op: InstOp::Call(_, args),
+                ..
+            }) = inst.get_instruction(self.context)
+            {
+                if args.len() > NUM_ARG_REGISTERS as usize {
+                    // When we have more than NUM_ARG_REGISTERS, the last arg register
+                    // is used to point to the stack location of extra args. So we'll
+                    // only have NUM_ARG_REGISTERS - 1 arguments passed in registers.
+                    max_num_extra_args = std::cmp::max(
+                        max_num_extra_args,
+                        args.len() as u64 - NUM_ARG_REGISTERS as u64 + 1,
+                    );
+                }
+                // All arguments must fit in the register (thanks to the demotion passes).
+                assert!(args.iter().all(|arg| arg
+                    .get_type(self.context)
+                    .unwrap()
+                    .size(self.context)
+                    .in_words()
+                    == 1));
+            }
+        }
+
         // If they're immutable and have a constant initialiser then they go in the data section.
         //
         // Otherwise they go in runtime allocated space, either a register or on the stack.
         //
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
-        let (stack_base, init_mut_vars) = function.locals_iter(self.context).fold(
-            (0, Vec::new()),
-            |(stack_base, mut init_mut_vars), (_name, ptr)| {
-                if let (false, Some(constant)) = (
-                    ptr.is_mutable(self.context),
-                    ptr.get_initializer(self.context),
-                ) {
-                    let data_id = self.data_section.insert_data_value(Entry::from_constant(
-                        self.context,
-                        constant,
-                        None,
-                    ));
-                    self.ptr_map.insert(*ptr, Storage::Data(data_id));
-                    (stack_base, init_mut_vars)
-                } else {
-                    self.ptr_map.insert(*ptr, Storage::Stack(stack_base));
-
-                    let ptr_ty = ptr.get_inner_type(self.context);
-                    let var_size = match ptr_ty.get_content(self.context) {
-                        TypeContent::Uint(256) => 4,
-                        TypeContent::Unit
-                        | TypeContent::Bool
-                        | TypeContent::Uint(_)
-                        | TypeContent::Pointer(_) => 1,
-                        TypeContent::Slice => 2,
-                        TypeContent::B256 => 4,
-                        TypeContent::StringSlice => 2,
-                        TypeContent::StringArray(n) => size_bytes_round_up_to_word_alignment!(n),
-                        TypeContent::Array(..) | TypeContent::Struct(_) | TypeContent::Union(_) => {
-                            size_bytes_in_words!(ir_type_size_in_bytes(self.context, &ptr_ty))
-                        }
-                    };
-
-                    if let Some(constant) = ptr.get_initializer(self.context) {
+        let (stack_base_words, init_mut_vars) =
+            function.locals_iter(self.context).fold(
+                (0, Vec::new()),
+                |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
+                    if let (false, Some(constant)) = (
+                        ptr.is_mutable(self.context),
+                        ptr.get_initializer(self.context),
+                    ) {
                         let data_id = self.data_section.insert_data_value(Entry::from_constant(
                             self.context,
                             constant,
                             None,
+                            None,
                         ));
+                        self.ptr_map.insert(*ptr, Storage::Data(data_id));
+                        (stack_base_words, init_mut_vars)
+                    } else {
+                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
 
-                        init_mut_vars.push((stack_base, var_size, data_id));
+                        let ptr_ty = ptr.get_inner_type(self.context);
+                        let var_size = ptr_ty.size(self.context);
+
+                        if let Some(constant) = ptr.get_initializer(self.context) {
+                            let data_id = self.data_section.insert_data_value(
+                                Entry::from_constant(self.context, constant, None, None),
+                            );
+
+                            init_mut_vars.push(InitMutVars {
+                                stack_base_words,
+                                var_size: var_size.clone(),
+                                data_id,
+                            });
+                        }
+
+                        (stack_base_words + var_size.in_words(), init_mut_vars)
                     }
-
-                    (stack_base + var_size, init_mut_vars)
-                }
-            },
-        );
+                },
+            );
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
@@ -679,42 +816,53 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             None,
         ));
 
-        let locals_size = stack_base * 8;
-        if locals_size > compiler_constants::TWENTY_FOUR_BITS {
+        let locals_size_bytes = stack_base_words * 8;
+        if locals_size_bytes > compiler_constants::TWENTY_FOUR_BITS {
             todo!("Enormous stack usage for locals.");
         }
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                value: locals_size as u32,
+                value: locals_size_bytes as u32 + (max_num_extra_args * 8) as u32,
             })),
-            comment: format!("allocate {locals_size} bytes for locals"),
+            comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments."),
             owning_span: None,
         });
-        (locals_size, locals_base_reg, init_mut_vars)
+        (
+            locals_size_bytes,
+            locals_base_reg,
+            init_mut_vars,
+            max_num_extra_args,
+        )
     }
 
     fn init_locals(
         &mut self,
-        (locals_size, locals_base_reg, init_mut_vars): (
+        (locals_size_bytes, locals_base_reg, init_mut_vars, max_num_extra_args): (
             u64,
             virtual_register::VirtualRegister,
-            Vec<(u64, u64, DataId)>,
+            Vec<InitMutVars>,
+            u64,
         ),
     ) {
-        // Initialise that stack variables which require it.
-        for (var_stack_offs, var_word_size, var_data_id) in init_mut_vars {
+        // Initialise that stack variables which requires it.
+        for InitMutVars {
+            stack_base_words,
+            var_size,
+            data_id,
+        } in init_mut_vars
+        {
             // Load our initialiser from the data section.
             self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LWDataId(
+                opcode: Either::Left(VirtualOp::LoadDataId(
                     VirtualRegister::Constant(ConstantRegister::Scratch),
-                    var_data_id,
+                    data_id,
                 )),
                 comment: "load initializer from data section".to_owned(),
                 owning_span: None,
             });
 
             // Get the stack offset in bytes rather than words.
-            let var_stack_off_bytes = var_stack_offs * 8;
+            let var_stack_off_bytes = stack_base_words * 8;
             let dst_reg = self.reg_seqr.next();
             // Check if we can use the `ADDi` opcode.
             if var_stack_off_bytes <= compiler_constants::TWELVE_BITS {
@@ -754,27 +902,38 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 });
             }
 
-            if var_word_size == 1 {
+            if var_size.in_words() == 1 {
                 // Initialise by value.
-                self.cur_bytecode.push(Op {
-                    opcode: Either::Left(VirtualOp::SW(
-                        dst_reg,
-                        VirtualRegister::Constant(ConstantRegister::Scratch),
-                        VirtualImmediate12 { value: 0 },
-                    )),
-                    comment: "store initializer to local variable".to_owned(),
-                    owning_span: None,
-                });
+                if var_size.in_bytes() == 1 {
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SB(
+                            dst_reg,
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: "store initializer to local variable".to_owned(),
+                        owning_span: None,
+                    });
+                } else {
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::SW(
+                            dst_reg,
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            VirtualImmediate12 { value: 0 },
+                        )),
+                        comment: "store initializer to local variable".to_owned(),
+                        owning_span: None,
+                    });
+                }
             } else {
                 // Initialise by reference.
-                let var_byte_size = var_word_size * 8;
-                assert!(var_byte_size <= compiler_constants::TWELVE_BITS);
+                assert!(var_size.in_bytes_aligned() <= compiler_constants::TWELVE_BITS);
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::MCPI(
                         dst_reg,
                         VirtualRegister::Constant(ConstantRegister::Scratch),
                         VirtualImmediate12 {
-                            value: var_byte_size as u16,
+                            value: var_size.in_bytes_aligned() as u16,
                         },
                     )),
                     comment: "copy initializer from data section to local variable".to_owned(),
@@ -783,22 +942,21 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
         }
 
-        self.locals_ctxs.push((locals_size, locals_base_reg));
+        self.locals_ctxs
+            .push((locals_size_bytes, locals_base_reg, max_num_extra_args));
     }
 
     fn drop_locals(&mut self, _function: Function) {
-        let (locals_size, _locals_base_reg) = self
-            .locals_ctxs
-            .pop()
-            .expect("Calls guaranteed to save locals context.");
-        if locals_size > compiler_constants::TWENTY_FOUR_BITS {
+        let (locals_size_bytes, max_num_extra_args) =
+            (self.locals_size_bytes(), self.max_num_extra_args());
+        if locals_size_bytes > compiler_constants::TWENTY_FOUR_BITS {
             todo!("Enormous stack usage for locals.");
         }
         self.cur_bytecode.push(Op {
             opcode: Either::Left(VirtualOp::CFSI(VirtualImmediate24 {
-                value: u32::try_from(locals_size).unwrap(),
+                value: u32::try_from(locals_size_bytes + (max_num_extra_args * 8)).unwrap(),
             })),
-            comment: format!("free {locals_size} bytes for locals"),
+            comment: format!("free {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for extra call arguments."),
             owning_span: None,
         });
     }
@@ -806,4 +964,18 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     pub(super) fn locals_base_reg(&self) -> &VirtualRegister {
         &self.locals_ctxs.last().expect("No locals").1
     }
+
+    pub(super) fn locals_size_bytes(&self) -> u64 {
+        self.locals_ctxs.last().expect("No locals").0
+    }
+
+    pub(super) fn max_num_extra_args(&self) -> u64 {
+        self.locals_ctxs.last().expect("No locals").2
+    }
+}
+
+struct InitMutVars {
+    stack_base_words: u64,
+    var_size: TypeSize,
+    data_id: DataId,
 }

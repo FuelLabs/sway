@@ -12,8 +12,8 @@ use crate::{
     engine_threading::*,
     language::{ty::*, *},
     semantic_analysis::{
-        typed_expression::replace_decls_method_application, TypeCheckContext,
-        TypeCheckFinalization, TypeCheckFinalizationContext,
+        TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -91,11 +91,25 @@ pub enum TyExpressionVariant {
         prefix: Box<TyExpression>,
         field_to_access: TyStructField,
         field_instantiation_span: Span,
+        /// Final resolved type of the `prefix` part
+        /// of the expression. This will always be
+        /// a [TypeId] of a struct, never an alias
+        /// or a reference to a struct.
+        /// The original parent might be an alias
+        /// or a direct or indirect reference to a
+        /// struct.
         resolved_type_of_parent: TypeId,
     },
     TupleElemAccess {
         prefix: Box<TyExpression>,
         elem_to_access_num: usize,
+        /// Final resolved type of the `prefix` part
+        /// of the expression. This will always be
+        /// a [TypeId] of a tuple, never an alias
+        /// or a reference to a tuple.
+        /// The original parent might be an alias
+        /// or a direct or indirect reference to a
+        /// tuple.
         resolved_type_of_parent: TypeId,
         elem_to_access_span: Span,
     },
@@ -142,7 +156,10 @@ pub enum TyExpressionVariant {
     Break,
     Continue,
     Reassignment(Box<TyReassignment>),
+    ImplicitReturn(Box<TyExpression>),
     Return(Box<TyExpression>),
+    Ref(Box<TyExpression>),
+    Deref(Box<TyExpression>),
 }
 
 impl EqWithEngines for TyExpressionVariant {}
@@ -388,7 +405,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
-                l_exp.eq(&**r_exp, engines)
+                l_exp.eq(r_exp, engines)
             }
             (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
             (
@@ -598,7 +615,10 @@ impl HashWithEngines for TyExpressionVariant {
             Self::Reassignment(exp) => {
                 exp.hash(state, engines);
             }
-            Self::Return(exp) => {
+            Self::ImplicitReturn(exp) | Self::Return(exp) => {
+                exp.hash(state, engines);
+            }
+            Self::Ref(exp) | Self::Deref(exp) => {
                 exp.hash(state, engines);
             }
         }
@@ -613,6 +633,7 @@ impl SubstTypes for TyExpressionVariant {
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
+                ref mut call_path_typeid,
                 ..
             } => {
                 arguments
@@ -622,6 +643,9 @@ impl SubstTypes for TyExpressionVariant {
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
                 fn_ref.replace_id(*new_decl_ref.id());
+                if let Some(call_path_typeid) = call_path_typeid {
+                    call_path_typeid.subst(type_mapping, engines);
+                }
             }
             LazyOperator { lhs, rhs, .. } => {
                 (*lhs).subst(type_mapping, engines);
@@ -744,7 +768,8 @@ impl SubstTypes for TyExpressionVariant {
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
-            Return(stmt) => stmt.subst(type_mapping, engines),
+            ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, engines),
+            Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),
         }
     }
 }
@@ -765,15 +790,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     ref mut arguments,
                     ..
                 } => {
-                    let filter_type_opt = arguments.get(0).map(|(_, arg)| arg.return_type);
-
-                    if let Some(filter_type) = filter_type_opt {
-                        let filtered_decl_mapping =
-                            decl_mapping.filter_functions_by_self_type(filter_type, ctx.engines());
-                        fn_ref.replace_decls(&filtered_decl_mapping, handler, ctx)?;
-                    } else {
-                        fn_ref.replace_decls(decl_mapping, handler, ctx)?;
-                    };
+                    fn_ref.replace_decls(decl_mapping, handler, ctx)?;
 
                     let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
                         decl_mapping,
@@ -791,7 +808,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     }
 
                     let decl_engine = ctx.engines().de();
-                    let mut method = decl_engine.get(fn_ref);
+                    let mut method = (*decl_engine.get(fn_ref)).clone();
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
@@ -800,6 +817,7 @@ impl ReplaceDecls for TyExpressionVariant {
                             handler,
                             ctx.by_ref(),
                             &method.type_parameters,
+                            method.name.as_str(),
                             &method.name.span(),
                         )?;
                     method.replace_decls(&inner_decl_mapping, handler, ctx)?;
@@ -890,11 +908,129 @@ impl ReplaceDecls for TyExpressionVariant {
                 Reassignment(reassignment) => {
                     reassignment.replace_decls(decl_mapping, handler, ctx)?
                 }
-                Return(stmt) => stmt.replace_decls(decl_mapping, handler, ctx)?,
+                ImplicitReturn(expr) | Return(expr) => {
+                    expr.replace_decls(decl_mapping, handler, ctx)?
+                }
+                Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
             }
 
             Ok(())
         })
+    }
+}
+
+impl TypeCheckAnalysis for TyExpressionVariant {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        match self {
+            TyExpressionVariant::Literal(_) => {}
+            TyExpressionVariant::FunctionApplication { fn_ref, .. } => {
+                let fn_decl_id = ctx.get_normalized_fn_node_id(fn_ref.id());
+
+                let fn_node = ctx.get_node_for_fn_decl(&fn_decl_id);
+                if let Some(fn_node) = fn_node {
+                    ctx.add_edge_from_current(
+                        fn_node,
+                        TyNodeDepGraphEdge(TyNodeDepGraphEdgeInfo::FnApp),
+                    );
+
+                    if !ctx.node_stack.contains(&fn_node) {
+                        let _ = fn_decl_id.type_check_analyze(handler, ctx);
+                    }
+                }
+            }
+            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
+                lhs.type_check_analyze(handler, ctx)?;
+                rhs.type_check_analyze(handler, ctx)?
+            }
+            TyExpressionVariant::ConstantExpression { const_decl, .. } => {
+                const_decl.type_check_analyze(handler, ctx)?
+            }
+            TyExpressionVariant::VariableExpression { .. } => {}
+            TyExpressionVariant::Tuple { fields } => {
+                for field in fields.iter() {
+                    field.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::Array { contents, .. } => {
+                for elem in contents.iter() {
+                    elem.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::ArrayIndex { prefix, index } => {
+                prefix.type_check_analyze(handler, ctx)?;
+                index.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::StructExpression { fields: _, .. } => {}
+            TyExpressionVariant::CodeBlock(block) => {
+                block.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::FunctionParameter => {}
+            TyExpressionVariant::MatchExp {
+                desugared,
+                scrutinees: _,
+            } => {
+                desugared.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::IfExp {
+                condition,
+                then,
+                r#else,
+            } => {
+                condition.type_check_analyze(handler, ctx)?;
+                then.type_check_analyze(handler, ctx)?;
+                if let Some(r#else) = r#else {
+                    r#else.type_check_analyze(handler, ctx)?;
+                }
+            }
+            TyExpressionVariant::AsmExpression { .. } => {}
+            TyExpressionVariant::StructFieldAccess { prefix, .. } => {
+                prefix.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::TupleElemAccess { prefix, .. } => {
+                prefix.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::EnumInstantiation { contents, .. } => {
+                for expr in contents.iter() {
+                    expr.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::AbiCast { address, .. } => {
+                address.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::StorageAccess(_node) => {}
+            TyExpressionVariant::IntrinsicFunction(node) => {
+                for arg in node.arguments.iter() {
+                    arg.type_check_analyze(handler, ctx)?
+                }
+            }
+            TyExpressionVariant::AbiName(_node) => {}
+            TyExpressionVariant::EnumTag { exp } => {
+                exp.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+                exp.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::WhileLoop { condition, body } => {
+                condition.type_check_analyze(handler, ctx)?;
+                body.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::Break => {}
+            TyExpressionVariant::Continue => {}
+            TyExpressionVariant::Reassignment(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::ImplicitReturn(node) | TyExpressionVariant::Return(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
+                exp.type_check_analyze(handler, ctx)?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -912,20 +1048,12 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     deferred_monomorphization,
                     ..
                 } => {
+                    // If the function application was deferred we need to monomorphize it here.
+                    // But at the moment monomorphization is fully resolved before type check finalization.
+                    assert!(!(*deferred_monomorphization));
+
                     for (_, arg) in arguments.iter_mut() {
                         let _ = arg.type_check_finalize(handler, ctx);
-                    }
-                    // If the function application was deferred we need to monomorphize it.
-                    // This is because sometimes we don't know the correct order to evaluate
-                    // the items. So we create an initial "stub" typed function application node,
-                    // run an analysis pass to compute a dependency graph, and then finalize type
-                    // checking in the correct ordering.
-                    if *deferred_monomorphization {
-                        replace_decls_method_application(
-                            self,
-                            handler,
-                            ctx.type_check_ctx.by_ref(),
-                        )?;
                     }
                 }
                 TyExpressionVariant::LazyOperator { lhs, rhs, .. } => {
@@ -1033,8 +1161,11 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     }
                     node.type_check_finalize(handler, ctx)?;
                 }
-                TyExpressionVariant::Return(node) => {
+                TyExpressionVariant::ImplicitReturn(node) | TyExpressionVariant::Return(node) => {
                     node.type_check_finalize(handler, ctx)?;
+                }
+                TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
+                    exp.type_check_finalize(handler, ctx)?;
                 }
             }
             Ok(())
@@ -1137,7 +1268,10 @@ impl UpdateConstantExpression for TyExpressionVariant {
             Reassignment(reassignment) => {
                 reassignment.update_constant_expression(engines, implementing_type)
             }
-            Return(stmt) => stmt.update_constant_expression(engines, implementing_type),
+            ImplicitReturn(expr) | Return(expr) => {
+                expr.update_constant_expression(engines, implementing_type)
+            }
+            Ref(exp) | Deref(exp) => exp.update_constant_expression(engines, implementing_type),
         }
     }
 }
@@ -1152,16 +1286,17 @@ fn find_const_decl_from_impl(
             let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
             impl_trait
                 .items
-                .into_iter()
+                .iter()
                 .find(|item| match item {
                     TyTraitItem::Constant(decl_id) => {
-                        let trait_const_decl = decl_engine.get_constant(&decl_id.clone());
+                        let trait_const_decl =
+                            (*decl_engine.get_constant(&decl_id.clone())).clone();
                         const_decl.name().eq(trait_const_decl.name())
                     }
                     _ => false,
                 })
                 .map(|item| match item {
-                    TyTraitItem::Constant(decl_id) => decl_engine.get_constant(&decl_id),
+                    TyTraitItem::Constant(decl_id) => (*decl_engine.get_constant(decl_id)).clone(),
                     _ => unreachable!(),
                 })
         }
@@ -1296,8 +1431,17 @@ impl DebugWithEngines for TyExpressionVariant {
                 }
                 format!("reassignment to {place}")
             }
+            TyExpressionVariant::ImplicitReturn(exp) => {
+                format!("implicit return {:?}", engines.help_out(&**exp))
+            }
             TyExpressionVariant::Return(exp) => {
                 format!("return {:?}", engines.help_out(&**exp))
+            }
+            TyExpressionVariant::Ref(exp) => {
+                format!("&({:?})", engines.help_out(&**exp))
+            }
+            TyExpressionVariant::Deref(exp) => {
+                format!("*({:?})", engines.help_out(&**exp))
             }
         };
         write!(f, "{s}")
@@ -1313,8 +1457,8 @@ impl TyExpressionVariant {
         }
     }
 
-    /// recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type
+    /// Recurse into `self` and get any return statements -- used to validate that all returns
+    /// do indeed return the correct type.
     /// This does _not_ extract implicit return statements as those are not control flow! This is
     /// _only_ for explicit returns.
     pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
@@ -1409,9 +1553,12 @@ impl TyExpressionVariant {
                 .collect(),
             TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
             TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
-
+            TyExpressionVariant::ImplicitReturn(exp) => exp.gather_return_statements(),
             TyExpressionVariant::Return(exp) => {
                 vec![exp]
+            }
+            TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
+                exp.gather_return_statements()
             }
             // if it is impossible for an expression to contain a return _statement_ (not an
             // implicit return!), put it in the pattern below.

@@ -7,22 +7,22 @@ use ::option::Option::{self, *};
 use ::convert::From;
 
 struct RawVec<T> {
-    ptr: raw_ptr,
+    pub ptr: raw_ptr,
     cap: u64,
 }
 
 impl<T> RawVec<T> {
     /// Create a new `RawVec` with zero capacity.
-    /// 
+    ///
     /// # Returns
     ///
     /// * [RawVec] - A new `RawVec` with zero capacity.
-    /// 
+    ///
     /// # Examples
-    ///    
+    ///
     /// ```sway
     /// use std::vec::RawVec;
-    /// 
+    ///
     /// fn foo() {
     ///     let vec = RawVec::new();
     /// }
@@ -37,7 +37,7 @@ impl<T> RawVec<T> {
     /// Creates a `RawVec` (on the heap) with exactly the capacity for a
     /// `[T; capacity]`. This is equivalent to calling `RawVec::new` when
     /// `capacity` is zero.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `capacity`: [u64] - The capacity of the `RawVec`.
@@ -45,12 +45,12 @@ impl<T> RawVec<T> {
     /// # Returns
     ///
     /// * [RawVec] - A new `RawVec` with zero capacity.
-    /// 
+    ///
     /// # Examples
-    ///    
+    ///
     /// ```sway
     /// use std::vec::RawVec;
-    /// 
+    ///
     /// fn foo() {
     ///     let vec = RawVec::with_capacity(5);
     /// }
@@ -130,7 +130,7 @@ impl<T> RawVec<T> {
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
-    buf: RawVec<T>,
+    pub buf: RawVec<T>,
     len: u64,
 }
 
@@ -151,7 +151,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     // allocates when an element is pushed
     ///     vec.push(5);
     /// }
@@ -187,7 +187,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::with_capacity(2);
+    ///     let mut vec = Vec::with_capacity(2);
     ///     // does not allocate
     ///     vec.push(5);
     ///     // does not re-allocate
@@ -215,11 +215,11 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     let last_element = vec.pop().unwrap();
     ///     assert(last_element == 5);
-    /// } 
+    /// }
     ///```
     pub fn push(ref mut self, value: T) {
         // If there is insufficient capacity, grow the buffer.
@@ -270,7 +270,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.clear()
     ///     assert(vec.is_empty());
@@ -296,7 +296,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -332,7 +332,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     assert(vec.len() == 1);
     ///     vec.push(10);
@@ -355,7 +355,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     assert(vec.is_empty());
     ///     vec.push(5);
     ///     assert(!vec.is_empty());
@@ -386,7 +386,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -440,7 +440,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -491,11 +491,11 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
-    /// 
+    ///     let mut vec = Vec::new();
+    ///
     ///     let res = vec.pop();
     ///     assert(res.is_none());
-    /// 
+    ///
     ///     vec.push(5);
     ///     let res = vec.pop();
     ///     assert(res.unwrap() == 5);
@@ -527,7 +527,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -570,7 +570,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -606,9 +606,30 @@ impl<T> From<raw_slice> for Vec<T> {
             len: buf.cap,
         }
     }
+}
 
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
+impl<T> From<Vec<T>> for raw_slice {
+    fn from(vec: Vec<T>) -> Self {
+        asm(ptr: (vec.buf.ptr(), vec.len)) {
+            ptr: raw_slice
+        }
+    }
+}
+
+impl<T> AbiEncode for Vec<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let len = self.len();
+        buffer.push(len);
+
+        let mut i = 0;
+        while i < len {
+            let item = self.get(i).unwrap();
+            item.abi_encode(buffer);
+            i += 1;
+        }
     }
 }
 

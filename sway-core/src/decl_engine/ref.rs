@@ -106,7 +106,7 @@ impl<T> DeclRef<DeclId<T>> {
 impl<T> DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
+    T: Named + Spanned + SubstTypes + Clone,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,
@@ -114,7 +114,7 @@ where
         engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.insert(decl)
     }
@@ -139,7 +139,7 @@ impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
+    T: Named + Spanned + SubstTypes + Clone,
 {
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,
@@ -147,7 +147,7 @@ where
         engines: &Engines,
     ) -> Self {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.subst(type_mapping, engines);
         decl_engine
             .insert(decl)
@@ -159,7 +159,7 @@ impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceDecls + std::fmt::Debug,
+    T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone,
 {
     pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
@@ -168,7 +168,7 @@ where
         ctx: &mut TypeCheckContext,
     ) -> Result<Self, ErrorEmitted> {
         let decl_engine = ctx.engines().de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.replace_decls(decl_mapping, handler, ctx)?;
         Ok(decl_engine
             .insert(decl)
@@ -280,11 +280,11 @@ impl<I> Spanned for DeclRef<I> {
 impl<T> SubstTypes for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes,
+    T: Named + Spanned + SubstTypes + Clone,
 {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.subst(type_mapping, engines);
         decl_engine.replace(self.id, decl);
     }
@@ -294,12 +294,21 @@ impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,
-        _handler: &Handler,
+        handler: &Handler,
         ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
-        if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
+
+        let func = decl_engine.get(self);
+
+        if let Some(new_decl_ref) = decl_mapping.find_match(
+            handler,
+            ctx.engines(),
+            self.id.into(),
+            func.implementing_for_typeid,
+            ctx.self_type(),
+        )? {
             if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                 self.id = new_decl_ref;
             }
@@ -307,7 +316,13 @@ impl ReplaceDecls for DeclRefFunction {
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
-            if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
+            if let Some(new_decl_ref) = decl_mapping.find_match(
+                handler,
+                ctx.engines(),
+                parent.clone(),
+                func.implementing_for_typeid,
+                ctx.self_type(),
+            )? {
                 if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                     self.id = new_decl_ref;
                 }
@@ -321,7 +336,7 @@ impl ReplaceDecls for DeclRefFunction {
 impl ReplaceFunctionImplementingType for DeclRefFunction {
     fn replace_implementing_type(&mut self, engines: &Engines, implementing_type: ty::TyDecl) {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(&self.id);
+        let mut decl = (*decl_engine.get(&self.id)).clone();
         decl.set_implementing_type(implementing_type);
         decl_engine.replace(self.id, decl);
     }

@@ -4,7 +4,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
     Ident,
@@ -186,12 +186,12 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let type_id = ctx
             .resolve_type(
                 handler,
-                type_engine.insert(engines, type_info),
+                type_engine.insert(engines, type_info, type_info_span.source_id()),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix),
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         Ok(type_id)
     }
@@ -235,7 +235,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Check to see if this is a fn declaration.
         let fn_ref = unknown_decl.to_fn_ref(handler)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_function(fn_ref.id());
+        let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
         match self.type_arguments {
             // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
@@ -258,7 +258,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
                         None,
                     )
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
                     });
                 }
             }
@@ -294,7 +294,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Check to see if this is a struct declaration.
         let struct_ref = unknown_decl.to_struct_ref(handler, engines)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_struct(struct_ref.id());
+        let mut new_copy = (*decl_engine.get_struct(struct_ref.id())).clone();
         // Monomorphize the copy, in place.
         ctx.monomorphize(
             handler,
@@ -305,7 +305,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_struct_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Struct(new_struct_ref.clone()));
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::Struct(new_struct_ref.clone()),
+            new_struct_ref.span().source_id(),
+        );
         Ok((new_struct_ref, Some(type_id), None))
     }
 }
@@ -335,11 +339,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             ..
         }) = &unknown_decl
         {
-            decl_engine.get_enum(enum_ref.id())
+            (*decl_engine.get_enum(enum_ref.id())).clone()
         } else {
             // Check to see if this is a enum declaration.
             let enum_ref = unknown_decl.to_enum_ref(handler, engines)?;
-            decl_engine.get_enum(enum_ref.id())
+            (*decl_engine.get_enum(enum_ref.id())).clone()
         };
 
         // Monomorphize the copy, in place.
@@ -352,8 +356,29 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_enum_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()));
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::Enum(new_enum_ref.clone()),
+            new_enum_ref.span().source_id(),
+        );
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
+    }
+}
+
+impl TypeBinding<QualifiedCallPath> {
+    pub(crate) fn type_check_qualified(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<DeclRef<DeclId<ty::TyConstantDecl>>, ErrorEmitted> {
+        // Grab the declaration.
+        let unknown_decl =
+            ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
+
+        // Check to see if this is a const declaration.
+        let const_ref = unknown_decl.to_const_ref(handler)?;
+
+        Ok(const_ref)
     }
 }
 

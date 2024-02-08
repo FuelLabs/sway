@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-5A11C8A6FA94BF46"
+
+[[package]]
+name = "std"
+source = "path+from-root-5A11C8A6FA94BF46"
+dependencies = ["core"]
+
+[[package]]
+name = "trait_cannot_find_in_scope_issue"
+source = "member"
+dependencies = ["std"]

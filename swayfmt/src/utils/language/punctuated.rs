@@ -9,6 +9,8 @@ use sway_ast::{
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
 
+use super::expr::should_write_multiline;
+
 impl<T, P> Format for Punctuated<T, P>
 where
     T: Format,
@@ -22,53 +24,80 @@ where
         if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
             match formatter.shape.code_line.line_style {
                 LineStyle::Normal => {
-                    let value_pairs = &self.value_separator_pairs;
-                    for (type_field, punctuation) in value_pairs.iter() {
-                        type_field.format(formatted_code, formatter)?;
-                        punctuation.format(formatted_code, formatter)?;
-                        write!(formatted_code, " ")?;
-                    }
-
-                    if let Some(final_value) = &self.final_value_opt {
-                        final_value.format(formatted_code, formatter)?;
-                    } else {
-                        formatted_code.pop();
-                        formatted_code.pop();
-                    }
+                    write!(
+                        formatted_code,
+                        "{}",
+                        format_generic_pair(
+                            &self.value_separator_pairs,
+                            &self.final_value_opt,
+                            formatter
+                        )?
+                    )?;
                 }
                 LineStyle::Inline => {
-                    write!(formatted_code, " ")?;
-                    let value_pairs_iter = self.value_separator_pairs.iter();
-                    for (type_field, punctuation) in value_pairs_iter.clone() {
-                        type_field.format(formatted_code, formatter)?;
-                        punctuation.format(formatted_code, formatter)?;
-
-                        write!(formatted_code, " ")?;
-                    }
-                    if let Some(final_value) = &self.final_value_opt {
-                        final_value.format(formatted_code, formatter)?;
-                    } else {
-                        formatted_code.pop();
-                        formatted_code.pop();
-                    }
-                    write!(formatted_code, " ")?;
+                    write!(
+                        formatted_code,
+                        " {} ",
+                        format_generic_pair(
+                            &self.value_separator_pairs,
+                            &self.final_value_opt,
+                            formatter
+                        )?
+                    )?;
                 }
                 LineStyle::Multiline => {
                     if !formatted_code.ends_with('\n') {
                         writeln!(formatted_code)?;
                     }
-                    let value_pairs_iter = self.value_separator_pairs.iter();
-                    for (type_field, comma_token) in value_pairs_iter.clone() {
-                        write!(formatted_code, "{}", &formatter.indent_str()?)?;
-                        type_field.format(formatted_code, formatter)?;
+                    if !self.value_separator_pairs.is_empty() || self.final_value_opt.is_some() {
+                        formatter.write_indent_into_buffer(formatted_code)?;
+                    }
 
-                        comma_token.format(formatted_code, formatter)?;
-                        writeln!(formatted_code)?;
+                    let mut is_value_too_long = false;
+                    let value_separator_pairs = formatter.with_shape(
+                        formatter.shape.with_default_code_line(),
+                        |formatter| -> Result<Vec<(String, String)>, FormatterError> {
+                            self.value_separator_pairs
+                                .iter()
+                                .map(|(type_field, comma_token)| {
+                                    let mut field = FormattedCode::new();
+                                    let mut comma = FormattedCode::new();
+                                    type_field.format(&mut field, formatter)?;
+                                    comma_token.format(&mut comma, formatter)?;
+                                    if field.len()
+                                        > formatter.shape.width_heuristics.short_array_element_width
+                                    {
+                                        is_value_too_long = true;
+                                    }
+                                    Ok((
+                                        field.trim_start().to_owned(),
+                                        comma.trim_start().to_owned(),
+                                    ))
+                                })
+                                .collect()
+                        },
+                    )?;
+
+                    let mut iter = value_separator_pairs.iter().peekable();
+
+                    while let Some((type_field, comma_token)) = iter.next() {
+                        write!(formatted_code, "{}{}", type_field, comma_token)?;
+                        if iter.peek().is_none() && self.final_value_opt.is_none() {
+                            break;
+                        }
+                        if is_value_too_long || should_write_multiline(formatted_code, formatter) {
+                            writeln!(formatted_code)?;
+                            formatter.write_indent_into_buffer(formatted_code)?;
+                        } else {
+                            write!(formatted_code, " ")?;
+                        }
                     }
                     if let Some(final_value) = &self.final_value_opt {
-                        write!(formatted_code, "{}", &formatter.indent_str()?)?;
                         final_value.format(formatted_code, formatter)?;
-                        writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                        write!(formatted_code, "{}", PunctKind::Comma.as_char())?;
+                    }
+                    if !formatted_code.ends_with('\n') {
+                        writeln!(formatted_code)?;
                     }
                 }
             }
@@ -76,6 +105,43 @@ where
 
         Ok(())
     }
+}
+
+fn format_generic_pair<T, P>(
+    value_separator_pairs: &[(T, P)],
+    final_value_opt: &Option<Box<T>>,
+    formatter: &mut Formatter,
+) -> Result<FormattedCode, FormatterError>
+where
+    T: Format,
+    P: Format,
+{
+    let len = value_separator_pairs.len();
+    let mut ts: Vec<String> = Vec::with_capacity(len);
+    let mut ps: Vec<String> = Vec::with_capacity(len);
+    for (t, p) in value_separator_pairs.iter() {
+        let mut t_buf = FormattedCode::new();
+        t.format(&mut t_buf, formatter)?;
+        ts.push(t_buf);
+
+        let mut p_buf = FormattedCode::new();
+        p.format(&mut p_buf, formatter)?;
+        ps.push(p_buf);
+    }
+    if let Some(final_value) = final_value_opt {
+        let mut buf = FormattedCode::new();
+        final_value.format(&mut buf, formatter)?;
+        ts.push(buf);
+    } else {
+        // reduce the number of punct by 1
+        // this is safe since the number of
+        // separator pairs is always equal
+        ps.truncate(ts.len() - 1);
+    }
+    for (t, p) in ts.iter_mut().zip(ps.iter()) {
+        write!(t, "{p}")?;
+    }
+    Ok(ts.join(" "))
 }
 
 impl<T, P> LeafSpans for Punctuated<T, P>
@@ -133,6 +199,10 @@ impl Format for TypeField {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
+        // If there is a visibility token add it to the formatted_code with a ` ` after it.
+        if let Some(visibility) = &self.visibility {
+            write!(formatted_code, "{} ", visibility.span().as_str())?;
+        }
         write!(
             formatted_code,
             "{}{} ",

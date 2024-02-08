@@ -10,7 +10,10 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, Literal},
-    semantic_analysis::{TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     transform::{AllowDeprecatedState, AttributeKind, AttributesMap},
     type_system::*,
     types::*,
@@ -96,6 +99,16 @@ impl DebugWithEngines for TyExpression {
     }
 }
 
+impl TypeCheckAnalysis for TyExpression {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.expression.type_check_analyze(handler, ctx)
+    }
+}
+
 impl TypeCheckFinalization for TyExpression {
     fn type_check_finalize(
         &mut self,
@@ -133,7 +146,7 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for type_parameter in function_decl.type_parameters {
+                for type_parameter in &function_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, call_path.span())
                 }
 
@@ -161,12 +174,12 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(struct_ref);
-                for type_parameter in struct_decl.type_parameters {
+                for type_parameter in &struct_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                 }
-                if let TypeInfo::Struct(decl_ref) = ctx.engines.te().get(self.return_type) {
-                    let decl = decl_engine.get_struct(&decl_ref);
-                    for type_parameter in decl.type_parameters {
+                if let TypeInfo::Struct(decl_ref) = &*ctx.engines.te().get(self.return_type) {
+                    let decl = decl_engine.get_struct(decl_ref);
+                    for type_parameter in &decl.type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                     }
                 }
@@ -278,7 +291,10 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
-            Return(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
+            ImplicitReturn(exp) | Return(exp) => {
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?)
+            }
+            Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
@@ -383,6 +399,7 @@ impl DeterministicallyAborts for TyExpression {
             Reassignment(reassignment) => reassignment
                 .rhs
                 .deterministically_aborts(decl_engine, check_call_body),
+            ImplicitReturn(exp) => exp.deterministically_aborts(decl_engine, check_call_body),
             // TODO: Is this correct?
             // I'm not sure what this function is supposed to do exactly. It's called
             // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
@@ -391,7 +408,8 @@ impl DeterministicallyAborts for TyExpression {
             // Also, is it necessary to check the expression to see if avoids the return? eg.
             // someone could write `return break;` in a loop, which would mean the return never
             // gets executed.
-            Return(..) => true,
+            Return(_) => true,
+            Ref(exp) | Deref(exp) => exp.deterministically_aborts(decl_engine, check_call_body),
         }
     }
 }
@@ -401,7 +419,7 @@ impl TyExpression {
         let type_engine = engines.te();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
+            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None),
             span,
         }
     }
@@ -487,9 +505,9 @@ impl TyExpression {
             TyExpressionVariant::FunctionApplication {
                 call_path, fn_ref, ..
             } => {
-                if let Some(TyDecl::ImplTrait(t)) = engines.de().get(fn_ref).implementing_type {
-                    let t = engines.de().get(&t.decl_id).implementing_for;
-                    if let TypeInfo::Struct(struct_ref) = engines.te().get(t.type_id) {
+                if let Some(TyDecl::ImplTrait(t)) = &engines.de().get(fn_ref).implementing_type {
+                    let t = &engines.de().get(&t.decl_id).implementing_for;
+                    if let TypeInfo::Struct(struct_ref) = &*engines.te().get(t.type_id) {
                         let s = engines.de().get(struct_ref.id());
                         emit_warning_if_deprecated(
                             &s.attributes,

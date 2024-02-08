@@ -8,7 +8,7 @@ The `Forc.toml` (the _manifest_ file) is a compulsory file for each package and 
   * `organization` — The organization of the project.
   * `license`— The project license.
   * `entry` — The entry point for the compiler to start parsing from.
-    * For the recomended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
+    * For the recommended way of selecting an entry point of large libraries please take a look at: [Libraries](./../sway-program-types/libraries.md)
   * `implicit-std` -  Controls whether provided `std` version (with the current `forc` version) will get added as a dependency _implicitly_. _Unless you know what you are doing, leave this as default._
   * `forc-version` - The minimum forc version required for this project to work properly.
 
@@ -31,8 +31,8 @@ An example `Forc.toml` is shown below. Under `[project]` the following fields ar
 
 Also for the following fields, a default value is provided so omitting them is allowed:
 
-* `entry` - (default : _main.sw_)
-* `implicit-std` - (default : _true_)
+* `entry` - (default : `main.sw` )
+* `implicit-std` - (default : `true` )
 
 ```toml
 [project]
@@ -69,15 +69,15 @@ The `[build-profile]` tables provide a way to customize compiler settings such a
 The following fields can be provided for a build-profile:
 
 * `print-ast` - Whether to print out the generated AST or not, defaults to false.
-* `print-dca-graph` - Whether to print out the computed DCA graph (in GraphViz DOT format), defaults to false.
-* `print-dca-graph-url-format` - The URL format to be used in the generated DOT file, an example for vscode would be: "vscode://file/{path}:{line}:{col}"
+* `print-dca-graph` - Whether to print out the computed Dead Code Analysis (DCA) graph (in GraphViz DOT format), defaults to false.
+* `print-dca-graph-url-format` - The URL format to be used in the generated DOT file, an example for VS Code would be: `vscode://file/{path}:{line}:{col}`.
 * `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true), defaults to false.
 * `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.
 * `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.
 * `terse` - Terse mode. Limited warning and error output, defaults to false.
 * `time_phases` - Whether to output the time elapsed over each part of the compilation process, defaults to false.
-* `include_tests` -  Whether or not to include test functions in parsing, type-checking and codegen, this is set to true by invocations like `forc test`, defaults to false.
-* `json_abi_with_callpaths` - Whether to json abi with callpaths instead of names for struct and enums, defaults to false.
+* `include_tests` -  Whether or not to include test functions in parsing, type-checking, and code generation. This is set to true by invocations like `forc test`, but defaults to false.
+* `json_abi_with_callpaths` - Whether to generate a JSON ABI with `callpaths` instead of names for structs and enums, defaults to false. This option can help prevent conflicting struct or enum definitions by using the full path instead of the name.
 * `error_on_warnings` - Whether to treat errors as warnings, defaults to false.
 
 There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
@@ -105,7 +105,7 @@ terse = true
 
 Since `release` and `debug` implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (debug is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
 
-Note that providing the corresponding cli options (like `--finalized-asm`) will override the selected build profile. For example if you pass both `--release` and `--finalized-asm`, release build profile is omitted and resulting build profile would have a structure like the following:
+Note that providing the corresponding CLI options (like `--finalized-asm`) will override the selected build profile. For example if you pass both `--release` and `--finalized-asm`, release build profile is omitted and resulting build profile would have a structure like the following:
 
 ```toml
 print-ast = false
@@ -122,7 +122,7 @@ experimental-private-modules = false
 
 ## The `[patch]` section
 
-The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The example provided below patches <https://github.com/fuellabs/sway> source with master branch of the same repo.
+The [patch] section of `Forc.toml` can be used to override dependencies with other copies. The example provided below patches `https://github.com/fuellabs/sway` with the `test` branch of the same repo.
 
 ```toml
 [project]
@@ -166,7 +166,7 @@ Note that each key after the `[patch]` is a URL of the source that is being patc
 
 ## The `[contract-dependencies]` section
 
-The `[contract-dependenices]` table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring `[contract-dependencies]` makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.
+The `[contract-dependencies]` table can be used to declare contract dependencies for a Sway contract or script. Contract dependencies are the set of contracts that our contract or script may interact with. Declaring `[contract-dependencies]` makes it easier to refer to contracts in your Sway source code without having to manually update IDs each time a new version is deployed. Instead, we can use forc to pin and update contract dependencies just like we do for regular library dependencies.
 
 Contracts declared under `[contract-dependencies]` are built and pinned just like regular `[dependencies]` however rather than importing each contract dependency's entire public namespace we instead import their respective contract IDs as `CONTRACT_ID` constants available via each contract dependency's namespace root. This means you can use a contract dependency's ID as if it were declared as a `pub const` in the root of the contract dependency package as demonstrated in the example below.
 

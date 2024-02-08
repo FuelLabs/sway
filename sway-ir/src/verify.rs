@@ -3,18 +3,18 @@
 //! During creation, deserialization and optimization the IR should be verified to be in a
 //! consistent valid state, using the functions in this module.
 
+use itertools::Itertools;
+
 use crate::{
-    block::BlockContent,
     context::Context,
     error::IrError,
-    function::{Function, FunctionContent},
-    instruction::{FuelVmInstruction, Instruction, Predicate},
+    function::Function,
+    instruction::{FuelVmInstruction, InstOp, Predicate},
     irtype::Type,
     local_var::LocalVar,
     metadata::{MetadataIndex, Metadatum},
-    module::ModuleContent,
     value::{Value, ValueDatum},
-    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
     BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
 };
 
@@ -27,7 +27,7 @@ pub fn module_verifier(
     _analyses: &AnalysisResults,
     module: Module,
 ) -> Result<AnalysisResult, IrError> {
-    context.verify_module(context.modules.get(module.0).unwrap())?;
+    context.verify_module(module)?;
     Ok(Box::new(ModuleVerifierResult))
 }
 
@@ -45,24 +45,31 @@ pub fn create_module_verifier_pass() -> Pass {
 impl<'eng> Context<'eng> {
     /// Verify the contents of this [`Context`] is valid.
     pub fn verify(self) -> Result<Self, IrError> {
-        for (_, module) in &self.modules {
+        for (module, _) in &self.modules {
+            let module = Module(module);
             self.verify_module(module)?;
         }
         Ok(self)
     }
 
-    fn verify_module(&self, module: &ModuleContent) -> Result<(), IrError> {
-        for function in &module.functions {
+    fn verify_module(&self, module: Module) -> Result<(), IrError> {
+        for function in module.function_iter(self) {
             self.verify_function(module, function)?;
         }
         Ok(())
     }
 
-    fn verify_function(
-        &self,
-        cur_module: &ModuleContent,
-        function: &Function,
-    ) -> Result<(), IrError> {
+    fn verify_function(&self, cur_module: Module, function: Function) -> Result<(), IrError> {
+        if function.get_module(self) != cur_module {
+            return Err(IrError::InconsistentParent(
+                function.get_name(self).into(),
+                format!("Module_Index_{:?}", cur_module.0.into_raw_parts()),
+                format!(
+                    "Module_Index_{:?}",
+                    function.get_module(self).0.into_raw_parts()
+                ),
+            ));
+        }
         let entry_block = function.get_entry_block(self);
         // Ensure that the entry block arguments are same as function arguments.
         if function.num_args(self) != entry_block.num_args(self) {
@@ -74,26 +81,33 @@ impl<'eng> Context<'eng> {
             }
         }
 
-        let function = &self.functions[function.0];
-        for block in &function.blocks {
-            self.verify_block(cur_module, function, &self.blocks[block.0])?;
+        for block in function.block_iter(self) {
+            self.verify_block(cur_module, function, block)?;
         }
-        self.verify_metadata(function.metadata)?;
+        self.verify_metadata(function.get_metadata(self))?;
         Ok(())
     }
 
     fn verify_block(
         &self,
-        cur_module: &ModuleContent,
-        cur_function: &FunctionContent,
-        block: &BlockContent,
+        cur_module: Module,
+        cur_function: Function,
+        cur_block: Block,
     ) -> Result<(), IrError> {
-        if block.instructions.len() <= 1 && block.preds.is_empty() {
+        if cur_block.get_function(self) != cur_function {
+            return Err(IrError::InconsistentParent(
+                cur_block.get_label(self),
+                cur_function.get_name(self).into(),
+                cur_block.get_function(self).get_name(self).into(),
+            ));
+        }
+
+        if cur_block.num_instructions(self) <= 1 && cur_block.num_predecessors(self) == 0 {
             // Empty unreferenced blocks are a harmless artefact.
             return Ok(());
         }
 
-        for (arg_idx, arg_val) in block.args.iter().enumerate() {
+        for (arg_idx, arg_val) in cur_block.arg_iter(self).enumerate() {
             match self.values[arg_val.0].value {
                 ValueDatum::Argument(BlockArgument { idx, .. }) if idx == arg_idx => (),
                 _ => return Err(IrError::VerifyBlockArgMalformed),
@@ -104,22 +118,28 @@ impl<'eng> Context<'eng> {
             context: self,
             cur_module,
             cur_function,
-            cur_block: block,
+            cur_block,
         }
         .verify_instructions()?;
 
         let (last_is_term, num_terms) =
-            block.instructions.iter().fold((false, 0), |(_, n), ins| {
-                if ins.is_terminator(self) {
-                    (true, n + 1)
-                } else {
-                    (false, n)
-                }
-            });
+            cur_block
+                .instruction_iter(self)
+                .fold((false, 0), |(_, n), ins| {
+                    if ins.is_terminator(self) {
+                        (true, n + 1)
+                    } else {
+                        (false, n)
+                    }
+                });
         if !last_is_term {
-            Err(IrError::MissingTerminator(block.label.clone()))
+            Err(IrError::MissingTerminator(
+                cur_block.get_label(self).clone(),
+            ))
         } else if num_terms != 1 {
-            Err(IrError::MisplacedTerminator(block.label.clone()))
+            Err(IrError::MisplacedTerminator(
+                cur_block.get_label(self).clone(),
+            ))
         } else {
             Ok(())
         }
@@ -161,35 +181,40 @@ impl<'eng> Context<'eng> {
 
 struct InstructionVerifier<'a, 'eng> {
     context: &'a Context<'eng>,
-    cur_module: &'a ModuleContent,
-    cur_function: &'a FunctionContent,
-    cur_block: &'a BlockContent,
+    cur_module: Module,
+    cur_function: Function,
+    cur_block: Block,
 }
 
 impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     fn verify_instructions(&self) -> Result<(), IrError> {
-        for ins in &self.cur_block.instructions {
+        for ins in self.cur_block.instruction_iter(self.context) {
             let value_content = &self.context.values[ins.0];
             if let ValueDatum::Instruction(instruction) = &value_content.value {
-                match instruction {
-                    Instruction::AsmBlock(..) => (),
-                    Instruction::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
-                    Instruction::UnaryOp { op, arg } => self.verify_unary_op(op, arg)?,
-                    Instruction::BinaryOp { op, arg1, arg2 } => {
-                        self.verify_binary_op(op, arg1, arg2)?
-                    }
-                    Instruction::Branch(block) => self.verify_br(block)?,
-                    Instruction::Call(func, args) => self.verify_call(func, args)?,
-                    Instruction::CastPtr(val, ty) => self.verify_cast_ptr(val, ty)?,
-                    Instruction::Cmp(pred, lhs_value, rhs_value) => {
+                if instruction.parent != self.cur_block {
+                    return Err(IrError::InconsistentParent(
+                        format!("Instr_{:?}", ins.0.into_raw_parts()),
+                        self.cur_block.get_label(self.context),
+                        instruction.parent.get_label(self.context),
+                    ));
+                }
+                match &instruction.op {
+                    InstOp::AsmBlock(..) => (),
+                    InstOp::BitCast(value, ty) => self.verify_bitcast(value, ty)?,
+                    InstOp::UnaryOp { op, arg } => self.verify_unary_op(op, arg)?,
+                    InstOp::BinaryOp { op, arg1, arg2 } => self.verify_binary_op(op, arg1, arg2)?,
+                    InstOp::Branch(block) => self.verify_br(block)?,
+                    InstOp::Call(func, args) => self.verify_call(func, args)?,
+                    InstOp::CastPtr(val, ty) => self.verify_cast_ptr(val, ty)?,
+                    InstOp::Cmp(pred, lhs_value, rhs_value) => {
                         self.verify_cmp(pred, lhs_value, rhs_value)?
                     }
-                    Instruction::ConditionalBranch {
+                    InstOp::ConditionalBranch {
                         cond_value,
                         true_block,
                         false_block,
                     } => self.verify_cbr(cond_value, true_block, false_block)?,
-                    Instruction::ContractCall {
+                    InstOp::ContractCall {
                         params,
                         coins,
                         asset_id,
@@ -198,7 +223,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                     } => self.verify_contract_call(params, coins, asset_id, gas)?,
 
                     // XXX move the fuelvm verification into a module
-                    Instruction::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
+                    InstOp::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
                         FuelVmInstruction::Gtf { index, tx_field_id } => {
                             self.verify_gtf(index, tx_field_id)?
                         }
@@ -256,27 +281,27 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             self.verify_wide_cmp(op, arg1, arg2)?
                         }
                     },
-                    Instruction::GetElemPtr {
+                    InstOp::GetElemPtr {
                         base,
                         elem_ptr_ty,
                         indices,
                     } => self.verify_get_elem_ptr(base, elem_ptr_ty, indices)?,
-                    Instruction::GetLocal(local_var) => self.verify_get_local(local_var)?,
-                    Instruction::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
-                    Instruction::Load(ptr) => self.verify_load(ptr)?,
-                    Instruction::MemCopyBytes {
+                    InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                    InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
+                    InstOp::Load(ptr) => self.verify_load(ptr)?,
+                    InstOp::MemCopyBytes {
                         dst_val_ptr,
                         src_val_ptr,
                         byte_len,
                     } => self.verify_mem_copy_bytes(dst_val_ptr, src_val_ptr, byte_len)?,
-                    Instruction::MemCopyVal {
+                    InstOp::MemCopyVal {
                         dst_val_ptr,
                         src_val_ptr,
                     } => self.verify_mem_copy_val(dst_val_ptr, src_val_ptr)?,
-                    Instruction::Nop => (),
-                    Instruction::PtrToInt(val, ty) => self.verify_ptr_to_int(val, ty)?,
-                    Instruction::Ret(val, ty) => self.verify_ret(val, ty)?,
-                    Instruction::Store {
+                    InstOp::Nop => (),
+                    InstOp::PtrToInt(val, ty) => self.verify_ptr_to_int(val, ty)?,
+                    InstOp::Ret(val, ty) => self.verify_ret(val, ty)?,
+                    InstOp::Store {
                         dst_val_ptr,
                         stored_val,
                     } => self.verify_store(dst_val_ptr, stored_val)?,
@@ -482,7 +507,11 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     }
 
     fn verify_br(&self, dest_block: &BranchToWithArgs) -> Result<(), IrError> {
-        if !self.cur_function.blocks.contains(&dest_block.block) {
+        if !self
+            .cur_function
+            .block_iter(self.context)
+            .contains(&dest_block.block)
+        {
             Err(IrError::VerifyBranchToMissingBlock(
                 self.context.blocks[dest_block.block.0].label.clone(),
             ))
@@ -493,7 +522,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_call(&self, callee: &Function, args: &[Value]) -> Result<(), IrError> {
         let callee_content = &self.context.functions[callee.0];
-        if !self.cur_module.functions.contains(callee) {
+        if !self.cur_module.function_iter(self.context).contains(callee) {
             return Err(IrError::VerifyCallToMissingFunction(
                 callee_content.name.clone(),
             ));
@@ -580,11 +609,19 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             .is(Type::is_bool, self.context)
         {
             Err(IrError::VerifyConditionExprNotABool)
-        } else if !self.cur_function.blocks.contains(&true_block.block) {
+        } else if !self
+            .cur_function
+            .block_iter(self.context)
+            .contains(&true_block.block)
+        {
             Err(IrError::VerifyBranchToMissingBlock(
                 self.context.blocks[true_block.block.0].label.clone(),
             ))
-        } else if !self.cur_function.blocks.contains(&false_block.block) {
+        } else if !self
+            .cur_function
+            .block_iter(self.context)
+            .contains(&false_block.block)
+        {
             Err(IrError::VerifyBranchToMissingBlock(
                 self.context.blocks[false_block.block.0].label.clone(),
             ))
@@ -728,8 +765,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     }
 
     fn verify_get_local(&self, local_var: &LocalVar) -> Result<(), IrError> {
-        if !self
-            .cur_function
+        if !self.context.functions[self.cur_function.0]
             .local_storage
             .values()
             .any(|var| var == local_var)
@@ -769,7 +805,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     }
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
-        // Just confirm src_val is a pointer.
+        // Just confirm `src_val` is a pointer.
         self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
             .map(|_| ())
     }
@@ -837,11 +873,14 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     }
 
     fn verify_ret(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
-        if !self.cur_function.return_type.eq(self.context, ty)
+        if !self
+            .cur_function
+            .get_return_type(self.context)
+            .eq(self.context, ty)
             || self.opt_ty_not_eq(&val.get_type(self.context), &Some(*ty))
         {
             Err(IrError::VerifyReturnMismatchedTypes(
-                self.cur_function.name.clone(),
+                self.cur_function.get_name(self.context).to_string(),
             ))
         } else {
             Ok(())

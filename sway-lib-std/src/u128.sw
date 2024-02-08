@@ -14,9 +14,9 @@ use ::result::Result::{self, *};
 /// Represented as two 64-bit components: `(upper, lower)`, where `value = (upper << 64) + lower`.
 pub struct U128 {
     /// The most significant 64 bits of the `U128`.
-    upper: u64,
+    pub upper: u64,
     /// The least significant 64 bits of the `U128`.
-    lower: u64,
+    pub lower: u64,
 }
 
 /// The error type used for `U128` type errors.
@@ -32,9 +32,11 @@ impl From<(u64, u64)> for U128 {
             lower: components.1,
         }
     }
+}
 
-    fn into(self) -> (u64, u64) {
-        (self.upper, self.lower)
+impl From<U128> for (u64, u64) {
+    fn from(val: U128) -> (u64, u64) {
+        (val.upper, val.lower)
     }
 }
 
@@ -61,15 +63,15 @@ impl u64 {
     /// Performs addition between two `u64` values, returning a `U128`.
     ///
     /// # Additional Information
-    /// 
+    ///
     /// Allows for addition between two `u64` values that would otherwise overflow.
     ///
     /// # Arguments
-    /// 
+    ///
     /// * `right`: [u64] - The right-hand side of the addition.
     ///
     /// # Returns
-    /// 
+    ///
     /// * [U128] - The result of the addition.
     ///
     /// # Examples
@@ -94,17 +96,12 @@ impl u64 {
         };
 
         asm(sum, overflow, left: self, right: right, result_ptr: result) {
-            // Add left and right.
             add sum left right;
-            // Immediately copy the overflow of the addition from `$of` into
-            // `overflow` so that it's not lost.
             move overflow of;
-            // Store the overflow into the first word of result.
             sw result_ptr overflow i0;
-            // Store the sum into the second word of result.
             sw result_ptr sum i1;
         };
-        
+
         set_flags(prior_flags);
 
         result
@@ -144,19 +141,20 @@ impl u64 {
             upper: 0,
             lower: 0,
         };
-        
-        asm(product, overflow, left: self, right: right, result_ptr: result) {
-            // Multiply left and right.
+
+        asm(
+            product,
+            overflow,
+            left: self,
+            right: right,
+            result_ptr: result,
+        ) {
             mul product left right;
-            // Immediately copy the overflow of the multiplication from `$of` into
-            // `overflow` so that it's not lost.
             move overflow of;
-            // Store the overflow into the first word of result.
             sw result_ptr overflow i0;
-            // Store the product into the second word of result.
             sw result_ptr product i1;
         };
-        
+
         set_flags(prior_flags);
 
         result
@@ -169,7 +167,7 @@ impl U128 {
     /// # Returns
     ///
     /// * [U128] - A new, zero value `U128`.
-    /// 
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -178,7 +176,7 @@ impl U128 {
     /// fn foo() {
     ///     let new_u128 = U128::new();
     ///     let zero_u128 = U128 { upper: 0, lower: 0 };
-    /// 
+    ///
     ///     assert(new_u128 == zero_u128);
     /// }
     /// ```
@@ -207,12 +205,12 @@ impl U128 {
     /// fn foo() {
     ///     let zero_u128 = U128 { upper: 0, lower: 0 };
     ///     let zero_u64 = zero_u128.as_u64().unwrap();
-    /// 
+    ///
     ///     assert(zero_u64 == 0);
-    /// 
+    ///
     ///     let max_u128 = U128::max();
     ///     let result = max_u128.as_u64();
-    /// 
+    ///
     ///     assert(result.is_err()));
     /// }
     /// ```
@@ -237,7 +235,7 @@ impl U128 {
     /// fn foo() {
     ///     let min_u128 = U128::min();
     ///     let zero_u128 = U128 { upper: 0, lower: 0 };
-    /// 
+    ///
     ///     assert(min_u128 == zero_u128);
     /// }
     /// ```
@@ -262,7 +260,7 @@ impl U128 {
     /// fn foo() {
     ///     let max_u128 = U128::max();
     ///     let maxed_u128 = U128 { upper: u64::max(), lower: u64::max() };
-    /// 
+    ///
     ///     assert(max_u128 == maxed_u128);
     /// }
     /// ```
@@ -468,36 +466,34 @@ impl core::ops::Divide for U128 {
 }
 
 impl Power for U128 {
-    fn pow(self, exponent: Self) -> Self {
+    fn pow(self, exponent: u32) -> Self {
         let mut value = self;
         let mut exp = exponent;
-        let one = Self::from((0, 1));
-        let zero = Self::from((0, 0));
 
-        if exp == zero {
-            return one;
+        if exp == 0 {
+            return Self::from((0, 1));
         }
 
-        if exp == one {
+        if exp == 1 {
             // Manually clone `self`. Otherwise, we may have a `MemoryOverflow`
             // issue with code that looks like: `x = x.pow(other)`
             return Self::from((self.upper, self.lower));
         }
 
-        while exp & one == zero {
+        while exp & 1 == 0 {
             value = value * value;
             exp >>= 1;
         }
 
-        if exp == one {
+        if exp == 1 {
             return value;
         }
 
         let mut acc = value;
-        while exp > one {
+        while exp > 1 {
             exp >>= 1;
             value = value * value;
-            if exp & one == one {
+            if exp & 1 == 1 {
                 acc = acc * value;
             }
         }

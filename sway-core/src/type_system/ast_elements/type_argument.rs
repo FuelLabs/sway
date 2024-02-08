@@ -46,9 +46,10 @@ impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
-        type_engine
-            .get(self.type_id)
-            .eq(&type_engine.get(other.type_id), engines)
+        self.type_id == other.type_id
+            || type_engine
+                .get(self.type_id)
+                .eq(&type_engine.get(other.type_id), engines)
     }
 }
 
@@ -70,19 +71,26 @@ impl OrdWithEngines for TypeArgument {
             span: _,
             call_path_tree: _,
         } = other;
+        if lti == rti {
+            return Ordering::Equal;
+        }
         engines.te().get(*lti).cmp(&engines.te().get(*rti), engines)
     }
 }
 
 impl DisplayWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{}", engines.help_out(engines.te().get(self.type_id)))
+        write!(f, "{}", engines.help_out(&*engines.te().get(self.type_id)))
     }
 }
 
 impl DebugWithEngines for TypeArgument {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        write!(f, "{:?}", engines.help_out(engines.te().get(self.type_id)))
+        write!(
+            f,
+            "{:?}",
+            engines.help_out(&*engines.te().get(self.type_id))
+        )
     }
 }
 

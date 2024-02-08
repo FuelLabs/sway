@@ -11,7 +11,7 @@ If you wish contribute to this reference:
    cargo install mdbook
    ```
 
-3. To [build](https://rust-lang.github.io/mdBook/cli/build.html) the book, ensure you are in `/sway/sway-book` and run:
+3. To [build](https://rust-lang.github.io/mdBook/cli/build.html) the book, ensure you are in `/docs/reference` and run:
 
    ```bash
    mdbook build

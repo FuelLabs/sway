@@ -96,6 +96,17 @@ pub enum E {
     B: T,
 }
 
+pub enum F {
+    A: u8,
+    B: bool,
+    C: (),
+}
+
+pub enum G {
+    A: u8,
+    B: u64,
+}
+
 // These inputs are taken from the storage_access_contract test.
 #[storage(read, write)]
 fn test_storage() {
@@ -189,6 +200,61 @@ fn test_storage() {
     let e2_ = read::<E>(key, 0).unwrap();
     match (e2, e2_) {
         (E::A(i1), E::A(i2)) => {
+            assert(i1 == 777);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let f1: F = F::A(8);
+    write(key, 0, f1);
+    let f1_ = read::<F>(key, 0).unwrap();
+    match (f1, f1_) {
+        (F::A(i1), F::A(i2)) => {
+            assert(i1 == 8);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let f2: F = F::B(true);
+    write(key, 0, f2);
+    let f2_ = read::<F>(key, 0).unwrap();
+    match (f2, f2_) {
+        (F::B(i1), F::B(i2)) => {
+            assert(i1 == true);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let f3: F = F::C;
+    write(key, 0, f3);
+    let f3_ = read::<F>(key, 0).unwrap();
+    match (f3, f3_) {
+        (F::C, F::C) => {
+            assert(true);
+        }
+        _ => assert(false),
+    }
+
+    let g1: G = G::A(8);
+    write(key, 0, g1);
+    let g1_ = read::<G>(key, 0).unwrap();
+    match (g1, g1_) {
+        (G::A(i1), G::A(i2)) => {
+            assert(i1 == 8);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let g2: G = G::B(64);
+    write(key, 0, g2);
+    let g2_ = read::<G>(key, 0).unwrap();
+    match (g2, g2_) {
+        (G::B(i1), G::B(i2)) => {
+            assert(i1 == 64);
             assert(i1 == i2);
         }
         _ => assert(false),

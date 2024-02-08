@@ -34,7 +34,7 @@ library;
 use ::revert::revert;
 ```
 
-- The `enum` definition which starts with the keyword `pub` to indicate that this `Option<T>` is publically available _outside_ the `option` library:
+- The `enum` definition which starts with the keyword `pub` to indicate that this `Option<T>` is publicly available _outside_ the `option` library:
 
 ```sway
 pub enum Option<T> {
@@ -91,7 +91,7 @@ mod vm;
 // .. Other deps
 ```
 
-with other libraries contained in the `src` folder, like the vm library (inside of `src/vm.sw`):
+with other libraries contained in the `src` folder, like the `vm` library (inside of `src/vm.sw`):
 
 ```sway
 library;
@@ -100,7 +100,7 @@ mod evm;
 // ...
 ```
 
-and it's own sub-library evm located in `src/vm/evm.sw`:
+and it's own sub-library `evm` located in `src/vm/evm.sw`:
 
 ```sway
 library;
@@ -131,7 +131,7 @@ $ tree
 
 As `internal_lib` is an internal library, it can be imported into `main.sw` as follows:
 
-- Use the `mod` keyword followed by the library name to make the internal library a dependancy
+- Use the `mod` keyword followed by the library name to make the internal library a dependency
 - Use the `use` keyword with a `::` separating the name of the library and the imported item(s)
 
 ```sway
@@ -194,7 +194,6 @@ Some Sway Libraries to try out:
 - [Signed Integers](https://github.com/FuelLabs/sway-libs/tree/master/libs/signed_integers)
 - [Unsigned Fixed Point Number](https://github.com/FuelLabs/sway-libs/tree/master/libs/fixed_point)
 - [Ownership](https://github.com/FuelLabs/sway-libs/tree/master/libs/ownership)
-- [Token](https://github.com/FuelLabs/sway-libs/tree/master/libs/token)
 
 ### Example
 

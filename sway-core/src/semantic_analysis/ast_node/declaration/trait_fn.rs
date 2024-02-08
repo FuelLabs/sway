@@ -2,7 +2,7 @@ use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::DeclId,
-    language::{parsed, ty, Visibility},
+    language::{parsed, ty, CallPath, Visibility},
     semantic_analysis::type_check_context::EnforceTypeArguments,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -60,7 +60,7 @@ impl ty::TyTraitFn {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let trait_fn = ty::TyTraitFn {
             name,
@@ -77,11 +77,15 @@ impl ty::TyTraitFn {
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, abi_mode: AbiMode) -> ty::TyFunctionDecl {
+    pub(crate) fn to_dummy_func(
+        &self,
+        abi_mode: AbiMode,
+        implementing_for_typeid: Option<TypeId>,
+    ) -> ty::TyFunctionDecl {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
-            body: ty::TyCodeBlock { contents: vec![] },
+            body: ty::TyCodeBlock::default(),
             parameters: self.parameters.clone(),
             implementing_type: match abi_mode.clone() {
                 AbiMode::ImplAbiFn(abi_name, abi_decl_id) => {
@@ -97,7 +101,9 @@ impl ty::TyTraitFn {
                 }
                 AbiMode::NonAbi => None,
             },
+            implementing_for_typeid,
             span: self.name.span(),
+            call_path: CallPath::from(self.name.clone()),
             attributes: self.attributes.clone(),
             return_type: self.return_type.clone(),
             visibility: Visibility::Public,

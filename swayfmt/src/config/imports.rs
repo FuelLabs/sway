@@ -1,8 +1,8 @@
 //! Configuration options related to formatting imports.
-use crate::config::{lists::ListTactic, user_opts::ImportsOptions, whitespace::IndentStyle};
+use crate::config::{user_opts::ImportsOptions, whitespace::IndentStyle};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct Imports {
     /// Controls the strategy for how imports are grouped together.
     pub group_imports: GroupImports,
@@ -10,19 +10,6 @@ pub struct Imports {
     pub imports_granularity: ImportGranularity,
     /// Indent of imports.
     pub imports_indent: IndentStyle,
-    /// Item layout inside a import block.
-    pub imports_layout: ListTactic,
-}
-
-impl Default for Imports {
-    fn default() -> Self {
-        Self {
-            group_imports: GroupImports::Preserve,
-            imports_granularity: ImportGranularity::Preserve,
-            imports_indent: IndentStyle::Block,
-            imports_layout: ListTactic::Mixed,
-        }
-    }
 }
 
 impl Imports {
@@ -34,15 +21,15 @@ impl Imports {
                 .imports_granularity
                 .unwrap_or(default.imports_granularity),
             imports_indent: opts.imports_indent.unwrap_or(default.imports_indent),
-            imports_layout: opts.imports_layout.unwrap_or(default.imports_layout),
         }
     }
 }
 
 /// Configuration for import groups, i.e. sets of imports separated by newlines.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum GroupImports {
     /// Keep groups as they are.
+    #[default]
     Preserve,
     /// Discard existing groups, and create new groups for
     ///  1. `std` / `core` / `alloc` imports
@@ -54,9 +41,10 @@ pub enum GroupImports {
 }
 
 /// How to merge imports.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ImportGranularity {
     /// Do not merge imports.
+    #[default]
     Preserve,
     /// Use one `use` statement per crate.
     Crate,

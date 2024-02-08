@@ -819,7 +819,16 @@
       }
     }
   ],
-  "loggedTypes": [],
+  "loggedTypes": [
+    {
+      "logId": 0,
+      "loggedType": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      }
+    }
+  ],
   "messagesTypes": [],
   "types": [
     {

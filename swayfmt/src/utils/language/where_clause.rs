@@ -4,7 +4,7 @@ use crate::{
 };
 use std::fmt::Write;
 use sway_ast::{WhereBound, WhereClause};
-use sway_types::Spanned;
+use sway_types::{ast::PunctKind, Spanned};
 
 impl Format for WhereClause {
     fn format(
@@ -15,7 +15,7 @@ impl Format for WhereClause {
         writeln!(
             formatted_code,
             "{}{}",
-            &formatter.indent_str()?,
+            &formatter.indent_to_str()?,
             self.where_token.span().as_str(),
         )?;
         formatter.indent();
@@ -27,15 +27,15 @@ impl Format for WhereClause {
         // ```
         //
         let value_pairs = self.bounds.value_separator_pairs.clone();
-        for pair in value_pairs.iter() {
+        for (bound, comma_token) in value_pairs.iter() {
             // `WhereBound`
-            pair.0.format(formatted_code, formatter)?;
+            bound.format(formatted_code, formatter)?;
             // `CommaToken`
-            writeln!(formatted_code, "{}", pair.1.span().as_str())?;
+            writeln!(formatted_code, "{}", comma_token.span().as_str())?;
         }
         if let Some(final_value) = &self.bounds.final_value_opt {
             final_value.format(formatted_code, formatter)?;
-            writeln!(formatted_code)?;
+            writeln!(formatted_code, "{}", PunctKind::Comma.as_char())?;
         }
         // reset indent
         formatter.unindent();
@@ -52,7 +52,7 @@ impl Format for WhereBound {
         write!(
             formatted_code,
             "{}{}{} ",
-            &formatter.indent_str()?,         // `Indent`
+            &formatter.indent_to_str()?,      // `Indent`
             self.ty_name.span().as_str(),     // `Ident`
             self.colon_token.span().as_str(), // `ColonToken`
         )?;

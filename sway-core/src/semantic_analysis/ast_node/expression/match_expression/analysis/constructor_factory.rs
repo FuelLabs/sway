@@ -20,7 +20,7 @@ pub(crate) struct ConstructorFactory {
 
 impl ConstructorFactory {
     pub(crate) fn new(engines: &Engines, type_id: TypeId) -> Self {
-        let possible_types = engines.te().get(type_id).extract_nested_types(engines);
+        let possible_types = type_id.extract_nested_types(engines);
         ConstructorFactory { possible_types }
     }
 
@@ -223,12 +223,12 @@ impl ConstructorFactory {
                 let enum_decl = engines
                     .de()
                     .get_enum(&type_info.expect_enum(handler, engines, "", span)?);
-                let enum_name = enum_decl.call_path.suffix;
-                let enum_variants = enum_decl.variants;
+                let enum_name = &enum_decl.call_path.suffix;
+                let enum_variants = &enum_decl.variants;
                 let (all_variants, variant_tracker) = ConstructorFactory::resolve_enum(
                     handler,
-                    &enum_name,
-                    &enum_variants,
+                    enum_name,
+                    enum_variants,
                     enum_pattern,
                     rest,
                     span,
@@ -452,12 +452,12 @@ impl ConstructorFactory {
                 let enum_decl = engines
                     .de()
                     .get_enum(&type_info.expect_enum(handler, engines, "", span)?);
-                let enum_name = enum_decl.call_path.suffix;
-                let enum_variants = enum_decl.variants;
+                let enum_name = &enum_decl.call_path.suffix;
+                let enum_variants = &enum_decl.variants;
                 let (all_variants, variant_tracker) = ConstructorFactory::resolve_enum(
                     handler,
-                    &enum_name,
-                    &enum_variants,
+                    enum_name,
+                    enum_variants,
                     enum_pattern,
                     rest,
                     span,

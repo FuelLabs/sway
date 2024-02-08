@@ -143,7 +143,7 @@ impl<'cfg> DebugWithEngines for ControlFlowGraphNode<'cfg> {
             } => {
                 let decl_engines = engines.de();
                 let method = decl_engines.get_function(method_decl_ref);
-                if let Some(implementing_type) = method.implementing_type {
+                if let Some(implementing_type) = &method.implementing_type {
                     format!(
                         "Method {}.{}",
                         implementing_type.friendly_name(engines),
@@ -259,7 +259,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing DCA grap to path {graph_path:?}\n{error}"
+                        "There was an issue while outputing DCA graph to path {graph_path:?}\n{error}"
                     );
                 }
             }

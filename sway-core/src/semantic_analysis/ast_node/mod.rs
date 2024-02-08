@@ -121,33 +121,45 @@ impl ty::TyAstNode {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: a.alias,
                             call_path: a.call_path,
+                            span: a.span,
                             is_absolute: a.is_absolute,
                             import_type: a.import_type,
                         }),
                     })
                 }
-                AstNodeContent::IncludeStatement(_) => {
+                AstNodeContent::IncludeStatement(i) => {
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::IncludeStatement,
+                        side_effect: ty::TySideEffectVariant::IncludeStatement(
+                            ty::TyIncludeStatement {
+                                mod_name: i.mod_name,
+                                span: i.span,
+                                visibility: i.visibility,
+                            },
+                        ),
                     })
                 }
                 AstNodeContent::Declaration(decl) => {
                     ty::TyAstNodeContent::Declaration(ty::TyDecl::type_check(handler, ctx, decl)?)
                 }
                 AstNodeContent::Expression(expr) => {
-                    let ctx = ctx
-                        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
-                        .with_help_text("");
+                    let mut ctx = ctx.with_help_text("");
+                    match expr.kind {
+                        ExpressionKind::ImplicitReturn(_) => {
+                            // Do not use any type annotation with implicit returns as that
+                            // will later cause type inference errors when matching implicit block
+                            // types.
+                        }
+                        _ => {
+                            ctx = ctx.with_type_annotation(type_engine.insert(
+                                engines,
+                                TypeInfo::Unknown,
+                                None,
+                            ));
+                        }
+                    }
                     let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
-                }
-                AstNodeContent::ImplicitReturnExpression(expr) => {
-                    let ctx =
-                        ctx.with_help_text("Implicit return must match up with block's type.");
-                    let typed_expr = ty::TyExpression::type_check(handler, ctx, expr.clone())
-                        .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
-                    ty::TyAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
                 AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
             },
@@ -155,21 +167,26 @@ impl ty::TyAstNode {
         };
 
         if let ty::TyAstNode {
-            content: ty::TyAstNodeContent::Expression(ty::TyExpression { .. }),
+            content: ty::TyAstNodeContent::Expression(ty::TyExpression { expression, .. }),
             ..
-        } = node
+        } = &node
         {
-            if !node
-                .type_info(type_engine)
-                .can_safely_ignore(type_engine, decl_engine)
-            {
-                handler.emit_warn(CompileWarning {
-                    warning_content: Warning::UnusedReturnValue {
-                        r#type: engines.help_out(node.type_info(type_engine)).to_string(),
-                    },
-                    span: node.span.clone(),
-                })
-            };
+            match expression {
+                ty::TyExpressionVariant::ImplicitReturn(_) => {}
+                _ => {
+                    if !node
+                        .type_info(type_engine)
+                        .can_safely_ignore(type_engine, decl_engine)
+                    {
+                        handler.emit_warn(CompileWarning {
+                            warning_content: Warning::UnusedReturnValue {
+                                r#type: engines.help_out(node.type_info(type_engine)).to_string(),
+                            },
+                            span: node.span.clone(),
+                        })
+                    };
+                }
+            }
         }
 
         Ok(node)

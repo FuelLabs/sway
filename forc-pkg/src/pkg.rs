@@ -1,17 +1,19 @@
 use crate::{
     lock::Lock,
-    manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
+    manifest::{
+        BuildProfile, Dependency, ExperimentalFlags, ManifestFile, MemberManifestFiles,
+        PackageManifestFile,
+    },
     source::{self, IPFSNode, Source},
-    CORE, PRELUDE, STD,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
 };
-use fuel_abi_types::program_abi;
+use fuel_abi_types::abi::program as program_abi;
 use petgraph::{
-    self,
+    self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
     Directed, Direction,
 };
@@ -24,7 +26,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
 };
 pub use sway_core::Programs;
 use sway_core::{
@@ -37,15 +39,15 @@ use sway_core::{
     fuel_prelude::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
-        fuel_types::ChainId,
     },
     language::{parsed::TreeType, Visibility},
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, Engines, FinalizedEntry,
+    BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
+use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{info, warn};
@@ -309,6 +311,8 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -506,10 +510,9 @@ impl BuiltPackage {
             }
             TreeType::Predicate => {
                 // Get the root hash of the bytecode for predicates and store the result in a file in the output directory
-                // TODO: Pass the user specified `ChainId` into `predicate_owner`
                 let root = format!(
                     "0x{}",
-                    fuel_tx::Input::predicate_owner(&self.bytecode.bytes, &ChainId::default(),)
+                    fuel_tx::Input::predicate_owner(&self.bytecode.bytes)
                 );
                 let root_file_name = format!("{}{}", &pkg_name, SWAY_BIN_ROOT_SUFFIX);
                 let root_path = output_dir.join(root_file_name);
@@ -825,6 +828,28 @@ impl BuildPlan {
                 .next()
                 .flatten()
         })
+    }
+
+    /// Returns a [String] representing the build dependency graph in GraphViz DOT format.
+    pub fn visualize(&self, url_file_prefix: Option<String>) -> String {
+        format!(
+            "{:?}",
+            dot::Dot::with_attr_getters(
+                &self.graph,
+                &[dot::Config::NodeNoLabel, dot::Config::EdgeNoLabel],
+                &|_, _| "".to_string(),
+                &|_, nr| {
+                    let url = url_file_prefix.clone().map_or("".to_string(), |prefix| {
+                        self.manifest_map
+                            .get(&nr.1.id())
+                            .map_or("".to_string(), |manifest| {
+                                format!("URL = \"{}{}\"", prefix, manifest.path().to_string_lossy())
+                            })
+                    });
+                    format!("label = \"{}\" shape = box {url}", nr.1.name)
+                },
+            )
+        )
     }
 }
 
@@ -1531,14 +1556,18 @@ pub fn sway_build_config(
         manifest_dir.to_path_buf(),
         build_target,
     )
-    .print_dca_graph(build_profile.print_dca_graph.clone())
-    .print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
-    .print_finalized_asm(build_profile.print_finalized_asm)
-    .print_intermediate_asm(build_profile.print_intermediate_asm)
-    .print_ir(build_profile.print_ir)
-    .include_tests(build_profile.include_tests)
-    .time_phases(build_profile.time_phases)
-    .metrics(build_profile.metrics_outfile.clone());
+    .with_print_dca_graph(build_profile.print_dca_graph.clone())
+    .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
+    .with_print_finalized_asm(build_profile.print_finalized_asm)
+    .with_print_intermediate_asm(build_profile.print_intermediate_asm)
+    .with_print_ir(build_profile.print_ir)
+    .with_include_tests(build_profile.include_tests)
+    .with_time_phases(build_profile.time_phases)
+    .with_metrics(build_profile.metrics_outfile.clone())
+    .with_optimization_level(build_profile.optimization_level)
+    .with_experimental(sway_core::ExperimentalFlags {
+        new_encoding: build_profile.experimental.new_encoding,
+    });
     Ok(build_config)
 }
 
@@ -1756,6 +1785,7 @@ pub fn compile(
             namespace,
             Some(&sway_build_config),
             &pkg.name,
+            None,
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -1791,6 +1821,8 @@ pub fn compile(
         metrics
     );
 
+    const NEW_ENCODING_VERSION: &str = "1";
+
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let mut types = vec![];
@@ -1804,7 +1836,11 @@ pub fn compile(
                     },
                     engines.te(),
                     engines.de(),
-                    &mut types
+                    &mut types,
+                    profile
+                        .experimental
+                        .new_encoding
+                        .then(|| NEW_ENCODING_VERSION.into()),
                 ),
                 Some(sway_build_config.clone()),
                 metrics
@@ -2010,6 +2046,7 @@ fn build_profile_from_opts(
         metrics_outfile,
         tests,
         error_on_warnings,
+        experimental,
         ..
     } = build_options;
     let mut selected_build_profile = BuildProfile::DEBUG;
@@ -2063,6 +2100,7 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
+    profile.experimental = experimental.clone();
 
     Ok((selected_build_profile.to_string(), profile))
 }
@@ -2559,8 +2597,10 @@ pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
     terse_mode: bool,
+    lsp_mode: Option<LspConfig>,
     include_tests: bool,
     engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2605,7 +2645,8 @@ pub fn check(
             build_target,
             &profile,
         )?
-        .include_tests(include_tests);
+        .with_include_tests(include_tests)
+        .with_lsp_mode(lsp_mode.clone());
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
@@ -2616,7 +2657,16 @@ pub fn check(
             dep_namespace,
             Some(&build_config),
             &pkg.name,
+            retrigger_compilation.clone(),
         );
+
+        if retrigger_compilation
+            .as_ref()
+            .map(|b| b.load(std::sync::atomic::Ordering::SeqCst))
+            .unwrap_or(false)
+        {
+            bail!("compilation was retriggered")
+        }
 
         let programs = match programs_res.as_ref() {
             Ok(programs) => programs,
@@ -2698,28 +2748,70 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
     Error::msg(message)
 }
 
-#[test]
-fn test_root_pkg_order() {
-    let current_dir = env!("CARGO_MANIFEST_DIR");
-    let manifest_dir = PathBuf::from(current_dir)
-        .parent()
+#[cfg(test)]
+mod test {
+    use super::*;
+    use regex::Regex;
+
+    fn setup_build_plan() -> BuildPlan {
+        let current_dir = env!("CARGO_MANIFEST_DIR");
+        let manifest_dir = PathBuf::from(current_dir)
+            .parent()
+            .unwrap()
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
+        let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+        let member_manifests = manifest_file.member_manifests().unwrap();
+        let lock_path = manifest_file.lock_path().unwrap();
+        BuildPlan::from_lock_and_manifests(
+            &lock_path,
+            &member_manifests,
+            false,
+            false,
+            Default::default(),
+        )
         .unwrap()
-        .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
-    let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
-    let member_manifests = manifest_file.member_manifests().unwrap();
-    let lock_path = manifest_file.lock_path().unwrap();
-    let build_plan = BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        false,
-        false,
-        Default::default(),
-    )
-    .unwrap();
-    let graph = build_plan.graph();
-    let order: Vec<String> = build_plan
-        .member_nodes()
-        .map(|order| graph[order].name.clone())
-        .collect();
-    assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
+    }
+
+    #[test]
+    fn test_root_pkg_order() {
+        let build_plan = setup_build_plan();
+        let graph = build_plan.graph();
+        let order: Vec<String> = build_plan
+            .member_nodes()
+            .map(|order| graph[order].name.clone())
+            .collect();
+        assert_eq!(order, vec!["test_lib", "test_contract", "test_script"])
+    }
+
+    #[test]
+    fn test_visualize_with_url_prefix() {
+        let build_plan = setup_build_plan();
+        let result = build_plan.visualize(Some("some-prefix::".to_string()));
+        let re = Regex::new(r#"digraph \{
+    0 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
+    1 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
+    2 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
+    2 -> 1 \[ \]
+    2 -> 0 \[ \]
+    0 -> 1 \[ \]
+\}
+"#).unwrap();
+        assert!(!re.find(result.as_str()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_visualize_without_prefix() {
+        let build_plan = setup_build_plan();
+        let result = build_plan.visualize(None);
+        let expected = r#"digraph {
+    0 [ label = "test_contract" shape = box ]
+    1 [ label = "test_lib" shape = box ]
+    2 [ label = "test_script" shape = box ]
+    2 -> 1 [ ]
+    2 -> 0 [ ]
+    0 -> 1 [ ]
+}
+"#;
+        assert_eq!(expected, result);
+    }
 }

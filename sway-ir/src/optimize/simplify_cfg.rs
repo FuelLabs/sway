@@ -11,8 +11,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    block::Block, context::Context, error::IrError, function::Function, instruction::Instruction,
-    value::ValueDatum, AnalysisResults, BranchToWithArgs, Pass, PassMutability, ScopedPass, Value,
+    block::Block, context::Context, error::IrError, function::Function, instruction::InstOp,
+    value::ValueDatum, AnalysisResults, BranchToWithArgs, Instruction, InstructionInserter, Pass,
+    PassMutability, ScopedPass, Value,
 };
 
 pub const SIMPLIFYCFG_NAME: &str = "simplifycfg";
@@ -48,9 +49,10 @@ fn unlink_empty_blocks(context: &mut Context, function: &Function) -> Result<boo
             match block.get_terminator(context) {
                 // Except for a branch, we don't want anything else.
                 // If the block has PHI nodes, then values merge here. Cannot remove the block.
-                Some(Instruction::Branch(to_block))
-                    if block.num_instructions(context) <= 1 && block.num_args(context) == 0 =>
-                {
+                Some(Instruction {
+                    op: InstOp::Branch(to_block),
+                    ..
+                }) if block.num_instructions(context) <= 1 && block.num_args(context) == 0 => {
                     Some((block, to_block.clone()))
                 }
                 _ => None,
@@ -147,9 +149,13 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
         from_block
             .get_terminator(context)
             .and_then(|term| match term {
-                Instruction::Branch(BranchToWithArgs {
-                    block: to_block, ..
-                }) if to_block.num_predecessors(context) == 1 => Some((from_block, *to_block)),
+                Instruction {
+                    op:
+                        InstOp::Branch(BranchToWithArgs {
+                            block: to_block, ..
+                        }),
+                    ..
+                } if to_block.num_predecessors(context) == 1 => Some((from_block, *to_block)),
                 _ => None,
             })
     }
@@ -207,18 +213,21 @@ fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrEr
                 replace_map.insert(to_block_arg, from_params[arg_idx]);
             }
 
-            // Re-get the block contents mutably.
-            let (from_contents, to_contents) = context.blocks.get2_mut(from_block.0, to_block.0);
-            let from_contents = from_contents.unwrap();
-            let to_contents = to_contents.unwrap();
+            // Update the parent block field for every instruction
+            // in `to_block` to `from_block`.
+            for val in to_block.instruction_iter(context) {
+                let instr = val.get_instruction_mut(context).unwrap();
+                instr.parent = from_block;
+            }
 
             // Drop the terminator from `from_block`.
-            from_contents.instructions.pop();
+            from_block.remove_last_instruction(context);
 
             // Move instructions from `to_block` to `from_block`.
-            from_contents
-                .instructions
-                .append(&mut to_contents.instructions);
+            let to_block_instructions = to_block.instruction_iter(context).collect::<Vec<_>>();
+            let mut inserter =
+                InstructionInserter::new(context, from_block, crate::InsertionPosition::End);
+            inserter.insert_slice(&to_block_instructions);
 
             // Remove `to_block`.
             function.remove_block(context, &to_block)?;

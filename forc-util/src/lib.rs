@@ -1,22 +1,20 @@
 //! Utility items shared between forc crates.
 
 use annotate_snippets::{
-    display_list::{DisplayList, FormatOptions},
-    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
+    renderer::{AnsiColor, Style},
+    Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
 use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
 use forc_tracing::{println_red_err, println_yellow_err};
 use std::{
     collections::{hash_map, HashSet},
-    str,
-};
-use std::{ffi::OsStr, process::Termination};
-use std::{
     fmt::Display,
     fs::File,
     hash::{Hash, Hasher},
     path::{Path, PathBuf},
+    process::Termination,
+    str,
 };
 use sway_core::language::parsed::TreeType;
 use sway_error::{
@@ -29,6 +27,13 @@ use sway_utils::constants;
 use tracing::error;
 
 pub mod restricted;
+
+#[macro_use]
+pub mod cli;
+
+pub use paste;
+pub use regex::Regex;
+pub use serial_test;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
@@ -192,87 +197,6 @@ pub mod tx_utils {
             Ok(serde_json::to_string(&receipt_to_json_array)?)
         }
     }
-}
-
-/// Continually go down in the file tree until a Forc manifest file is found.
-pub fn find_nested_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
-    find_nested_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
-}
-
-/// Continually go down in the file tree until a specified file is found.
-///
-/// Starts the search from child dirs of `starter_path`.
-pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
-    use walkdir::WalkDir;
-    let starter_dir = if starter_path.is_dir() {
-        starter_path
-    } else {
-        starter_path.parent()?
-    };
-    WalkDir::new(starter_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|entry| entry.path() != starter_dir.join(file_name))
-        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
-        .map(|entry| {
-            let mut entry = entry.path().to_path_buf();
-            entry.pop();
-            entry
-        })
-        .next()
-}
-
-/// Continually go up in the file tree until a specified file is found.
-///
-/// Starts the search from `starter_path`.
-#[allow(clippy::branches_sharing_code)]
-pub fn find_parent_dir_with_file<P: AsRef<Path>>(
-    starter_path: P,
-    file_name: &str,
-) -> Option<PathBuf> {
-    let mut path = std::fs::canonicalize(starter_path).ok()?;
-    let empty_path = PathBuf::from("/");
-    while path != empty_path {
-        path.push(file_name);
-        if path.exists() {
-            path.pop();
-            return Some(path);
-        } else {
-            path.pop();
-            path.pop();
-        }
-    }
-    None
-}
-/// Continually go up in the file tree until a Forc manifest file is found.
-pub fn find_parent_manifest_dir<P: AsRef<Path>>(starter_path: P) -> Option<PathBuf> {
-    find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
-}
-
-/// Continually go up in the file tree until a Forc manifest file is found and given predicate
-/// returns true.
-pub fn find_parent_manifest_dir_with_check<T: AsRef<Path>, F>(
-    starter_path: T,
-    f: F,
-) -> Option<PathBuf>
-where
-    F: Fn(&Path) -> bool,
-{
-    find_parent_manifest_dir(starter_path).and_then(|manifest_dir| {
-        // If given check satisifies return current dir otherwise start searching from the parent.
-        if f(&manifest_dir) {
-            Some(manifest_dir)
-        } else if let Some(parent_dir) = manifest_dir.parent() {
-            find_parent_manifest_dir_with_check(parent_dir, f)
-        } else {
-            None
-        }
-    })
-}
-
-pub fn is_sway_file(file: &Path) -> bool {
-    let res = file.extension();
-    file.is_file() && Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
 pub fn find_file_name<'sc>(manifest_dir: &Path, entry_path: &'sc Path) -> Result<&'sc Path> {
@@ -510,6 +434,27 @@ pub fn print_on_failure(
     }
 }
 
+/// Creates [Renderer] for printing warnings and errors.
+///
+/// To ensure the same styling of printed warnings and errors across all the tools,
+/// always use this function to create [Renderer]s,
+pub fn create_diagnostics_renderer() -> Renderer {
+    // For the diagnostic messages we use bold and bright colors.
+    // Note that for the summaries of warnings and errors we use
+    // their regular equivalents which are defined in `forc-tracing` package.
+    Renderer::styled()
+        .warning(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightYellow.into())),
+        )
+        .error(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightRed.into())),
+        )
+}
+
 fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
@@ -558,15 +503,12 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
         title: snippet_title,
         slices: snippet_slices,
         footer: snippet_footer,
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
     };
 
+    let renderer = create_diagnostics_renderer();
     match diagnostic.level() {
-        Level::Warning => tracing::warn!("{}\n____\n", DisplayList::from(snippet)),
-        Level::Error => tracing::error!("{}\n____\n", DisplayList::from(snippet)),
+        Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
+        Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
     }
 
     fn format_old_style_diagnostic(issue: &Issue) {
@@ -611,13 +553,10 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             title: snippet_title,
             footer: vec![],
             slices: snippet_slices,
-            opt: FormatOptions {
-                color: true,
-                ..Default::default()
-            },
         };
 
-        tracing::error!("{}\n____\n", DisplayList::from(snippet));
+        let renderer = create_diagnostics_renderer();
+        tracing::error!("{}\n____\n", renderer.render(snippet));
     }
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
@@ -651,7 +590,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
         "Slices can be constructed only for labels that are related to places in the same source code."
     );
 
-    let soruce_file = labels[0].source_path().map(|path| path.as_str());
+    let source_file = labels[0].source_path().map(|path| path.as_str());
     let source_code = labels[0].span().input();
 
     // Joint span of the code snippet that covers all the labels.
@@ -672,7 +611,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
     return Slice {
         source,
         line_start,
-        origin: soruce_file,
+        origin: source_file,
         fold: true,
         annotations,
     };
@@ -713,7 +652,7 @@ fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
 /// to show in the snippet.
 ///
 /// Returns the source to be shown, the line start, and the offset of the snippet in bytes relative
-/// to the begining of the input code.
+/// to the beginning of the input code.
 ///
 /// The library we use doesn't handle auto-windowing and line numbers, so we must manually
 /// calculate the line numbers and match them up with the input window. It is a bit fiddly.

@@ -1,6 +1,6 @@
 use crate::{
-    comments::rewrite_with_comments,
-    config::items::ItemBraceStyle,
+    comments::{has_comments_in_formatter, rewrite_with_comments, write_comments},
+    constants::NEW_LINE,
     formatter::*,
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -34,18 +34,30 @@ impl Format for ItemImpl {
         }
         self.ty.format(formatted_code, formatter)?;
         if let Some(where_clause) = &self.where_clause_opt {
-            write!(formatted_code, " ")?;
+            writeln!(formatted_code)?;
             where_clause.format(formatted_code, formatter)?;
             formatter.shape.code_line.update_where_clause(true);
         }
-        Self::open_curly_brace(formatted_code, formatter)?;
+
         let contents = self.contents.get();
-        for item in contents.iter() {
-            write!(formatted_code, "{}", formatter.indent_str()?,)?;
-            item.format(formatted_code, formatter)?;
-            writeln!(formatted_code)?;
+        if contents.is_empty() {
+            let range = self.span().into();
+            Self::open_curly_brace(formatted_code, formatter)?;
+            if has_comments_in_formatter(formatter, &range) {
+                formatter.indent();
+                write_comments(formatted_code, range, formatter)?;
+            }
+            Self::close_curly_brace(formatted_code, formatter)?;
+        } else {
+            Self::open_curly_brace(formatted_code, formatter)?;
+            formatter.indent();
+            write!(formatted_code, "{}", NEW_LINE)?;
+            for item in contents.iter() {
+                item.format(formatted_code, formatter)?;
+                write!(formatted_code, "{}", NEW_LINE)?;
+            }
+            Self::close_curly_brace(formatted_code, formatter)?;
         }
-        Self::close_curly_brace(formatted_code, formatter)?;
 
         rewrite_with_comments::<ItemImpl>(
             formatter,
@@ -78,26 +90,14 @@ impl CurlyBrace for ItemImpl {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
-        formatter.indent();
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                writeln!(line, "\n{open_brace}")?;
+        match formatter.shape.code_line.has_where_clause {
+            true => {
+                write!(line, "{open_brace}")?;
+                formatter.shape.code_line.update_where_clause(false);
             }
-            ItemBraceStyle::SameLineWhere => match formatter.shape.code_line.has_where_clause {
-                true => {
-                    writeln!(line, "{open_brace}")?;
-                    formatter.shape.code_line.update_where_clause(false);
-                }
-                false => {
-                    writeln!(line, " {open_brace}")?;
-                }
-            },
-            _ => {
-                // TODO: implement PreferSameLine
-                writeln!(line, " {open_brace}")?;
+            false => {
+                write!(line, " {open_brace}")?;
             }
         }
 
@@ -111,7 +111,7 @@ impl CurlyBrace for ItemImpl {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

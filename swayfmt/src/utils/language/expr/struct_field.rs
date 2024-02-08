@@ -1,7 +1,10 @@
 use crate::{
-    config::items::ItemBraceStyle,
-    formatter::{shape::LineStyle, *},
+    formatter::{
+        shape::{ExprKind, LineStyle},
+        *,
+    },
     utils::{
+        language::expr::should_write_multiline,
         map::byte_span::{ByteSpan, LeafSpans},
         CurlyBrace,
     },
@@ -18,8 +21,31 @@ impl Format for ExprStructField {
     ) -> Result<(), FormatterError> {
         write!(formatted_code, "{}", self.field_name.span().as_str())?;
         if let Some((colon_token, expr)) = &self.expr_opt {
-            write!(formatted_code, "{} ", colon_token.span().as_str())?;
-            expr.format(formatted_code, formatter)?;
+            formatter.with_shape(
+                formatter
+                    .shape
+                    .with_code_line_from(LineStyle::Inline, ExprKind::Struct),
+                |formatter| -> Result<(), FormatterError> {
+                    let mut expr_str = FormattedCode::new();
+                    expr.format(&mut expr_str, formatter)?;
+
+                    let expr_str = if should_write_multiline(&expr_str, formatter) {
+                        let mut expr_str = FormattedCode::new();
+                        formatter.shape.code_line.update_expr_new_line(true);
+                        expr.format(&mut expr_str, formatter)?;
+                        expr_str
+                    } else {
+                        expr_str
+                    };
+                    write!(
+                        formatted_code,
+                        "{} {}",
+                        colon_token.span().as_str(),
+                        expr_str
+                    )?;
+                    Ok(())
+                },
+            )?;
         }
 
         Ok(())
@@ -31,19 +57,9 @@ impl CurlyBrace for ExprStructField {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-                formatter.indent();
-            }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, " {}", Delimiter::Brace.as_open_char())?;
-                formatter.indent();
-            }
-        }
+        // Add opening brace to the same line
+        write!(line, " {}", Delimiter::Brace.as_open_char())?;
+        formatter.indent();
 
         Ok(())
     }
@@ -59,7 +75,7 @@ impl CurlyBrace for ExprStructField {
             _ => write!(
                 line,
                 "{}{}",
-                formatter.indent_str()?,
+                formatter.indent_to_str()?,
                 Delimiter::Brace.as_close_char()
             )?,
         }

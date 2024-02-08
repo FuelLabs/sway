@@ -1,6 +1,6 @@
 contract;
 
-use std::token::force_transfer_to_contract;
+use std::asset::force_transfer_to_contract;
 
 abi TestAbi {
     fn deposit();

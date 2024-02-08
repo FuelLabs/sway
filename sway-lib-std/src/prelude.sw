@@ -6,7 +6,8 @@ library;
 // Blockchain types
 use ::address::Address;
 use ::alias::SubId;
-use ::contract_id::{AssetId, ContractId};
+use ::asset_id::AssetId;
+use ::contract_id::ContractId;
 use ::identity::Identity;
 
 // `StorageKey` API
@@ -17,7 +18,7 @@ use ::storage::storage_map::*;
 use ::vec::Vec;
 
 // Error handling
-use ::assert::{assert, assert_eq};
+use ::assert::{assert, assert_eq, assert_ne};
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::revert::{require, revert};

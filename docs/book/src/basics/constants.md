@@ -46,7 +46,7 @@ The identifier is the name of the constant used in the path. The type is the typ
 definition has to implement.
 <!-- assoc_constants:example:end -->
 
-You can _define_ an associated const directly in the interface surface of a trait:
+You can _define_ an associated `const` directly in the interface surface of a trait:
 
 ```sway
 script;

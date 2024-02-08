@@ -1,12 +1,14 @@
 predicate;
 
 fn main() -> bool {
-  asm(r1, r2: 0, r3: 0) {
+  let bal = asm(r1, r2: 0, r3: 0) {
     bal r1 r2 r3;
+    r1: u64
   };
 
-  asm(r1) {
+  let bhei = asm(r1) {
     bhei r1;
+    r1: u64
   };
 
   asm(r1: 0, r2: 0) {
@@ -33,21 +35,25 @@ fn main() -> bool {
     croo r1 r2;
   };
 
-  asm(r1, r2: 0) {
+  let csiz = asm(r1, r2: 0) {
     csiz r1 r2;
+    r1: u64
   };
 
-  asm(r1) {
+  let is_ext_caller = asm(r1) {
     gm r1 i1;
-  }
+    r1: bool
+  };
 
-  asm(r1) {
+  let caller_id = asm(r1) {
     gm r1 i2;
-  }
+    r1: u64
+  };
 
   // should not throw an error.
-  asm(r1) {
+  let pred_index = asm(r1) {
     gm r1 i3;
+    r1: u64
   };
 
   asm(r1: 0, r2: 0, r3: 0) {
@@ -93,9 +99,10 @@ fn main() -> bool {
   }
   */
 
-  asm(r1, r2: 0) {
+  let time = asm(r1, r2: 0) {
     time r1 r2;
-  }
+    r1: u64
+  };
 
   asm(r1: 0, r2: 0, r3: 0) {
     tr r1 r2 r3;
@@ -105,5 +112,5 @@ fn main() -> bool {
     tro r1 r2 r3 r4;
   }
 
-  true
+  bal == 0 && bhei == 0 && csiz == 0 && is_ext_caller && pred_index == 0 && caller_id != 0 && time != 0
 }

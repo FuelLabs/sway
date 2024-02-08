@@ -7,69 +7,82 @@ use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
 
 use super::occurs_check::OccursCheck;
 
+pub(crate) enum UnifyKind {
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`.
+    Default,
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a self type and `received`
+    /// is not).
+    WithSelf,
+    /// Make the types of `received` and `expected` equivalent (or produce an
+    /// error if there is a conflict between them).
+    ///
+    /// More specifically, this function tries to make `received` equivalent to
+    /// `expected`, except in cases where `received` has more type information
+    /// than `expected` (e.g. when `expected` is a generic type and `received`
+    /// is not).
+    WithGeneric,
+}
+
 /// Helper struct to aid in type unification.
 pub(crate) struct Unifier<'a> {
     engines: &'a Engines,
     help_text: String,
+    unify_kind: UnifyKind,
 }
 
 impl<'a> Unifier<'a> {
     /// Creates a new [Unifier].
-    pub(crate) fn new(engines: &'a Engines, help_text: &str) -> Unifier<'a> {
+    pub(crate) fn new(engines: &'a Engines, help_text: &str, unify_kind: UnifyKind) -> Unifier<'a> {
         Unifier {
             engines,
             help_text: help_text.to_string(),
+            unify_kind,
         }
     }
 
     /// Helper method for replacing the values in the [TypeEngine].
     fn replace_received_with_expected(
         &self,
-        handler: &Handler,
         received: TypeId,
-        expected: TypeId,
-        received_type_info: &TypeInfo,
-        expected_type_info: TypeInfo,
+        expected_type_info: &TypeInfo,
         span: &Span,
     ) {
         let type_engine = self.engines.te();
-        if type_engine
-            .slab
-            .replace(
-                received,
-                received_type_info,
-                expected_type_info,
-                self.engines,
-            )
-            .is_some()
-        {
-            self.unify(handler, received, expected, span);
-        }
+        let source_id = span.source_id().cloned();
+        type_engine.replace(
+            received,
+            TypeSourceInfo {
+                type_info: expected_type_info.clone().into(),
+                source_id,
+            },
+        );
     }
 
     /// Helper method for replacing the values in the [TypeEngine].
     fn replace_expected_with_received(
         &self,
-        handler: &Handler,
-        received: TypeId,
         expected: TypeId,
-        received_type_info: TypeInfo,
-        expected_type_info: &TypeInfo,
+        received_type_info: &TypeInfo,
         span: &Span,
     ) {
         let type_engine = self.engines.te();
-        if type_engine
-            .slab
-            .replace(
-                expected,
-                expected_type_info,
-                received_type_info,
-                self.engines,
-            )
-            .is_some()
-        {
-            self.unify(handler, received, expected, span);
-        }
+        let source_id = span.source_id().cloned();
+        type_engine.replace(
+            expected,
+            TypeSourceInfo {
+                type_info: received_type_info.clone().into(),
+                source_id,
+            },
+        );
     }
 
     /// Performs type unification with `received` and `expected`.
@@ -80,10 +93,10 @@ impl<'a> Unifier<'a> {
             return;
         }
 
-        match (
-            self.engines.te().slab.get(received.index()),
-            self.engines.te().slab.get(expected.index()),
-        ) {
+        let r_type_source_info = self.engines.te().get(received);
+        let l_type_source_info = self.engines.te().get(expected);
+
+        match (&*r_type_source_info, &*l_type_source_info) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (),
@@ -100,11 +113,11 @@ impl<'a> Unifier<'a> {
                 self.unify_tuples(handler, rfs, efs)
             }
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
-                self.unify_arrays(handler, received, expected, span, re.type_id, ee.type_id)
+                self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
             }
             (Struct(r_decl_ref), Struct(e_decl_ref)) => {
-                let r_decl = self.engines.de().get_struct(&r_decl_ref);
-                let e_decl = self.engines.de().get_struct(&e_decl_ref);
+                let r_decl = self.engines.de().get_struct(r_decl_ref);
+                let e_decl = self.engines.de().get_struct(e_decl_ref);
 
                 self.unify_structs(
                     handler,
@@ -112,14 +125,14 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix,
-                        r_decl.type_parameters,
-                        r_decl.fields,
+                        r_decl.call_path.suffix.clone(),
+                        r_decl.type_parameters.clone(),
+                        r_decl.fields.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix,
-                        e_decl.type_parameters,
-                        e_decl.fields,
+                        e_decl.call_path.suffix.clone(),
+                        e_decl.type_parameters.clone(),
+                        e_decl.fields.clone(),
                     ),
                 )
             }
@@ -128,22 +141,14 @@ impl<'a> Unifier<'a> {
             // they match and make the one we know nothing about reference the
             // one we may know something about.
             (Unknown, Unknown) => (),
-            (Unknown, e) => {
-                self.replace_received_with_expected(handler, received, expected, &Unknown, e, span)
-            }
-            (r, Unknown) => {
-                self.replace_expected_with_received(handler, received, expected, r, &Unknown, span)
-            }
+            (Unknown, e) => self.replace_received_with_expected(received, e, span),
+            (r, Unknown) => self.replace_expected_with_received(expected, r, span),
 
-            (r @ Placeholder(_), e @ Placeholder(_)) => {
-                self.replace_expected_with_received(handler, received, expected, r, &e, span)
+            (r @ Placeholder(_), _e @ Placeholder(_)) => {
+                self.replace_expected_with_received(expected, r, span)
             }
-            (r @ Placeholder(_), e) => {
-                self.replace_received_with_expected(handler, received, expected, &r, e, span)
-            }
-            (r, e @ Placeholder(_)) => {
-                self.replace_expected_with_received(handler, received, expected, r, &e, span)
-            }
+            (_r @ Placeholder(_), e) => self.replace_received_with_expected(received, e, span),
+            (r, _e @ Placeholder(_)) => self.replace_expected_with_received(expected, r, span),
 
             // Generics are handled similarly to the case for unknowns, except
             // we take more careful consideration for the type/purpose for the
@@ -157,26 +162,36 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(&etc, self.engines) => (),
+            ) if rn.as_str() == en.as_str() && rtc.eq(etc, self.engines) => (),
 
-            (r @ UnknownGeneric { .. }, e) if !self.occurs_check(r.clone(), &e) => {
-                self.replace_received_with_expected(handler, received, expected, &r, e, span)
+            (_r @ UnknownGeneric { .. }, e)
+                if !self.occurs_check(received, expected)
+                    && (matches!(self.unify_kind, UnifyKind::WithGeneric)
+                        || !matches!(
+                            &*self.engines.te().get(expected),
+                            TypeInfo::UnknownGeneric { .. }
+                        )) =>
+            {
+                self.replace_received_with_expected(received, e, span)
             }
-            (r, e @ UnknownGeneric { .. }) if !self.occurs_check(e.clone(), &r) => {
-                self.replace_expected_with_received(handler, received, expected, r, &e, span)
+            (r, e @ UnknownGeneric { .. })
+                if !self.occurs_check(expected, received)
+                    && e.is_self_type()
+                    && matches!(self.unify_kind, UnifyKind::WithSelf) =>
+            {
+                self.replace_expected_with_received(expected, r, span)
             }
-
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
             (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span),
 
             // Let empty enums to coerce to any other type. This is useful for Never enum.
-            (Enum(r_decl_ref), _)
-                if self.engines.de().get_enum(&r_decl_ref).variants.is_empty() => {}
+            (Enum(r_decl_ref), _) if self.engines.de().get_enum(r_decl_ref).variants.is_empty() => {
+            }
 
             (Enum(r_decl_ref), Enum(e_decl_ref)) => {
-                let r_decl = self.engines.de().get_enum(&r_decl_ref);
-                let e_decl = self.engines.de().get_enum(&e_decl_ref);
+                let r_decl = self.engines.de().get_enum(r_decl_ref);
+                let e_decl = self.engines.de().get_enum(e_decl_ref);
 
                 self.unify_enums(
                     handler,
@@ -184,14 +199,14 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix,
-                        r_decl.type_parameters,
-                        r_decl.variants,
+                        r_decl.call_path.suffix.clone(),
+                        r_decl.type_parameters.clone(),
+                        r_decl.variants.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix,
-                        e_decl.type_parameters,
-                        e_decl.variants,
+                        e_decl.call_path.suffix.clone(),
+                        e_decl.type_parameters.clone(),
+                        e_decl.variants.clone(),
                     ),
                 )
             }
@@ -200,16 +215,16 @@ impl<'a> Unifier<'a> {
             // with the integer.
             (UnsignedInteger(r), UnsignedInteger(e)) if r == e => (),
             (Numeric, e @ UnsignedInteger(_)) => {
-                self.replace_received_with_expected(handler, received, expected, &Numeric, e, span)
+                self.replace_received_with_expected(received, e, span)
             }
             (r @ UnsignedInteger(_), Numeric) => {
-                self.replace_expected_with_received(handler, received, expected, r, &Numeric, span)
+                self.replace_expected_with_received(expected, r, span)
             }
 
             // For contract callers, we (potentially) unify them if they have
             // the same name and their address is `None`
             (
-                ref r @ TypeInfo::ContractCaller {
+                _r @ TypeInfo::ContractCaller {
                     abi_name: ref ran,
                     address: ref rra,
                 },
@@ -219,11 +234,8 @@ impl<'a> Unifier<'a> {
             ) if (ran == ean && rra.is_none()) || matches!(ran, AbiName::Deferred) => {
                 // if one address is empty, coerce to the other one
                 self.replace_received_with_expected(
-                    handler,
                     received,
-                    expected,
-                    r,
-                    self.engines.te().slab.get(expected.index()),
+                    &self.engines.te().get(expected),
                     span,
                 )
             }
@@ -231,18 +243,15 @@ impl<'a> Unifier<'a> {
                 TypeInfo::ContractCaller {
                     abi_name: ref ran, ..
                 },
-                ref e @ TypeInfo::ContractCaller {
+                _e @ TypeInfo::ContractCaller {
                     abi_name: ref ean,
                     address: ref ea,
                 },
             ) if (ran == ean && ea.is_none()) || matches!(ean, AbiName::Deferred) => {
                 // if one address is empty, coerce to the other one
                 self.replace_expected_with_received(
-                    handler,
-                    received,
                     expected,
-                    self.engines.te().slab.get(received.index()),
-                    e,
+                    &self.engines.te().get(received),
                     span,
                 )
             }
@@ -250,6 +259,9 @@ impl<'a> Unifier<'a> {
                 if r.eq(e, self.engines) =>
             {
                 // if they are the same, then it's ok
+            }
+            (Ref(r), Ref(e)) => {
+                self.unify_type_arguments_in_parents(handler, received, expected, span, r, e)
             }
 
             // If no previous attempts to unify were successful, raise an error.
@@ -270,7 +282,7 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn occurs_check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
+    fn occurs_check(&self, generic: TypeId, other: TypeId) -> bool {
         OccursCheck::new(self.engines).check(generic, other)
     }
 
@@ -297,7 +309,7 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn unify_tuples(&self, handler: &Handler, rfs: Vec<TypeArgument>, efs: Vec<TypeArgument>) {
+    fn unify_tuples(&self, handler: &Handler, rfs: &[TypeArgument], efs: &[TypeArgument]) {
         for (rf, ef) in rfs.iter().zip(efs.iter()) {
             self.unify(handler, rf.type_id, ef.type_id, &rf.span);
         }
@@ -377,23 +389,32 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn unify_arrays(
+    /// Unifies `received_type_argument` and `expected_type_argument`, and in case of a
+    /// mismatch, reports the `received_parent` and `expected_parent` as mismatching.
+    /// Useful for unifying types like arrays and references where issues in unification
+    /// of their [TypeArgument]s directly corresponds to the unification of enclosed types themselves.
+    fn unify_type_arguments_in_parents(
         &self,
         handler: &Handler,
-        received: TypeId,
-        expected: TypeId,
+        received_parent: TypeId,
+        expected_parent: TypeId,
         span: &Span,
-        r: TypeId,
-        e: TypeId,
+        received_type_argument: &TypeArgument,
+        expected_type_argument: &TypeArgument,
     ) {
         let h = Handler::default();
-        self.unify(&h, r, e, span);
+        self.unify(
+            &h,
+            received_type_argument.type_id,
+            expected_type_argument.type_id,
+            span,
+        );
         let (new_errors, warnings) = h.consume();
 
-        // If there was an error then we want to report the array types as mismatching, not
-        // the elem types.
+        // If there was an error then we want to report the parent types as mismatching, not
+        // the argument types.
         if !new_errors.is_empty() {
-            let (received, expected) = self.assign_args(received, expected);
+            let (received, expected) = self.assign_args(received_parent, expected_parent);
             handler.emit_err(
                 TypeError::MismatchedType {
                     expected,

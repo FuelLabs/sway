@@ -2,7 +2,8 @@
 //! This includes `Output::Coins`, `Input::Messages` and `Input::Contracts`.
 library;
 
-use ::contract_id::{AssetId, ContractId};
+use ::asset_id::AssetId;
+use ::contract_id::ContractId;
 use ::revert::revert;
 use ::tx::{
     GTF_CREATE_OUTPUT_AT_INDEX,
@@ -16,15 +17,15 @@ use ::option::Option::{self, *};
 
 // GTF Opcode const selectors
 //
-pub const GTF_OUTPUT_TYPE = 0x201;
-pub const GTF_OUTPUT_COIN_TO = 0x202;
-pub const GTF_OUTPUT_COIN_AMOUNT = 0x203;
-pub const GTF_OUTPUT_COIN_ASSET_ID = 0x204;
-// pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x205;
-// pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x206;
-// pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x207;
-// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x208;
-// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x209;
+pub const GTF_OUTPUT_TYPE = 0x300;
+pub const GTF_OUTPUT_COIN_TO = 0x301;
+pub const GTF_OUTPUT_COIN_AMOUNT = 0x302;
+pub const GTF_OUTPUT_COIN_ASSET_ID = 0x303;
+// pub const GTF_OUTPUT_CONTRACT_INPUT_INDEX = 0x304;
+// pub const GTF_OUTPUT_CONTRACT_BALANCE_ROOT = 0x305;
+// pub const GTF_OUTPUT_CONTRACT_STATE_ROOT = 0x306;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_CONTRACT_ID = 0x307;
+// pub const GTF_OUTPUT_CONTRACT_CREATED_STATE_ROOT = 0x308;
 
 /// The output type for a transaction.
 pub enum Output {
@@ -51,7 +52,7 @@ pub enum Output {
 /// # Reverts
 ///
 /// * When the output type is unrecognized. This should never happen.
-/// 
+///
 /// # Examples
 ///
 /// ```sway
@@ -226,15 +227,15 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 }
 
 // TODO: Update to `Identity` when https://github.com/FuelLabs/sway/issues/4569 is resolved
-/// Returns the reciever of the output if it is a `Output::Coin`. Represents the reciever as a `b256`.
+/// Returns the receiver of the output if it is a `Output::Coin`. Represents the receiver as a `b256`.
 ///
 /// # Arguments
 ///
-/// * `index`: [u64] - The index of the output to get the reciever of.
+/// * `index`: [u64] - The index of the output to get the receiver of.
 ///
 /// # Returns
 ///
-/// * [Option<b256>] - The reciever of the output if it is a `Output::Coin`. None otherwise.
+/// * [Option<b256>] - The receiver of the output if it is a `Output::Coin`. None otherwise.
 ///
 /// # Reverts
 ///
@@ -246,8 +247,8 @@ pub fn output_asset_id(index: u64) -> Option<AssetId> {
 /// use std::outputs::output_asset_to;
 ///
 /// fn foo() {
-///     let output_reciever = output_asset_to(0);
-///     log(output_reciever);
+///     let output_receiver = output_asset_to(0);
+///     log(output_receiver);
 /// }
 /// ```
 pub fn output_asset_to(index: u64) -> Option<b256> {

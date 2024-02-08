@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-F93ECA3248F311E3'
+name = "core"
+source = "path+from-root-006B298633F5C185"
 
 [[package]]
-name = 'struct_destructuring'
-source = 'member'
-dependencies = ['core']
+name = "nested_struct_destructuring"
+source = "member"
+dependencies = ["core"]

@@ -1,0 +1,23 @@
+category = "compile"
+validate_abi = true
+expected_warnings = 6
+
+#check: $()warning
+#check: $()pub enum Enum {
+#nextln: $()This enum is never used.
+
+#check: $()warning
+#check: $()pub struct Struct {
+#nextln: $()This struct is never used.
+
+#check: $()warning
+#check: $()pub struct PubStruct {
+#nextln $()This struct is never used.
+
+#check: $()warning
+#check: $()pub struct GenericStruct<T> {
+#nextln: $()This struct is never used.
+
+#check: $()warning
+#check: $()pub const X: u64 = 0u64;
+#nextln: $()This declaration is never used.

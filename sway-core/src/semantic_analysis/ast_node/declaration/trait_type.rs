@@ -9,7 +9,10 @@ use crate::{
         parsed,
         ty::{self, TyTraitType},
     },
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    semantic_analysis::{
+        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckContext,
+    },
     type_system::*,
     Engines,
 };
@@ -39,7 +42,9 @@ impl ty::TyTraitType {
                     EnforceTypeArguments::No,
                     None,
                 )
-                .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
             Some(ty)
         } else {
             None
@@ -71,10 +76,22 @@ impl ty::TyTraitType {
             name,
             attributes,
             ty: ty_opt,
-            implementing_type: engines
-                .te()
-                .insert(engines, TypeInfo::new_self_type(Span::dummy())),
+            implementing_type: engines.te().insert(
+                engines,
+                TypeInfo::new_self_type(Span::dummy()),
+                None,
+            ),
             span,
         }
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyTraitType {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }

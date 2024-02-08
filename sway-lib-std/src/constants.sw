@@ -1,7 +1,7 @@
 //! Base asset and zero address constants.
 library;
 
-use ::contract_id::AssetId;
+use ::asset_id::AssetId;
 
 /// The `BASE_ASSET_ID` represents the base asset of a chain.
 ///
@@ -10,7 +10,7 @@ use ::contract_id::AssetId;
 /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 ContractId.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
 ///
@@ -23,7 +23,7 @@ pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 /// A B256 of zero value.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::{call_frames::msg_asset_id, constants::ZERO_B256};
 ///
@@ -32,3 +32,17 @@ pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 /// }
 /// ```
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+/// The default Sub Id for assets.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::{call_frames::contract_id, constants::DEFAULT_SUB_ID};
+///
+/// fn foo() {
+///     let asset = AssetId::default();
+///     assert(AssetId::new(contract_id(), DEFAULT_SUB_ID) == msg_asset_id());
+/// }
+/// ```
+pub const DEFAULT_SUB_ID = ZERO_B256;

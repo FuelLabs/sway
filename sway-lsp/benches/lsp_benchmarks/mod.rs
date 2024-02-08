@@ -6,15 +6,24 @@ use lsp_types::Url;
 use std::{path::PathBuf, sync::Arc};
 use sway_lsp::core::session::{self, Session};
 
-pub fn compile_test_project() -> (Url, Arc<Session>) {
-    let session = Session::new();
+pub async fn compile_test_project() -> (Url, Arc<Session>) {
+    let session = Arc::new(Session::new());
+    let lsp_mode = Some(sway_core::LspConfig {
+        optimized_build: false,
+    });
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
-    session.handle_open_file(&uri);
-    // Compile the project and write the parse result to the session
-    let parse_result = session::parse_project(&uri).unwrap();
-    session.write_parse_result(parse_result);
-    (uri, Arc::new(session))
+    session.handle_open_file(&uri).await;
+    // Compile the project
+    session::parse_project(
+        &uri,
+        &session.engines.read(),
+        None,
+        lsp_mode,
+        session.clone(),
+    )
+    .unwrap();
+    (uri, session)
 }
 
 pub fn sway_workspace_dir() -> PathBuf {

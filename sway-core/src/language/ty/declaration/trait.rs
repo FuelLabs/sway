@@ -1,17 +1,22 @@
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{
-        mapping::DeclMapping, DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn,
-        DeclRefTraitType, ReplaceFunctionImplementingType,
+        DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
+        ReplaceFunctionImplementingType,
     },
     engine_threading::*,
-    language::{parsed, Visibility},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
-    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
+    language::{parsed, CallPath, Visibility},
+    semantic_analysis::{
+        type_check_context::MonomorphizeHelper, TypeCheckAnalysis, TypeCheckAnalysisContext,
+        TypeCheckFinalization, TypeCheckFinalizationContext,
+    },
     transform,
     type_system::*,
 };
@@ -28,6 +33,7 @@ pub struct TyTraitDecl {
     pub supertraits: Vec<parsed::Supertrait>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
+    pub call_path: CallPath,
     pub span: Span,
 }
 
@@ -38,11 +44,69 @@ pub enum TyTraitInterfaceItem {
     Type(DeclRefTraitType),
 }
 
+impl DisplayWithEngines for TyTraitInterfaceItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TyTraitInterfaceItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "TyTraitItem {}",
+            match self {
+                TyTraitInterfaceItem::TraitFn(fn_ref) => format!(
+                    "fn {:?}",
+                    engines.help_out(&*engines.de().get_trait_fn(fn_ref))
+                ),
+                TyTraitInterfaceItem::Constant(const_ref) => format!(
+                    "const {:?}",
+                    engines.help_out(&*engines.de().get_constant(const_ref))
+                ),
+                TyTraitInterfaceItem::Type(type_ref) => format!(
+                    "type {:?}",
+                    engines.help_out(&*engines.de().get_type(type_ref))
+                ),
+            }
+        )
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),
     Type(DeclRefTraitType),
+}
+
+impl DisplayWithEngines for TyTraitItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TyTraitItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "TyTraitItem {}",
+            match self {
+                TyTraitItem::Fn(fn_ref) => format!(
+                    "fn {:?}",
+                    engines.help_out(&*engines.de().get_function(fn_ref))
+                ),
+                TyTraitItem::Constant(const_ref) => format!(
+                    "const {:?}",
+                    engines.help_out(&*engines.de().get_constant(const_ref))
+                ),
+                TyTraitItem::Type(type_ref) => format!(
+                    "type {:?}",
+                    engines.help_out(&*engines.de().get_type(type_ref))
+                ),
+            }
+        )
+    }
 }
 
 impl Named for TyTraitDecl {
@@ -83,6 +147,7 @@ impl HashWithEngines for TyTraitDecl {
             // reliable source of obj v. obj distinction
             attributes: _,
             span: _,
+            call_path: _,
         } = self;
         name.hash(state);
         type_parameters.hash(state, engines);
@@ -142,6 +207,32 @@ impl HashWithEngines for TyTraitItem {
     }
 }
 
+impl TypeCheckAnalysis for TyTraitItem {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        let decl_engine = ctx.engines.de();
+
+        match self {
+            TyTraitItem::Fn(node) => {
+                node.type_check_analyze(handler, ctx)?;
+            }
+            TyTraitItem::Constant(node) => {
+                let item_const = decl_engine.get_constant(node);
+                item_const.type_check_analyze(handler, ctx)?;
+            }
+            TyTraitItem::Type(node) => {
+                let item_type = decl_engine.get_type(node);
+                item_type.type_check_analyze(handler, ctx)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl TypeCheckFinalization for TyTraitItem {
     fn type_check_finalize(
         &mut self,
@@ -151,12 +242,12 @@ impl TypeCheckFinalization for TyTraitItem {
         let decl_engine = ctx.engines.de();
         match self {
             TyTraitItem::Fn(node) => {
-                let mut item_fn = decl_engine.get_function(node);
+                let mut item_fn = (*decl_engine.get_function(node)).clone();
                 item_fn.type_check_finalize(handler, ctx)?;
                 decl_engine.replace(*node.id(), item_fn);
             }
             TyTraitItem::Constant(node) => {
-                let mut item_const = decl_engine.get_constant(node);
+                let mut item_const = (*decl_engine.get_constant(node)).clone();
                 item_const.type_check_finalize(handler, ctx)?;
                 decl_engine.replace(*node.id(), item_const);
             }
@@ -168,9 +259,18 @@ impl TypeCheckFinalization for TyTraitItem {
     }
 }
 
+impl Spanned for TyTraitItem {
+    fn span(&self) -> Span {
+        match self {
+            TyTraitItem::Fn(fn_decl) => fn_decl.span(),
+            TyTraitItem::Constant(const_decl) => const_decl.span(),
+            TyTraitItem::Type(type_decl) => type_decl.span(),
+        }
+    }
+}
+
 impl SubstTypes for TyTraitDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        let mut decl_mapping = DeclMapping::new();
         self.type_parameters
             .iter_mut()
             .for_each(|x| x.subst(type_mapping, engines));
@@ -181,14 +281,12 @@ impl SubstTypes for TyTraitDecl {
                     let new_item_ref = item_ref
                         .clone()
                         .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                    decl_mapping.insert(item_ref.id().into(), new_item_ref.id().into());
                     item_ref.replace_id(*new_item_ref.id());
                 }
                 TyTraitInterfaceItem::Constant(decl_ref) => {
                     let new_decl_ref = decl_ref
                         .clone()
                         .subst_types_and_insert_new(type_mapping, engines);
-                    decl_mapping.insert(decl_ref.id().into(), new_decl_ref.id().into());
                     decl_ref.replace_id(*new_decl_ref.id());
                 }
                 TyTraitInterfaceItem::Type(decl_ref) => {

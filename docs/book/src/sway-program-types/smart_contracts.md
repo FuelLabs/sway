@@ -5,16 +5,16 @@
 A smart contract is no different than a script or predicate in that it is a piece of bytecode that is deployed to the blockchain via a [transaction](https://fuellabs.github.io/fuel-specs/master/protocol/tx_format). The main features of a smart contract that differentiate it from scripts or predicates are that it is _callable_ and _stateful_. Put another way, a smart contract is analogous to a deployed API with some database state.
 <!-- contract:example:end -->
 
-The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/subcurrency.md) for an example.
+The interface of a smart contract, also just called a contract, must be defined strictly with an [ABI declaration](#the-abi-declaration). See [this contract](../examples/wallet_smart_contract.md) for an example.
 
 ## Syntax of a Smart Contract
 
 As with any Sway program, the program starts with a declaration of what [program type](./index.md) it is. A contract must also either define or import an [ABI declaration](#the-abi-declaration) and implement it.
 
 <!-- This section should explain best practices for ABIs -->
-<!-- abi:example:start -->
+<!-- ABI:example:start -->
 It is considered good practice to define your ABI in a separate library and import it into your contract. This allows callers of your contract to simply import the ABI directly and use it in their scripts to call your contract.
-<!-- abi:example:end -->
+<!-- ABI:example:end -->
 
 Let's take a look at an ABI declaration in a library:
 
@@ -85,7 +85,7 @@ Now that we have defined our interface and implemented it for our contract, we n
 {{#include ../../../../examples/wallet_contract_caller_script/src/main.sw}}
 ```
 
-The main new concept is the _abi cast_: `abi(AbiName, contract_address)`. This returns a `ContractCaller` type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: `send_funds` and `receive_funds`. We then directly call the contract ABI method as if it was just a regular method. You also have the option of specifying the following special parameters inside curly braces right before the main list of parameters:
+The main new concept is the `abi cast`: `abi(AbiName, contract_address)`. This returns a `ContractCaller` type which can be used to call contracts. The methods of the ABI become the methods available on this contract caller: `send_funds` and `receive_funds`. We then directly call the contract ABI method as if it was just a regular method. You also have the option of specifying the following special parameters inside curly braces right before the main list of parameters:
 
 1. `gas`: a `u64` that represents the gas being forwarded to the contract when it is called.
 2. `coins`: a `u64` that represents how many coins are being forwarded with this call.

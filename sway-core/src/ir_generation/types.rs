@@ -82,16 +82,25 @@ pub(super) fn get_struct_for_types(
     Ok(Type::new_struct(context, types))
 }
 
+/// For the [TypeInfo::Struct] given by `struct_type_id` and the
+/// [ty::ProjectionKind::StructField] given by `field_kind`
+/// returns the name of the struct, and the field index within
+/// the struct together with the field [TypeId] if the field exists
+/// on the struct.
+///
+/// Returns `None` if the `struct_type_id` is not a [TypeInfo::Struct]
+/// or an alias to a [TypeInfo::Struct] or if the `field_kind`
+/// is not a [ty::ProjectionKind::StructField].
 pub(super) fn get_struct_name_field_index_and_type(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
-    field_type: TypeId,
+    struct_type_id: TypeId,
     field_kind: ty::ProjectionKind,
 ) -> Option<(String, Option<(u64, TypeId)>)> {
-    let ty_info = type_engine
-        .to_typeinfo(field_type, &field_kind.span())
+    let struct_ty_info = type_engine
+        .to_typeinfo(struct_type_id, &field_kind.span())
         .ok()?;
-    match (ty_info, &field_kind) {
+    match (struct_ty_info, &field_kind) {
         (TypeInfo::Struct(decl_ref), ty::ProjectionKind::StructField { name: field_name }) => {
             let decl = decl_engine.get_struct(&decl_ref);
             Some((
@@ -99,7 +108,7 @@ pub(super) fn get_struct_name_field_index_and_type(
                 decl.fields
                     .iter()
                     .enumerate()
-                    .find(|(_, field)| field.name == field_name.clone())
+                    .find(|(_, field)| field.name == *field_name)
                     .map(|(idx, field)| (idx as u64, field.type_argument.type_id)),
             ))
         }
@@ -110,7 +119,7 @@ pub(super) fn get_struct_name_field_index_and_type(
             },
             _,
         ) => get_struct_name_field_index_and_type(type_engine, decl_engine, type_id, field_kind),
-        _otherwise => None,
+        _ => None,
     }
 }
 

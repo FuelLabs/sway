@@ -1,10 +1,9 @@
-use sway_error::handler::{ErrorEmitted, Handler};
-
 use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 
 impl ty::TyEnumDecl {
     pub fn type_check(
@@ -29,11 +28,6 @@ impl ty::TyEnumDecl {
         // Type check the type parameters.
         let new_type_parameters =
             TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
-
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
 
         // type check the variants
         let mut variants_buf = vec![];
@@ -79,7 +73,7 @@ impl ty::TyEnumVariant {
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
         Ok(ty::TyEnumVariant {
             name: variant.name.clone(),
             type_argument,
@@ -87,6 +81,16 @@ impl ty::TyEnumVariant {
             span: variant.span,
             attributes: variant.attributes,
         })
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyEnumDecl {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }
 

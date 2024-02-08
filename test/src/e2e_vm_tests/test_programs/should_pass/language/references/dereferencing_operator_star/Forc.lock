@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-6321F0945AEE50CC"
+
+[[package]]
+name = "dereferencing_operator_star"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-6321F0945AEE50CC"
+dependencies = ["core"]

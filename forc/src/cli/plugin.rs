@@ -1,6 +1,7 @@
 //! Items related to plugin support for `forc`.
 
 use anyhow::{bail, Result};
+use forc_tracing::println_warning;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -14,14 +15,29 @@ use std::{
 ///
 /// E.g. given `foo bar baz` where `foo` is an unrecognized subcommand to `forc`, tries to execute
 /// `forc-foo bar baz`.
-pub(crate) fn execute_external_subcommand(args: Vec<String>) -> Result<process::Output> {
-    let cmd = args.get(0).expect("`args` must not be empty");
+pub(crate) fn execute_external_subcommand(
+    args: Vec<String>,
+    silent: bool,
+) -> Result<process::Output> {
+    let cmd = args.first().expect("`args` must not be empty");
     let args = &args[1..];
     let path = find_external_subcommand(cmd);
     let command = match path {
         Some(command) => command,
         None => bail!("no such subcommand: `{}`", cmd),
     };
+
+    if let Ok(forc_path) = std::env::current_exe() {
+        if !silent && command.parent() != forc_path.parent() {
+            println_warning(&format!(
+                "The {} ({}) plugin is in a different directory than forc ({})\n",
+                cmd,
+                command.display(),
+                forc_path.display(),
+            ));
+        }
+    }
+
     let output = process::Command::new(command)
         .stdin(process::Stdio::inherit())
         .stdout(process::Stdio::inherit())
@@ -77,6 +93,8 @@ pub(crate) fn find_all() -> impl Iterator<Item = PathBuf> {
         .into_iter()
         .flat_map(walkdir::WalkDir::new)
         .filter_map(Result::ok)
-        .map(|entry| entry.path().to_path_buf())
-        .filter(|p| is_plugin(p))
+        .filter_map(|entry| {
+            let path = entry.path().to_path_buf();
+            is_plugin(&path).then_some(path)
+        })
 }

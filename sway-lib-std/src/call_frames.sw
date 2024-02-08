@@ -2,7 +2,8 @@
 //! [Call frames](https://fuellabs.github.io/fuel-specs/master/vm#call-frames) store metadata across untrusted inter-contract calls.
 library;
 
-use ::contract_id::{AssetId, ContractId};
+use ::asset_id::AssetId;
+use ::contract_id::ContractId;
 use ::intrinsics::is_reference_type;
 use ::registers::frame_ptr;
 
@@ -25,7 +26,7 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 ///
 /// **_Note:_** If called in an external context, this will **not** return a contract ID.
 /// If called externally, will actually return a pointer to the transaction ID.
-/// 
+///
 /// # Returns
 ///
 /// * [ContractId] - The contract id of this contract.
@@ -33,7 +34,7 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 /// # Examples
 ///
 /// ```sway
-/// use std::{call_frames::contract_id, constants::ZERO_B256, token::mint};
+/// use std::{call_frames::contract_id, constants::ZERO_B256, asset::mint};
 ///
 /// fn foo() {
 ///     let this_contract = contract_id();
@@ -42,33 +43,33 @@ const SECOND_PARAMETER_OFFSET: u64 = 74;
 /// }
 /// ```
 pub fn contract_id() -> ContractId {
-    ContractId::from(asm() { fp: b256 })
+    ContractId::from(asm() {
+        fp: b256
+    })
 }
 
 /// Get the `asset_id` of coins being sent from the current call frame.
 ///
 /// # Returns
-/// 
+///
 /// * [AssetId] - The asset included in the current call frame.
 ///
 /// # Examples
 ///
 /// ```sway
 /// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
-/// 
+///
 /// fn foo() {
 ///     let asset = msg_asset_id();
 ///     assert(asset == BASE_ASSET_ID);
 /// }
 /// ```
 pub fn msg_asset_id() -> AssetId {
-    AssetId { 
-        value: { 
-            asm(asset_id) {
+    AssetId {
+        value: { asm(asset_id) {
                 addi asset_id fp i32;
                 asset_id: b256
-            }
-        }
+            }         },
     }
 }
 
@@ -147,6 +148,13 @@ pub fn first_param() -> u64 {
 /// }
 /// ```
 pub fn second_param<T>() -> T {
+    if __size_of::<T>() == 1 {
+        let v = frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<u64>();
+        return asm(v: v) {
+            v: T
+        };
+    }
+
     if !is_reference_type::<T>() {
         frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<T>()
     } else {
@@ -157,7 +165,7 @@ pub fn second_param<T>() -> T {
 //  Accessing arbitrary call frames by pointer
 //
 /// Get a pointer to the previous (relative to the `frame_pointer` parameter) call frame using offsets from a pointer.
-/// 
+///
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
@@ -166,7 +174,7 @@ pub fn second_param<T>() -> T {
 /// # Arguments
 ///
 /// * `frame_pointer`: [raw_ptr] - The call frame reference directly before the returned call frame pointer.
-/// 
+///
 /// # Returns
 ///
 /// * [raw_ptr] - The memory location of the previous call frame data.
@@ -211,5 +219,7 @@ pub fn get_previous_frame_pointer(frame_pointer: raw_ptr) -> raw_ptr {
 /// }
 /// ```
 pub fn get_contract_id_from_call_frame(frame_pointer: raw_ptr) -> ContractId {
-    ContractId::from(asm(res, ptr: frame_pointer) { ptr: b256 })
+    ContractId::from(asm(res, ptr: frame_pointer) {
+        ptr: b256
+    })
 }

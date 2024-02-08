@@ -5,7 +5,10 @@ use crate::{
     },
     language::ty,
     metadata::MetadataManager,
-    semantic_analysis::{TypeCheckFinalization, TypeCheckFinalizationContext},
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
     Engines,
 };
 use sway_error::{
@@ -64,8 +67,34 @@ impl ty::TyStorageField {
             None,
             None,
             &self.initializer,
+            true,
         )
         .map(|constant| serialize_to_storage_slots(&constant, context, ix, &constant.ty, &[]))
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyStorageDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for field in self.fields.iter() {
+                let _ = field.type_check_analyze(handler, ctx);
+            }
+            Ok(())
+        })
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyStorageField {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.initializer.type_check_analyze(handler, ctx)
     }
 }
 
