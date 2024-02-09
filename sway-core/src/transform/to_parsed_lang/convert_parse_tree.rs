@@ -10,6 +10,7 @@ use crate::{
     BuildTarget, Engines, ExperimentalFlags,
 };
 
+use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
     attribute::Annotated,
@@ -40,12 +41,7 @@ use sway_types::{
 use sway_types::{Ident, Span, Spanned};
 
 use std::{
-    collections::{HashMap, HashSet},
-    convert::TryFrom,
-    iter,
-    mem::MaybeUninit,
-    str::FromStr,
-    sync::Arc,
+    collections::HashSet, convert::TryFrom, iter, mem::MaybeUninit, str::FromStr, sync::Arc,
 };
 
 pub fn convert_parse_tree(
@@ -4381,11 +4377,9 @@ fn path_type_to_type_info(
                     let error = ConvertParseTreeError::FullySpecifiedTypesNotSupported { span };
                     return Err(handler.emit_err(error.into()));
                 }
-                let generic_ty = match {
-                    generics_opt.and_then(|(_, generic_args)| {
-                        iter_to_array(generic_args.parameters.into_inner())
-                    })
-                } {
+                let generic_ty = match generics_opt.and_then(|(_, generic_args)| {
+                    iter_to_array(generic_args.parameters.into_inner())
+                }) {
                     Some([ty]) => ty,
                     None => {
                         let error = ConvertParseTreeError::ContractCallerOneGenericArg { span };
@@ -4461,7 +4455,7 @@ fn item_attrs_to_map(
     handler: &Handler,
     attribute_list: &[AttributeDecl],
 ) -> Result<AttributesMap, ErrorEmitted> {
-    let mut attrs_map: HashMap<_, Vec<Attribute>> = HashMap::new();
+    let mut attrs_map: IndexMap<_, Vec<Attribute>> = IndexMap::new();
 
     for attr_decl in attribute_list {
         let attrs = attr_decl.attribute.get().into_iter();

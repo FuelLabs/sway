@@ -19,3 +19,6 @@ uwuify = { version = "^0.2", optional = true }
 [features]
 default = []
 uwu = ["uwuify"]
+
+[lints.clippy]
+iter_over_hash_type = "deny"
