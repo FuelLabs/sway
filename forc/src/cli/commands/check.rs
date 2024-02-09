@@ -44,7 +44,17 @@ pub struct Command {
     pub ipfs_node: Option<IPFSNode>,
 }
 
+#[cfg(feature = "cli_test")]
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
+    eprintln!("CLI test!!");
+    // cargo run -F "cli_test" -p forc -- check
+    Ok(())
+}
+
+#[cfg(not(feature = "cli_test"))]
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
+    eprintln!("Production code.");
+    // cargo run -p forc -- check
     let engines = Engines::default();
     let res = forc_check::check(command, &engines)?;
     if res.0.is_none() {
