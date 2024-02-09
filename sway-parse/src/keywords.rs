@@ -51,6 +51,7 @@ keyword_impls! {
     TraitToken,
     ImplToken,
     ForToken,
+    InToken,
     AbiToken,
     ConstToken,
     StorageToken,

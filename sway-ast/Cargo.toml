@@ -15,3 +15,6 @@ num-traits = "0.2.14"
 serde = { version = "1.0", features = ["derive"] }
 sway-error = { version = "0.50.0", path = "../sway-error" }
 sway-types = { version = "0.50.0", path = "../sway-types" }
+
+[lints.clippy]
+iter_over_hash_type = "deny"

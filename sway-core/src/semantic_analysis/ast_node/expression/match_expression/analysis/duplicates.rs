@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use sway_types::{Ident, Span, Spanned};
 
 use crate::language::ty::{self, TyScrutinee};
@@ -143,7 +142,7 @@ pub(crate) struct MatchVariableDuplicate {
 pub(crate) fn collect_duplicate_match_pattern_variables(
     scrutinee: &TyScrutinee,
 ) -> Vec<MatchVariableDuplicate> {
-    let mut left_most_branch = HashMap::new();
+    let mut left_most_branch = IndexMap::new();
     let mut branches = vec![];
 
     recursively_collect_duplicate_variables(&mut branches, &mut left_most_branch, scrutinee);
@@ -167,8 +166,8 @@ pub(crate) fn collect_duplicate_match_pattern_variables(
     return result;
 
     fn recursively_collect_duplicate_variables(
-        branches: &mut Vec<HashMap<Ident, (bool, Vec<MatchVariable>)>>,
-        left_most_branch: &mut HashMap<Ident, (bool, Vec<MatchVariable>)>,
+        branches: &mut Vec<IndexMap<Ident, (bool, Vec<MatchVariable>)>>,
+        left_most_branch: &mut IndexMap<Ident, (bool, Vec<MatchVariable>)>,
         scrutinee: &TyScrutinee,
     ) {
         match &scrutinee.variant {
@@ -198,7 +197,7 @@ pub(crate) fn collect_duplicate_match_pattern_variables(
                 // The new branch contains the identifiers collected so far in the left-most branch,
                 // but without duplicates collected so far. We want to have only unique duplicates in each branch.
                 for scrutinee in others {
-                    let mut branch: HashMap<Ident, (bool, Vec<(bool, Span)>)> = left_most_branch
+                    let mut branch: IndexMap<Ident, (bool, Vec<(bool, Span)>)> = left_most_branch
                         .iter()
                         .map(|(ident, (is_struct_field, _))| {
                             (
@@ -236,7 +235,7 @@ pub(crate) fn collect_duplicate_match_pattern_variables(
         }
 
         fn add_variable(
-            duplicate_variables: &mut HashMap<Ident, (bool, Vec<MatchVariable>)>,
+            duplicate_variables: &mut IndexMap<Ident, (bool, Vec<MatchVariable>)>,
             ident: &Ident,
             is_struct_field: bool,
         ) {

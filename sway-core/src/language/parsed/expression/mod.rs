@@ -236,6 +236,11 @@ pub struct WhileLoopExpression {
 }
 
 #[derive(Debug, Clone)]
+pub struct ForLoopExpression {
+    pub desugared: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ReassignmentExpression {
     pub lhs: ReassignmentTarget,
     pub rhs: Box<Expression>,
@@ -304,6 +309,8 @@ pub enum ExpressionKind {
     /// A control flow element which loops continually until some boolean expression evaluates as
     /// `false`.
     WhileLoop(WhileLoopExpression),
+    /// A control flow element which loops between values of an iterator.
+    ForLoop(ForLoopExpression),
     Break,
     Continue,
     Reassignment(ReassignmentExpression),

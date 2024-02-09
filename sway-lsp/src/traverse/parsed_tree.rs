@@ -21,9 +21,9 @@ use sway_core::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
             ArrayIndexExpression, AstNode, AstNodeContent, ConstantDeclaration, Declaration,
             DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression, ExpressionKind,
-            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            ImplItem, ImplSelf, ImplTrait, ImportType, IncludeStatement,
-            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            ForLoopExpression, FunctionApplicationExpression, FunctionDeclaration,
+            FunctionParameter, IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType,
+            IncludeStatement, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
             QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, Scrutinee,
             StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
@@ -337,6 +337,9 @@ impl Parse for Expression {
             }) => {
                 body.contents.par_iter().for_each(|node| node.parse(ctx));
                 condition.parse(ctx);
+            }
+            ExpressionKind::ForLoop(ForLoopExpression { desugared }) => {
+                desugared.parse(ctx);
             }
             ExpressionKind::Reassignment(reassignment) => {
                 reassignment.parse(ctx);

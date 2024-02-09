@@ -33,6 +33,7 @@ use crate::{
 };
 
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
+use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -122,7 +123,7 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
                 call_path,
-                contract_call_params: HashMap::new(),
+                contract_call_params: IndexMap::new(),
                 arguments: args_and_names,
                 fn_ref: decl_ref,
                 selector: None,
@@ -357,6 +358,9 @@ impl ty::TyExpression {
             ),
             ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
                 Self::type_check_while_loop(handler, ctx.by_ref(), *condition, body, span)
+            }
+            ExpressionKind::ForLoop(ForLoopExpression { desugared }) => {
+                Self::type_check_for_loop(handler, ctx.by_ref(), *desugared)
             }
             ExpressionKind::Break => {
                 let expr = ty::TyExpression {
@@ -1939,6 +1943,14 @@ impl ty::TyExpression {
             span,
         };
         Ok(exp)
+    }
+
+    fn type_check_for_loop(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        desugared: Expression,
+    ) -> Result<Self, ErrorEmitted> {
+        Self::type_check(handler, ctx, desugared)
     }
 
     fn type_check_reassignment(
