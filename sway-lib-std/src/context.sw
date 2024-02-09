@@ -44,11 +44,12 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// # Examples
 ///
 /// ```sway
-/// use std::{context::balance_of, constants::ZERO_B256, hash::sha256, asset::mint, call_frames::contract_id};
+/// use std::{context::balance_of, constants::DEFAULT_SUB_ID, hash::sha256, asset::mint};
 ///
 /// fn foo() {
-///     mint(ZERO_B256, 50);
-///     assert(balance_of(contract_id(), sha256((ZERO_B256, contract_id()))) == 50);
+///     mint(DEFAULT_SUB_ID, 50);
+///     let asset_id = AssetId::default();
+///     assert(balance_of(contract_id(), asset_id) == 50);
 /// }
 /// ```
 pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
