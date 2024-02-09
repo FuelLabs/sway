@@ -16,3 +16,6 @@ itertools = "0.10.3"
 proc-macro2 = "1.0.43"
 quote = "1.0.21"
 syn = { version = "1.0.99", features = ["derive", "extra-traits"] }
+
+[lints.clippy]
+iter_over_hash_type = "deny"

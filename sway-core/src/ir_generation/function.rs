@@ -18,6 +18,7 @@ use crate::{
     type_system::*,
     types::*,
 };
+use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -1421,7 +1422,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         call_params: &ty::ContractCallParams,
-        contract_call_parameters: &HashMap<String, ty::TyExpression>,
+        contract_call_parameters: &IndexMap<String, ty::TyExpression>,
         ast_name: &str,
         ast_args: &[(Ident, ty::TyExpression)],
         ast_return_type: TypeId,
