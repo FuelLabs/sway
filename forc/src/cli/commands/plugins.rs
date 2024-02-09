@@ -10,17 +10,19 @@ use std::{
 use tracing::info;
 
 forc_util::cli_examples! {
-    [ List all plugins => forc "plugins" => r#".*Installed Plugins.*"# ]
-    [ List all plugins with their paths => forc "plugins --paths" => r#".*Installed Plugins.*"# ]
-    [ List all plugins with their descriptions => forc "plugins --describe" => r#".*Installed Plugins.*"# ]
-    [ List all plugins with their paths and descriptions => forc "plugins --paths --describe" => r#".*Installed Plugins.*"# ]
+    crate::cli::Opt {
+        [ List all plugins => "forc plugins" ]
+        [ List all plugins with their paths => "forc plugins --paths" ]
+        [ List all plugins with their descriptions => "forc plugins --describe" ]
+        [ List all plugins with their paths and descriptions => "forc plugins --paths --describe" ]
+    }
 }
 
 /// Find all forc plugins available via `PATH`.
 ///
 /// Prints information about each discovered plugin.
 #[derive(Debug, Parser)]
-#[clap(name = "plugins", about = "List all forc plugins", version, after_help = help())]
+#[clap(name = "forc plugins", about = "List all forc plugins", version, after_help = help())]
 pub struct Command {
     /// Prints the absolute path to each discovered plugin.
     #[clap(long = "paths", short = 'p')]

@@ -4,8 +4,18 @@ use clap::Parser;
 use forc_util::{forc_result_bail, validate_name, ForcResult};
 use std::path::{Path, PathBuf};
 
+forc_util::cli_examples! {
+    crate::cli::Opt {
+        [Create a new project => "forc new --contract --name my_project {path}/my_project"]
+        [Create a new workspace => "forc new --workspace --name my_workspace {path}/my_project"]
+        [Create a new Forc project with a predicate => "forc new {path}/my_project --predicate"]
+        [Create a new Forc library project => "forc new {path}/my_project --library"]
+    }
+}
+
 /// Create a new Forc project at `<path>`.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc new", version, after_help = help())]
 pub struct Command {
     /// The default program type. Excluding all flags or adding this flag creates a basic contract
     /// program.
