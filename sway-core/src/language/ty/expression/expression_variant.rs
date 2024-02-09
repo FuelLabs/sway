@@ -153,6 +153,9 @@ pub enum TyExpressionVariant {
         condition: Box<TyExpression>,
         body: TyCodeBlock,
     },
+    ForLoop {
+        desugared: Box<TyExpression>,
+    },
     Break,
     Continue,
     Reassignment(Box<TyReassignment>),
@@ -611,6 +614,9 @@ impl HashWithEngines for TyExpressionVariant {
                 condition.hash(state, engines);
                 body.hash(state, engines);
             }
+            Self::ForLoop { desugared } => {
+                desugared.hash(state, engines);
+            }
             Self::Break | Self::Continue | Self::FunctionParameter => {}
             Self::Reassignment(exp) => {
                 exp.hash(state, engines);
@@ -765,6 +771,9 @@ impl SubstTypes for TyExpressionVariant {
                 condition.subst(type_mapping, engines);
                 body.subst(type_mapping, engines);
             }
+            ForLoop { ref mut desugared } => {
+                desugared.subst(type_mapping, engines);
+            }
             Break => (),
             Continue => (),
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
@@ -903,6 +912,9 @@ impl ReplaceDecls for TyExpressionVariant {
                     condition.replace_decls(decl_mapping, handler, ctx).ok();
                     body.replace_decls(decl_mapping, handler, ctx)?;
                 }
+                ForLoop { ref mut desugared } => {
+                    desugared.replace_decls(decl_mapping, handler, ctx).ok();
+                }
                 Break => (),
                 Continue => (),
                 Reassignment(reassignment) => {
@@ -1017,6 +1029,9 @@ impl TypeCheckAnalysis for TyExpressionVariant {
             TyExpressionVariant::WhileLoop { condition, body } => {
                 condition.type_check_analyze(handler, ctx)?;
                 body.type_check_analyze(handler, ctx)?;
+            }
+            TyExpressionVariant::ForLoop { desugared } => {
+                desugared.type_check_analyze(handler, ctx)?;
             }
             TyExpressionVariant::Break => {}
             TyExpressionVariant::Continue => {}
@@ -1143,6 +1158,9 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     condition.type_check_finalize(handler, ctx)?;
                     body.type_check_finalize(handler, ctx)?;
                 }
+                TyExpressionVariant::ForLoop { desugared } => {
+                    desugared.type_check_finalize(handler, ctx)?;
+                }
                 TyExpressionVariant::Break => {}
                 TyExpressionVariant::Continue => {}
                 TyExpressionVariant::Reassignment(node) => {
@@ -1262,6 +1280,9 @@ impl UpdateConstantExpression for TyExpressionVariant {
             } => {
                 condition.update_constant_expression(engines, implementing_type);
                 body.update_constant_expression(engines, implementing_type);
+            }
+            ForLoop { ref mut desugared } => {
+                desugared.update_constant_expression(engines, implementing_type);
             }
             Break => (),
             Continue => (),
@@ -1413,6 +1434,7 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::WhileLoop { condition, .. } => {
                 format!("while loop on {:?}", engines.help_out(&**condition))
             }
+            TyExpressionVariant::ForLoop { .. } => "for loop".to_string(),
             TyExpressionVariant::Break => "break".to_string(),
             TyExpressionVariant::Continue => "continue".to_string(),
             TyExpressionVariant::Reassignment(reassignment) => {
@@ -1454,123 +1476,6 @@ impl TyExpressionVariant {
         match self {
             TyExpressionVariant::Literal(value) => Some(value.clone()),
             _ => None,
-        }
-    }
-
-    /// Recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type.
-    /// This does _not_ extract implicit return statements as those are not control flow! This is
-    /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
-        match self {
-            TyExpressionVariant::MatchExp { desugared, .. } => {
-                desugared.expression.gather_return_statements()
-            }
-            TyExpressionVariant::IfExp {
-                condition,
-                then,
-                r#else,
-            } => {
-                let mut buf = condition.gather_return_statements();
-                buf.append(&mut then.gather_return_statements());
-                if let Some(ref r#else) = r#else {
-                    buf.append(&mut r#else.gather_return_statements());
-                }
-                buf
-            }
-            TyExpressionVariant::CodeBlock(TyCodeBlock { contents, .. }) => {
-                let mut buf = vec![];
-                for node in contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
-            TyExpressionVariant::WhileLoop { condition, body } => {
-                let mut buf = condition.gather_return_statements();
-                for node in &body.contents {
-                    buf.append(&mut node.gather_return_statements())
-                }
-                buf
-            }
-            TyExpressionVariant::Reassignment(reassignment) => {
-                reassignment.rhs.gather_return_statements()
-            }
-            TyExpressionVariant::LazyOperator { lhs, rhs, .. } => [lhs, rhs]
-                .into_iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            TyExpressionVariant::Tuple { fields } => fields
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            TyExpressionVariant::Array {
-                elem_type: _,
-                contents,
-            } => contents
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            TyExpressionVariant::ArrayIndex { prefix, index } => [prefix, index]
-                .into_iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            TyExpressionVariant::StructFieldAccess { prefix, .. } => {
-                prefix.gather_return_statements()
-            }
-            TyExpressionVariant::TupleElemAccess { prefix, .. } => {
-                prefix.gather_return_statements()
-            }
-            TyExpressionVariant::EnumInstantiation { contents, .. } => contents
-                .iter()
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            TyExpressionVariant::AbiCast { address, .. } => address.gather_return_statements(),
-            TyExpressionVariant::IntrinsicFunction(intrinsic_function_kind) => {
-                intrinsic_function_kind
-                    .arguments
-                    .iter()
-                    .flat_map(|expr| expr.gather_return_statements())
-                    .collect()
-            }
-            TyExpressionVariant::StructExpression { fields, .. } => fields
-                .iter()
-                .flat_map(|field| field.value.gather_return_statements())
-                .collect(),
-            TyExpressionVariant::FunctionApplication {
-                contract_call_params,
-                arguments,
-                selector,
-                ..
-            } => contract_call_params
-                .values()
-                .chain(arguments.iter().map(|(_name, expr)| expr))
-                .chain(
-                    selector
-                        .iter()
-                        .map(|contract_call_params| &*contract_call_params.contract_address),
-                )
-                .flat_map(|expr| expr.gather_return_statements())
-                .collect(),
-            TyExpressionVariant::EnumTag { exp } => exp.gather_return_statements(),
-            TyExpressionVariant::UnsafeDowncast { exp, .. } => exp.gather_return_statements(),
-            TyExpressionVariant::ImplicitReturn(exp) => exp.gather_return_statements(),
-            TyExpressionVariant::Return(exp) => {
-                vec![exp]
-            }
-            TyExpressionVariant::Ref(exp) | TyExpressionVariant::Deref(exp) => {
-                exp.gather_return_statements()
-            }
-            // if it is impossible for an expression to contain a return _statement_ (not an
-            // implicit return!), put it in the pattern below.
-            TyExpressionVariant::Literal(_)
-            | TyExpressionVariant::FunctionParameter { .. }
-            | TyExpressionVariant::AsmExpression { .. }
-            | TyExpressionVariant::ConstantExpression { .. }
-            | TyExpressionVariant::VariableExpression { .. }
-            | TyExpressionVariant::AbiName(_)
-            | TyExpressionVariant::StorageAccess { .. }
-            | TyExpressionVariant::Break
-            | TyExpressionVariant::Continue => vec![],
         }
     }
 }

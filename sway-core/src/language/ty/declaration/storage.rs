@@ -3,7 +3,6 @@ use std::hash::{Hash, Hasher};
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
 };
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
@@ -135,25 +134,13 @@ impl TyStorageDecl {
                     match struct_decl.find_field(field) {
                         Some(struct_field) => {
                             if is_public_struct_access && struct_field.is_private() {
-                                // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                                //       https://github.com/FuelLabs/sway/issues/5520
-                                // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                                //     field_name: field.into(),
-                                //     struct_name: struct_decl.call_path.suffix.clone(),
-                                //     field_decl_span: struct_field.name.span(),
-                                //     struct_can_be_changed,
-                                //     usage_context: StructFieldUsageContext::StorageAccess,
-                                // }));
-                                handler.emit_warn(CompileWarning {
-                                    span: field.span(),
-                                    warning_content: Warning::StructFieldIsPrivate {
-                                        field_name: field.into(),
-                                        struct_name: struct_decl.call_path.suffix.clone(),
-                                        field_decl_span: struct_field.name.span(),
-                                        struct_can_be_changed,
-                                        usage_context: StructFieldUsageContext::StorageAccess,
-                                    },
-                                });
+                                return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                    field_name: field.into(),
+                                    struct_name: struct_decl.call_path.suffix.clone(),
+                                    field_decl_span: struct_field.name.span(),
+                                    struct_can_be_changed,
+                                    usage_context: StructFieldUsageContext::StorageAccess,
+                                }));
                             }
 
                             // Everything is fine. Push the storage access descriptor and move to the next field.

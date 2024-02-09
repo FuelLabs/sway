@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-E9A3C0D015679961"
+
+[[package]]
+name = "iterator"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-E9A3C0D015679961"
+dependencies = ["core"]

@@ -124,7 +124,7 @@ pub(crate) fn compile_const_decl(
         (_, Some(config_val), _) => Ok(Some(config_val)),
         (None, None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.check_symbol(&call_path.suffix);
+            let decl = module_ns.items().check_symbol(&call_path.suffix);
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
@@ -673,7 +673,8 @@ fn const_eval_typed_expr(
         | ty::TyExpressionVariant::UnsafeDowncast { .. }
         | ty::TyExpressionVariant::Break
         | ty::TyExpressionVariant::Continue
-        | ty::TyExpressionVariant::WhileLoop { .. } => {
+        | ty::TyExpressionVariant::WhileLoop { .. }
+        | ty::TyExpressionVariant::ForLoop { .. } => {
             return Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: expr.span.clone(),
             })
