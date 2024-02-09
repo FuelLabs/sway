@@ -2052,215 +2052,15 @@ fn expr_to_expression(
             iterator,
             block,
             ..
-        } => {
-            // Desugar for loop into:
-            //      let mut iterable = iterator;
-            //    while true {
-            //        let value_opt = iterable.next();
-            //        if value_opt.is_none() {
-            //             break;
-            //        }
-            //        let value = value_opt.unwrap();
-            //        code_block
-            //    }
-            let value_opt_ident = Ident::new_no_span("__for_value_opt".into());
-            let value_opt_expr = Expression {
-                kind: ExpressionKind::Variable(value_opt_ident.clone()),
-                span: Span::dummy(),
-            };
-
-            let iterable_ident = Ident::new_no_span("__for_iterable".into());
-            let iterable_expr = Expression {
-                kind: ExpressionKind::Variable(iterable_ident.clone()),
-                span: Span::dummy(),
-            };
-
-            let iterator_expr = expr_to_expression(context, handler, engines, *iterator.clone())?;
-
-            // Declare iterable with iterator return
-            let iterable_decl = engines.pe().insert(VariableDeclaration {
-                type_ascription: {
-                    let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
-                    TypeArgument {
-                        type_id,
-                        initial_type_id: type_id,
-                        span: iterable_ident.clone().span(),
-                        call_path_tree: None,
-                    }
-                },
-                name: iterable_ident,
-                is_mutable: true,
-                body: iterator_expr.clone(),
-            });
-
-            // iterable.next() expression
-            // We use iterator.span() so errors can point to it.
-            let set_value_opt_to_next_body_expr = Expression {
-                kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
-                    arguments: vec![iterable_expr],
-                    method_name_binding: TypeBinding {
-                        inner: MethodName::FromModule {
-                            method_name: Ident::new_with_override("next".into(), iterator.span()),
-                        },
-                        type_arguments: TypeArgs::Regular(vec![]),
-                        span: iterator.span(),
-                    },
-                    contract_call_params: vec![],
-                })),
-                span: iterator.span(),
-            };
-
-            // Declare value_opt = iterable.next()
-            let value_opt_to_next_decl = engines.pe().insert(VariableDeclaration {
-                type_ascription: {
-                    let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
-                    TypeArgument {
-                        type_id,
-                        initial_type_id: type_id,
-                        span: value_opt_ident.clone().span(),
-                        call_path_tree: None,
-                    }
-                },
-                name: value_opt_ident,
-                is_mutable: true,
-                body: set_value_opt_to_next_body_expr.clone(),
-            });
-
-            // Call value_opt.is_none()
-            let value_opt_is_none = Expression {
-                kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
-                    arguments: vec![value_opt_expr.clone()],
-                    method_name_binding: TypeBinding {
-                        inner: MethodName::FromModule {
-                            method_name: Ident::new_no_span("is_none".into()),
-                        },
-                        type_arguments: TypeArgs::Regular(vec![]),
-                        span: Span::dummy(),
-                    },
-                    contract_call_params: vec![],
-                })),
-                span: Span::dummy(),
-            };
-
-            // Call value_opt.unwrap()
-            // We use iterator.span() so mismatched types errors can point to it.
-            let value_opt_unwarp = Expression {
-                kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
-                    arguments: vec![value_opt_expr],
-                    method_name_binding: TypeBinding {
-                        inner: MethodName::FromModule {
-                            method_name: Ident::new_with_override("unwrap".into(), iterator.span()),
-                        },
-                        type_arguments: TypeArgs::Regular(vec![]),
-                        span: iterator.span(),
-                    },
-                    contract_call_params: vec![],
-                })),
-                span: iterator.span(),
-            };
-
-            let pattern_ast_nodes = statement_let_to_ast_nodes_unfold(
-                context,
-                handler,
-                engines,
-                value_pattern.clone(),
-                None,
-                value_opt_unwarp,
-                value_pattern.span(),
-            )?;
-
-            let mut while_body =
-                braced_code_block_contents_to_code_block(context, handler, engines, block)?;
-
-            //At the beginning of while block do:
-            //    let value_opt = iterable.next();
-            //    if value_opt.is_none() {
-            //        break;
-            //    }
-            //    let value = value_opt.unwrap();
-            // Note: Inserting in reverse order
-
-            //    let value = value_opt.unwrap();
-            for node in pattern_ast_nodes.iter().rev() {
-                while_body.contents.insert(0, node.clone());
-            }
-
-            //    if value_opt.is_none() {
-            //        break;
-            //    }
-            while_body.contents.insert(
-                0,
-                AstNode {
-                    content: AstNodeContent::Expression(Expression {
-                        kind: ExpressionKind::If(IfExpression {
-                            condition: Box::new(value_opt_is_none),
-                            then: Box::new(Expression {
-                                kind: ExpressionKind::CodeBlock(CodeBlock {
-                                    contents: vec![AstNode {
-                                        content: AstNodeContent::Expression(Expression {
-                                            kind: ExpressionKind::Break,
-                                            span: Span::dummy(),
-                                        }),
-                                        span: Span::dummy(),
-                                    }],
-                                    whole_block_span: Span::dummy(),
-                                }),
-                                span: Span::dummy(),
-                            }),
-                            r#else: None,
-                        }),
-                        span: Span::dummy(),
-                    }),
-                    span: Span::dummy(),
-                },
-            );
-
-            //    let value_opt = iterable.next();
-            while_body.contents.insert(
-                0,
-                AstNode {
-                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                        value_opt_to_next_decl,
-                    )),
-                    span: Span::dummy(),
-                },
-            );
-
-            let desugared = Expression {
-                kind: ExpressionKind::CodeBlock(CodeBlock {
-                    contents: vec![
-                        AstNode {
-                            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
-                                iterable_decl,
-                            )),
-                            span: Span::dummy(),
-                        },
-                        AstNode {
-                            content: AstNodeContent::Expression(Expression {
-                                kind: ExpressionKind::WhileLoop(WhileLoopExpression {
-                                    condition: Box::new(Expression {
-                                        kind: ExpressionKind::Literal(Literal::Boolean(true)),
-                                        span: Span::dummy(),
-                                    }),
-                                    body: while_body,
-                                }),
-                                span: Span::dummy(),
-                            }),
-                            span: Span::dummy(),
-                        },
-                    ],
-                    whole_block_span: Span::dummy(),
-                }),
-                span: span.clone(),
-            };
-
-            Expression {
-                kind: ExpressionKind::ForLoop(ForLoopExpression {
-                    desugared: Box::new(desugared),
-                }),
-                span,
-            }
-        }
+        } => for_expr_to_expression(
+            context,
+            handler,
+            engines,
+            value_pattern,
+            iterator,
+            block,
+            span,
+        )?,
         Expr::FuncApp { func, args } => {
             let kind = expr_func_app_to_expression_kind(context, handler, engines, func, args)?;
             Expression { kind, span }
@@ -3098,6 +2898,224 @@ fn match_expr_to_expression(
                 },
             ],
             whole_block_span: span.clone(),
+        }),
+        span,
+    })
+}
+
+fn for_expr_to_expression(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    value_pattern: Pattern,
+    iterator: Box<Expr>,
+    block: Braces<CodeBlockContents>,
+    span: Span,
+) -> Result<Expression, ErrorEmitted> {
+    // Desugar for loop into:
+    //      let mut iterable = iterator;
+    //    while true {
+    //        let value_opt = iterable.next();
+    //        if value_opt.is_none() {
+    //             break;
+    //        }
+    //        let value = value_opt.unwrap();
+    //        code_block
+    //    }
+    let value_opt_ident = Ident::new_no_span("__for_value_opt".into());
+    let value_opt_expr = Expression {
+        kind: ExpressionKind::Variable(value_opt_ident.clone()),
+        span: Span::dummy(),
+    };
+
+    let iterable_ident = Ident::new_no_span("__for_iterable".into());
+    let iterable_expr = Expression {
+        kind: ExpressionKind::Variable(iterable_ident.clone()),
+        span: Span::dummy(),
+    };
+
+    let iterator_expr = expr_to_expression(context, handler, engines, *iterator.clone())?;
+
+    // Declare iterable with iterator return
+    let iterable_decl = engines.pe().insert(VariableDeclaration {
+        type_ascription: {
+            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                span: iterable_ident.clone().span(),
+                call_path_tree: None,
+            }
+        },
+        name: iterable_ident,
+        is_mutable: true,
+        body: iterator_expr.clone(),
+    });
+
+    // iterable.next() expression
+    // We use iterator.span() so errors can point to it.
+    let set_value_opt_to_next_body_expr = Expression {
+        kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+            arguments: vec![iterable_expr],
+            method_name_binding: TypeBinding {
+                inner: MethodName::FromModule {
+                    method_name: Ident::new_with_override("next".into(), iterator.span()),
+                },
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: iterator.span(),
+            },
+            contract_call_params: vec![],
+        })),
+        span: iterator.span(),
+    };
+
+    // Declare value_opt = iterable.next()
+    let value_opt_to_next_decl = engines.pe().insert(VariableDeclaration {
+        type_ascription: {
+            let type_id = engines.te().insert(engines, TypeInfo::Unknown, None);
+            TypeArgument {
+                type_id,
+                initial_type_id: type_id,
+                span: value_opt_ident.clone().span(),
+                call_path_tree: None,
+            }
+        },
+        name: value_opt_ident,
+        is_mutable: true,
+        body: set_value_opt_to_next_body_expr.clone(),
+    });
+
+    // Call value_opt.is_none()
+    let value_opt_is_none = Expression {
+        kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+            arguments: vec![value_opt_expr.clone()],
+            method_name_binding: TypeBinding {
+                inner: MethodName::FromModule {
+                    method_name: Ident::new_no_span("is_none".into()),
+                },
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: Span::dummy(),
+            },
+            contract_call_params: vec![],
+        })),
+        span: Span::dummy(),
+    };
+
+    // Call value_opt.unwrap()
+    // We use iterator.span() so mismatched types errors can point to it.
+    let value_opt_unwarp = Expression {
+        kind: ExpressionKind::MethodApplication(Box::new(MethodApplicationExpression {
+            arguments: vec![value_opt_expr],
+            method_name_binding: TypeBinding {
+                inner: MethodName::FromModule {
+                    method_name: Ident::new_with_override("unwrap".into(), iterator.span()),
+                },
+                type_arguments: TypeArgs::Regular(vec![]),
+                span: iterator.span(),
+            },
+            contract_call_params: vec![],
+        })),
+        span: iterator.span(),
+    };
+
+    let pattern_ast_nodes = statement_let_to_ast_nodes_unfold(
+        context,
+        handler,
+        engines,
+        value_pattern.clone(),
+        None,
+        value_opt_unwarp,
+        value_pattern.span(),
+    )?;
+
+    let mut while_body =
+        braced_code_block_contents_to_code_block(context, handler, engines, block)?;
+
+    //At the beginning of while block do:
+    //    let value_opt = iterable.next();
+    //    if value_opt.is_none() {
+    //        break;
+    //    }
+    //    let value = value_opt.unwrap();
+    // Note: Inserting in reverse order
+
+    //    let value = value_opt.unwrap();
+    for node in pattern_ast_nodes.iter().rev() {
+        while_body.contents.insert(0, node.clone());
+    }
+
+    //    if value_opt.is_none() {
+    //        break;
+    //    }
+    while_body.contents.insert(
+        0,
+        AstNode {
+            content: AstNodeContent::Expression(Expression {
+                kind: ExpressionKind::If(IfExpression {
+                    condition: Box::new(value_opt_is_none),
+                    then: Box::new(Expression {
+                        kind: ExpressionKind::CodeBlock(CodeBlock {
+                            contents: vec![AstNode {
+                                content: AstNodeContent::Expression(Expression {
+                                    kind: ExpressionKind::Break,
+                                    span: Span::dummy(),
+                                }),
+                                span: Span::dummy(),
+                            }],
+                            whole_block_span: Span::dummy(),
+                        }),
+                        span: Span::dummy(),
+                    }),
+                    r#else: None,
+                }),
+                span: Span::dummy(),
+            }),
+            span: Span::dummy(),
+        },
+    );
+
+    //    let value_opt = iterable.next();
+    while_body.contents.insert(
+        0,
+        AstNode {
+            content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                value_opt_to_next_decl,
+            )),
+            span: Span::dummy(),
+        },
+    );
+
+    let desugared = Expression {
+        kind: ExpressionKind::CodeBlock(CodeBlock {
+            contents: vec![
+                AstNode {
+                    content: AstNodeContent::Declaration(Declaration::VariableDeclaration(
+                        iterable_decl,
+                    )),
+                    span: Span::dummy(),
+                },
+                AstNode {
+                    content: AstNodeContent::Expression(Expression {
+                        kind: ExpressionKind::WhileLoop(WhileLoopExpression {
+                            condition: Box::new(Expression {
+                                kind: ExpressionKind::Literal(Literal::Boolean(true)),
+                                span: Span::dummy(),
+                            }),
+                            body: while_body,
+                        }),
+                        span: Span::dummy(),
+                    }),
+                    span: Span::dummy(),
+                },
+            ],
+            whole_block_span: Span::dummy(),
+        }),
+        span: span.clone(),
+    };
+
+    Ok(Expression {
+        kind: ExpressionKind::ForLoop(ForLoopExpression {
+            desugared: Box::new(desugared),
         }),
         span,
     })
