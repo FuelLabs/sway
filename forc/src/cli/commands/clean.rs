@@ -5,7 +5,7 @@ use forc_util::ForcResult;
 forc_util::cli_examples! {
     crate::cli::Opt {
         [Clean project => "forc clean"]
-        [Clean project with a custom path => "forc clean --path {path}"]
+        [Clean project with a custom path => "forc clean --path <PATH>"]
     }
 }
 

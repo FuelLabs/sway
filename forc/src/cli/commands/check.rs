@@ -7,7 +7,7 @@ use sway_core::{BuildTarget, Engines};
 forc_util::cli_examples! {
     crate::cli::Opt {
         [ Check the current project => "forc check" ]
-        [ Check the current project with a different path => "forc check --path {path}" ]
+        [ Check the current project with a different path => "forc check --path <PATH>" ]
         [ Check the current project without updating dependencies => "forc check --locked" ]
     }
 }

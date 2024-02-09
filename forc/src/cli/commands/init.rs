@@ -4,10 +4,10 @@ use forc_util::ForcResult;
 
 forc_util::cli_examples! {
     crate::cli::Opt {
-        [Initialize a new Forc project => "forc init --path {path}"]
-        [Initialize a new Forc project as workspace => "forc init --path {path} --workspace"]
-        [Initialize a new Forc project with a predicate => "forc init --path {path} --predicate"]
-        [Initialize a new Forc library project => "forc init --path {path} --library"]
+        [Initialize a new Forc project => "forc init --path <PATH>"]
+        [Initialize a new Forc project as workspace => "forc init --path <PATH> --workspace"]
+        [Initialize a new Forc project with a predicate => "forc init --path <PATH> --predicate"]
+        [Initialize a new Forc library project => "forc init --path <PATH> --library"]
     }
 }
 

@@ -6,10 +6,10 @@ use std::path::{Path, PathBuf};
 
 forc_util::cli_examples! {
     crate::cli::Opt {
-        [Create a new project => "forc new --contract --name my_project {path}/my_project"]
-        [Create a new workspace => "forc new --workspace --name my_workspace {path}/my_project"]
-        [Create a new Forc project with a predicate => "forc new {path}/my_project --predicate"]
-        [Create a new Forc library project => "forc new {path}/my_project --library"]
+        [Create a new project => "forc new --contract --name my_project <PATH>"]
+        [Create a new workspace => "forc new --workspace --name my_workspace <PATH>"]
+        [Create a new Forc project with a predicate => "forc new <PATH> --predicate"]
+        [Create a new Forc library project => "forc new <PATH> --library"]
     }
 }
 

@@ -5,8 +5,8 @@ use forc_util::ForcResult;
 forc_util::cli_examples! {
    crate::cli::Opt {
         [ Compile the current projectx => "forc build" ]
-        [ Compile the current project from a different path => "forc build --path {path}" ]
-        [ Compile the current project without updating dependencies => "forc build --path {path} --locked" ]
+        [ Compile the current project from a different path => "forc build --path <PATH>" ]
+        [ Compile the current project without updating dependencies => "forc build --path <PATH> --locked" ]
     }
 }
 

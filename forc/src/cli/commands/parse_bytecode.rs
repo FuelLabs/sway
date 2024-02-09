@@ -9,7 +9,7 @@ use tracing::info;
 
 forc_util::cli_examples! {
     crate::cli::Opt {
-        [Parse bytecode => "forc parse-bytecode {path}/out/debug/name.bin"]
+        [Parse bytecode => "forc parse-bytecode <PATH>"]
     }
 }
 

@@ -8,7 +8,7 @@ use forc_util::{tx_utils::Salt, ForcResult};
 forc_util::cli_examples! {
     crate::cli::Opt {
         [Get contract id => "forc contract-id"]
-        [Get contract id from a different path => "forc contract-id --path {path}"]
+        [Get contract id from a different path => "forc contract-id --path <PATH>"]
     }
 }
 
