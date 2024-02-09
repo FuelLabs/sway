@@ -44,7 +44,7 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// # Examples
 ///
 /// ```sway
-/// use std::{context::balance_of, constants::DEFAULT_SUB_ID, hash::sha256, asset::mint};
+/// use std::{asset::mint, call_frames::contract_id, constants::DEFAULT_SUB_ID, context::balance_of};
 ///
 /// fn foo() {
 ///     mint(DEFAULT_SUB_ID, 50);
