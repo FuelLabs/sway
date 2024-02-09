@@ -46,8 +46,8 @@ walkdir = "2.3"
 whoami = "1.1"
 
 [features]
-default = []
+default = ["release"]
 test = []
 util = []
 uwu = ["uwuify"]
-cli_test = []
+release = []

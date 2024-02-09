@@ -44,14 +44,14 @@ pub struct Command {
     pub ipfs_node: Option<IPFSNode>,
 }
 
-#[cfg(feature = "cli_test")]
+#[cfg(not(feature = "release"))]
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
     eprintln!("CLI test!!");
-    // cargo run -F "cli_test" -p forc -- check
+    // cargo run --no-default-features -p forc -- check
     Ok(())
 }
 
-#[cfg(not(feature = "cli_test"))]
+#[cfg(feature = "release")]
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
     eprintln!("Production code.");
     // cargo run -p forc -- check
