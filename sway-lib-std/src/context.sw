@@ -19,11 +19,12 @@ use ::registers::balance;
 /// # Examples
 ///
 /// ```sway
-/// use std::{context::this_balance, constants::ZERO_B256, hash::sha256, asset::mint, call_frames::contract_id};
+/// use std::{context::this_balance, constants::DEFAULT_SUB_ID, asset::mint};
 ///
 /// fn foo() {
-///     mint(ZERO_B256, 50);
-///     assert(this_balance(sha256((ZERO_B256, contract_id()))) == 50);
+///     mint(DEFAULT_SUB_ID, 50);
+///     let asset_id = AssetId::default();
+///     assert(this_balance(asset_id)) == 50);
 /// }
 /// ```
 pub fn this_balance(asset_id: AssetId) -> u64 {
