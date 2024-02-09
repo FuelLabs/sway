@@ -15,7 +15,6 @@ use super::TraitMap;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
 };
 use sway_types::{span::Span, Spanned};
 
@@ -374,26 +373,15 @@ impl Items {
                     let field_type_id = match struct_decl.find_field(field_name) {
                         Some(struct_field) => {
                             if is_public_struct_access && struct_field.is_private() {
-                                // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                                //       https://github.com/FuelLabs/sway/issues/5520
-                                // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                                //     field_name: field_name.into(),
-                                //     struct_name: struct_decl.call_path.suffix.clone(),
-                                //     field_decl_span: struct_field.name.span(),
-                                //     struct_can_be_changed,
-                                //     usage_context: StructFieldUsageContext::StructFieldAccess,
-                                // }));
-                                handler.emit_warn(CompileWarning {
-                                    span: field_name.span(),
-                                    warning_content: Warning::StructFieldIsPrivate {
-                                        field_name: field_name.into(),
-                                        struct_name: struct_decl.call_path.suffix.clone(),
-                                        field_decl_span: struct_field.name.span(),
-                                        struct_can_be_changed,
-                                        usage_context: StructFieldUsageContext::StructFieldAccess,
-                                    },
-                                });
+                                return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                    field_name: field_name.into(),
+                                    struct_name: struct_decl.call_path.suffix.clone(),
+                                    field_decl_span: struct_field.name.span(),
+                                    struct_can_be_changed,
+                                    usage_context: StructFieldUsageContext::StructFieldAccess,
+                                }));
                             }
+
                             struct_field.type_argument.type_id
                         }
                         None => {
@@ -427,7 +415,9 @@ impl Items {
                             return Err(handler.emit_err(CompileError::TupleIndexOutOfBounds {
                                 index: *index,
                                 count: fields.len(),
-                                span: Span::join(full_span_for_error, index_span.clone()),
+                                tuple_type: engines.help_out(symbol).to_string(),
+                                span: index_span.clone(),
+                                prefix_span: full_span_for_error.clone(),
                             }));
                         }
                     };
@@ -452,17 +442,28 @@ impl Items {
                     // TODO: Include the closing square bracket into the error span.
                     full_span_for_error = Span::join(full_span_for_error, index_span.clone());
                 }
-                (actually, ty::ProjectionKind::StructField { .. }) => {
+                (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                        span: full_span_for_error,
                         actually: engines.help_out(actually).to_string(),
+                        storage_variable: None,
+                        field_name: name.into(),
+                        span: full_span_for_error,
                     }));
                 }
-                (actually, ty::ProjectionKind::TupleField { .. }) => {
-                    return Err(handler.emit_err(CompileError::NotATuple {
-                        actually: engines.help_out(actually).to_string(),
-                        span: full_span_for_error,
-                    }));
+                (
+                    actually,
+                    ty::ProjectionKind::TupleField {
+                        index, index_span, ..
+                    },
+                ) => {
+                    return Err(
+                        handler.emit_err(CompileError::TupleElementAccessOnNonTuple {
+                            actually: engines.help_out(actually).to_string(),
+                            span: full_span_for_error,
+                            index: *index,
+                            index_span: index_span.clone(),
+                        }),
+                    );
                 }
                 (actually, ty::ProjectionKind::ArrayIndex { .. }) => {
                     return Err(handler.emit_err(CompileError::NotIndexable {

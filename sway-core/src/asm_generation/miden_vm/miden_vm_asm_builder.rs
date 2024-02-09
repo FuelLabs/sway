@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::{collections::HashMap, sync::Arc};
 mod miden_op;
+use indexmap::IndexMap;
 pub use miden_op::MidenAsmOp;
 
 use crate::{
@@ -59,7 +60,7 @@ impl StackManager {
 // for now, we can use function names for readability
 pub type ProcedureName = String;
 
-pub type ProcedureMap = HashMap<ProcedureName, Procedure>;
+pub type ProcedureMap = IndexMap<ProcedureName, Procedure>;
 
 /// MidenVM Asm is built in the following way:
 /// Function bodies are abstracted into [Procedures]

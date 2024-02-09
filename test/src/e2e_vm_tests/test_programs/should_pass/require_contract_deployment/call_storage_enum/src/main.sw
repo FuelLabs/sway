@@ -3,7 +3,7 @@ script;
 use storage_enum_abi::*;
 
 fn main() -> u64 {
-    let contract_id = 0x1cc4ed1d23bc6f78be934a6e019bab9346e75f79179ecbcf369544f2592b8031;
+    let contract_id = 0x2c6686f3a059e41298f5680c92a8effdc628cf86ac293b84ea9fc10fa1fd7906;
     let caller = abi(StorageEnum, contract_id);
 
     let res = caller.read_write_enums();

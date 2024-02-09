@@ -122,6 +122,7 @@ impl TyDecl {
                     &fn_decl,
                     false,
                     false,
+                    None,
                 ) {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
@@ -361,6 +362,8 @@ impl TyDecl {
 
                 // declarations are not allowed
                 ctx.namespace
+                    .module_mut()
+                    .items_mut()
                     .set_storage_declaration(handler, decl_ref.clone())?;
                 decl_ref.into()
             }

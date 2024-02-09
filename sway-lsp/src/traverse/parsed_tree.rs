@@ -21,9 +21,9 @@ use sway_core::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
             ArrayIndexExpression, AstNode, AstNodeContent, ConstantDeclaration, Declaration,
             DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression, ExpressionKind,
-            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            ImplItem, ImplSelf, ImplTrait, ImportType, IncludeStatement,
-            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            ForLoopExpression, FunctionApplicationExpression, FunctionDeclaration,
+            FunctionParameter, IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType,
+            IncludeStatement, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
             QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, Scrutinee,
             StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
@@ -106,8 +106,7 @@ impl Parse for AstNode {
     fn parse(&self, ctx: &ParseContext) {
         match &self.content {
             AstNodeContent::Declaration(declaration) => declaration.parse(ctx),
-            AstNodeContent::Expression(expression)
-            | AstNodeContent::ImplicitReturnExpression(expression) => {
+            AstNodeContent::Expression(expression) => {
                 expression.parse(ctx);
             }
             AstNodeContent::UseStatement(use_statement) => use_statement.parse(ctx),
@@ -339,10 +338,13 @@ impl Parse for Expression {
                 body.contents.par_iter().for_each(|node| node.parse(ctx));
                 condition.parse(ctx);
             }
+            ExpressionKind::ForLoop(ForLoopExpression { desugared }) => {
+                desugared.parse(ctx);
+            }
             ExpressionKind::Reassignment(reassignment) => {
                 reassignment.parse(ctx);
             }
-            ExpressionKind::Return(expr) => {
+            ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 expr.parse(ctx);
             }
             ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {

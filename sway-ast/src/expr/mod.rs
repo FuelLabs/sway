@@ -41,6 +41,13 @@ pub enum Expr {
         condition: Box<Expr>,
         block: Braces<CodeBlockContents>,
     },
+    For {
+        for_token: ForToken,
+        in_token: InToken,
+        value_pattern: Pattern,
+        iterator: Box<Expr>,
+        block: Braces<CodeBlockContents>,
+    },
     FuncApp {
         func: Box<Expr>,
         args: Parens<Punctuated<Expr, CommaToken>>,
@@ -220,6 +227,9 @@ impl Spanned for Expr {
             Expr::While {
                 while_token, block, ..
             } => Span::join(while_token.span(), block.span()),
+            Expr::For {
+                for_token, block, ..
+            } => Span::join(for_token.span(), block.span()),
             Expr::FuncApp { func, args } => Span::join(func.span(), args.span()),
             Expr::Index { target, arg } => Span::join(target.span(), arg.span()),
             Expr::MethodCall { target, args, .. } => Span::join(target.span(), args.span()),
@@ -490,13 +500,52 @@ impl Expr {
     }
 
     pub fn is_control_flow(&self) -> bool {
-        matches!(
-            self,
+        match self {
             Expr::Block(..)
-                | Expr::Asm(..)
-                | Expr::If(..)
-                | Expr::Match { .. }
-                | Expr::While { .. },
-        )
+            | Expr::Asm(..)
+            | Expr::If(..)
+            | Expr::Match { .. }
+            | Expr::While { .. }
+            | Expr::For { .. } => true,
+            Expr::Error(..)
+            | Expr::Path(..)
+            | Expr::Literal(..)
+            | Expr::AbiCast { .. }
+            | Expr::Struct { .. }
+            | Expr::Tuple(..)
+            | Expr::Parens(..)
+            | Expr::Array(..)
+            | Expr::Return { .. }
+            | Expr::FuncApp { .. }
+            | Expr::Index { .. }
+            | Expr::MethodCall { .. }
+            | Expr::FieldProjection { .. }
+            | Expr::TupleFieldProjection { .. }
+            | Expr::Ref { .. }
+            | Expr::Deref { .. }
+            | Expr::Not { .. }
+            | Expr::Mul { .. }
+            | Expr::Div { .. }
+            | Expr::Pow { .. }
+            | Expr::Modulo { .. }
+            | Expr::Add { .. }
+            | Expr::Sub { .. }
+            | Expr::Shl { .. }
+            | Expr::Shr { .. }
+            | Expr::BitAnd { .. }
+            | Expr::BitXor { .. }
+            | Expr::BitOr { .. }
+            | Expr::Equal { .. }
+            | Expr::NotEqual { .. }
+            | Expr::LessThan { .. }
+            | Expr::GreaterThan { .. }
+            | Expr::LessThanEq { .. }
+            | Expr::GreaterThanEq { .. }
+            | Expr::LogicalAnd { .. }
+            | Expr::LogicalOr { .. }
+            | Expr::Reassignment { .. }
+            | Expr::Break { .. }
+            | Expr::Continue { .. } => false,
+        }
     }
 }

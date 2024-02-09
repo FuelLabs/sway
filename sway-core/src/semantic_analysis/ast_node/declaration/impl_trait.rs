@@ -385,6 +385,7 @@ impl TyImplTrait {
                             &fn_decl,
                             true,
                             true,
+                            Some(implementing_for.type_id),
                         ) {
                             Ok(res) => res,
                             Err(_) => continue,
@@ -619,6 +620,8 @@ fn type_check_trait_implementation(
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
     ctx.namespace
+        .module_mut()
+        .items_mut()
         .implemented_traits
         .check_if_trait_constraints_are_satisfied_for_type(
             handler,
@@ -922,6 +925,7 @@ fn type_check_trait_implementation(
                         .collect::<Vec<_>>(),
                 );
 
+                method.implementing_for_typeid = Some(implementing_for);
                 method.replace_decls(&decl_mapping, handler, &mut ctx)?;
                 method.subst(&type_mapping, engines);
                 all_items_refs.push(TyImplItem::Fn(
@@ -1000,8 +1004,14 @@ fn type_check_impl_method(
     };
 
     // type check the function declaration
-    let mut impl_method =
-        ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), impl_method, true, false)?;
+    let mut impl_method = ty::TyFunctionDecl::type_check(
+        handler,
+        ctx.by_ref(),
+        impl_method,
+        true,
+        false,
+        Some(implementing_for),
+    )?;
 
     // Ensure that there aren't multiple definitions of this function impl'd
     if impld_item_refs.contains_key(&(impl_method.name.clone(), implementing_for)) {

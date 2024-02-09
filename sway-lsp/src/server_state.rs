@@ -20,6 +20,7 @@ use std::{
         Arc,
     },
 };
+use sway_core::LspConfig;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -82,6 +83,7 @@ pub struct CompilationContext {
     pub session: Option<Arc<Session>>,
     pub uri: Option<Url>,
     pub version: Option<i32>,
+    pub optimized_build: bool,
 }
 
 impl ServerState {
@@ -112,8 +114,9 @@ impl ServerState {
                         let mut engines_clone = session.engines.read().clone();
 
                         if let Some(version) = ctx.version {
-                            // Garbage collection is fairly expsensive so we only clear on every 10th keystroke.
-                            if version % 10 == 0 {
+                            // Garbage collection is fairly expsensive so we only clear on every 3rd keystroke.
+                            // Waiting too long to clear can cause a stack overflow to occur.
+                            if version % 3 == 0 {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
@@ -125,12 +128,17 @@ impl ServerState {
                             }
                         }
 
+                        let lsp_mode = Some(LspConfig {
+                            optimized_build: ctx.optimized_build,
+                        });
+
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
                         match session::parse_project(
                             &uri,
                             &engines_clone,
                             Some(retrigger_compilation.clone()),
+                            lsp_mode,
                             session.clone(),
                         ) {
                             Ok(_) => {

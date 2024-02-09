@@ -4,12 +4,12 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
+use indexmap::IndexMap;
 use lsp_types::Url;
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
 use parking_lot::RwLock;
 use std::{
-    collections::HashMap,
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -263,7 +263,7 @@ pub(crate) fn edit_manifest_dependency_paths(
 ) {
     // Key = name of the dependancy that has been specified will a relative path
     // Value = the absolute path that should be used to overwrite the relateive path
-    let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();
+    let mut dependency_map: IndexMap<String, PathBuf> = IndexMap::new();
 
     if let Some(deps) = &manifest.dependencies {
         for (name, dep) in deps.iter() {

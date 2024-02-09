@@ -44,7 +44,7 @@ use sway_core::{
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, Engines, FinalizedEntry,
+    BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
@@ -179,7 +179,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub namespace: namespace::Root,
+    pub root_module: namespace::Module,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -1567,8 +1567,7 @@ pub fn sway_build_config(
     .with_optimization_level(build_profile.optimization_level)
     .with_experimental(sway_core::ExperimentalFlags {
         new_encoding: build_profile.experimental.new_encoding,
-    })
-    .with_lsp_mode(build_profile.lsp_mode);
+    });
     Ok(build_config)
 }
 
@@ -1657,18 +1656,18 @@ pub fn dependency_namespace(
 
     let _ = namespace.star_import_with_reexports(
         &Handler::default(),
+        engines,
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
-        engines,
         true,
     );
 
     if has_std_dep(graph, node) {
         let _ = namespace.star_import_with_reexports(
             &Handler::default(),
+            engines,
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
-            engines,
             true,
         );
     }
@@ -1808,7 +1807,7 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
-    let namespace = typed_program.root.namespace.clone().into();
+    let namespace = typed_program.root.namespace.clone();
 
     if handler.has_errors() {
         return fail(handler);
@@ -1933,7 +1932,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        namespace,
+        root_module: namespace.root_module().clone(),
         warnings,
         metrics,
     };
@@ -2431,9 +2430,9 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            let mut namespace = namespace::Module::from(compiled.namespace);
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            lib_namespace_map.insert(node, namespace);
+            let mut root_module = compiled.root_module;
+            root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
+            lib_namespace_map.insert(node, root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2598,7 +2597,7 @@ pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
     terse_mode: bool,
-    lsp_mode: bool,
+    lsp_mode: Option<LspConfig>,
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -2647,7 +2646,7 @@ pub fn check(
             &profile,
         )?
         .with_include_tests(include_tests)
-        .with_lsp_mode(lsp_mode);
+        .with_lsp_mode(lsp_mode.clone());
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
@@ -2680,9 +2679,9 @@ pub fn check(
         match programs.typed.as_ref() {
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
-                    let mut namespace = typed_program.root.namespace.clone();
-                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-                    namespace.span = Some(
+                    let mut module = typed_program.root.namespace.module().clone();
+                    module.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    module.span = Some(
                         Span::new(
                             manifest.entry_string()?,
                             0,
@@ -2691,7 +2690,7 @@ pub fn check(
                         )
                         .unwrap(),
                     );
-                    lib_namespace_map.insert(node, namespace.module().clone());
+                    lib_namespace_map.insert(node, module);
                 }
 
                 source_map.insert_dependency(manifest.dir());

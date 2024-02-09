@@ -656,10 +656,15 @@ impl Dependencies {
             }) => self
                 .gather_from_expr(engines, condition)
                 .gather_from_block(engines, body),
+            ExpressionKind::ForLoop(ForLoopExpression { desugared, .. }) => {
+                self.gather_from_expr(engines, desugared)
+            }
             ExpressionKind::Reassignment(reassignment) => {
                 self.gather_from_expr(engines, &reassignment.rhs)
             }
-            ExpressionKind::Return(expr) => self.gather_from_expr(engines, expr),
+            ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
+                self.gather_from_expr(engines, expr)
+            }
             ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
                 self.gather_from_expr(engines, expr)
             }
@@ -693,7 +698,6 @@ impl Dependencies {
     fn gather_from_node(self, engines: &Engines, node: &AstNode) -> Self {
         match &node.content {
             AstNodeContent::Expression(expr) => self.gather_from_expr(engines, expr),
-            AstNodeContent::ImplicitReturnExpression(expr) => self.gather_from_expr(engines, expr),
             AstNodeContent::Declaration(decl) => self.gather_from_decl(engines, decl),
 
             // No deps from these guys.

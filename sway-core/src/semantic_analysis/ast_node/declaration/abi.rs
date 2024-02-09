@@ -172,9 +172,15 @@ impl ty::TyAbiDecl {
         let mut new_items = vec![];
         for method_id in methods.into_iter() {
             let method = engines.pe().get_function(&method_id);
-            let method =
-                ty::TyFunctionDecl::type_check(handler, ctx.by_ref(), &method, false, false)
-                    .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
+            let method = ty::TyFunctionDecl::type_check(
+                handler,
+                ctx.by_ref(),
+                &method,
+                false,
+                false,
+                Some(self_type_param.type_id),
+            )
+            .unwrap_or_else(|_| ty::TyFunctionDecl::error(&method));
             error_on_shadowing_superabi_method(&method.name, &mut ctx);
             for param in &method.parameters {
                 if param.is_reference || param.is_mutable {
@@ -280,10 +286,10 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Fn(
                             ctx.engines
                                 .de()
-                                .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
-                                    self.name.clone(),
-                                    Some(self_decl_id),
-                                )))
+                                .insert(method.to_dummy_func(
+                                    AbiMode::ImplAbiFn(self.name.clone(), Some(self_decl_id)),
+                                    Some(type_id),
+                                ))
                                 .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
                         ));
                     }
@@ -293,7 +299,7 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Constant(decl_ref.clone()));
                         let const_shadowing_mode = ctx.const_shadowing_mode();
                         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-                        let _ = ctx.namespace.insert_symbol(
+                        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
                             handler,
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
