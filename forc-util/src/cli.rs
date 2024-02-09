@@ -110,7 +110,7 @@ macro_rules! cli_examples {
             Box::leak( [
             $(
             $crate::paste::paste! {
-                format!("  #{}\n {}\n\n", stringify!($($description)*), $command)
+                format!(" # {}\n {}\n\n", stringify!($($description)*), $command)
             },
             )*
             ].concat().into_boxed_str())
