@@ -3,9 +3,11 @@ use clap::Parser;
 use forc_util::ForcResult;
 
 forc_util::cli_examples! {
-    [ Compile the current project => forc "build" => r#".*could not find `Forc.toml`.*"# ]
-    [ Compile the current project with a different path => forc "build --path ../tests/" => r#".*could not find `Forc.toml`.*"# ]
-    [ Compile the current project without updating dependencies => forc "build --locked" => r#".*could not find `Forc.toml`.*"# ]
+   crate::cli::Opt {
+        [ Compile the current projectx => "forc build" ]
+        [ Compile the current project from a different path => "forc build --path <PATH>" ]
+        [ Compile the current project without updating dependencies => "forc build --path <PATH> --locked" ]
+    }
 }
 
 /// Compile the current or target project.

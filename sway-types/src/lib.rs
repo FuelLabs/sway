@@ -397,3 +397,7 @@ impl Context {
         }
     }
 }
+
+pub type FxBuildHasher = std::hash::BuildHasherDefault<rustc_hash::FxHasher>;
+pub type FxIndexMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
+pub type FxIndexSet<K> = indexmap::IndexSet<K, FxBuildHasher>;
