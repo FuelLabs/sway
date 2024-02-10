@@ -103,7 +103,7 @@ macro_rules! cli_examples {
 
 
         fn help() -> &'static str {
-            Box::leak(format!("EXAMPLES:\n{}", examples()).into_boxed_str())
+            Box::leak(format!("{}\n{}", forc_util::ansi_term::Colour::Yellow.paint("EXAMPLES:"), examples()).into_boxed_str())
         }
 
         pub fn examples() -> &'static str {
