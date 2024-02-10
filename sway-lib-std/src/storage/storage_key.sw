@@ -3,7 +3,7 @@ library;
 use ::option::Option;
 use ::storage::storage_api::*;
 
-impl<T> StorageKey<T> {
+impl StorageKey {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
     /// crosses the boundary of a storage slot, reading continues at the following slot.
     ///
@@ -20,18 +20,17 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
+    ///     let r: StorageKey = StorageKey {
     ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///     };
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
-    ///     let x: u64 = r.read();
+    ///     let x: u64 = r.read_unchecked();
     /// }
     /// ```
     #[storage(read)]
-    pub fn read(self) -> T {
+    pub fn read_unchecked<T>(self) -> T {
         read::<T>(self.slot, self.offset).unwrap()
     }
 
@@ -51,18 +50,17 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
+    ///     let r: StorageKey = StorageKey {
     ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///     };
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
-    ///     let x: Option<u64> = r.try_read();
+    ///     let x: Option<u64> = r.read();
     /// }
     /// ```
     #[storage(read)]
-    pub fn try_read(self) -> Option<T> {
+    pub fn read<T>(self) -> Option<T> {
         read(self.slot, self.offset)
     }
 
@@ -83,52 +81,18 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
+    ///     let r: StorageKey = StorageKey {
     ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
     ///     };
     ///
     ///     // Writes 42 at the third word of storage slot with key 0x000...0
-    ///     let x = r.write(42);
+    ///     r.write(42);
     /// }
     /// ```
     #[storage(read, write)]
-    pub fn write(self, value: T) {
+    pub fn write<T>(self, value: T) {
         write(self.slot, self.offset, value);
-    }
-
-    /// Clears the value at `self`.
-    ///
-    /// # Number of Storage Accesses
-    ///
-    /// * Clears: `1`
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
-    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///     };
-    ///     r.write(42);
-    ///
-    ///     let cleared = r.clear();
-    ///     assert(cleared);
-    /// }
-    /// ```
-    #[storage(write)]
-    pub fn clear(self) -> bool {
-        if __size_of::<T>() == 0 {
-            // If the generic doesn't have a size, this is an empty struct and nothing can be stored at the slot.
-            // This clears the length value for StorageVec, StorageString, and StorageBytes 
-            // or any other Storage type.
-            clear::<u64>(self.field_id, 0)
-        } else {
-            clear::<T>(self.slot, self.offset)
-        }
     }
 
     /// Create a new `StorageKey`.
@@ -136,12 +100,11 @@ impl<T> StorageKey<T> {
     /// # Arguments
     ///
     /// * `slot`: [b256] - The assigned location in storage for the new `StorageKey`.
-    /// * `offset`: [u64] - The assigned offset based on the data structure `T` for the new `StorageKey`.
-    /// * `field_id`: [b256] - A unique identifier for the new `StorageKey`.
+    /// * `offset`: [u64] - The assigned offset for the new `StorageKey`.
     ///
     /// # Returns
     ///
-    /// * [StorageKey] - The newly create `StorageKey`.
+    /// * [StorageKey] - The newly created `StorageKey`.
     ///
     /// # Examples
     ///
@@ -149,15 +112,31 @@ impl<T> StorageKey<T> {
     /// use std::{constants::ZERO_B256, hash::sha256};
     ///
     /// fn foo() {
-    ///     let my_key = StorageKey::<u64>::new(ZERO_B256, 0, sha256(ZERO_B256));
+    ///     let my_key = StorageKey::new(ZERO_B256, 0, sha256(ZERO_B256));
     ///     assert(my_key.slot == ZERO_B256);
     /// }
     /// ```
-    pub fn new(slot: b256, offset: u64, field_id: b256) -> Self {
+    pub fn new(slot: b256, offset: u64) -> Self {
         Self {
             slot,
             offset,
-            field_id,
+        }
+    }
+
+    pub fn offset_by(self, value: u64) -> Self {
+        Self {
+            slot: self.slot,
+            offset: self.offset + value,
+        }
+    }
+
+    // Add padding to type so it can correctly use the storage api
+    pub fn offset_by_type<T>(self, count: u64) -> Self {
+        let size_in_bytes = __size_of::<T>();
+        let size_in_slots = (size_in_bytes + 32 - 1) / 32;
+        Self {
+            slot: self.slot,
+            offset: self.offset + size_in_slots * count,
         }
     }
 }
@@ -167,8 +146,7 @@ fn test_storage_key_new() {
     use ::constants::ZERO_B256;
     use ::assert::assert;
 
-    let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
+    let key = StorageKey::new(ZERO_B256, 0);
     assert(key.slot == ZERO_B256);
     assert(key.offset == 0);
-    assert(key.field_id == ZERO_B256);
 }
