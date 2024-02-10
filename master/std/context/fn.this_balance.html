@@ -8,11 +8,12 @@
 <li>[u64] - The amount of the asset which the contract holds.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{context::this_balance, constants::ZERO_B256, hash::sha256, asset::mint, call_frames::contract_id};
+<pre><code class="language-sway">use std::{context::this_balance, constants::DEFAULT_SUB_ID, asset::mint};
 
 fn foo() {
-    mint(ZERO_B256, 50);
-    assert(this_balance(sha256((ZERO_B256, contract_id()))) == 50);
+    mint(DEFAULT_SUB_ID, 50);
+    let asset_id = AssetId::default();
+    assert(this_balance(asset_id)) == 50);
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
