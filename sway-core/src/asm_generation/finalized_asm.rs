@@ -99,7 +99,7 @@ impl fmt::Display for FinalizedAsm {
 
 fn to_bytecode_mut(
     handler: &Handler,
-    ops: &Vec<AllocatedOp>,
+    ops: &[AllocatedOp],
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,

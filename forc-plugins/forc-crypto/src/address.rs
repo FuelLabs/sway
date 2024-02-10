@@ -5,7 +5,9 @@ use serde_json::json;
 use std::str::{from_utf8, FromStr};
 
 forc_util::cli_examples! {
-    [ Convert an address to another format => crypto "address fuel12e0xwx34nfp7jrzvn9mp5qkac3yvp7h8fx37ghl7klf82vv2wkys6wd523" ]
+    crate::Command {
+        [ Convert an address to another format => "forc crypto address fuel12e0xwx34nfp7jrzvn9mp5qkac3yvp7h8fx37ghl7klf82vv2wkys6wd523" ]
+    }
 }
 
 #[derive(Debug, clap::Args)]

@@ -13,7 +13,8 @@ use crate::{
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
-use std::collections::{HashMap, VecDeque};
+use indexmap::IndexMap;
+use std::collections::VecDeque;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -83,7 +84,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // generate the map of the contract call params
-    let mut contract_call_params_map = HashMap::new();
+    let mut contract_call_params_map = IndexMap::new();
     if method.is_contract_call {
         for param_name in &[
             constants::CONTRACT_CALL_GAS_PARAMETER_NAME,

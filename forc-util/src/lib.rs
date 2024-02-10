@@ -31,6 +31,7 @@ pub mod restricted;
 #[macro_use]
 pub mod cli;
 
+pub use ansi_term;
 pub use paste;
 pub use regex::Regex;
 pub use serial_test;
