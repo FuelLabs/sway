@@ -752,7 +752,7 @@ fn spill(ops: &[Op], spills: &FxHashSet<VirtualRegister>) -> Vec<Op> {
     }
 
     for (op_idx, op) in ops.iter().enumerate() {
-        if op_idx == cfe_idx && new_locals_byte_size > 0 {
+        if op_idx == cfe_idx {
             // This is the CFE instruction, use the new stack size.
             spilled.push(Op {
                 opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {

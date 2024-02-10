@@ -583,6 +583,7 @@ impl AllocatedOp {
 
             /* Memory Instructions */
             ALOC(a) => op::ALOC::new(a.to_reg_id()).into(),
+            CFEI(a) if a.value == 0 => op::NOOP::new().into(),
             CFEI(a) => op::CFEI::new(a.value.into()).into(),
             CFSI(a) => op::CFSI::new(a.value.into()).into(),
             CFE(a) => op::CFE::new(a.to_reg_id()).into(),

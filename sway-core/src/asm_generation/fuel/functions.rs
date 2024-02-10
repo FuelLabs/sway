@@ -820,16 +820,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         if locals_size_bytes > compiler_constants::TWENTY_FOUR_BITS {
             todo!("Enormous stack usage for locals.");
         }
-        let stack_frame_size_bytes = locals_size_bytes as u32 + (max_num_extra_args * 8) as u32;
-        if stack_frame_size_bytes > 0 {
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
-                    value: stack_frame_size_bytes,
-                })),
-                comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments."),
-                owning_span: None,
-            });
-        }
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::CFEI(VirtualImmediate24 {
+                value: locals_size_bytes as u32 + (max_num_extra_args * 8) as u32,
+            })),
+            comment: format!("allocate {locals_size_bytes} bytes for locals and {max_num_extra_args} slots for call arguments."),
+            owning_span: None,
+        });
         (
             locals_size_bytes,
             locals_base_reg,

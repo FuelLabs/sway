@@ -11,8 +11,7 @@ fn main() {
 // ::check-asm::
 // The data section setup:
 // check: move $$$$locbase $$sp
-// not: cfei i0
+// check: cfei i0
 // check: ret  $$zero
-// nextln: noop
 // nextln: .data
 // not: data_
