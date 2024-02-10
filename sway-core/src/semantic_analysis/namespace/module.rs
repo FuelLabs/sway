@@ -15,7 +15,7 @@ use super::{
     lexical_scope::{GlobImport, Items, LexicalScope, SymbolMap},
     root::Root,
     trait_map::TraitMap,
-    ModuleName, Path, PathBuf,
+    LexicalScopeId, ModuleName, Path, PathBuf,
 };
 
 use sway_ast::ItemConst;
@@ -43,8 +43,10 @@ pub struct Module {
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
     pub(crate) submodules: im::OrdMap<ModuleName, Module>,
-    /// The root lexical scope present within this module.
-    pub root_lexical_scope: LexicalScope,
+    /// Keeps all lexical scopes associated with this module.
+    pub lexical_scopes: Vec<LexicalScope>,
+    /// Current lexical scope id in the lexical scope hierarchy stack.
+    pub current_lexical_scope_id: LexicalScopeId,
     /// Name of the module, package name for root module, module name for other modules.
     /// Module name used is the same as declared in `mod name;`.
     pub name: Option<Ident>,
@@ -67,7 +69,8 @@ impl Default for Module {
         Self {
             visibility: Visibility::Private,
             submodules: Default::default(),
-            root_lexical_scope: Default::default(),
+            lexical_scopes: vec![LexicalScope::default()],
+            current_lexical_scope_id: 0,
             name: Default::default(),
             span: Default::default(),
             is_external: Default::default(),
@@ -176,7 +179,7 @@ impl Module {
         compiled_constants.insert(name, typed_decl);
 
         let mut ret = Self::default();
-        ret.root_lexical_scope.items.symbols = compiled_constants;
+        ret.root_lexical_scope_mut().items.symbols = compiled_constants;
         Ok(ret)
     }
 
@@ -228,14 +231,65 @@ impl Module {
         }
     }
 
+    /// Returns the root lexical scope associated with this module.
+    fn root_lexical_scope(&self) -> &LexicalScope {
+        self.lexical_scopes.first().unwrap()
+    }
+
+    /// Returns the mutable root lexical scope associated with this module.
+    fn root_lexical_scope_mut(&mut self) -> &mut LexicalScope {
+        self.lexical_scopes.first_mut().unwrap()
+    }
+
+    /// Returns the current lexical scope associated with this module.
+    fn current_lexical_scope(&self) -> &LexicalScope {
+        self.lexical_scopes
+            .get(self.current_lexical_scope_id)
+            .unwrap()
+    }
+
+    /// Returns the mutable current lexical scope associated with this module.
+    #[allow(dead_code)]
+    fn current_lexical_scope_mut(&mut self) -> &mut LexicalScope {
+        self.lexical_scopes
+            .get_mut(self.current_lexical_scope_id)
+            .unwrap()
+    }
+
     /// The collection of items declared by this module's root lexical scope.
     pub fn root_items(&self) -> &Items {
-        &self.root_lexical_scope.items
+        &self.root_lexical_scope().items
     }
 
     /// The mutable collection of items declared by this module's root lexical scope.
     pub fn root_items_mut(&mut self) -> &mut Items {
-        &mut self.root_lexical_scope.items
+        &mut self.root_lexical_scope_mut().items
+    }
+
+    pub fn current_lexical_scope_id(&self) -> LexicalScopeId {
+        self.current_lexical_scope_id
+    }
+
+    /// Pushes a new scope to the module's lexical scope hierarchy.
+    pub fn push_new_lexical_scope(&mut self) -> LexicalScopeId {
+        let previous_scope_id = self.current_lexical_scope_id();
+        let new_scoped_id = {
+            self.lexical_scopes.push(LexicalScope {
+                parent: Some(previous_scope_id),
+                ..Default::default()
+            });
+            self.current_lexical_scope_id()
+        };
+        let previous_scope = self.lexical_scopes.get_mut(previous_scope_id).unwrap();
+        previous_scope.children.push(new_scoped_id);
+        self.current_lexical_scope_id = new_scoped_id;
+        new_scoped_id
+    }
+
+    /// Pops the current scope from the module's lexical scope hierarchy.
+    pub fn pop_lexical_scope(&mut self) {
+        let parent_scope_id = self.current_lexical_scope().parent;
+        self.current_lexical_scope_id = parent_scope_id.unwrap_or(0);
     }
 
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
