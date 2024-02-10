@@ -5,11 +5,13 @@ use forc_pkg::source::IPFSNode;
 const ABOUT: &str = "Forc plugin for building a Sway package's documentation";
 
 forc_util::cli_examples! {
-    [ Build the docs for a project in the current path => doc ""]
-    [ Build the docs for a project in the current path and open it in the browser => doc "--open" ]
-    [ Build the docs for a project located in another path => doc "--manifest-path ../tests_project2" ]
-    [ Build the docs for the current project exporting private types => doc "--document-private-items" ]
-    [ Build the docs offline without downloading any dependency from the network => doc "--offline" ]
+    crate::Command {
+        [ Build the docs for a project in the current path => "forc doc"]
+        [ Build the docs for a project in the current path and open it in the browser => "forc doc --open" ]
+        [ Build the docs for a project located in another path => "forc doc --manifest-path {path}" ]
+        [ Build the docs for the current project exporting private types => "forc doc --document-private-items" ]
+        [ Build the docs offline without downloading any dependency from the network => "forc doc --offline" ]
+    }
 }
 
 #[derive(Debug, Parser, Default)]
