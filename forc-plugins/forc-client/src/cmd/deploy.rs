@@ -8,9 +8,11 @@ pub use forc_util::tx_utils::Salt;
 use crate::NodeTarget;
 
 forc_util::cli_examples! {
-    [ Deploy a single contract => deploy "bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408" => r#".*Error making HTTP request.*"# ]
-    [ Deploy a single contract from a different path => deploy "bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408 --path ../tests/" => r#".*Error making HTTP request.*"# ]
-    [ Deploy to a custom network => deploy "--node-url https://beta-5.fuel.network/graphql" => ".*Refused to create a new wallet.*" ]
+   super::Command {
+        [ Deploy a single contract => "forc deploy bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408" ]
+        [ Deploy a single contract from a different path => "forc deploy bc09bfa7a11a04ce42b0a5abf04fd437387ee49bf4561d575177e2946468b408 --path {path}" ]
+        [ Deploy to a custom network => "forc deploy --node-url https://beta-5.fuel.network/graphql" ]
+    }
 }
 
 #[derive(Debug, Default, Parser)]
