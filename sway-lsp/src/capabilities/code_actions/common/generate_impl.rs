@@ -14,7 +14,7 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
     fn decl_name(&self) -> String;
 
     /// Returns an optional [String] of the type parameters for the given [TypeParameter] vector.
-    fn type_param_string(&self, type_params: &Vec<TypeParameter>) -> Option<String> {
+    fn type_param_string(&self, type_params: &[TypeParameter]) -> Option<String> {
         if type_params.is_empty() {
             None
         } else {

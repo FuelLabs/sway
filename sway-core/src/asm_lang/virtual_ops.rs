@@ -4,6 +4,8 @@
 //! The immediate types are used to safely construct numbers that are within their bounds, and the
 //! ops are clones of the actual opcodes, but with the safe primitives as arguments.
 
+use indexmap::IndexMap;
+
 use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
     virtual_immediate::*,
@@ -795,7 +797,7 @@ impl VirtualOp {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+        reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         use VirtualOp::*;
         match self {
@@ -1667,7 +1669,7 @@ fn map_reg(
 }
 
 fn update_reg(
-    reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+    reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     reg: &VirtualRegister,
 ) -> VirtualRegister {
     if let Some(r) = reg_to_reg_map.get(reg) {

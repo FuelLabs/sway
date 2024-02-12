@@ -33,6 +33,7 @@ use crate::{
 };
 
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
+use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -122,7 +123,7 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
                 call_path,
-                contract_call_params: HashMap::new(),
+                contract_call_params: IndexMap::new(),
                 arguments: args_and_names,
                 fn_ref: decl_ref,
                 selector: None,

@@ -2,8 +2,18 @@ use crate::ops::forc_init;
 use clap::Parser;
 use forc_util::ForcResult;
 
+forc_util::cli_examples! {
+    crate::cli::Opt {
+        [Initialize a new Forc project => "forc init --path <PATH>"]
+        [Initialize a new Forc project as workspace => "forc init --path <PATH> --workspace"]
+        [Initialize a new Forc project with a predicate => "forc init --path <PATH> --predicate"]
+        [Initialize a new Forc library project => "forc init --path <PATH> --library"]
+    }
+}
+
 /// Create a new Forc project in an existing directory.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc init", version, after_help = help())]
 pub struct Command {
     /// The directory in which the forc project will be initialized.
     #[clap(long)]

@@ -23,3 +23,6 @@ unicode-xid = "0.2.2"
 [dev-dependencies]
 assert_matches = "1.5.0"
 insta = { version = "1.28.0", features = ["ron"] }
+
+[lints.clippy]
+iter_over_hash_type = "deny"
