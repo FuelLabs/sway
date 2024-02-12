@@ -168,8 +168,12 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Scope the `TypeCheckContext` with the given `Namespace`.
-    pub fn scoped(self, namespace: &'a mut Namespace) -> TypeCheckContext<'a> {
-        TypeCheckContext {
+    pub fn scoped<T>(
+        self,
+        namespace: &'a mut Namespace,
+        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
+    ) -> Result<T, ErrorEmitted> {
+        let ctx = TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
             function_type_annotation: self.function_type_annotation,
@@ -187,7 +191,8 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-        }
+        };
+        with_scoped_ctx(ctx)
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
