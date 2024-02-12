@@ -142,17 +142,17 @@ impl AllocatedAbstractInstructionSet {
                         .collect::<Vec<_>>();
 
                     let (mask_l, mask_h) = generate_mask(&regs);
-                    if mask_l.value != 0 {
-                        new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
-                            comment: "Restore registers 16..40".into(),
-                            owning_span: None,
-                        });
-                    }
                     if mask_h.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::POPH(mask_h)),
                             comment: "Restore registers 40..64".into(),
+                            owning_span: None,
+                        });
+                    }
+                    if mask_l.value != 0 {
+                        new_ops.push(AllocatedAbstractOp {
+                            opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
+                            comment: "Restore registers 16..40".into(),
                             owning_span: None,
                         });
                     }
