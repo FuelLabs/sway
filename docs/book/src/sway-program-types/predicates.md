@@ -13,11 +13,11 @@ fn main() -> bool {
 
 The address of this predicate is `0xd19a5fe4cb9baf41ad9813f1a6fef551107c8e8e3f499a6e32bccbb954a74764`. Any assets sent to this address can be unlocked or claimed by executing the predicate above as it always evaluates to true.
 
-It does not need to be deployed to a blockchain because it only exists during a transaction. That being said, the predicate root is on chain as the owner of one or more UTXOs.
+It does not need to be deployed to a blockchain because it only exists during a transaction. That being said, the predicate address is on chain as the owner of one or more UTXOs.
 
 ## Transfer Coins to a Predicate
 
-In Fuel, coins can be sent to an address uniquely representing a particular predicate's bytecode (the bytecode root, calculated [here](https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md)).
+In Fuel, coins can be sent to a predicate's address(the bytecode root, calculated [here](https://github.com/FuelLabs/fuel-specs/blob/master/src/identifiers/contract-id.md)).
 
 ## Spending Predicate Coins
 
