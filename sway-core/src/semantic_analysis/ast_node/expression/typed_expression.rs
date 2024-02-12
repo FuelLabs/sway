@@ -679,7 +679,7 @@ impl ty::TyExpression {
             ty::TyExpression::type_check(handler, ctx, expr.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines))
         });
-        let exp = instantiate_if_expression(handler, ctx, condition, then, r#else, span)?;
+        let exp = instantiate_if_expression(handler, ctx, condition, then.clone(), r#else, span)?;
         Ok(exp)
     }
 
