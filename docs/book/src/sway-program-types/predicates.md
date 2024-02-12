@@ -25,13 +25,13 @@ The coin UTXOs become spendable not on the provision of a valid signature, but r
 
 If a predicate reverts, or tries to access impure VM opcodes, the evaluation is automatically `false`.
 
-An anaology for predicates is rather than a traditional 12 or 24 word seed phrase that generates a private key and creates a valid signature, a predicate's code can be viewed as the private key. Anyone with the code may execute a predicate, but only when the predicate evaluates to true may the assets owned by that address be released.
+An analogy for predicates is rather than a traditional 12 or 24 word seed phrase that generates a private key and creates a valid signature, a predicate's code can be viewed as the private key. Anyone with the code may execute a predicate, but only when the predicate evaluates to true may the assets owned by that address be released.
 
 ## Spending Conditions
 
 Predicates may introspect the transaction spending their coins (inputs, outputs, script bytecode, etc.) and may take runtime arguments, either or both of which may affect the evaluation of the predicate.
 
-It is important to note that predicates cannot read or write memory. They may however check the inputs and outputs of a transaction. For example in the [OTC Predicate Swap Example](https://github.com/FuelLabs/sway-applications/tree/master/OTC-swap-predicate), a user may specify they would like to swap `asset1` for `asset2` and with amount of `5`. The user would then send `asset1` to the predicate. Only when the predicate can verify that the outputs include `5` coins of `asset2` are sent to the origial user may `asset1` be transfered out of the predicate.
+It is important to note that predicates cannot read or write memory. They may however check the inputs and outputs of a transaction. For example in the [OTC Predicate Swap Example](https://github.com/FuelLabs/sway-applications/tree/master/OTC-swap-predicate), a user may specify they would like to swap `asset1` for `asset2` and with amount of `5`. The user would then send `asset1` to the predicate. Only when the predicate can verify that the outputs include `5` coins of `asset2` are sent to the original user may `asset1` be transferred out of the predicate.
 
 ## Debugging Predicates
 
