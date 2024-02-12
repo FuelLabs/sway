@@ -159,6 +159,14 @@ pub struct PkgTestEntry {
     pub pass_condition: TestPassCondition,
     pub span: Span,
     pub file_path: Arc<PathBuf>,
+    pub test_type: TestType,
+}
+
+/// Represents type of tests.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TestType {
+    NonFuzz,
+    Fuzz,
 }
 
 /// The result of successfully compiling a workspace.
@@ -1977,6 +1985,7 @@ impl PkgTestEntry {
         let test_function_decl = engines.de().get_function(&decl_ref);
 
         const FAILING_TEST_KEYWORD: &str = "should_revert";
+        const FUZZABLE_TEST_KEYWORD: &str = "fuzz";
 
         let test_args: HashMap<String, Option<String>> = test_function_decl
             .attributes
@@ -2010,6 +2019,12 @@ impl PkgTestEntry {
             bail!("Invalid test argument(s) for test: {test_name}.")
         }?;
 
+        let test_type = if test_args.get(FUZZABLE_TEST_KEYWORD).is_some() {
+            TestType::Fuzz
+        } else {
+            TestType::NonFuzz
+        };
+
         let file_path = Arc::new(
             engines.se().get_path(
                 span.source_id()
@@ -2020,6 +2035,7 @@ impl PkgTestEntry {
             pass_condition,
             span,
             file_path,
+            test_type,
         })
     }
 }

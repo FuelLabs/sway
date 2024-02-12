@@ -351,15 +351,20 @@ impl<'a> PackageTests {
                     let offset = u32::try_from(entry.finalized.imm)
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
-                    let test_setup = self.setup()?;
-                    TestExecutor::new(
-                        &pkg_with_tests.bytecode.bytes,
-                        offset,
-                        test_setup,
-                        test_entry,
-                        name,
-                    )
-                    .execute()
+                    match test_entry.test_type {
+                        pkg::TestType::NonFuzz => {
+                            let test_setup = self.setup()?;
+                            TestExecutor::new(
+                                &pkg_with_tests.bytecode.bytes,
+                                offset,
+                                test_setup,
+                                test_entry,
+                                name,
+                            )
+                            .execute()
+                        }
+                        pkg::TestType::Fuzz => unimplemented!("fuzzing is not supported yet."),
+                    }
                 })
                 .collect::<anyhow::Result<_>>()
         })?;
