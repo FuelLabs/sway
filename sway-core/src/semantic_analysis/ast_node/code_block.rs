@@ -19,8 +19,11 @@ impl ty::TyCodeBlock {
             .contents
             .iter()
             .filter_map(|node| {
-                let ctx = ctx.by_ref().scoped(&mut code_block_namespace);
-                ty::TyAstNode::type_check(handler, ctx, node.clone()).ok()
+                ctx.by_ref()
+                    .scoped(&mut code_block_namespace, |ctx| {
+                        ty::TyAstNode::type_check(handler, ctx, node.clone())
+                    })
+                    .ok()
             })
             .collect::<Vec<ty::TyAstNode>>();
 

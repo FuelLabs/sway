@@ -51,171 +51,61 @@ impl TyImplTrait {
 
         // create a namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx
-            .by_ref()
-            .scoped(&mut impl_namespace)
+        ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .with_self_type(Some(self_type_id))
-            .allow_functions();
-
-        // Type check the type parameters
-        let new_impl_type_parameters = TypeParameter::type_check_type_params(
-            handler,
-            ctx.by_ref(),
-            impl_type_parameters,
-            Some(self_type_param),
-        )?;
-
-        // resolve the types of the trait type arguments
-        for type_arg in trait_type_arguments.iter_mut() {
-            type_arg.type_id = ctx.resolve_type(
-                handler,
-                type_arg.type_id,
-                &type_arg.span,
-                EnforceTypeArguments::Yes,
-                None,
-            )?;
-        }
-
-        // type check the type that we are implementing for
-
-        implementing_for.type_id = ctx.resolve_type(
-            handler,
-            implementing_for.type_id,
-            &implementing_for.span,
-            EnforceTypeArguments::Yes,
-            None,
-        )?;
-
-        // check to see if this type is supported in impl blocks
-        type_engine
-            .get(implementing_for.type_id)
-            .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
-
-        // check for unconstrained type parameters
-        check_for_unconstrained_type_parameters(
-            handler,
-            engines,
-            &new_impl_type_parameters,
-            &trait_type_arguments,
-            implementing_for.type_id,
-        )?;
-
-        // Unify the "self" type param and the type that we are implementing for
-        handler.scope(|h| {
-            type_engine.unify_with_self(
-                h,
-                engines,
-                implementing_for.type_id,
-                self_type_id,
-                &implementing_for.span,
-                "",
-                None,
-            );
-            Ok(())
-        })?;
-
-        // Update the context
-        let mut ctx = ctx
-            .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
-            .with_self_type(Some(implementing_for.type_id));
-
-        let impl_trait = match ctx
-            .namespace
-            .resolve_call_path(handler, engines, &trait_name, ctx.self_type())
-            .ok()
-        {
-            Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
-                let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
-
-                // the following essentially is needed to map `Self` to `implementing_for`
-                // during trait decl monomorphization
-                trait_decl
-                    .type_parameters
-                    .push(trait_decl.self_type.clone());
-                trait_type_arguments.push(implementing_for.clone());
-
-                // monomorphize the trait declaration
-                ctx.monomorphize(
+            .allow_functions()
+            .scoped(&mut impl_namespace, |mut ctx| {
+                // Type check the type parameters
+                let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
-                    &mut trait_decl,
-                    &mut trait_type_arguments,
+                    ctx.by_ref(),
+                    impl_type_parameters,
+                    Some(self_type_param),
+                )?;
+
+                // resolve the types of the trait type arguments
+                for type_arg in trait_type_arguments.iter_mut() {
+                    type_arg.type_id = ctx.resolve_type(
+                        handler,
+                        type_arg.type_id,
+                        &type_arg.span,
+                        EnforceTypeArguments::Yes,
+                        None,
+                    )?;
+                }
+
+                // type check the type that we are implementing for
+
+                implementing_for.type_id = ctx.resolve_type(
+                    handler,
+                    implementing_for.type_id,
+                    &implementing_for.span,
                     EnforceTypeArguments::Yes,
-                    &trait_name.span(),
+                    None,
                 )?;
 
-                // restore type parameters and type arguments
-                trait_decl.type_parameters.pop();
-                trait_type_arguments.pop();
-
-                // Insert the interface surface and methods from this trait into
-                // the namespace.
-                trait_decl.insert_interface_surface_and_items_into_namespace(
-                    handler,
-                    ctx.by_ref(),
-                    &trait_name,
-                    &trait_type_arguments,
-                    implementing_for.type_id,
-                );
-
-                let new_items = type_check_trait_implementation(
-                    handler,
-                    ctx.by_ref(),
-                    implementing_for.type_id,
-                    &new_impl_type_parameters,
-                    &trait_decl.type_parameters,
-                    &trait_type_arguments,
-                    &trait_decl.supertraits,
-                    &trait_decl.interface_surface,
-                    &trait_decl.items,
-                    &items,
-                    &trait_name,
-                    &trait_decl.span(),
-                    &block_span,
-                    false,
-                )?;
-                ty::TyImplTrait {
-                    impl_type_parameters: new_impl_type_parameters,
-                    trait_name: trait_name.clone(),
-                    trait_type_arguments,
-                    trait_decl_ref: Some(DeclRef::new(
-                        trait_decl.name.clone(),
-                        decl_id.into(),
-                        trait_decl.span.clone(),
-                    )),
-                    span: block_span,
-                    items: new_items,
-                    implementing_for,
-                }
-            }
-            Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })) => {
-                // if you are comparing this with the `impl_trait` branch above, note that
-                // there are no type arguments here because we don't support generic types
-                // in contract ABIs yet (or ever?) due to the complexity of communicating
-                // the ABI layout in the descriptor file.
-
-                let abi = decl_engine.get_abi(&decl_id);
-
-                if !type_engine
+                // check to see if this type is supported in impl blocks
+                type_engine
                     .get(implementing_for.type_id)
-                    .eq(&TypeInfo::Contract, engines)
-                {
-                    handler.emit_err(CompileError::ImplAbiForNonContract {
-                        span: implementing_for.span(),
-                        ty: engines.help_out(implementing_for.type_id).to_string(),
-                    });
-                }
+                    .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
 
-                let self_type_param = TypeParameter::new_self_type(engines, abi.span.clone());
-                // Unify the "self" type param from the abi declaration with
-                // the type that we are implementing for.
+                // check for unconstrained type parameters
+                check_for_unconstrained_type_parameters(
+                    handler,
+                    engines,
+                    &new_impl_type_parameters,
+                    &trait_type_arguments,
+                    implementing_for.type_id,
+                )?;
+
+                // Unify the "self" type param and the type that we are implementing for
                 handler.scope(|h| {
                     type_engine.unify_with_self(
                         h,
                         engines,
                         implementing_for.type_id,
-                        self_type_param.type_id,
+                        self_type_id,
                         &implementing_for.span,
                         "",
                         None,
@@ -223,56 +113,166 @@ impl TyImplTrait {
                     Ok(())
                 })?;
 
-                let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn(abi.name.clone(), None));
+                // Update the context
+                let mut ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+                    .with_self_type(Some(implementing_for.type_id));
 
-                // Insert the interface surface and methods from this trait into
-                // the namespace.
-                let _ = abi.insert_interface_surface_and_items_into_namespace(
-                    handler,
-                    decl_id,
-                    ctx.by_ref(),
-                    implementing_for.type_id,
-                    None,
-                );
+                let impl_trait = match ctx
+                    .namespace
+                    .resolve_call_path(handler, engines, &trait_name, ctx.self_type())
+                    .ok()
+                {
+                    Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
+                        let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
 
-                let new_items = type_check_trait_implementation(
-                    handler,
-                    ctx.by_ref(),
-                    implementing_for.type_id,
-                    &[], // this is empty because abi definitions don't support generics,
-                    &[], // this is empty because abi definitions don't support generics,
-                    &[], // this is empty because abi definitions don't support generics,
-                    &abi.supertraits,
-                    &abi.interface_surface,
-                    &abi.items,
-                    &items,
-                    &trait_name,
-                    &abi.span(),
-                    &block_span,
-                    true,
-                )?;
-                ty::TyImplTrait {
-                    impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
-                    trait_name,
-                    trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
-                    trait_decl_ref: Some(DeclRef::new(
-                        abi.name.clone(),
-                        decl_id.into(),
-                        abi.span.clone(),
-                    )),
-                    span: block_span,
-                    items: new_items,
-                    implementing_for,
-                }
-            }
-            Some(_) | None => {
-                return Err(handler.emit_err(CompileError::UnknownTrait {
-                    name: trait_name.suffix.clone(),
-                    span: trait_name.span(),
-                }));
-            }
-        };
-        Ok(impl_trait)
+                        // the following essentially is needed to map `Self` to `implementing_for`
+                        // during trait decl monomorphization
+                        trait_decl
+                            .type_parameters
+                            .push(trait_decl.self_type.clone());
+                        trait_type_arguments.push(implementing_for.clone());
+
+                        // monomorphize the trait declaration
+                        ctx.monomorphize(
+                            handler,
+                            &mut trait_decl,
+                            &mut trait_type_arguments,
+                            EnforceTypeArguments::Yes,
+                            &trait_name.span(),
+                        )?;
+
+                        // restore type parameters and type arguments
+                        trait_decl.type_parameters.pop();
+                        trait_type_arguments.pop();
+
+                        // Insert the interface surface and methods from this trait into
+                        // the namespace.
+                        trait_decl.insert_interface_surface_and_items_into_namespace(
+                            handler,
+                            ctx.by_ref(),
+                            &trait_name,
+                            &trait_type_arguments,
+                            implementing_for.type_id,
+                        );
+
+                        let new_items = type_check_trait_implementation(
+                            handler,
+                            ctx.by_ref(),
+                            implementing_for.type_id,
+                            &new_impl_type_parameters,
+                            &trait_decl.type_parameters,
+                            &trait_type_arguments,
+                            &trait_decl.supertraits,
+                            &trait_decl.interface_surface,
+                            &trait_decl.items,
+                            &items,
+                            &trait_name,
+                            &trait_decl.span(),
+                            &block_span,
+                            false,
+                        )?;
+                        ty::TyImplTrait {
+                            impl_type_parameters: new_impl_type_parameters,
+                            trait_name: trait_name.clone(),
+                            trait_type_arguments,
+                            trait_decl_ref: Some(DeclRef::new(
+                                trait_decl.name.clone(),
+                                decl_id.into(),
+                                trait_decl.span.clone(),
+                            )),
+                            span: block_span,
+                            items: new_items,
+                            implementing_for,
+                        }
+                    }
+                    Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })) => {
+                        // if you are comparing this with the `impl_trait` branch above, note that
+                        // there are no type arguments here because we don't support generic types
+                        // in contract ABIs yet (or ever?) due to the complexity of communicating
+                        // the ABI layout in the descriptor file.
+
+                        let abi = decl_engine.get_abi(&decl_id);
+
+                        if !type_engine
+                            .get(implementing_for.type_id)
+                            .eq(&TypeInfo::Contract, engines)
+                        {
+                            handler.emit_err(CompileError::ImplAbiForNonContract {
+                                span: implementing_for.span(),
+                                ty: engines.help_out(implementing_for.type_id).to_string(),
+                            });
+                        }
+
+                        let self_type_param =
+                            TypeParameter::new_self_type(engines, abi.span.clone());
+                        // Unify the "self" type param from the abi declaration with
+                        // the type that we are implementing for.
+                        handler.scope(|h| {
+                            type_engine.unify_with_self(
+                                h,
+                                engines,
+                                implementing_for.type_id,
+                                self_type_param.type_id,
+                                &implementing_for.span,
+                                "",
+                                None,
+                            );
+                            Ok(())
+                        })?;
+
+                        let mut ctx = ctx.with_abi_mode(AbiMode::ImplAbiFn(abi.name.clone(), None));
+
+                        // Insert the interface surface and methods from this trait into
+                        // the namespace.
+                        let _ = abi.insert_interface_surface_and_items_into_namespace(
+                            handler,
+                            decl_id,
+                            ctx.by_ref(),
+                            implementing_for.type_id,
+                            None,
+                        );
+
+                        let new_items = type_check_trait_implementation(
+                            handler,
+                            ctx.by_ref(),
+                            implementing_for.type_id,
+                            &[], // this is empty because abi definitions don't support generics,
+                            &[], // this is empty because abi definitions don't support generics,
+                            &[], // this is empty because abi definitions don't support generics,
+                            &abi.supertraits,
+                            &abi.interface_surface,
+                            &abi.items,
+                            &items,
+                            &trait_name,
+                            &abi.span(),
+                            &block_span,
+                            true,
+                        )?;
+                        ty::TyImplTrait {
+                            impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
+                            trait_name,
+                            trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
+                            trait_decl_ref: Some(DeclRef::new(
+                                abi.name.clone(),
+                                decl_id.into(),
+                                abi.span.clone(),
+                            )),
+                            span: block_span,
+                            items: new_items,
+                            implementing_for,
+                        }
+                    }
+                    Some(_) | None => {
+                        return Err(handler.emit_err(CompileError::UnknownTrait {
+                            name: trait_name.suffix.clone(),
+                            span: trait_name.span(),
+                        }));
+                    }
+                };
+                Ok(impl_trait)
+            })
     }
 
     pub(crate) fn type_check_impl_self(
@@ -293,278 +293,288 @@ impl TyImplTrait {
 
         // create the namespace for the impl
         let mut impl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx
-            .scoped(&mut impl_namespace)
-            .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
-            .allow_functions();
+        ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
+            .allow_functions()
+            .scoped(&mut impl_namespace, |mut ctx| {
+                // Create a new type parameter for the "self type".
+                let self_type_param =
+                    TypeParameter::new_self_type(engines, implementing_for.span());
+                let self_type_id = self_type_param.type_id;
 
-        // Create a new type parameter for the "self type".
-        let self_type_param = TypeParameter::new_self_type(engines, implementing_for.span());
-        let self_type_id = self_type_param.type_id;
+                // create the trait name
+                let trait_name = CallPath {
+                    prefixes: vec![],
+                    suffix: match &&*type_engine.get(implementing_for.type_id) {
+                        TypeInfo::Custom {
+                            qualified_call_path: call_path,
+                            ..
+                        } => call_path.call_path.suffix.clone(),
+                        _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
+                    },
+                    is_absolute: false,
+                };
 
-        // create the trait name
-        let trait_name = CallPath {
-            prefixes: vec![],
-            suffix: match &&*type_engine.get(implementing_for.type_id) {
-                TypeInfo::Custom {
-                    qualified_call_path: call_path,
-                    ..
-                } => call_path.call_path.suffix.clone(),
-                _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
-            },
-            is_absolute: false,
-        };
-
-        // Type check the type parameters.
-        let new_impl_type_parameters = TypeParameter::type_check_type_params(
-            handler,
-            ctx.by_ref(),
-            impl_type_parameters,
-            Some(self_type_param),
-        )?;
-
-        // type check the type that we are implementing for
-        implementing_for.type_id = ctx.resolve_type(
-            handler,
-            implementing_for.type_id,
-            &implementing_for.span,
-            EnforceTypeArguments::Yes,
-            None,
-        )?;
-
-        // check to see if this type is supported in impl blocks
-        type_engine
-            .get(implementing_for.type_id)
-            .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
-
-        // check for unconstrained type parameters
-        check_for_unconstrained_type_parameters(
-            handler,
-            engines,
-            &new_impl_type_parameters,
-            &[],
-            implementing_for.type_id,
-        )?;
-
-        implementing_for.type_id.check_type_parameter_bounds(
-            handler,
-            ctx.by_ref(),
-            &implementing_for.span,
-            None,
-        )?;
-
-        // Unify the "self" type param and the type that we are implementing for
-        handler.scope(|h| {
-            type_engine.unify_with_self(
-                h,
-                engines,
-                implementing_for.type_id,
-                self_type_id,
-                &implementing_for.span,
-                "",
-                None,
-            );
-            Ok(())
-        })?;
-
-        let mut ctx = ctx
-            .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-
-        // type check the items inside of the impl block
-        let mut new_items = vec![];
-
-        handler.scope(|handler| {
-            for item in items.iter() {
-                match item {
-                    ImplItem::Fn(fn_decl_id) => {
-                        let fn_decl = engines.pe().get_function(fn_decl_id);
-                        let fn_decl = match ty::TyFunctionDecl::type_check_signature(
-                            handler,
-                            ctx.by_ref(),
-                            &fn_decl,
-                            true,
-                            true,
-                            Some(implementing_for.type_id),
-                        ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
-                        };
-                        new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl)));
-                    }
-                    ImplItem::Constant(decl_id) => {
-                        let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
-                        let const_decl =
-                            match ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl)
-                            {
-                                Ok(res) => res,
-                                Err(_) => continue,
-                            };
-                        let decl_ref = decl_engine.insert(const_decl);
-                        new_items.push(TyImplItem::Constant(decl_ref.clone()));
-
-                        ctx.insert_symbol(
-                            handler,
-                            decl_ref.name().clone(),
-                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: decl_ref.name().clone(),
-                                decl_id: *decl_ref.id(),
-                                decl_span: decl_ref.span().clone(),
-                            }),
-                        )?;
-                    }
-                    ImplItem::Type(decl_id) => {
-                        let type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();
-                        let type_decl = match ty::TyTraitType::type_check(
-                            handler,
-                            ctx.by_ref(),
-                            type_decl.clone(),
-                        ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
-                        };
-                        let decl_ref = decl_engine.insert(type_decl);
-                        new_items.push(TyImplItem::Type(decl_ref.clone()));
-                    }
-                }
-            }
-
-            let mut impl_trait = ty::TyImplTrait {
-                impl_type_parameters: new_impl_type_parameters,
-                trait_name,
-                trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
-                trait_decl_ref: None,
-                span: block_span,
-                items: new_items,
-                implementing_for,
-            };
-
-            ctx.insert_trait_implementation(
-                handler,
-                impl_trait.trait_name.clone(),
-                impl_trait.trait_type_arguments.clone(),
-                impl_trait.implementing_for.type_id,
-                &impl_trait.items,
-                &impl_trait.span,
-                impl_trait
-                    .trait_decl_ref
-                    .as_ref()
-                    .map(|decl_ref| decl_ref.decl_span().clone()),
-                IsImplSelf::Yes,
-                IsExtendingExistingImpl::No,
-            )?;
-
-            // Now lets do a partial type check of the body of the functions (while deferring full
-            // monomorphization of function applications). We will use this tree to perform type check
-            // analysis (mainly dependency analysis), and re-type check the items ordered by dependency.
-            let mut defer_ctx = ctx.by_ref().with_defer_monomorphization();
-
-            let new_items = &impl_trait.items;
-            for (item, new_item) in items.clone().into_iter().zip(new_items) {
-                match (item, new_item) {
-                    (ImplItem::Fn(fn_decl_id), TyTraitItem::Fn(decl_ref)) => {
-                        let fn_decl = engines.pe().get_function(&fn_decl_id);
-                        let mut ty_fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
-                        let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
-                            handler,
-                            defer_ctx.by_ref(),
-                            &fn_decl,
-                            &mut ty_fn_decl,
-                        ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
-                        };
-                        decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
-                    }
-                    (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
-                        // Already processed.
-                    }
-                    (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
-                        // Already processed.
-                    }
-                    _ => unreachable!(),
-                }
-            }
-
-            let impl_trait_decl = decl_engine.insert(impl_trait.clone()).into();
-
-            // First lets perform an analysis pass.
-            // This returns a vector with ordered indexes to the items in the order that they
-            // should be processed.
-            let ordered_node_indices_opt = if let TyDecl::ImplTrait(impl_trait) = &impl_trait_decl {
-                ty::TyImplTrait::type_check_analyze_impl_self_items(
+                // Type check the type parameters.
+                let new_impl_type_parameters = TypeParameter::type_check_type_params(
                     handler,
                     ctx.by_ref(),
-                    impl_trait,
-                )?
-            } else {
-                unreachable!();
-            };
+                    impl_type_parameters,
+                    Some(self_type_param),
+                )?;
 
-            // In case there was any issue processing the dependency graph, then lets just
-            // process them in the original order.
-            let ordered_node_indices: Vec<_> = match ordered_node_indices_opt {
-                Some(value) => value.iter().map(|n| n.index()).collect(),
-                None => (0..new_items.len()).collect(),
-            };
+                // type check the type that we are implementing for
+                implementing_for.type_id = ctx.resolve_type(
+                    handler,
+                    implementing_for.type_id,
+                    &implementing_for.span,
+                    EnforceTypeArguments::Yes,
+                    None,
+                )?;
 
-            // Now lets type check the body of the functions (for real this time).
-            for idx in ordered_node_indices {
-                match (&items[idx], &new_items[idx]) {
-                    (ImplItem::Fn(fn_decl_id), TyTraitItem::Fn(decl_ref)) => {
-                        let fn_decl = engines.pe().get_function(fn_decl_id);
-                        let mut ty_fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
-                        let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
-                            handler,
-                            ctx.by_ref(),
-                            &fn_decl,
-                            &mut ty_fn_decl,
-                        ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
+                // check to see if this type is supported in impl blocks
+                type_engine
+                    .get(implementing_for.type_id)
+                    .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
+
+                // check for unconstrained type parameters
+                check_for_unconstrained_type_parameters(
+                    handler,
+                    engines,
+                    &new_impl_type_parameters,
+                    &[],
+                    implementing_for.type_id,
+                )?;
+
+                implementing_for.type_id.check_type_parameter_bounds(
+                    handler,
+                    ctx.by_ref(),
+                    &implementing_for.span,
+                    None,
+                )?;
+
+                // Unify the "self" type param and the type that we are implementing for
+                handler.scope(|h| {
+                    type_engine.unify_with_self(
+                        h,
+                        engines,
+                        implementing_for.type_id,
+                        self_type_id,
+                        &implementing_for.span,
+                        "",
+                        None,
+                    );
+                    Ok(())
+                })?;
+
+                let mut ctx = ctx
+                    .with_help_text("")
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+
+                // type check the items inside of the impl block
+                let mut new_items = vec![];
+
+                handler.scope(|handler| {
+                    for item in items.iter() {
+                        match item {
+                            ImplItem::Fn(fn_decl_id) => {
+                                let fn_decl = engines.pe().get_function(fn_decl_id);
+                                let fn_decl = match ty::TyFunctionDecl::type_check_signature(
+                                    handler,
+                                    ctx.by_ref(),
+                                    &fn_decl,
+                                    true,
+                                    true,
+                                    Some(implementing_for.type_id),
+                                ) {
+                                    Ok(res) => res,
+                                    Err(_) => continue,
+                                };
+                                new_items.push(TyImplItem::Fn(decl_engine.insert(fn_decl)));
+                            }
+                            ImplItem::Constant(decl_id) => {
+                                let const_decl =
+                                    engines.pe().get_constant(decl_id).as_ref().clone();
+                                let const_decl = match ty::TyConstantDecl::type_check(
+                                    handler,
+                                    ctx.by_ref(),
+                                    const_decl,
+                                ) {
+                                    Ok(res) => res,
+                                    Err(_) => continue,
+                                };
+                                let decl_ref = decl_engine.insert(const_decl);
+                                new_items.push(TyImplItem::Constant(decl_ref.clone()));
+
+                                ctx.insert_symbol(
+                                    handler,
+                                    decl_ref.name().clone(),
+                                    ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                        name: decl_ref.name().clone(),
+                                        decl_id: *decl_ref.id(),
+                                        decl_span: decl_ref.span().clone(),
+                                    }),
+                                )?;
+                            }
+                            ImplItem::Type(decl_id) => {
+                                let type_decl =
+                                    engines.pe().get_trait_type(decl_id).as_ref().clone();
+                                let type_decl = match ty::TyTraitType::type_check(
+                                    handler,
+                                    ctx.by_ref(),
+                                    type_decl.clone(),
+                                ) {
+                                    Ok(res) => res,
+                                    Err(_) => continue,
+                                };
+                                let decl_ref = decl_engine.insert(type_decl);
+                                new_items.push(TyImplItem::Type(decl_ref.clone()));
+                            }
+                        }
+                    }
+
+                    let mut impl_trait = ty::TyImplTrait {
+                        impl_type_parameters: new_impl_type_parameters,
+                        trait_name,
+                        trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+                        trait_decl_ref: None,
+                        span: block_span,
+                        items: new_items,
+                        implementing_for,
+                    };
+
+                    ctx.insert_trait_implementation(
+                        handler,
+                        impl_trait.trait_name.clone(),
+                        impl_trait.trait_type_arguments.clone(),
+                        impl_trait.implementing_for.type_id,
+                        &impl_trait.items,
+                        &impl_trait.span,
+                        impl_trait
+                            .trait_decl_ref
+                            .as_ref()
+                            .map(|decl_ref| decl_ref.decl_span().clone()),
+                        IsImplSelf::Yes,
+                        IsExtendingExistingImpl::No,
+                    )?;
+
+                    // Now lets do a partial type check of the body of the functions (while deferring full
+                    // monomorphization of function applications). We will use this tree to perform type check
+                    // analysis (mainly dependency analysis), and re-type check the items ordered by dependency.
+                    let mut defer_ctx = ctx.by_ref().with_defer_monomorphization();
+
+                    let new_items = &impl_trait.items;
+                    for (item, new_item) in items.clone().into_iter().zip(new_items) {
+                        match (item, new_item) {
+                            (ImplItem::Fn(fn_decl_id), TyTraitItem::Fn(decl_ref)) => {
+                                let fn_decl = engines.pe().get_function(&fn_decl_id);
+                                let mut ty_fn_decl =
+                                    (*decl_engine.get_function(decl_ref.id())).clone();
+                                let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
+                                    handler,
+                                    defer_ctx.by_ref(),
+                                    &fn_decl,
+                                    &mut ty_fn_decl,
+                                ) {
+                                    Ok(res) => res,
+                                    Err(_) => continue,
+                                };
+                                decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
+                            }
+                            (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
+                                // Already processed.
+                            }
+                            (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
+                                // Already processed.
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+
+                    let impl_trait_decl = decl_engine.insert(impl_trait.clone()).into();
+
+                    // First lets perform an analysis pass.
+                    // This returns a vector with ordered indexes to the items in the order that they
+                    // should be processed.
+                    let ordered_node_indices_opt =
+                        if let TyDecl::ImplTrait(impl_trait) = &impl_trait_decl {
+                            ty::TyImplTrait::type_check_analyze_impl_self_items(
+                                handler,
+                                ctx.by_ref(),
+                                impl_trait,
+                            )?
+                        } else {
+                            unreachable!();
                         };
-                        decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
-                    }
-                    (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
-                        // Already processed.
-                    }
-                    (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
-                        // Already processed.
-                    }
-                    _ => unreachable!(),
-                }
-            }
 
-            let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
+                    // In case there was any issue processing the dependency graph, then lets just
+                    // process them in the original order.
+                    let ordered_node_indices: Vec<_> = match ordered_node_indices_opt {
+                        Some(value) => value.iter().map(|n| n.index()).collect(),
+                        None => (0..new_items.len()).collect(),
+                    };
 
-            let mut finalizing_ctx = TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
-            for item in new_items {
-                match item {
-                    TyTraitItem::Fn(decl_ref) => {
-                        let mut fn_decl = (*decl_engine.get_function(decl_ref.id())).clone();
-                        let _ = fn_decl.type_check_finalize(handler, &mut finalizing_ctx);
-                        decl_engine.replace(*decl_ref.id(), fn_decl);
+                    // Now lets type check the body of the functions (for real this time).
+                    for idx in ordered_node_indices {
+                        match (&items[idx], &new_items[idx]) {
+                            (ImplItem::Fn(fn_decl_id), TyTraitItem::Fn(decl_ref)) => {
+                                let fn_decl = engines.pe().get_function(fn_decl_id);
+                                let mut ty_fn_decl =
+                                    (*decl_engine.get_function(decl_ref.id())).clone();
+                                let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
+                                    handler,
+                                    ctx.by_ref(),
+                                    &fn_decl,
+                                    &mut ty_fn_decl,
+                                ) {
+                                    Ok(res) => res,
+                                    Err(_) => continue,
+                                };
+                                decl_engine.replace(*decl_ref.id(), new_ty_fn_decl);
+                            }
+                            (ImplItem::Constant(_const_decl), TyTraitItem::Constant(_decl_ref)) => {
+                                // Already processed.
+                            }
+                            (ImplItem::Type(_type_decl), TyTraitItem::Type(_decl_ref)) => {
+                                // Already processed.
+                            }
+                            _ => unreachable!(),
+                        }
                     }
-                    TyTraitItem::Constant(decl_ref) => {
-                        let mut const_decl = (*decl_engine.get_constant(decl_ref.id())).clone();
-                        let _ = const_decl.type_check_finalize(handler, &mut finalizing_ctx);
-                        decl_engine.replace(*decl_ref.id(), const_decl);
+
+                    let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
+
+                    let mut finalizing_ctx =
+                        TypeCheckFinalizationContext::new(ctx.engines, ctx.by_ref());
+                    for item in new_items {
+                        match item {
+                            TyTraitItem::Fn(decl_ref) => {
+                                let mut fn_decl =
+                                    (*decl_engine.get_function(decl_ref.id())).clone();
+                                let _ = fn_decl.type_check_finalize(handler, &mut finalizing_ctx);
+                                decl_engine.replace(*decl_ref.id(), fn_decl);
+                            }
+                            TyTraitItem::Constant(decl_ref) => {
+                                let mut const_decl =
+                                    (*decl_engine.get_constant(decl_ref.id())).clone();
+                                let _ =
+                                    const_decl.type_check_finalize(handler, &mut finalizing_ctx);
+                                decl_engine.replace(*decl_ref.id(), const_decl);
+                            }
+                            _ => {}
+                        }
                     }
-                    _ => {}
-                }
-            }
 
-            impl_trait
-                .items
-                .iter_mut()
-                .for_each(|item| item.replace_implementing_type(engines, impl_trait_decl.clone()));
+                    impl_trait.items.iter_mut().for_each(|item| {
+                        item.replace_implementing_type(engines, impl_trait_decl.clone())
+                    });
 
-            if let TyDecl::ImplTrait(impl_trait_id) = &impl_trait_decl {
-                decl_engine.replace(impl_trait_id.decl_id, impl_trait);
-            }
+                    if let TyDecl::ImplTrait(impl_trait_id) = &impl_trait_decl {
+                        decl_engine.replace(impl_trait_id.decl_id, impl_trait);
+                    }
 
-            Ok(impl_trait_decl)
-        })
+                    Ok(impl_trait_decl)
+                })
+            })
     }
 
     pub(crate) fn type_check_analyze_impl_self_items(
