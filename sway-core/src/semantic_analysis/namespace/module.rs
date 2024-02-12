@@ -179,7 +179,7 @@ impl Module {
         compiled_constants.insert(name, typed_decl);
 
         let mut ret = Self::default();
-        ret.root_lexical_scope_mut().items.symbols = compiled_constants;
+        ret.current_lexical_scope_mut().items.symbols = compiled_constants;
         Ok(ret)
     }
 
@@ -231,16 +231,6 @@ impl Module {
         }
     }
 
-    /// Returns the root lexical scope associated with this module.
-    fn root_lexical_scope(&self) -> &LexicalScope {
-        self.lexical_scopes.first().unwrap()
-    }
-
-    /// Returns the mutable root lexical scope associated with this module.
-    fn root_lexical_scope_mut(&mut self) -> &mut LexicalScope {
-        self.lexical_scopes.first_mut().unwrap()
-    }
-
     /// Returns the current lexical scope associated with this module.
     fn current_lexical_scope(&self) -> &LexicalScope {
         self.lexical_scopes
@@ -249,7 +239,6 @@ impl Module {
     }
 
     /// Returns the mutable current lexical scope associated with this module.
-    #[allow(dead_code)]
     fn current_lexical_scope_mut(&mut self) -> &mut LexicalScope {
         self.lexical_scopes
             .get_mut(self.current_lexical_scope_id)
@@ -257,13 +246,13 @@ impl Module {
     }
 
     /// The collection of items declared by this module's root lexical scope.
-    pub fn root_items(&self) -> &Items {
-        &self.root_lexical_scope().items
+    pub fn current_items(&self) -> &Items {
+        &self.current_lexical_scope().items
     }
 
     /// The mutable collection of items declared by this module's root lexical scope.
-    pub fn root_items_mut(&mut self) -> &mut Items {
-        &mut self.root_lexical_scope_mut().items
+    pub fn current_items_mut(&mut self) -> &mut Items {
+        &mut self.current_lexical_scope_mut().items
     }
 
     pub fn current_lexical_scope_id(&self) -> LexicalScopeId {
@@ -312,9 +301,9 @@ impl Module {
 
         let src_mod = self.check_submodule(handler, src)?;
 
-        let implemented_traits = src_mod.root_items().implemented_traits.clone();
+        let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let mut symbols_and_decls = vec![];
-        for (symbol, decl) in src_mod.root_items().symbols.iter() {
+        for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
@@ -322,11 +311,11 @@ impl Module {
 
         let dst_mod = &mut self[dst];
         dst_mod
-            .root_items_mut()
+            .current_items_mut()
             .implemented_traits
             .extend(implemented_traits, engines);
         for symbol_and_decl in symbols_and_decls {
-            dst_mod.root_items_mut().use_synonyms.insert(
+            dst_mod.current_items_mut().use_synonyms.insert(
                 symbol_and_decl.0,
                 (
                     src.to_vec(),
@@ -360,15 +349,15 @@ impl Module {
 
         let src_mod = self.check_submodule(handler, src)?;
 
-        let implemented_traits = src_mod.root_items().implemented_traits.clone();
-        let use_synonyms = src_mod.root_items().use_synonyms.clone();
+        let implemented_traits = src_mod.current_items().implemented_traits.clone();
+        let use_synonyms = src_mod.current_items().use_synonyms.clone();
         let mut symbols_and_decls = src_mod
-            .root_items()
+            .current_items()
             .use_synonyms
             .iter()
             .map(|(symbol, (_, _, decl, _))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
-        for (symbol, decl) in src_mod.root_items().symbols.iter() {
+        for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
@@ -394,13 +383,13 @@ impl Module {
 
         let dst_mod = &mut self[dst];
         dst_mod
-            .root_items_mut()
+            .current_items_mut()
             .implemented_traits
             .extend(implemented_traits, engines);
 
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_mod
-                .root_items_mut()
+                .current_items_mut()
                 .use_synonyms
                 .insert(symbol, (path, GlobImport::Yes, decl, is_src_absolute));
         };
@@ -461,7 +450,7 @@ impl Module {
 
         let src_mod = self.check_submodule(handler, src)?;
         let mut impls_to_insert = TraitMap::default();
-        match src_mod.root_items().symbols.get(item).cloned() {
+        match src_mod.current_items().symbols.get(item).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
@@ -474,7 +463,7 @@ impl Module {
                 if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
                     impls_to_insert.extend(
                         src_mod
-                            .root_items()
+                            .current_items()
                             .implemented_traits
                             .filter_by_type_item_import(type_id, engines),
                         engines,
@@ -487,7 +476,7 @@ impl Module {
                     // this is okay for now but we'll need to device some mechanism to collect all available trait impls
                     impls_to_insert.extend(
                         src_mod
-                            .root_items()
+                            .current_items()
                             .implemented_traits
                             .filter_by_trait_decl_span(decl_span),
                         engines,
@@ -497,11 +486,11 @@ impl Module {
                 let dst_mod = &mut self[dst];
                 let add_synonym = |name| {
                     if let Some((_, GlobImport::No, _, _)) =
-                        dst_mod.root_items().use_synonyms.get(name)
+                        dst_mod.current_items().use_synonyms.get(name)
                     {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
-                    dst_mod.root_items_mut().use_synonyms.insert(
+                    dst_mod.current_items_mut().use_synonyms.insert(
                         name.clone(),
                         (src.to_vec(), GlobImport::No, decl, is_src_absolute),
                     );
@@ -510,7 +499,7 @@ impl Module {
                     Some(alias) => {
                         add_synonym(&alias);
                         dst_mod
-                            .root_items_mut()
+                            .current_items_mut()
                             .use_aliases
                             .insert(alias.as_str().to_string(), item.clone());
                     }
@@ -527,7 +516,7 @@ impl Module {
 
         let dst_mod = &mut self[dst];
         dst_mod
-            .root_items_mut()
+            .current_items_mut()
             .implemented_traits
             .extend(impls_to_insert, engines);
 
@@ -554,7 +543,7 @@ impl Module {
         let decl_engine = engines.de();
 
         let src_mod = self.check_submodule(handler, src)?;
-        match src_mod.root_items().symbols.get(enum_name).cloned() {
+        match src_mod.current_items().symbols.get(enum_name).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
@@ -583,13 +572,13 @@ impl Module {
                         let dst_mod = &mut self[dst];
                         let mut add_synonym = |name| {
                             if let Some((_, GlobImport::No, _, _)) =
-                                dst_mod.root_items().use_synonyms.get(name)
+                                dst_mod.current_items().use_synonyms.get(name)
                             {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
                                     name: name.into(),
                                 });
                             }
-                            dst_mod.root_items_mut().use_synonyms.insert(
+                            dst_mod.current_items_mut().use_synonyms.insert(
                                 name.clone(),
                                 (
                                     src.to_vec(),
@@ -607,7 +596,7 @@ impl Module {
                             Some(alias) => {
                                 add_synonym(&alias);
                                 dst_mod
-                                    .root_items_mut()
+                                    .current_items_mut()
                                     .use_aliases
                                     .insert(alias.as_str().to_string(), variant_name.clone());
                             }
@@ -654,7 +643,7 @@ impl Module {
         let decl_engine = engines.de();
 
         let src_mod = self.check_submodule(handler, src)?;
-        match src_mod.root_items().symbols.get(enum_name).cloned() {
+        match src_mod.current_items().symbols.get(enum_name).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
@@ -681,7 +670,7 @@ impl Module {
 
                         // import it this way.
                         let dst_mod = &mut self[dst];
-                        dst_mod.root_items_mut().use_synonyms.insert(
+                        dst_mod.current_items_mut().use_synonyms.insert(
                             variant_name.clone(),
                             (
                                 src.to_vec(),
@@ -1020,7 +1009,7 @@ impl Module {
             type_id
         };
         let item_ref = self
-            .root_items()
+            .current_items()
             .implemented_traits
             .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
         match item_ref {
@@ -1040,11 +1029,11 @@ impl Module {
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let true_symbol = self[mod_path]
-            .root_items()
+            .current_items()
             .use_aliases
             .get(symbol.as_str())
             .unwrap_or(symbol);
-        match module.root_items().use_synonyms.get(symbol) {
+        match module.current_items().use_synonyms.get(symbol) {
             Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl.clone()),
             Some((src_path, _, _, _)) if mod_path != src_path => {
                 // If the symbol is imported, before resolving to it,
@@ -1056,13 +1045,13 @@ impl Module {
                 // - non-glob import, in which case we will already have a name clash reported
                 //   as an error, but still have to resolve to the local module symbol
                 //   if it exists.
-                match module.root_items().symbols.get(true_symbol) {
+                match module.current_items().symbols.get(true_symbol) {
                     Some(decl) => Ok(decl.clone()),
                     None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
                 }
             }
             _ => module
-                .root_items()
+                .current_items()
                 .check_symbol(true_symbol)
                 .map_err(|e| handler.emit_err(e))
                 .cloned(),

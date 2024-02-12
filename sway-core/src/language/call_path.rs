@@ -315,7 +315,7 @@ impl CallPath {
 
             if let Some(use_synonym) = namespace
                 .module()
-                .root_items()
+                .current_items()
                 .use_synonyms
                 .get(&self.suffix)
             {

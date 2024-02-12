@@ -169,7 +169,7 @@ impl Namespace {
     ) -> Result<TyTraitItem, ErrorEmitted> {
         self.root
             .module
-            .root_items()
+            .current_items()
             .implemented_traits
             .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
     }
