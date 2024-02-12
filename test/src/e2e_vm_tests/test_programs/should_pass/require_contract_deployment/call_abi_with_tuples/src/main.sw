@@ -3,7 +3,7 @@ script;
 use abi_with_tuples::*;
 
 fn main() -> bool {
-    let the_abi = abi(MyContract, 0xe507ae21649fbd2b48ccda116687d2ff164b190c09d33d9d480981323af16be7);
+    let the_abi = abi(MyContract, 0x0bf9df7ec961330f61e9a13867e65854a6ac0f5514c220ef21da3c4885b4fccb);
 
     let param1 = (
         Person {
