@@ -106,7 +106,7 @@ pub(crate) fn instantiate_if_expression(
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::IfExp {
             condition: Box::new(condition),
-            then: Box::new(then),
+            then: Box::new(then.clone()),
             r#else,
         },
         return_type,
