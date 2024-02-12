@@ -91,8 +91,8 @@ impl AllocatedAbstractInstructionSet {
                 } else {
                     (&mut accum.1, reg_id - 24)
                 };
-                // Set bit (from the most significant side) of mask_ref.
-                *mask_ref |= 1 << (23 - bit);
+                // Set bit (from the least significant side) of mask_ref.
+                *mask_ref |= 1 << bit;
                 accum
             });
             (
