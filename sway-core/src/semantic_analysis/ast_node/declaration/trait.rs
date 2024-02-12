@@ -447,7 +447,7 @@ impl TyTraitDecl {
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
                     let const_shadowing_mode = ctx.const_shadowing_mode();
                     let generic_shadowing_mode = ctx.generic_shadowing_mode();
-                    let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
+                    let _ = ctx.namespace.module_mut().root_items_mut().insert_symbol(
                         handler,
                         const_name.clone(),
                         ty::TyDecl::ConstantDecl(ty::ConstantDecl {

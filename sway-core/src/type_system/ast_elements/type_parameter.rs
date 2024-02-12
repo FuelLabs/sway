@@ -164,14 +164,14 @@ impl TypeParameter {
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
+        let _ = ctx.namespace.module_mut().root_items_mut().insert_symbol(
             handler,
             name_a,
             type_parameter_decl.clone(),
             const_shadowing_mode,
             generic_shadowing_mode,
         );
-        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
+        let _ = ctx.namespace.module_mut().root_items_mut().insert_symbol(
             handler,
             name_b,
             type_parameter_decl,
@@ -351,7 +351,7 @@ impl TypeParameter {
             if let Some(sy) = ctx
                 .namespace
                 .module()
-                .items()
+                .root_items()
                 .symbols
                 .get(&type_parameter.name_ident)
             {
@@ -466,7 +466,7 @@ impl TypeParameter {
                 match ctx
                     .namespace
                     .module_mut()
-                    .items_mut()
+                    .root_items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
                         handler,
