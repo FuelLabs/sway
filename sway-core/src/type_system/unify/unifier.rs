@@ -137,6 +137,8 @@ impl<'a> Unifier<'a> {
                 )
             }
 
+            (Never, Never) => (),
+
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about.
@@ -181,13 +183,15 @@ impl<'a> Unifier<'a> {
             {
                 self.replace_expected_with_received(expected, r, span)
             }
+
+            // Never type coerces to any other type.
+            // This should be after the unification of self types.
+            (Never, _) => {}
+            (_, Never) => {}
+
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
             (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span),
-
-            // Let empty enums to coerce to any other type. This is useful for Never enum.
-            (Enum(r_decl_ref), _) if self.engines.de().get_enum(r_decl_ref).variants.is_empty() => {
-            }
 
             (Enum(r_decl_ref), Enum(e_decl_ref)) => {
                 let r_decl = self.engines.de().get_enum(r_decl_ref);

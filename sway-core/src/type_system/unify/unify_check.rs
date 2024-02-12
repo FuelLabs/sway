@@ -233,6 +233,7 @@ impl<'a> UnifyCheck<'a> {
 
         // common recursion patterns
         match (&*left_info, &*right_info) {
+            (Never, Never) => return true,
             (Array(l0, l1), Array(r0, r1)) => {
                 return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
             }
@@ -357,12 +358,10 @@ impl<'a> UnifyCheck<'a> {
                         !OccursCheck::new(self.engines).check(right, left)
                     }
 
-                    // Let empty enums to coerce to any other type. This is useful for Never enum.
-                    (Enum(r_decl_ref), _)
-                        if self.engines.de().get_enum(r_decl_ref).variants.is_empty() =>
-                    {
-                        true
-                    }
+                    // Never coerces to any other type.
+                    (Never, _) => true,
+                    (_, Never) => true,
+
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
                         let l_decl = self.engines.de().get_enum(l_decl_ref);
                         let r_decl = self.engines.de().get_enum(r_decl_ref);

@@ -2,4 +2,4 @@ category = "fail"
 
 # check: $()Type is not indexable
 # check: $()}[0];
-# nextln: $()This expression has type "Never", which is not an indexable type.
+# nextln: $()This expression has type "!", which is not an indexable type.

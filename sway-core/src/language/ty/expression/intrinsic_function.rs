@@ -3,9 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::ty::*, type_system::*, types::*,
-};
+use crate::{engine_threading::*, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -96,16 +94,6 @@ impl DebugWithEngines for TyIntrinsicFunctionKind {
             .join(", ");
 
         write!(f, "{}::<{}>::({})", self.kind, targs, args)
-    }
-}
-
-impl DeterministicallyAborts for TyIntrinsicFunctionKind {
-    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
-        matches!(self.kind, Intrinsic::Revert)
-            || self
-                .arguments
-                .iter()
-                .any(|x| x.deterministically_aborts(decl_engine, check_call_body))
     }
 }
 

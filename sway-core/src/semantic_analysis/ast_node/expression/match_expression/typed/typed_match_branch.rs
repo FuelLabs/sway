@@ -16,7 +16,6 @@ use crate::{
         ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars, TyExpression},
     },
     semantic_analysis::*,
-    types::DeterministicallyAborts,
     Engines, TypeArgument, TypeInfo, UnifyCheck,
 };
 
@@ -42,7 +41,6 @@ impl ty::TyMatchBranch {
         let instantiate = Instantiate::new(ctx.engines, branch_span.clone());
 
         let type_engine = ctx.engines.te();
-        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // type check the scrutinee
@@ -113,13 +111,11 @@ impl ty::TyMatchBranch {
             };
 
             // unify the return type from the typed result with the type annotation
-            if !typed_result.deterministically_aborts(decl_engine, true) {
-                branch_ctx.unify_with_type_annotation(
-                    handler,
-                    typed_result.return_type,
-                    &typed_result.span,
-                );
-            }
+            branch_ctx.unify_with_type_annotation(
+                handler,
+                typed_result.return_type,
+                &typed_result.span,
+            );
 
             // if the typed branch result is a code block, then add the contents
             // of that code block to the block of code statements that we are already

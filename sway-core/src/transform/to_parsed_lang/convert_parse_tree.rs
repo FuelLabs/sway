@@ -1404,6 +1404,7 @@ fn ty_to_type_info(
             let type_argument = ty_to_type_argument(context, handler, engines, *ty)?;
             TypeInfo::Ref(type_argument)
         }
+        Ty::Never { .. } => TypeInfo::Never,
     };
     Ok(type_info)
 }
@@ -4088,6 +4089,7 @@ fn ty_to_type_parameter(
         Ty::Ptr { .. } => panic!("__ptr types are not allowed in this position"),
         Ty::Slice { .. } => panic!("__slice types are not allowed in this position"),
         Ty::Ref { .. } => panic!("ref types are not allowed in this position"),
+        Ty::Never { .. } => panic!("never types are not allowed in this position"),
     };
     let custom_type = type_engine.insert(
         engines,

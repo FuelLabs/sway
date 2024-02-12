@@ -88,8 +88,6 @@ fn diverge_in_match_condition() -> u64 {
         return 5;
         true
     } {
-        true => 23,
-        false => 56,
     }
 }
 
@@ -137,14 +135,6 @@ fn diverge_in_func_arg() -> u64 {
     })
 }
 
-fn diverge_in_array_index_array() -> u64 {
-    let _b: bool =  {
-        return 5;
-        [true, false]
-    }[0];
-    123
-}
-
 fn diverge_in_array_index_index() -> u64 {
     let arr: [bool; 2] = [true, false];
     let _b: bool = arr[ {
@@ -157,14 +147,6 @@ fn diverge_in_op_not() -> u64 {
     let _b: bool = ! {
         return 5;
     };
-    123
-}
-
-fn diverge_in_op_add_lhs() -> u64 {
-    let _x: u32 = ( {
-        return 5;
-        1u32
-    }) + 2u32;
     123
 }
 
@@ -338,12 +320,10 @@ fn main() -> u64 {
     assert(5 == diverge_in_while_condition());
     assert(5 == diverge_in_while_body());
     assert(5 == diverge_in_func_arg());
-    assert(5 == diverge_in_array_index_array());
     assert(5 == diverge_in_array_index_index());
     assert(5 == diverge_with_if_else(true));
     assert(1 == diverge_with_if_else(false));
     assert(5 == diverge_in_op_not());
-    assert(5 == diverge_in_op_add_lhs());
     assert(5 == diverge_in_op_add_rhs());
     assert(5 == diverge_in_logical_and_lhs());
     assert(5 == diverge_in_logical_and_rhs());
