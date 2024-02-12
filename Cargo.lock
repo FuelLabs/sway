@@ -740,6 +740,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_complete_fig"
+version = "3.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed37b4c0c1214673eba6ad8ea31666626bf72be98ffb323067d973c48b4964b9"
+dependencies = [
+ "clap 3.2.25",
+ "clap_complete 3.2.5",
+]
+
+[[package]]
 name = "clap_derive"
 version = "3.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1976,6 +1986,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.25",
  "clap_complete 3.2.5",
+ "clap_complete_fig",
  "forc-pkg",
  "forc-test",
  "forc-tracing 0.50.0",
@@ -2091,7 +2102,7 @@ name = "forc-doc"
 version = "0.50.0"
 dependencies = [
  "anyhow",
- "clap 4.5.0",
+ "clap 3.2.25",
  "colored",
  "comrak",
  "dir_indexer",
@@ -2242,7 +2253,6 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serial_test",
  "sway-core",
  "sway-error",
  "sway-types",
@@ -6099,31 +6109,6 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
-]
-
-[[package]]
-name = "serial_test"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "953ad9342b3aaca7cb43c45c097dd008d4907070394bd0751a0aa8817e5a018d"
-dependencies = [
- "dashmap",
- "futures",
- "lazy_static",
- "log",
- "parking_lot 0.12.1",
- "serial_test_derive",
-]
-
-[[package]]
-name = "serial_test_derive"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b93fb4adc70021ac1b47f7d45e8cc4169baaa7ea58483bc5b721d19a26202212"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.48",
 ]
 
 [[package]]

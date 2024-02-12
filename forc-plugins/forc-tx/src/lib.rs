@@ -14,6 +14,9 @@ use thiserror::Error;
 
 forc_util::cli_examples! {
     {
+        None
+    }
+    {
         // This parser has a custom parser
         super::Command::try_parse_from_args
     } {
