@@ -23,36 +23,40 @@ impl ty::TyEnumDecl {
 
         // create a namespace for the decl, used to create a scope for generics
         let mut decl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut decl_namespace);
+        ctx.scoped(&mut decl_namespace, |mut ctx| {
+            // Type check the type parameters.
+            let new_type_parameters = TypeParameter::type_check_type_params(
+                handler,
+                ctx.by_ref(),
+                type_parameters,
+                None,
+            )?;
 
-        // Type check the type parameters.
-        let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
+            // type check the variants
+            let mut variants_buf = vec![];
+            for variant in variants {
+                variants_buf.push(
+                    match ty::TyEnumVariant::type_check(handler, ctx.by_ref(), variant.clone()) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    },
+                );
+            }
 
-        // type check the variants
-        let mut variants_buf = vec![];
-        for variant in variants {
-            variants_buf.push(
-                match ty::TyEnumVariant::type_check(handler, ctx.by_ref(), variant.clone()) {
-                    Ok(res) => res,
-                    Err(_) => continue,
-                },
-            );
-        }
+            let mut call_path: CallPath = name.into();
+            call_path = call_path.to_fullpath(ctx.namespace);
 
-        let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(ctx.namespace);
-
-        // create the enum decl
-        let decl = ty::TyEnumDecl {
-            call_path,
-            type_parameters: new_type_parameters,
-            variants: variants_buf,
-            span,
-            attributes,
-            visibility,
-        };
-        Ok(decl)
+            // create the enum decl
+            let decl = ty::TyEnumDecl {
+                call_path,
+                type_parameters: new_type_parameters,
+                variants: variants_buf,
+                span,
+                attributes,
+                visibility,
+            };
+            Ok(decl)
+        })
     }
 }
 
