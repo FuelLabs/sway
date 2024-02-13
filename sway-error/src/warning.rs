@@ -268,6 +268,10 @@ impl fmt::Display for Warning {
     }
 }
 
+#[allow(dead_code)]
+const FUTURE_HARD_ERROR_HELP: &str =
+    "In future versions of Sway this warning will become a hard error.";
+
 impl ToDiagnostic for CompileWarning {
     fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
         let code = Code::warnings;

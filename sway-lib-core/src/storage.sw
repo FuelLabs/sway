@@ -12,9 +12,9 @@ library;
 /// represent different storage constructs.
 pub struct StorageKey<T> {
     /// The assigned location in storage.
-    slot: b256,
+    pub slot: b256,
     /// The assigned offset based on the data structure `T`.
-    offset: u64,
+    pub offset: u64,
     /// A unique identifier.
-    field_id: b256,
+    pub field_id: b256,
 }

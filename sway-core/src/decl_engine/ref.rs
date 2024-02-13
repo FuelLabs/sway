@@ -294,12 +294,21 @@ impl ReplaceDecls for DeclRefFunction {
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,
-        _handler: &Handler,
+        handler: &Handler,
         ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
-        if let Some(new_decl_ref) = decl_mapping.find_match(self.id.into()) {
+
+        let func = decl_engine.get(self);
+
+        if let Some(new_decl_ref) = decl_mapping.find_match(
+            handler,
+            ctx.engines(),
+            self.id.into(),
+            func.implementing_for_typeid,
+            ctx.self_type(),
+        )? {
             if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                 self.id = new_decl_ref;
             }
@@ -307,7 +316,13 @@ impl ReplaceDecls for DeclRefFunction {
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
-            if let Some(new_decl_ref) = decl_mapping.find_match(parent.clone()) {
+            if let Some(new_decl_ref) = decl_mapping.find_match(
+                handler,
+                ctx.engines(),
+                parent.clone(),
+                func.implementing_for_typeid,
+                ctx.self_type(),
+            )? {
                 if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
                     self.id = new_decl_ref;
                 }

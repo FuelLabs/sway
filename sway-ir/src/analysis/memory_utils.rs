@@ -1,7 +1,10 @@
 //! An analysis to compute symbols that escape out from a function.
 //! This could be into another function, or via ptr_to_int etc.
 //! Any transformations involving such symbols are unsafe.
-use rustc_hash::{FxHashMap, FxHashSet};
+
+use indexmap::IndexSet;
+use rustc_hash::FxHashSet;
+use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
     AnalysisResult, AnalysisResultT, AnalysisResults, BlockArgument, Context, FuelVmInstruction,
@@ -43,12 +46,12 @@ impl Symbol {
 }
 
 // A value may (indirectly) refer to one or more symbols.
-pub fn get_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
+pub fn get_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
     let mut visited = FxHashSet::default();
-    let mut symbols = FxHashSet::<Symbol>::default();
+    let mut symbols = IndexSet::default();
     fn get_symbols_rec(
         context: &Context,
-        symbols: &mut FxHashSet<Symbol>,
+        symbols: &mut FxIndexSet<Symbol>,
         visited: &mut FxHashSet<Value>,
         val: Value,
     ) {
@@ -211,8 +214,8 @@ pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
 }
 
 /// Symbols that may possibly be loaded from.
-pub fn get_loaded_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
-    let mut res = FxHashSet::default();
+pub fn get_loaded_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
+    let mut res = IndexSet::default();
     for val in get_loaded_ptr_values(context, val) {
         for sym in get_symbols(context, val) {
             res.insert(sym);
@@ -266,8 +269,8 @@ pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
 }
 
 /// Symbols that may possibly be stored to.
-pub fn get_stored_symbols(context: &Context, val: Value) -> FxHashSet<Symbol> {
-    let mut res = FxHashSet::default();
+pub fn get_stored_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
+    let mut res = IndexSet::default();
     for val in get_stored_ptr_values(context, val) {
         for sym in get_symbols(context, val) {
             res.insert(sym);
@@ -303,7 +306,7 @@ pub fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
 
 /// Given a memory pointer instruction, compute the offset of indexed element,
 /// for each symbol that this may alias to.
-pub fn get_memory_offsets(context: &Context, val: Value) -> FxHashMap<Symbol, u64> {
+pub fn get_memory_offsets(context: &Context, val: Value) -> FxIndexMap<Symbol, u64> {
     get_symbols(context, val)
         .into_iter()
         .filter_map(|sym| {

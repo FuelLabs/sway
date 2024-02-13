@@ -74,6 +74,18 @@ impl Diagnostic {
         self.help.iter().filter(|help| !help.is_empty())
     }
 
+    /// A help text that will never be displayed. Convenient when defining help lines
+    /// that are displayed only when a condition is met.
+    pub fn help_none() -> String {
+        String::new()
+    }
+
+    /// Displays an empty line in the help footer.
+    /// Convenient when defining visual separations within suggestions.
+    pub fn help_empty_line() -> String {
+        String::from(" ")
+    }
+
     /// All the source files that are related to the diagnostic.
     /// This means the source file of the issue itself as well
     /// as source files of all the hints.
@@ -82,8 +94,8 @@ impl Diagnostic {
 
         let issue_is_in_source = self.issue.is_in_source();
 
-        // All source_path() unwrappings are safe because we check the existence
-        // of source in case of issue, and self.labels() returns
+        // All `source_path()` unwrappings are safe because we check the existence
+        // of source in case of an issue, and `self.labels()` returns
         // only labels that are in source.
         if issue_is_in_source && include_issue_source {
             source_files.push(self.issue.source_path().unwrap());
@@ -310,6 +322,14 @@ impl Hint {
     pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
             label: Label::error(source_engine, span, text),
+        }
+    }
+
+    /// A [Hint] that will never be displayed. Convenient when defining [Hint]s that
+    /// are displayed only if a condition is met.
+    pub fn none() -> Self {
+        Self {
+            label: Label::default(),
         }
     }
 }

@@ -66,6 +66,7 @@ impl Spanned for ItemKind {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct TypeField {
+    pub visibility: Option<PubToken>,
     pub name: Ident,
     pub colon_token: ColonToken,
     pub ty: Ty,
@@ -73,7 +74,12 @@ pub struct TypeField {
 
 impl Spanned for TypeField {
     fn span(&self) -> Span {
-        Span::join(self.name.span(), self.ty.span())
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.name.span(),
+        };
+        let end = self.ty.span();
+        Span::join(start, end)
     }
 }
 

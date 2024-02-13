@@ -48,7 +48,7 @@ impl C {
     }
 }
 
-// TODO-IG: Add tests for accessing via reference chains once dereferencing operators `[]` and `.` are implemented.
+// TODO-IG: Add tests for accessing via reference chains once dereferencing operator `.` is implemented.
 
 #[inline(always)]
 fn struct_fields() {
@@ -81,6 +81,8 @@ fn struct_fields() {
 
     assert(*r_c_b_a_x == x);
     assert(**r_c_b_a_r_x == x);
+
+    assert(*c.r_b.r_a.r_x == x);
 }
 
 #[inline(never)]
@@ -128,7 +130,6 @@ fn tuple_fields_not_inlined() {
 
 #[inline(always)]
 fn array_elements() {
-    // TODO-IG: Add tests for arrays of references once dereferencing operator `[]` is implemented.
     let x1 = 111u8;
     let x2 = 222u8;
 
@@ -159,6 +160,20 @@ fn array_elements() {
 
     assert(*r_a3_a2_a1_x1 == x1);
     assert(*r_a3_a2_a1_x2 == x2);
+
+    let a_r1 = [&x1, &x2];
+    let a_r2 = [&a_r1, &a_r1];
+    let a_r3 = [&a_r2, &a_r2];
+
+    let r_a_r3_a_r2_a_r1_x1: & &u8 = &a_r3[0][1][0];
+    assert(**r_a_r3_a_r2_a_r1_x1 == x1);
+
+    assert(*(&a_r3)[0][0][0] == x1);
+    assert(*(& &a_r3)[0][1][0] == x1);
+    assert(*(& & &a_r3)[0][0][1] == x2);
+    assert(*(& & & &a_r3)[0][1][1] == x2);
+
+    assert(a3[0][1][0] == x1);
 }
 
 #[inline(never)]

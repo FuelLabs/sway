@@ -31,6 +31,7 @@ pub async fn handle_did_open_text_document(
                 session: Some(session.clone()),
                 uri: Some(uri.clone()),
                 version: None,
+                optimized_build: false,
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
@@ -47,6 +48,7 @@ fn send_new_compilation_request(
     session: Arc<Session>,
     uri: &Url,
     version: Option<i32>,
+    optimized_build: bool,
 ) {
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
@@ -68,6 +70,7 @@ fn send_new_compilation_request(
             session: Some(session.clone()),
             uri: Some(uri.clone()),
             version,
+            optimized_build,
         }));
 }
 
@@ -88,6 +91,7 @@ pub async fn handle_did_change_text_document(
         session.clone(),
         &uri,
         Some(params.text_document.version),
+        true,
     );
     Ok(())
 }
@@ -102,7 +106,7 @@ pub(crate) async fn handle_did_save_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
-    send_new_compilation_request(state, session.clone(), &uri, None);
+    send_new_compilation_request(state, session.clone(), &uri, None, false);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)

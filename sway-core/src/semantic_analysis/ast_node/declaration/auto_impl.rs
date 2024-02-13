@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclEngineGet,
+    decl_engine::{parsed_engine::ParsedDeclEngineInsert, DeclEngineGet},
     language::{
         parsed::{
             AstNode, AstNodeContent, CodeBlock, Declaration, Expression, ExpressionKind,
@@ -12,7 +12,7 @@ use crate::{
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     transform::AttributesMap,
-    TraitConstraint, TypeArgs, TypeArgument, TypeBinding, TypeId, TypeInfo, TypeParameter,
+    Engines, TraitConstraint, TypeArgs, TypeArgument, TypeBinding, TypeId, TypeInfo, TypeParameter,
 };
 use sway_error::handler::Handler;
 use sway_types::{Ident, Span};
@@ -114,7 +114,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
     }
 
     /// Auto implements AbiEncode for structs
-    fn enum_auto_impl_abi_encode(&mut self, decl: &TyDecl) -> Option<TyAstNode> {
+    fn enum_auto_impl_abi_encode(&mut self, engines: &Engines, decl: &TyDecl) -> Option<TyAstNode> {
         if !self.can_enum_auto_impl_abi_encode(decl) {
             return None;
         }
@@ -286,63 +286,98 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             call_path_tree: None,
         };
 
-        let impl_trait = Declaration::ImplTrait(ImplTrait {
-            impl_type_parameters,
-            trait_name: self.abi_encode_call_path.clone(),
-            trait_type_arguments: vec![],
-            implementing_for,
-            items: vec![ImplItem::Fn(FunctionDeclaration {
-                purity: crate::language::Purity::Pure,
-                attributes: AttributesMap::default(),
-                name: Ident::new_no_span("abi_encode".into()),
-                visibility: crate::language::Visibility::Public,
-                body: CodeBlock {
-                    contents: vec![
-                        AstNode {
-                            content: AstNodeContent::Expression(
-                                Expression {
-                                    kind: ExpressionKind::Match(
-                                        MatchExpression {
-                                            value: Box::new(Expression {
-                                                kind: ExpressionKind::AmbiguousVariableExpression (
-                                                    Ident::new_no_span("self".into())
-                                                ),
-                                                span: Span::dummy()
-                                            }),
-                                            branches: enum_decl.variants.iter()
-                                                .enumerate()
-                                                .map(|(i, x)| {
-                                                    let variant_type = self.ctx.engines().te().get(x.type_argument.type_id);
-                                                    MatchBranch {
-                                                        scrutinee: Scrutinee::EnumScrutinee {
-                                                            call_path: CallPath {
-                                                                prefixes: vec![
-                                                                    Ident::new_no_span("Self".into())
-                                                                ],
-                                                                suffix: Ident::new_no_span(
-                                                                    x.name.as_str().into()
-                                                                ),
-                                                                is_absolute: false
-                                                            },
-                                                            value: Box::new(if variant_type.is_unit() {
-                                                                Scrutinee::CatchAll {
-                                                                    span: Span::dummy()
-                                                                }
-                                                            } else {
-                                                                Scrutinee::Variable {
-                                                                    name: Ident::new_no_span("x".into()),
-                                                                    span: Span::dummy()
-                                                                }
-                                                            }),
-                                                            span: Span::dummy(),
+        let impl_trait_item = FunctionDeclaration {
+            purity: crate::language::Purity::Pure,
+            attributes: AttributesMap::default(),
+            name: Ident::new_no_span("abi_encode".into()),
+            visibility: crate::language::Visibility::Public,
+            body: CodeBlock {
+                contents: vec![
+                    AstNode {
+                        content: AstNodeContent::Expression(
+                            Expression {
+                                kind: ExpressionKind::Match(
+                                    MatchExpression {
+                                        value: Box::new(Expression {
+                                            kind: ExpressionKind::AmbiguousVariableExpression (
+                                                Ident::new_no_span("self".into())
+                                            ),
+                                            span: Span::dummy()
+                                        }),
+                                        branches: enum_decl.variants.iter()
+                                            .enumerate()
+                                            .map(|(i, x)| {
+                                                let variant_type = self.ctx.engines().te().get(x.type_argument.type_id);
+                                                MatchBranch {
+                                                    scrutinee: Scrutinee::EnumScrutinee {
+                                                        call_path: CallPath {
+                                                            prefixes: vec![
+                                                                Ident::new_no_span("Self".into())
+                                                            ],
+                                                            suffix: Ident::new_no_span(
+                                                                x.name.as_str().into()
+                                                            ),
+                                                            is_absolute: false
                                                         },
-                                                        result: Expression {
-                                                            kind: ExpressionKind::CodeBlock(
-                                                                CodeBlock {
-                                                                    contents: {
-                                                                        let mut contents = vec![];
+                                                        value: Box::new(if variant_type.is_unit() {
+                                                            Scrutinee::CatchAll {
+                                                                span: Span::dummy()
+                                                            }
+                                                        } else {
+                                                            Scrutinee::Variable {
+                                                                name: Ident::new_no_span("x".into()),
+                                                                span: Span::dummy()
+                                                            }
+                                                        }),
+                                                        span: Span::dummy(),
+                                                    },
+                                                    result: Expression {
+                                                        kind: ExpressionKind::CodeBlock(
+                                                            CodeBlock {
+                                                                contents: {
+                                                                    let mut contents = vec![];
 
-                                                                        // discriminant
+                                                                    // discriminant
+                                                                    contents.push(
+                                                                        AstNode {
+                                                                            content: AstNodeContent::Expression(
+                                                                                Expression {
+                                                                                    kind: ExpressionKind::MethodApplication(
+                                                                                        Box::new(MethodApplicationExpression {
+                                                                                            method_name_binding: TypeBinding {
+                                                                                                inner: MethodName::FromModule {
+                                                                                                    method_name: Ident::new_no_span("abi_encode".into())
+                                                                                                },
+                                                                                                type_arguments: TypeArgs::Regular(vec![]),
+                                                                                                span: Span::dummy()
+                                                                                            },
+                                                                                            arguments: vec![
+                                                                                                Expression {
+                                                                                                    kind: ExpressionKind::Literal(
+                                                                                                        crate::language::Literal::U64(
+                                                                                                            i as u64
+                                                                                                        )
+                                                                                                    ),
+                                                                                                    span: Span::dummy()
+                                                                                                },
+                                                                                                Expression {
+                                                                                                    kind: ExpressionKind::AmbiguousVariableExpression(
+                                                                                                        Ident::new_no_span("buffer".into())
+                                                                                                    ),
+                                                                                                    span: Span::dummy()
+                                                                                                }
+                                                                                            ],
+                                                                                            contract_call_params: vec![],
+                                                                                        })
+                                                                                    ),
+                                                                                    span: Span::dummy()
+                                                                                }
+                                                                            ),
+                                                                            span: Span::dummy()
+                                                                    });
+
+                                                                    // variant data
+                                                                    if !variant_type.is_unit() {
                                                                         contents.push(
                                                                             AstNode {
                                                                                 content: AstNodeContent::Expression(
@@ -358,10 +393,8 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
                                                                                                 },
                                                                                                 arguments: vec![
                                                                                                     Expression {
-                                                                                                        kind: ExpressionKind::Literal(
-                                                                                                            crate::language::Literal::U64(
-                                                                                                                i as u64
-                                                                                                            )
+                                                                                                        kind: ExpressionKind::AmbiguousVariableExpression (
+                                                                                                            Ident::new_no_span("x".into())
                                                                                                         ),
                                                                                                         span: Span::dummy()
                                                                                                     },
@@ -379,106 +412,78 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
                                                                                     }
                                                                                 ),
                                                                                 span: Span::dummy()
-                                                                        });
+                                                                            }
+                                                                        );
+                                                                    }
 
-                                                                        // variant data
-                                                                        if !variant_type.is_unit() {
-                                                                            contents.push(
-                                                                                AstNode {
-                                                                                    content: AstNodeContent::Expression(
-                                                                                        Expression {
-                                                                                            kind: ExpressionKind::MethodApplication(
-                                                                                                Box::new(MethodApplicationExpression {
-                                                                                                    method_name_binding: TypeBinding {
-                                                                                                        inner: MethodName::FromModule {
-                                                                                                            method_name: Ident::new_no_span("abi_encode".into())
-                                                                                                        },
-                                                                                                        type_arguments: TypeArgs::Regular(vec![]),
-                                                                                                        span: Span::dummy()
-                                                                                                    },
-                                                                                                    arguments: vec![
-                                                                                                        Expression {
-                                                                                                            kind: ExpressionKind::AmbiguousVariableExpression (
-                                                                                                                Ident::new_no_span("x".into())
-                                                                                                            ),
-                                                                                                            span: Span::dummy()
-                                                                                                        },
-                                                                                                        Expression {
-                                                                                                            kind: ExpressionKind::AmbiguousVariableExpression(
-                                                                                                                Ident::new_no_span("buffer".into())
-                                                                                                            ),
-                                                                                                            span: Span::dummy()
-                                                                                                        }
-                                                                                                    ],
-                                                                                                    contract_call_params: vec![],
-                                                                                                })
-                                                                                            ),
-                                                                                            span: Span::dummy()
-                                                                                        }
-                                                                                    ),
-                                                                                    span: Span::dummy()
-                                                                                }
-                                                                            );
-                                                                        }
-
-                                                                        contents
-                                                                    },
-                                                                    whole_block_span: Span::dummy()
-                                                                }
-                                                            ),
-                                                            span: Span::dummy()
-                                                        },
+                                                                    contents
+                                                                },
+                                                                whole_block_span: Span::dummy()
+                                                            }
+                                                        ),
                                                         span: Span::dummy()
-                                                    }
-                                                }).collect()
-                                        }
-                                    ),
-                                    span: Span::dummy()
-                                }
-                            ),
-                            span: Span::dummy()
-                        }
-                    ],
-                    whole_block_span: Span::dummy(),
-                },
-                parameters: vec![
-                    FunctionParameter {
-                        name: Ident::new_no_span("self".into()),
-                        is_reference: false,
-                        is_mutable: false,
-                        mutability_span: Span::dummy(),
-                        type_argument: TypeArgument {
-                            type_id: implementing_for_type_id,
-                            initial_type_id: implementing_for_type_id,
-                            span: Span::dummy(),
-                            call_path_tree: None,
-                        },
-                    },
-                    FunctionParameter {
-                        name: Ident::new_no_span("buffer".into()),
-                        is_reference: true,
-                        is_mutable: true,
-                        mutability_span: Span::dummy(),
-                        type_argument: TypeArgument {
-                            type_id: self.buffer_type_id,
-                            initial_type_id: self.buffer_type_id,
-                            span: Span::dummy(),
-                            call_path_tree: None,
-                        },
-                    },
+                                                    },
+                                                    span: Span::dummy()
+                                                }
+                                            }).collect()
+                                    }
+                                ),
+                                span: Span::dummy()
+                            }
+                        ),
+                        span: Span::dummy()
+                    }
                 ],
-                span: Span::dummy(),
-                return_type: TypeArgument {
-                    type_id: unit_type_id,
-                    initial_type_id: unit_type_id,
-                    span: Span::dummy(),
-                    call_path_tree: None,
+                whole_block_span: Span::dummy(),
+            },
+            parameters: vec![
+                FunctionParameter {
+                    name: Ident::new_no_span("self".into()),
+                    is_reference: false,
+                    is_mutable: false,
+                    mutability_span: Span::dummy(),
+                    type_argument: TypeArgument {
+                        type_id: implementing_for_type_id,
+                        initial_type_id: implementing_for_type_id,
+                        span: Span::dummy(),
+                        call_path_tree: None,
+                    },
                 },
-                type_parameters: vec![],
-                where_clause: vec![],
-            })],
+                FunctionParameter {
+                    name: Ident::new_no_span("buffer".into()),
+                    is_reference: true,
+                    is_mutable: true,
+                    mutability_span: Span::dummy(),
+                    type_argument: TypeArgument {
+                        type_id: self.buffer_type_id,
+                        initial_type_id: self.buffer_type_id,
+                        span: Span::dummy(),
+                        call_path_tree: None,
+                    },
+                },
+            ],
+            span: Span::dummy(),
+            return_type: TypeArgument {
+                type_id: unit_type_id,
+                initial_type_id: unit_type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+            type_parameters: vec![],
+            where_clause: vec![],
+        };
+        let impl_trait_item = engines.pe().insert(impl_trait_item);
+
+        let impl_trait = ImplTrait {
+            impl_type_parameters,
+            trait_name: self.abi_encode_call_path.clone(),
+            trait_type_arguments: vec![],
+            implementing_for,
+            items: vec![ImplItem::Fn(impl_trait_item)],
             block_span: Span::dummy(),
-        });
+        };
+        let impl_trait = engines.pe().insert(impl_trait);
+        let impl_trait = Declaration::ImplTrait(impl_trait);
 
         let handler = Handler::default();
         TyAstNode::type_check(
@@ -497,7 +502,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         // skip module "core"
         // Because of ordering, we cannot guarantee auto impl
         // for structs inside "core"
-        if matches!(self.ctx.namespace.root().name.as_ref(), Some(x) if x.as_str() == "core") {
+        if matches!(self.ctx.namespace.root_module_name(), Some(x) if x.as_str() == "core") {
             return false;
         }
 
@@ -526,6 +531,8 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             let handler = Handler::default();
             self.ctx
                 .namespace
+                .module_mut()
+                .items_mut()
                 .implemented_traits
                 .check_if_trait_constraints_are_satisfied_for_type(
                     &handler,
@@ -552,7 +559,11 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
     }
 
     // Auto implements AbiEncode for structs
-    fn struct_auto_impl_abi_encode(&mut self, decl: &TyDecl) -> Option<TyAstNode> {
+    fn struct_auto_impl_abi_encode(
+        &mut self,
+        engines: &Engines,
+        decl: &TyDecl,
+    ) -> Option<TyAstNode> {
         if !self.can_struct_auto_impl_abi_encode(decl) {
             return None;
         }
@@ -737,112 +748,105 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             call_path_tree: None,
         };
 
-        let impl_trait =  Declaration::ImplTrait(
-            ImplTrait {
-                impl_type_parameters,
-                trait_name: abi_encode_trait_name,
-                trait_type_arguments: vec![],
-                implementing_for,
-                items: vec![
-                    ImplItem::Fn(
-                        FunctionDeclaration {
-                            purity: crate::language::Purity::Pure,
-                            attributes: AttributesMap::default(),
-                            name: Ident::new_no_span("abi_encode".into()),
-                            visibility: crate::language::Visibility::Public,
-                            body: CodeBlock {
-                                contents: struct_decl.fields
-                                    .iter()
-                                    .map(|x| {
-                                        AstNode {
-                                            content: AstNodeContent::Expression(
-                                                Expression {
-                                                    kind: ExpressionKind::MethodApplication(
-                                                        Box::new(MethodApplicationExpression {
-                                                            method_name_binding: TypeBinding {
-                                                                inner: MethodName::FromModule {
-                                                                    method_name: Ident::new_no_span("abi_encode".into())
-                                                                },
-                                                                type_arguments: TypeArgs::Regular(vec![]),
-                                                                span: Span::dummy()
-                                                            },
-                                                            arguments: vec![
-                                                                Expression {
-                                                                    kind: ExpressionKind::Subfield (
-                                                                        SubfieldExpression {
-                                                                            prefix: Box::new(
-                                                                                Expression {
-                                                                                    kind: ExpressionKind::AmbiguousVariableExpression (
-                                                                                        Ident::new_no_span("self".into())
-                                                                                    ),
-                                                                                    span: Span::dummy()
-                                                                                }
-                                                                            ),
-                                                                            field_to_access: x.name.clone()
-                                                                        }
-                                                                    ),
-                                                                    span: Span::dummy()
-                                                                },
-                                                                Expression {
-                                                                    kind: ExpressionKind::AmbiguousVariableExpression(
-                                                                        Ident::new_no_span("buffer".into())
-                                                                    ),
-                                                                    span: Span::dummy()
-                                                                }
-                                                            ],
-                                                            contract_call_params: vec![],
-                                                        })
-                                                    ),
-                                                    span: Span::dummy()
-                                                }
+        let impl_trait_item = FunctionDeclaration {
+            purity: crate::language::Purity::Pure,
+            attributes: AttributesMap::default(),
+            name: Ident::new_no_span("abi_encode".into()),
+            visibility: crate::language::Visibility::Public,
+            body: CodeBlock {
+                contents: struct_decl
+                    .fields
+                    .iter()
+                    .map(|x| AstNode {
+                        content: AstNodeContent::Expression(Expression {
+                            kind: ExpressionKind::MethodApplication(Box::new(
+                                MethodApplicationExpression {
+                                    method_name_binding: TypeBinding {
+                                        inner: MethodName::FromModule {
+                                            method_name: Ident::new_no_span("abi_encode".into()),
+                                        },
+                                        type_arguments: TypeArgs::Regular(vec![]),
+                                        span: Span::dummy(),
+                                    },
+                                    arguments: vec![
+                                        Expression {
+                                            kind: ExpressionKind::Subfield(SubfieldExpression {
+                                                prefix: Box::new(Expression {
+                                                    kind:
+                                                        ExpressionKind::AmbiguousVariableExpression(
+                                                            Ident::new_no_span("self".into()),
+                                                        ),
+                                                    span: Span::dummy(),
+                                                }),
+                                                field_to_access: x.name.clone(),
+                                            }),
+                                            span: Span::dummy(),
+                                        },
+                                        Expression {
+                                            kind: ExpressionKind::AmbiguousVariableExpression(
+                                                Ident::new_no_span("buffer".into()),
                                             ),
-                                            span: Span::dummy()
-                                        }
-                                    })
-                                    .collect(),
-                                whole_block_span: Span::dummy()
-                            },
-                            parameters: vec![
-                                FunctionParameter {
-                                    name: Ident::new_no_span("self".into()),
-                                    is_reference: false,
-                                    is_mutable: false,
-                                    mutability_span: Span::dummy(),
-                                    type_argument: TypeArgument {
-                                        type_id: implementing_for_type_id,
-                                        initial_type_id: implementing_for_type_id,
-                                        span: Span::dummy(),
-                                        call_path_tree: None
-                                    }
+                                            span: Span::dummy(),
+                                        },
+                                    ],
+                                    contract_call_params: vec![],
                                 },
-                                FunctionParameter {
-                                    name: Ident::new_no_span("buffer".into()),
-                                    is_reference: true,
-                                    is_mutable: true,
-                                    mutability_span: Span::dummy(),
-                                    type_argument: TypeArgument {
-                                        type_id: self.buffer_type_id,
-                                        initial_type_id: self.buffer_type_id,
-                                        span: Span::dummy(),
-                                        call_path_tree: None
-                                    }
-                                },
-                            ],
+                            )),
                             span: Span::dummy(),
-                            return_type: TypeArgument {
-                                type_id: unit_type_id,
-                                initial_type_id: unit_type_id,
-                                span: Span::dummy(),
-                                call_path_tree: None
-                            },
-                            type_parameters: vec![],
-                            where_clause: vec![]
-                        }
-                    )
-                ],
-                block_span: Span::dummy(),
-            }
-        );
+                        }),
+                        span: Span::dummy(),
+                    })
+                    .collect(),
+                whole_block_span: Span::dummy(),
+            },
+            parameters: vec![
+                FunctionParameter {
+                    name: Ident::new_no_span("self".into()),
+                    is_reference: false,
+                    is_mutable: false,
+                    mutability_span: Span::dummy(),
+                    type_argument: TypeArgument {
+                        type_id: implementing_for_type_id,
+                        initial_type_id: implementing_for_type_id,
+                        span: Span::dummy(),
+                        call_path_tree: None,
+                    },
+                },
+                FunctionParameter {
+                    name: Ident::new_no_span("buffer".into()),
+                    is_reference: true,
+                    is_mutable: true,
+                    mutability_span: Span::dummy(),
+                    type_argument: TypeArgument {
+                        type_id: self.buffer_type_id,
+                        initial_type_id: self.buffer_type_id,
+                        span: Span::dummy(),
+                        call_path_tree: None,
+                    },
+                },
+            ],
+            span: Span::dummy(),
+            return_type: TypeArgument {
+                type_id: unit_type_id,
+                initial_type_id: unit_type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+            type_parameters: vec![],
+            where_clause: vec![],
+        };
+        let impl_trait_item = engines.pe().insert(impl_trait_item);
+
+        let impl_trait = ImplTrait {
+            impl_type_parameters,
+            trait_name: abi_encode_trait_name,
+            trait_type_arguments: vec![],
+            implementing_for,
+            items: vec![ImplItem::Fn(impl_trait_item)],
+            block_span: Span::dummy(),
+        };
+        let impl_trait = engines.pe().insert(impl_trait);
+        let impl_trait = Declaration::ImplTrait(impl_trait);
 
         let handler = Handler::default();
         TyAstNode::type_check(
@@ -856,10 +860,14 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         .ok()
     }
 
-    pub fn auto_impl_abi_encode(&mut self, decl: &ty::TyDecl) -> Option<TyAstNode> {
+    pub fn auto_impl_abi_encode(
+        &mut self,
+        engines: &Engines,
+        decl: &ty::TyDecl,
+    ) -> Option<TyAstNode> {
         match decl {
-            TyDecl::StructDecl(_) => self.struct_auto_impl_abi_encode(decl),
-            TyDecl::EnumDecl(_) => self.enum_auto_impl_abi_encode(decl),
+            TyDecl::StructDecl(_) => self.struct_auto_impl_abi_encode(engines, decl),
+            TyDecl::EnumDecl(_) => self.enum_auto_impl_abi_encode(engines, decl),
             _ => None,
         }
     }

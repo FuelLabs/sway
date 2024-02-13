@@ -1,6 +1,6 @@
 library;
 pub struct Context {
-  something: u64
+  pub something: u64
 }
 
 impl Context {

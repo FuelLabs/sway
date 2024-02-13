@@ -15,7 +15,7 @@ use ::storage::storage_key::*;
 
 // Collections
 use ::storage::storage_map::*;
-use ::vec::Vec;
+use ::vec::{Vec, VecIter};
 
 // Error handling
 use ::assert::{assert, assert_eq, assert_ne};

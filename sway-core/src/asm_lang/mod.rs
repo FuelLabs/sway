@@ -9,6 +9,7 @@ pub(crate) mod allocated_ops;
 pub(crate) mod virtual_immediate;
 pub(crate) mod virtual_ops;
 pub(crate) mod virtual_register;
+use indexmap::IndexMap;
 pub(crate) use virtual_immediate::*;
 pub(crate) use virtual_ops::*;
 pub(crate) use virtual_register::*;
@@ -638,7 +639,7 @@ impl Op {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+        reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         Op {
             opcode: match &self.opcode {
@@ -1238,7 +1239,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         BTreeSet::new()
     }
 
-    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {
+    pub(crate) fn update_register(&self, reg_to_reg_map: &IndexMap<&Reg, &Reg>) -> Self {
         let update_reg = |reg: &Reg| -> Reg { (*reg_to_reg_map.get(reg).unwrap_or(&reg)).clone() };
 
         use ControlFlowOp::*;

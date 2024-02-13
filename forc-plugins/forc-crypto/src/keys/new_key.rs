@@ -14,9 +14,11 @@ use std::ops::Deref;
 const ABOUT: &str = "Creates a new key for use with fuel-core";
 
 forc_util::cli_examples! {
-    [ Creates a new key default for block production => crypto "new-key" ]
-    [ Creates a new key for peering => crypto "new-key -k peering" ]
-    [ Creates a new key for block production => crypto "new-key -k block-production" ]
+    crate::Command {
+        [ Creates a new key default for block production => "forc crypto new-key" ]
+        [ Creates a new key for peering => "forc crypto new-key -k peering" ]
+        [ Creates a new key for block production => "forc crypto new-key -k block-production" ]
+    }
 }
 
 /// Generate a random new secret & public key in the format expected by fuel-core

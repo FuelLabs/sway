@@ -1,17 +1,21 @@
-use std::fmt;
+use std::{collections::HashSet, fmt};
+
+use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
+    engine_threading::DebugWithEngines,
     language::ty::{TyTraitInterfaceItem, TyTraitItem},
     Engines, TypeId, UnifyCheck,
 };
 
-use super::{AssociatedItemDeclId, DeclEngineGet, InterfaceItemMap, ItemMap};
+use super::{AssociatedItemDeclId, InterfaceItemMap, ItemMap};
 
-type SourceDecl = AssociatedItemDeclId;
+type SourceDecl = (AssociatedItemDeclId, TypeId);
 type DestinationDecl = AssociatedItemDeclId;
 
 /// The [DeclMapping] is used to create a mapping between a [SourceDecl] (LHS)
 /// and a [DestinationDecl] (RHS).
+#[derive(Clone)]
 pub struct DeclMapping {
     mapping: Vec<(SourceDecl, DestinationDecl)>,
 }
@@ -26,7 +30,7 @@ impl fmt::Display for DeclMapping {
                 .map(|(source_type, dest_type)| {
                     format!(
                         "{} -> {}",
-                        source_type,
+                        source_type.0,
                         match dest_type {
                             AssociatedItemDeclId::TraitFn(decl_id) => decl_id.inner(),
                             AssociatedItemDeclId::Function(decl_id) => decl_id.inner(),
@@ -55,17 +59,27 @@ impl fmt::Debug for DeclMapping {
     }
 }
 
+impl DebugWithEngines for DeclMapping {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "DeclMapping {{ {} }}",
+            self.mapping
+                .iter()
+                .map(|(source_type, dest_type)| {
+                    format!(
+                        "{} -> {}",
+                        engines.help_out(source_type.0.clone()),
+                        engines.help_out(dest_type)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
 impl DeclMapping {
-    pub(crate) fn new() -> Self {
-        Self {
-            mapping: Vec::new(),
-        }
-    }
-
-    pub(crate) fn insert(&mut self, k: SourceDecl, v: DestinationDecl) {
-        self.mapping.push((k, v))
-    }
-
     pub(crate) fn is_empty(&self) -> bool {
         self.mapping.is_empty()
     }
@@ -79,9 +93,15 @@ impl DeclMapping {
         for (interface_decl_name, interface_item) in interface_decl_refs.into_iter() {
             if let Some(new_item) = impld_decl_refs.get(&interface_decl_name) {
                 let interface_decl_ref = match interface_item {
-                    TyTraitInterfaceItem::TraitFn(decl_ref) => decl_ref.id().into(),
-                    TyTraitInterfaceItem::Constant(decl_ref) => decl_ref.id().into(),
-                    TyTraitInterfaceItem::Type(decl_ref) => decl_ref.id().into(),
+                    TyTraitInterfaceItem::TraitFn(decl_ref) => {
+                        (decl_ref.id().into(), interface_decl_name.1)
+                    }
+                    TyTraitInterfaceItem::Constant(decl_ref) => {
+                        (decl_ref.id().into(), interface_decl_name.1)
+                    }
+                    TyTraitInterfaceItem::Type(decl_ref) => {
+                        (decl_ref.id().into(), interface_decl_name.1)
+                    }
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
@@ -94,9 +114,9 @@ impl DeclMapping {
         for (decl_name, item) in item_decl_refs.into_iter() {
             if let Some(new_item) = impld_decl_refs.get(&decl_name) {
                 let interface_decl_ref = match item {
-                    TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
-                    TyTraitItem::Constant(decl_ref) => decl_ref.id().into(),
-                    TyTraitItem::Type(decl_ref) => decl_ref.id().into(),
+                    TyTraitItem::Fn(decl_ref) => (decl_ref.id().into(), decl_name.1),
+                    TyTraitItem::Constant(decl_ref) => (decl_ref.id().into(), decl_name.1),
+                    TyTraitItem::Type(decl_ref) => (decl_ref.id().into(), decl_name.1),
                 };
                 let new_decl_ref = match new_item {
                     TyTraitItem::Fn(decl_ref) => decl_ref.id().into(),
@@ -109,39 +129,41 @@ impl DeclMapping {
         DeclMapping { mapping }
     }
 
-    pub(crate) fn find_match(&self, decl_ref: SourceDecl) -> Option<DestinationDecl> {
-        for (source_decl_ref, dest_decl_ref) in self.mapping.iter() {
-            if *source_decl_ref == decl_ref {
-                return Some(dest_decl_ref.clone());
-            }
-        }
-        None
-    }
-
-    /// This method returns only associated item functions that have as self type the given type.
-    pub(crate) fn filter_functions_by_self_type(
+    pub(crate) fn find_match(
         &self,
-        self_type: TypeId,
+        _handler: &Handler,
         engines: &Engines,
-    ) -> DeclMapping {
-        let mut mapping: Vec<(SourceDecl, DestinationDecl)> = vec![];
-        for (source_decl_ref, dest_decl_ref) in self.mapping.iter().cloned() {
-            match dest_decl_ref {
-                AssociatedItemDeclId::TraitFn(_) => mapping.push((source_decl_ref, dest_decl_ref)),
-                AssociatedItemDeclId::Function(func_id) => {
-                    let func = engines.de().get(&func_id);
+        decl_ref: AssociatedItemDeclId,
+        typeid: Option<TypeId>,
+        self_typeid: Option<TypeId>,
+    ) -> Result<Option<DestinationDecl>, ErrorEmitted> {
+        let mut dest_decl_refs = HashSet::<DestinationDecl>::new();
 
-                    let unify_check = UnifyCheck::non_dynamic_equality(engines);
-                    if let (left, Some(right)) = (self_type, func.parameters.first()) {
-                        if unify_check.check(left, right.type_argument.type_id) {
-                            mapping.push((source_decl_ref, dest_decl_ref));
-                        }
-                    }
+        if let Some(mut typeid) = typeid {
+            if engines.te().get(typeid).is_self_type() && self_typeid.is_some() {
+                // If typeid is `Self`, then we use the self_typeid instead.
+                typeid = self_typeid.unwrap();
+            }
+            for (source_decl_ref, dest_decl_ref) in self.mapping.iter() {
+                let unify_check = UnifyCheck::non_dynamic_equality(engines);
+                if source_decl_ref.0 == decl_ref && unify_check.check(source_decl_ref.1, typeid) {
+                    dest_decl_refs.insert(dest_decl_ref.clone());
                 }
-                AssociatedItemDeclId::Constant(_) => mapping.push((source_decl_ref, dest_decl_ref)),
-                AssociatedItemDeclId::Type(_) => mapping.push((source_decl_ref, dest_decl_ref)),
             }
         }
-        DeclMapping { mapping }
+
+        // At most one replacement should be found for decl_ref.
+        /* TODO uncomment this and close issue #5540
+        if dest_decl_refs.len() > 1 {
+            handler.emit_err(CompileError::InternalOwned(
+                format!(
+                    "Multiple replacements for decl {} implemented in {}",
+                    engines.help_out(decl_ref),
+                    engines.help_out(typeid),
+                ),
+                dest_decl_refs.iter().last().unwrap().span(engines),
+            ));
+        }*/
+        Ok(dest_decl_refs.iter().next().cloned())
     }
 }
