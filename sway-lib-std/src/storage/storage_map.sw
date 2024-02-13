@@ -1,7 +1,7 @@
 library;
 
 use ::hash::*;
-use ::option::Option;
+use ::option::Option::{self, *};
 use ::result::Result;
 use ::storage::storage_api::*;
 use ::storage::storage_key::*;
@@ -16,12 +16,30 @@ pub enum StorageMapError<V> {
 pub struct StorageMap<K, V>
 where
     K: Hash,
-{}
+{
+    id: StorageKey
+}
 
-impl<K, V> StorageKey<StorageMap<K, V>>
+impl<K, V> Storage for StorageMap<K, V>
 where
     K: Hash,
 {
+    fn new(id: StorageKey) -> Self {
+        StorageMap {
+            id
+        }
+    }
+}
+
+impl<K, V> StorageMap<K, V>
+where
+    K: Hash,
+    V: Storage,
+{
+    fn index_key(self, index: K) -> StorageKey {
+        let slot = sha256((index, self.id.slot));
+        StorageKey::new(slot, 0)
+    }
     /// Inserts a key-value pair into the map.
     ///
     /// # Arguments
@@ -51,11 +69,8 @@ where
     /// ```
     #[storage(read, write)]
     pub fn insert(self, key: K, value: V)
-    where
-        K: Hash,
-{
-        let key = sha256((key, self.field_id));
-        write::<V>(key, 0, value);
+    {
+        self.index_key(key).write::<V>(value);
     }
 
     /// Retrieves the `StorageKey` that describes the raw location in storage of the value
@@ -84,54 +99,9 @@ where
     ///     assert(value == retrieved_value);
     /// }
     /// ```
-    pub fn get(self, key: K) -> StorageKey<V>
-    where
-        K: Hash,
-{
-        StorageKey::<V>::new(
-            sha256((key, self.field_id)),
-            0,
-            sha256((key, self.field_id)),
-        )
-    }
-
-    /// Clears a value previously stored using a key
-    ///
-    /// # Arguments
-    ///
-    /// * `key`: [K] - The key to which the value is paired.
-    ///
-    /// # Returns
-    ///
-    /// * [bool] - Indicates whether there was a value previously stored at `key`.
-    ///
-    /// # Number of Storage Accesses
-    ///
-    /// * Clears: `1`
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// storage {
-    ///     map: StorageMap<u64, bool> = StorageMap {}
-    /// }
-    ///
-    /// fn foo() {
-    ///     let key = 5_u64;
-    ///     let value = true;
-    ///     storage.map.insert(key, value);
-    ///     let removed = storage.map.remove(key);
-    ///     assert(removed);
-    ///     assert(storage.map.get(key).is_none());
-    /// }
-    /// ```
-    #[storage(write)]
-    pub fn remove(self, key: K) -> bool
-    where
-        K: Hash,
-{
-        let key = sha256((key, self.slot));
-        clear::<V>(key, 0)
+    pub fn get(self, key: K) -> V
+    {
+        V::new(self.index_key(key))
     }
 
     /// Inserts a key-value pair into the map if a value does not already exist for the key.
@@ -178,19 +148,15 @@ where
     /// ```
     #[storage(read, write)]
     pub fn try_insert(self, key: K, value: V) -> Result<V, StorageMapError<V>>
-    where
-        K: Hash,
 {
-        let key = sha256((key, self.field_id));
+        let key = self.index_key(key);
 
-        let val = read::<V>(key, 0);
-
-        match val {
-            Option::Some(v) => {
+        match key.read::<V>() {
+            Some(v) => {
                 Result::Err(StorageMapError::OccupiedError(v))
             },
-            Option::None => {
-                write::<V>(key, 0, value);
+            None => {
+                key.write::<V>(value);
                 Result::Ok(value)
             }
         }
