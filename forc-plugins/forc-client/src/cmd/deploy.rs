@@ -1,9 +1,9 @@
 use clap::Parser;
-use fuel_crypto::SecretKey;
-
-pub use forc::cli::shared::{BuildOutput, BuildProfile, Minify, Pkg, Print};
+pub use forc::cli::shared::{BuildOutput, Minify, Pkg, Print};
+use forc_pkg::BuildProfile;
 pub use forc_tx::{Gas, Maturity};
 pub use forc_util::tx_utils::Salt;
+use fuel_crypto::SecretKey;
 
 use crate::NodeTarget;
 
@@ -47,8 +47,9 @@ pub struct Command {
     pub default_salt: bool,
     #[clap(flatten)]
     pub build_output: BuildOutput,
-    #[clap(flatten)]
-    pub build_profile: BuildProfile,
+    /// The name of the build profile to use.
+    #[clap(long, default_value = BuildProfile::RELEASE)]
+    pub build_profile: String,
     /// Sign the transaction with default signer that is pre-funded by fuel-core. Useful for testing against local node.
     #[clap(long)]
     pub default_signer: bool,

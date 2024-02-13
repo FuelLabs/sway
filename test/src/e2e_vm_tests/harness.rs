@@ -1,12 +1,11 @@
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
-use forc::cli::shared::BuildProfile;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{manifest::ExperimentalFlags, Built, BuiltPackage};
+use forc_pkg::{manifest::ExperimentalFlags, BuildProfile, Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
@@ -73,9 +72,9 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         default_salt: true,
-        build_profile: BuildProfile {
-            release: run_config.release,
-            ..Default::default()
+        build_profile: match run_config.release {
+            true => BuildProfile::RELEASE.to_string(),
+            false => BuildProfile::DEBUG.to_string(),
         },
         ..Default::default()
     })
