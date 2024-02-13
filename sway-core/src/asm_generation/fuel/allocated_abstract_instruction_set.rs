@@ -82,6 +82,28 @@ impl AllocatedAbstractInstructionSet {
             )
             .0;
 
+        fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImmediate24) {
+            let mask = regs.iter().fold((0, 0), |mut accum, reg| {
+                let reg_id = reg.to_reg_id().to_u8();
+                assert!((16..64).contains(&reg_id));
+                let reg_id = reg_id - 16;
+                let (mask_ref, bit) = if reg_id < 24 {
+                    (&mut accum.0, reg_id)
+                } else {
+                    (&mut accum.1, reg_id - 24)
+                };
+                // Set bit (from the least significant side) of mask_ref.
+                *mask_ref |= 1 << bit;
+                accum
+            });
+            (
+                VirtualImmediate24::new(mask.0, Span::dummy())
+                    .expect("mask should have fit in 24b"),
+                VirtualImmediate24::new(mask.1, Span::dummy())
+                    .expect("mask should have fit in 24b"),
+            )
+        }
+
         // Now replace the PUSHA/POPA instructions with STOREs and LOADs.
         self.ops = self.ops.drain(..).fold(Vec::new(), |mut new_ops, op| {
             match &op.opcode {
@@ -94,35 +116,21 @@ impl AllocatedAbstractInstructionSet {
                         .chain([&AllocatedRegister::Constant(ConstantRegister::LocalsBase)])
                         .collect::<Vec<_>>();
 
-                    let stack_use_bytes = regs.len() as u64 * 8;
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::MOVE(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            AllocatedRegister::Constant(ConstantRegister::StackPointer),
-                        )),
-                        comment: "save base stack value".into(),
-                        owning_span: None,
-                    });
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::CFEI(
-                            VirtualImmediate24::new(stack_use_bytes, Span::dummy()).unwrap(),
-                        )),
-                        comment: "reserve space for saved registers".into(),
-                        owning_span: None,
-                    });
-
-                    regs.into_iter().enumerate().for_each(|(idx, reg)| {
-                        let store_op = AllocatedOpcode::SW(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            reg.clone(),
-                            VirtualImmediate12::new(idx as u64, Span::dummy()).unwrap(),
-                        );
+                    let (mask_l, mask_h) = generate_mask(&regs);
+                    if mask_l.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(store_op),
-                            comment: format!("save {reg}"),
+                            opcode: Either::Left(AllocatedOpcode::PSHL(mask_l)),
+                            comment: "Save registers 16..40".into(),
                             owning_span: None,
                         });
-                    })
+                    }
+                    if mask_h.value != 0 {
+                        new_ops.push(AllocatedAbstractOp {
+                            opcode: Either::Left(AllocatedOpcode::PSHH(mask_h)),
+                            comment: "Save registers 40..64".into(),
+                            owning_span: None,
+                        });
+                    }
                 }
 
                 Either::Right(ControlFlowOp::PopAll(label)) => {
@@ -134,37 +142,21 @@ impl AllocatedAbstractInstructionSet {
                         .chain([&AllocatedRegister::Constant(ConstantRegister::LocalsBase)])
                         .collect::<Vec<_>>();
 
-                    let stack_use_bytes = regs.len() as u64 * 8;
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::SUBI(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            AllocatedRegister::Constant(ConstantRegister::StackPointer),
-                            VirtualImmediate12::new(stack_use_bytes, Span::dummy()).unwrap(),
-                        )),
-                        comment: "save base stack value".into(),
-                        owning_span: None,
-                    });
-
-                    regs.into_iter().enumerate().for_each(|(idx, reg)| {
-                        let load_op = AllocatedOpcode::LW(
-                            reg.clone(),
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12::new(idx as u64, Span::dummy()).unwrap(),
-                        );
+                    let (mask_l, mask_h) = generate_mask(&regs);
+                    if mask_h.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(load_op),
-                            comment: format!("restore {reg}"),
+                            opcode: Either::Left(AllocatedOpcode::POPH(mask_h)),
+                            comment: "Restore registers 40..64".into(),
                             owning_span: None,
                         });
-                    });
-
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::CFSI(
-                            VirtualImmediate24::new(stack_use_bytes, Span::dummy()).unwrap(),
-                        )),
-                        comment: "recover space from saved registers".into(),
-                        owning_span: None,
-                    });
+                    }
+                    if mask_l.value != 0 {
+                        new_ops.push(AllocatedAbstractOp {
+                            opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
+                            comment: "Restore registers 16..40".into(),
+                            owning_span: None,
+                        });
+                    }
                 }
 
                 _otherwise => new_ops.push(op),
