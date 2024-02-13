@@ -83,7 +83,8 @@ impl CurlyBrace for ItemFn {
         let open_brace = Delimiter::Brace.as_open_char();
         match formatter.shape.code_line.has_where_clause {
             true => {
-                write!(line, "{open_brace}")?;
+                let indent_str = formatter.indent_to_str()?;
+                write!(line, "{indent_str}{open_brace}")?;
                 formatter.shape.code_line.update_where_clause(false);
             }
             false => {
