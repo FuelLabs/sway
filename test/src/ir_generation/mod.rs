@@ -89,7 +89,7 @@ impl Checker {
                 .then(|| {
                     filecheck::CheckerBuilder::new()
                         .text(
-                            "regex: VAL=\\bv\\d+\\b\n\
+                            "regex: VAL=\\bv\\d+_\\d+\\b\n\
                          regex: ID=[_[:alpha:]][_0-9[:alpha:]]*\n\
                          regex: MD=!\\d+\n",
                         )

@@ -142,13 +142,14 @@ pub fn module_print(context: &Context, _analyses: &AnalysisResults, module: Modu
 /// Print a function to stdout.
 pub fn function_print(context: &Context, function: Function) {
     let mut md_namer = MetadataNamer::default();
+    let entry_block = function.get_entry_block(context);
     println!(
         "{}",
         function_to_doc(
             context,
             &mut md_namer,
-            &mut Namer::new(function, GlobalNamer::new()),
-            context.functions.get(function.0).unwrap()
+            &mut Namer::new(entry_block, GlobalNamer::new()),
+            context.functions.get(function.0).unwrap(),
         )
         .append(md_namer.to_doc(context))
         .build()
@@ -159,31 +160,33 @@ pub fn function_print(context: &Context, function: Function) {
 pub fn block_print(context: &Context, block: Block) {
     let mut md_namer = MetadataNamer::default();
     println!(
-	"{}",
-	block_to_doc(
-	    context,
-	    &mut md_namer,
-	    &mut Namer::new_no_function(GlobalNamer::new()),
-	    block
-	)
-	    .append(md_namer.to_doc(context))
-	    .build()
-	);
+        "{}",
+        block_to_doc(
+            context,
+            &mut md_namer,
+            &mut Namer::new(block, GlobalNamer::new()),
+            &block
+        )
+        .append(md_namer.to_doc(context))
+        .build()
+    );
 }
 
-/// Print a single instruction to stdout.
-pub fn instruction_print(context: &Context, instruction: Instruction) {
+/// Print a single value (i.e., instruction) to stdout.
+pub fn value_print(context: &Context, value: Value) {
     let mut md_namer = MetadataNamer::default();
+    let block = value.get_instruction(context).map(|ins| &ins.parent);
+    let mut namer = if let Some(b) = block {
+        Namer::new(*b, GlobalNamer::new())
+    } else {
+        Namer::new_no_block(GlobalNamer::new())
+    };
     println!(
-	"{}",
-	instruction_to_doc(
-	    context,
-	    &mut md_namer,
-	    &mut Namer::new_no_function(GlobalNamer::new())
-	)
-	    .append(md_namer.to_doc(context))
-	    .build()
-	);
+        "{}",
+        instruction_to_doc(context, &mut md_namer, &mut namer, block, &value)
+            .append(md_namer.to_doc(context))
+            .build()
+    );
 }
 
 pub const MODULEPRINTER_NAME: &str = "module_printer";
@@ -237,7 +240,7 @@ fn module_to_doc<'a>(
                     function_to_doc(
                         context,
                         md_namer,
-                        &mut Namer::new(*function, global_namer.clone()),
+                        &mut Namer::new(function.get_entry_block(context), global_namer.clone()),
                         &context.functions[function.0],
                     )
                 })
@@ -369,7 +372,7 @@ fn block_to_doc(
     .append(Doc::List(
         block
             .instruction_iter(context)
-            .map(|ins| instruction_to_doc(context, md_namer, namer, block, &ins))
+            .map(|ins| instruction_to_doc(context, md_namer, namer, Some(block), &ins))
             .collect(),
     ))
 }
@@ -436,25 +439,11 @@ fn maybe_constant_to_doc(
     }
 }
 
-fn single_instruction_to_doc<'a>(
-    context: &'a Context,
-    md_namer: &mut MetadataNamer,
-    namer: &mut Namer,
-    ins_value: Value
-) -> Doc {
-    instruction_to_doc(
-	context,
-	md_namer,
-	namer,
-	...,
-	&ins_value)
-}
-
 fn instruction_to_doc<'a>(
     context: &'a Context,
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
-    block: &Block,
+    block: Option<&Block>,
     ins_value: &'a Value,
 ) -> Doc {
     if let ValueContent {
@@ -903,10 +892,13 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )),
             InstOp::GetLocal(local_var) => {
-                let name = block
-                    .get_function(context)
-                    .lookup_local_name(context, local_var)
-                    .unwrap();
+                let name = match block {
+                    Some(b) => b
+                        .get_function(context)
+                        .lookup_local_name(context, local_var)
+                        .unwrap(),
+                    None => "local_var",
+                };
                 Doc::line(
                     Doc::text(format!(
                         "{} = get_local {}, {name}",
@@ -1179,46 +1171,40 @@ impl GlobalNamer {
 }
 
 struct Namer {
-    // Use None if printing an individual block or instruction. Use Some<function> if function
-    // arguments are known.
-    function: Option<Function>,
-
+    // Use block = None if printing an individual value, and that value is not an instruction.
+    block: Option<Block>,
     // To make things easier, each `Namer` also gets a `GlobalNamer` which includes all globally
     // available names (such as config constants).
     global_namer: GlobalNamer,
     names: HashMap<Value, String>,
-    next_value_idx: u64,
 }
 
 impl Namer {
-    fn new(function: Function, global_namer: GlobalNamer) -> Self {
+    fn new(block: Block, global_namer: GlobalNamer) -> Self {
         Namer {
-            function: Some(function),
+            block: Some(block),
             global_namer,
             names: HashMap::new(),
-            next_value_idx: 0,
         }
     }
-    
-    fn new_no_function(global_namer: GlobalNamer) -> Self {
+
+    fn new_no_block(global_namer: GlobalNamer) -> Self {
         Namer {
-            function: None,
+            block: None,
             global_namer,
             names: HashMap::new(),
-            next_value_idx: 0,
         }
     }
 
     fn name(&mut self, context: &Context, value: &Value) -> String {
         match &context.values[value.0].value {
-            ValueDatum::Argument(_) if self.function.is_some() =>
-		self
-		.function
-		.unwrap()
+            ValueDatum::Argument(_) if self.block.is_some() => context.blocks
+                [self.block.unwrap().0]
+                .function
                 .lookup_arg_name(context, value)
                 .cloned()
                 .unwrap_or_else(|| self.default_name(value)),
-	    ValueDatum::Argument(_) => self.default_name(value),
+            ValueDatum::Argument(_) => self.default_name(value),
             ValueDatum::Configurable(_) => self.global_namer.name(context, value),
             ValueDatum::Constant(_) => self.default_name(value),
             ValueDatum::Instruction(_) => self.default_name(value),
@@ -1227,8 +1213,8 @@ impl Namer {
 
     fn default_name(&mut self, value: &Value) -> String {
         self.names.get(value).cloned().unwrap_or_else(|| {
-            let new_name = format!("v{}", self.next_value_idx);
-            self.next_value_idx += 1;
+            let (v_idx, v_gen) = value.0.into_raw_parts();
+            let new_name = format!("v{}_{}", v_idx, v_gen);
             self.names.insert(*value, new_name.clone());
             new_name
         })
