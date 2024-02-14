@@ -4,7 +4,7 @@ mod test_consistency;
 
 use anyhow::Result;
 use clap::Parser;
-use forc_pkg::BuildProfile;
+use forc_pkg::build_profile::BuildProfile;
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
 use sway_core::{BuildTarget, ExperimentalFlags};

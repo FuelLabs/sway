@@ -1,6 +1,6 @@
 use clap::Parser;
 pub use forc::cli::shared::{BuildOutput, Minify, Pkg, Print};
-use forc_pkg::BuildProfile;
+use forc_pkg::build_profile::BuildProfile;
 pub use forc_tx::{Gas, Maturity};
 pub use forc_util::tx_utils::Salt;
 use fuel_crypto::SecretKey;

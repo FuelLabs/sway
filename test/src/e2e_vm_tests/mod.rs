@@ -10,7 +10,7 @@ use anyhow::{anyhow, bail, Result};
 use assert_matches::assert_matches;
 use colored::*;
 use core::fmt;
-use forc_pkg::BuildProfile;
+use forc_pkg::build_profile::BuildProfile;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
