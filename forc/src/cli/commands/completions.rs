@@ -4,7 +4,7 @@ use clap_complete::{generate, Generator, Shell as BuiltInShell};
 use forc_util::cli::CommandInfo;
 use forc_util::ForcResult;
 use std::collections::HashMap;
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use crate::cli::plugin::find_all;
 
@@ -13,6 +13,15 @@ use crate::cli::plugin::find_all;
 enum Target {
     BuiltIn(BuiltInShell),
     Fig,
+}
+
+impl Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.to_possible_value()
+            .expect("no values are skipped")
+            .get_name()
+            .fmt(f)
+    }
 }
 
 impl FromStr for Target {

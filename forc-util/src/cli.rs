@@ -72,6 +72,17 @@ impl CommandInfo {
         cmd.get_arguments()
             .map(|opt| ArgInfo {
                 name: opt.get_name().to_string(),
+                possible_values: opt
+                    .get_possible_values()
+                    .map(|x| {
+                        x.iter()
+                            .map(|x| PossibleValues {
+                                name: x.get_name().to_owned(),
+                                help: x.get_help().unwrap_or_default().to_owned(),
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default(),
                 short: opt.get_short_and_visible_aliases(),
                 aliases: opt
                     .get_long_and_visible_aliases()
@@ -90,8 +101,17 @@ impl CommandInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PossibleValues {
+    pub name: String,
+    pub help: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ArgInfo {
     pub name: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
+    pub possible_values: Vec<PossibleValues>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub short: Option<Vec<char>>,
@@ -121,6 +141,14 @@ impl ArgInfo {
         }
         if let Some(long_help) = &self.long_help {
             arg = arg.long_help(long_help.as_str());
+        }
+        if !self.possible_values.is_empty() {
+            arg = arg.possible_values(
+                self.possible_values
+                    .iter()
+                    .map(|pv| clap::PossibleValue::new(pv.name.as_str()).help(pv.help.as_str()))
+                    .collect::<Vec<_>>(),
+            );
         }
         if self.is_repeatable {
             arg = arg.multiple(true);
