@@ -43,7 +43,6 @@ members = [
   "test_projects/tx_fields",
   "test_projects/type_aliases",
   "test_projects/vec_in_abi",
-  "test_projects/result_option_expect",
   "test_artifacts/auth_caller_contract",
   "test_artifacts/auth_caller_script",
   "test_artifacts/auth_predicate",
