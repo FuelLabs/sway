@@ -1,5 +1,4 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
-use std::str::FromStr;
+use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
 
 abigen!(Contract(
     name = "ExpectTestingContract",
@@ -19,4 +18,34 @@ async fn setup() -> (ExpectTestingContract<WalletUnlocked>, ContractId) {
     let instance = ExpectTestingContract::new(id.clone(), wallet);
 
     (instance, id.into())
+}
+
+#[tokio::test]
+async fn test_expect_option() {
+    let (instance, id) = setup().await;
+
+    instance.methods().option_test(false).call().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_expect_result() {
+    let (instance, id) = setup().await;
+
+    instance.methods().result_test(false).call().await.unwrap();
+}
+
+#[tokio::test]
+#[should_panic]
+async fn test_expect_option_panic() {
+    let (instance, id) = setup().await;
+
+    instance.methods().option_test(true).call().await.unwrap();
+}
+
+#[tokio::test]
+#[should_panic]
+async fn test_expect_result_panic() {
+    let (instance, id) = setup().await;
+
+    instance.methods().result_test(true).call().await.unwrap();
 }
