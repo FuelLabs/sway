@@ -81,86 +81,87 @@ impl ty::TyFunctionDecl {
 
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut ctx = ctx
-            .by_ref()
-            .scoped(&mut fn_namespace)
+        ctx.by_ref()
             .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
-            .disallow_functions();
+            .disallow_functions()
+            .scoped(&mut fn_namespace, |mut ctx| {
+                // Type check the type parameters.
+                let new_type_parameters = TypeParameter::type_check_type_params(
+                    handler,
+                    ctx.by_ref(),
+                    type_parameters.clone(),
+                    None,
+                )?;
 
-        // Type check the type parameters.
-        let new_type_parameters = TypeParameter::type_check_type_params(
-            handler,
-            ctx.by_ref(),
-            type_parameters.clone(),
-            None,
-        )?;
+                // type check the function parameters, which will also insert them into the namespace
+                let mut new_parameters = vec![];
+                handler.scope(|handler| {
+                    for parameter in parameters.iter() {
+                        new_parameters.push({
+                            let param = match ty::TyFunctionParameter::type_check(
+                                handler,
+                                ctx.by_ref(),
+                                parameter.clone(),
+                            ) {
+                                Ok(val) => val,
+                                Err(_) => continue,
+                            };
+                            param.insert_into_namespace(handler, ctx.by_ref());
+                            param
+                        });
+                    }
+                    Ok(())
+                })?;
 
-        // type check the function parameters, which will also insert them into the namespace
-        let mut new_parameters = vec![];
-        handler.scope(|handler| {
-            for parameter in parameters.iter() {
-                new_parameters.push({
-                    let param = match ty::TyFunctionParameter::type_check(
+                // type check the return type
+                return_type.type_id = ctx
+                    .resolve_type(
                         handler,
-                        ctx.by_ref(),
-                        parameter.clone(),
-                    ) {
-                        Ok(val) => val,
-                        Err(_) => continue,
-                    };
-                    param.insert_into_namespace(handler, ctx.by_ref());
-                    param
-                });
-            }
-            Ok(())
-        })?;
+                        return_type.type_id,
+                        &return_type.span,
+                        EnforceTypeArguments::Yes,
+                        None,
+                    )
+                    .unwrap_or_else(|err| {
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                    });
 
-        // type check the return type
-        return_type.type_id = ctx
-            .resolve_type(
-                handler,
-                return_type.type_id,
-                &return_type.span,
-                EnforceTypeArguments::Yes,
-                None,
-            )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+                let (visibility, is_contract_call) = if is_method {
+                    if is_in_impl_self {
+                        (*visibility, false)
+                    } else {
+                        (Visibility::Public, false)
+                    }
+                } else {
+                    (
+                        *visibility,
+                        matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)),
+                    )
+                };
 
-        let (visibility, is_contract_call) = if is_method {
-            if is_in_impl_self {
-                (*visibility, false)
-            } else {
-                (Visibility::Public, false)
-            }
-        } else {
-            (
-                *visibility,
-                matches!(ctx.abi_mode(), AbiMode::ImplAbiFn(..)),
-            )
-        };
+                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
 
-        let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
+                let function_decl = ty::TyFunctionDecl {
+                    name: name.clone(),
+                    body: TyCodeBlock::default(),
+                    parameters: new_parameters,
+                    implementing_type: None,
+                    implementing_for_typeid,
+                    span: span.clone(),
+                    call_path,
+                    attributes: attributes.clone(),
+                    return_type,
+                    type_parameters: new_type_parameters,
+                    visibility,
+                    is_contract_call,
+                    purity: *purity,
+                    where_clause: where_clause.clone(),
+                    is_trait_method_dummy: false,
+                };
 
-        let function_decl = ty::TyFunctionDecl {
-            name: name.clone(),
-            body: TyCodeBlock::default(),
-            parameters: new_parameters,
-            implementing_type: None,
-            implementing_for_typeid,
-            span: span.clone(),
-            call_path,
-            attributes: attributes.clone(),
-            return_type,
-            type_parameters: new_type_parameters,
-            visibility,
-            is_contract_call,
-            purity: *purity,
-            where_clause: where_clause.clone(),
-            is_trait_method_dummy: false,
-        };
-
-        Ok(function_decl)
+                Ok(function_decl)
+            })
     }
 
     pub fn type_check_body(
@@ -169,84 +170,58 @@ impl ty::TyFunctionDecl {
         fn_decl: &FunctionDeclaration,
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
-        let FunctionDeclaration { body, .. } = fn_decl;
-
-        let ty::TyFunctionDecl {
-            parameters,
-            purity,
-            return_type,
-            type_parameters,
-            ..
-        } = ty_fn_decl;
-
         // create a namespace for the function
         let mut fn_namespace = ctx.namespace.clone();
-        let mut ctx = ctx
-            .by_ref()
-            .scoped(&mut fn_namespace)
-            .with_purity(*purity)
+        ctx.by_ref()
+            .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
-            .disallow_functions();
+            .disallow_functions()
+            .scoped(&mut fn_namespace, |mut ctx| {
+                let FunctionDeclaration { body, .. } = fn_decl;
 
-        // Insert the previously type checked type parameters into the current namespace.
-        for p in type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
+                let ty::TyFunctionDecl {
+                    parameters,
+                    purity,
+                    return_type,
+                    type_parameters,
+                    ..
+                } = ty_fn_decl;
 
-        // Insert the previously type checked function parameters into the current namespace.
-        for p in parameters {
-            p.insert_into_namespace(handler, ctx.by_ref());
-        }
+                // Insert the previously type checked type parameters into the current namespace.
+                for p in type_parameters {
+                    p.insert_into_namespace(handler, ctx.by_ref())?;
+                }
 
-        // type check the function body
-        //
-        // If there are no implicit block returns, then we do not want to type check them, so we
-        // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
+                // Insert the previously type checked function parameters into the current namespace.
+                for p in parameters {
+                    p.insert_into_namespace(handler, ctx.by_ref());
+                }
 
-        let mut ctx = ctx
-            .by_ref()
-            .with_purity(*purity)
-            .with_help_text(
-                "Function body's return type does not match up with its return type annotation.",
-            )
-            .with_type_annotation(return_type.type_id);
+                // type check the function body
+                //
+                // If there are no implicit block returns, then we do not want to type check them, so we
+                // stifle the errors. If there _are_ implicit block returns, we want to type_check them.
 
-        let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)
-            .unwrap_or_else(|_err| ty::TyCodeBlock::default());
+                let mut ctx = ctx
+                    .by_ref()
+                    .with_purity(*purity)
+                    .with_help_text(
+                        "Function body's return type does not match up with its return type annotation.",
+                    )
+                    .with_type_annotation(return_type.type_id)
+                    .with_function_type_annotation(return_type.type_id);
 
-        ty_fn_decl.body = body;
+                let body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), body)
+                    .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
-        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
-        ty_fn_decl.type_check_unify(handler, &mut unification_ctx)?;
+                ty_fn_decl.body = body;
 
-        Ok(ty_fn_decl.clone())
+                let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
+                ty_fn_decl.type_check_unify(handler, &mut unification_ctx)?;
+
+                Ok(ty_fn_decl.clone())
+            })
     }
-}
-
-/// Unifies the types of the return statements and the return type of the
-/// function declaration.
-fn unify_return_statements(
-    handler: &Handler,
-    ctx: TypeCheckContext,
-    return_statements: &[&ty::TyExpression],
-    return_type: TypeId,
-) -> Result<(), ErrorEmitted> {
-    let type_engine = ctx.engines.te();
-
-    handler.scope(|handler| {
-        for stmt in return_statements.iter() {
-            type_engine.unify(
-                handler,
-                ctx.engines(),
-                stmt.return_type,
-                return_type,
-                &stmt.span,
-                "Return statement must return the declared function return type.",
-                None,
-            );
-        }
-        Ok(())
-    })
 }
 
 impl TypeCheckAnalysis for DeclId<TyFunctionDecl> {
@@ -313,21 +288,6 @@ impl TypeCheckUnification for ty::TyFunctionDecl {
             let type_check_ctx = &mut ctx.type_check_ctx;
 
             let return_type = &self.return_type;
-
-            // gather the return statements
-            let return_statements: Vec<&ty::TyExpression> = self
-                .body
-                .contents
-                .iter()
-                .flat_map(|node| node.gather_return_statements())
-                .collect();
-
-            unify_return_statements(
-                handler,
-                type_check_ctx.by_ref(),
-                &return_statements,
-                return_type.type_id,
-            )?;
 
             return_type.type_id.check_type_parameter_bounds(
                 handler,

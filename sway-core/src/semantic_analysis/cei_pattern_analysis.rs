@@ -343,6 +343,7 @@ fn analyze_expression(
             }
             res_effs
         }
+        ForLoop { desugared } => analyze_expression(engines, desugared, block_name, warnings),
         AsmExpression {
             registers, body, ..
         } => {
@@ -572,6 +573,7 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
             .union(&effects_of_codeblock(engines, body))
             .cloned()
             .collect(),
+        ForLoop { desugared } => effects_of_expression(engines, desugared),
         FunctionApplication {
             fn_ref,
             arguments,

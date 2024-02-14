@@ -2,7 +2,6 @@ use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -81,8 +80,7 @@ pub(crate) fn struct_instantiation(
     // find the module that the struct decl is in
     let type_info_prefix = ctx.namespace.find_module_path(&prefixes);
     ctx.namespace
-        .root()
-        .check_submodule(handler, &type_info_prefix)?;
+        .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
@@ -135,34 +133,19 @@ pub(crate) fn struct_instantiation(
             ctx.storage_declaration(),
         );
 
-        // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-        //       https://github.com/FuelLabs/sway/issues/5520
-        // handler.emit_err(CompileError::StructCannotBeInstantiated {
-        //     struct_name: struct_name.clone(),
-        //     span: inner_span.clone(),
-        //     struct_decl_span: struct_decl.span.clone(),
-        //     private_fields: struct_fields.iter().filter(|field| field.is_private()).map(|field| field.name.clone()).collect(),
-        //     constructors,
-        //     all_fields_are_private,
-        //     is_in_storage_declaration: ctx.storage_declaration(),
-        //     struct_can_be_changed,
-        // });
-        handler.emit_warn(CompileWarning {
+        handler.emit_err(CompileError::StructCannotBeInstantiated {
+            struct_name: struct_name.clone(),
             span: inner_span.clone(),
-            warning_content: Warning::StructCannotBeInstantiated {
-                struct_name: struct_name.clone(),
-                span: inner_span.clone(),
-                struct_decl_span: struct_decl.span.clone(),
-                private_fields: struct_fields
-                    .iter()
-                    .filter(|field| field.is_private())
-                    .map(|field| field.name.clone())
-                    .collect(),
-                constructors,
-                all_fields_are_private,
-                is_in_storage_declaration: ctx.storage_declaration(),
-                struct_can_be_changed,
-            },
+            struct_decl_span: struct_decl.span.clone(),
+            private_fields: struct_fields
+                .iter()
+                .filter(|field| field.is_private())
+                .map(|field| field.name.clone())
+                .collect(),
+            constructors,
+            all_fields_are_private,
+            is_in_storage_declaration: ctx.storage_declaration(),
+            struct_can_be_changed,
         });
     }
 
@@ -212,35 +195,19 @@ pub(crate) fn struct_instantiation(
         for field in fields {
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
                 if ty_field.is_private() {
-                    // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                    //       https://github.com/FuelLabs/sway/issues/5520
-                    // handler.emit_err(CompileError::StructFieldIsPrivate {
-                    //     field_name: (&field.name).into(),
-                    //     struct_name: struct_name.clone(),
-                    //     field_decl_span: ty_field.name.span(),
-                    //     struct_can_be_changed,
-                    //     usage_context: if ctx.storage_declaration() {
-                    //         StructFieldUsageContext::StorageDeclaration { struct_can_be_instantiated }
-                    //     } else {
-                    //         StructFieldUsageContext::StructInstantiation { struct_can_be_instantiated }
-                    //     }
-                    // });
-                    handler.emit_warn(CompileWarning {
-                        span: field.name.span(),
-                        warning_content: Warning::StructFieldIsPrivate {
-                            field_name: (&field.name).into(),
-                            struct_name: struct_name.clone(),
-                            field_decl_span: ty_field.name.span(),
-                            struct_can_be_changed,
-                            usage_context: if ctx.storage_declaration() {
-                                StructFieldUsageContext::StorageDeclaration {
-                                    struct_can_be_instantiated,
-                                }
-                            } else {
-                                StructFieldUsageContext::StructInstantiation {
-                                    struct_can_be_instantiated,
-                                }
-                            },
+                    handler.emit_err(CompileError::StructFieldIsPrivate {
+                        field_name: (&field.name).into(),
+                        struct_name: struct_name.clone(),
+                        field_decl_span: ty_field.name.span(),
+                        struct_can_be_changed,
+                        usage_context: if ctx.storage_declaration() {
+                            StructFieldUsageContext::StorageDeclaration {
+                                struct_can_be_instantiated,
+                            }
+                        } else {
+                            StructFieldUsageContext::StructInstantiation {
+                                struct_can_be_instantiated,
+                            }
                         },
                     });
                 }
@@ -249,53 +216,55 @@ pub(crate) fn struct_instantiation(
     }
 
     let mut struct_namespace = ctx.namespace.clone();
-    let mut struct_ctx = ctx
-        .scoped(&mut struct_namespace)
-        .with_generic_shadowing_mode(GenericShadowingMode::Allow);
+    ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
+        .scoped(&mut struct_namespace, |mut struct_ctx| {
+            // Insert struct type parameter into namespace.
+            // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
+            for type_parameter in struct_decl.type_parameters {
+                type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
+            }
 
-    // Insert struct type parameter into namespace.
-    // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
-    for type_parameter in struct_decl.type_parameters {
-        type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
-    }
+            type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
 
-    type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
+            let exp = ty::TyExpression {
+                expression: ty::TyExpressionVariant::StructExpression {
+                    struct_ref,
+                    fields: typed_fields,
+                    instantiation_span: inner_span,
+                    call_path_binding,
+                },
+                return_type: type_id,
+                span,
+            };
 
-    let exp = ty::TyExpression {
-        expression: ty::TyExpressionVariant::StructExpression {
-            struct_ref,
-            fields: typed_fields,
-            instantiation_span: inner_span,
-            call_path_binding,
-        },
-        return_type: type_id,
-        span,
-    };
+            Ok(exp)
+        })
+}
 
-    return Ok(exp);
-
-    fn collect_struct_constructors(
-        namespace: &Namespace,
-        engines: &crate::Engines,
-        struct_type_id: TypeId,
-        is_in_storage_declaration: bool,
-    ) -> Vec<String> {
-        // Searching only for public constructors is a bit too restrictive because we can also have them in local private impls.
-        // Checking that would be a questionable additional effort considering that this search gives good suggestions for
-        // common patterns in which constructors can be found.
-        // Also, strictly speaking, we could also have public module functions that create structs,
-        // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
-        // that we wish to encourage.
-        namespace
-            .get_items_for_type(engines, struct_type_id)
-            .iter()
-            .filter_map(|item| match item {
-                ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
-                _ => None,
-            })
-            .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
-            .filter(|fn_decl| {
-                matches!(fn_decl.visibility, Visibility::Public)
+fn collect_struct_constructors(
+    namespace: &Namespace,
+    engines: &crate::Engines,
+    struct_type_id: TypeId,
+    is_in_storage_declaration: bool,
+) -> Vec<String> {
+    // Searching only for public constructors is a bit too restrictive because we can also have them in local private impls.
+    // Checking that would be a questionable additional effort considering that this search gives good suggestions for
+    // common patterns in which constructors can be found.
+    // Also, strictly speaking, we could also have public module functions that create structs,
+    // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
+    // that we wish to encourage.
+    namespace
+        .module()
+        .items()
+        .get_items_for_type(engines, struct_type_id)
+        .iter()
+        .filter_map(|item| match item {
+            ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
+            _ => None,
+        })
+        .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
+        .filter(|fn_decl| {
+            matches!(fn_decl.visibility, Visibility::Public)
                     && fn_decl
                         .is_constructor(engines, struct_type_id)
                         .unwrap_or_default()
@@ -304,19 +273,18 @@ pub(crate) fn struct_instantiation(
                     // a questionable additional effort considering that this simple heuristics will give
                     // us all the most common constructors like `default()` or `new()`.
                     && (!is_in_storage_declaration || fn_decl.parameters.is_empty())
-            })
-            .map(|fn_decl| {
-                // Removing the return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
-                format!("{}", engines.help_out((*fn_decl).clone()))
-                    .rsplit_once(" -> ")
-                    .unwrap()
-                    .0
-                    .to_string()
-            })
-            .sorted()
-            .dedup()
-            .collect_vec()
-    }
+        })
+        .map(|fn_decl| {
+            // Removing the return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
+            format!("{}", engines.help_out((*fn_decl).clone()))
+                .rsplit_once(" -> ")
+                .unwrap()
+                .0
+                .to_string()
+        })
+        .sorted()
+        .dedup()
+        .collect_vec()
 }
 
 /// Type checks the field arguments.

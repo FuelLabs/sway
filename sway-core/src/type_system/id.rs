@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -11,7 +12,7 @@ use crate::{
 };
 
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashSet},
     fmt,
 };
 
@@ -170,7 +171,7 @@ impl TypeId {
         filter_fn: &F,
         trait_constraints: Vec<TraitConstraint>,
         depth: usize,
-    ) -> HashMap<TypeId, Vec<TraitConstraint>>
+    ) -> IndexMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
@@ -188,7 +189,7 @@ impl TypeId {
         engines: &Engines,
         filter_fn: &F,
         depth: usize,
-    ) -> HashMap<TypeId, Vec<TraitConstraint>>
+    ) -> IndexMap<TypeId, Vec<TraitConstraint>>
     where
         F: Fn(&TypeInfo) -> bool,
     {
@@ -197,8 +198,8 @@ impl TypeId {
         }
 
         fn extend(
-            hashmap: &mut HashMap<TypeId, Vec<TraitConstraint>>,
-            hashmap_other: HashMap<TypeId, Vec<TraitConstraint>>,
+            hashmap: &mut IndexMap<TypeId, Vec<TraitConstraint>>,
+            hashmap_other: IndexMap<TypeId, Vec<TraitConstraint>>,
         ) {
             for (type_id, trait_constraints) in hashmap_other {
                 if let Some(existing_trait_constraints) = hashmap.get_mut(&type_id) {
@@ -210,7 +211,7 @@ impl TypeId {
         }
 
         let decl_engine = engines.de();
-        let mut found: HashMap<TypeId, Vec<TraitConstraint>> = HashMap::new();
+        let mut found: IndexMap<TypeId, Vec<TraitConstraint>> = IndexMap::new();
         match &*engines.te().get(*self) {
             TypeInfo::Unknown
             | TypeInfo::Placeholder(_)
@@ -414,7 +415,7 @@ impl TypeId {
     pub(crate) fn extract_inner_types_with_trait_constraints(
         &self,
         engines: &Engines,
-    ) -> HashMap<TypeId, Vec<TraitConstraint>> {
+    ) -> IndexMap<TypeId, Vec<TraitConstraint>> {
         fn filter_fn(_type_info: &TypeInfo) -> bool {
             true
         }
@@ -577,6 +578,8 @@ impl TypeId {
         let mut found_error = false;
         let generic_trait_constraints_trait_names_and_args = ctx
             .namespace
+            .module()
+            .items()
             .implemented_traits
             .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
         for structure_trait_constraint in structure_trait_constraints {

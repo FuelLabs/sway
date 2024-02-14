@@ -15,8 +15,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.75.0
-  NIGHTLY_RUST_VERSION: nightly-2023-12-27
+  RUST_VERSION: 1.76.0
+  NIGHTLY_RUST_VERSION: nightly-2024-02-07
 
 jobs:
   get-fuel-core-version:
@@ -152,10 +152,7 @@ jobs:
       - uses: buildjet/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
+            ~/.cargo/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Forc
@@ -376,10 +373,7 @@ jobs:
       - uses: buildjet/cache@v3
         with:
           path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
+            ~/.cargo/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build All Tests
