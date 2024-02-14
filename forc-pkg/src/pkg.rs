@@ -7,6 +7,7 @@ use crate::{
     source::{self, IPFSNode, Source},
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
+use forc_tracing::println_warning;
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
@@ -50,7 +51,7 @@ use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning}
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 type GraphIx = u32;
 type Node = Pinned;
@@ -492,7 +493,7 @@ impl BuiltPackage {
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify.clone())?;
 
-        info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
+        debug!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -2036,52 +2037,50 @@ pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 fn build_profile_from_opts(
     build_profiles: &HashMap<String, BuildProfile>,
     build_options: &BuildOpts,
-) -> Result<(String, BuildProfile)> {
+) -> Result<BuildProfile> {
     let BuildOpts {
         pkg,
         print,
+        time_phases,
         build_profile,
         release,
-        time_phases,
         metrics_outfile,
         tests,
         error_on_warnings,
         experimental,
         ..
     } = build_options;
-    let mut selected_build_profile = BuildProfile::DEBUG;
 
-    match &build_profile {
-        Some(build_profile) => {
-            if *release {
-                warn!(
-                    "You specified both {} and 'release' profiles. Using the 'release' profile",
+    let selected_profile_name = match &build_profile {
+        Some(build_profile) => match release {
+            true => {
+                println_warning(&format!(
+                    "Both {} and 'release' profiles were specified. Using the 'release' profile",
                     build_profile
-                );
-                selected_build_profile = BuildProfile::RELEASE;
-            } else {
-                selected_build_profile = build_profile;
+                ));
+                BuildProfile::RELEASE
             }
-        }
-        None => {
-            if *release {
-                selected_build_profile = BuildProfile::RELEASE;
-            }
-        }
-    }
+            false => build_profile,
+        },
+        None => match release {
+            true => BuildProfile::RELEASE,
+            false => BuildProfile::DEBUG,
+        },
+    };
 
     // Retrieve the specified build profile
     let mut profile = build_profiles
-        .get(selected_build_profile)
+        .get(selected_profile_name)
         .cloned()
         .unwrap_or_else(|| {
             warn!(
                 "provided profile option {} is not present in the manifest file. \
             Using default profile.",
-                selected_build_profile
+                selected_profile_name
             );
             Default::default()
         });
+    profile.name = selected_profile_name.into();
     profile.print_ast |= print.ast;
     if profile.print_dca_graph.is_none() {
         profile.print_dca_graph = print.dca_graph.clone();
@@ -2102,7 +2101,18 @@ fn build_profile_from_opts(
     profile.error_on_warnings |= error_on_warnings;
     profile.experimental = experimental.clone();
 
-    Ok((selected_build_profile.to_string(), profile))
+    Ok(profile)
+}
+
+/// Returns a formatted string of the selected build profile and targets.
+fn profile_target_string(profile_name: &str, build_target: &BuildTarget) -> String {
+    let mut targets = vec![format!("{build_target}")];
+    match profile_name {
+        BuildProfile::DEBUG => targets.insert(0, "unoptimized".into()),
+        BuildProfile::RELEASE => targets.insert(0, "optimized".into()),
+        _ => {}
+    };
+    format!("{profile_name} [{}] target(s)", targets.join(" + "))
 }
 
 /// Check if the given node is a contract dependency of any node in the graph.
@@ -2143,7 +2153,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .find(|&pkg_manifest| pkg_manifest.dir() == path);
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
     // Get the selected build profile using build options
-    let (profile_name, build_profile) = build_profile_from_opts(&build_profiles, &build_options)?;
+    let build_profile = build_profile_from_opts(&build_profiles, &build_options)?;
     // If this is a workspace we want to have all members in the output.
     let outputs = match curr_manifest {
         Some(pkg_manifest) => std::iter::once(
@@ -2164,16 +2174,20 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
 
     let finished = ansi_term::Colour::Green.bold().paint("Finished");
-    info!("  {finished} {profile_name} in {:?}", build_start.elapsed());
+    info!(
+        "  {finished} {} in {:.2}s",
+        profile_target_string(&build_profile.name, build_target),
+        build_start.elapsed().as_secs_f32()
+    );
     for (node_ix, built_package) in built_packages.into_iter() {
         print_pkg_summary_header(&built_package);
         let pinned = &graph[node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
             .ok_or_else(|| anyhow!("Couldn't find member manifest for {}", pinned.name))?;
-        let output_dir = output_dir
-            .clone()
-            .unwrap_or_else(|| default_output_directory(pkg_manifest.dir()).join(&profile_name));
+        let output_dir = output_dir.clone().unwrap_or_else(|| {
+            default_output_directory(pkg_manifest.dir()).join(&build_profile.name)
+        });
         // Output artifacts for the built package
         if let Some(outfile) = &binary_outfile {
             built_package.write_bytecode(outfile.as_ref())?;
@@ -2208,7 +2222,7 @@ fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
     let name_ansi = ansi_term::Style::new()
         .bold()
         .paint(&built_pkg.descriptor.name);
-    info!("{padding}{ty_ansi} {name_ansi}");
+    debug!("{padding}{ty_ansi} {name_ansi}");
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.

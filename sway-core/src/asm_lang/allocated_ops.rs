@@ -43,7 +43,7 @@ impl fmt::Display for AllocatedRegister {
 }
 
 impl AllocatedRegister {
-    fn to_reg_id(&self) -> fuel_asm::RegId {
+    pub(crate) fn to_reg_id(&self) -> fuel_asm::RegId {
         match self {
             AllocatedRegister::Allocated(a) => fuel_asm::RegId::new(a + 16),
             AllocatedRegister::Constant(constant) => constant.to_reg_id(),
@@ -152,6 +152,10 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
         AllocatedRegister,
     ),
+    PSHH(VirtualImmediate24),
+    PSHL(VirtualImmediate24),
+    POPH(VirtualImmediate24),
+    POPL(VirtualImmediate24),
     SB(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
     SW(AllocatedRegister, AllocatedRegister, VirtualImmediate12),
 
@@ -309,6 +313,9 @@ impl AllocatedOpcode {
             MCP(_r1, _r2, _r3) => vec![],
             MCPI(_r1, _r2, _imm) => vec![],
             MEQ(r1, _r2, _r3, _r4) => vec![r1],
+            PSHH(_mask) | PSHL(_mask) | POPH(_mask) | POPL(_mask) => {
+                panic!("Cannot determine defined registers for register PUSH/POP instructions")
+            }
             SB(_r1, _r2, _i) => vec![],
             SW(_r1, _r2, _i) => vec![],
 
@@ -431,6 +438,10 @@ impl fmt::Display for AllocatedOpcode {
             MCP(a, b, c) => write!(fmtr, "mcp  {a} {b} {c}"),
             MCPI(a, b, c) => write!(fmtr, "mcpi {a} {b} {c}"),
             MEQ(a, b, c, d) => write!(fmtr, "meq  {a} {b} {c} {d}"),
+            PSHH(mask) => write!(fmtr, "pshh {mask}"),
+            PSHL(mask) => write!(fmtr, "pshl {mask}"),
+            POPH(mask) => write!(fmtr, "poph {mask}"),
+            POPL(mask) => write!(fmtr, "popl {mask}"),
             SB(a, b, c) => write!(fmtr, "sb   {a} {b} {c}"),
             SW(a, b, c) => write!(fmtr, "sw   {a} {b} {c}"),
 
@@ -596,6 +607,10 @@ impl AllocatedOp {
             MEQ(a, b, c, d) => {
                 op::MEQ::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
+            PSHH(mask) => op::PSHH::new(mask.value.into()).into(),
+            PSHL(mask) => op::PSHL::new(mask.value.into()).into(),
+            POPH(mask) => op::POPH::new(mask.value.into()).into(),
+            POPL(mask) => op::POPL::new(mask.value.into()).into(),
             SB(a, b, c) => op::SB::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
             SW(a, b, c) => op::SW::new(a.to_reg_id(), b.to_reg_id(), c.value.into()).into(),
 
