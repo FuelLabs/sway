@@ -124,7 +124,7 @@ pub(crate) fn compile_const_decl(
         (_, Some(config_val), _) => Ok(Some(config_val)),
         (None, None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.items().check_symbol(&call_path.suffix);
+            let decl = module_ns.current_items().check_symbol(&call_path.suffix);
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
@@ -1179,10 +1179,12 @@ mod tests {
         let handler = Handler::default();
         let mut context = Context::new(engines.se(), sway_ir::ExperimentalFlags::default());
         let mut md_mgr = MetadataManager::default();
-        let mut core_lib = namespace::Module::default();
-        core_lib.name = Some(sway_types::Ident::new_no_span(
-            "assert_is_constant_test".to_string(),
-        ));
+        let core_lib = namespace::Module {
+            name: Some(sway_types::Ident::new_no_span(
+                "assert_is_constant_test".to_string(),
+            )),
+            ..Default::default()
+        };
 
         let r = crate::compile_to_ast(
             &handler,

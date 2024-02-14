@@ -93,7 +93,7 @@ impl<'a> HoverLinkContents<'a> {
             let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
             let impl_spans = namespace
                 .module()
-                .items()
+                .current_items()
                 .get_impl_spans_for_trait_name(&call_path);
             self.add_implementations(&trait_decl.span(), impl_spans);
         }
@@ -104,7 +104,7 @@ impl<'a> HoverLinkContents<'a> {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace
                 .module()
-                .items()
+                .current_items()
                 .get_impl_spans_for_decl(self.engines, ty_decl);
             self.add_implementations(&ty_decl.span(), impl_spans);
         }
@@ -115,7 +115,7 @@ impl<'a> HoverLinkContents<'a> {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace
                 .module()
-                .items()
+                .current_items()
                 .get_impl_spans_for_type(self.engines, type_id);
             self.add_implementations(decl_span, impl_spans);
         }
