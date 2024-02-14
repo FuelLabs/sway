@@ -4,3 +4,6 @@ entry = "main.sw"
 implicit-std = false
 license = "Apache-2.0"
 name = "abi_superabis"
+
+[build-profile.hi]
+include-tests = true

@@ -10,7 +10,7 @@ use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
@@ -136,8 +136,7 @@ pub struct Opts {
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
+    pub build_profile: String,
     /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
     ///
     /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
