@@ -1,11 +1,10 @@
+use crate::NodeTarget;
 use clap::Parser;
 pub use forc::cli::shared::{BuildOutput, Minify, Pkg, Print};
-use forc_pkg::build_profile::BuildProfile;
+use forc_pkg::BuildProfile;
 pub use forc_tx::{Gas, Maturity};
 pub use forc_util::tx_utils::Salt;
 use fuel_crypto::SecretKey;
-
-use crate::NodeTarget;
 
 forc_util::cli_examples! {
    super::Command {
