@@ -10,40 +10,40 @@ use crate::cli::plugin::find_all;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
-enum Shell {
+enum Target {
     BuiltIn(BuiltInShell),
     Fig,
 }
 
-impl FromStr for Shell {
+impl FromStr for Target {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "fig" => Ok(Shell::Fig),
-            other => Ok(Shell::BuiltIn(<clap_complete::Shell as FromStr>::from_str(
-                other,
-            )?)),
+            "fig" => Ok(Target::Fig),
+            other => Ok(Target::BuiltIn(
+                <clap_complete::Shell as FromStr>::from_str(other)?,
+            )),
         }
     }
 }
 
-impl ValueEnum for Shell {
+impl ValueEnum for Target {
     fn value_variants<'a>() -> &'a [Self] {
         &[
-            Shell::BuiltIn(BuiltInShell::Bash),
-            Shell::BuiltIn(BuiltInShell::Elvish),
-            Shell::BuiltIn(BuiltInShell::Fish),
-            Shell::BuiltIn(BuiltInShell::PowerShell),
-            Shell::BuiltIn(BuiltInShell::Zsh),
-            Shell::Fig,
+            Target::BuiltIn(BuiltInShell::Bash),
+            Target::BuiltIn(BuiltInShell::Elvish),
+            Target::BuiltIn(BuiltInShell::Fish),
+            Target::BuiltIn(BuiltInShell::PowerShell),
+            Target::BuiltIn(BuiltInShell::Zsh),
+            Target::Fig,
         ]
     }
 
     fn to_possible_value<'a>(&self) -> Option<clap::PossibleValue<'a>> {
         match self {
-            Shell::BuiltIn(shell) => shell.to_possible_value(),
-            Shell::Fig => Some(clap::PossibleValue::new("fig")),
+            Target::BuiltIn(shell) => shell.to_possible_value(),
+            Target::Fig => Some(clap::PossibleValue::new("fig")),
         }
     }
 }
@@ -56,8 +56,8 @@ pub struct Command {
     /// [possible values: zsh, bash, fish, powershell, elvish]
     ///
     /// For more info: https://fuellabs.github.io/sway/latest/forc/commands/forc_completions.html
-    #[clap(short = 'S', long)]
-    shell: Shell,
+    #[clap(short = 'T', long)]
+    target: Target,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
@@ -83,9 +83,9 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
     cmd.subcommands.append(&mut plugins);
 
     let mut cmd = cmd.to_clap();
-    match command.shell {
-        Shell::Fig => print_completions(clap_complete_fig::Fig, &mut cmd),
-        Shell::BuiltIn(shell) => print_completions(shell, &mut cmd),
+    match command.target {
+        Target::Fig => print_completions(clap_complete_fig::Fig, &mut cmd),
+        Target::BuiltIn(shell) => print_completions(shell, &mut cmd),
     }
     Ok(())
 }
