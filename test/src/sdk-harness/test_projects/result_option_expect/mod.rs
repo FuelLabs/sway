@@ -2,13 +2,13 @@ use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
 
 abigen!(Contract(
     name = "ExpectTestingContract",
-    abi = "test_projects/result_option_expect/out/debug/result_option_expect-abi.json"
+    abi = "test_projects/result_option_expect/out/release/result_option_expect-abi.json"
 ));
 
 async fn setup() -> (ExpectTestingContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/result_option_expect/out/debug/result_option_expect.bin",
+        "test_projects/result_option_expect/out/release/result_option_expect.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
