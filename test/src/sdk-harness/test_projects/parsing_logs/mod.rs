@@ -56,18 +56,18 @@ async fn test_parse_logged_private_structs() -> Result<()> {
     let contract_methods = instance.methods();
     let response = contract_methods.produce_logs_private_structs().call().await?;
 
-    let log_address = response.decode_logs_with_type::<Address>()?;
-    let log_contract_id = response.decode_logs_with_type::<ContractId>()?;
-    let log_asset_id = response.decode_logs_with_type::<AssetId>()?;
+    let log_address = response.decode_logs_with_type::<Address>().unwrap().pop().unwrap();
+    let log_contract_id = response.decode_logs_with_type::<ContractId>().unwrap().pop().unwrap();
+    let log_asset_id = response.decode_logs_with_type::<AssetId>().unwrap().pop().unwrap();
 
-    let expected_bits256 = Bits256([
+    let expected_bits256 = [
         239, 134, 175, 169, 105, 108, 240, 220, 99, 133, 226, 196, 7, 166, 225, 89, 161, 16, 60,
         239, 183, 226, 174, 6, 54, 251, 51, 211, 203, 42, 158, 74,
-    ]);
+    ];
 
-    assert_eq!(*log_address.hash(), vec![expected_bits256]);
-    assert_eq!(*log_contract_id.hash(), vec![expected_bits256]);
-    assert_eq!(*log_asset_id.hash(), vec![expected_bits256]);
+    assert_eq!(log_address, Address::new(expected_bits256));
+    assert_eq!(log_contract_id, ContractId::new(expected_bits256));
+    assert_eq!(log_asset_id, AssetId::new(expected_bits256));
 
     Ok(())
 }
