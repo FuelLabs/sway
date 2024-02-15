@@ -7,7 +7,29 @@ use ::hash::{Hash, Hasher};
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
     /// The underlying raw `b256` data of the address.
-    pub value: b256,
+    value: b256,
+}
+
+impl Address {
+    /// Returns the underlying raw `b256` data of the address.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The raw data of the address.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() -> {
+    ///     let my_address = Address::from(ZERO_B256);
+    ///     assert(my_address.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.value
+    }
 }
 
 impl core::ops::Eq for Address {

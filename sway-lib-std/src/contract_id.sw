@@ -7,12 +7,34 @@ use ::hash::{Hash, Hasher};
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
     /// The underlying raw `b256` data of the contract id.
-    pub value: b256,
+    value: b256,
 }
 
 impl core::ops::Eq for ContractId {
     fn eq(self, other: Self) -> bool {
         self.value == other.value
+    }
+}
+
+impl ContractId {
+    /// Returns the underlying raw `b256` data of the contract id.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The raw data of the contract id.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() -> {
+    ///     let my_contract = ContractId::from(ZERO_B256);
+    ///     assert(my_contract.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.value
     }
 }
 
