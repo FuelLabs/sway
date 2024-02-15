@@ -50,7 +50,7 @@ async fn test_parse_logged_varibles() -> Result<()> {
 }
 
 #[tokio::test]
-async fn test_parse_logged_varibles() -> Result<()> {
+async fn test_parse_logged_private_structs() -> Result<()> {
     let (instance, _id) = get_parsing_logs_instance().await;
 
     let contract_methods = instance.methods();
@@ -65,9 +65,9 @@ async fn test_parse_logged_varibles() -> Result<()> {
         239, 183, 226, 174, 6, 54, 251, 51, 211, 203, 42, 158, 74,
     ]);
 
-    assert_eq!(*log_address, vec![expected_bits256]);
-    assert_eq!(*log_contract_id, vec![expected_bits256]);
-    assert_eq!(*log_asset_id, vec![expected_bits256]);
+    assert_eq!(*log_address.hash(), vec![expected_bits256]);
+    assert_eq!(*log_contract_id.hash(), vec![expected_bits256]);
+    assert_eq!(*log_asset_id.hash(), vec![expected_bits256]);
 
     Ok(())
 }
