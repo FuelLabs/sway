@@ -137,9 +137,8 @@ pub struct Opts {
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
     pub build_profile: String,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     pub release: bool,
     /// Should warnings be treated as errors?
     pub error_on_warnings: bool,
