@@ -205,6 +205,9 @@ impl Type {
             // Unions are special.  We say unions are equivalent to any of their variant types.
             (_, TypeContent::Union(_)) => other.eq(context, self),
             (TypeContent::Union(l), _) => l.iter().any(|field_ty| other.eq(context, field_ty)),
+            // Never type can coerce into any other type.
+            (TypeContent::Never, _) => true,
+            (_, TypeContent::Never) => true,
             (TypeContent::Slice, TypeContent::Slice) => true,
             (TypeContent::Pointer(l), TypeContent::Pointer(r)) => l.eq(context, r),
             _ => false,

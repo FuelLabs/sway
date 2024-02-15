@@ -873,7 +873,10 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     }
 
     fn verify_ret(&self, val: &Value, ty: &Type) -> Result<(), IrError> {
-        if self.ty_not_eq(&self.cur_function.get_return_type(self.context), ty)
+        if !self
+            .cur_function
+            .get_return_type(self.context)
+            .eq(self.context, ty)
             || self.opt_ty_not_eq(&val.get_type(self.context), &Some(*ty))
         {
             Err(IrError::VerifyReturnMismatchedTypes(
@@ -1014,15 +1017,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     // This is a really common operation above... calling `Value::get_type()` and then failing when
     // two don't match.
     fn opt_ty_not_eq(&self, l_ty: &Option<Type>, r_ty: &Option<Type>) -> bool {
-        l_ty.is_none()
-            || r_ty.is_none()
-            || (!l_ty.unwrap().is_never(self.context)
-                && !r_ty.unwrap().is_never(self.context)
-                && !l_ty.unwrap().eq(self.context, r_ty.as_ref().unwrap()))
-    }
-
-    fn ty_not_eq(&self, l_ty: &Type, r_ty: &Type) -> bool {
-        !l_ty.is_never(self.context) && !r_ty.is_never(self.context) && !l_ty.eq(self.context, r_ty)
+        l_ty.is_none() || r_ty.is_none() && !l_ty.unwrap().eq(self.context, r_ty.as_ref().unwrap())
     }
 
     fn get_ptr_type<F: FnOnce(String) -> IrError>(
