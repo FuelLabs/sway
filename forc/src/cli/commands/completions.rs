@@ -128,7 +128,7 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
                 .collect::<Vec<_>>();
             format!(
                 "{}/_forc",
-                paths.get(0).expect("No writable path found for zsh")
+                paths.first().expect("No writable path found for zsh")
             )
         }
         _ => format!("{}/.forc.autocomplete", dir),
@@ -153,12 +153,10 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
         let file = File::open(&file_path).expect("Open the shell config file");
         let reader = BufReader::new(file);
 
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                if line.contains(&forc_autocomplete_path) {
-                    println!("Forc completions is already installed");
-                    return Ok(());
-                }
+        for line in reader.lines().map_while(Result::ok) {
+            if line.contains(&forc_autocomplete_path) {
+                println!("Forc completions is already installed");
+                return Ok(());
             }
         }
 
