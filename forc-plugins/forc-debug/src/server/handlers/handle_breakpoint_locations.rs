@@ -25,11 +25,9 @@ impl DapServer {
         let breakpoints = existing_breakpoints
             .iter()
             .filter_map(|bp| {
-                bp.line.and_then(|line| {
-                    Some(BreakpointLocation {
-                        line,
-                        ..Default::default()
-                    })
+                bp.line.map(|line| BreakpointLocation {
+                    line,
+                    ..Default::default()
                 })
             })
             .collect();
