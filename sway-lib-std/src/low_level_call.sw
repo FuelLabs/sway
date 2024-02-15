@@ -1,6 +1,7 @@
 //! Utilities to help with low level calls.
 library;
 
+use ::alloc::alloc_bytes;
 use ::assert::assert;
 use ::asset_id::AssetId;
 use ::bytes::Bytes;
@@ -62,13 +63,12 @@ pub struct CallParams {
 /// }
 /// ```
 fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
-    let mut target_bytes = Bytes::with_capacity(32);
-    target_bytes.len = 32;
+    let target_ptr = alloc_bytes(32);
 
     __addr_of(contract_id)
-        .copy_bytes_to(target_bytes.buf.ptr, 32);
+        .copy_bytes_to(target_ptr, 32);
 
-    target_bytes
+    Bytes::from(raw_slice::from_parts::<u8>(target_ptr, 32))
 }
 
 /// Represent a raw pointer as a `Bytes`, so it can be concatenated with a payload.
@@ -100,15 +100,14 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
 /// }
 /// ```
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
-    let mut bytes = Bytes::with_capacity(8);
-    bytes.len = 8;
+    let target_ptr = alloc_bytes(8);
 
     // Need to copy pointer to heap so it has an address and can be copied onto the bytes buffer
     let mut ptr_on_heap = Vec::new();
     ptr_on_heap.push(ptr);
-    ptr_on_heap.buf.ptr.copy_bytes_to(bytes.buf.ptr, 8);
+    ptr_on_heap.ptr().copy_bytes_to(target_ptr, 8);
 
-    bytes
+    Bytes::from(raw_slice::from_parts::<u8>(target_ptr, 8))
 }
 
 /// Call a target contract with an already-encoded payload.
@@ -145,7 +144,7 @@ fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
 /// ```
 fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
     asm(
-        r1: payload.buf.ptr,
+        r1: payload.ptr(),
         r2: call_params.coins,
         r3: call_params.asset_id,
         r4: call_params.gas,
@@ -210,7 +209,7 @@ fn create_payload(
     if (single_value_type_arg) {
         payload.append(calldata); // When calldata is copy type, just pass calldata
     } else {
-        payload.append(ptr_as_bytes(calldata.buf.ptr)); // When calldata is reference type, need to get pointer as bytes
+        payload.append(ptr_as_bytes(calldata.ptr())); // When calldata is reference type, need to get pointer as bytes
     };
 
     payload
