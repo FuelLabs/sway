@@ -168,8 +168,12 @@ impl<'a> TypeCheckContext<'a> {
     }
 
     /// Scope the `TypeCheckContext` with the given `Namespace`.
-    pub fn scoped(self, namespace: &'a mut Namespace) -> TypeCheckContext<'a> {
-        TypeCheckContext {
+    pub fn scoped<T>(
+        self,
+        namespace: &'a mut Namespace,
+        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
+    ) -> Result<T, ErrorEmitted> {
+        let ctx = TypeCheckContext {
             namespace,
             type_annotation: self.type_annotation,
             function_type_annotation: self.function_type_annotation,
@@ -187,7 +191,8 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-        }
+        };
+        with_scoped_ctx(ctx)
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
@@ -443,13 +448,16 @@ impl<'a> TypeCheckContext<'a> {
         name: Ident,
         item: TyDecl,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.module_mut().items_mut().insert_symbol(
-            handler,
-            name,
-            item,
-            self.const_shadowing_mode,
-            self.generic_shadowing_mode,
-        )
+        self.namespace
+            .module_mut()
+            .current_items_mut()
+            .insert_symbol(
+                handler,
+                name,
+                item,
+                self.const_shadowing_mode,
+                self.generic_shadowing_mode,
+            )
     }
 
     /// Get the engines needed for engine threading.
@@ -942,7 +950,7 @@ impl<'a> TypeCheckContext<'a> {
 
         // grab the local items from the local module
         let local_items = local_module
-            .items()
+            .current_items()
             .get_items_for_type(self.engines, type_id);
 
         // resolve the type
@@ -966,7 +974,7 @@ impl<'a> TypeCheckContext<'a> {
 
         // grab the items from where the type is declared
         let mut type_items = type_module
-            .items()
+            .current_items()
             .get_items_for_type(self.engines, type_id);
 
         let mut items = local_items;
@@ -1363,7 +1371,7 @@ impl<'a> TypeCheckContext<'a> {
 
         self.namespace
             .module_mut()
-            .items_mut()
+            .current_items_mut()
             .implemented_traits
             .insert(
                 handler,
@@ -1399,7 +1407,7 @@ impl<'a> TypeCheckContext<'a> {
 
         self.namespace
             .module()
-            .items()
+            .current_items()
             .implemented_traits
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 self.engines,
@@ -1585,7 +1593,7 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         self.namespace
             .module_mut()
-            .items_mut()
+            .current_items_mut()
             .implemented_traits
             .insert_for_type(self.engines, type_id);
     }
@@ -1610,7 +1618,7 @@ impl<'a> TypeCheckContext<'a> {
 
         self.namespace
             .module_mut()
-            .items_mut()
+            .current_items_mut()
             .implemented_traits
             .check_if_trait_constraints_are_satisfied_for_type(
                 &handler,

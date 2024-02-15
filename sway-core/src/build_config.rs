@@ -1,12 +1,12 @@
-use std::{path::PathBuf, sync::Arc};
-
 use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use std::{path::PathBuf, sync::Arc};
+use strum::{Display, EnumString};
 
 #[derive(
     Clone,
     Copy,
     Debug,
+    Display,
     Default,
     Eq,
     PartialEq,

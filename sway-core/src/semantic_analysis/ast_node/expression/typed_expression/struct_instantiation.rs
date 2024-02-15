@@ -216,55 +216,55 @@ pub(crate) fn struct_instantiation(
     }
 
     let mut struct_namespace = ctx.namespace.clone();
-    let mut struct_ctx = ctx
-        .scoped(&mut struct_namespace)
-        .with_generic_shadowing_mode(GenericShadowingMode::Allow);
+    ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
+        .scoped(&mut struct_namespace, |mut struct_ctx| {
+            // Insert struct type parameter into namespace.
+            // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
+            for type_parameter in struct_decl.type_parameters {
+                type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
+            }
 
-    // Insert struct type parameter into namespace.
-    // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
-    for type_parameter in struct_decl.type_parameters {
-        type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
-    }
+            type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
 
-    type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
+            let exp = ty::TyExpression {
+                expression: ty::TyExpressionVariant::StructExpression {
+                    struct_ref,
+                    fields: typed_fields,
+                    instantiation_span: inner_span,
+                    call_path_binding,
+                },
+                return_type: type_id,
+                span,
+            };
 
-    let exp = ty::TyExpression {
-        expression: ty::TyExpressionVariant::StructExpression {
-            struct_ref,
-            fields: typed_fields,
-            instantiation_span: inner_span,
-            call_path_binding,
-        },
-        return_type: type_id,
-        span,
-    };
+            Ok(exp)
+        })
+}
 
-    return Ok(exp);
-
-    fn collect_struct_constructors(
-        namespace: &Namespace,
-        engines: &crate::Engines,
-        struct_type_id: TypeId,
-        is_in_storage_declaration: bool,
-    ) -> Vec<String> {
-        // Searching only for public constructors is a bit too restrictive because we can also have them in local private impls.
-        // Checking that would be a questionable additional effort considering that this search gives good suggestions for
-        // common patterns in which constructors can be found.
-        // Also, strictly speaking, we could also have public module functions that create structs,
-        // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
-        // that we wish to encourage.
-        namespace
-            .module()
-            .items()
-            .get_items_for_type(engines, struct_type_id)
-            .iter()
-            .filter_map(|item| match item {
-                ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
-                _ => None,
-            })
-            .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
-            .filter(|fn_decl| {
-                matches!(fn_decl.visibility, Visibility::Public)
+fn collect_struct_constructors(
+    namespace: &Namespace,
+    engines: &crate::Engines,
+    struct_type_id: TypeId,
+    is_in_storage_declaration: bool,
+) -> Vec<String> {
+    // Searching only for public constructors is a bit too restrictive because we can also have them in local private impls.
+    // Checking that would be a questionable additional effort considering that this search gives good suggestions for
+    // common patterns in which constructors can be found.
+    // Also, strictly speaking, we could also have public module functions that create structs,
+    // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
+    // that we wish to encourage.
+    namespace
+        .module()
+        .current_items()
+        .get_items_for_type(engines, struct_type_id)
+        .iter()
+        .filter_map(|item| match item {
+            ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
+            _ => None,
+        })
+        .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
+        .filter(|fn_decl| {
+            matches!(fn_decl.visibility, Visibility::Public)
                     && fn_decl
                         .is_constructor(engines, struct_type_id)
                         .unwrap_or_default()
@@ -273,19 +273,18 @@ pub(crate) fn struct_instantiation(
                     // a questionable additional effort considering that this simple heuristics will give
                     // us all the most common constructors like `default()` or `new()`.
                     && (!is_in_storage_declaration || fn_decl.parameters.is_empty())
-            })
-            .map(|fn_decl| {
-                // Removing the return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
-                format!("{}", engines.help_out((*fn_decl).clone()))
-                    .rsplit_once(" -> ")
-                    .unwrap()
-                    .0
-                    .to_string()
-            })
-            .sorted()
-            .dedup()
-            .collect_vec()
-    }
+        })
+        .map(|fn_decl| {
+            // Removing the return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
+            format!("{}", engines.help_out((*fn_decl).clone()))
+                .rsplit_once(" -> ")
+                .unwrap()
+                .0
+                .to_string()
+        })
+        .sorted()
+        .dedup()
+        .collect_vec()
 }
 
 /// Type checks the field arguments.
