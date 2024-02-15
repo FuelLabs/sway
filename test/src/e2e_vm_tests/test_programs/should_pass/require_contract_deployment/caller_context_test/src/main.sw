@@ -16,7 +16,7 @@ fn main() -> bool {
     let returned_contract_id = test_contract.get_id {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.value,
+        asset_id: BASE_ASSET_ID.bits(),
     }();
     let returned_contract_id_b256: b256 = returned_contract_id.into();
     assert(returned_contract_id_b256 == other_contract_id_b256);
@@ -26,7 +26,7 @@ fn main() -> bool {
     let returned_this_balance = test_contract.get_this_balance {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.value,
+        asset_id: BASE_ASSET_ID.bits(),
     }(base_asset_id);
     assert(returned_this_balance == 0);
 
@@ -34,7 +34,7 @@ fn main() -> bool {
     let returned_contract_balance = test_contract.get_balance_of_contract {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.value,
+        asset_id: BASE_ASSET_ID.bits(),
     }(base_asset_id, other_contract_id);
     assert(returned_contract_balance == 0);
 
