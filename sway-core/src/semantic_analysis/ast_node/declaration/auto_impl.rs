@@ -532,7 +532,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             self.ctx
                 .namespace
                 .module_mut()
-                .items_mut()
+                .current_items_mut()
                 .implemented_traits
                 .check_if_trait_constraints_are_satisfied_for_type(
                     &handler,
