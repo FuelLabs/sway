@@ -112,6 +112,8 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
         }
     });
 
+    // Where to store the autocomplete script, ZSH requires a special path, the other shells are
+    // stored in the same path and they are referenced form their respective config files
     let dir = home::home_dir().map(|p| p.display().to_string()).unwrap();
     let forc_autocomplete_path = match target {
         Target::Zsh => {
@@ -134,9 +136,13 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
         _ => format!("{}/.forc.autocomplete", dir),
     };
 
-    let mut file = File::create(&forc_autocomplete_path).expect("Open the shell config file");
+    let mut file = File::create(&forc_autocomplete_path).unwrap_or_else(|_| {
+        panic!("Cannot write to the autocomplete file in path {forc_autocomplete_path}")
+    });
     generate_autocomplete_script(target, &mut file);
 
+    // Check if the shell config file already has the forc completions. Some shells do not require
+    // this step, therefore this maybe None
     let user_shell_config = match target {
         Target::Fish => Some(format!("{}/.config/fish/config.fish", dir)),
         Target::Elvish => Some(format!("{}/.elvish/rc.elv", dir)),
@@ -150,6 +156,7 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
     };
 
     if let Some(file_path) = user_shell_config {
+        // Update the user_shell_config
         let file = File::open(&file_path).expect("Open the shell config file");
         let reader = BufReader::new(file);
 
