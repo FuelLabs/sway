@@ -27,3 +27,4 @@ benchmarks/
 
 # Generated files in test directories
 sway-lsp/tests/**/Forc.lock
+forc-plugins/forc-debug/tests/**/Forc.lock
