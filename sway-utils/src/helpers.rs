@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// Returns a vector of paths to Sway files found within the given directory and its subdirectories.
 pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
     let mut files = vec![];
     let mut dir_entries = vec![path];
@@ -26,35 +27,24 @@ pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
     files
 }
 
+/// Checks if the given file path points to a Sway file.
 pub fn is_sway_file(file: &Path) -> bool {
     let res = file.extension();
     file.is_file() && Some(OsStr::new(constants::SWAY_EXTENSION)) == res
 }
 
-/// create an iterator over all prefixes in a slice, smallest first
-///
-/// ```
-/// # use sway_utils::iter_prefixes;
-/// let val = [1, 2, 3];
-/// let mut it = iter_prefixes(&val);
-/// assert_eq!(it.next(), Some([1].as_slice()));
-/// assert_eq!(it.next(), Some([1, 2].as_slice()));
-/// assert_eq!(it.next(), Some([1, 2, 3].as_slice()));
-/// assert_eq!(it.next(), None);
-///
-/// ```
+/// Create an iterator over all prefixes in a slice, smallest first.
 pub fn iter_prefixes<T>(slice: &[T]) -> impl DoubleEndedIterator<Item = &[T]> {
     (1..=slice.len()).map(move |len| &slice[..len])
 }
 
-/// Continually go down in the file tree until a Forc manifest file is found.
+/// Continually goes down in the file tree until a Forc manifest file is found.
 pub fn find_nested_manifest_dir(starter_path: &Path) -> Option<PathBuf> {
     find_nested_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
-/// Continually go down in the file tree until a specified file is found.
-///
-/// Starts the search from child dirs of `starter_path`.
+/// Continually goes down in the file tree until a specified file is found.
+/// Starts the search from child directories of `starter_path`.
 pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option<PathBuf> {
     use walkdir::WalkDir;
     let starter_dir = if starter_path.is_dir() {
@@ -76,10 +66,8 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     })
 }
 
-/// Continually go up in the file tree until a specified file is found.
-///
+/// Continually goes up in the file tree until a specified file is found.
 /// Starts the search from `starter_path`.
-#[allow(clippy::branches_sharing_code)]
 pub fn find_parent_dir_with_file<P: AsRef<Path>>(
     starter_path: P,
     file_name: &str,
@@ -98,12 +86,13 @@ pub fn find_parent_dir_with_file<P: AsRef<Path>>(
     }
     None
 }
-/// Continually go up in the file tree until a Forc manifest file is found.
+
+/// Continually goes up in the file tree until a Forc manifest file is found.
 pub fn find_parent_manifest_dir<P: AsRef<Path>>(starter_path: P) -> Option<PathBuf> {
     find_parent_dir_with_file(starter_path, constants::MANIFEST_FILE_NAME)
 }
 
-/// Continually go up in the file tree until a Forc manifest file is found and given predicate
+/// Continually goes up in the file tree until a Forc manifest file is found and given predicate
 /// returns true.
 pub fn find_parent_manifest_dir_with_check<T: AsRef<Path>, F>(
     starter_path: T,
@@ -113,7 +102,7 @@ where
     F: Fn(&Path) -> bool,
 {
     find_parent_manifest_dir(starter_path).and_then(|manifest_dir| {
-        // If given check satisifies return current dir otherwise start searching from the parent.
+        // If given check satisfies, return current directory, otherwise start searching from the parent.
         if f(&manifest_dir) {
             Some(manifest_dir)
         } else if let Some(parent_dir) = manifest_dir.parent() {
