@@ -16,7 +16,7 @@ use ::hash::{Hash, Hasher};
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
-    pub value: b256,
+    value: b256,
 }
 
 impl Hash for AssetId {
@@ -182,6 +182,26 @@ impl AssetId {
         Self {
             value: 0x0000000000000000000000000000000000000000000000000000000000000000,
         }
+    }
+
+    /// Returns the underlying raw `b256` data of the asset id.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The raw data of the asset id.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() -> {
+    ///     let my_asset = AssetId::from(ZERO_B256);
+    ///     assert(my_asset.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.value
     }
 }
 

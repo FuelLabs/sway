@@ -54,7 +54,7 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// }
 /// ```
 pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
-    asm(balance, asset: asset_id.value, id: target.bits()) {
+    asm(balance, asset: asset_id.bits(), id: target.bits()) {
         bal balance asset id;
         balance: u64
     }
