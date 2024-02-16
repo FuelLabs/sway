@@ -1082,13 +1082,16 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }
-            Intrinsic::JmpToSsp => {
-                // The `revert` instruction
+            Intrinsic::JmpbSsp => {
+                let contr_id_val = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?
+                );
+
                 let span_md_idx = md_mgr.span_to_md(context, &span);
                 let val = self
                     .current_block
                     .append(context)
-                    .jmp_to_ssp()
+                    .jmpb_ssp(contr_id_val)
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }

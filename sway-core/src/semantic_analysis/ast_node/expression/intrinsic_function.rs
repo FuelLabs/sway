@@ -83,8 +83,8 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
-            Intrinsic::JmpToSsp => {
-                type_check_jmp_to_ssp(handler, ctx, kind, arguments, type_arguments, span)
+            Intrinsic::JmpbSsp => {
+                type_check_ldc_exec(handler, ctx, kind, arguments, type_arguments, span)
             }
         }
     }
@@ -1174,12 +1174,12 @@ fn type_check_revert(
     ))
 }
 
-/// Signature: `__jmp_to_ssp()`
-/// Description: Jumps to $ssp.
-/// Constraints: None.
-fn type_check_jmp_to_ssp(
+/// Signature: `__ldc_exec(contr_id: ContractId)`
+/// Description: Loads contract and transfers control to it.
+/// Constraints: contr_id has type `ContractId`.
+fn type_check_ldc_exec(
     handler: &Handler,
-    ctx: TypeCheckContext,
+    mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
@@ -1188,7 +1188,7 @@ fn type_check_jmp_to_ssp(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    if !arguments.is_empty() {
+    if arguments.len() != 1 {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
@@ -1204,10 +1204,18 @@ fn type_check_jmp_to_ssp(
         }));
     }
 
+    // Type check the argument which is the revert code
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
+    let contr_id = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
+
     Ok((
         ty::TyIntrinsicFunctionKind {
             kind,
-            arguments: vec![],
+            arguments: vec![contr_id],
             type_arguments: vec![],
             span,
         },
