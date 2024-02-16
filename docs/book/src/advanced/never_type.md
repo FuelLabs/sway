@@ -1,6 +1,8 @@
+# Never Type
+
 The Never type `!` represents the type of computations which never resolve to any value at all.
 
-# Additional Information
+## Additional Information
 
 `break`, `continue` and `return` expressions also have type `!`. For example we are allowed to
 write:
@@ -39,7 +41,7 @@ let x: u32 = {
 
 Regardless of the type of `x`, the return block of type `Never` will always coerce into `x` type.
 
-# Examples
+## Examples
 
 ```sway
 fn foo() {
