@@ -176,7 +176,7 @@ pub fn compile_html(
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&dir)?;
+    let manifest = ManifestFile::from_dir(dir)?;
     let pkg_manifest = if let ManifestFile::Package(pkg_manifest) = &manifest {
         pkg_manifest
     } else {

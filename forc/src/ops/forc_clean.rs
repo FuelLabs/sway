@@ -26,7 +26,7 @@ pub fn clean(command: CleanCommand) -> Result<()> {
             )
         }
     };
-    let manifest = ManifestFile::from_dir(&manifest_dir)?;
+    let manifest = ManifestFile::from_dir(manifest_dir)?;
     // If this is a workspace collect all member paths and clean each of them.
     let paths: Vec<PathBuf> = match manifest {
         ManifestFile::Package(_) => std::iter::once(this_dir).collect(),

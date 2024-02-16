@@ -1,3 +1,4 @@
+use crate::manifest::GenericManifestFile;
 use crate::{
     lock::Lock,
     manifest::{
@@ -6,7 +7,6 @@ use crate::{
     },
     source::{self, IPFSNode, Source},
 };
-use crate::manifest::GenericManifestFile;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_tracing::println_warning;
 use forc_util::{
@@ -581,7 +581,7 @@ impl BuildPlan {
             std::env::current_dir()?
         };
 
-        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
+        let manifest_file = ManifestFile::from_dir(manifest_dir)?;
         let member_manifests = manifest_file.member_manifests()?;
         // Check if we have members to build so that we are not trying to build an empty workspace.
         if member_manifests.is_empty() {

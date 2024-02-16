@@ -34,7 +34,7 @@ pub async fn update(command: UpdateCommand) -> Result<()> {
         None => std::env::current_dir()?,
     };
 
-    let manifest = ManifestFile::from_dir(&this_dir)?;
+    let manifest = ManifestFile::from_dir(this_dir)?;
     let lock_path = lock_path(manifest.dir());
     let old_lock = Lock::from_path(&lock_path).ok().unwrap_or_default();
     let offline = false;
