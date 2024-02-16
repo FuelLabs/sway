@@ -53,28 +53,26 @@ impl DapServer {
         }
 
         // 1. Build the packages
-        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
-            .map_err(|err| AdapterError::BuildFailed {
-                reason: format!("read manifest file: {:?}", err),
-            })?;
-        let pkg_manifest: PackageManifestFile =
-            manifest_file
-                .clone()
-                .try_into()
-                .map_err(|err: anyhow::Error| AdapterError::BuildFailed {
-                    reason: format!("package manifest: {:?}", err),
-                })?;
-        let member_manifests =
-            manifest_file
-                .member_manifests()
-                .map_err(|err| AdapterError::BuildFailed {
-                    reason: format!("member manifests: {:?}", err),
-                })?;
-        let lock_path = manifest_file
+        let pkg_manifest = forc_pkg::manifest::PackageManifestFile::from_dir(
+            &self.state.program_path,
+        )
+        .map_err(|err| AdapterError::BuildFailed {
+            reason: format!("read manifest file: {:?}", err),
+        })?;
+
+        let lock_path = pkg_manifest
             .lock_path()
             .map_err(|err| AdapterError::BuildFailed {
                 reason: format!("lock path: {:?}", err),
             })?;
+
+        let member_manifests =
+            pkg_manifest
+                .member_manifests()
+                .map_err(|err| AdapterError::BuildFailed {
+                    reason: format!("member manifests: {:?}", err),
+                })?;
+
         let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
             &member_manifests,
