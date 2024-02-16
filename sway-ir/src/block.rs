@@ -368,7 +368,10 @@ impl Block {
             matches!(
                 i,
                 Instruction {
-                    op: InstOp::Ret(..) | InstOp::FuelVm(FuelVmInstruction::Revert(..)),
+                    op: InstOp::Ret(..)
+                        | InstOp::FuelVm(
+                            FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..)
+                        ),
                     ..
                 }
             )

@@ -203,6 +203,7 @@ mod ir_builder {
                 / op_read_register()
                 / op_ret()
                 / op_revert()
+                / op_jmpb_ssp()
                 / op_smo()
                 / op_state_load_quad_word()
                 / op_state_load_word()
@@ -360,6 +361,11 @@ mod ir_builder {
             rule op_revert() -> IrAstOperation
                 = "revert" _ vn:id() {
                     IrAstOperation::Revert(vn)
+                }
+
+            rule op_jmpb_ssp() -> IrAstOperation
+                = "jmpb_ssp" _ vn:id() {
+                    IrAstOperation::JmpbSsp(vn)
                 }
 
             rule op_smo() -> IrAstOperation
@@ -722,6 +728,7 @@ mod ir_builder {
         ReadRegister(String),
         Ret(IrAstTy, String),
         Revert(String),
+        JmpbSsp(String),
         Smo(String, String, String, String),
         StateClear(String, String),
         StateLoadQuadWord(String, String, String),
@@ -1343,6 +1350,10 @@ mod ir_builder {
                     IrAstOperation::Revert(ret_val_name) => block
                         .append(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::JmpbSsp(offset_name) => block
+                        .append(context)
+                        .jmpb_ssp(*val_map.get(&offset_name).unwrap())
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::Smo(recipient, message, message_size, coins) => block
                         .append(context)

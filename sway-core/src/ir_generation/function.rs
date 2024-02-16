@@ -1095,7 +1095,7 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(TerminatorValue::new(val, context))
             }
             Intrinsic::JmpbSsp => {
-                let contr_id_val = return_on_termination_or_extract!(
+                let offset_val = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, &arguments[0])?
                 );
 
@@ -1103,7 +1103,7 @@ impl<'eng> FnCompiler<'eng> {
                 let val = self
                     .current_block
                     .append(context)
-                    .jmpb_ssp(contr_id_val)
+                    .jmpb_ssp(offset_val)
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }

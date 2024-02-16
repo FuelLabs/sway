@@ -84,7 +84,7 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::JmpbSsp => {
-                type_check_ldc_exec(handler, ctx, kind, arguments, type_arguments, span)
+                type_check_jmpb_ssp(handler, ctx, kind, arguments, type_arguments, span)
             }
         }
     }
@@ -1174,10 +1174,10 @@ fn type_check_revert(
     ))
 }
 
-/// Signature: `__ldc_exec(contr_id: ContractId)`
+/// Signature: `__jmpb_ssp(offset: u64)`
 /// Description: Loads contract and transfers control to it.
-/// Constraints: contr_id has type `ContractId`.
-fn type_check_ldc_exec(
+/// Constraints: offset has type `u64`.
+fn type_check_jmpb_ssp(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -1204,18 +1204,18 @@ fn type_check_ldc_exec(
         }));
     }
 
-    // Type check the argument which is the revert code
+    // Type check the argument which is the jmpb_ssp offset
     let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
         engines,
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
         None,
     ));
-    let contr_id = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
+    let offset = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
 
     Ok((
         ty::TyIntrinsicFunctionKind {
             kind,
-            arguments: vec![contr_id],
+            arguments: vec![offset],
             type_arguments: vec![],
             span,
         },

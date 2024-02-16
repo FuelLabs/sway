@@ -666,7 +666,7 @@ impl InstOp {
             InstOp::Branch(_)
                 | InstOp::ConditionalBranch { .. }
                 | InstOp::Ret(..)
-                | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+                | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..))
         )
     }
 }
