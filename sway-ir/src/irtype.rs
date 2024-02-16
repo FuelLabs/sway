@@ -521,8 +521,9 @@ impl Type {
     /// when it's not embedded in an aggregate.
     pub fn size(&self, context: &Context) -> TypeSize {
         match self.get_content(context) {
-            TypeContent::Never => TypeSize::new(0),
-            TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit => TypeSize::new(1),
+            TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit | TypeContent::Never => {
+                TypeSize::new(1)
+            }
             // All integers larger than a byte are words since FuelVM only has memory operations on those two units.
             TypeContent::Uint(16)
             | TypeContent::Uint(32)

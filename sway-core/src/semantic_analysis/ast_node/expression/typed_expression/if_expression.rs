@@ -35,12 +35,7 @@ pub(crate) fn instantiate_if_expression(
     );
 
     let r#else = r#else.map(|r#else| {
-        let ty_to_check = if matches!(*type_engine.get(then.return_type), TypeInfo::Never) {
-            ctx.type_annotation()
-        } else {
-            then.return_type
-        };
-        // Check the  block return type
+        // Check the else block return type
         type_engine.unify(
             handler,
             engines,

@@ -138,6 +138,9 @@ impl<'a> Unifier<'a> {
             }
 
             (Never, Never) => (),
+            // Removing the line below allows Unknown to be replaced with Never.
+            // This causes problems while doing unification of if branches as the ctx.type_annotation that was Unknown would be replaced with Never.
+            (Never, Unknown) => {}
 
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
@@ -187,7 +190,6 @@ impl<'a> Unifier<'a> {
             // Never type coerces to any other type.
             // This should be after the unification of self types.
             (Never, _) => {}
-            (_, Never) => {}
 
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
