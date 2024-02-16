@@ -212,6 +212,7 @@ pub struct DependencyDetails {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub struct BuildProfile {
+    pub name: String,
     #[serde(default)]
     pub print_ast: bool,
     pub print_dca_graph: Option<String>,
@@ -716,6 +717,7 @@ impl BuildProfile {
 
     pub fn debug() -> Self {
         Self {
+            name: Self::DEBUG.into(),
             print_ast: false,
             print_dca_graph: None,
             print_dca_graph_url_format: None,
@@ -738,6 +740,7 @@ impl BuildProfile {
 
     pub fn release() -> Self {
         Self {
+            name: Self::RELEASE.to_string(),
             print_ast: false,
             print_dca_graph: None,
             print_dca_graph_url_format: None,

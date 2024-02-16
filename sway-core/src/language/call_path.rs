@@ -313,7 +313,12 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(use_synonym) = namespace.module().items().use_synonyms.get(&self.suffix) {
+            if let Some(use_synonym) = namespace
+                .module()
+                .current_items()
+                .use_synonyms
+                .get(&self.suffix)
+            {
                 synonym_prefixes = use_synonym.0.clone();
                 is_absolute = use_synonym.3;
                 let submodule = namespace.module().submodule(&[use_synonym.0[0].clone()]);
