@@ -70,7 +70,7 @@ impl From<raw_slice> for RawBytes {
     /// let vec_as_raw_slice = vec.as_raw_slice();
     /// let raw_bytes = RawBytes::from(vec_as_raw_slice);
     ///
-    /// assert(bytes.capacity == 3);
+    /// assert(raw_bytes.capacity == 3);
     /// ```
     fn from(slice: raw_slice) -> Self {
         Self {
