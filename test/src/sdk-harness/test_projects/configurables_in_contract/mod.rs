@@ -36,6 +36,8 @@ async fn contract_uses_default_configurables() -> Result<()> {
             field_2: 16,
         },
         EnumWithGeneric::VariantOne(true),
+        Address::new([0u8; 32]),
+        ContractId::new([0u8; 32]),
     );
 
     assert_eq!(response.value, expected_value);
@@ -59,11 +61,15 @@ async fn contract_configurables() -> Result<()> {
         field_2: 32,
     };
     let new_enum = EnumWithGeneric::VariantTwo;
+    let new_address = Address::new([1u8; 32]);
+    let new_contract_id = ContractId::new([1u8; 32]);
 
     let configurables = MyContractConfigurables::new()
         .with_STR_4(new_str.clone())
         .with_STRUCT(new_struct.clone())
-        .with_ENUM(new_enum.clone());
+        .with_ENUM(new_enum.clone())
+        .with_ADDRESS(new_address.clone())
+        .with_CONTRACT_ID(new_contract_id.clone());
 
     let contract_id = Contract::load_from(
         "test_projects/configurables_in_contract/out/release/configurables_in_contract.bin",
@@ -87,6 +93,8 @@ async fn contract_configurables() -> Result<()> {
         new_str,
         new_struct,
         new_enum,
+        new_address,
+        new_contract_id
     );
 
     assert_eq!(response.value, expected_value);
