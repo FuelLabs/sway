@@ -2903,3 +2903,37 @@ pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
 "#,
     );
 }
+
+#[test]
+fn impl_func_where() {
+    check(
+        r#"library;
+
+        impl<K, V> Foo<Bar<K, V>>
+        where
+            K: Hash,
+        {
+            pub fn baz(self, _: K, _: V)
+            where
+                K: Hash,
+        {
+                debug();
+            }
+        }
+    "#,
+        r#"library;
+
+impl<K, V> Foo<Bar<K, V>>
+where
+    K: Hash,
+{
+    pub fn baz(self, _: K, _: V)
+    where
+        K: Hash,
+    {
+        debug();
+    }
+}
+"#,
+    );
+}

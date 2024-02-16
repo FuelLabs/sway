@@ -32,6 +32,26 @@ pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl, bool)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
+/// Represents a lexical scope integer-based identifier, which can be used to reference
+/// specific a lexical scope.
+pub type LexicalScopeId = usize;
+
+/// Represents a lexical scope path, a vector of lexical scope identifiers, which specifies
+/// the path from root to a specific lexical scope in the hierarchy.
+pub type LexicalScopePath = Vec<LexicalScopeId>;
+
+/// A `LexicalScope` contains a set of all items that exist within the lexical scope via declaration or
+/// importing, along with all its associated hierarchical scopes.
+#[derive(Clone, Debug, Default)]
+pub struct LexicalScope {
+    /// The set of symbols, implementations, synonyms and aliases present within this scope.
+    pub items: Items,
+    /// The set of available scopes defined inside this scope's hierarchy.
+    pub children: Vec<LexicalScopeId>,
+    /// The parent scope associated with this scope. Will be None for a root scope.
+    pub parent: Option<LexicalScopeId>,
+}
+
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Items {
