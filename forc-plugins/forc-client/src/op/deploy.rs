@@ -8,6 +8,7 @@ use crate::{
     },
 };
 use anyhow::{bail, Context, Result};
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::default_output_directory;

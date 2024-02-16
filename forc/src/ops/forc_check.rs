@@ -1,6 +1,7 @@
 use crate::cli::CheckCommand;
 use anyhow::Result;
 use forc_pkg as pkg;
+use forc_pkg::manifest::GenericManifestFile;
 use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
 use sway_core::{language::ty, Engines};

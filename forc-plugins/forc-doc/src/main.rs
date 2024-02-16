@@ -8,6 +8,7 @@ use clap::Parser;
 use cli::Command;
 use colored::*;
 use forc_pkg as pkg;
+use forc_pkg::manifest::GenericManifestFile;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
 use pkg::{manifest::ManifestFile, PackageManifestFile};

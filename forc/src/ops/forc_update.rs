@@ -1,5 +1,6 @@
 use crate::cli::UpdateCommand;
 use anyhow::{anyhow, Result};
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, lock, Lock};
 use forc_util::lock_path;
 use pkg::manifest::ManifestFile;

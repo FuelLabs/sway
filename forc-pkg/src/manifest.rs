@@ -62,11 +62,11 @@ impl GenericManifestFile for ManifestFile {
     /// Returns a `PackageManifestFile` if the path is within a package directory, otherwise
     /// returns a `WorkspaceManifestFile` if within a workspace directory.
     fn from_dir<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let maybe_pkg_manifest = PackageManifestFile::from_dir(path);
+        let maybe_pkg_manifest = PackageManifestFile::from_dir(path.as_ref());
         let manifest_file = if let Err(e) = maybe_pkg_manifest {
             if e.to_string().contains("missing field `project`") {
                 // This might be a workspace manifest file
-                let workspace_manifest_file = WorkspaceManifestFile::from_dir(path)?;
+                let workspace_manifest_file = WorkspaceManifestFile::from_dir(path.as_ref())?;
                 ManifestFile::Workspace(workspace_manifest_file)
             } else {
                 bail!("{}", e)
@@ -85,11 +85,11 @@ impl GenericManifestFile for ManifestFile {
     /// Returns a `PackageManifestFile` if the path is pointing to package manifest, otherwise
     /// returns a `WorkspaceManifestFile` if it is pointing to a workspace manifest.
     fn from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let maybe_pkg_manifest = PackageManifestFile::from_file(path);
+        let maybe_pkg_manifest = PackageManifestFile::from_file(path.as_ref());
         let manifest_file = if let Err(e) = maybe_pkg_manifest {
             if e.to_string().contains("missing field `project`") {
                 // This might be a workspace manifest file
-                let workspace_manifest_file = WorkspaceManifestFile::from_file(path)?;
+                let workspace_manifest_file = WorkspaceManifestFile::from_file(path.as_ref())?;
                 ManifestFile::Workspace(workspace_manifest_file)
             } else {
                 bail!("{}", e)

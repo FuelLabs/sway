@@ -1,6 +1,7 @@
 use crate::server::{AdapterError, DapServer};
 use crate::types::Instruction;
-use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
+use forc_pkg::manifest::GenericManifestFile;
+use forc_pkg::{self, BuildProfile, Built, BuiltPackage};
 use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;

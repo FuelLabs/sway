@@ -23,7 +23,10 @@ use lsp_types::{
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, BuildPlan};
+use pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    BuildPlan,
+};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::PathBuf,

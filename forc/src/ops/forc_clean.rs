@@ -1,5 +1,6 @@
 use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::manifest::ManifestFile;
 use forc_util::default_output_directory;
 use std::path::PathBuf;

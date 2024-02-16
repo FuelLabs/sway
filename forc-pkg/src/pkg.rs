@@ -6,6 +6,7 @@ use crate::{
     },
     source::{self, IPFSNode, Source},
 };
+use crate::manifest::GenericManifestFile;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_tracing::println_warning;
 use forc_util::{
