@@ -38,8 +38,8 @@ impl ty::TyStorageDecl {
                         context,
                         md_mgr,
                         module,
-                        &StateIndex::new(i),
                         self.storage_namespace().as_ref().map(|id| id.as_str()),
+                        &StateIndex::new(i),
                     )
                 })
                 .filter_map(|s| s.map_err(|e| handler.emit_err(e)).ok())
@@ -58,8 +58,8 @@ impl ty::TyStorageField {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
+        ns: Option<&str>,
         ix: &StateIndex,
-        namespace: Option<&str>,
     ) -> Result<Vec<StorageSlot>, CompileError> {
         compile_constant_expression_to_constant(
             engines,
@@ -71,9 +71,7 @@ impl ty::TyStorageField {
             &self.initializer,
             true,
         )
-        .map(|constant| {
-            serialize_to_storage_slots(&constant, context, ix, namespace, &constant.ty, &[])
-        })
+        .map(|constant| serialize_to_storage_slots(&constant, context, ix, ns, &constant.ty, &[]))
     }
 }
 

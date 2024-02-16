@@ -569,7 +569,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
                 let ns = access.namespace.as_ref().map(|ns| ns.as_str());
-                self.compile_storage_access(context, &access.fields, &access.ix, ns, span_md_idx)
+                self.compile_storage_access(context, ns, &access.ix, &access.fields, span_md_idx)
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
@@ -2946,9 +2946,9 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
-        fields: &[ty::TyStorageAccessDescriptor],
-        ix: &StateIndex,
         ns: Option<&str>,
+        ix: &StateIndex,
+        fields: &[ty::TyStorageAccessDescriptor],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         // Get the list of indices used to access the storage field. This will be empty
