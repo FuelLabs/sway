@@ -363,7 +363,7 @@ impl TyDecl {
                 // declarations are not allowed
                 ctx.namespace
                     .module_mut()
-                    .items_mut()
+                    .current_items_mut()
                     .set_storage_declaration(handler, decl_ref.clone())?;
                 decl_ref.into()
             }

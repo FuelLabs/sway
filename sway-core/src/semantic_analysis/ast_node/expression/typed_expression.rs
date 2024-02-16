@@ -679,7 +679,7 @@ impl ty::TyExpression {
             ty::TyExpression::type_check(handler, ctx, expr.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines))
         });
-        let exp = instantiate_if_expression(handler, ctx, condition, then, r#else, span)?;
+        let exp = instantiate_if_expression(handler, ctx, condition, then.clone(), r#else, span)?;
         Ok(exp)
     }
 
@@ -1027,25 +1027,31 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        if !ctx.namespace.module().items().has_storage_declared() {
+        if !ctx
+            .namespace
+            .module()
+            .current_items()
+            .has_storage_declared()
+        {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
         let storage_fields = ctx
             .namespace
             .module()
-            .items()
+            .current_items()
             .get_storage_field_descriptors(handler, decl_engine)?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) = ctx.namespace.module().items().apply_storage_load(
-            handler,
-            ctx.engines,
-            ctx.namespace,
-            checkee,
-            &storage_fields,
-            storage_keyword_span,
-        )?;
+        let (storage_access, mut access_type) =
+            ctx.namespace.module().current_items().apply_storage_load(
+                handler,
+                ctx.engines,
+                ctx.namespace,
+                checkee,
+                &storage_fields,
+                storage_keyword_span,
+            )?;
 
         // The type of a storage access is `core::storage::StorageKey`. This is
         // the path to it.
@@ -2030,7 +2036,7 @@ impl ty::TyExpression {
                 };
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
                 let (ty_of_field, _ty_of_parent) =
-                    ctx.namespace.module().items().find_subfield_type(
+                    ctx.namespace.module().current_items().find_subfield_type(
                         handler,
                         ctx.engines(),
                         ctx.namespace,

@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
@@ -59,12 +61,12 @@ impl ty::TyMatchExpression {
     pub(crate) fn convert_to_typed_if_expression(
         self,
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let instantiate = Instantiate::new(ctx.engines, self.span.clone());
 
         if self.branches.is_empty() {
-            return instantiate_if_expression_for_empty_match_expression(
+            return Self::instantiate_if_expression_for_empty_match_expression(
                 handler,
                 ctx,
                 &instantiate,
@@ -75,161 +77,196 @@ impl ty::TyMatchExpression {
         }
 
         let typed_if_exp = handler.scope(|handler| {
-            // The typed if expression object that we will be building on to.
-            // We will do it bottom up, starting from the final `else`.
-            let mut typed_if_exp = None;
-
-            // For every branch, bottom-up, means in reverse.
-            for ty::TyMatchBranch {
-                matched_or_variant_index_vars,
-                condition,
-                result,
-                ..
-            } in self.branches.into_iter().rev()
-            {
-                // If we are instantiating the final `else` block.
-                if typed_if_exp.is_none() {
-                    // If the last match arm is a catch-all arm make its result the final else.
-                    // Note that this will always be the case with `if let` expressions that
-                    // desugar to match expressions.
-                    if condition.is_none() {
-                        typed_if_exp = Some(result);
-                        continue; // Last branch added, move to the previous one.
-                    } else {
-                        // Otherwise instantiate the final `__revert`.
-                        let final_revert = instantiate.code_block_with_implicit_return_revert(
-                            INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
-                        );
-
-                        typed_if_exp = Some(final_revert);
-                        // Continue with adding the last branch.
-                    };
-                }
-
-                // Create a new namespace for this branch result.
-                let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
-                let mut namespace = ctx.namespace.clone();
-                let mut branch_ctx = ctx.scoped(&mut namespace);
-
-                let result_span = result.span.clone();
-                let condition = condition.unwrap_or(instantiate.boolean_literal(true));
-
-                let if_exp = match instantiate_if_expression(
-                    handler,
-                    branch_ctx.by_ref(),
-                    condition,
-                    result,
-                    Some(
-                        typed_if_exp
-                            .clone()
-                            .expect("The previously created expression exist at this point."),
-                    ), // Put the previous if into else.
-                    result_span.clone(),
-                ) {
-                    Ok(if_exp) => if_exp,
-                    Err(_) => {
-                        continue;
-                    }
-                };
-
-                typed_if_exp = if matched_or_variant_index_vars.is_empty() {
-                    // No OR variants with vars. We just have to instantiate the if expression.
-                    Some(if_exp)
-                } else {
-                    // We have matched OR variant index vars.
-                    // We need to add them to the block before the if expression.
-                    // The resulting `typed_if_exp` in this case is actually not
-                    // an if expression but rather a code block.
-                    let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
-
-                    for (var_ident, var_body) in matched_or_variant_index_vars {
-                        let var_decl = instantiate.var_decl(var_ident.clone(), var_body);
-                        let span = var_ident.span();
-                        let _ = branch_ctx.insert_symbol(handler, var_ident, var_decl.clone());
-                        code_block_contents.push(ty::TyAstNode {
-                            content: ty::TyAstNodeContent::Declaration(var_decl),
-                            span,
-                        });
-                    }
-
-                    code_block_contents.push(ty::TyAstNode {
-                        content: ty::TyAstNodeContent::Expression(TyExpression {
-                            return_type: if_exp.return_type,
-                            span: if_exp.span.clone(),
-                            expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(if_exp)),
-                        }),
-                        span: result_span.clone(),
-                    });
-
-                    Some(ty::TyExpression {
-                        expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                            whole_block_span: Span::dummy(),
-                            contents: code_block_contents,
-                        }),
-                        return_type: self.return_type_id,
-                        span: result_span.clone(),
-                    })
-                }
-            }
-
-            Ok(typed_if_exp.expect("The expression exists because we have at least one branch."))
+            self.convert_to_typed_if_expression_inner(instantiate, ctx, handler)
         })?;
 
-        return Ok(typed_if_exp);
+        Ok(typed_if_exp)
+    }
 
-        fn instantiate_if_expression_for_empty_match_expression(
-            handler: &Handler,
-            ctx: TypeCheckContext,
-            instantiate: &Instantiate,
-            value_type_id: TypeId,
-            return_type_id: TypeId,
-            span: Span,
-        ) -> Result<ty::TyExpression, ErrorEmitted> {
-            let type_engine = ctx.engines.te();
-            let decl_engine = ctx.engines.de();
+    fn convert_to_typed_if_expression_inner(
+        &self,
+        instantiate: Instantiate,
+        mut ctx: TypeCheckContext<'_>,
+        handler: &Handler,
+    ) -> Result<TyExpression, ErrorEmitted> {
+        // The typed if expression object that we will be building on to.
+        // We will do it bottom up, starting from the final `else`.
+        let mut typed_if_exp = None;
 
-            // An empty match expression can happen only if the type we
-            // are matching on does not have a valid constructor.
-            // Otherwise, the match expression must be exhaustive, means
-            // it must have at least one match arm.
-            // In this case, we manually create a typed expression that is equivalent to
-            // `if true { implicit_return }` where the implicit_return type is manually set
-            // to be the return type of this typed match expression object.
-            //
-            // An example of such matching is when matching an empty enum.
-            // For an example, see the "match_expressions_empty_enums" test.
-            //
-            // NOTE: This manual construction of the expression can (and
-            // most likely will) lead to an otherwise improperly typed
-            // expression, in most cases.
-            if !type_engine
-                .get(value_type_id)
-                .has_valid_constructor(decl_engine)
-            {
-                let condition = instantiate.boolean_literal(true);
-                let then_exp = ty::TyExpression {
-                    expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                    return_type: return_type_id,
-                    span: instantiate.dummy_span(),
-                };
-                let inner_exp = ty::TyExpressionVariant::IfExp {
-                    condition: Box::new(condition),
-                    then: Box::new(then_exp.clone()),
-                    r#else: Option::Some(Box::new(then_exp)),
-                };
-                let typed_if_exp = ty::TyExpression {
-                    expression: inner_exp,
-                    return_type: return_type_id,
-                    span: instantiate.dummy_span(),
-                };
-
-                return Ok(typed_if_exp);
+        // For every branch, bottom-up, means in reverse.
+        for ty::TyMatchBranch {
+            matched_or_variant_index_vars,
+            condition,
+            result,
+            ..
+        } in self.branches.iter().rev()
+        {
+            if let ControlFlow::Break(_) = self.convert_to_typed_if_expression_inner_branch(
+                &mut typed_if_exp,
+                condition,
+                result,
+                &instantiate,
+                &mut ctx,
+                handler,
+                matched_or_variant_index_vars,
+            )? {
+                continue;
             }
-
-            Err(handler.emit_err(CompileError::Internal(
-                "unable to convert match exp to if exp",
-                span,
-            )))
         }
+
+        Ok(typed_if_exp.expect("The expression exists because we have at least one branch."))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn convert_to_typed_if_expression_inner_branch(
+        &self,
+        typed_if_exp: &mut Option<TyExpression>,
+        condition: &Option<TyExpression>,
+        result: &TyExpression,
+        instantiate: &Instantiate,
+        ctx: &mut TypeCheckContext<'_>,
+        handler: &Handler,
+        matched_or_variant_index_vars: &Vec<(sway_types::BaseIdent, TyExpression)>,
+    ) -> Result<ControlFlow<()>, ErrorEmitted> {
+        if typed_if_exp.is_none() {
+            // If the last match arm is a catch-all arm make its result the final else.
+            // Note that this will always be the case with `if let` expressions that
+            // desugar to match expressions.
+            if condition.is_none() {
+                *typed_if_exp = Some(result.clone());
+                return Ok(ControlFlow::Break(())); // Last branch added, move to the previous one.
+            } else {
+                // Otherwise instantiate the final `__revert`.
+                let final_revert = instantiate.code_block_with_implicit_return_revert(
+                    INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
+                );
+
+                *typed_if_exp = Some(final_revert);
+                // Continue with adding the last branch.
+            };
+        }
+        let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
+        let mut namespace = ctx.namespace.clone();
+        ctx.scoped(&mut namespace, |mut branch_ctx| {
+            let result_span = result.span.clone();
+            let condition = condition
+                .clone()
+                .unwrap_or(instantiate.boolean_literal(true));
+            let if_exp = match instantiate_if_expression(
+                handler,
+                branch_ctx.by_ref(),
+                condition,
+                result.clone(),
+                Some(
+                    typed_if_exp
+                        .clone()
+                        .expect("The previously created expression exist at this point."),
+                ), // Put the previous if into else.
+                result_span.clone(),
+            ) {
+                Ok(if_exp) => if_exp,
+                Err(_) => {
+                    return Ok(ControlFlow::Break(()));
+                }
+            };
+            // If we are instantiating the final `else` block.
+
+            // Create a new namespace for this branch result.
+
+            *typed_if_exp = if matched_or_variant_index_vars.is_empty() {
+                // No OR variants with vars. We just have to instantiate the if expression.
+                Some(if_exp)
+            } else {
+                // We have matched OR variant index vars.
+                // We need to add them to the block before the if expression.
+                // The resulting `typed_if_exp` in this case is actually not
+                // an if expression but rather a code block.
+                let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
+
+                for (var_ident, var_body) in matched_or_variant_index_vars {
+                    let var_decl = instantiate.var_decl(var_ident.clone(), var_body.clone());
+                    let span = var_ident.span();
+                    let _ = branch_ctx.insert_symbol(handler, var_ident.clone(), var_decl.clone());
+                    code_block_contents.push(ty::TyAstNode {
+                        content: ty::TyAstNodeContent::Declaration(var_decl),
+                        span,
+                    });
+                }
+
+                code_block_contents.push(ty::TyAstNode {
+                    content: ty::TyAstNodeContent::Expression(TyExpression {
+                        return_type: if_exp.return_type,
+                        span: if_exp.span.clone(),
+                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(if_exp)),
+                    }),
+                    span: result_span.clone(),
+                });
+
+                Some(ty::TyExpression {
+                    expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                        whole_block_span: Span::dummy(),
+                        contents: code_block_contents,
+                    }),
+                    return_type: self.return_type_id,
+                    span: result_span.clone(),
+                })
+            };
+            Ok(ControlFlow::Continue(()))
+        })
+    }
+
+    fn instantiate_if_expression_for_empty_match_expression(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        instantiate: &Instantiate,
+        value_type_id: TypeId,
+        return_type_id: TypeId,
+        span: Span,
+    ) -> Result<ty::TyExpression, ErrorEmitted> {
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
+
+        // An empty match expression can happen only if the type we
+        // are matching on does not have a valid constructor.
+        // Otherwise, the match expression must be exhaustive, means
+        // it must have at least one match arm.
+        // In this case, we manually create a typed expression that is equivalent to
+        // `if true { implicit_return }` where the implicit_return type is manually set
+        // to be the return type of this typed match expression object.
+        //
+        // An example of such matching is when matching an empty enum.
+        // For an example, see the "match_expressions_empty_enums" test.
+        //
+        // NOTE: This manual construction of the expression can (and
+        // most likely will) lead to an otherwise improperly typed
+        // expression, in most cases.
+        if !type_engine
+            .get(value_type_id)
+            .has_valid_constructor(decl_engine)
+        {
+            let condition = instantiate.boolean_literal(true);
+            let then_exp = ty::TyExpression {
+                expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
+                return_type: return_type_id,
+                span: instantiate.dummy_span(),
+            };
+            let inner_exp = ty::TyExpressionVariant::IfExp {
+                condition: Box::new(condition),
+                then: Box::new(then_exp.clone()),
+                r#else: Option::Some(Box::new(then_exp)),
+            };
+            let typed_if_exp = ty::TyExpression {
+                expression: inner_exp,
+                return_type: return_type_id,
+                span: instantiate.dummy_span(),
+            };
+
+            return Ok(typed_if_exp);
+        }
+
+        Err(handler.emit_err(CompileError::Internal(
+            "unable to convert match exp to if exp",
+            span,
+        )))
     }
 }
