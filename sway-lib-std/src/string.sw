@@ -138,7 +138,9 @@ impl String {
         let str_size = s.len();
         let str_ptr = s.as_ptr();
 
-        Self { bytes: Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)) }
+        Self {
+            bytes: Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)),
+        }
     }
 
     /// Returns a `bool` indicating whether the `String` is empty.
@@ -233,9 +235,7 @@ impl String {
 
 impl From<Bytes> for String {
     fn from(b: Bytes) -> Self {
-        Self {
-            bytes: b
-        }
+        Self { bytes: b }
     }
 }
 

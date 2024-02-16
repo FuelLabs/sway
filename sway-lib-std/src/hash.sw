@@ -79,7 +79,6 @@ impl Hash for u8 {
 impl Hash for u16 {
     fn hash(self, ref mut state: Hasher) {
         let ptr = alloc_bytes(8); // one word capacity
-
         asm(ptr: ptr, val: self, r1) {
             slli r1 val i48;
             sw ptr r1 i0;
@@ -92,7 +91,6 @@ impl Hash for u16 {
 impl Hash for u32 {
     fn hash(self, ref mut state: Hasher) {
         let ptr = alloc_bytes(8); // one word capacity
-
         asm(ptr: ptr, val: self, r1) {
             slli r1 val i32;
             sw ptr r1 i0;
@@ -105,7 +103,6 @@ impl Hash for u32 {
 impl Hash for u64 {
     fn hash(self, ref mut state: Hasher) {
         let ptr = alloc_bytes(8); // one word capacity
-
         asm(ptr: ptr, val: self) {
             sw ptr val i0;
         };
@@ -117,7 +114,6 @@ impl Hash for u64 {
 impl Hash for b256 {
     fn hash(self, ref mut state: Hasher) {
         let ptr = alloc_bytes(32); // four word capacity
-
         let (word_1, word_2, word_3, word_4) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
@@ -142,7 +138,6 @@ impl Hash for b256 {
 impl Hash for u256 {
     fn hash(self, ref mut state: Hasher) {
         let ptr = alloc_bytes(32); // four word capacity
-
         let (word_1, word_2, word_3, word_4) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };

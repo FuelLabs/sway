@@ -65,8 +65,7 @@ pub struct CallParams {
 fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
     let target_ptr = alloc_bytes(32);
 
-    __addr_of(contract_id)
-        .copy_bytes_to(target_ptr, 32);
+    __addr_of(contract_id).copy_bytes_to(target_ptr, 32);
 
     Bytes::from(raw_slice::from_parts::<u8>(target_ptr, 32))
 }

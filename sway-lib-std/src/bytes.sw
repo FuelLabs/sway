@@ -50,7 +50,7 @@ impl RawBytes {
     }
 }
 
-impl From<raw_slice> for RawBytes {    
+impl From<raw_slice> for RawBytes {
     /// Creates a `RawBytes` from a `raw_slice`.
     ///
     /// ### Examples
@@ -707,7 +707,10 @@ impl Bytes {
 
         // reallocate with combined capacity, write `other`, set buffer capacity
         if self.buf.capacity() < both_len {
-            let new_slice = raw_slice::from_parts::<u8>(realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len), both_len);
+            let new_slice = raw_slice::from_parts::<u8>(
+                realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len),
+                both_len,
+            );
             self.buf = RawBytes::from(new_slice);
         }
 

@@ -138,7 +138,6 @@ impl<T> From<raw_slice> for RawVec<T> {
     }
 }
 
-
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
     buf: RawVec<T>,
