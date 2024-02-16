@@ -350,5 +350,13 @@ fn main() -> u64 {
     assert(result.0 == 5);
     assert(result.1 == 5);
 
+    // Test type coercion
+    if false {
+        let _: u8 = __revert(1);      // Ok.  Never -> u8.
+        let _: u8 = { return 123 };  // Ok.  Never -> u8.
+        let _: ! = __revert(1);       // Ok.  Never -> Never.
+        let _: ! = { return 123 };   // Ok.  Never -> Never.
+    }
+
     42
 }

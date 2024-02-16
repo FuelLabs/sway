@@ -3,3 +3,9 @@ category = "fail"
 # check: $()Type is not indexable
 # check: $()}[0];
 # nextln: $()This expression has type "!", which is not an indexable type.
+
+# check: $()let _: ! = 123u8;  // ERROR.
+# nextln: $()Mismatched types.
+# nextln: $()expected: !
+# nextln: $()found:    u8
+# nextln: $()help: Variable declaration's type annotation does not match up with the assigned expression's type.
