@@ -10,6 +10,7 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
+use indexmap::{IndexMap, IndexSet};
 use sway_types::span::Span;
 
 use std::{
@@ -47,7 +48,7 @@ impl AllocatedAbstractInstructionSet {
             .ops
             .iter()
             .fold(
-                (HashMap::new(), HashSet::new()),
+                (IndexMap::new(), IndexSet::new()),
                 |(mut reg_sets, mut active_sets), op| {
                     let reg = match &op.opcode {
                         Either::Right(ControlFlowOp::PushAll(label)) => {
@@ -55,7 +56,7 @@ impl AllocatedAbstractInstructionSet {
                             None
                         }
                         Either::Right(ControlFlowOp::PopAll(label)) => {
-                            active_sets.remove(label);
+                            active_sets.swap_remove(label);
                             None
                         }
 

@@ -225,13 +225,20 @@ pub(super) async fn run(
                 let bld_cfg = bld_cfg.with_include_tests(true);
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
-                let handler = Handler::default(); let compile_res = compile_to_ast(
+                let handler = Handler::default();
+                // Create new initial namespace for every test by reusing the precompiled
+                // standard libraries. The namespace, thus its root module, must have the
+                // name set.
+                const PACKAGE_NAME: &str = "test_lib";
+                let mut initial_namespace = core_lib.clone();
+                initial_namespace.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
+                let compile_res = compile_to_ast(
                     &handler,
                     &engines,
                     Arc::from(sway_str),
-                    core_lib.clone(),
+                    initial_namespace,
                     Some(&bld_cfg),
-                    "test_lib",
+                    PACKAGE_NAME,
                     None,
                 );
                 let (errors, _warnings) = handler.consume();
@@ -531,13 +538,19 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         Some(typed_program) => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
-            let core_module = typed_program.root.namespace.submodules().into_iter().fold(
-                namespace::Module::default(),
-                |mut core_mod, (name, sub_mod)| {
-                    core_mod.insert_submodule(name.clone(), sub_mod.clone());
-                    core_mod
-                },
-            );
+            let core_module = typed_program
+                .root
+                .namespace
+                .module()
+                .submodules()
+                .into_iter()
+                .fold(
+                    namespace::Module::default(),
+                    |mut core_mod, (name, sub_mod)| {
+                        core_mod.insert_submodule(name.clone(), sub_mod.clone());
+                        core_mod
+                    },
+                );
 
             // Create a module for std and insert the core module.
             let mut std_module = namespace::Module::default();

@@ -13,14 +13,30 @@ pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
         let parsed_token = AstToken::Declaration(declaration.clone());
 
         let (ident, symbol_kind) = match declaration {
-            Declaration::VariableDeclaration(variable) => {
+            Declaration::VariableDeclaration(decl_id) => {
+                let variable = ctx.engines.pe().get_variable(decl_id);
                 (variable.name.clone(), SymbolKind::Variable)
             }
-            Declaration::StructDeclaration(decl) => (decl.name.clone(), SymbolKind::Struct),
-            Declaration::TraitDeclaration(decl) => (decl.name.clone(), SymbolKind::Trait),
-            Declaration::FunctionDeclaration(decl) => (decl.name.clone(), SymbolKind::Function),
-            Declaration::ConstantDeclaration(decl) => (decl.name.clone(), SymbolKind::Const),
-            Declaration::EnumDeclaration(decl) => (decl.name.clone(), SymbolKind::Enum),
+            Declaration::StructDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_struct(decl_id);
+                (decl.name.clone(), SymbolKind::Struct)
+            }
+            Declaration::TraitDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_trait(decl_id);
+                (decl.name.clone(), SymbolKind::Trait)
+            }
+            Declaration::FunctionDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_function(decl_id);
+                (decl.name.clone(), SymbolKind::Function)
+            }
+            Declaration::ConstantDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_constant(decl_id);
+                (decl.name.clone(), SymbolKind::Const)
+            }
+            Declaration::EnumDeclaration(decl_id) => {
+                let decl = ctx.engines.pe().get_enum(decl_id);
+                (decl.name.clone(), SymbolKind::Enum)
+            }
             _ => return,
         };
 

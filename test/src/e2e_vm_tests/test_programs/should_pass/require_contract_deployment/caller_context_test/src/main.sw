@@ -4,7 +4,6 @@ use std::constants::BASE_ASSET_ID;
 use context_testing_abi::*;
 
 fn main() -> bool {
-    let zero = b256::min();
     let gas: u64 = u64::max();
     let amount: u64 = 11;
     let other_contract_id = ContractId::from(0xa38576787f8900d66e6620548b6da8142b8bb4d129b2338609acd121ca126c10);
@@ -39,7 +38,7 @@ fn main() -> bool {
     }(base_asset_id, other_contract_id);
     assert(returned_contract_balance == 0);
 
-    // The checks below don't work (AssertIdNotFound). The test should be
+    // TODO: The checks below don't work (AssertIdNotFound). The test should be
     // updated to forward coins that are actually available.
     // test Context::msg_value():
     /*let returned_amount = test_contract.get_amount {

@@ -5,9 +5,10 @@ use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
+use ::iterator::*;
 
 struct RawVec<T> {
-    ptr: raw_ptr,
+    pub ptr: raw_ptr,
     cap: u64,
 }
 
@@ -130,7 +131,7 @@ impl<T> RawVec<T> {
 
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
-    buf: RawVec<T>,
+    pub buf: RawVec<T>,
     len: u64,
 }
 
@@ -151,7 +152,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     // allocates when an element is pushed
     ///     vec.push(5);
     /// }
@@ -187,7 +188,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::with_capacity(2);
+    ///     let mut vec = Vec::with_capacity(2);
     ///     // does not allocate
     ///     vec.push(5);
     ///     // does not re-allocate
@@ -215,7 +216,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     let last_element = vec.pop().unwrap();
     ///     assert(last_element == 5);
@@ -270,7 +271,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.clear()
     ///     assert(vec.is_empty());
@@ -296,7 +297,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -332,7 +333,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     assert(vec.len() == 1);
     ///     vec.push(10);
@@ -355,7 +356,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     assert(vec.is_empty());
     ///     vec.push(5);
     ///     assert(!vec.is_empty());
@@ -386,7 +387,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -440,7 +441,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -491,7 +492,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///
     ///     let res = vec.pop();
     ///     assert(res.is_none());
@@ -527,7 +528,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -570,7 +571,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -586,6 +587,13 @@ impl<T> Vec<T> {
         let index_ptr = self.buf.ptr().add::<T>(index);
 
         index_ptr.write::<T>(value);
+    }
+
+    pub fn iter(self) -> VecIter<T> {
+        VecIter {
+            values: self,
+            index: 0,
+        }
     }
 }
 
@@ -630,6 +638,23 @@ where
             item.abi_encode(buffer);
             i += 1;
         }
+    }
+}
+
+pub struct VecIter<T> {
+    values: Vec<T>,
+    index: u64,
+}
+
+impl<T> Iterator for VecIter<T> {
+    type Item = T;
+    fn next(ref mut self) -> Option<Self::Item> {
+        if self.index >= self.values.len() {
+            return None
+        }
+
+        self.index += 1;
+        self.values.get(self.index - 1)
     }
 }
 

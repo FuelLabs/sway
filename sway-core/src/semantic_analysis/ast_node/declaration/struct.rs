@@ -23,32 +23,36 @@ impl ty::TyStructDecl {
 
         // create a namespace for the decl, used to create a scope for generics
         let mut decl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut decl_namespace);
+        ctx.scoped(&mut decl_namespace, |mut ctx| {
+            // Type check the type parameters.
+            let new_type_parameters = TypeParameter::type_check_type_params(
+                handler,
+                ctx.by_ref(),
+                type_parameters,
+                None,
+            )?;
 
-        // Type check the type parameters.
-        let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters, None)?;
+            // type check the fields
+            let mut new_fields = vec![];
+            for field in fields.into_iter() {
+                new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
+            }
 
-        // type check the fields
-        let mut new_fields = vec![];
-        for field in fields.into_iter() {
-            new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
-        }
+            let mut path: CallPath = name.into();
+            path = path.to_fullpath(ctx.namespace);
 
-        let mut path: CallPath = name.into();
-        path = path.to_fullpath(ctx.namespace);
+            // create the struct decl
+            let decl = ty::TyStructDecl {
+                call_path: path,
+                type_parameters: new_type_parameters,
+                fields: new_fields,
+                visibility,
+                span,
+                attributes,
+            };
 
-        // create the struct decl
-        let decl = ty::TyStructDecl {
-            call_path: path,
-            type_parameters: new_type_parameters,
-            fields: new_fields,
-            visibility,
-            span,
-            attributes,
-        };
-
-        Ok(decl)
+            Ok(decl)
+        })
     }
 }
 
@@ -73,6 +77,7 @@ impl ty::TyStructField {
                 type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
             });
         let field = ty::TyStructField {
+            visibility: field.visibility,
             name: field.name,
             span: field.span,
             type_argument,

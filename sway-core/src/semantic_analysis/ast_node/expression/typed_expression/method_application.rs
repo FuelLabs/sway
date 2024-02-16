@@ -13,7 +13,8 @@ use crate::{
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
-use std::collections::{HashMap, VecDeque};
+use indexmap::IndexMap;
+use std::collections::VecDeque;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -83,7 +84,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // generate the map of the contract call params
-    let mut contract_call_params_map = HashMap::new();
+    let mut contract_call_params_map = IndexMap::new();
     if method.is_contract_call {
         for param_name in &[
             constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
@@ -439,8 +440,7 @@ pub(crate) fn resolve_method_name(
                 .namespace
                 .find_module_path(&call_path_binding.inner.prefixes);
             ctx.namespace
-                .root()
-                .check_submodule(handler, &type_info_prefix)?;
+                .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -464,7 +464,7 @@ pub(crate) fn resolve_method_name(
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), Some(root_name)) = (
                     module_path.first().cloned(),
-                    ctx.namespace.root().name.clone(),
+                    ctx.namespace.root_module_name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);

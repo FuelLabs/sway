@@ -20,6 +20,7 @@
 //!
 //!   #[foo(bar, bar)]
 
+use indexmap::IndexMap;
 use sway_ast::Literal;
 use sway_types::{
     constants::{
@@ -29,7 +30,7 @@ use sway_types::{
     Ident, Span, Spanned,
 };
 
-use std::{collections::HashMap, hash::Hash, sync::Arc};
+use std::{hash::Hash, sync::Arc};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AttributeArg {
@@ -110,11 +111,11 @@ impl AttributeKind {
 
 /// Stores the attributes associated with the type.
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
-pub struct AttributesMap(Arc<HashMap<AttributeKind, Vec<Attribute>>>);
+pub struct AttributesMap(Arc<IndexMap<AttributeKind, Vec<Attribute>>>);
 
 impl AttributesMap {
     /// Create a new attributes map.
-    pub fn new(attrs_map: Arc<HashMap<AttributeKind, Vec<Attribute>>>) -> AttributesMap {
+    pub fn new(attrs_map: Arc<IndexMap<AttributeKind, Vec<Attribute>>>) -> AttributesMap {
         AttributesMap(attrs_map)
     }
 
@@ -135,13 +136,13 @@ impl AttributesMap {
         first
     }
 
-    pub fn inner(&self) -> &HashMap<AttributeKind, Vec<Attribute>> {
+    pub fn inner(&self) -> &IndexMap<AttributeKind, Vec<Attribute>> {
         &self.0
     }
 }
 
 impl std::ops::Deref for AttributesMap {
-    type Target = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
+    type Target = Arc<IndexMap<AttributeKind, Vec<Attribute>>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
