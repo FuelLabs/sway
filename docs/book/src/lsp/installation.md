@@ -12,7 +12,7 @@ You can install the latest release of the plugin from the [marketplace](https://
 
 Note that we only support the most recent version of VS Code.
 
-## Code OSS (VSCode on linux)
+## Code OSS (VSCode on Linux)
 
 1. Install [code-marketplace](https://aur.archlinux.org/packages/code-marketplace) to get access to all of the extensions in the VSCode marketplace.
 2. Install the [Sway](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin) extension.
