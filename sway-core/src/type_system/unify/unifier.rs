@@ -137,7 +137,6 @@ impl<'a> Unifier<'a> {
                 )
             }
 
-            (Never, Never) => (),
             // Removing the line below allows Unknown to be replaced with Never.
             // This causes problems while doing unification of if branches as the ctx.type_annotation that was Unknown would be replaced with Never.
             (Never, Unknown) => {}

@@ -233,7 +233,6 @@ impl<'a> UnifyCheck<'a> {
 
         // common recursion patterns
         match (&*left_info, &*right_info) {
-            (Never, Never) => return true,
             (Array(l0, l1), Array(r0, r1)) => {
                 return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
             }
