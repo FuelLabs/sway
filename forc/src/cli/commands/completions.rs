@@ -171,8 +171,8 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
         writeln!(file, "source {}", forc_autocomplete_path,).unwrap();
     }
 
-    println!("Forc completions is installed successfully");
-    println!("\t The script is stored in {}", forc_autocomplete_path);
+    println!("Forc completions were installed successfully at {shell_config_path}");
+    println!("\t The script is stored at {}", forc_autocomplete_path);
 
     Ok(())
 }
