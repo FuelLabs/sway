@@ -150,7 +150,7 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
             "{}/.config/powershell/Microsoft.PowerShell_profile.ps1",
             dir
         )),
-        Target::Bash => Some(format!("{}/.bashrc", dir)),
+        Target::Bash => Some(format!("{}/.bash_profile", dir)),
         Target::Fig => Some(format!("{}/.config/fig/fig.fish", dir)),
         _ => None,
     };
@@ -169,9 +169,9 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
 
         let mut file = OpenOptions::new().append(true).open(&file_path)?;
         writeln!(file, "source {}", forc_autocomplete_path,).unwrap();
+        println!("Forc completions were installed successfully at {file_path}");
     }
 
-    println!("Forc completions were installed successfully at {shell_config_path}");
     println!("\t The script is stored at {}", forc_autocomplete_path);
 
     Ok(())
