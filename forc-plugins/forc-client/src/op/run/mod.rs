@@ -15,7 +15,7 @@ use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use fuels_accounts::provider::Provider;
-use pkg::{manifest::ExperimentalFlags, BuiltPackage};
+use pkg::{manifest::build_profile::ExperimentalFlags, BuiltPackage};
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;

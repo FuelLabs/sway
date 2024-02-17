@@ -1,3 +1,5 @@
+pub mod build_profile;
+
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
@@ -9,14 +11,14 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use sway_core::{
-    fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget, OptLevel,
-};
+use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
 use sway_error::handler::Handler;
 use sway_utils::{
     constants, find_nested_manifest_dir, find_parent_manifest_dir,
     find_parent_manifest_dir_with_check,
 };
+
+use self::build_profile::BuildProfile;
 
 /// The name of a workspace member package.
 pub type MemberName = String;
@@ -206,45 +208,6 @@ pub struct DependencyDetails {
     pub(crate) package: Option<String>,
     pub(crate) rev: Option<String>,
     pub(crate) ipfs: Option<String>,
-}
-
-/// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub struct BuildProfile {
-    pub name: String,
-    #[serde(default)]
-    pub print_ast: bool,
-    pub print_dca_graph: Option<String>,
-    pub print_dca_graph_url_format: Option<String>,
-    #[serde(default)]
-    pub print_ir: bool,
-    #[serde(default)]
-    pub print_finalized_asm: bool,
-    #[serde(default)]
-    pub print_intermediate_asm: bool,
-    #[serde(default)]
-    pub terse: bool,
-    #[serde(default)]
-    pub time_phases: bool,
-    #[serde(default)]
-    pub metrics_outfile: Option<String>,
-    #[serde(default)]
-    pub include_tests: bool,
-    #[serde(default)]
-    pub json_abi_with_callpaths: bool,
-    #[serde(default)]
-    pub error_on_warnings: bool,
-    pub reverse_results: bool,
-    pub optimization_level: OptLevel,
-    #[serde(default)]
-    pub experimental: ExperimentalFlags,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
-#[serde(rename_all = "kebab-case")]
-pub struct ExperimentalFlags {
-    pub new_encoding: bool,
 }
 
 impl DependencyDetails {
@@ -529,7 +492,7 @@ impl PackageManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = toml::de::Deserializer::new(&manifest_str);
         let mut manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {path}");
+            let warning = format!("unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
@@ -710,68 +673,10 @@ impl PackageManifest {
     }
 }
 
-impl BuildProfile {
-    pub const DEBUG: &'static str = "debug";
-    pub const RELEASE: &'static str = "release";
-    pub const DEFAULT: &'static str = Self::DEBUG;
-
-    pub fn debug() -> Self {
-        Self {
-            name: Self::DEBUG.into(),
-            print_ast: false,
-            print_dca_graph: None,
-            print_dca_graph_url_format: None,
-            print_ir: false,
-            print_finalized_asm: false,
-            print_intermediate_asm: false,
-            terse: false,
-            time_phases: false,
-            metrics_outfile: None,
-            include_tests: false,
-            json_abi_with_callpaths: false,
-            error_on_warnings: false,
-            reverse_results: false,
-            optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags {
-                new_encoding: false,
-            },
-        }
-    }
-
-    pub fn release() -> Self {
-        Self {
-            name: Self::RELEASE.to_string(),
-            print_ast: false,
-            print_dca_graph: None,
-            print_dca_graph_url_format: None,
-            print_ir: false,
-            print_finalized_asm: false,
-            print_intermediate_asm: false,
-            terse: false,
-            time_phases: false,
-            metrics_outfile: None,
-            include_tests: false,
-            json_abi_with_callpaths: false,
-            error_on_warnings: false,
-            reverse_results: false,
-            optimization_level: OptLevel::Opt1,
-            experimental: ExperimentalFlags {
-                new_encoding: false,
-            },
-        }
-    }
-}
-
 impl std::ops::Deref for PackageManifestFile {
     type Target = PackageManifest;
     fn deref(&self) -> &Self::Target {
         &self.manifest
-    }
-}
-
-impl Default for BuildProfile {
-    fn default() -> Self {
-        Self::debug()
     }
 }
 
@@ -976,7 +881,7 @@ impl WorkspaceManifest {
             .map_err(|e| anyhow!("failed to read manifest at {:?}: {}", path, e))?;
         let toml_de = toml::de::Deserializer::new(&manifest_str);
         let manifest: Self = serde_ignored::deserialize(toml_de, |path| {
-            let warning = format!("  WARNING! unused manifest key: {path}");
+            let warning = format!("unused manifest key: {path}");
             warnings.push(warning);
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
