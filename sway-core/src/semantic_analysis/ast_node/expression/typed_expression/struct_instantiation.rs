@@ -255,7 +255,7 @@ fn collect_struct_constructors(
     // that we wish to encourage.
     namespace
         .module()
-        .items()
+        .current_items()
         .get_items_for_type(engines, struct_type_id)
         .iter()
         .filter_map(|item| match item {

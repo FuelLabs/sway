@@ -302,17 +302,21 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Constant(decl_ref.clone()));
                         let const_shadowing_mode = ctx.const_shadowing_mode();
                         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-                        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
-                            handler,
-                            const_name.clone(),
-                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: const_name,
-                                decl_id: *decl_ref.id(),
-                                decl_span: const_decl.span.clone(),
-                            }),
-                            const_shadowing_mode,
-                            generic_shadowing_mode,
-                        );
+                        let _ = ctx
+                            .namespace
+                            .module_mut()
+                            .current_items_mut()
+                            .insert_symbol(
+                                handler,
+                                const_name.clone(),
+                                ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                    name: const_name,
+                                    decl_id: *decl_ref.id(),
+                                    decl_span: const_decl.span.clone(),
+                                }),
+                                const_shadowing_mode,
+                                generic_shadowing_mode,
+                            );
                     }
                     ty::TyTraitInterfaceItem::Type(decl_ref) => {
                         all_items.push(TyImplItem::Type(decl_ref.clone()));
