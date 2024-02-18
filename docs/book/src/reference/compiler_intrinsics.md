@@ -315,12 +315,14 @@ __not(op: T) -> T
 **Description:** Bitwise NOT of `op`
 
 **Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
+
 ___
 
 ```sway
 __jmpb_ssp(offset: u64)
 ```
-**Description:** Jumps tp `$ssp - offset`. When the offset is the growth
+
+**Description:** Jumps to `$ssp - offset`. When the offset is the growth
 of `$ssp` after an `ldc` call, this transfers control to the newly loaded
 contract.
 

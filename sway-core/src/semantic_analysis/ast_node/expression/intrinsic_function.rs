@@ -1175,7 +1175,7 @@ fn type_check_revert(
 }
 
 /// Signature: `__jmpb_ssp(offset: u64)`
-/// Description: Jumps tp `$ssp - offset`.
+/// Description: Jumps to `$ssp - offset`.
 /// Constraints: offset has type `u64`.
 fn type_check_jmpb_ssp(
     handler: &Handler,
