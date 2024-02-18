@@ -2,7 +2,7 @@ use crate::cli::ContractIdCommand;
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options};
 use forc_tracing::println_green;
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
 use tracing::info;
 
