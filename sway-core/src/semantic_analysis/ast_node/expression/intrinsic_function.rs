@@ -1175,7 +1175,7 @@ fn type_check_revert(
 }
 
 /// Signature: `__jmpb_ssp(offset: u64)`
-/// Description: Loads contract and transfers control to it.
+/// Description: Jumps tp `$ssp - offset`.
 /// Constraints: offset has type `u64`.
 fn type_check_jmpb_ssp(
     handler: &Handler,
