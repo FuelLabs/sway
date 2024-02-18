@@ -42,7 +42,7 @@ impl u64 {
         }
     }
 
-    /// Attempts to convert the u16 value into a u8 value.
+    /// Attempts to convert the u64 value into a u32 value.
     ///
     /// # Additional Information
     ///
