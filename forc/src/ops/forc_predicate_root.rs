@@ -1,7 +1,7 @@
 use crate::cli::PredicateRootCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, build_with_options};
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::BuildTarget;
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
