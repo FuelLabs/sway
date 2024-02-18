@@ -4,6 +4,15 @@ use ::convert::TryFrom;
 use ::option::Option::{self, *};
 
 impl u32 {
+    /// Attempts to convert the u32 value into a u8 value.
+    ///
+    /// # Additional Information
+    ///
+    /// The max value a u8 can represent is 255.
+    ///
+    /// # Returns
+    ///
+    /// [Option<u8>] - `Some(u8)` if the u32 is less than or equal to the max u8 value. Else `None`.
     pub fn try_as_u8(self) -> Option<u8> {
         if self <= u8::max().as_u32() {
             Some(asm(input: self) {
@@ -14,6 +23,15 @@ impl u32 {
         }
     }
 
+    /// Attempts to convert the u32 value into a u16 value.
+    ///
+    /// # Additional Information
+    ///
+    /// The max value a u8 can represent is 65_535.
+    ///
+    /// # Returns
+    ///
+    /// [Option<u16>] - `Some(u16)` if the u32 is less than or equal to the max u16 value. Else `None`.
     pub fn try_as_u16(self) -> Option<u16> {
         if self <= u16::max().as_u32() {
             Some(asm(input: self) {

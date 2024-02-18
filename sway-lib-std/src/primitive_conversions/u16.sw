@@ -4,6 +4,15 @@ use ::convert::TryFrom;
 use ::option::Option::{self, *};
 
 impl u16 {
+    /// Attempts to convert the u16 value into a u8 value.
+    ///
+    /// # Additional Information
+    ///
+    /// The max value a u8 can represent is 255.
+    ///
+    /// # Returns
+    ///
+    /// [Option<u8>] - `Some(u8)` if the u16 is less than or equal to the max u8 value. Else `None`.
     pub fn try_as_u8(self) -> Option<u8> {
         if self <= u8::max().as_u16() {
             Some(asm(input: self) {
