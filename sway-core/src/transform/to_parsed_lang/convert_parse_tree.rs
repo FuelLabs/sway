@@ -33,8 +33,9 @@ use sway_types::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
         CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
         DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
-        PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME,
-        STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
+        NAMESPACE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
+        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
+        VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -4503,6 +4504,7 @@ fn item_attrs_to_map(
                 ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
                 CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
                 DEPRECATED_ATTRIBUTE_NAME => Some(AttributeKind::Deprecated),
+                NAMESPACE_ATTRIBUTE_NAME => Some(AttributeKind::Namespace),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {
