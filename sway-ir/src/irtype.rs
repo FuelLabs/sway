@@ -12,7 +12,7 @@
 use crate::{context::Context, pretty::DebugWithContext, Constant, ConstantValue, Value};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
-pub struct Type(pub generational_arena::Index);
+pub struct Type(pub slotmap::DefaultKey);
 
 #[derive(Debug, Clone, DebugWithContext, Hash, PartialEq, Eq)]
 pub enum TypeContent {

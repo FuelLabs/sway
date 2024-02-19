@@ -1,10 +1,11 @@
 use crate::{
     lock::Lock,
     manifest::{
-        BuildProfile, Dependency, ExperimentalFlags, ManifestFile, MemberManifestFiles,
+        build_profile::ExperimentalFlags, Dependency, ManifestFile, MemberManifestFiles,
         PackageManifestFile,
     },
     source::{self, IPFSNode, Source},
+    BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_tracing::println_warning;
@@ -51,7 +52,7 @@ use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning}
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 type GraphIx = u32;
 type Node = Pinned;
@@ -296,11 +297,9 @@ pub struct BuildOpts {
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
@@ -2051,21 +2050,9 @@ fn build_profile_from_opts(
         ..
     } = build_options;
 
-    let selected_profile_name = match &build_profile {
-        Some(build_profile) => match release {
-            true => {
-                println_warning(&format!(
-                    "Both {} and 'release' profiles were specified. Using the 'release' profile",
-                    build_profile
-                ));
-                BuildProfile::RELEASE
-            }
-            false => build_profile,
-        },
-        None => match release {
-            true => BuildProfile::RELEASE,
-            false => BuildProfile::DEBUG,
-        },
+    let selected_profile_name = match release {
+        true => BuildProfile::RELEASE,
+        false => build_profile,
     };
 
     // Retrieve the specified build profile
@@ -2073,11 +2060,11 @@ fn build_profile_from_opts(
         .get(selected_profile_name)
         .cloned()
         .unwrap_or_else(|| {
-            warn!(
-                "provided profile option {} is not present in the manifest file. \
+            println_warning(&format!(
+                "The provided profile option {} is not present in the manifest file. \
             Using default profile.",
                 selected_profile_name
-            );
+            ));
             Default::default()
         });
     profile.name = selected_profile_name.into();

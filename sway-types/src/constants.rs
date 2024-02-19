@@ -53,6 +53,8 @@ pub const CFG_EXPERIMENTAL_NEW_ENCODING: &str = "experimental_new_encoding";
 
 pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
 
+pub const NAMESPACE_ATTRIBUTE_NAME: &str = "namespace";
+
 /// The list of valid attributes.
 pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_PURITY_ATTRIBUTE_NAME,
@@ -64,6 +66,7 @@ pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     ALLOW_ATTRIBUTE_NAME,
     CFG_ATTRIBUTE_NAME,
     DEPRECATED_ATTRIBUTE_NAME,
+    NAMESPACE_ATTRIBUTE_NAME,
 ];
 
 pub const CORE: &str = "core";
