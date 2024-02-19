@@ -1017,7 +1017,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     // This is a really common operation above... calling `Value::get_type()` and then failing when
     // two don't match.
     fn opt_ty_not_eq(&self, l_ty: &Option<Type>, r_ty: &Option<Type>) -> bool {
-        l_ty.is_none() || r_ty.is_none() && !l_ty.unwrap().eq(self.context, r_ty.as_ref().unwrap())
+        l_ty.is_none() || r_ty.is_none() || !l_ty.unwrap().eq(self.context, r_ty.as_ref().unwrap())
     }
 
     fn get_ptr_type<F: FnOnce(String) -> IrError>(
