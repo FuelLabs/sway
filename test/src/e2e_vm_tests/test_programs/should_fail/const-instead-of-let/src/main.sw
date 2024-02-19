@@ -1,4 +1,4 @@
-contract;
+script;
 
 abi Abi1 {
     fn foo() -> b256;
