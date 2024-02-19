@@ -110,12 +110,15 @@ impl ty::TyMatchBranch {
                 ty::TyExpression::type_check(handler, ctx, result)?
             };
 
-            // unify the return type from the typed result with the type annotation
-            branch_ctx.unify_with_type_annotation(
-                handler,
-                typed_result.return_type,
-                &typed_result.span,
-            );
+            // Check if return type is Never if it is we don't unify as it would replace the Unknown annotation with Never.
+            if !matches!(*type_engine.get(typed_result.return_type), TypeInfo::Never) {
+                // unify the return type from the typed result with the type annotation
+                branch_ctx.unify_with_type_annotation(
+                    handler,
+                    typed_result.return_type,
+                    &typed_result.span,
+                );
+            }
 
             // if the typed branch result is a code block, then add the contents
             // of that code block to the block of code statements that we are already

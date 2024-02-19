@@ -111,6 +111,19 @@ fn diverge_in_match_branch_1() -> u64 {
     123
 }
 
+fn diverge_in_match_branch_2() -> u64 {
+    let _m:! = match false {
+        true => {
+            return 5;
+        },
+        false => {
+            return 5;
+        },
+    };
+    123
+}
+
+
 fn diverge_in_while_condition() -> u64 {
     while  {
         return 5;
@@ -317,6 +330,7 @@ fn main() -> u64 {
     assert(5 == diverge_in_match_condition());
     assert(5 == diverge_in_match_branch_0());
     assert(5 == diverge_in_match_branch_1());
+    assert(5 == diverge_in_match_branch_2());
     assert(5 == diverge_in_while_condition());
     assert(5 == diverge_in_while_body());
     assert(5 == diverge_in_func_arg());

@@ -24,27 +24,41 @@ pub(crate) fn instantiate_if_expression(
     } else {
         type_engine.insert(engines, TypeInfo::Tuple(vec![]), then.span.source_id())
     };
-    type_engine.unify(
-        handler,
-        engines,
-        then.return_type,
-        ty_to_check,
-        &then.span,
-        "`then` branch must return expected type.",
-        None,
-    );
 
-    let r#else = r#else.map(|r#else| {
-        // Check the else block return type
+    // We check then_type_is_never and else_type_is_never before unifying to make sure we don't
+    // unify ty_to_check with Never when another branch is not Never.
+    let then_type_is_never = matches!(*type_engine.get(then.return_type), TypeInfo::Never);
+    let else_type_is_never = r#else.is_some()
+        && matches!(
+            *type_engine.get(r#else.as_ref().unwrap().return_type),
+            TypeInfo::Never
+        );
+
+    if r#else.is_none() || !then_type_is_never || else_type_is_never {
         type_engine.unify(
             handler,
             engines,
-            r#else.return_type,
+            then.return_type,
             ty_to_check,
-            &r#else.span,
-            "`else` branch must return expected type.",
+            &then.span,
+            "`then` branch must return expected type.",
             None,
         );
+    }
+
+    let r#else = r#else.map(|r#else| {
+        if !else_type_is_never || then_type_is_never {
+            // Check the else block return type
+            type_engine.unify(
+                handler,
+                engines,
+                r#else.return_type,
+                ty_to_check,
+                &r#else.span,
+                "`else` branch must return expected type.",
+                None,
+            );
+        }
         Box::new(r#else)
     });
 
