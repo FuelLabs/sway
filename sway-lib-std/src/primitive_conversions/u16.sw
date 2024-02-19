@@ -13,6 +13,18 @@ impl u16 {
     /// # Returns
     ///
     /// [Option<u8>] - `Some(u8)` if the u16 is less than or equal to the max u8 value. Else `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 255_u16.try_as_u8();
+    ///     assert(val == Some(255_u8));
+    ///     
+    ///     // Conversion fails as value is above the max a u8 can represent.
+    ///     let val2 = 256_u16.try_as_u8();
+    ///     assert(val == None);
+    /// }
     pub fn try_as_u8(self) -> Option<u8> {
         if self <= u8::max().as_u16() {
             Some(asm(input: self) {
