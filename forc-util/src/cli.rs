@@ -65,31 +65,38 @@ impl CommandInfo {
             .collect()
     }
 
+    fn arg_possible_values(arg: &clap::Arg<'_>) -> Vec<PossibleValues> {
+        arg.get_possible_values()
+            .map(|possible_values| {
+                possible_values
+                    .iter()
+                    .map(|x| PossibleValues {
+                        name: x.get_name().to_owned(),
+                        help: x.get_help().unwrap_or_default().to_owned(),
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    }
+
+    fn arg_alias(arg: &clap::Arg<'_>) -> Vec<String> {
+        arg.get_long_and_visible_aliases()
+            .map(|c| c.iter().map(|x| x.to_string()).collect::<Vec<_>>())
+            .unwrap_or_default()
+    }
+
     fn get_args(cmd: &Command) -> Vec<ArgInfo> {
         cmd.get_arguments()
-            .map(|opt| ArgInfo {
-                name: opt.get_name().to_string(),
-                possible_values: opt
-                    .get_possible_values()
-                    .map(|x| {
-                        x.iter()
-                            .map(|x| PossibleValues {
-                                name: x.get_name().to_owned(),
-                                help: x.get_help().unwrap_or_default().to_owned(),
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default(),
-                short: opt.get_short_and_visible_aliases(),
-                aliases: opt
-                    .get_long_and_visible_aliases()
-                    .map(|c| c.iter().map(|x| x.to_string()).collect::<Vec<_>>())
-                    .unwrap_or_default(),
-                help: opt.get_help().map(|s| s.to_string()),
-                long_help: opt.get_long_help().map(|s| s.to_string()),
-                conflicts: Self::arg_conflicts(cmd, opt),
+            .map(|arg| ArgInfo {
+                name: arg.get_name().to_string(),
+                possible_values: Self::arg_possible_values(arg),
+                short: arg.get_short_and_visible_aliases(),
+                aliases: Self::arg_alias(arg),
+                help: arg.get_help().map(|s| s.to_string()),
+                long_help: arg.get_long_help().map(|s| s.to_string()),
+                conflicts: Self::arg_conflicts(cmd, arg),
                 is_repeatable: matches!(
-                    opt.get_action(),
+                    arg.get_action(),
                     ArgAction::Set | ArgAction::Append | ArgAction::Count,
                 ),
             })
