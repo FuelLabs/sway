@@ -8,6 +8,7 @@ use crate::{engine_threading::*, type_system::TypeId};
 #[derive(Clone, Debug)]
 pub struct TyStorageAccess {
     pub fields: Vec<TyStorageAccessDescriptor>,
+    pub(crate) namespace: Option<Ident>,
     pub(crate) ix: StateIndex,
     pub storage_keyword_span: Span,
 }
@@ -26,10 +27,12 @@ impl HashWithEngines for TyStorageAccess {
         let TyStorageAccess {
             fields,
             ix,
+            namespace,
             storage_keyword_span,
         } = self;
         fields.hash(state, engines);
         ix.hash(state);
+        namespace.hash(state);
         storage_keyword_span.hash(state);
     }
 }

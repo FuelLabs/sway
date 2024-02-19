@@ -9,7 +9,7 @@ use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     language::{ty::*, Visibility},
-    transform,
+    transform::{self, AttributeKind},
     type_system::*,
     Namespace,
 };
@@ -56,6 +56,14 @@ impl Spanned for TyStorageDecl {
 }
 
 impl TyStorageDecl {
+    pub(crate) fn storage_namespace(&self) -> Option<Ident> {
+        self.attributes
+            .get(&AttributeKind::Namespace)
+            .and_then(|attrs| attrs.first())
+            .and_then(|attr| attr.args.first())
+            .map(|arg| arg.name.clone())
+    }
+
     /// Given a path that consists of `fields`, where the first field is one of the storage fields,
     /// find the type information of all the elements in the path and return it as a [TyStorageAccess].
     ///
@@ -201,6 +209,7 @@ impl TyStorageDecl {
             TyStorageAccess {
                 fields: access_descriptors,
                 ix,
+                namespace: self.storage_namespace(),
                 storage_keyword_span,
             },
             return_type,
