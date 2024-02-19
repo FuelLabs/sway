@@ -359,7 +359,6 @@ impl<'a> UnifyCheck<'a> {
 
                     // Never coerces to any other type.
                     (Never, _) => true,
-                    (_, Never) => true,
 
                     (Enum(l_decl_ref), Enum(r_decl_ref)) => {
                         let l_decl = self.engines.de().get_enum(l_decl_ref);

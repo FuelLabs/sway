@@ -70,7 +70,10 @@ pub(crate) fn instantiate_if_expression(
     let h = Handler::default();
 
     let unify_check = UnifyCheck::coercion(engines);
-    if !unify_check.check(then.return_type, r#else_ret_ty) {
+    // Perform unify check in both ways as Never coercion is not commutative
+    if !unify_check.check(then.return_type, r#else_ret_ty)
+        && !unify_check.check(r#else_ret_ty, then.return_type)
+    {
         h.emit_err(CompileError::TypeError(TypeError::MismatchedType {
             expected: engines.help_out(then.return_type).to_string(),
             received: engines.help_out(r#else_ret_ty).to_string(),
