@@ -10,10 +10,10 @@ use crate::{
     value::Value,
 };
 
-/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
+/// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Module(pub generational_arena::Index);
+pub struct Module(pub slotmap::DefaultKey);
 
 #[doc(hidden)]
 pub struct ModuleContent {
@@ -113,7 +113,7 @@ impl Module {
 
 /// An iterator over [`Module`]s within a [`Context`].
 pub struct ModuleIterator {
-    modules: Vec<generational_arena::Index>,
+    modules: Vec<slotmap::DefaultKey>,
     next: usize,
 }
 

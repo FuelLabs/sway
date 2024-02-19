@@ -2945,15 +2945,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "generational-arena"
-version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877e94aff08e743b651baaea359664321055749b398adff8740a7399af7796e7"
-dependencies = [
- "cfg-if 1.0.0",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6276,6 +6267,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "slotmap"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbff4acf519f630b3a3ddcfaea6c06b42174d9a44bc70c620e9ed1649d58b82a"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "slug"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6536,13 +6536,13 @@ dependencies = [
  "anyhow",
  "downcast-rs",
  "filecheck",
- "generational-arena",
  "indexmap 2.2.2",
  "itertools 0.10.5",
  "once_cell",
  "peg",
  "prettydiff 0.6.4",
  "rustc-hash",
+ "slotmap",
  "sway-ir-macros",
  "sway-types",
  "sway-utils",
