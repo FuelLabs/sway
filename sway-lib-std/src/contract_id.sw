@@ -7,13 +7,7 @@ use ::hash::{Hash, Hasher};
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
     /// The underlying raw `b256` data of the contract id.
-    value: b256,
-}
-
-impl core::ops::Eq for ContractId {
-    fn eq(self, other: Self) -> bool {
-        self.value == other.value
-    }
+    bits: b256,
 }
 
 impl ContractId {
@@ -34,7 +28,13 @@ impl ContractId {
     /// }
     /// ```
     pub fn bits(self) -> b256 {
-        self.value
+        self.bits
+    }
+}
+
+impl core::ops::Eq for ContractId {
+    fn eq(self, other: Self) -> bool {
+        self.bits == other.bits
     }
 }
 
@@ -60,7 +60,7 @@ impl From<b256> for ContractId {
     /// }
     /// ```
     fn from(bits: b256) -> Self {
-        Self { value: bits }
+        Self { bits }
     }
 }
 
@@ -83,14 +83,14 @@ impl From<ContractId> for b256 {
     /// }
     /// ```
     fn from(id: ContractId) -> b256 {
-        id.value
+        id.bits
     }
 }
 
 impl Hash for ContractId {
     fn hash(self, ref mut state: Hasher) {
-        let Self { value } = self;
-        value.hash(state);
+        let Self { bits } = self;
+        bits.hash(state);
     }
 }
 

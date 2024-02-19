@@ -7,7 +7,7 @@ use ::hash::{Hash, Hasher};
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
     /// The underlying raw `b256` data of the address.
-    value: b256,
+    bits: b256,
 }
 
 impl Address {
@@ -28,13 +28,13 @@ impl Address {
     /// }
     /// ```
     pub fn bits(self) -> b256 {
-        self.value
+        self.bits
     }
 }
 
 impl core::ops::Eq for Address {
     fn eq(self, other: Self) -> bool {
-        self.value == other.value
+        self.bits == other.bits
     }
 }
 
@@ -60,7 +60,7 @@ impl From<b256> for Address {
     /// }
     /// ```
     fn from(bits: b256) -> Self {
-        Self { value: bits }
+        Self { bits }
     }
 }
 
@@ -83,13 +83,13 @@ impl From<Address> for b256 {
     /// }
     /// ```
     fn from(address: Address) -> b256 {
-        address.value
+        address.bits
     }
 }
 
 impl Hash for Address {
     fn hash(self, ref mut state: Hasher) {
-        let Address { value } = self;
-        value.hash(state);
+        let Address { bits } = self;
+        bits.hash(state);
     }
 }
