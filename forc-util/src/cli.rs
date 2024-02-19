@@ -53,19 +53,16 @@ impl CommandInfo {
     }
 
     fn arg_conflicts(cmd: &Command, arg: &clap::Arg) -> Vec<String> {
-        let mut res = vec![];
-
-        for conflict in cmd.get_arg_conflicts_with(arg) {
-            if let Some(s) = conflict.get_short() {
-                res.push(format!("-{}", s));
-            }
-
-            if let Some(l) = conflict.get_long() {
-                res.push(format!("--{}", l));
-            }
-        }
-
-        res
+        cmd.get_arg_conflicts_with(arg)
+            .iter()
+            .flat_map(|conflict| {
+                vec![
+                    conflict.get_short().map(|s| format!("-{}", s)),
+                    conflict.get_long().map(|l| format!("--{}", l)),
+                ]
+            })
+            .filter_map(|opt| opt)
+            .collect()
     }
 
     fn get_args(cmd: &Command) -> Vec<ArgInfo> {
