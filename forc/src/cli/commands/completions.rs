@@ -4,7 +4,7 @@ use clap_complete::{generate, Generator};
 use forc_util::{cli::CommandInfo, ForcResult};
 use std::{
     collections::HashMap,
-    fs::{metadata, File, OpenOptions},
+    fs::File,
     io::{BufRead, BufReader, Write},
     path::Path,
 };
@@ -84,13 +84,6 @@ fn generate_autocomplete_script(target: Target, writer: &mut dyn Write) {
     }
 }
 
-fn is_writable<P: AsRef<Path>>(path: P) -> bool {
-    if let Ok(metadata) = metadata(path) {
-        return !metadata.permissions().readonly();
-    }
-    false
-}
-
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
     let target = command.target.unwrap_or_else(|| {
         if let Ok(shell) = std::env::var("SHELL") {
@@ -114,28 +107,8 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
 
     // Where to store the autocomplete script, ZSH requires a special path, the other shells are
     // stored in the same path and they are referenced form their respective config files
-    let dir = home::home_dir().map(|p| p.display().to_string()).unwrap();
-    let forc_autocomplete_path = match target {
-        Target::Zsh => {
-            let x = std::process::Command::new("zsh")
-                .arg("-c")
-                .arg("echo $fpath")
-                .output()
-                .expect("Cannot read $FPATH env variable")
-                .stdout;
-            let paths = String::from_utf8_lossy(&x)
-                .split(' ')
-                .filter(|path| is_writable(Path::new(path)))
-                .map(|x| x.to_owned())
-                .collect::<Vec<_>>();
-            format!(
-                "{}/_forc",
-                paths.first().expect("No writable path found for zsh")
-            )
-        }
-        _ => format!("{}/.forc.autocomplete", dir),
-    };
-
+    let home_dir = home::home_dir().map(|p| p.display().to_string()).unwrap();
+    let forc_autocomplete_path = format!("{}/.forc/_forc", home_dir);
     let mut file = File::create(&forc_autocomplete_path).unwrap_or_else(|_| {
         panic!("Cannot write to the autocomplete file in path {forc_autocomplete_path}")
     });
@@ -144,35 +117,45 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
     // Check if the shell config file already has the forc completions. Some shells do not require
     // this step, therefore this maybe None
     let user_shell_config = match target {
-        Target::Fish => Some(format!("{}/.config/fish/config.fish", dir)),
-        Target::Elvish => Some(format!("{}/.elvish/rc.elv", dir)),
-        Target::PowerShell => Some(format!(
+        Target::Fish => format!("{}/.config/fish/config.fish", home_dir),
+        Target::Elvish => format!("{}/.elvish/rc.elv", home_dir),
+        Target::PowerShell => format!(
             "{}/.config/powershell/Microsoft.PowerShell_profile.ps1",
-            dir
-        )),
-        Target::Bash => Some(format!("{}/.bash_profile", dir)),
-        Target::Fig => Some(format!("{}/.config/fig/fig.fish", dir)),
-        _ => None,
+            home_dir
+        ),
+        Target::Bash => format!("{}/.bash_profile", home_dir),
+        Target::Fig => format!("{}/.config/fig/fig.fish", home_dir),
+        Target::Zsh => format!("{}/.zshrc", home_dir),
+    };
+    let autocomplete_activation_script = match target {
+        Target::Bash => format!("source {}", forc_autocomplete_path),
+        Target::Zsh => format!(
+            "fpath=({} \"{}\")\\nautoload -Uz compinit && compinit",
+            Path::new(&forc_autocomplete_path)
+                .parent()
+                .unwrap()
+                .display(),
+            "$fpath[@]",
+        ),
+        _ => format!("source {}", forc_autocomplete_path),
     };
 
-    if let Some(file_path) = user_shell_config {
+    if let Ok(file) = File::open(&user_shell_config) {
         // Update the user_shell_config
-        let file = File::open(&file_path).expect("Open the shell config file");
         let reader = BufReader::new(file);
-
         for line in reader.lines().map_while(Result::ok) {
-            if line.contains(&forc_autocomplete_path) {
+            if line.contains(&autocomplete_activation_script) {
                 println!("Forc completions is already installed");
                 return Ok(());
             }
         }
-
-        let mut file = OpenOptions::new().append(true).open(&file_path)?;
-        writeln!(file, "source {}", forc_autocomplete_path,).unwrap();
-        println!("Forc completions were installed successfully at {file_path}");
     }
 
-    println!("\t The script is stored at {}", forc_autocomplete_path);
+    println!("To finish the installation of the autocompletition script, please run the following command:\n");
+    println!(
+        "\techo '{}' >> {}",
+        autocomplete_activation_script, user_shell_config
+    );
 
     Ok(())
 }

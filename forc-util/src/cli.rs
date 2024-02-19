@@ -61,7 +61,7 @@ impl CommandInfo {
                     conflict.get_long().map(|l| format!("--{}", l)),
                 ]
             })
-            .filter_map(|opt| opt)
+            .flatten()
             .collect()
     }
 
@@ -81,14 +81,18 @@ impl CommandInfo {
 
     fn arg_alias(arg: &clap::Arg<'_>) -> Vec<String> {
         arg.get_long_and_visible_aliases()
-            .map(|c| c.iter().map(|x| x.to_string()).collect::<Vec<_>>())
+            .map(|c| c.iter().map(|x| format!("--{}", x)).collect::<Vec<_>>())
             .unwrap_or_default()
     }
 
     fn get_args(cmd: &Command) -> Vec<ArgInfo> {
         cmd.get_arguments()
             .map(|arg| ArgInfo {
-                name: arg.get_name().to_string(),
+                name: if arg.get_long().is_some() {
+                    format!("--{}", arg.get_name())
+                } else {
+                    arg.get_name().to_string()
+                },
                 possible_values: Self::arg_possible_values(arg),
                 short: arg.get_short_and_visible_aliases(),
                 aliases: Self::arg_alias(arg),
