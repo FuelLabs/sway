@@ -23,7 +23,7 @@
 //!
 //! Most of the public data types used in this library are in fact wrappers around a handle into
 //! the context.  The context uses the
-//! [generational_arena](https://github.com/fitzgen/generational-arena) crate to maintain an entity
+//! [slotmap](https://github.com/orlp/slotmap) crate to maintain an entity
 //! component system, or ECS.
 //!
 //! The nature of SSA is that it represents a graph of modules, functions, basic blocks and
