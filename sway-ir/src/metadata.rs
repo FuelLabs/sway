@@ -11,7 +11,7 @@ use sway_types::SourceId;
 use crate::context::Context;
 
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
-pub struct MetadataIndex(pub generational_arena::Index);
+pub struct MetadataIndex(pub slotmap::DefaultKey);
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Metadatum {

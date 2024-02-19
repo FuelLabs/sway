@@ -1,12 +1,12 @@
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{path::PathBuf, sync::Arc};
-
-use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use strum::{Display, EnumString};
 
 #[derive(
     Clone,
     Copy,
     Debug,
+    Display,
     Default,
     Eq,
     PartialEq,
@@ -32,10 +32,22 @@ pub enum BuildTarget {
     MidenVM,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OptLevel {
-    Opt0,
-    Opt1,
+    #[default]
+    Opt0 = 0,
+    Opt1 = 1,
+}
+
+impl<'de> serde::Deserialize<'de> for OptLevel {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let num = u8::deserialize(d)?;
+        match num {
+            0 => Ok(OptLevel::Opt0),
+            1 => Ok(OptLevel::Opt1),
+            _ => Err(serde::de::Error::custom(format!("invalid opt level {num}"))),
+        }
+    }
 }
 
 /// Configuration for the overall build and compilation process.

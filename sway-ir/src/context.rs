@@ -1,13 +1,13 @@
 //! The main handle to an IR instance.
 //!
 //! [`Context`] contains several
-//! [generational_arena](https://github.com/fitzgen/generational-arena) collections to maintain the
+//! [slotmap](https://github.com/orlp/slotmap) collections to maintain the
 //! IR ECS.
 //!
 //! It is passed around as a mutable reference to many of the Sway-IR APIs.
 
-use generational_arena::Arena;
 use rustc_hash::FxHashMap;
+use slotmap::{DefaultKey, SlotMap};
 use sway_types::SourceEngine;
 
 use crate::{
@@ -23,14 +23,14 @@ use crate::{
 pub struct Context<'eng> {
     pub source_engine: &'eng SourceEngine,
 
-    pub(crate) modules: Arena<ModuleContent>,
-    pub(crate) functions: Arena<FunctionContent>,
-    pub(crate) blocks: Arena<BlockContent>,
-    pub(crate) values: Arena<ValueContent>,
-    pub(crate) local_vars: Arena<LocalVarContent>,
-    pub(crate) types: Arena<TypeContent>,
+    pub(crate) modules: SlotMap<DefaultKey, ModuleContent>,
+    pub(crate) functions: SlotMap<DefaultKey, FunctionContent>,
+    pub(crate) blocks: SlotMap<DefaultKey, BlockContent>,
+    pub(crate) values: SlotMap<DefaultKey, ValueContent>,
+    pub(crate) local_vars: SlotMap<DefaultKey, LocalVarContent>,
+    pub(crate) types: SlotMap<DefaultKey, TypeContent>,
     pub(crate) type_map: FxHashMap<TypeContent, Type>,
-    pub(crate) metadata: Arena<Metadatum>,
+    pub(crate) metadata: SlotMap<DefaultKey, Metadatum>,
 
     pub program_kind: Kind,
 
