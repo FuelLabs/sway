@@ -2151,18 +2151,18 @@ impl<'eng> FnCompiler<'eng> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-	// Corner case: If compilation of the expression fails, then this call returns an error.
+        // Corner case: If compilation of the expression fails, then this call returns an error.
         // However, the declared name must be added to the local environment before the error is
         // thrown - otherwise we will get an internal compiler error later on when the name is
         // accessed and isn't present in the environment.
         let init_val = self.compile_expression_to_value(context, md_mgr, body);
-	// Type resolution may fail if the initializer diverges, so check for termination first.
+        // Type resolution may fail if the initializer diverges, so check for termination first.
         match init_val {
-	    Ok(val) if val.is_terminator => return Ok(Some(val)),
-	    _ => ()
+            Ok(val) if val.is_terminator => return Ok(Some(val)),
+            _ => (),
         };
 
-	// Now it's safe to resolve the return type
+        // Now it's safe to resolve the return type
         let return_type = convert_resolved_typeid(
             self.engines.te(),
             self.engines.de(),
@@ -2178,9 +2178,9 @@ impl<'eng> FnCompiler<'eng> {
             .new_local_var(context, local_name.clone(), return_type, None, mutable)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
-	// The name has now been added, so we can check if the initializer threw an error
-	let val = init_val?;
-	
+        // The name has now been added, so we can check if the initializer threw an error
+        let val = init_val?;
+
         // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
         let var_ty = local_var.get_type(context);
@@ -2216,12 +2216,12 @@ impl<'eng> FnCompiler<'eng> {
             ..
         } = ast_const_decl;
         if let Some(value) = value {
-	    // Corner case: If compilation of the expression fails (e.g., because it is not
-	    // constant), then this call returns an error.
+            // Corner case: If compilation of the expression fails (e.g., because it is not
+            // constant), then this call returns an error.
             // However, if is_expression = false then the declared name must be added to the local
             // environment before the error is thrown - otherwise we will get an internal compiler
             // error later on when the name is accessed and isn't present in the environment.
-	    let const_expr_val = compile_constant_expression(
+            let const_expr_val = compile_constant_expression(
                 self.engines,
                 context,
                 md_mgr,
@@ -2234,18 +2234,20 @@ impl<'eng> FnCompiler<'eng> {
             );
 
             if is_expression {
-		// No declaration. Throw any error and return.
+                // No declaration. Throw any error and return.
                 Ok(TerminatorValue::new(const_expr_val?, context))
             } else {
-		// Declaration. The name needs to be added to the local environment, but the type
-		// resolution may fail if the initializer diverges. So check if the initalizer was
-		// successfully compiled but is a terminator.
-		match const_expr_val {
-		    Ok(val) if val.is_terminator(context) => return Ok(TerminatorValue::new(val, context)),
-		    _ => ()
-		};
+                // Declaration. The name needs to be added to the local environment, but the type
+                // resolution may fail if the initializer diverges. So check if the initalizer was
+                // successfully compiled but is a terminator.
+                match const_expr_val {
+                    Ok(val) if val.is_terminator(context) => {
+                        return Ok(TerminatorValue::new(val, context))
+                    }
+                    _ => (),
+                };
 
-		// Now it's safe to resolve the return type
+                // Now it's safe to resolve the return type
                 let local_name = self
                     .lexical_map
                     .insert(call_path.suffix.as_str().to_owned());
@@ -2270,9 +2272,9 @@ impl<'eng> FnCompiler<'eng> {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
 
-		// The name has now been added, so we can check if the initializer threw an error
-		let val = const_expr_val?;
-		
+                // The name has now been added, so we can check if the initializer threw an error
+                let val = const_expr_val?;
+
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
                 let var_ty = local_var.get_type(context);
