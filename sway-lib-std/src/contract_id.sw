@@ -82,8 +82,8 @@ impl From<ContractId> for b256 {
     ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
-    fn from(id: ContractId) -> b256 {
-        id.bits
+    fn from(id: ContractId) -> Self {
+        id.bits()
     }
 }
 

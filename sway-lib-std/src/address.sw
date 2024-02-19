@@ -82,8 +82,8 @@ impl From<Address> for b256 {
     ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
-    fn from(address: Address) -> b256 {
-        address.bits
+    fn from(address: Address) -> Self {
+        address.bits()
     }
 }
 
