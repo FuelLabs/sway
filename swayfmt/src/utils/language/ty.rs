@@ -49,6 +49,10 @@ impl Format for Ty {
                 ampersand_token,
                 ty,
             } => format_ref(formatted_code, ampersand_token.clone(), ty.clone()),
+            Self::Never { bang_token } => {
+                write!(formatted_code, "{}", bang_token.span().as_str(),)?;
+                Ok(())
+            }
         }
     }
 }
@@ -198,6 +202,7 @@ impl LeafSpans for Ty {
                 collected_spans.append(&mut ty.leaf_spans());
                 collected_spans
             }
+            Ty::Never { bang_token } => vec![ByteSpan::from(bang_token.span())],
         }
     }
 }

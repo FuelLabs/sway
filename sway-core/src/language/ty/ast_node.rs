@@ -135,18 +135,6 @@ impl CollectTypesMetadata for TyAstNode {
     }
 }
 
-impl DeterministicallyAborts for TyAstNode {
-    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
-        use TyAstNodeContent::*;
-        match &self.content {
-            Declaration(_) => false,
-            Expression(exp) => exp.deterministically_aborts(decl_engine, check_call_body),
-            SideEffect(_) => false,
-            Error(_, _) => false,
-        }
-    }
-}
-
 impl GetDeclIdent for TyAstNode {
     fn get_decl_ident(&self) -> Option<Ident> {
         self.content.get_decl_ident()
