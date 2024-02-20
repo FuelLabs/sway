@@ -95,6 +95,7 @@ impl PartialEqWithEngines for TypeSourceInfo {
 pub enum TypeInfo {
     #[default]
     Unknown,
+    Never,
     /// Represents a type parameter.
     ///
     /// The equivalent type in the Rust compiler is:
@@ -273,6 +274,7 @@ impl HashWithEngines for TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice => {}
         }
@@ -530,6 +532,7 @@ impl DisplayWithEngines for TypeInfo {
         use TypeInfo::*;
         let s = match self {
             Unknown => "{unknown}".into(),
+            Never => "!".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(type_param) => type_param.name_ident.to_string(),
             TypeParam(n) => format!("{n}"),
@@ -606,6 +609,7 @@ impl DebugWithEngines for TypeInfo {
         use TypeInfo::*;
         let s = match self {
             Unknown => "unknown".into(),
+            Never => "!".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
             TypeParam(n) => format!("typeparam({n})"),
@@ -737,6 +741,7 @@ impl TypeInfo {
             TypeInfo::StringSlice => 23,
             TypeInfo::TraitType { .. } => 24,
             TypeInfo::Ref { .. } => 25,
+            TypeInfo::Never => 26,
         }
     }
 
@@ -1049,6 +1054,7 @@ impl TypeInfo {
             }
             TypeInfo::ErrorRecovery(_) => true,
             TypeInfo::Unknown => true,
+            TypeInfo::Never => true,
             _ => false,
         }
     }
@@ -1134,6 +1140,7 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::StringArray(_)
             | TypeInfo::StringSlice
@@ -1177,7 +1184,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Alias { .. } => Ok(()),
+            | TypeInfo::Alias { .. }
+            | TypeInfo::Never => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
@@ -1236,7 +1244,8 @@ impl TypeInfo {
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_) => Ok(()),
+            | TypeInfo::Ref(_)
+            | TypeInfo::Never => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Storage { .. }
@@ -1271,7 +1280,8 @@ impl TypeInfo {
             | TypeInfo::Ptr(_)
             | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
-            | TypeInfo::TraitType { .. } => false,
+            | TypeInfo::TraitType { .. }
+            | TypeInfo::Never => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
@@ -1292,6 +1302,7 @@ impl TypeInfo {
     pub(crate) fn has_valid_constructor(&self, decl_engine: &DeclEngine) -> bool {
         match self {
             TypeInfo::Unknown => false,
+            TypeInfo::Never => false,
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 !decl.variants.is_empty()

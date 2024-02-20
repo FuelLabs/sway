@@ -106,7 +106,7 @@ pub struct BuiltPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub warnings: Vec<CompileWarning>,
-    source_map: SourceMap,
+    pub source_map: SourceMap,
     pub tree_type: TreeType,
     pub bytecode: BuiltPackageBytecode,
     /// `Some` for contract member builds where tests were included. This is
@@ -755,7 +755,7 @@ impl BuildPlan {
 
     /// Produce an iterator yielding all workspace member nodes in order of compilation.
     ///
-    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// In the case that this [BuildPlan] was constructed for a single package,
     /// only that package's node will be yielded.
     pub fn member_nodes(&self) -> impl Iterator<Item = NodeIx> + '_ {
         self.compilation_order()

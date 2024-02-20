@@ -1169,12 +1169,11 @@ fn type_check_revert(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Unknown, None), // TODO: change this to the `Never` type when
-                                                              // available
+        type_engine.insert(engines, TypeInfo::Never, None),
     ))
 }
 
-/// Signature: `__jmpb_ssp(offset: u64)`
+/// Signature: `__jmpb_ssp(offset: u64) -> !`
 /// Description: Jumps to `$ssp - offset`.
 /// Constraints: offset has type `u64`.
 fn type_check_jmpb_ssp(
@@ -1219,7 +1218,7 @@ fn type_check_jmpb_ssp(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Tuple(vec![]), None),
+        type_engine.insert(engines, TypeInfo::Never, None),
     ))
 }
 
