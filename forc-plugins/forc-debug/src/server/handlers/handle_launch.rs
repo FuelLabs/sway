@@ -1,7 +1,7 @@
 use crate::server::{AdapterError, DapServer};
 use crate::types::Instruction;
 use forc_pkg::manifest::GenericManifestFile;
-use forc_pkg::{self, BuildProfile, Built, BuiltPackage};
+use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
 use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
 use forc_test::BuiltTests;
@@ -54,26 +54,28 @@ impl DapServer {
         }
 
         // 1. Build the packages
-        let pkg_manifest = forc_pkg::manifest::PackageManifestFile::from_dir(
-            &self.state.program_path,
-        )
-        .map_err(|err| AdapterError::BuildFailed {
-            reason: format!("read manifest file: {:?}", err),
-        })?;
-
-        let lock_path = pkg_manifest
-            .lock_path()
+        let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
             .map_err(|err| AdapterError::BuildFailed {
-                reason: format!("lock path: {:?}", err),
+                reason: format!("read manifest file: {:?}", err),
             })?;
-
+        let pkg_manifest: PackageManifestFile =
+            manifest_file
+                .clone()
+                .try_into()
+                .map_err(|err: anyhow::Error| AdapterError::BuildFailed {
+                    reason: format!("package manifest: {:?}", err),
+                })?;
         let member_manifests =
-            pkg_manifest
+            manifest_file
                 .member_manifests()
                 .map_err(|err| AdapterError::BuildFailed {
                     reason: format!("member manifests: {:?}", err),
                 })?;
-
+        let lock_path = manifest_file
+            .lock_path()
+            .map_err(|err| AdapterError::BuildFailed {
+                reason: format!("lock path: {:?}", err),
+            })?;
         let build_plan = forc_pkg::BuildPlan::from_lock_and_manifests(
             &lock_path,
             &member_manifests,

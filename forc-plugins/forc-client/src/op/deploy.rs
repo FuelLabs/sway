@@ -19,7 +19,7 @@ use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use fuels_accounts::provider::Provider;
 use futures::FutureExt;
-use pkg::{manifest::ExperimentalFlags, BuiltPackage};
+use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{
@@ -341,9 +341,9 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,
         },
-        build_profile: cmd.build_profile.build_profile.clone(),
-        release: cmd.build_profile.release,
-        error_on_warnings: cmd.build_profile.error_on_warnings,
+        build_profile: cmd.build_profile.clone(),
+        release: cmd.build_profile == BuildProfile::RELEASE,
+        error_on_warnings: false,
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         build_target: BuildTarget::default(),

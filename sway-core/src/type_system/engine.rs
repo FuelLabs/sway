@@ -272,6 +272,7 @@ impl TypeEngine {
             TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Ref(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)
@@ -327,6 +328,7 @@ impl TypeEngine {
             TypeInfo::Ref(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
 
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)

@@ -1,12 +1,11 @@
 use anyhow::{anyhow, bail, Result};
 use colored::Colorize;
-use forc::cli::shared::BuildProfile;
 use forc_client::{
     cmd::{Deploy as DeployCommand, Run as RunCommand},
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{manifest::ExperimentalFlags, Built, BuiltPackage};
+use forc_pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
@@ -73,9 +72,9 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         default_salt: true,
-        build_profile: BuildProfile {
-            release: run_config.release,
-            ..Default::default()
+        build_profile: match run_config.release {
+            true => BuildProfile::RELEASE.to_string(),
+            false => BuildProfile::DEBUG.to_string(),
         },
         ..Default::default()
     })
@@ -257,6 +256,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
         build_target: run_config.build_target,
+        build_profile: BuildProfile::DEBUG.into(),
         release: run_config.release,
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(

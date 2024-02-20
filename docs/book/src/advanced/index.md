@@ -8,3 +8,4 @@ Advanced concepts.
 - [Associated Types](./associated_types.md)
 - [Generics and Trait Constraints](./generics_and_trait_constraints.md)
 - [Assembly](./assembly.md)
+- [Never Type](./never_type.md)

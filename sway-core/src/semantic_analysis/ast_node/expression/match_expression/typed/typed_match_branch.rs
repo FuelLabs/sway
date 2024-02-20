@@ -16,7 +16,6 @@ use crate::{
         ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars, TyExpression},
     },
     semantic_analysis::*,
-    types::DeterministicallyAborts,
     Engines, TypeArgument, TypeInfo, UnifyCheck,
 };
 
@@ -42,7 +41,6 @@ impl ty::TyMatchBranch {
         let instantiate = Instantiate::new(ctx.engines, branch_span.clone());
 
         let type_engine = ctx.engines.te();
-        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // type check the scrutinee
@@ -112,8 +110,9 @@ impl ty::TyMatchBranch {
                 ty::TyExpression::type_check(handler, ctx, result)?
             };
 
-            // unify the return type from the typed result with the type annotation
-            if !typed_result.deterministically_aborts(decl_engine, true) {
+            // Check if return type is Never if it is we don't unify as it would replace the Unknown annotation with Never.
+            if !matches!(*type_engine.get(typed_result.return_type), TypeInfo::Never) {
+                // unify the return type from the typed result with the type annotation
                 branch_ctx.unify_with_type_annotation(
                     handler,
                     typed_result.return_type,

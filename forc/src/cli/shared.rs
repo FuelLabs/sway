@@ -37,14 +37,11 @@ pub struct BuildOutput {
 /// Build profile options.
 #[derive(Args, Debug, Default)]
 pub struct BuildProfile {
-    /// Name of the build profile to use.
-    ///
-    /// If unspecified, forc will use debug build profile.
-    #[clap(long)]
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    /// The name of the build profile to use.
+    #[clap(long, conflicts_with = "release", default_value = forc_pkg::BuildProfile::DEBUG)]
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     #[clap(long)]
     pub release: bool,
     /// Treat warnings as errors.
