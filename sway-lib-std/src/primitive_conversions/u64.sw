@@ -20,7 +20,7 @@ impl u64 {
     /// fn foo() {
     ///     let val = 255_u64.try_as_u8();
     ///     assert(val == Some(255_u8));
-    ///     
+    ///
     ///     // Conversion fails as value is above the max a u8 can represent.
     ///     let val2 = 256_u64.try_as_u8();
     ///     assert(val == None);
@@ -51,7 +51,7 @@ impl u64 {
     /// fn foo() {
     ///     let val = 65_535_u64.try_as_u16();
     ///     assert(val == Some(65_535_u16));
-    ///     
+    ///
     ///     // Conversion fails as value is above the max a u16 can represent.
     ///     let val2 = 65_536_u64.try_as_u16();
     ///     assert(val == None);
@@ -82,7 +82,7 @@ impl u64 {
     /// fn foo() {
     ///     let val = 4_294_967_295_u64.try_as_u32();
     ///     assert(val == Some(4_294_967_295_u32));
-    ///     
+    ///
     ///     // Conversion fails as value is above the max a u32 can represent.
     ///     let val2 = 4_294_967_296_u64.try_as_u32();
     ///     assert(val == None);
