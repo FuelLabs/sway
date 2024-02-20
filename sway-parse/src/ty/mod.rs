@@ -67,6 +67,9 @@ impl Parse for Ty {
                 ty,
             });
         }
+        if let Some(bang_token) = parser.take() {
+            return Ok(Ty::Never { bang_token });
+        }
         if parser.peek::<OpenAngleBracketToken>().is_some()
             || parser.peek::<DoubleColonToken>().is_some()
             || parser.peek::<Ident>().is_some()

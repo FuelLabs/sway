@@ -29,7 +29,7 @@ impl Instantiate {
             None,
         );
         let boolean_type = type_engine.insert(engines, TypeInfo::Boolean, None);
-        let revert_type = type_engine.insert(engines, TypeInfo::Unknown, None); // TODO: Change this to the `Never` type once available.
+        let revert_type = type_engine.insert(engines, TypeInfo::Never, None);
 
         Self {
             span,

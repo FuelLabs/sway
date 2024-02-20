@@ -1,7 +1,7 @@
 use crate::cli::BuildCommand;
 use forc_pkg as pkg;
 use forc_util::ForcResult;
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 
 pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);

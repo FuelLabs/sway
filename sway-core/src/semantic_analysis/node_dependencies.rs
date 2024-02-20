@@ -969,6 +969,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
 /// because it is used for keys and values in the tree.
 fn type_info_name(type_info: &TypeInfo) -> String {
     match type_info {
+        TypeInfo::Never => "never",
         TypeInfo::StringArray(_) | TypeInfo::StringSlice => "str",
         TypeInfo::UnsignedInteger(n) => match n {
             IntegerBits::Eight => "uint8",

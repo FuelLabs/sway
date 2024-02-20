@@ -214,6 +214,7 @@ impl TypeId {
         let mut found: IndexMap<TypeId, Vec<TraitConstraint>> = IndexMap::new();
         match &*engines.te().get(*self) {
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::StringArray(_)
@@ -579,7 +580,7 @@ impl TypeId {
         let generic_trait_constraints_trait_names_and_args = ctx
             .namespace
             .module()
-            .items()
+            .current_items()
             .implemented_traits
             .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
         for structure_trait_constraint in structure_trait_constraints {

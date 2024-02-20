@@ -146,7 +146,6 @@ impl ty::TyExpression {
         let engines = ctx.engines();
         let expr_span = expr.span();
         let span = expr_span.clone();
-        let should_unify = !matches!(expr.kind, ExpressionKind::ImplicitReturn(_));
         let res = match expr.kind {
             // We've already emitted an error for the `::Error` case.
             ExpressionKind::Error(_, err) => Ok(ty::TyExpression::error(err, span, engines)),
@@ -425,10 +424,8 @@ impl ty::TyExpression {
             Err(e) => return Err(e),
         };
 
-        if should_unify {
-            // if the return type cannot be cast into the annotation type then it is a type error
-            ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
-        }
+        // if the return type cannot be cast into the annotation type then it is a type error
+        ctx.unify_with_type_annotation(handler, typed_expression.return_type, &expr_span);
 
         // The annotation may result in a cast, which is handled in the type engine.
         typed_expression.return_type = ctx
@@ -611,7 +608,7 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let (mut typed_block, block_return_type) =
+        let (typed_block, block_return_type) =
             match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents) {
                 Ok(res) => {
                     let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
@@ -622,10 +619,6 @@ impl ty::TyExpression {
                     type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), None),
                 ),
             };
-
-        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
-        unification_ctx.type_id = Some(block_return_type);
-        typed_block.type_check_unify(handler, &mut unification_ctx)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(typed_block),
@@ -1027,25 +1020,31 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        if !ctx.namespace.module().items().has_storage_declared() {
+        if !ctx
+            .namespace
+            .module()
+            .current_items()
+            .has_storage_declared()
+        {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
         let storage_fields = ctx
             .namespace
             .module()
-            .items()
+            .current_items()
             .get_storage_field_descriptors(handler, decl_engine)?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) = ctx.namespace.module().items().apply_storage_load(
-            handler,
-            ctx.engines,
-            ctx.namespace,
-            checkee,
-            &storage_fields,
-            storage_keyword_span,
-        )?;
+        let (storage_access, mut access_type) =
+            ctx.namespace.module().current_items().apply_storage_load(
+                handler,
+                ctx.engines,
+                ctx.namespace,
+                checkee,
+                &storage_fields,
+                storage_keyword_span,
+            )?;
 
         // The type of a storage access is `core::storage::StorageKey`. This is
         // the path to it.
@@ -1929,10 +1928,7 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let mut typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
-
-        let mut unification_ctx = TypeCheckUnificationContext::new(engines, ctx);
-        typed_body.type_check_unify(handler, &mut unification_ctx)?;
+        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
@@ -2030,7 +2026,7 @@ impl ty::TyExpression {
                 };
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
                 let (ty_of_field, _ty_of_parent) =
-                    ctx.namespace.module().items().find_subfield_type(
+                    ctx.namespace.module().current_items().find_subfield_type(
                         handler,
                         ctx.engines(),
                         ctx.namespace,
