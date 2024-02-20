@@ -58,8 +58,16 @@ fn generate_autocomplete_script(target: Target, writer: &mut dyn Write) {
         proc.env("CLI_DUMP_DEFINITION", "1");
         if let Ok(proc) = proc.output() {
             if let Ok(mut command_info) = serde_json::from_slice::<CommandInfo>(&proc.stdout) {
-                command_info.name = if let Some(name) = command_info.name.strip_prefix("forc-") {
-                    name.to_string()
+                command_info.name = if let Some(name) = path
+                    .file_name()
+                    .map(|x| {
+                        x.to_string_lossy()
+                            .strip_prefix("forc-")
+                            .map(|x| x.to_owned())
+                    })
+                    .flatten()
+                {
+                    name
                 } else {
                     command_info.name
                 };
