@@ -2157,7 +2157,6 @@ impl<'eng> FnCompiler<'eng> {
         // accessed and isn't present in the environment.
         let init_val = self.compile_expression_to_value(context, md_mgr, body);
 
-        // Now it's safe to resolve the return type
         let return_type = convert_resolved_typeid(
             self.engines.te(),
             self.engines.de(),
