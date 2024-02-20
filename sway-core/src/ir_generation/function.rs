@@ -2156,11 +2156,6 @@ impl<'eng> FnCompiler<'eng> {
         // thrown - otherwise we will get an internal compiler error later on when the name is
         // accessed and isn't present in the environment.
         let init_val = self.compile_expression_to_value(context, md_mgr, body);
-        // Type resolution may fail if the initializer diverges, so check for termination first.
-        match init_val {
-            Ok(val) if val.is_terminator => return Ok(Some(val)),
-            _ => (),
-        };
 
         // Now it's safe to resolve the return type
         let return_type = convert_resolved_typeid(
@@ -2180,6 +2175,10 @@ impl<'eng> FnCompiler<'eng> {
 
         // The name has now been added, so we can check if the initializer threw an error
         let val = init_val?;
+
+        if val.is_terminator {
+            return Ok(Some(val));
+        };
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
@@ -2234,20 +2233,10 @@ impl<'eng> FnCompiler<'eng> {
             );
 
             if is_expression {
-                // No declaration. Throw any error and return.
+                // No declaration. Throw any error, and return on success.
                 Ok(TerminatorValue::new(const_expr_val?, context))
             } else {
-                // Declaration. The name needs to be added to the local environment, but the type
-                // resolution may fail if the initializer diverges. So check if the initalizer was
-                // successfully compiled but is a terminator.
-                match const_expr_val {
-                    Ok(val) if val.is_terminator(context) => {
-                        return Ok(TerminatorValue::new(val, context))
-                    }
-                    _ => (),
-                };
-
-                // Now it's safe to resolve the return type
+                // Declaration. The name needs to be added to the local environment
                 let local_name = self
                     .lexical_map
                     .insert(call_path.suffix.as_str().to_owned());
@@ -2274,6 +2263,10 @@ impl<'eng> FnCompiler<'eng> {
 
                 // The name has now been added, so we can check if the initializer threw an error
                 let val = const_expr_val?;
+
+                if val.is_terminator(context) {
+                    return Ok(TerminatorValue::new(val, context));
+                };
 
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
