@@ -102,7 +102,7 @@ impl ty::TyExpression {
             handler,
             ctx.by_ref(),
             &method_name_binding,
-            arguments.clone(),
+            arguments.iter().map(|a| a.return_type).collect(),
         )?;
         decl_ref = monomorphize_method(
             handler,
