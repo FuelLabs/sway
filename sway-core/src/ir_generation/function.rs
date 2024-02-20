@@ -2176,9 +2176,9 @@ impl<'eng> FnCompiler<'eng> {
         // The name has now been added, so we can check if the initializer threw an error
         let val = init_val?;
 
-	if val.is_terminator {
-	    return Ok(Some(val))
-	};
+        if val.is_terminator {
+            return Ok(Some(val));
+        };
 
         // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
@@ -2265,9 +2265,9 @@ impl<'eng> FnCompiler<'eng> {
                 let val = const_expr_val?;
 
                 if val.is_terminator(context) {
-                    return Ok(TerminatorValue::new(val, context))
+                    return Ok(TerminatorValue::new(val, context));
                 };
-	    
+
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
                 let var_ty = local_var.get_type(context);
