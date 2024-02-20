@@ -26,6 +26,9 @@ pub enum Ty {
         ampersand_token: AmpersandToken,
         ty: Box<Ty>,
     },
+    Never {
+        bang_token: BangToken,
+    },
 }
 
 impl Spanned for Ty {
@@ -43,6 +46,7 @@ impl Spanned for Ty {
                 ampersand_token,
                 ty,
             } => Span::join(ampersand_token.span(), ty.span()),
+            Ty::Never { bang_token } => bang_token.span(),
         }
     }
 }

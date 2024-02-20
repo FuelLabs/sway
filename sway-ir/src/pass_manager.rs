@@ -22,15 +22,15 @@ pub type AnalysisResult = Box<dyn AnalysisResultT>;
 
 /// Program scope over which a pass executes.
 pub trait PassScope {
-    fn get_arena_idx(&self) -> generational_arena::Index;
+    fn get_arena_idx(&self) -> slotmap::DefaultKey;
 }
 impl PassScope for Module {
-    fn get_arena_idx(&self) -> generational_arena::Index {
+    fn get_arena_idx(&self) -> slotmap::DefaultKey {
         self.0
     }
 }
 impl PassScope for Function {
-    fn get_arena_idx(&self) -> generational_arena::Index {
+    fn get_arena_idx(&self) -> slotmap::DefaultKey {
         self.0
     }
 }
@@ -77,7 +77,7 @@ impl Pass {
 #[derive(Default)]
 pub struct AnalysisResults {
     // Hash from (AnalysisResultT, (PassScope, Scope Identity)) to an actual result.
-    results: FxHashMap<(TypeId, (TypeId, generational_arena::Index)), AnalysisResult>,
+    results: FxHashMap<(TypeId, (TypeId, slotmap::DefaultKey)), AnalysisResult>,
     name_typeid_map: FxHashMap<&'static str, TypeId>,
 }
 
