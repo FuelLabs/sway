@@ -214,6 +214,7 @@ impl TypeId {
         let mut found: IndexMap<TypeId, Vec<TraitConstraint>> = IndexMap::new();
         match &*engines.te().get(*self) {
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::StringArray(_)
