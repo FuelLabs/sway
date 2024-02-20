@@ -568,7 +568,8 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
-                self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
+                let ns = access.namespace.as_ref().map(|ns| ns.as_str());
+                self.compile_storage_access(context, ns, &access.ix, &access.fields, span_md_idx)
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
@@ -2945,8 +2946,9 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
-        fields: &[ty::TyStorageAccessDescriptor],
+        ns: Option<&str>,
         ix: &StateIndex,
+        fields: &[ty::TyStorageAccessDescriptor],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         // Get the list of indices used to access the storage field. This will be empty
@@ -2970,7 +2972,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(context, ix, &field_idcs, &base_type, span_md_idx)
+        self.compile_storage_read(context, ns, ix, &field_idcs, &base_type, span_md_idx)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -3069,6 +3071,7 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
+        ns: Option<&str>,
         ix: &StateIndex,
         indices: &[u64],
         base_type: &Type,
@@ -3106,7 +3109,7 @@ impl<'eng> FnCompiler<'eng> {
             // plus the offset, in number of slots, computed above. The offset within this
             // particular slot is the remaining offset, in words.
             (
-                add_to_b256(get_storage_key::<u64>(ix, &[]), offset_in_slots),
+                add_to_b256(get_storage_key::<u64>(ns, ix, &[]), offset_in_slots),
                 offset_remaining,
             )
         };
@@ -3161,7 +3164,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the field identifier as the third field in the `StorageKey` struct
-        let unique_field_id = get_storage_key(ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
+        let unique_field_id = get_storage_key(ns, ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
         let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
             .add_metadatum(context, span_md_idx);
         let gep_2_val =
