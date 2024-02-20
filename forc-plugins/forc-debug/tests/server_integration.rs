@@ -70,8 +70,6 @@ fn test_server_attach_mode() {
     assert_not_supported_event(output_capture.take_event());
 }
 
-// TODO: re-enable this test once fixed
-#[ignore]
 #[test]
 fn test_server_launch_mode() {
     let output_capture = EventCapture::default();
