@@ -31,7 +31,7 @@ fn main() -> bool {
     assert(((b.bits())[0] == hi_bits) && ((b.bits())[1] == lo_bits));
 
     // it guarantees memory contiguity:
-    let mut c = B512::from(hi_bits, lo_bits);
+    let mut c = B512::from((hi_bits, lo_bits));
     assert(are_fields_contiguous(c));
 
     // it allows direct comparison of equality:

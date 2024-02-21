@@ -51,8 +51,8 @@ pub enum EcRecoverError {
 pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
     let was_error = asm(
-        buffer: public_key.bits(),
-        sig: signature.bits(),
+        buffer: __addr_of(public_key),
+        sig: __addr_of(signature),
         hash: msg_hash,
     ) {
         eck1 buffer sig hash;
@@ -104,8 +104,8 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
     let was_error = asm(
-        buffer: public_key.bits(),
-        sig: signature.bits(),
+        buffer: __addr_of(public_key),
+        sig: __addr_of(signature),
         hash: msg_hash,
     ) {
         ecr1 buffer sig hash;
@@ -159,7 +159,7 @@ pub fn ed_verify(
     signature: B512,
     msg_hash: b256,
 ) -> Result<bool, EcRecoverError> {
-    let was_error = asm(buffer: public_key, sig: signature.bits(), hash: msg_hash) {
+    let was_error = asm(buffer: public_key, sig: __addr_of(signature), hash: msg_hash) {
         ed19 buffer sig hash;
         err
     };
