@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-F6BA7257B3F9949F"
+
+[[package]]
+name = "enum_variant_unification"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-F6BA7257B3F9949F"
+dependencies = ["core"]

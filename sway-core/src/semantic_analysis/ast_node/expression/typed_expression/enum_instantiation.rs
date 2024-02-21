@@ -90,7 +90,8 @@ pub(crate) fn instantiate_enum(
                 .with_help_text("Enum instantiator must match its declared variant type.")
                 .with_type_annotation(start_type);
 
-            let typed_expr = ty::TyExpression::type_check(handler, enum_ctx, single_expr.clone())?;
+            let mut typed_expr =
+                ty::TyExpression::type_check(handler, enum_ctx, single_expr.clone())?;
 
             // unify the value of the argument with the variant
             handler.scope(|handler| {
@@ -105,6 +106,9 @@ pub(crate) fn instantiate_enum(
                 );
                 Ok(())
             })?;
+
+            // Reuse the TypeId so further unification in typed_expr.return_type also affect enum_variant.type_argument.type_id
+            typed_expr.return_type = enum_variant.type_argument.type_id;
 
             // we now know that the instantiator type matches the declared type, via the above tpe
             // check
