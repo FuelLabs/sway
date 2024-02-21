@@ -159,7 +159,11 @@ pub fn ed_verify(
     signature: B512,
     msg_hash: b256,
 ) -> Result<bool, EcRecoverError> {
-    let was_error = asm(buffer: public_key, sig: __addr_of(signature), hash: msg_hash) {
+    let was_error = asm(
+        buffer: public_key,
+        sig: __addr_of(signature),
+        hash: msg_hash,
+    ) {
         ed19 buffer sig hash;
         err
     };
