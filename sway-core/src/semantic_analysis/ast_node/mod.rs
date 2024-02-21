@@ -10,7 +10,6 @@ use crate::{
     language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
-    types::DeterministicallyAborts,
     Ident,
 };
 
@@ -144,7 +143,7 @@ impl ty::TyAstNode {
                     ty::TyAstNodeContent::Declaration(ty::TyDecl::type_check(handler, ctx, decl)?)
                 }
                 AstNodeContent::Expression(expr) => {
-                    let mut ctx = ctx.with_help_text("");
+                    let mut ctx = ctx;
                     match expr.kind {
                         ExpressionKind::ImplicitReturn(_) => {
                             // Do not use any type annotation with implicit returns as that
@@ -152,11 +151,13 @@ impl ty::TyAstNode {
                             // types.
                         }
                         _ => {
-                            ctx = ctx.with_type_annotation(type_engine.insert(
-                                engines,
-                                TypeInfo::Unknown,
-                                None,
-                            ));
+                            ctx = ctx
+                                .with_help_text("")
+                                .with_type_annotation(type_engine.insert(
+                                    engines,
+                                    TypeInfo::Unknown,
+                                    None,
+                                ));
                         }
                     }
                     let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())

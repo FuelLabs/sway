@@ -304,7 +304,7 @@ pub(crate) async fn compile_and_run_unit_tests(
         .iter()
         .collect();
         match std::panic::catch_unwind(|| {
-            forc_test::build(forc_test::Opts {
+            forc_test::build(forc_test::TestOpts {
                 pkg: forc_pkg::PkgOpts {
                     path: Some(path.to_string_lossy().into_owned()),
                     locked: run_config.locked,
