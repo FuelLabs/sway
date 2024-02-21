@@ -31,51 +31,48 @@ impl ty::TyTraitFn {
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        let mut fn_namespace = ctx.namespace().clone();
-        ctx.by_ref()
-            .with_purity(purity)
-            .scoped(&mut fn_namespace, |mut ctx| {
-                // TODO: when we add type parameters to trait fns, type check them here
+        ctx.by_ref().with_purity(purity).scoped(|mut ctx| {
+            // TODO: when we add type parameters to trait fns, type check them here
 
-                // Type check the parameters.
-                let mut typed_parameters = vec![];
-                for param in parameters.into_iter() {
-                    typed_parameters.push(
-                        match ty::TyFunctionParameter::type_check_interface_parameter(
-                            handler,
-                            ctx.by_ref(),
-                            param,
-                        ) {
-                            Ok(res) => res,
-                            Err(_) => continue,
-                        },
-                    );
-                }
-
-                // Type check the return type.
-                return_type.type_id = ctx
-                    .resolve_type(
+            // Type check the parameters.
+            let mut typed_parameters = vec![];
+            for param in parameters.into_iter() {
+                typed_parameters.push(
+                    match ty::TyFunctionParameter::type_check_interface_parameter(
                         handler,
-                        return_type.type_id,
-                        &return_type.span,
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )
-                    .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
-                    });
+                        ctx.by_ref(),
+                        param,
+                    ) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    },
+                );
+            }
 
-                let trait_fn = ty::TyTraitFn {
-                    name,
-                    span,
-                    parameters: typed_parameters,
-                    return_type,
-                    purity,
-                    attributes,
-                };
+            // Type check the return type.
+            return_type.type_id = ctx
+                .resolve_type(
+                    handler,
+                    return_type.type_id,
+                    &return_type.span,
+                    EnforceTypeArguments::Yes,
+                    None,
+                )
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
 
-                Ok(trait_fn)
-            })
+            let trait_fn = ty::TyTraitFn {
+                name,
+                span,
+                parameters: typed_parameters,
+                return_type,
+                purity,
+                attributes,
+            };
+
+            Ok(trait_fn)
+        })
     }
 
     /// This function is used in trait declarations to insert "placeholder"

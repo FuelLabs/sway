@@ -22,8 +22,7 @@ impl ty::TyEnumDecl {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut decl_namespace = ctx.namespace().clone();
-        ctx.scoped(&mut decl_namespace, |mut ctx| {
+        ctx.scoped(|mut ctx| {
             // Type check the type parameters.
             let new_type_parameters = TypeParameter::type_check_type_params(
                 handler,

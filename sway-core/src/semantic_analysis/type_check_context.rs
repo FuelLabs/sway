@@ -103,14 +103,6 @@ pub struct TypeCheckContext<'a> {
 }
 
 impl<'a> TypeCheckContext<'a> {
-    pub fn namespace_mut(&mut self) -> &mut Namespace {
-        self.namespace
-    }
-
-    pub fn namespace(&self) -> &Namespace {
-        self.namespace
-    }
-
     /// Initialize a context at the top-level of a module with its namespace.
     ///
     /// Initializes with:
@@ -175,14 +167,14 @@ impl<'a> TypeCheckContext<'a> {
         }
     }
 
-    /// Scope the `TypeCheckContext` with the given `Namespace`.
+    /// Scope the `TypeCheckContext` with a new namespace.
     pub fn scoped<T>(
         self,
-        namespace: &'a mut Namespace,
         with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
+        let mut namespace = self.namespace.clone();
         let ctx = TypeCheckContext {
-            namespace,
+            namespace: &mut namespace,
             type_annotation: self.type_annotation,
             function_type_annotation: self.function_type_annotation,
             unify_generic: self.unify_generic,
@@ -222,6 +214,16 @@ impl<'a> TypeCheckContext<'a> {
             .enter_submodule(mod_name, visibility, module_span);
         let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, engines);
         with_submod_ctx(submod_ctx)
+    }
+
+    /// Returns a mutable reference to the current namespace.
+    pub fn namespace_mut(&mut self) -> &mut Namespace {
+        self.namespace
+    }
+
+    /// Returns a reference to the current namespace.
+    pub fn namespace(&self) -> &Namespace {
+        self.namespace
     }
 
     /// Map this `TypeCheckContext` instance to a new one with the given `help_text`.

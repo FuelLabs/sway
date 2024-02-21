@@ -215,9 +215,8 @@ pub(crate) fn struct_instantiation(
         }
     }
 
-    let mut struct_namespace = ctx.namespace().clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(&mut struct_namespace, |mut struct_ctx| {
+        .scoped(|mut struct_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
             for type_parameter in struct_decl.type_parameters {

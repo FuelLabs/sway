@@ -80,12 +80,11 @@ impl ty::TyFunctionDecl {
         }
 
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace().clone();
         ctx.by_ref()
             .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(&mut fn_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -171,12 +170,11 @@ impl ty::TyFunctionDecl {
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace().clone();
         ctx.by_ref()
             .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(&mut fn_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {
