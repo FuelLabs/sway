@@ -1,3 +1,4 @@
+use crate::manifest::GenericManifestFile;
 use crate::{
     lock::Lock,
     manifest::{
@@ -579,7 +580,7 @@ impl BuildPlan {
             std::env::current_dir()?
         };
 
-        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
+        let manifest_file = ManifestFile::from_dir(manifest_dir)?;
         let member_manifests = manifest_file.member_manifests()?;
         // Check if we have members to build so that we are not trying to build an empty workspace.
         if member_manifests.is_empty() {
@@ -2760,7 +2761,7 @@ mod test {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
-        let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+        let manifest_file = ManifestFile::from_dir(manifest_dir).unwrap();
         let member_manifests = manifest_file.member_manifests().unwrap();
         let lock_path = manifest_file.lock_path().unwrap();
         BuildPlan::from_lock_and_manifests(
