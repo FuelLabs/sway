@@ -578,7 +578,7 @@ impl TypeId {
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut found_error = false;
         let generic_trait_constraints_trait_names_and_args = ctx
-            .namespace
+            .namespace()
             .module()
             .current_items()
             .implemented_traits
@@ -586,7 +586,7 @@ impl TypeId {
         for structure_trait_constraint in structure_trait_constraints {
             let structure_trait_constraint_trait_name = &structure_trait_constraint
                 .trait_name
-                .to_fullpath(ctx.namespace);
+                .to_fullpath(ctx.namespace());
             if !generic_trait_constraints_trait_names_and_args.iter().any(
                 |(trait_name, trait_args)| {
                     trait_name == structure_trait_constraint_trait_name

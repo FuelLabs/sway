@@ -31,7 +31,7 @@ impl ty::TyTraitFn {
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        let mut fn_namespace = ctx.namespace.clone();
+        let mut fn_namespace = ctx.namespace().clone();
         ctx.by_ref()
             .with_purity(purity)
             .scoped(&mut fn_namespace, |mut ctx| {

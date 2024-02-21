@@ -50,7 +50,7 @@ impl TyImplTrait {
         let self_type_id = self_type_param.type_id;
 
         // create a namespace for the impl
-        let mut impl_namespace = ctx.namespace.clone();
+        let mut impl_namespace = ctx.namespace().clone();
         ctx.by_ref()
             .with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .with_self_type(Some(self_type_id))
@@ -120,7 +120,7 @@ impl TyImplTrait {
                     .with_self_type(Some(implementing_for.type_id));
 
                 let impl_trait = match ctx
-                    .namespace
+                    .namespace()
                     .resolve_call_path(handler, engines, &trait_name, ctx.self_type())
                     .ok()
                 {
@@ -292,7 +292,7 @@ impl TyImplTrait {
         let engines = ctx.engines();
 
         // create the namespace for the impl
-        let mut impl_namespace = ctx.namespace.clone();
+        let mut impl_namespace = ctx.namespace().clone();
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
             .allow_functions()
             .scoped(&mut impl_namespace, |mut ctx| {
@@ -629,7 +629,7 @@ fn type_check_trait_implementation(
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
-    ctx.namespace
+    ctx.namespace_mut()
         .module_mut()
         .current_items_mut()
         .implemented_traits
@@ -1459,7 +1459,7 @@ fn handle_supertraits(
             }
 
             match ctx
-                .namespace
+                .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
                 .resolve_call_path(
                     &Handler::default(),

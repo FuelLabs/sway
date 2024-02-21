@@ -146,7 +146,7 @@ impl ty::TyMatchExpression {
             };
         }
         let ctx = ctx.by_ref().with_type_annotation(self.return_type_id);
-        let mut namespace = ctx.namespace.clone();
+        let mut namespace = ctx.namespace().clone();
         ctx.scoped(&mut namespace, |mut branch_ctx| {
             let result_span = result.span.clone();
             let condition = condition

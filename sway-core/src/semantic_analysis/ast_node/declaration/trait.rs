@@ -55,7 +55,7 @@ impl TyTraitDecl {
         let self_type = self_type_param.type_id;
 
         // A temporary namespace for checking within the trait's scope.
-        let mut trait_namespace = ctx.namespace.clone();
+        let mut trait_namespace = ctx.namespace().clone();
         ctx.with_self_type(Some(self_type))
             .scoped(&mut trait_namespace, |mut ctx| {
                 // Type check the type parameters.
@@ -225,7 +225,7 @@ impl TyTraitDecl {
                     supertraits,
                     visibility,
                     attributes,
-                    call_path: CallPath::from(name).to_fullpath(ctx.namespace),
+                    call_path: CallPath::from(name).to_fullpath(ctx.namespace()),
                     span,
                 };
                 Ok(typed_trait_decl)
@@ -448,7 +448,7 @@ impl TyTraitDecl {
                     let const_shadowing_mode = ctx.const_shadowing_mode();
                     let generic_shadowing_mode = ctx.generic_shadowing_mode();
                     let _ = ctx
-                        .namespace
+                        .namespace_mut()
                         .module_mut()
                         .current_items_mut()
                         .insert_symbol(

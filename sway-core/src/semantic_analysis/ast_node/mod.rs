@@ -33,15 +33,17 @@ impl ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     let mut is_external = false;
-                    if let Some(submodule) =
-                        ctx.namespace.module().submodule(&[a.call_path[0].clone()])
+                    if let Some(submodule) = ctx
+                        .namespace()
+                        .module()
+                        .submodule(&[a.call_path[0].clone()])
                     {
                         is_external = submodule.is_external;
                     }
                     let path = if is_external || a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        ctx.namespace.find_module_path(&a.call_path)
+                        ctx.namespace().find_module_path(&a.call_path)
                     };
                     let _ = match a.import_type {
                         ImportType::Star => {

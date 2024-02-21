@@ -53,7 +53,7 @@ impl ty::TyAbiDecl {
         let self_type_id = self_type_param.type_id;
 
         // A temporary namespace for checking within this scope.
-        let mut abi_namespace = ctx.namespace.clone();
+        let mut abi_namespace = ctx.namespace().clone();
         ctx.with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
             .with_self_type(Some(self_type_id))
             .scoped(&mut abi_namespace, |mut ctx| {
@@ -303,7 +303,7 @@ impl ty::TyAbiDecl {
                         let const_shadowing_mode = ctx.const_shadowing_mode();
                         let generic_shadowing_mode = ctx.generic_shadowing_mode();
                         let _ = ctx
-                            .namespace
+                            .namespace_mut()
                             .module_mut()
                             .current_items_mut()
                             .insert_symbol(

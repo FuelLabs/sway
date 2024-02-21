@@ -11,7 +11,7 @@ impl ty::TyCodeBlock {
         code_block: &CodeBlock,
     ) -> Result<Self, ErrorEmitted> {
         // Create a temp namespace for checking within the code block scope.
-        let mut code_block_namespace = ctx.namespace.clone();
+        let mut code_block_namespace = ctx.namespace().clone();
         let evaluated_contents = code_block
             .contents
             .iter()

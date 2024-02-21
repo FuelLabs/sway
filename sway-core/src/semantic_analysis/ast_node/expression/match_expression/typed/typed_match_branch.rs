@@ -85,7 +85,7 @@ impl ty::TyMatchBranch {
             )?;
 
         // create a new namespace for this branch result
-        let mut namespace = ctx.namespace.clone();
+        let mut namespace = ctx.namespace().clone();
         ctx.scoped(&mut namespace, |mut branch_ctx| {
             // for every variable that comes into result block, create a variable declaration,
             // insert it into the branch namespace, and add it to the block of code statements

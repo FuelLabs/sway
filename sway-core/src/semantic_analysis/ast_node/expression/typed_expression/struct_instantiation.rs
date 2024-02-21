@@ -78,8 +78,8 @@ pub(crate) fn struct_instantiation(
     };
 
     // find the module that the struct decl is in
-    let type_info_prefix = ctx.namespace.find_module_path(&prefixes);
-    ctx.namespace
+    let type_info_prefix = ctx.namespace().find_module_path(&prefixes);
+    ctx.namespace()
         .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
     // resolve the type of the struct decl
@@ -99,7 +99,7 @@ pub(crate) fn struct_instantiation(
     let struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
 
     let (struct_can_be_changed, is_public_struct_access) =
-        StructAccessInfo::get_info(&struct_decl, ctx.namespace).into();
+        StructAccessInfo::get_info(&struct_decl, ctx.namespace()).into();
     let struct_has_private_fields = struct_decl.has_private_fields();
     let struct_can_be_instantiated = !is_public_struct_access || !struct_has_private_fields;
     let all_fields_are_private = struct_decl.has_only_private_fields();
@@ -127,7 +127,7 @@ pub(crate) fn struct_instantiation(
 
     if !struct_can_be_instantiated {
         let constructors = collect_struct_constructors(
-            ctx.namespace,
+            ctx.namespace(),
             ctx.engines,
             type_id,
             ctx.storage_declaration(),
@@ -215,7 +215,7 @@ pub(crate) fn struct_instantiation(
         }
     }
 
-    let mut struct_namespace = ctx.namespace.clone();
+    let mut struct_namespace = ctx.namespace().clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
         .scoped(&mut struct_namespace, |mut struct_ctx| {
             // Insert struct type parameter into namespace.

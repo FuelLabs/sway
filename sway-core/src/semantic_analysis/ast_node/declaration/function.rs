@@ -80,7 +80,7 @@ impl ty::TyFunctionDecl {
         }
 
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace.clone();
+        let mut fn_namespace = ctx.namespace().clone();
         ctx.by_ref()
             .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
@@ -140,7 +140,7 @@ impl ty::TyFunctionDecl {
                     )
                 };
 
-                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
+                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace());
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
@@ -171,7 +171,7 @@ impl ty::TyFunctionDecl {
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace.clone();
+        let mut fn_namespace = ctx.namespace().clone();
         ctx.by_ref()
             .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
