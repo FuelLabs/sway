@@ -254,7 +254,7 @@
     {
       "components": [
         {
-          "name": "bytes",
+          "name": "bits",
           "type": 0,
           "typeArguments": null
         }
