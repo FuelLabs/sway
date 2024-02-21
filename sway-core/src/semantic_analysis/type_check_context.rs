@@ -1020,7 +1020,7 @@ impl<'a> TypeCheckContext<'a> {
         method_prefix: &Path,
         method_name: &Ident,
         annotation_type: TypeId,
-        args_buf: &VecDeque<ty::TyExpression>,
+        arguments_types: &VecDeque<TypeId>,
         as_trait: Option<TypeId>,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
@@ -1055,12 +1055,12 @@ impl<'a> TypeCheckContext<'a> {
             let mut maybe_method_decl_refs: Vec<DeclRefFunction> = vec![];
             for decl_ref in matching_method_decl_refs.clone().into_iter() {
                 let method = decl_engine.get_function(&decl_ref);
-                if method.parameters.len() == args_buf.len()
+                if method.parameters.len() == arguments_types.len()
                     && method
                         .parameters
                         .iter()
-                        .zip(args_buf.iter())
-                        .all(|(p, a)| coercion_check.check(p.type_argument.type_id, a.return_type))
+                        .zip(arguments_types.iter())
+                        .all(|(p, a)| coercion_check.check(p.type_argument.type_id, *a))
                     && (matches!(&*type_engine.get(annotation_type), TypeInfo::Unknown)
                         || coercion_check.check(annotation_type, method.return_type.type_id))
                 {
@@ -1214,9 +1214,9 @@ impl<'a> TypeCheckContext<'a> {
             return Ok(method_decl_ref);
         }
 
-        if let Some(TypeInfo::ErrorRecovery(err)) = args_buf
+        if let Some(TypeInfo::ErrorRecovery(err)) = arguments_types
             .front()
-            .map(|x| (*type_engine.get(x.return_type)).clone())
+            .map(|x| (*type_engine.get(*x)).clone())
         {
             Err(err)
         } else {
@@ -1234,7 +1234,7 @@ impl<'a> TypeCheckContext<'a> {
                     method_prefix,
                     method_name,
                     annotation_type,
-                    args_buf,
+                    arguments_types,
                     as_trait,
                     TryInsertingTraitImplOnFailure::No,
                 );
