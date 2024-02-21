@@ -807,6 +807,7 @@ impl TypeInfo {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
+            Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
             TypeParam(n) => format!("typeparam({n})"),
@@ -885,7 +886,7 @@ fn call_path_display(ctx: &mut AbiContext, call_path: &CallPath) -> String {
     for (index, prefix) in call_path.prefixes.iter().enumerate() {
         let mut skip_prefix = false;
         if index == 0 {
-            if let Some(root_name) = ctx.program.root.namespace.name.clone() {
+            if let Some(root_name) = &ctx.program.root.namespace.module().name {
                 if prefix.as_str() == root_name.as_str() {
                     skip_prefix = true;
                 }

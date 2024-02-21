@@ -3,14 +3,13 @@ use std::hash::{Hash, Hasher};
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
 };
 use sway_types::{state::StateIndex, Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
     language::{ty::*, Visibility},
-    transform,
+    transform::{self, AttributeKind},
     type_system::*,
     Namespace,
 };
@@ -57,6 +56,14 @@ impl Spanned for TyStorageDecl {
 }
 
 impl TyStorageDecl {
+    pub(crate) fn storage_namespace(&self) -> Option<Ident> {
+        self.attributes
+            .get(&AttributeKind::Namespace)
+            .and_then(|attrs| attrs.first())
+            .and_then(|attr| attr.args.first())
+            .map(|arg| arg.name.clone())
+    }
+
     /// Given a path that consists of `fields`, where the first field is one of the storage fields,
     /// find the type information of all the elements in the path and return it as a [TyStorageAccess].
     ///
@@ -98,8 +105,9 @@ impl TyStorageDecl {
             }
             None => {
                 return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
-                    name: first_field.clone(),
-                    span: first_field.span(),
+                    field_name: first_field.into(),
+                    available_fields: storage_fields.iter().map(|sf| sf.name.clone()).collect(),
+                    storage_decl_span: self.span(),
                 }));
             }
         };
@@ -113,6 +121,13 @@ impl TyStorageDecl {
         previous_field = first_field;
         previous_field_type_id = initial_field_type;
 
+        // Storage cannot contain references, so there is no need for checking
+        // if the declaration is a reference to a struct. References can still
+        // be erroneously declared in the storage, and the type behind a concrete
+        // field access might be a reference to struct, but we do not treat that
+        // as a special case but just another one "not a struct".
+        // The FieldAccessOnNonStruct error message will explain that in the case
+        // of storage access, fields can be accessed only on structs.
         let get_struct_decl = |type_id: TypeId| match &*type_engine.get(type_id) {
             TypeInfo::Struct(decl_ref) => Some(decl_engine.get_struct(decl_ref)),
             _ => None,
@@ -127,25 +142,13 @@ impl TyStorageDecl {
                     match struct_decl.find_field(field) {
                         Some(struct_field) => {
                             if is_public_struct_access && struct_field.is_private() {
-                                // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                                //       https://github.com/FuelLabs/sway/issues/5520
-                                // return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
-                                //     field_name: field.into(),
-                                //     struct_name: struct_decl.call_path.suffix.clone(),
-                                //     field_decl_span: struct_field.name.span(),
-                                //     struct_can_be_changed,
-                                //     usage_context: StructFieldUsageContext::StorageAccess,
-                                // }));
-                                handler.emit_warn(CompileWarning {
-                                    span: field.span(),
-                                    warning_content: Warning::StructFieldIsPrivate {
-                                        field_name: field.into(),
-                                        struct_name: struct_decl.call_path.suffix.clone(),
-                                        field_decl_span: struct_field.name.span(),
-                                        struct_can_be_changed,
-                                        usage_context: StructFieldUsageContext::StorageAccess,
-                                    },
-                                });
+                                return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
+                                    field_name: field.into(),
+                                    struct_name: struct_decl.call_path.suffix.clone(),
+                                    field_decl_span: struct_field.name.span(),
+                                    struct_can_be_changed,
+                                    usage_context: StructFieldUsageContext::StorageAccess,
+                                }));
                             }
 
                             // Everything is fine. Push the storage access descriptor and move to the next field.
@@ -191,8 +194,10 @@ impl TyStorageDecl {
                 }
                 None => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {
-                        span: previous_field.span(),
                         actually: engines.help_out(previous_field_type_id).to_string(),
+                        storage_variable: Some(previous_field.to_string()),
+                        field_name: field.into(),
+                        span: previous_field.span(),
                     }))
                 }
             };
@@ -204,6 +209,7 @@ impl TyStorageDecl {
             TyStorageAccess {
                 fields: access_descriptors,
                 ix,
+                namespace: self.storage_namespace(),
                 storage_keyword_span,
             },
             return_type,

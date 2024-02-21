@@ -1,10 +1,11 @@
+use indexmap::IndexMap;
 /// Promote local memory to SSA registers.
 /// This pass is essentially SSA construction. A good readable reference is:
 /// https://www.cs.princeton.edu/~appel/modern/c/
 /// We use block arguments instead of explicit PHI nodes. Conceptually,
 /// they are both the same.
 use rustc_hash::FxHashMap;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use sway_utils::mapped_stack::MappedStack;
 
 use crate::{
@@ -223,7 +224,7 @@ pub fn promote_to_registers(
     ) {
         // Whatever new definitions we find in this block, they must be popped
         // when we're done. So let's keep track of that locally as a count.
-        let mut num_local_pushes = HashMap::<String, u32>::new();
+        let mut num_local_pushes = IndexMap::<String, u32>::new();
 
         // Start with relevant block args, they are new definitions.
         for arg in node.arg_iter(context) {

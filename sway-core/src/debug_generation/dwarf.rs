@@ -24,8 +24,6 @@ pub fn generate_debug_info(
     // Lets gather all the files used by the allocated ops in the compiled assembly.
     let source_spans = gather_source_file_spans(asm);
 
-    dbg!(source_spans.clone());
-
     let source_ids: Vec<_> = source_spans
         .iter()
         .map(|span| span.source_id())
@@ -133,7 +131,7 @@ fn gather_source_file_spans(asm: &CompiledAsm) -> Vec<Span> {
         InstructionSet::Fuel { ops } => ops
             .iter()
             .filter_map(|op| match op.owning_span.as_ref() {
-                Some(span) => Some(span.clone()),
+                Some(span) => Some(dbg!(span.clone())),
                 None => {
                     dbg!("Instruction provides no span", op);
                     None

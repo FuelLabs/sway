@@ -35,6 +35,14 @@ To read a storage variable, you also need to use the `storage` keyword as follow
 
 Generic storage maps are available in the standard library as `StorageMap<K, V>` which have to be defined inside a `storage` block and allow you to call `insert()` and `get()` to insert values at specific keys and get those values respectively. Refer to [Storage Maps](../common-collections/storage_map.md) for more information about `StorageMap<K, V>`.
 
+## Storage Namespace
+
+If you want the values in storage to be positioned differently, for instance to avoid collisions with storage from another contract when loading code, you can use the namespace annotation to add a salt to the slot calculations.
+
+```sway
+{{#include ../../../../examples/storage_namespace/src/main.sw:storage_namespace}}
+```
+
 ## Manual Storage Management
 
 It is possible to leverage FuelVM storage operations directly using the `std::storage::storage_api::write` and `std::storage::storage_api::read` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:

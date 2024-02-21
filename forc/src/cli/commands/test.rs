@@ -4,14 +4,16 @@ use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 use tracing::info;
 
 forc_util::cli_examples! {
-    [ Run test => forc "test" => ".*could not find `Forc.toml`.*" ]
-    [ Run test with a filter => forc "test $filter" => ".*could not find `Forc.toml`.*" ]
-    [ Run test without any output => forc "test --silent" => "^$" ]
-    [ Run test without creating or update the lock file  => forc "test --locked" => ".*could not find `Forc.toml`.*" ]
+    crate::cli::Opt {
+        [ Run test => "forc test" ]
+        [ Run test with a filter => "forc test $filter" ]
+        [ Run test without any output => "forc test --silent" ]
+        [ Run test without creating or update the lock file  => "forc test --locked" ]
+    }
 }
 
 /// Run the Sway unit tests for the current project.
@@ -32,6 +34,7 @@ forc_util::cli_examples! {
 /// considered a failure in the case that a revert (`rvrt`) instruction is encountered during
 /// execution. Otherwise, it is considered a success.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc test", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub build: cli::shared::Build,
@@ -196,8 +199,8 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
     Ok(())
 }
 
-fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
-    forc_test::Opts {
+fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
+    forc_test::TestOpts {
         pkg: pkg::PkgOpts {
             path: cmd.build.pkg.path,
             offline: cmd.build.pkg.offline,

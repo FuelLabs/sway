@@ -1166,8 +1166,7 @@ fn type_check_revert(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Unknown, None), // TODO: change this to the `Never` type when
-                                                              // available
+        type_engine.insert(engines, TypeInfo::Never, None),
     ))
 }
 

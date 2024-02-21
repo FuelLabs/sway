@@ -8,11 +8,21 @@ use sway_lsp::core::session::{self, Session};
 
 pub async fn compile_test_project() -> (Url, Arc<Session>) {
     let session = Arc::new(Session::new());
+    let lsp_mode = Some(sway_core::LspConfig {
+        optimized_build: false,
+    });
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
     session.handle_open_file(&uri).await;
     // Compile the project
-    session::parse_project(&uri, &session.engines.read(), None, session.clone()).unwrap();
+    session::parse_project(
+        &uri,
+        &session.engines.read(),
+        None,
+        lsp_mode,
+        session.clone(),
+    )
+    .unwrap();
     (uri, session)
 }
 

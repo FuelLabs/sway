@@ -18,6 +18,7 @@ use crate::{
     type_system::*,
     types::*,
 };
+use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -240,18 +241,22 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::TraitTypeDecl { .. } => unexpected_decl("trait type"),
             },
             ty::TyAstNodeContent::Expression(te) => {
-                // An expression with an ignored return value... I assume.
-                let value = self.compile_expression_to_value(context, md_mgr, te)?;
-                // Terminating values should end the compilation of the block
-                if value.is_terminator {
-                    Ok(Some(value))
-                } else {
-                    Ok(None)
+                match &te.expression {
+                    TyExpressionVariant::ImplicitReturn(exp) => self
+                        .compile_expression_to_value(context, md_mgr, exp)
+                        .map(Some),
+                    _ => {
+                        // An expression with an ignored return value... I assume.
+                        let value = self.compile_expression_to_value(context, md_mgr, te)?;
+                        // Terminating values should end the compilation of the block
+                        if value.is_terminator {
+                            Ok(Some(value))
+                        } else {
+                            Ok(None)
+                        }
+                    }
                 }
             }
-            ty::TyAstNodeContent::ImplicitReturnExpression(te) => self
-                .compile_expression_to_value(context, md_mgr, te)
-                .map(Some),
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
@@ -563,7 +568,8 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
-                self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
+                let ns = access.namespace.as_ref().map(|ns| ns.as_str());
+                self.compile_storage_access(context, ns, &access.ix, &access.fields, span_md_idx)
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
@@ -582,6 +588,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::WhileLoop { body, condition } => {
                 self.compile_while_loop(context, md_mgr, body, condition, span_md_idx)
+            }
+            ty::TyExpressionVariant::ForLoop { desugared } => {
+                self.compile_expression(context, md_mgr, desugared)
             }
             ty::TyExpressionVariant::Break => {
                 match self.block_to_break_to {
@@ -617,6 +626,10 @@ impl<'eng> FnCompiler<'eng> {
             },
             ty::TyExpressionVariant::Reassignment(reassignment) => {
                 self.compile_reassignment(context, md_mgr, reassignment, span_md_idx)
+            }
+            ty::TyExpressionVariant::ImplicitReturn(_exp) => {
+                // This is currently handled at the top-level handler, `compile_ast_node`.
+                unreachable!();
             }
             ty::TyExpressionVariant::Return(exp) => {
                 self.compile_return(context, md_mgr, exp, span_md_idx)
@@ -1337,7 +1350,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
 
-        let result = if referenced_type.is_copy_type() || referenced_type.is_reference_type() {
+        let result = if referenced_type.is_copy_type() || referenced_type.is_reference() {
             // For non aggregates, we need to return the value.
             // This means, loading the value the `ptr` is pointing to.
             self.current_block.append(context).load(ptr)
@@ -1410,7 +1423,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         call_params: &ty::ContractCallParams,
-        contract_call_parameters: &HashMap<String, ty::TyExpression>,
+        contract_call_parameters: &IndexMap<String, ty::TyExpression>,
         ast_name: &str,
         ast_args: &[(Ident, ty::TyExpression)],
         ast_return_type: TypeId,
@@ -2933,8 +2946,9 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
-        fields: &[ty::TyStorageAccessDescriptor],
+        ns: Option<&str>,
         ix: &StateIndex,
+        fields: &[ty::TyStorageAccessDescriptor],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         // Get the list of indices used to access the storage field. This will be empty
@@ -2958,7 +2972,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(context, ix, &field_idcs, &base_type, span_md_idx)
+        self.compile_storage_read(context, ns, ix, &field_idcs, &base_type, span_md_idx)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2997,7 +3011,7 @@ impl<'eng> FnCompiler<'eng> {
                     if initializer_val
                         .get_type(context)
                         .map_or(false, |ty| ty.is_ptr(context))
-                        && (init_type.is_copy_type() || init_type.is_reference_type())
+                        && (init_type.is_copy_type() || init_type.is_reference())
                     {
                         // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
                         // We can get a reference behind a pointer if a reference variable is passed to the ASM block.
@@ -3057,6 +3071,7 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
+        ns: Option<&str>,
         ix: &StateIndex,
         indices: &[u64],
         base_type: &Type,
@@ -3094,7 +3109,7 @@ impl<'eng> FnCompiler<'eng> {
             // plus the offset, in number of slots, computed above. The offset within this
             // particular slot is the remaining offset, in words.
             (
-                add_to_b256(get_storage_key::<u64>(ix, &[]), offset_in_slots),
+                add_to_b256(get_storage_key::<u64>(ns, ix, &[]), offset_in_slots),
                 offset_remaining,
             )
         };
@@ -3149,7 +3164,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the field identifier as the third field in the `StorageKey` struct
-        let unique_field_id = get_storage_key(ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
+        let unique_field_id = get_storage_key(ns, ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
         let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
             .add_metadatum(context, span_md_idx);
         let gep_2_val =

@@ -1728,6 +1728,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     // XXX reassess all the places we use this
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
         ty.is_unit(self.context)
+            || ty.is_never(self.context)
             || ty.is_bool(self.context)
             || ty
                 .get_uint_width(self.context)

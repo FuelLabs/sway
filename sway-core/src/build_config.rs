@@ -1,12 +1,12 @@
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{path::PathBuf, sync::Arc};
-
-use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use strum::{Display, EnumString};
 
 #[derive(
     Clone,
     Copy,
     Debug,
+    Display,
     Default,
     Eq,
     PartialEq,
@@ -32,10 +32,22 @@ pub enum BuildTarget {
     MidenVM,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum OptLevel {
-    Opt0,
-    Opt1,
+    #[default]
+    Opt0 = 0,
+    Opt1 = 1,
+}
+
+impl<'de> serde::Deserialize<'de> for OptLevel {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let num = u8::deserialize(d)?;
+        match num {
+            0 => Ok(OptLevel::Opt0),
+            1 => Ok(OptLevel::Opt1),
+            _ => Err(serde::de::Error::custom(format!("invalid opt level {num}"))),
+        }
+    }
 }
 
 /// Configuration for the overall build and compilation process.
@@ -56,7 +68,7 @@ pub struct BuildConfig {
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
     pub experimental: ExperimentalFlags,
-    pub lsp_mode: bool,
+    pub lsp_mode: Option<LspConfig>,
 }
 
 impl BuildConfig {
@@ -103,7 +115,7 @@ impl BuildConfig {
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
             experimental: ExperimentalFlags::default(),
-            lsp_mode: false,
+            lsp_mode: None,
         }
     }
 
@@ -182,7 +194,7 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_lsp_mode(self, lsp_mode: bool) -> Self {
+    pub fn with_lsp_mode(self, lsp_mode: Option<LspConfig>) -> Self {
         Self { lsp_mode, ..self }
     }
 
@@ -194,6 +206,15 @@ impl BuildConfig {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct LspConfig {
+    // This is set to true if compilation was triggered by a didChange LSP event. In this case, we
+    // bypass collecting type metadata and skip DCA.
+    //
+    // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
+    pub optimized_build: bool,
 }
 
 #[cfg(test)]

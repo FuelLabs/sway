@@ -1,0 +1,27 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "sections"
+
+[dependencies]
+
+[build-profile.release]
+print-ast = true
+print-dca-graph = "dca_graph"
+print-dca-graph-url-format = "print_dca_graph_url_format"
+print-ir = true
+print-finalized-asm = true
+print-intermediate-asm = true
+terse = true
+time-phases = true
+metrics-outfile = "metrics_outfile"
+include-tests = true
+json-abi-with-callpaths = true
+error-on-warnings = true
+reverse-results = true
+optimization-level = 0
+experimental = { new-encoding = true }
+
+[build-profile.custom]
+print-finalized-asm = true

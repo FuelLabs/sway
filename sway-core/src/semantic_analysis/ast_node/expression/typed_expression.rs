@@ -33,6 +33,7 @@ use crate::{
 };
 
 use ast_node::declaration::{insert_supertraits_into_namespace, SupertraitOf};
+use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::{
     convert_parse_tree_error::ConvertParseTreeError,
@@ -101,7 +102,7 @@ impl ty::TyExpression {
             handler,
             ctx.by_ref(),
             &method_name_binding,
-            arguments.clone(),
+            arguments.iter().map(|a| a.return_type).collect(),
         )?;
         decl_ref = monomorphize_method(
             handler,
@@ -122,7 +123,7 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
                 call_path,
-                contract_call_params: HashMap::new(),
+                contract_call_params: IndexMap::new(),
                 arguments: args_and_names,
                 fn_ref: decl_ref,
                 selector: None,
@@ -357,6 +358,9 @@ impl ty::TyExpression {
             ExpressionKind::WhileLoop(WhileLoopExpression { condition, body }) => {
                 Self::type_check_while_loop(handler, ctx.by_ref(), *condition, body, span)
             }
+            ExpressionKind::ForLoop(ForLoopExpression { desugared }) => {
+                Self::type_check_for_loop(handler, ctx.by_ref(), *desugared)
+            }
             ExpressionKind::Break => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Break,
@@ -376,21 +380,28 @@ impl ty::TyExpression {
             ExpressionKind::Reassignment(ReassignmentExpression { lhs, rhs }) => {
                 Self::type_check_reassignment(handler, ctx.by_ref(), lhs, *rhs, span)
             }
-            ExpressionKind::Return(expr) => {
+            ExpressionKind::ImplicitReturn(expr) => {
                 let ctx = ctx
-                    // we use "unknown" here because return statements do not
-                    // necessarily follow the type annotation of their immediate
-                    // surrounding context. Because a return statement is control flow
-                    // that breaks out to the nearest function, we need to type check
-                    // it against the surrounding function.
-                    // That is impossible here, as we don't have that information. It
-                    // is the responsibility of the function declaration to type check
-                    // all return statements contained within it.
                     .by_ref()
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+                    .with_help_text("Implicit return must match up with block's type.");
+                let expr_span = expr.span();
+                let expr = ty::TyExpression::type_check(handler, ctx, *expr)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
+
+                let typed_expr = ty::TyExpression {
+                    return_type: expr.return_type,
+                    expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(expr)),
+                    span,
+                };
+                Ok(typed_expr)
+            }
+            ExpressionKind::Return(expr) => {
+                let function_type_annotation = ctx.function_type_annotation();
+                let ctx = ctx
+                    .by_ref()
+                    .with_type_annotation(function_type_annotation)
                     .with_help_text(
-                        "Returned value must match up with the function return type \
-                        annotation.",
+                        "Return statement must return the declared function return type.",
                     );
                 let expr_span = expr.span();
                 let expr = ty::TyExpression::type_check(handler, ctx, *expr)
@@ -597,7 +608,7 @@ impl ty::TyExpression {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let (mut typed_block, block_return_type) =
+        let (typed_block, block_return_type) =
             match ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &contents) {
                 Ok(res) => {
                     let (block_type, _span) = TyCodeBlock::compute_return_type_and_span(&ctx, &res);
@@ -608,10 +619,6 @@ impl ty::TyExpression {
                     type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), None),
                 ),
             };
-
-        let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
-        unification_ctx.type_id = Some(block_return_type);
-        typed_block.type_check_unify(handler, &mut unification_ctx)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::CodeBlock(typed_block),
@@ -665,7 +672,7 @@ impl ty::TyExpression {
             ty::TyExpression::type_check(handler, ctx, expr.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines))
         });
-        let exp = instantiate_if_expression(handler, ctx, condition, then, r#else, span)?;
+        let exp = instantiate_if_expression(handler, ctx, condition, then.clone(), r#else, span)?;
         Ok(exp)
     }
 
@@ -1013,23 +1020,31 @@ impl ty::TyExpression {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
-        if !ctx.namespace.has_storage_declared() {
+        if !ctx
+            .namespace
+            .module()
+            .current_items()
+            .has_storage_declared()
+        {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
         let storage_fields = ctx
             .namespace
+            .module()
+            .current_items()
             .get_storage_field_descriptors(handler, decl_engine)?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) = ctx.namespace.apply_storage_load(
-            handler,
-            ctx.engines,
-            ctx.namespace,
-            checkee,
-            &storage_fields,
-            storage_keyword_span,
-        )?;
+        let (storage_access, mut access_type) =
+            ctx.namespace.module().current_items().apply_storage_load(
+                handler,
+                ctx.engines,
+                ctx.namespace,
+                checkee,
+                &storage_fields,
+                storage_keyword_span,
+            )?;
 
         // The type of a storage access is `core::storage::StorageKey`. This is
         // the path to it.
@@ -1040,7 +1055,7 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx.namespace.root().resolve_symbol(
+        let storage_key_decl_opt = ctx.namespace.resolve_root_symbol(
             handler,
             engines,
             &storage_key_mod_path,
@@ -1244,7 +1259,7 @@ impl ty::TyExpression {
         path.push(before.inner.clone());
         let not_module = {
             let h = Handler::default();
-            ctx.namespace.check_submodule(&h, &path).is_err()
+            ctx.namespace.module().check_submodule(&h, &path).is_err()
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1363,6 +1378,7 @@ impl ty::TyExpression {
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
                 ctx.namespace
+                    .module()
                     .check_submodule(
                         &module_probe_handler,
                         &[
@@ -1654,10 +1670,10 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(AbiMode::ImplAbiFn(
-                                abi_name.suffix.clone(),
-                                Some(*abi_ref.id()),
-                            )))
+                            .insert(method.to_dummy_func(
+                                AbiMode::ImplAbiFn(abi_name.suffix.clone(), Some(*abi_ref.id())),
+                                Some(return_type),
+                            ))
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
@@ -1833,10 +1849,11 @@ impl ty::TyExpression {
 
                     current_type = type_engine.get_unaliased(referenced_type_id);
                 }
+                TypeInfo::ErrorRecovery(err) => return Err(*err),
                 _ => {
                     return Err(handler.emit_err(CompileError::NotIndexable {
                         actually: engines.help_out(prefix_type_id).to_string(),
-                        span: prefix_span.clone(),
+                        span: prefix_span,
                     }))
                 }
             };
@@ -1911,10 +1928,7 @@ impl ty::TyExpression {
                  assigning it to a mutable variable declared outside of the loop \
                  instead.",
         );
-        let mut typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
-
-        let mut unification_ctx = TypeCheckUnificationContext::new(engines, ctx);
-        typed_body.type_check_unify(handler, &mut unification_ctx)?;
+        let typed_body = ty::TyCodeBlock::type_check(handler, ctx.by_ref(), &body)?;
 
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::WhileLoop {
@@ -1925,6 +1939,14 @@ impl ty::TyExpression {
             span,
         };
         Ok(exp)
+    }
+
+    fn type_check_for_loop(
+        handler: &Handler,
+        ctx: TypeCheckContext,
+        desugared: Expression,
+    ) -> Result<Self, ErrorEmitted> {
+        Self::type_check(handler, ctx, desugared)
     }
 
     fn type_check_reassignment(
@@ -2003,13 +2025,14 @@ impl ty::TyExpression {
                     }
                 };
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) = ctx.namespace.find_subfield_type(
-                    handler,
-                    ctx.engines(),
-                    ctx.namespace,
-                    &base_name,
-                    &names_vec,
-                )?;
+                let (ty_of_field, _ty_of_parent) =
+                    ctx.namespace.module().current_items().find_subfield_type(
+                        handler,
+                        ctx.engines(),
+                        ctx.namespace,
+                        &base_name,
+                        &names_vec,
+                    )?;
                 // type check the reassignment
                 let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
                 let rhs_span = rhs.span();

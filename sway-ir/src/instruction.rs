@@ -671,7 +671,7 @@ impl InstOp {
 
 /// Iterate over all [`Instruction`]s in a specific [`Block`].
 pub struct InstructionIterator {
-    instructions: Vec<generational_arena::Index>,
+    instructions: Vec<slotmap::DefaultKey>,
     next: usize,
     next_back: isize,
 }

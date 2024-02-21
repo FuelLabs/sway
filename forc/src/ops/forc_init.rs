@@ -160,7 +160,6 @@ pub fn init(command: InitCommand) -> ForcResult<()> {
     let gitignore_path = Path::new(&project_dir).join(".gitignore");
     // Append to existing gitignore if it exists otherwise create a new one.
     let mut gitignore_file = fs::OpenOptions::new()
-        .write(true)
         .append(true)
         .create(true)
         .open(&gitignore_path)?;

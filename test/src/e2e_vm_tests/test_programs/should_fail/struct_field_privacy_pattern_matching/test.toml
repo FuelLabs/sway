@@ -1,4 +1,4 @@
-category = "disabled" # Until struct field privacy warnings do not become hard errors.
+category = "fail"
 
 #check: $()Struct pattern must ignore inaccessible private fields
 #check: $()LibStruct { x_1: 0, x_2: 0 } => 1,
@@ -9,7 +9,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #check: $()Private struct field is inaccessible
 #check: $()LibStruct { x_1: 0, x_2: 0, y_1: 0 } => 1,
 #nextln: $()Private field "y_1" is inaccessible in this module.
-#nextln: $()Private fields can be matched only within the module in which their struct is declared.
+#nextln: $()Private fields can only be matched within the module in which their struct is declared.
 #nextln: $()Otherwise, they must be ignored by ending the struct pattern with `..`.
 #check: $()y_1: u64,
 #nextln: $()Field "y_1" of the struct "LibStruct" is declared here as private.
@@ -35,7 +35,7 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #check: $()Private struct field is inaccessible
 #check: $()LibStruct { x_1: 0, y_2: 0, .. } => 1,
 #nextln: $()Private field "y_2" is inaccessible in this module.
-#nextln: $()Private fields can be matched only within the module in which their struct is declared.
+#nextln: $()Private fields can only be matched within the module in which their struct is declared.
 #not: $()Otherwise, they must be ignored by ending the struct pattern with `..`.
 #check: $()y_2: u64,
 #nextln: $()Field "y_2" of the struct "LibStruct" is declared here as private.

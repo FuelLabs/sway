@@ -10,7 +10,6 @@ use crate::{
     language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
-    types::DeterministicallyAborts,
     Ident,
 };
 
@@ -34,7 +33,9 @@ impl ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     let mut is_external = false;
-                    if let Some(submodule) = ctx.namespace.submodule(&[a.call_path[0].clone()]) {
+                    if let Some(submodule) =
+                        ctx.namespace.module().submodule(&[a.call_path[0].clone()])
+                    {
                         is_external = submodule.is_external;
                     }
                     let path = if is_external || a.is_absolute {
@@ -142,19 +143,26 @@ impl ty::TyAstNode {
                     ty::TyAstNodeContent::Declaration(ty::TyDecl::type_check(handler, ctx, decl)?)
                 }
                 AstNodeContent::Expression(expr) => {
-                    let ctx = ctx
-                        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
-                        .with_help_text("");
+                    let mut ctx = ctx;
+                    match expr.kind {
+                        ExpressionKind::ImplicitReturn(_) => {
+                            // Do not use any type annotation with implicit returns as that
+                            // will later cause type inference errors when matching implicit block
+                            // types.
+                        }
+                        _ => {
+                            ctx = ctx
+                                .with_help_text("")
+                                .with_type_annotation(type_engine.insert(
+                                    engines,
+                                    TypeInfo::Unknown,
+                                    None,
+                                ));
+                        }
+                    }
                     let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
-                }
-                AstNodeContent::ImplicitReturnExpression(expr) => {
-                    let ctx =
-                        ctx.with_help_text("Implicit return must match up with block's type.");
-                    let typed_expr = ty::TyExpression::type_check(handler, ctx, expr.clone())
-                        .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
-                    ty::TyAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
                 AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
             },
@@ -162,21 +170,26 @@ impl ty::TyAstNode {
         };
 
         if let ty::TyAstNode {
-            content: ty::TyAstNodeContent::Expression(ty::TyExpression { .. }),
+            content: ty::TyAstNodeContent::Expression(ty::TyExpression { expression, .. }),
             ..
-        } = node
+        } = &node
         {
-            if !node
-                .type_info(type_engine)
-                .can_safely_ignore(type_engine, decl_engine)
-            {
-                handler.emit_warn(CompileWarning {
-                    warning_content: Warning::UnusedReturnValue {
-                        r#type: engines.help_out(node.type_info(type_engine)).to_string(),
-                    },
-                    span: node.span.clone(),
-                })
-            };
+            match expression {
+                ty::TyExpressionVariant::ImplicitReturn(_) => {}
+                _ => {
+                    if !node
+                        .type_info(type_engine)
+                        .can_safely_ignore(type_engine, decl_engine)
+                    {
+                        handler.emit_warn(CompileWarning {
+                            warning_content: Warning::UnusedReturnValue {
+                                r#type: engines.help_out(node.type_info(type_engine)).to_string(),
+                            },
+                            span: node.span.clone(),
+                        })
+                    };
+                }
+            }
         }
 
         Ok(node)
