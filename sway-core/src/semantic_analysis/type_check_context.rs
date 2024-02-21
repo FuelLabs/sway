@@ -103,19 +103,8 @@ pub struct TypeCheckContext<'a> {
 }
 
 impl<'a> TypeCheckContext<'a> {
-    /// Initialize a context at the top-level of a module with its namespace.
-    ///
-    /// Initializes with:
-    ///
-    /// - type_annotation: unknown
-    /// - mode: NoneAbi
-    /// - help_text: ""
-    /// - purity: Pure
-    pub fn from_root(root_namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
-        Self::from_module_namespace(root_namespace, engines)
-    }
-
-    fn from_module_namespace(namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
+    /// Initialize a type-checking context with a namespace.
+    pub fn from_namespace(namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
         Self {
             namespace,
             engines,
@@ -212,7 +201,7 @@ impl<'a> TypeCheckContext<'a> {
         let mut submod_ns = self
             .namespace_mut()
             .enter_submodule(mod_name, visibility, module_span);
-        let submod_ctx = TypeCheckContext::from_module_namespace(&mut submod_ns, engines);
+        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines);
         with_submod_ctx(submod_ctx)
     }
 
