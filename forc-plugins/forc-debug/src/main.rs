@@ -1,21 +1,30 @@
 use clap::Parser;
-use forc_debug::names::register_name;
-use shellfish::async_fn;
-use shellfish::{Command as ShCommand, Shell};
-use std::error::Error;
-
-use forc_debug::{names, ContractId, FuelClient, RunResult, Transaction};
+use forc_debug::{
+    names::{register_index, register_name},
+    server::DapServer,
+    ContractId, FuelClient, RunResult, Transaction,
+};
 use fuel_vm::consts::{VM_MAX_RAM, VM_REGISTER_COUNT, WORD_SIZE};
+use shellfish::{async_fn, Command as ShCommand, Shell};
+use std::error::Error;
 
 #[derive(Parser, Debug)]
 pub struct Opt {
+    /// The URL of the Fuel Client GraphQL API
     #[clap(default_value = "http://127.0.0.1:4000/graphql")]
     pub api_url: String,
+    /// Start the DAP server
+    #[clap(short, long)]
+    pub serve: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Opt::parse();
+
+    if config.serve {
+        return DapServer::default().start();
+    }
 
     let mut shell = Shell::new_async(
         State {
@@ -211,7 +220,7 @@ async fn cmd_registers(state: &mut State, mut args: Vec<String>) -> Result<(), B
                     println!("Register index too large {}", v);
                     return Ok(());
                 }
-            } else if let Some(index) = names::register_index(arg) {
+            } else if let Some(index) = register_index(arg) {
                 let value = state
                     .client
                     .register(&state.session_id, index as u32)

@@ -12,14 +12,27 @@ use fuel_vm::{
     storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
+use tx::Receipt;
+
+use vm::state::DebugEval;
+use vm::state::ProgramState;
 
 /// An interface for executing a test within a VM [Interpreter] instance.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestExecutor {
     pub interpreter: Interpreter<MemoryStorage, tx::Script, NotSupportedEcal>,
-    tx_builder: tx::TransactionBuilder<tx::Script>,
-    test_entry: PkgTestEntry,
-    name: String,
+    pub tx_builder: tx::TransactionBuilder<tx::Script>,
+    pub test_entry: PkgTestEntry,
+    pub name: String,
+}
+
+/// The result of executing a test with breakpoints enabled.
+#[derive(Debug)]
+pub enum DebugResult {
+    // Holds the test result.
+    TestComplete(TestResult),
+    // Holds the program counter of where the program stopped due to a breakpoint.
+    Breakpoint(u64),
 }
 
 impl TestExecutor {
@@ -95,6 +108,68 @@ impl TestExecutor {
         }
     }
 
+    /// Execute the test with breakpoints enabled.
+    pub fn start_debugging(&mut self) -> anyhow::Result<DebugResult> {
+        let block_height = (u32::MAX >> 1).into();
+        let start = std::time::Instant::now();
+        let transition = self
+            .interpreter
+            .transact(self.tx_builder.finalize_checked(block_height))
+            .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
+        let state = *transition.state();
+        if let ProgramState::RunProgram(DebugEval::Breakpoint(breakpoint)) = state {
+            // A breakpoint was hit, so we tell the client to stop.
+            return Ok(DebugResult::Breakpoint(breakpoint.pc()));
+        }
+        let duration = start.elapsed();
+        let (gas_used, logs) = Self::get_gas_and_receipts(transition.receipts().to_vec())?;
+        let span = self.test_entry.span.clone();
+        let file_path = self.test_entry.file_path.clone();
+        let condition = self.test_entry.pass_condition.clone();
+        let name = self.name.clone();
+        Ok(DebugResult::TestComplete(TestResult {
+            name,
+            file_path,
+            duration,
+            span,
+            state,
+            condition,
+            logs,
+            gas_used,
+        }))
+    }
+
+    /// Continue executing the test with breakpoints enabled.
+    pub fn continue_debugging(&mut self) -> anyhow::Result<DebugResult> {
+        let start = std::time::Instant::now();
+        let state = self
+            .interpreter
+            .resume()
+            .map_err(|err: InterpreterError<_>| {
+                anyhow::anyhow!("VM failed to resume. {:?}", err)
+            })?;
+        if let ProgramState::RunProgram(DebugEval::Breakpoint(breakpoint)) = state {
+            // A breakpoint was hit, so we tell the client to stop.
+            return Ok(DebugResult::Breakpoint(breakpoint.pc()));
+        }
+        let duration = start.elapsed();
+        let (gas_used, logs) = Self::get_gas_and_receipts(self.interpreter.receipts().to_vec())?; // TODO: calculate culumlative
+        let span = self.test_entry.span.clone();
+        let file_path = self.test_entry.file_path.clone();
+        let condition = self.test_entry.pass_condition.clone();
+        let name = self.name.clone();
+        Ok(DebugResult::TestComplete(TestResult {
+            name,
+            file_path,
+            duration,
+            span,
+            state,
+            condition,
+            logs,
+            gas_used,
+        }))
+    }
+
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
         let block_height = (u32::MAX >> 1).into();
         let start = std::time::Instant::now();
@@ -102,10 +177,27 @@ impl TestExecutor {
             .interpreter
             .transact(self.tx_builder.finalize_checked(block_height))
             .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
-        let duration = start.elapsed();
         let state = *transition.state();
-        let receipts = transition.receipts().to_vec();
 
+        let duration = start.elapsed();
+        let (gas_used, logs) = Self::get_gas_and_receipts(transition.receipts().to_vec())?;
+        let span = self.test_entry.span.clone();
+        let file_path = self.test_entry.file_path.clone();
+        let condition = self.test_entry.pass_condition.clone();
+        let name = self.name.clone();
+        Ok(TestResult {
+            name,
+            file_path,
+            duration,
+            span,
+            state,
+            condition,
+            logs,
+            gas_used,
+        })
+    }
+
+    fn get_gas_and_receipts(receipts: Vec<Receipt>) -> anyhow::Result<(u64, Vec<Receipt>)> {
         let gas_used = *receipts
             .iter()
             .find_map(|receipt| match receipt {
@@ -122,21 +214,7 @@ impl TestExecutor {
                     || matches!(receipt, tx::Receipt::LogData { .. })
             })
             .collect();
-
-        let span = self.test_entry.span.clone();
-        let file_path = self.test_entry.file_path.clone();
-        let condition = self.test_entry.pass_condition.clone();
-        let name = self.name.clone();
-        Ok(TestResult {
-            name,
-            file_path,
-            duration,
-            span,
-            state,
-            condition,
-            logs,
-            gas_used,
-        })
+        Ok((gas_used, logs))
     }
 }
 

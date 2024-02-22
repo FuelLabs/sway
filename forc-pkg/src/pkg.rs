@@ -1,10 +1,12 @@
+use crate::manifest::GenericManifestFile;
 use crate::{
     lock::Lock,
     manifest::{
-        BuildProfile, Dependency, ExperimentalFlags, ManifestFile, MemberManifestFiles,
+        build_profile::ExperimentalFlags, Dependency, ManifestFile, MemberManifestFiles,
         PackageManifestFile,
     },
     source::{self, IPFSNode, Source},
+    BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
 use forc_tracing::println_warning;
@@ -51,7 +53,7 @@ use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning}
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 type GraphIx = u32;
 type Node = Pinned;
@@ -105,7 +107,7 @@ pub struct BuiltPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub warnings: Vec<CompileWarning>,
-    source_map: SourceMap,
+    pub source_map: SourceMap,
     pub tree_type: TreeType,
     pub bytecode: BuiltPackageBytecode,
     /// `Some` for contract member builds where tests were included. This is
@@ -296,11 +298,9 @@ pub struct BuildOpts {
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
@@ -580,7 +580,7 @@ impl BuildPlan {
             std::env::current_dir()?
         };
 
-        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
+        let manifest_file = ManifestFile::from_dir(manifest_dir)?;
         let member_manifests = manifest_file.member_manifests()?;
         // Check if we have members to build so that we are not trying to build an empty workspace.
         if member_manifests.is_empty() {
@@ -756,7 +756,7 @@ impl BuildPlan {
 
     /// Produce an iterator yielding all workspace member nodes in order of compilation.
     ///
-    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// In the case that this [BuildPlan] was constructed for a single package,
     /// only that package's node will be yielded.
     pub fn member_nodes(&self) -> impl Iterator<Item = NodeIx> + '_ {
         self.compilation_order()
@@ -2051,21 +2051,9 @@ fn build_profile_from_opts(
         ..
     } = build_options;
 
-    let selected_profile_name = match &build_profile {
-        Some(build_profile) => match release {
-            true => {
-                println_warning(&format!(
-                    "Both {} and 'release' profiles were specified. Using the 'release' profile",
-                    build_profile
-                ));
-                BuildProfile::RELEASE
-            }
-            false => build_profile,
-        },
-        None => match release {
-            true => BuildProfile::RELEASE,
-            false => BuildProfile::DEBUG,
-        },
+    let selected_profile_name = match release {
+        true => BuildProfile::RELEASE,
+        false => build_profile,
     };
 
     // Retrieve the specified build profile
@@ -2073,11 +2061,11 @@ fn build_profile_from_opts(
         .get(selected_profile_name)
         .cloned()
         .unwrap_or_else(|| {
-            warn!(
-                "provided profile option {} is not present in the manifest file. \
+            println_warning(&format!(
+                "The provided profile option {} is not present in the manifest file. \
             Using default profile.",
                 selected_profile_name
-            );
+            ));
             Default::default()
         });
     profile.name = selected_profile_name.into();
@@ -2773,7 +2761,7 @@ mod test {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
-        let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+        let manifest_file = ManifestFile::from_dir(manifest_dir).unwrap();
         let member_manifests = manifest_file.member_manifests().unwrap();
         let lock_path = manifest_file.lock_path().unwrap();
         BuildPlan::from_lock_and_manifests(

@@ -21,18 +21,19 @@ enum InByte8Padding {
 
 /// Hands out storage keys using a state index and a list of subfield indices.
 /// Basically returns sha256("storage_<state_index>_<idx1>_<idx2>_..")
-pub(super) fn get_storage_key<T>(ix: &StateIndex, indices: &[T]) -> Bytes32
+/// or sha256("storage_<storage_namespace>_<state_index>_<idx1>_<idx2>_..")
+pub(super) fn get_storage_key<T>(namespace: Option<&str>, ix: &StateIndex, indices: &[T]) -> Bytes32
 where
     T: std::fmt::Display,
 {
-    Hasher::hash(indices.iter().fold(
-        format!(
-            "{}{}",
-            sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
-            ix.to_usize()
-        ),
-        |acc, i| format!("{acc}_{i}"),
-    ))
+    let data = format!(
+        "{}{}{}",
+        sway_utils::constants::STORAGE_DOMAIN_SEPARATOR,
+        namespace.map(|ns| format!("{ns}_")).unwrap_or("".into()),
+        ix.to_usize(),
+    );
+    let data = indices.iter().fold(data, |acc, i| format!("{acc}_{i}"));
+    Hasher::hash(data)
 }
 
 use uint::construct_uint;
@@ -64,6 +65,7 @@ pub fn serialize_to_storage_slots(
     constant: &Constant,
     context: &Context,
     ix: &StateIndex,
+    ns: Option<&str>,
     ty: &Type,
     indices: &[usize],
 ) -> Vec<StorageSlot> {
@@ -72,12 +74,12 @@ pub fn serialize_to_storage_slots(
         // If not being a part of an aggregate, single byte values like `bool`, `u8`, and unit
         // are stored as a byte at the beginning of the storage slot.
         ConstantValue::Unit if ty.is_unit(context) => vec![StorageSlot::new(
-            get_storage_key(ix, indices),
+            get_storage_key(ns, ix, indices),
             Bytes32::new([0; 32]),
         )],
         ConstantValue::Bool(b) if ty.is_bool(context) => {
             vec![StorageSlot::new(
-                get_storage_key(ix, indices),
+                get_storage_key(ns, ix, indices),
                 Bytes32::new([
                     if *b { 1 } else { 0 },
                     0,
@@ -116,7 +118,7 @@ pub fn serialize_to_storage_slots(
         }
         ConstantValue::Uint(b) if ty.is_uint8(context) => {
             vec![StorageSlot::new(
-                get_storage_key(ix, indices),
+                get_storage_key(ns, ix, indices),
                 Bytes32::new([
                     *b as u8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0,
@@ -126,7 +128,7 @@ pub fn serialize_to_storage_slots(
         // Similarly, other uint values are stored at the beginning of the storage slot.
         ConstantValue::Uint(n) if ty.is_uint(context) => {
             vec![StorageSlot::new(
-                get_storage_key(ix, indices),
+                get_storage_key(ns, ix, indices),
                 Bytes32::new(
                     n.to_be_bytes()
                         .iter()
@@ -140,13 +142,13 @@ pub fn serialize_to_storage_slots(
         }
         ConstantValue::U256(b) if ty.is_uint_of(context, 256) => {
             vec![StorageSlot::new(
-                get_storage_key(ix, indices),
+                get_storage_key(ns, ix, indices),
                 Bytes32::new(b.to_be_bytes()),
             )]
         }
         ConstantValue::B256(b) if ty.is_b256(context) => {
             vec![StorageSlot::new(
-                get_storage_key(ix, indices),
+                get_storage_key(ns, ix, indices),
                 Bytes32::new(b.to_be_bytes()),
             )]
         }
@@ -183,7 +185,7 @@ pub fn serialize_to_storage_slots(
                 ty.as_string(context)
             );
             (0..(type_size_in_bytes + 31) / 32)
-                .map(|i| add_to_b256(get_storage_key(ix, indices), i))
+                .map(|i| add_to_b256(get_storage_key(ns, ix, indices), i))
                 .zip((0..packed.len() / 4).map(|i| {
                     Bytes32::new(
                         Vec::from_iter((0..4).flat_map(|j| *packed[4 * i + j]))

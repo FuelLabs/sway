@@ -5,7 +5,7 @@ use sway_types::Span;
 
 use crate::{
     decl_engine::*, engine_threading::*, language::ty::*, semantic_analysis::TypeCheckContext,
-    type_system::*, types::DeterministicallyAborts,
+    type_system::*,
 };
 
 #[derive(Clone, Debug)]
@@ -72,13 +72,5 @@ impl UpdateConstantExpression for TyCodeBlock {
         self.contents
             .iter_mut()
             .for_each(|x| x.update_constant_expression(engines, implementing_type));
-    }
-}
-
-impl DeterministicallyAborts for TyCodeBlock {
-    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
-        self.contents
-            .iter()
-            .any(|x| x.deterministically_aborts(decl_engine, check_call_body))
     }
 }
