@@ -30,7 +30,7 @@ indexmap = "2.0.0"
 itertools = "0.10"
 lazy_static = "1.4"
 miden-core = "0.3.0"
-object = "0.32.1"
+object = { version = "0.32.2", features = ["write"] }
 pest = "2.1.3"
 pest_derive = "2.1"
 petgraph = "0.6"

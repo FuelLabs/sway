@@ -4486,7 +4486,10 @@ version = "0.32.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6a622008b6e321afc04970976f62ee297fdbaa6f95318ca343e3eebb9648441"
 dependencies = [
+ "crc32fast",
  "flate2",
+ "hashbrown 0.14.3",
+ "indexmap 2.2.2",
  "memchr",
  "ruzstd",
 ]
