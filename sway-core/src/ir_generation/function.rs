@@ -2458,7 +2458,9 @@ impl<'eng> FnCompiler<'eng> {
             let compiled_elems = contents
                 .iter()
                 .map(|e| {
-                    Ok::<_, CompileError>(self.compile_expression_to_value(context, md_mgr, e)?.value)
+                    Ok::<_, CompileError>(
+                        self.compile_expression_to_value(context, md_mgr, e)?.value,
+                    )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let mut compiled_elems_iter = compiled_elems.iter();
@@ -2548,8 +2550,8 @@ impl<'eng> FnCompiler<'eng> {
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
             let elem_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, elem_expr)?
-                );
+                self.compile_expression_to_value(context, md_mgr, elem_expr)?
+            );
             let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                 array_value,
                 elem_type,
