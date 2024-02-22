@@ -165,6 +165,35 @@ impl ArgInfo {
     }
 }
 
+pub fn dump_cli_definition<X: clap::IntoApp>(app: X) {
+    let cmd = app.into_app();
+    serde_json::to_writer_pretty(std::io::stdout(), &CommandInfo::new(&cmd)).unwrap();
+    std::process::exit(0);
+}
+
+macro_rules! clap_completions {
+    ($st:path) => {
+        use clap::IntoApp;
+        $st::into_app()
+
+        mod cli_definition {
+            /// Dump the CLI definition to the stdout
+            pub(crate) fn dump() {
+                std::env::set_var("CLI_DUMP_DEFINITION", "");
+
+                if let Some(mut cmd) = $into_app {
+                    forc_util::serde_json::to_writer_pretty(
+                        std::io::stdout(),
+                        &forc_util::cli::CommandInfo::new(&cmd)
+                    ).unwrap();
+                    std::process::exit(0);
+                }
+            }
+        }
+
+    };
+}
+
 #[macro_export]
 // Let the user format the help and parse it from that string into arguments to create the unit test
 macro_rules! cli_examples {
