@@ -219,7 +219,7 @@ fn in_return() -> u64 {
 
 fn in_match_scrutinee_continue() -> u64 {
     let mut i = 32;
-    while i < 43 {
+    while i < 42 {
         i = i + 1;
         match continue {
             _ => return 5411,
