@@ -54,19 +54,16 @@ fn generate_autocomplete_script(target: Target, writer: &mut dyn Write) {
     let mut cmd = CommandInfo::new(&super::super::Opt::command());
     let mut plugins = HashMap::new();
     find_all().for_each(|path| {
-        let mut proc = std::process::Command::new(path.clone());
-        proc.env("CLI_DUMP_DEFINITION", "1");
-        if let Ok(proc) = proc.output() {
+        if let Ok(proc) = std::process::Command::new(path.clone())
+            .arg("--cli-definition")
+            .output()
+        {
             if let Ok(mut command_info) = serde_json::from_slice::<CommandInfo>(&proc.stdout) {
-                command_info.name = if let Some(name) = path
-                    .file_name()
-                    .map(|x| {
-                        x.to_string_lossy()
-                            .strip_prefix("forc-")
-                            .map(|x| x.to_owned())
-                    })
-                    .flatten()
-                {
+                command_info.name = if let Some(name) = path.file_name().and_then(|x| {
+                    x.to_string_lossy()
+                        .strip_prefix("forc-")
+                        .map(|x| x.to_owned())
+                }) {
                     name
                 } else {
                     command_info.name

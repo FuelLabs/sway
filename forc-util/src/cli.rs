@@ -165,33 +165,20 @@ impl ArgInfo {
     }
 }
 
-pub fn dump_cli_definition<X: clap::IntoApp>(app: X) {
-    let cmd = app.into_app();
-    serde_json::to_writer_pretty(std::io::stdout(), &CommandInfo::new(&cmd)).unwrap();
-    std::process::exit(0);
-}
-
-macro_rules! clap_completions {
-    ($st:path) => {
-        use clap::IntoApp;
-        $st::into_app()
-
-        mod cli_definition {
-            /// Dump the CLI definition to the stdout
-            pub(crate) fn dump() {
-                std::env::set_var("CLI_DUMP_DEFINITION", "");
-
-                if let Some(mut cmd) = $into_app {
-                    forc_util::serde_json::to_writer_pretty(
-                        std::io::stdout(),
-                        &forc_util::cli::CommandInfo::new(&cmd)
-                    ).unwrap();
-                    std::process::exit(0);
-                }
-            }
+/// Registers the current command to print the CLI definition, if the `--cli-definition` argument is
+/// passed.
+///
+/// The existance of --cli-definition is arbitrary, a convention that is used by forc and is
+/// probably not defined inside the clap struct. Because of this, the `--cli-definition` argument,
+/// the function should be called *before* the `clap::App` is built to parse the arguments.
+pub fn register(cmd: clap::App<'_>) {
+    std::env::args().skip(1).for_each(|arg| {
+        if arg == "--cli-definition" {
+            let cmd_info = CommandInfo::new(&cmd);
+            serde_json::to_writer_pretty(std::io::stdout(), &cmd_info).unwrap();
+            std::process::exit(0);
         }
-
-    };
+    });
 }
 
 #[macro_export]
@@ -199,12 +186,7 @@ macro_rules! clap_completions {
 macro_rules! cli_examples {
     ($st:path { $( [ $($description:ident)* => $command:stmt ] )* }) => {
         forc_util::cli_examples! {
-            {
-                $crate::paste::paste! {
-                    use clap::IntoApp;
-                    Some($st::into_app())
-                }
-            } {
+           {
                 $crate::paste::paste! {
                     use clap::Parser;
                     $st::try_parse_from
@@ -214,7 +196,7 @@ macro_rules! cli_examples {
             }
         }
     };
-    ( $into_app:block $parser:block { $( [ $($description:ident)* => $command:stmt ] )* }) => {
+    ( $parser:block { $( [ $($description:ident)* => $command:stmt ] )* }) => {
         $crate::paste::paste! {
         #[cfg(test)]
         mod cli_parsing {
@@ -301,30 +283,12 @@ macro_rules! cli_examples {
         }
         }
 
-        mod cli_definition {
-            /// Dump the CLI definition to the stdout
-            pub(crate) fn dump() {
-                std::env::set_var("CLI_DUMP_DEFINITION", "");
-
-                if let Some(mut cmd) = $into_app {
-                    forc_util::serde_json::to_writer_pretty(
-                        std::io::stdout(),
-                        &forc_util::cli::CommandInfo::new(&cmd)
-                    ).unwrap();
-                    std::process::exit(0);
-                }
-            }
-        }
-
         /// Show the long help for the current app
         ///
         /// This function is being called automatically, so if CLI_DUMP_DEFINITION is set to 1, it
         /// will dump the definition of the CLI. Otherwise, it would have to be manually invoked by
         /// the developer
         fn help() -> &'static str {
-            if std::env::var("CLI_DUMP_DEFINITION") == Ok("1".to_string()) {
-                cli_definition::dump();
-            }
             Box::leak(format!("{}\n{}", forc_util::ansi_term::Colour::Yellow.paint("EXAMPLES:"), examples()).into_boxed_str())
         }
 

@@ -14,9 +14,6 @@ use thiserror::Error;
 
 forc_util::cli_examples! {
     {
-        None
-    }
-    {
         // This parser has a custom parser
         super::Command::try_parse_from_args
     } {
@@ -728,7 +725,8 @@ impl TryFrom<Script> for fuel_tx::Script {
             script_tx.set_script_gas_limit(script_gas_limit)
         } else {
             let consensus_params = ConsensusParameters::default();
-            // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
+            // Get `max_gas` used by everything except the script execution. Add `1` because of
+            // rounding.
             let max_gas =
                 script_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
             // Increase `script_gas_limit` to the maximum allowed value.
