@@ -419,6 +419,7 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
+            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
             Either::Left(AllocatedOpcode::CFEI(ref op))
             | Either::Left(AllocatedOpcode::CFSI(ref op))
                 if op.value == 0 =>
