@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{IntoApp, Parser};
 use forc_debug::{
     names::{register_index, register_name},
     server::DapServer,
@@ -20,6 +20,7 @@ pub struct Opt {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    forc_util::cli::register(Opt::into_app());
     let config = Opt::parse();
 
     if config.serve {

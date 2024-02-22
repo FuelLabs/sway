@@ -4,7 +4,7 @@ use crate::{
     search::write_search_index,
 };
 use anyhow::{bail, Result};
-use clap::Parser;
+use clap::{IntoApp, Parser};
 use cli::Command;
 use colored::*;
 use forc_pkg as pkg;
@@ -51,6 +51,7 @@ struct ProgramInfo<'a> {
 }
 
 pub fn main() -> Result<()> {
+    forc_util::cli::register(Command::into_app());
     let build_instructions = Command::parse();
 
     let (doc_path, pkg_manifest) = compile_html(&build_instructions, &get_doc_dir)?;

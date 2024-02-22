@@ -34,7 +34,7 @@ pub mod cli;
 pub use ansi_term;
 pub use paste;
 pub use regex::Regex;
-pub use serial_test;
+pub use serde_json;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;

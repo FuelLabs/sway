@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use atty::Stream;
-use clap::Parser;
+use clap::{IntoApp, Parser};
 use forc_tracing::{init_tracing_subscriber, println_error};
 use std::{
     default::Default,
@@ -57,6 +57,7 @@ fn main() {
 }
 
 fn run() -> Result<()> {
+    forc_util::cli::register(Command::into_app());
     let app = Command::parse();
     let content = match app {
         Command::Keccak256(arg) => keccak256::hash(arg)?,

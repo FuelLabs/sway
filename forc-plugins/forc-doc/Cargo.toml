@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1.0.65"
-clap = { version = "4.0.18", features = ["derive"] }
+clap = { version = "3", features = ["derive"] }
 colored = "2.0.0"
 comrak = "0.16"
 forc-pkg = { version = "0.50.0", path = "../../forc-pkg" }
