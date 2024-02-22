@@ -6,7 +6,7 @@ use context_testing_abi::*;
 fn main() -> bool {
     let gas: u64 = u64::max();
     let amount: u64 = 11;
-    let other_contract_id = ContractId::from(0xa38576787f8900d66e6620548b6da8142b8bb4d129b2338609acd121ca126c10);
+    let other_contract_id = ContractId::from(0x65dae4fedb02e2d70cdb56e2b82d23a2baa69a6acdbf01cc1271c7c1a1abe2cc);
     let other_contract_id_b256: b256 = other_contract_id.into();
     let base_asset_id = BASE_ASSET_ID;
 
