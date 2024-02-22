@@ -1,6 +1,12 @@
 category = "fail"
 
 # check: $()warning
+# check: return_in_strange_positions/src/main.sw:21:5
+# check: $()_ => 5411,
+# nextln: $()}
+# nextln: $()This returns a value of type numeric, which is not assigned to anything and is ignored.
+
+# check: $()warning
 # check: return_in_strange_positions/src/main.sw:7:16
 # check: $()pub struct S { x : u64, y : u64, }
 # nextln: $()This struct field is never accessed.
@@ -11,14 +17,38 @@ category = "fail"
 # nextln: $()This struct field is never accessed.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:21:5
-# check: $()_ => 5411,
-# nextln: $()}
+# check: return_in_strange_positions/src/main.sw:25:5
+# check: $()1145
 # nextln: $()This code is unreachable.
 
 # check: $()warning
-# check: return_in_strange_positions/src/main.sw:25:5
-# check: $()1145
+# check: return_in_strange_positions/src/main.sw:34:5
+# check: $()45
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:40:5
+# check: $()145
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:47:5
+# check: $()145
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:67:5
+# check: $()245
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:73:5
+# check: $()345
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:79:5
+# check: $()445
 # nextln: $()This code is unreachable.
 
 # check: $()warning
@@ -52,8 +82,18 @@ category = "fail"
 # nextln: $()This code is unreachable.
 
 # check: $()warning
+# check: return_in_strange_positions/src/main.sw:152:5
+# check: $()1445
+# nextln: $()This code is unreachable.
+
+# check: $()warning
 # check: return_in_strange_positions/src/main.sw:158:5
 # check: $()1545
+# nextln: $()This code is unreachable.
+
+# check: $()warning
+# check: return_in_strange_positions/src/main.sw:164:5
+# check: $()1645
 # nextln: $()This code is unreachable.
 
 # check: $()error
@@ -105,11 +145,6 @@ category = "fail"
 # check: return_in_strange_positions/src/main.sw:156:20
 # check: $()let _ = return || return;
 # nextln: $()Expected an expression.
-
-# check: $()error
-# check: return_in_strange_positions/src/main.sw:21:11
-# check: $()match return 42 {
-# nextln: $()Unimplemented feature: Matching on this type is currently not supported.
 
 # check: $()error
 # check: return_in_strange_positions/src/main.sw:32:13
@@ -200,9 +235,17 @@ category = "fail"
 # nextln: $()help: Return statement must return the declared function return type.
 
 # check: $()error
+# check: return_in_strange_positions/src/main.sw:89:14
+# check: $()let _ = (return) + return;
+# nextln: $()Mismatched types.
+# nextln: $()expected: u64
+# nextln: $()found:    ().
+# nextln: $()help: Return statement must return the declared function return type.
+
+# check: $()error
 # check: return_in_strange_positions/src/main.sw:89:22
 # check: $()let _ = (return) + return;
-# nextln: $()No method named "add" found for type "{unknown}".
+# nextln: $()No method named "add" found for type "!".
 
 # check: $()error
 # check: return_in_strange_positions/src/main.sw:122:22

@@ -17,15 +17,5 @@ category = "fail"
 # nextln: $()}
 # nextln: $()This code is unreachable.
 
-# check: $()error
-# check: break_continue_in_strange_positions/src/main.sw:12:15
-# check: $()match break {
-# nextln: $()Unimplemented feature: Matching on this type is currently not supported.
-
-# check: $()error
-# check: break_continue_in_strange_positions/src/main.sw:27:15
-# check: $()match continue {
-# nextln: $()Unimplemented feature: Matching on this type is currently not supported.
-
 # not: $()warning
 # check: $()Aborting due to 2 errors
