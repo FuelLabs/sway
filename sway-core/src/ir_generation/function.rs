@@ -2420,18 +2420,6 @@ impl<'eng> FnCompiler<'eng> {
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // If the first element diverges, then the element type has not been determined,
-        // so we can't use the normal compilation scheme. Instead just generate code for
-        // the first element and return.
-        let first_elem_value = if !contents.is_empty() {
-            let first_elem_value = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, &contents[0])?
-            );
-            Some(first_elem_value)
-        } else {
-            None
-        };
-
         let elem_type = convert_resolved_typeid_no_span(
             self.engines.te(),
             self.engines.de(),
@@ -2453,14 +2441,6 @@ impl<'eng> FnCompiler<'eng> {
             .get_local(array_var)
             .add_metadatum(context, span_md_idx);
 
-        // Nothing more to do if the array is empty
-        if contents.is_empty() {
-            return Ok(TerminatorValue::new(array_value, context));
-        }
-
-        // The array is not empty, so it's safe to unwrap the first element
-        let first_elem_value = first_elem_value.unwrap();
-
         // If all elements are the same constant, then we can initialize the array
         // in a loop, reducing code size. But to check for that we've to compile
         // the expressions first, to compare. If it turns out that they're not all
@@ -2477,15 +2457,8 @@ impl<'eng> FnCompiler<'eng> {
             // We can compile all elements ahead of time without affecting register pressure.
             let compiled_elems = contents
                 .iter()
-                .enumerate()
-                .map(|(idx, e)| {
-                    if idx == 0 {
-                        // The first element has already been compiled
-                        Ok::<Value, CompileError>(first_elem_value)
-                    } else {
-                        let val = self.compile_expression_to_value(context, md_mgr, e)?;
-                        Ok(val.value)
-                    }
+                .map(|e| {
+                    Ok::<_, CompileError>(self.compile_expression_to_value(context, md_mgr, e)?.value)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let mut compiled_elems_iter = compiled_elems.iter();
@@ -2574,13 +2547,9 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
-            let elem_value = if idx == 0 {
-                first_elem_value
-            } else {
-                return_on_termination_or_extract!(
+            let elem_value = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, elem_expr)?
-                )
-            };
+                );
             let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                 array_value,
                 elem_type,
