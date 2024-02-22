@@ -419,6 +419,13 @@ impl AllocatedAbstractInstructionSet {
                 }
             }
 
+            Either::Left(AllocatedOpcode::CFEI(ref op))
+            | Either::Left(AllocatedOpcode::CFSI(ref op))
+                if op.value == 0 =>
+            {
+                0
+            }
+
             // Another special case for the blob opcode, used for testing.
             Either::Left(AllocatedOpcode::BLOB(ref count)) => count.value as u64,
 
