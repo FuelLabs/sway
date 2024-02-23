@@ -76,6 +76,7 @@ pub enum Expr {
     },
     Ref {
         ampersand_token: AmpersandToken,
+        mut_token: Option<MutToken>,
         expr: Box<Expr>,
     },
     Deref {
@@ -240,6 +241,7 @@ impl Spanned for Expr {
             Expr::Ref {
                 ampersand_token,
                 expr,
+                ..
             } => Span::join(ampersand_token.span(), expr.span()),
             Expr::Deref { star_token, expr } => Span::join(star_token.span(), expr.span()),
             Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
