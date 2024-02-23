@@ -161,7 +161,7 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .namespace
+                        .namespace()
                         .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
@@ -205,7 +205,7 @@ impl TyDecl {
                 // from contract methods
                 let emp_vec = vec![];
                 let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) =
-                    ctx.namespace.resolve_call_path(
+                    ctx.namespace().resolve_call_path(
                         &Handler::default(),
                         engines,
                         &impl_trait.trait_name,
@@ -298,7 +298,7 @@ impl TyDecl {
                 // save decl_refs for the LSP
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
-                        .namespace
+                        .namespace()
                         .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
@@ -376,7 +376,7 @@ impl TyDecl {
                 // if there already was one, return an error that duplicate storage
 
                 // declarations are not allowed
-                ctx.namespace
+                ctx.namespace_mut()
                     .module_mut()
                     .current_items_mut()
                     .set_storage_declaration(handler, decl_ref.clone())?;
@@ -398,7 +398,7 @@ impl TyDecl {
                 // create the type alias decl using the resolved type above
                 let decl = ty::TyTypeAliasDecl {
                     name: name.clone(),
-                    call_path: CallPath::from(name.clone()).to_fullpath(ctx.namespace),
+                    call_path: CallPath::from(name.clone()).to_fullpath(ctx.namespace()),
                     attributes: decl.attributes.clone(),
                     ty: TypeArgument {
                         initial_type_id: ty.initial_type_id,

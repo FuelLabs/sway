@@ -4,7 +4,7 @@ use array_of_structs_abi::{Id, TestContract, Wrapper};
 use std::hash::*;
 
 fn main() -> u64 {
-    let addr = abi(TestContract, 0xbd1e3ad7022f6c170c6fb3643a1a0c4ad0f666a5a1d735b11255dbfff74e5a05);
+    let addr = abi(TestContract, 0xe2a4f86301f8b57ff2c93ce68366669fc2f0926dccd26f9f6550b049cb324a2c);
 
     let input = [Wrapper {
         id: Id {
