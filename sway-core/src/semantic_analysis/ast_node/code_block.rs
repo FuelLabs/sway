@@ -7,26 +7,22 @@ use crate::language::{
 impl ty::TyCodeBlock {
     pub(crate) fn type_check(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         code_block: &CodeBlock,
     ) -> Result<Self, ErrorEmitted> {
-        // Create a temp namespace for checking within the code block scope.
-        let mut code_block_namespace = ctx.namespace.clone();
-        let evaluated_contents = code_block
-            .contents
-            .iter()
-            .filter_map(|node| {
-                ctx.by_ref()
-                    .scoped(&mut code_block_namespace, |ctx| {
-                        ty::TyAstNode::type_check(handler, ctx, node.clone())
-                    })
-                    .ok()
-            })
-            .collect::<Vec<ty::TyAstNode>>();
+        ctx.scoped(|mut ctx| {
+            let evaluated_contents = code_block
+                .contents
+                .iter()
+                .filter_map(|node| {
+                    ty::TyAstNode::type_check(handler, ctx.by_ref(), node.clone()).ok()
+                })
+                .collect::<Vec<ty::TyAstNode>>();
 
-        Ok(ty::TyCodeBlock {
-            contents: evaluated_contents,
-            whole_block_span: code_block.whole_block_span.clone(),
+            Ok(ty::TyCodeBlock {
+                contents: evaluated_contents,
+                whole_block_span: code_block.whole_block_span.clone(),
+            })
         })
     }
 

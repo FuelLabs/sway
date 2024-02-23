@@ -1,3 +1,4 @@
+use crate::manifest::GenericManifestFile;
 use crate::{
     manifest::{self, PackageManifestFile},
     source,

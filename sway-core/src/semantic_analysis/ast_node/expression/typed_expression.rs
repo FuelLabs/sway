@@ -157,7 +157,7 @@ impl ty::TyExpression {
                     is_absolute: false,
                 };
                 if matches!(
-                    ctx.namespace
+                    ctx.namespace()
                         .resolve_call_path(
                             &Handler::default(),
                             engines,
@@ -491,7 +491,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         let exp = match ctx
-            .namespace
+            .namespace()
             .resolve_symbol(&Handler::default(), engines, &name, ctx.self_type())
             .ok()
         {
@@ -509,7 +509,7 @@ impl ty::TyExpression {
                         span: name.span(),
                         mutability,
                         call_path: Some(
-                            CallPath::from(decl_name.clone()).to_fullpath(ctx.namespace),
+                            CallPath::from(decl_name.clone()).to_fullpath(ctx.namespace()),
                         ),
                     },
                     span,
@@ -523,7 +523,7 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::ConstantExpression {
                         const_decl: Box::new(const_decl),
                         span: name.span(),
-                        call_path: Some(CallPath::from(decl_name).to_fullpath(ctx.namespace)),
+                        call_path: Some(CallPath::from(decl_name).to_fullpath(ctx.namespace())),
                     },
                     span,
                 }
@@ -938,7 +938,7 @@ impl ty::TyExpression {
         let exp = instantiate_struct_field_access(
             handler,
             engines,
-            ctx.namespace,
+            ctx.namespace(),
             parent,
             field_to_access,
             span,
@@ -1021,7 +1021,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if !ctx
-            .namespace
+            .namespace()
             .module()
             .current_items()
             .has_storage_declared()
@@ -1030,17 +1030,20 @@ impl ty::TyExpression {
         }
 
         let storage_fields = ctx
-            .namespace
+            .namespace()
             .module()
             .current_items()
             .get_storage_field_descriptors(handler, decl_engine)?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) =
-            ctx.namespace.module().current_items().apply_storage_load(
+        let (storage_access, mut access_type) = ctx
+            .namespace()
+            .module()
+            .current_items()
+            .apply_storage_load(
                 handler,
                 ctx.engines,
-                ctx.namespace,
+                ctx.namespace(),
                 checkee,
                 &storage_fields,
                 storage_keyword_span,
@@ -1055,7 +1058,7 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx.namespace.resolve_root_symbol(
+        let storage_key_decl_opt = ctx.namespace().resolve_root_symbol(
             handler,
             engines,
             &storage_key_mod_path,
@@ -1212,7 +1215,7 @@ impl ty::TyExpression {
                 is_absolute,
             };
             if matches!(
-                ctx.namespace.resolve_call_path(
+                ctx.namespace().resolve_call_path(
                     &Handler::default(),
                     engines,
                     &call_path,
@@ -1259,7 +1262,7 @@ impl ty::TyExpression {
         path.push(before.inner.clone());
         let not_module = {
             let h = Handler::default();
-            ctx.namespace.module().check_submodule(&h, &path).is_err()
+            ctx.namespace().module().check_submodule(&h, &path).is_err()
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1270,7 +1273,7 @@ impl ty::TyExpression {
                 suffix: before.inner.clone(),
                 is_absolute,
             };
-            ctx.namespace
+            ctx.namespace()
                 .resolve_call_path(
                     &Handler::default(),
                     engines,
@@ -1377,7 +1380,7 @@ impl ty::TyExpression {
             // Check if this could be a module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
-                ctx.namespace
+                ctx.namespace()
                     .module()
                     .check_submodule(
                         &module_probe_handler,
@@ -1588,9 +1591,9 @@ impl ty::TyExpression {
         };
 
         // look up the call path and get the declaration it references
-        let abi = ctx
-            .namespace
-            .resolve_call_path(handler, engines, &abi_name, ctx.self_type())?;
+        let abi =
+            ctx.namespace()
+                .resolve_call_path(handler, engines, &abi_name, ctx.self_type())?;
         let abi_ref = match abi {
             ty::TyDecl::AbiDecl(ty::AbiDecl {
                 name,
@@ -1612,7 +1615,7 @@ impl ty::TyExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let unknown_decl = ctx.namespace.resolve_call_path(
+                        let unknown_decl = ctx.namespace().resolve_call_path(
                             handler,
                             engines,
                             abi_name,
@@ -1971,7 +1974,7 @@ impl ty::TyExpression {
                     match expr.kind {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
-                            let unknown_decl = ctx.namespace.resolve_symbol(
+                            let unknown_decl = ctx.namespace().resolve_symbol(
                                 handler,
                                 engines,
                                 &name,
@@ -2025,11 +2028,14 @@ impl ty::TyExpression {
                     }
                 };
                 let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) =
-                    ctx.namespace.module().current_items().find_subfield_type(
+                let (ty_of_field, _ty_of_parent) = ctx
+                    .namespace()
+                    .module()
+                    .current_items()
+                    .find_subfield_type(
                         handler,
                         ctx.engines(),
-                        ctx.namespace,
+                        ctx.namespace(),
                         &base_name,
                         &names_vec,
                     )?;
@@ -2321,7 +2327,7 @@ fn check_asm_block_validity(
 
                 // Emit warning if this register shadows a variable
                 let temp_handler = Handler::default();
-                let decl = ctx.namespace.resolve_call_path(
+                let decl = ctx.namespace().resolve_call_path(
                     &temp_handler,
                     ctx.engines,
                     &CallPath {
@@ -2383,7 +2389,7 @@ mod tests {
         type_annotation: TypeId,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
+        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }

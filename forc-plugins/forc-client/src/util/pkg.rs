@@ -1,8 +1,8 @@
-use std::{collections::HashMap, path::Path, sync::Arc};
-
 use anyhow::Result;
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, manifest::ManifestFile, BuildOpts, BuildPlan};
 use pkg::{build_with_options, BuiltPackage};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 pub(crate) fn built_pkgs(path: &Path, build_opts: BuildOpts) -> Result<Vec<Arc<BuiltPackage>>> {
     let manifest_file = ManifestFile::from_dir(path)?;
