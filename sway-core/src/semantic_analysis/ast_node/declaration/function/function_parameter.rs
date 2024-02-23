@@ -102,11 +102,11 @@ impl ty::TyFunctionParameter {
         Ok(typed_parameter)
     }
 
-    pub fn insert_into_namespace(&self, handler: &Handler, ctx: TypeCheckContext) {
+    pub fn insert_into_namespace(&self, handler: &Handler, mut ctx: TypeCheckContext) {
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
         let _ = ctx
-            .namespace
+            .namespace_mut()
             .module_mut()
             .current_items_mut()
             .insert_symbol(

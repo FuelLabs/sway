@@ -14,6 +14,7 @@ pub mod path;
 mod reg;
 
 use self::git::Url;
+use crate::manifest::GenericManifestFile;
 use crate::{
     manifest::{self, MemberManifestFiles, PackageManifestFile},
     pkg::{ManifestMap, PinnedId},
