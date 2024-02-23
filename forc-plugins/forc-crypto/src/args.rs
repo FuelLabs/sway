@@ -7,10 +7,12 @@ use std::{
 };
 
 forc_util::cli_examples! {
-    [ Hashes an argument with SHA256 => crypto "sha256 test" ]
-    [ Hashes an argument with Keccak256 => crypto "keccak256 test" ]
-    [ Hashes a file path with SHA256 => crypto "sha256 src/args.rs" ]
-    [ Hashes a file path with Keccak256 => crypto "keccak256 src/args.rs" ]
+    crate::Command {
+       [ Hashes an argument with SHA256 => "forc crypto sha256 test" ]
+       [ Hashes an argument with Keccak256 => "forc crypto keccak256 test" ]
+       [ Hashes a file path with SHA256 => "forc crypto sha256 {file}" ]
+       [ Hashes a file path with Keccak256 => "forc crypto keccak256 {file}" ]
+    }
 }
 
 #[derive(Debug, Clone, clap::Args)]

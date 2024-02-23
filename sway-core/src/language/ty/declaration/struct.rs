@@ -34,7 +34,7 @@ impl Named for TyStructDecl {
 impl EqWithEngines for TyStructDecl {}
 impl PartialEqWithEngines for TyStructDecl {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.call_path.suffix == other.call_path.suffix
+        self.call_path == other.call_path
             && self.fields.eq(&other.fields, engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
@@ -53,7 +53,7 @@ impl HashWithEngines for TyStructDecl {
             span: _,
             attributes: _,
         } = self;
-        call_path.suffix.hash(state);
+        call_path.hash(state);
         fields.hash(state, engines);
         type_parameters.hash(state, engines);
         visibility.hash(state);

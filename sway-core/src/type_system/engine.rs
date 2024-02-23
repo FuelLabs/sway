@@ -104,6 +104,18 @@ impl TypeEngine {
         }
     }
 
+    /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
+    /// [TypeInfo::Alias].
+    pub fn get_unaliased_type_id(&self, id: TypeId) -> TypeId {
+        // A slight infinite loop concern if we somehow have self-referential aliases, but that
+        // shouldn't be possible.
+        let tsi = self.slab.get(id.index());
+        match &*tsi.type_info {
+            TypeInfo::Alias { ty, .. } => self.get_unaliased_type_id(ty.type_id),
+            _ => id,
+        }
+    }
+
     /// Make the types of `received` and `expected` equivalent (or produce an
     /// error if there is a conflict between them).
     ///
@@ -272,6 +284,7 @@ impl TypeEngine {
             TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Ref(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)
@@ -327,6 +340,7 @@ impl TypeEngine {
             TypeInfo::Ref(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
 
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)

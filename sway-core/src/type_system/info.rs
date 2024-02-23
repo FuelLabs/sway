@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
+use sway_types::{integer_bits::IntegerBits, span::Span, SourceId};
 
 use std::{
     cmp::Ordering,
@@ -95,6 +95,7 @@ impl PartialEqWithEngines for TypeSourceInfo {
 pub enum TypeInfo {
     #[default]
     Unknown,
+    Never,
     /// Represents a type parameter.
     ///
     /// The equivalent type in the Rust compiler is:
@@ -111,8 +112,7 @@ pub enum TypeInfo {
     ///
     /// This type would also be created in a case where the user wrote a type
     /// annotation with a wildcard type, like:
-    /// `let v: Vec<_> = iter.collect();`. However, this is not yet implemented
-    /// in Sway.
+    /// `let v: Vec<_> = iter.collect();`.
     ///
     /// The equivalent type in the Rust compiler is:
     /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
@@ -273,6 +273,7 @@ impl HashWithEngines for TypeInfo {
             | TypeInfo::Contract
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice => {}
         }
@@ -281,6 +282,7 @@ impl HashWithEngines for TypeInfo {
 
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
+    // TODO-IG!: Equality of call paths.
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         match (self, other) {
@@ -321,16 +323,22 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
                 let l_decl = engines.de().get_enum(l_decl_ref);
                 let r_decl = engines.de().get_enum(r_decl_ref);
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                assert!(
+                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
+                    "The call paths of the enum declarations must always be absolute."
+                );
+                l_decl.call_path == r_decl.call_path
                     && l_decl.variants.eq(&r_decl.variants, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
                 let l_decl = engines.de().get_struct(l_decl_ref);
                 let r_decl = engines.de().get_struct(r_decl_ref);
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                assert!(
+                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
+                    "The call paths of the struct declarations must always be absolute."
+                );
+                l_decl.call_path == r_decl.call_path
                     && l_decl.fields.eq(&r_decl.fields, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
@@ -363,7 +371,7 @@ impl PartialEqWithEngines for TypeInfo {
                         .eq(&type_engine.get(r0.type_id), engines))
                     && l1.val() == r1.val()
             }
-            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
+            (Self::Storage { fields: l_fields }, Self::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, engines)
             }
             (
@@ -383,11 +391,11 @@ impl PartialEqWithEngines for TypeInfo {
                             .eq(&type_engine.get(r_ty.type_id), engines))
             }
             (
-                TypeInfo::TraitType {
+                Self::TraitType {
                     name: l_name,
                     trait_type_id: l_trait_type_id,
                 },
-                TypeInfo::TraitType {
+                Self::TraitType {
                     name: r_name,
                     trait_type_id: r_trait_type_id,
                 },
@@ -530,6 +538,7 @@ impl DisplayWithEngines for TypeInfo {
         use TypeInfo::*;
         let s = match self {
             Unknown => "{unknown}".into(),
+            Never => "!".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(type_param) => type_param.name_ident.to_string(),
             TypeParam(n) => format!("{n}"),
@@ -606,6 +615,7 @@ impl DebugWithEngines for TypeInfo {
         use TypeInfo::*;
         let s = match self {
             Unknown => "unknown".into(),
+            Never => "!".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(t) => format!("placeholder({:?})", engines.help_out(t)),
             TypeParam(n) => format!("typeparam({n})"),
@@ -737,6 +747,7 @@ impl TypeInfo {
             TypeInfo::StringSlice => 23,
             TypeInfo::TraitType { .. } => 24,
             TypeInfo::Ref { .. } => 25,
+            TypeInfo::Never => 26,
         }
     }
 
@@ -1049,6 +1060,7 @@ impl TypeInfo {
             }
             TypeInfo::ErrorRecovery(_) => true,
             TypeInfo::Unknown => true,
+            TypeInfo::Never => true,
             _ => false,
         }
     }
@@ -1134,6 +1146,7 @@ impl TypeInfo {
                 }
             }
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::StringArray(_)
             | TypeInfo::StringSlice
@@ -1177,7 +1190,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Alias { .. } => Ok(()),
+            | TypeInfo::Alias { .. }
+            | TypeInfo::Never => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
@@ -1236,7 +1250,8 @@ impl TypeInfo {
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_) => Ok(()),
+            | TypeInfo::Ref(_)
+            | TypeInfo::Never => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Storage { .. }
@@ -1271,7 +1286,8 @@ impl TypeInfo {
             | TypeInfo::Ptr(_)
             | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
-            | TypeInfo::TraitType { .. } => false,
+            | TypeInfo::TraitType { .. }
+            | TypeInfo::Never => false,
             TypeInfo::Unknown
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::ContractCaller { .. }
@@ -1292,6 +1308,7 @@ impl TypeInfo {
     pub(crate) fn has_valid_constructor(&self, decl_engine: &DeclEngine) -> bool {
         match self {
             TypeInfo::Unknown => false,
+            TypeInfo::Never => false,
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 !decl.variants.is_empty()
