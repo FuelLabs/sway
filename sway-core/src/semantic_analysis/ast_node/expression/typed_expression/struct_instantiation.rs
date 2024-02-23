@@ -78,7 +78,7 @@ pub(crate) fn struct_instantiation(
     };
 
     // find the module that the struct decl is in
-    let type_info_prefix = ctx.namespace().find_module_path(&prefixes);
+    let type_info_prefix = ctx.namespace().find_module_path(prefixes);
     ctx.namespace()
         .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
@@ -288,17 +288,16 @@ pub(crate) fn struct_instantiation(
         })?;
     }
 
-    let mut struct_namespace = ctx.namespace.clone();
     let instantiation_span = inner_span.clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(|mut struct_ctx| {
+        .scoped(|mut scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
             for type_parameter in struct_decl.type_parameters.iter() {
-                type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
+                type_parameter.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
             }
 
-            type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
+            type_id.check_type_parameter_bounds(handler, scoped_ctx, &span, None)?;
 
             let exp = ty::TyExpression {
                 expression: ty::TyExpressionVariant::StructExpression {
