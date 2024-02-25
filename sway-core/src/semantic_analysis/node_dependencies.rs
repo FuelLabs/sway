@@ -665,9 +665,8 @@ impl Dependencies {
             ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 self.gather_from_expr(engines, expr)
             }
-            ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
-                self.gather_from_expr(engines, expr)
-            }
+            ExpressionKind::Ref(RefExpression { value: expr, .. })
+            | ExpressionKind::Deref(expr) => self.gather_from_expr(engines, expr),
         }
     }
 
