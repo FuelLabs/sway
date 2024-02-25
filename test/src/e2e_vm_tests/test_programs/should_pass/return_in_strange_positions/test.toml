@@ -1,4 +1,68 @@
 category = "run"
 expected_result = { action = "return", value = 8193 }
 validate_abi = true
-expected_warnings = 22
+expected_warnings = 16
+
+#check: $()45
+#nextln: $()This code is unreachable.
+
+#check: $()1450
+#nextln: $()This code is unreachable.
+
+#check: $()1451
+#nextln: $()This code is unreachable.
+
+# TODO-DCA: Enable once the DCA issue is fixed.
+# #check: $()1452
+# #nextln: $()This code is unreachable.
+
+# TODO-DCA: Enable once the DCA issue is fixed.
+# #check: $()1453
+# #nextln: $()This code is unreachable.
+
+#check: $()245
+#nextln: $()This code is unreachable.
+
+#check: $()345
+#nextln: $()This code is unreachable.
+
+#check: $()445
+#nextln: $()This code is unreachable.
+
+#check: $()545
+#nextln: $()This code is unreachable.
+
+#check: $()543
+#nextln: $()This code is unreachable.
+
+#check: $()345
+#nextln: $()This code is unreachable.
+
+#check: $()645
+#nextln: $()This code is unreachable.
+
+# TODO-DCA: Enable once the DCA issue is fixed.
+# #check: $()745
+# #nextln: $()This code is unreachable.
+
+# TODO-DCA: Enable once the DCA issue is fixed.
+# #check: $()845
+# #nextln: $()This code is unreachable.
+
+# TODO-DCA: Enable once the DCA issue is fixed.
+# #check: $()945
+# #nextln: $()This code is unreachable.
+
+# TODO-DCA: Enable once the DCA issue is fixed.
+# #check: $()1045
+# #nextln: $()This code is unreachable.
+
+#check: $()1245
+#nextln: $()This code is unreachable.
+
+#check: $()let _ = match return 42 {
+#check: $()};
+#nextln: $()This code is unreachable.
+
+#check: $()1345
+#nextln: $()This code is unreachable.

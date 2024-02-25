@@ -26,28 +26,28 @@ fn in_init() -> u64 {
 fn in_array() -> u64 {
     let _ = [return 42, return 43];
     
-    145
+    1450
 }
 
 // Arrays of length 1 are treated differently
 fn in_length_1_array() -> u64 {
     let _ = [return 42];
     
-    145
+    1451
 }
 
 // The first element of an array is treated differently
 fn in_length_2_array_first() -> u64 {
     let _ = [return 42, 0];
     
-    145
+    1452 // TODO-DCA: Should be a warning here.
 }
 
 // The first element of an array is treated differently
 fn in_length_2_array_second() -> u64 {
     let _ = [0, return 42];
     
-    145
+    1453 // TODO-DCA: Should be a warning here.
 }
 
 fn in_tuple() -> u64 {
@@ -90,19 +90,19 @@ fn in_while_condition() -> u64 {
         break;
     };
     
-    745
+    745 // TODO-DCA: Should be a warning here.
 }
 
 fn in_enum() -> u64 {
     let _ = Enum::A((return 42, return 43));
     
-    845
+    845 // TODO-DCA: Should be a warning here.
 }
 
 fn in_enum_multivariant() -> u64 {
     let _ = Enum_multivariant::B((return 42, return 43));
     
-    945
+    945 // TODO-DCA: Should be a warning here.
 }
 
 fn helper_fun(x : u64, y : u64) -> u64 {
@@ -112,7 +112,7 @@ fn helper_fun(x : u64, y : u64) -> u64 {
 fn in_fun_arg() -> u64 {
     let _ = helper_fun(return 42, return 43);
 
-    1045
+    1045 // TODO-DCA: Should be a warning here.
 }
 
 fn in_lazy_and() -> u64 {
@@ -127,6 +127,13 @@ fn in_lazy_or() -> u64 {
     1245
 }
 
+fn in_match_scrutinee() -> u64 {
+    let _ = match return 42 {
+        _ => 5411,
+    };
+
+    1345
+}
 
 fn main() -> u64 {
     assert(42 == in_init());
@@ -145,6 +152,7 @@ fn main() -> u64 {
     assert(42 == in_fun_arg());
     assert(42 == in_lazy_and());
     assert(42 == in_lazy_or());
+    assert(42 == in_match_scrutinee());
 
     8193
 }

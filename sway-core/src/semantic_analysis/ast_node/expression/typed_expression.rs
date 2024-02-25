@@ -364,7 +364,7 @@ impl ty::TyExpression {
             ExpressionKind::Break => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Break,
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
+                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
                     span,
                 };
                 Ok(expr)
@@ -372,7 +372,7 @@ impl ty::TyExpression {
             ExpressionKind::Continue => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Continue,
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
+                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
                     span,
                 };
                 Ok(expr)
@@ -408,8 +408,7 @@ impl ty::TyExpression {
                     .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
                 let typed_expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Return(Box::new(expr)),
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
-                    // FIXME: This should be Yes?
+                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
                     span,
                 };
                 Ok(typed_expr)

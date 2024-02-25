@@ -15,16 +15,6 @@ pub enum Enum_multivariant {
     B: (u64, u64),
 }
 
-// Legal return type. Matching on the type is unimplemented.
-
-fn in_match_scrutinee_legal_return() -> u64 {
-    match return 42 {
-        _ => 5411,
-    }
-
-    1145
-}
-
 // Illegal return types. Every function should report an error for incorrect return
 // type, and a warning for unreachable code.
 
