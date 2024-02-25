@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-A233053CC427F55D"
+
+[[package]]
+name = "std"
+source = "path+from-root-A233053CC427F55D"
+dependencies = ["core"]
+
+[[package]]
+name = "type_unification_of_references"
+source = "member"
+dependencies = ["std"]

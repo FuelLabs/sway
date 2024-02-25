@@ -25,12 +25,12 @@ use sway_core::{
             FunctionParameter, IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType,
             IncludeStatement, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
-            QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
-            StructExpression, StructExpressionField, StructField, StructScrutineeField,
-            SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TraitItem,
-            TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
-            VariableDeclaration, WhileLoopExpression,
+            QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, RefExpression,
+            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
+            StructDeclaration, StructExpression, StructExpressionField, StructField,
+            StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
+            TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
+            UseStatement, VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, HasSubmodules, Literal,
     },
@@ -347,7 +347,8 @@ impl Parse for Expression {
             ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 expr.parse(ctx);
             }
-            ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
+            ExpressionKind::Ref(RefExpression { value: expr, .. })
+            | ExpressionKind::Deref(expr) => {
                 expr.parse(ctx);
             }
             // We are collecting these tokens in the lexed phase.

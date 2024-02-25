@@ -1095,6 +1095,19 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }
+            Intrinsic::JmpbSsp => {
+                let offset_val = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?
+                );
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let val = self
+                    .current_block
+                    .append(context)
+                    .jmpb_ssp(offset_val)
+                    .add_metadatum(context, span_md_idx);
+                Ok(TerminatorValue::new(val, context))
+            }
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 let op = match kind {
                     Intrinsic::PtrAdd => BinaryOpKind::Add,
