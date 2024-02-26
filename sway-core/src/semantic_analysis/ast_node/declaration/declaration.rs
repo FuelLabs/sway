@@ -54,14 +54,29 @@ impl TyDecl {
                     ty::TyExpression::error(err, var_decl.name.span(), engines)
                 });
 
+                // TODO: Integers shouldn't be anything special. RHS expressions should be written in
+                //       a way to always use the context provided from the LHS, and if the LHS is
+                //       an integer, RHS should properly unify or type check should fail.
+                //       Remove this special case as a part of the initiative of improving type inference.
                 // Integers are special in the sense that we can't only rely on the type of `body`
                 // to get the type of the variable. The type of the variable *has* to follow
                 // `type_ascription` if `type_ascription` is a concrete integer type that does not
                 // conflict with the type of `body` (i.e. passes the type checking above).
                 let return_type = match &*type_engine.get(type_ascription.type_id) {
                     TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-                    _ => body.return_type,
+                    _ => match &*type_engine.get(body.return_type) {
+                        // If RHS type check ends up in an error we want to use the
+                        // provided type ascription as the variable type. E.g.:
+                        //   let v: Struct<u8> = Struct<u64> { x: 0 }; // `v` should be "Struct<u8>".
+                        //   let v: ExistingType = non_existing_identifier; // `v` should be "ExistingType".
+                        //   let v = <some error>; // `v` will remain "{unknown}".
+                        // TODO: Refine and improve this further. E.g.,
+                        //   let v: Struct { /* MISSING FIELDS */ }; // Despite the error, `v` should be of type "Struct".
+                        TypeInfo::ErrorRecovery(_) => type_ascription.type_id,
+                        _ => body.return_type,
+                    },
                 };
+
                 let typed_var_decl = ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
                     name: var_decl.name.clone(),
                     body,

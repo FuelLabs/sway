@@ -16,7 +16,7 @@ use crate::{
         type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
     },
     type_system::*,
-    Namespace,
+    Engines, Namespace,
 };
 
 const UNIFY_STRUCT_FIELD_HELP_TEXT: &str =
@@ -45,12 +45,12 @@ pub(crate) fn struct_instantiation(
         },
         type_arguments,
         span: inner_span,
-    } = call_path_binding.clone();
+    } = &call_path_binding;
 
     if let TypeArgs::Prefix(_) = type_arguments {
         return Err(
             handler.emit_err(CompileError::DoesNotTakeTypeArgumentsAsPrefix {
-                name: suffix,
+                name: suffix.clone(),
                 span: type_arguments.span(),
             }),
         );
@@ -78,7 +78,7 @@ pub(crate) fn struct_instantiation(
     };
 
     // find the module that the struct decl is in
-    let type_info_prefix = ctx.namespace().find_module_path(&prefixes);
+    let type_info_prefix = ctx.namespace().find_module_path(prefixes);
     ctx.namespace()
         .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
@@ -87,7 +87,7 @@ pub(crate) fn struct_instantiation(
         .resolve_type(
             handler,
             type_engine.insert(engines, type_info, suffix.span().source_id()),
-            &inner_span,
+            inner_span,
             EnforceTypeArguments::No,
             Some(&type_info_prefix),
         )
@@ -96,7 +96,7 @@ pub(crate) fn struct_instantiation(
     // extract the struct name and fields from the type info
     let type_info = type_engine.get(type_id);
     let struct_ref = type_info.expect_struct(handler, engines, &span)?;
-    let struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
+    let struct_decl = decl_engine.get_struct(&struct_ref);
 
     let (struct_can_be_changed, is_public_struct_access) =
         StructAccessInfo::get_info(&struct_decl, ctx.namespace()).into();
@@ -104,26 +104,16 @@ pub(crate) fn struct_instantiation(
     let struct_can_be_instantiated = !is_public_struct_access || !struct_has_private_fields;
     let all_fields_are_private = struct_decl.has_only_private_fields();
     let struct_is_empty = struct_decl.is_empty();
-    let struct_name = struct_decl.call_path.suffix;
+    let struct_name = struct_decl.call_path.suffix.clone();
+    let struct_decl_span = struct_decl.span();
 
-    let struct_fields = struct_decl.fields;
-    let mut struct_fields = struct_fields;
+    // Before we do the type check, let's first check for the field related errors (privacy issues, non-existing fields, ...).
+    // These errors are independent of the type check, so we can collect all of them and then proceed with the type check.
 
     // To avoid conflicting and overlapping errors, we follow the Rust approach:
     // - Missing fields are reported only if the struct can actually be instantiated.
     // - Individual fields issues are always reported: private field access, non-existing fields.
-
-    let typed_fields = type_check_field_arguments(
-        handler,
-        ctx.by_ref(),
-        &fields,
-        &struct_name,
-        &mut struct_fields,
-        &span,
-        &struct_decl.span,
-        // Emit the missing fields error only if the struct can actually be instantiated.
-        struct_can_be_instantiated,
-    )?;
+    let struct_fields = &struct_decl.fields;
 
     if !struct_can_be_instantiated {
         let constructors = collect_struct_constructors(
@@ -149,27 +139,13 @@ pub(crate) fn struct_instantiation(
         });
     }
 
-    unify_field_arguments_and_struct_fields(handler, ctx.by_ref(), &typed_fields, &struct_fields)?;
-
-    // Unify type id with type annotation so eventual generic type parameters are properly resolved.
-    // When a generic type parameter is not used in field arguments it should be unified with type annotation.
-    type_engine.unify(
-        handler,
-        engines,
-        type_id,
-        ctx.type_annotation(),
-        &span,
-        "Struct type must match the type specified in its declaration.",
-        None,
-    );
-
     // Check that there are no extra fields.
     for field in fields.iter() {
         if !struct_fields.iter().any(|x| x.name == field.name) {
             handler.emit_err(CompileError::StructFieldDoesNotExist {
                 field_name: (&field.name).into(), // Explicit borrow to force the `From<&BaseIdent>` instead of `From<BaseIdent>`.
                 available_fields: TyStructField::accessible_fields_names(
-                    &struct_fields,
+                    struct_fields,
                     is_public_struct_access,
                 ),
                 is_public_struct_access,
@@ -192,7 +168,7 @@ pub(crate) fn struct_instantiation(
     // If the current module being checked is not a submodule of the
     // module in which the struct is declared, check for private fields usage.
     if is_public_struct_access {
-        for field in fields {
+        for field in fields.iter() {
             if let Some(ty_field) = struct_fields.iter().find(|x| x.name == field.name) {
                 if ty_field.is_private() {
                     handler.emit_err(CompileError::StructFieldIsPrivate {
@@ -215,21 +191,119 @@ pub(crate) fn struct_instantiation(
         }
     }
 
+    // Type check the fields and the struct.
+
+    // If the context type annotation is a struct that can coerce into the struct to instantiate,
+    // use the type coming from the context type annotation for type checking.
+    // We do this to likely get a more specific type from the type annotation, although this must
+    // not be the case. At the end, we will "merge" the struct type coming from the context and
+    // from the struct to instantiate to cover cases like, e.g., this one:
+    //
+    //   let _: Struct<u8, _, _> = Struct<_, bool, u32> { x: 123, y: true, z: 456 };
+    //
+    // Not that, until we separate type checking and type inference phase, and do the inference
+    // based on the overall scope, this is the best we can do to cover the largest variety of cases.
+    //
+    // If the context type annotation is not a struct that can coerce into the struct to instantiate,
+    // take the struct type coming from the struct instantiation as the expected type.
+    // This means that a type-mismatch error will be generated up the type-checking chain between
+    // the instantiated struct type and the expected type, but the struct instantiation itself must
+    // not necessarily be erroneous. (Examples are given below.)
+    //
+    // We also want to adjust the help message accordingly, depending where the type expectation is
+    // coming from.
+    //
+    // E.g.:
+    //   let _: Struct<u8> = Struct { x: 123 }; // Ok.
+    //   let _: Struct<u8> = Struct { x: 123u64 };
+    //                                   ^^^^^^ Expected `u8` found `u64`.
+    //                                   ^^^^^^ Must match **variable** declaration.
+    //   let _: Struct<u8> = Struct<bool> { x: true };
+    //                       ^^^^^^^^^^^^^^^^^^^^^^^^ Expected `Struct<u8>` found `Struct<bool>`. (But `true` is ok.)
+    //                       ^^^^^^^^^^^^^^^^^^^^^^^^ Must match **variable** declaration.
+    //   let _: Struct<u8> = Struct<bool> { x: "not bool" };
+    //                                         ^^^^^^^^^^ Expected `bool` found `str`.
+    //                                         ^^^^^^^^^^ Must match **struct** declaration.
+    let context_expected_type_id = type_engine.get_unaliased_type_id(ctx.type_annotation());
+    let (is_context_type_used, type_check_struct_decl, help_text) =
+        match &*type_engine.get(context_expected_type_id) {
+            TypeInfo::Struct(s) => {
+                let context_expected_struct_decl = decl_engine.get_struct(s.id());
+                if UnifyCheck::coercion(engines)
+                    .check_structs(&context_expected_struct_decl, &struct_decl)
+                {
+                    (true, context_expected_struct_decl, ctx.help_text())
+                } else {
+                    (false, struct_decl.clone(), UNIFY_STRUCT_FIELD_HELP_TEXT)
+                }
+            }
+            _ => (false, struct_decl.clone(), UNIFY_STRUCT_FIELD_HELP_TEXT),
+        };
+
+    let typed_fields = type_check_field_arguments(
+        handler,
+        ctx.by_ref(),
+        &struct_name,
+        &fields,
+        &type_check_struct_decl.fields,
+        &span,
+        &struct_decl_span,
+        help_text,
+        // Emit the missing fields error only if the struct can actually be instantiated.
+        struct_can_be_instantiated,
+    )?;
+
+    // The above type check will unify the types behind the `type_check_struct_decl.fields`
+    // and the resulting expression types coming from `fields`.
+    // But if the struct coming from the context was used for the unification, we
+    // still need to unify the resulting struct type.
+    if is_context_type_used {
+        // Let's unify just the struct fields first, to be able to locate the error
+        // message to each individual initialization value, because that's where the issue is.
+        unify_field_arguments_and_struct_fields(
+            handler,
+            ctx.engines(),
+            &typed_fields,
+            &struct_decl.fields,
+            help_text,
+        )?;
+
+        // Then let's unify the struct types.
+        // Note that, in this case, the type we are actually expecting is the `type_id` and the
+        // type which was provided by the context is the one we see as received, because we did
+        // the previous type unification based on that type.
+        // Short-circuit if the unification fails, by checking if the scoped handler
+        // has collected any errors.
+        handler.scope(|handler| {
+            type_engine.unify(
+                handler,
+                engines,
+                context_expected_type_id,
+                type_id,
+                &span,
+                help_text,
+                None,
+            );
+            Ok(())
+        })?;
+    }
+
+    let instantiation_span = inner_span.clone();
     ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow)
-        .scoped(|mut struct_ctx| {
+        .scoped(|mut scoped_ctx| {
             // Insert struct type parameter into namespace.
             // This is required so check_type_parameter_bounds can resolve generic trait type parameters.
-            for type_parameter in struct_decl.type_parameters {
-                type_parameter.insert_into_namespace_self(handler, struct_ctx.by_ref())?;
+            for type_parameter in struct_decl.type_parameters.iter() {
+                type_parameter.insert_into_namespace_self(handler, scoped_ctx.by_ref())?;
             }
 
-            type_id.check_type_parameter_bounds(handler, struct_ctx, &span, None)?;
+            type_id.check_type_parameter_bounds(handler, scoped_ctx, &span, None)?;
 
             let exp = ty::TyExpression {
                 expression: ty::TyExpressionVariant::StructExpression {
                     struct_ref,
                     fields: typed_fields,
-                    instantiation_span: inner_span,
+                    instantiation_span,
                     call_path_binding,
                 },
                 return_type: type_id,
@@ -291,87 +365,98 @@ fn collect_struct_constructors(
 fn type_check_field_arguments(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    fields: &[StructExpressionField],
     struct_name: &Ident,
-    struct_fields: &mut [ty::TyStructField],
+    fields: &[StructExpressionField],
+    struct_fields: &[ty::TyStructField],
     span: &Span,
     struct_decl_span: &Span,
+    help_text: &'static str,
     emit_missing_fields_error: bool,
 ) -> Result<Vec<ty::TyStructExpressionField>, ErrorEmitted> {
-    let type_engine = ctx.engines.te();
-    let engines = ctx.engines();
+    handler.scope(|handler| {
+        let type_engine = ctx.engines.te();
+        let engines = ctx.engines();
 
-    let mut typed_fields = vec![];
-    let mut missing_fields = vec![];
+        let mut typed_fields = vec![];
+        let mut missing_fields = vec![];
 
-    for struct_field in struct_fields.iter_mut() {
-        match fields.iter().find(|x| x.name == struct_field.name) {
-            Some(field) => {
-                let ctx = ctx
-                    .by_ref()
-                    .with_help_text(UNIFY_STRUCT_FIELD_HELP_TEXT)
-                    .with_type_annotation(struct_field.type_argument.type_id)
-                    .with_unify_generic(true);
-                let value = match ty::TyExpression::type_check(handler, ctx, field.value.clone()) {
-                    Ok(res) => res,
-                    Err(_) => continue,
-                };
-                typed_fields.push(ty::TyStructExpressionField {
-                    value,
-                    name: field.name.clone(),
-                });
-                struct_field.span = field.value.span.clone();
-            }
-            None => {
-                missing_fields.push(struct_field.name.clone());
+        for struct_field in struct_fields.iter() {
+            match fields.iter().find(|x| x.name == struct_field.name) {
+                Some(field) => {
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text(help_text)
+                        .with_type_annotation(struct_field.type_argument.type_id)
+                        .with_unify_generic(true);
 
-                let err = Handler::default().emit_err(
-                    CompileError::StructInstantiationMissingFieldForErrorRecovery {
-                        field_name: struct_field.name.clone(),
-                        struct_name: struct_name.clone(),
-                        span: span.clone(),
-                    },
-                );
+                    // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
+                    //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
+                    //          not treated as an error in the `type_check()`'s result.
+                    let typed_expr = handler.scope(|handler| {
+                        ty::TyExpression::type_check(handler, ctx, field.value.clone())
+                    });
 
-                typed_fields.push(ty::TyStructExpressionField {
-                    name: struct_field.name.clone(),
-                    value: ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
-                        return_type: type_engine.insert(
-                            engines,
-                            TypeInfo::ErrorRecovery(err),
-                            None,
-                        ),
-                        span: span.clone(),
-                    },
-                });
+                    let value = match typed_expr {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    };
+
+                    typed_fields.push(ty::TyStructExpressionField {
+                        value,
+                        name: field.name.clone(),
+                    });
+                }
+                None => {
+                    missing_fields.push(struct_field.name.clone());
+
+                    let err = Handler::default().emit_err(
+                        CompileError::StructInstantiationMissingFieldForErrorRecovery {
+                            field_name: struct_field.name.clone(),
+                            struct_name: struct_name.clone(),
+                            span: span.clone(),
+                        },
+                    );
+
+                    typed_fields.push(ty::TyStructExpressionField {
+                        name: struct_field.name.clone(),
+                        value: ty::TyExpression {
+                            expression: ty::TyExpressionVariant::Tuple { fields: vec![] },
+                            return_type: type_engine.insert(
+                                engines,
+                                TypeInfo::ErrorRecovery(err),
+                                None,
+                            ),
+                            span: span.clone(),
+                        },
+                    });
+                }
             }
         }
-    }
 
-    if emit_missing_fields_error && !missing_fields.is_empty() {
-        handler.emit_err(CompileError::StructInstantiationMissingFields {
-            field_names: missing_fields,
-            struct_name: struct_name.clone(),
-            span: span.clone(),
-            struct_decl_span: struct_decl_span.clone(),
-            total_number_of_fields: struct_fields.len(),
-        });
-    }
+        if emit_missing_fields_error && !missing_fields.is_empty() {
+            handler.emit_err(CompileError::StructInstantiationMissingFields {
+                field_names: missing_fields,
+                struct_name: struct_name.clone(),
+                span: span.clone(),
+                struct_decl_span: struct_decl_span.clone(),
+                total_number_of_fields: struct_fields.len(),
+            });
+        }
 
-    Ok(typed_fields)
+        Ok(typed_fields)
+    })
 }
 
 /// Unifies the field arguments and the types of the fields from the struct
 /// definition.
 fn unify_field_arguments_and_struct_fields(
     handler: &Handler,
-    ctx: TypeCheckContext,
+    engines: &Engines,
     typed_fields: &[ty::TyStructExpressionField],
     struct_fields: &[ty::TyStructField],
+    help_text: &str,
 ) -> Result<(), ErrorEmitted> {
-    let type_engine = ctx.engines.te();
-    let engines = ctx.engines();
+    let type_engine = engines.te();
 
     handler.scope(|handler| {
         for struct_field in struct_fields.iter() {
@@ -381,8 +466,8 @@ fn unify_field_arguments_and_struct_fields(
                     engines,
                     typed_field.value.return_type,
                     struct_field.type_argument.type_id,
-                    &typed_field.value.span,
-                    UNIFY_STRUCT_FIELD_HELP_TEXT,
+                    &typed_field.value.span, // Use the span of the initialization value.
+                    help_text,
                     None,
                 );
             }

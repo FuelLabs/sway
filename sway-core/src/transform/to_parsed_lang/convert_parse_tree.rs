@@ -2154,10 +2154,13 @@ fn expr_to_expression(
             }),
             span,
         },
-        Expr::Ref { expr, .. } => Expression {
-            kind: ExpressionKind::Ref(Box::new(expr_to_expression(
-                context, handler, engines, *expr,
-            )?)),
+        Expr::Ref {
+            mut_token, expr, ..
+        } => Expression {
+            kind: ExpressionKind::Ref(RefExpression {
+                to_mutable_value: mut_token.is_some(),
+                value: Box::new(expr_to_expression(context, handler, engines, *expr)?),
+            }),
             span,
         },
         Expr::Deref { expr, .. } => Expression {
