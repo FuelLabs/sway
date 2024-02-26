@@ -740,6 +740,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_complete_fig"
+version = "3.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed37b4c0c1214673eba6ad8ea31666626bf72be98ffb323067d973c48b4964b9"
+dependencies = [
+ "clap 3.2.25",
+ "clap_complete 3.2.5",
+]
+
+[[package]]
 name = "clap_derive"
 version = "3.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1976,6 +1986,7 @@ dependencies = [
  "anyhow",
  "clap 3.2.25",
  "clap_complete 3.2.5",
+ "clap_complete_fig",
  "forc-pkg",
  "forc-test",
  "forc-tracing 0.51.1",
