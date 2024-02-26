@@ -22,7 +22,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyCodeBlock, TyImplItem},
+        ty::{self, TyCodeBlock, TyImplItem, VariableMutability},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -1860,7 +1860,9 @@ impl ty::TyExpression {
         // loop cannot be endless.
         while !current_type.is_array() {
             match &*current_type {
-                TypeInfo::Ref(referenced_type) => {
+                TypeInfo::Ref {
+                    referenced_type, ..
+                } => {
                     let referenced_type_id = referenced_type.type_id;
 
                     current_prefix_te = Box::new(ty::TyExpression {
@@ -2083,7 +2085,7 @@ impl ty::TyExpression {
     fn type_check_ref(
         handler: &Handler,
         mut ctx: TypeCheckContext<'_>,
-        _to_mutable_value: bool,
+        to_mutable_value: bool,
         value: Box<Expression>,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -2098,7 +2100,9 @@ impl ty::TyExpression {
         // without any expectations. That value will at the end not unify with the type
         // annotation coming from the context and a type-mismatch error will be emitted.
         let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
-            TypeInfo::Ref(referenced_type) => referenced_type.type_id,
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => referenced_type.type_id,
             _ => type_engine.insert(engines, TypeInfo::Unknown, None),
         };
 
@@ -2108,13 +2112,43 @@ impl ty::TyExpression {
             .with_help_text("");
 
         let expr_span = value.span();
-        let expr = ty::TyExpression::type_check(handler, ctx, *value)
-            .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span.clone(), engines));
+        let expr = ty::TyExpression::type_check(handler, ctx, *value)?;
+
+        if to_mutable_value {
+            match expr.expression {
+                ty::TyExpressionVariant::ConstantExpression { .. } => {
+                    return Err(
+                        handler.emit_err(CompileError::RefMutCannotReferenceConstant {
+                            constant: expr_span.str(),
+                            span,
+                        }),
+                    )
+                }
+                ty::TyExpressionVariant::VariableExpression {
+                    name: decl_name,
+                    mutability: VariableMutability::Immutable,
+                    ..
+                } => {
+                    return Err(handler.emit_err(
+                        CompileError::RefMutCannotReferenceImmutableVariable { decl_name, span },
+                    ))
+                }
+                // TODO-IG: Check referencing parts of aggregates once reassignment is implemented.
+                _ => (),
+            }
+        };
 
         let expr_type_argument: TypeArgument = expr.return_type.into();
         let typed_expr = ty::TyExpression {
             expression: ty::TyExpressionVariant::Ref(Box::new(expr)),
-            return_type: type_engine.insert(engines, TypeInfo::Ref(expr_type_argument), None),
+            return_type: type_engine.insert(
+                engines,
+                TypeInfo::Ref {
+                    to_mutable_value,
+                    referenced_type: expr_type_argument,
+                },
+                None,
+            ),
             span,
         };
 
@@ -2136,9 +2170,18 @@ impl ty::TyExpression {
         // reference to the expected type.
         // Otherwise, we pass a new `TypeInfo::Unknown` as the annotation, to allow the `expr`
         // to be evaluated without any expectations.
+        // Since `&mut T` coerces into `&T` we always go with a lesser expectation, `&T`.
+        // Thus, `to_mutable_vale` is set to false.
         let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
             TypeInfo::Unknown => type_engine.insert(engines, TypeInfo::Unknown, None),
-            _ => type_engine.insert(engines, TypeInfo::Ref(ctx.type_annotation().into()), None),
+            _ => type_engine.insert(
+                engines,
+                TypeInfo::Ref {
+                    to_mutable_value: false,
+                    referenced_type: ctx.type_annotation().into(),
+                },
+                None,
+            ),
         };
 
         let deref_ctx = ctx
@@ -2153,7 +2196,10 @@ impl ty::TyExpression {
         let expr_type = type_engine.get(expr.return_type);
         let return_type = match *expr_type {
             TypeInfo::ErrorRecovery(_) => Ok(expr.return_type), // Just forward the error return type.
-            TypeInfo::Ref(ref exp) => Ok(exp.type_id),          // Get the referenced type.
+            TypeInfo::Ref {
+                referenced_type: ref exp,
+                ..
+            } => Ok(exp.type_id), // Get the referenced type.
             _ => Err(
                 handler.emit_err(CompileError::ExpressionCannotBeDereferenced {
                     expression_type: engines.help_out(expr.return_type).to_string(),

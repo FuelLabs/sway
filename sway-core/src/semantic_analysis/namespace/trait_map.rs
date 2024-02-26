@@ -18,7 +18,7 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    TraitConstraint, TypeArgument, TypeInfo, TypeSubstMap, UnifyCheck,
+    TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
 };
 
 use super::TryInsertingTraitImplOnFailure;
@@ -195,7 +195,7 @@ impl TraitMap {
                 value:
                     TraitValue {
                         trait_items: map_trait_items,
-                        ..
+                        impl_span: existing_impl_span,
                     },
             } in self.trait_impls.iter()
             {
@@ -209,7 +209,60 @@ impl TraitMap {
                 } = map_trait_name;
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
-                let types_are_subset = unify_checker.check(type_id, *map_type_id);
+
+                // Types are subset if the `type_id` that we want to insert can unify with the
+                // existing `map_type_id`. In addition we need to additionally check for the case of
+                // `&mut <type>` and `&<type>`.
+                let types_are_subset = if unify_checker.check(type_id, *map_type_id) {
+                    is_unified_type_subset(engines.te(), type_id, *map_type_id)
+                } else {
+                    false
+                };
+
+                /// `left` can unify into `right`. Additionally we need to check subset condition in case of
+                /// [TypeInfo::Ref] types.  Although `&mut <type>` can unify with `&<type>`
+                /// when it comes to trait and self impls, we considered them to be different types.
+                /// E.g., we can have `impl Foo for &T` and at the same time `impl Foo for &mut T`.
+                /// Or in general, `impl Foo for & &mut .. &T` is different type then, e.g., `impl Foo for &mut & .. &mut T`.
+                fn is_unified_type_subset(
+                    type_engine: &TypeEngine,
+                    mut left: TypeId,
+                    mut right: TypeId,
+                ) -> bool {
+                    // The loop cannot be endless, because at the end we must hit a referenced type which is not
+                    // a reference.
+                    loop {
+                        let left_ty_info = &*type_engine.get_unaliased(left);
+                        let right_ty_info = &*type_engine.get_unaliased(right);
+                        match (left_ty_info, right_ty_info) {
+                            (
+                                TypeInfo::Ref {
+                                    to_mutable_value: l_to_mut,
+                                    ..
+                                },
+                                TypeInfo::Ref {
+                                    to_mutable_value: r_to_mut,
+                                    ..
+                                },
+                            ) if *l_to_mut != *r_to_mut => return false, // Different mutability means not subset.
+                            (
+                                TypeInfo::Ref {
+                                    referenced_type: l_ty,
+                                    ..
+                                },
+                                TypeInfo::Ref {
+                                    referenced_type: r_ty,
+                                    ..
+                                },
+                            ) => {
+                                left = l_ty.type_id;
+                                right = r_ty.type_id;
+                            }
+                            _ => return true,
+                        }
+                    }
+                }
+
                 let mut traits_are_subset = true;
                 if *map_trait_name_suffix != trait_name.suffix
                     || map_trait_type_args.len() != trait_type_args.len()
@@ -232,7 +285,7 @@ impl TraitMap {
                 {
                     let trait_name_str = format!(
                         "{}{}",
-                        trait_name.suffix,
+                        trait_name,
                         if trait_type_args.is_empty() {
                             String::new()
                         } else {
@@ -249,6 +302,7 @@ impl TraitMap {
                     handler.emit_err(CompileError::ConflictingImplsForTraitAndType {
                         trait_name: trait_name_str,
                         type_implementing_for: engines.help_out(type_id).to_string(),
+                        existing_impl_span: existing_impl_span.clone(),
                         second_impl_span: impl_span.clone(),
                     });
                 } else if types_are_subset

@@ -18,36 +18,60 @@ impl core::ops::Eq for [Struct; 3] {
     }
 }
 
-// TODO-IG: Add tests for other expressions that can be referenced and errors for those that cannot.
+// TODO-IG: Add tests for other expressions that can be referenced.
 
 #[inline(always)]
 fn if_expr<T>(input: u64, left: T, right: T) where T: Eq {
-    let x = if input > 42 {
+    let mut x = if input > 42 {
         left
     } else {
         right
     };
 
     let r_x = &x;
+
     let r_val = &if input > 42 {
         left
     } else {
         right
     };
 
-    let r_x_ptr = asm(r: r_x) { r: raw_ptr };
-    let r_val_ptr = asm(r: r_val) { r: raw_ptr };
+    let r_mut_x = &mut x;
 
+    let r_mut_val = &mut if input > 42 {
+        left
+    } else {
+        right
+    };
+
+    assert_references(r_x, r_val, r_mut_x, r_mut_val, x);
+}
+
+fn assert_references<T>(r_x: &T, r_val: &T, r_mut_x: &mut T, r_mut_val: &mut T, x: T) where T: Eq {
+    let r_x_ptr = asm(r: r_x) { r: raw_ptr };
+    let r_mut_x_ptr = asm(r: r_mut_x) { r: raw_ptr };
+    let r_val_ptr = asm(r: r_val) { r: raw_ptr };
+    let r_mut_val_ptr = asm(r: r_mut_val) { r: raw_ptr };
+
+    assert(r_x_ptr == r_mut_x_ptr);
+    assert(r_val_ptr != r_mut_val_ptr);
     assert(r_x_ptr != r_val_ptr);
+    assert(r_mut_x_ptr != r_mut_val_ptr);
 
     let r_x_ptr_val = r_x_ptr.read::<T>();
+    let r_mut_x_ptr_val = r_mut_x_ptr.read::<T>();
     let r_x_val_val = r_val_ptr.read::<T>();
+    let r_mut_x_val_val = r_mut_val_ptr.read::<T>();
 
     assert(r_x_ptr_val == x);
+    assert(r_mut_x_ptr_val == x);
     assert(r_x_val_val == x);
+    assert(r_mut_x_val_val == x);
 
     assert(*r_x == x);
+    assert(*r_mut_x == x);
     assert(*r_val == x);
+    assert(*r_mut_val == x);
 }
 
 #[inline(never)]

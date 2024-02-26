@@ -1005,7 +1005,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Slice(..) => "__slice",
         TypeInfo::Alias { .. } => "alias",
         TypeInfo::TraitType { .. } => "trait type",
-        TypeInfo::Ref(..) => "reference type",
+        TypeInfo::Ref { .. } => "reference type",
     }
     .to_string()
 }
@@ -1024,7 +1024,3 @@ fn recursively_depends_on(
                 .unwrap_or(false)
         })
 }
-
-// -------------------------------------------------------------------------------------------------
-//
-//

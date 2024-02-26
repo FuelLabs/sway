@@ -132,6 +132,21 @@ pub enum CompileError {
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
     RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
+    #[error("Reference to mutable value cannot reference a constant.")]
+    RefMutCannotReferenceConstant {
+        /// Constant, as accessed in code. E.g.:
+        ///  - `MY_CONST`
+        ///  - `LIB_CONST_ALIAS`
+        ///  - `::lib::module::SOME_CONST`
+        constant: String,
+        span: Span,
+    },
+    #[error("Reference to mutable value cannot reference an immutable variable.")]
+    RefMutCannotReferenceImmutableVariable {
+        /// Variable name pointing to the name in the variable declaration.
+        decl_name: Ident,
+        span: Span,
+    },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -507,6 +522,7 @@ pub enum CompileError {
     ConflictingImplsForTraitAndType {
         trait_name: String,
         type_implementing_for: String,
+        existing_impl_span: Span,
         second_impl_span: Span,
     },
     #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
@@ -878,6 +894,8 @@ impl Spanned for CompileError {
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
+            RefMutCannotReferenceConstant { span, .. } => span.clone(),
+            RefMutCannotReferenceImmutableVariable { span, .. } => span.clone(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -1859,6 +1877,63 @@ impl ToDiagnostic for CompileError {
                     "In Sway, tuple elements can be accessed on:".to_string(),
                     format!("{}- tuples. E.g., `my_tuple.1`.", Indent::Single),
                     format!("{}- references, direct or indirect, to tuples. E.g., `(&my_tuple).1` or `(&&&my_tuple).1`.", Indent::Single),
+                ],
+            },
+            RefMutCannotReferenceConstant { constant, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "References to mutable values cannot reference constants".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{constant}\" is a constant. `&mut` cannot reference constants.")
+                ),
+                hints: vec![],
+                help: vec![
+                    "Consider:".to_string(),
+                    format!("{}- taking a reference without `mut`: `&{constant}`.", Indent::Single),
+                    format!("{}- referencing a mutable copy of the constant, by returning it from a block: `&mut {{ {constant} }}`.", Indent::Single)
+                ],
+            },
+            RefMutCannotReferenceImmutableVariable { decl_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "References to mutable values cannot reference immutable variables".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{decl_name}\" is an immutable variable. `&mut` cannot reference immutable variables.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("\"{decl_name}\" is declared here as immutable.")
+                    ),
+                ],
+                help: vec![
+                    "Consider:".to_string(),
+                    // TODO-IG: Once desugaring information becomes available, do not show the first suggestion if declaring variable as mutable is not possible.
+                    format!("{}- declaring \"{decl_name}\" as mutable.", Indent::Single),
+                    format!("{}- taking a reference without `mut`: `&{decl_name}`.", Indent::Single),
+                    format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
+                ],
+            },
+            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, existing_impl_span, second_impl_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Trait is already implemented for type".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    second_impl_span.clone(),
+                    format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        existing_impl_span.clone(),
+                        format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
+                            call_path_suffix_with_args(trait_name)
+                        )
+                    ),
+                ],
+                help: vec![
+                    format!("In Sway, there can be at most one implementation of a trait for any given type."),
+                    format!("This property is called \"trait coherence\"."),
                 ],
             },
            _ => Diagnostic {

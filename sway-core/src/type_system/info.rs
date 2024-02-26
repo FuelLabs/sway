@@ -184,7 +184,10 @@ pub enum TypeInfo {
         name: Ident,
         trait_type_id: TypeId,
     },
-    Ref(TypeArgument),
+    Ref {
+        to_mutable_value: bool,
+        referenced_type: TypeArgument,
+    },
 }
 
 impl HashWithEngines for TypeInfo {
@@ -263,7 +266,11 @@ impl HashWithEngines for TypeInfo {
                 name.hash(state);
                 trait_type_id.hash(state);
             }
-            TypeInfo::Ref(ty) => {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                to_mutable_value.hash(state);
                 ty.hash(state, engines);
             }
             TypeInfo::StringSlice
@@ -282,7 +289,6 @@ impl HashWithEngines for TypeInfo {
 
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
-    // TODO-IG!: Equality of call paths.
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
         match (self, other) {
@@ -406,11 +412,21 @@ impl PartialEqWithEngines for TypeInfo {
                             .get(*l_trait_type_id)
                             .eq(&type_engine.get(*r_trait_type_id), engines))
             }
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
-                (l_ty.type_id == r_ty.type_id)
-                    || type_engine
-                        .get(l_ty.type_id)
-                        .eq(&type_engine.get(r_ty.type_id), engines)
+            (
+                Self::Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Self::Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => {
+                (l_to_mut == r_to_mut)
+                    && ((l_ty.type_id == r_ty.type_id)
+                        || type_engine
+                            .get(l_ty.type_id)
+                            .eq(&type_engine.get(r_ty.type_id), engines))
             }
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),
@@ -524,10 +540,20 @@ impl OrdWithEngines for TypeInfo {
             ) => l_trait_type_id
                 .cmp(r_trait_type_id)
                 .then_with(|| l_name.cmp(r_name)),
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => type_engine
-                .get(l_ty.type_id)
-                .cmp(&type_engine.get(r_ty.type_id), engines),
-
+            (
+                Self::Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Self::Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => l_to_mut.cmp(r_to_mut).then_with(|| {
+                type_engine
+                    .get(l_ty.type_id)
+                    .cmp(&type_engine.get(r_ty.type_id), engines)
+            }),
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }
@@ -602,8 +628,15 @@ impl DisplayWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
-            Ref(ty) => {
-                format!("&{}", engines.help_out(ty))
+            Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                format!(
+                    "&{}{}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    engines.help_out(ty)
+                )
             }
         };
         write!(f, "{s}")
@@ -706,8 +739,15 @@ impl DebugWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
-            Ref(ty) => {
-                format!("&{:?}", engines.help_out(ty))
+            Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                format!(
+                    "&{}{:?}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    engines.help_out(ty)
+                )
             }
         };
         write!(f, "{s}")
@@ -1097,7 +1137,7 @@ impl TypeInfo {
     }
 
     pub fn is_reference(&self) -> bool {
-        matches!(self, TypeInfo::Ref(_))
+        matches!(self, TypeInfo::Ref { .. })
     }
 
     pub fn is_array(&self) -> bool {
@@ -1168,7 +1208,7 @@ impl TypeInfo {
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_) => {
+            | TypeInfo::Ref { .. } => {
                 Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
             }
         }
@@ -1210,7 +1250,7 @@ impl TypeInfo {
                 "Matching on this type is currently not supported.",
                 span.clone(),
             ))),
-            TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented(
+            TypeInfo::Ref { .. } => Err(handler.emit_err(CompileError::Unimplemented(
                 // TODO-IG: Implement.
                 "Using references in match expressions is currently not supported.",
                 span.clone(),
@@ -1250,7 +1290,7 @@ impl TypeInfo {
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_)
+            | TypeInfo::Ref { .. }
             | TypeInfo::Never => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
@@ -1300,7 +1340,7 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
-            | TypeInfo::Ref(_) => true,
+            | TypeInfo::Ref { .. } => true,
         }
     }
 
