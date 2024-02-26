@@ -353,7 +353,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
         Some(ty) => format!("{} ", program_type_str(ty)),
         None => "".to_string(),
     };
-    tracing::info!(
+    tracing::debug!(
         " {} {ty}{} ({src})",
         Colour::Green.bold().paint("Compiling"),
         ansi_term::Style::new().bold().paint(name)

@@ -154,7 +154,11 @@ impl TypeParameter {
         }
     }
 
-    pub(crate) fn insert_self_type_into_namespace(&self, handler: &Handler, ctx: TypeCheckContext) {
+    pub(crate) fn insert_self_type_into_namespace(
+        &self,
+        handler: &Handler,
+        mut ctx: TypeCheckContext,
+    ) {
         let type_parameter_decl =
             ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                 name: self.name_ident.clone(),
@@ -164,20 +168,28 @@ impl TypeParameter {
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
-            handler,
-            name_a,
-            type_parameter_decl.clone(),
-            const_shadowing_mode,
-            generic_shadowing_mode,
-        );
-        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
-            handler,
-            name_b,
-            type_parameter_decl,
-            const_shadowing_mode,
-            generic_shadowing_mode,
-        );
+        let _ = ctx
+            .namespace_mut()
+            .module_mut()
+            .current_items_mut()
+            .insert_symbol(
+                handler,
+                name_a,
+                type_parameter_decl.clone(),
+                const_shadowing_mode,
+                generic_shadowing_mode,
+            );
+        let _ = ctx
+            .namespace_mut()
+            .module_mut()
+            .current_items_mut()
+            .insert_symbol(
+                handler,
+                name_b,
+                type_parameter_decl,
+                const_shadowing_mode,
+                generic_shadowing_mode,
+            );
     }
 
     /// Type check a list of [TypeParameter] and return a new list of
@@ -230,7 +242,7 @@ impl TypeParameter {
         tc: &TraitConstraint,
     ) -> Vec<TraitConstraint> {
         match ctx
-            .namespace
+            .namespace()
             .resolve_call_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
             .ok()
         {
@@ -349,9 +361,9 @@ impl TypeParameter {
         // Instead of inserting a type with same name we unify them.
         if type_parameter.is_from_parent {
             if let Some(sy) = ctx
-                .namespace
+                .namespace()
                 .module()
-                .items()
+                .current_items()
                 .symbols
                 .get(&type_parameter.name_ident)
             {
@@ -444,7 +456,7 @@ impl TypeParameter {
     /// `function_name` and `access_span` are used only for error reporting.
     pub(crate) fn gather_decl_mapping_from_trait_constraints(
         handler: &Handler,
-        ctx: TypeCheckContext,
+        mut ctx: TypeCheckContext,
         type_parameters: &[TypeParameter],
         function_name: &str,
         access_span: &Span,
@@ -464,9 +476,9 @@ impl TypeParameter {
 
                 // Check to see if the trait constraints are satisfied.
                 match ctx
-                    .namespace
+                    .namespace_mut()
                     .module_mut()
-                    .items_mut()
+                    .current_items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
                         handler,
@@ -533,7 +545,7 @@ fn handle_trait(
 
     handler.scope(|handler| {
         match ctx
-            .namespace
+            .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
             .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
@@ -580,7 +592,7 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace);
+                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace());
                         if import_path == trait_decl.call_path {
                             // If external library.
                             import_path.to_string()

@@ -807,6 +807,7 @@ impl TypeInfo {
         use TypeInfo::*;
         match self {
             Unknown => "unknown".into(),
+            Never => "never".into(),
             UnknownGeneric { name, .. } => name.to_string(),
             Placeholder(_) => "_".to_string(),
             TypeParam(n) => format!("typeparam({n})"),

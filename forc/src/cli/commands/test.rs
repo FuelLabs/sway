@@ -4,7 +4,7 @@ use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -199,8 +199,8 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
     Ok(())
 }
 
-fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
-    forc_test::Opts {
+fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
+    forc_test::TestOpts {
         pkg: pkg::PkgOpts {
             path: cmd.build.pkg.path,
             offline: cmd.build.pkg.offline,

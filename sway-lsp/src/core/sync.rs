@@ -3,6 +3,7 @@ use crate::{
     utils::document::{get_path_from_url, get_url_from_path, get_url_from_span},
 };
 use dashmap::DashMap;
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
 use indexmap::IndexMap;
 use lsp_types::Url;

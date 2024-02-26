@@ -63,11 +63,8 @@ impl<'eng> Context<'eng> {
         if function.get_module(self) != cur_module {
             return Err(IrError::InconsistentParent(
                 function.get_name(self).into(),
-                format!("Module_Index_{:?}", cur_module.0.into_raw_parts()),
-                format!(
-                    "Module_Index_{:?}",
-                    function.get_module(self).0.into_raw_parts()
-                ),
+                format!("Module_Index_{:?}", cur_module.0),
+                format!("Module_Index_{:?}", function.get_module(self).0),
             ));
         }
         let entry_block = function.get_entry_block(self);
@@ -193,7 +190,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             if let ValueDatum::Instruction(instruction) = &value_content.value {
                 if instruction.parent != self.cur_block {
                     return Err(IrError::InconsistentParent(
-                        format!("Instr_{:?}", ins.0.into_raw_parts()),
+                        format!("Instr_{:?}", ins.0),
                         self.cur_block.get_label(self.context),
                         instruction.parent.get_label(self.context),
                     ));
@@ -233,6 +230,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             log_id,
                         } => self.verify_log(log_val, log_ty, log_id)?,
                         FuelVmInstruction::ReadRegister(_) => (),
+                        FuelVmInstruction::JmpbSsp(_) => (),
                         FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
                         FuelVmInstruction::Smo {
                             recipient,

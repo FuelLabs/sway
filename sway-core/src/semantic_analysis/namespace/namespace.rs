@@ -80,17 +80,11 @@ impl Namespace {
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
-    ///
-    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
-    /// to call any [Module] methods.
     pub fn module(&self) -> &Module {
         &self.root.module[&self.mod_path]
     }
 
     /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
-    ///
-    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
-    /// to call any [Module] methods.
     pub fn module_mut(&mut self) -> &mut Module {
         &mut self.root.module[&self.mod_path]
     }
@@ -175,7 +169,7 @@ impl Namespace {
     ) -> Result<TyTraitItem, ErrorEmitted> {
         self.root
             .module
-            .items()
+            .current_items()
             .implemented_traits
             .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
     }

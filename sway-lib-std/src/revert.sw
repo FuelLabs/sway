@@ -29,7 +29,7 @@ use ::error_signals::FAILED_REQUIRE_SIGNAL;
 ///     }
 /// }
 /// ```
-pub fn revert(code: u64) {
+pub fn revert(code: u64) -> ! {
     __revert(code)
 }
 

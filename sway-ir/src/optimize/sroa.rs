@@ -406,6 +406,7 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
             crate::TypeContent::Pointer(_) => true,
             crate::TypeContent::StringSlice => false,
             crate::TypeContent::StringArray(_) => false,
+            crate::TypeContent::Never => false,
         }
     }
     ty.is_aggregate(context) && check_sub_types(context, ty)
