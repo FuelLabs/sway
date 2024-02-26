@@ -1,0 +1,25 @@
+[[package]]
+name = "core"
+source = "path+from-root-4569ADD4F9A2E45D"
+
+[[package]]
+name = "external_mod"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "script"
+source = "member"
+dependencies = [
+    "core",
+    "external_mod",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-4569ADD4F9A2E45D"
+dependencies = ["core"]
