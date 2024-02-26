@@ -23,7 +23,10 @@ use lsp_types::{
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, BuildPlan};
+use pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    BuildPlan,
+};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::PathBuf,
@@ -186,7 +189,7 @@ impl Session {
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
-                program.root.namespace.module().items(),
+                program.root.namespace.module().current_items(),
                 &self.engines.read(),
                 ident_to_complete,
                 &fn_decl,
@@ -323,7 +326,7 @@ impl Session {
 pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
-        ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
+        ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
     let member_manifests =

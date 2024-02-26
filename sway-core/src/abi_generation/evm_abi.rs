@@ -83,6 +83,7 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
     use TypeInfo::*;
     match type_info {
         Unknown => "unknown".into(),
+        Never => "never".into(),
         UnknownGeneric { name, .. } => name.to_string(),
         Placeholder(_) => "_".to_string(),
         TypeParam(n) => format!("typeparam({n})"),

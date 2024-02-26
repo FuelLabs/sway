@@ -80,12 +80,11 @@ impl ty::TyFunctionDecl {
         }
 
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace.clone();
         ctx.by_ref()
             .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(&mut fn_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -140,7 +139,7 @@ impl ty::TyFunctionDecl {
                     )
                 };
 
-                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
+                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace());
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
@@ -171,12 +170,11 @@ impl ty::TyFunctionDecl {
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace.clone();
         ctx.by_ref()
             .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(&mut fn_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {
@@ -216,8 +214,12 @@ impl ty::TyFunctionDecl {
 
                 ty_fn_decl.body = body;
 
-                let mut unification_ctx = TypeCheckUnificationContext::new(ctx.engines, ctx);
-                ty_fn_decl.type_check_unify(handler, &mut unification_ctx)?;
+                return_type.type_id.check_type_parameter_bounds(
+                    handler,
+                    ctx.by_ref(),
+                    &return_type.span,
+                    None,
+                )?;
 
                 Ok(ty_fn_decl.clone())
             })
@@ -273,31 +275,6 @@ impl TypeCheckAnalysis for ty::TyFunctionDecl {
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         self.body.type_check_analyze(handler, ctx)
-    }
-}
-
-impl TypeCheckUnification for ty::TyFunctionDecl {
-    fn type_check_unify(
-        &mut self,
-        handler: &Handler,
-        ctx: &mut TypeCheckUnificationContext,
-    ) -> Result<(), ErrorEmitted> {
-        handler.scope(|handler| {
-            self.body.type_check_unify(handler, ctx)?;
-
-            let type_check_ctx = &mut ctx.type_check_ctx;
-
-            let return_type = &self.return_type;
-
-            return_type.type_id.check_type_parameter_bounds(
-                handler,
-                type_check_ctx.by_ref(),
-                &return_type.span,
-                None,
-            )?;
-
-            Ok(())
-        })
     }
 }
 

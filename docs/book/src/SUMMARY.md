@@ -42,6 +42,7 @@
   - [Associated Types](./advanced/associated_types.md)
   - [Generics and Trait Constraints](./advanced/generics_and_trait_constraints.md)
   - [Assembly](./advanced/assembly.md)
+  - [Never Type](./advanced/never_type.md)
 - [Common Collections](./common-collections/index.md)
   - [Vectors on the Heap](./common-collections/vec.md)
   - [Storage Vectors](./common-collections/storage_vec.md)

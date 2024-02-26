@@ -205,9 +205,9 @@ pub(crate) fn compile_constants(
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.items().get_all_declared_symbols() {
+    for decl_name in module_ns.current_items().get_all_declared_symbols() {
         if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
-            module_ns.items().symbols.get(decl_name)
+            module_ns.current_items().symbols.get(decl_name)
         {
             let const_decl = engines.de().get_constant(decl_id);
             let call_path = const_decl.call_path.clone();

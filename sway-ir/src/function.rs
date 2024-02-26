@@ -24,10 +24,10 @@ use crate::{
     BlockArgument, BranchToWithArgs,
 };
 
-/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
+/// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct Function(pub generational_arena::Index);
+pub struct Function(pub slotmap::DefaultKey);
 
 #[doc(hidden)]
 pub struct FunctionContent {
@@ -541,7 +541,7 @@ impl Function {
 
 /// An iterator over each [`Function`] in a [`Module`].
 pub struct FunctionIterator {
-    functions: Vec<generational_arena::Index>,
+    functions: Vec<slotmap::DefaultKey>,
     next: usize,
 }
 

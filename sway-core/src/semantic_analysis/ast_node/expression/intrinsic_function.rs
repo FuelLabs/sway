@@ -83,6 +83,9 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
+            Intrinsic::JmpbSsp => {
+                type_check_jmpb_ssp(handler, ctx, kind, arguments, type_arguments, span)
+            }
         }
     }
 }
@@ -1166,8 +1169,56 @@ fn type_check_revert(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Unknown, None), // TODO: change this to the `Never` type when
-                                                              // available
+        type_engine.insert(engines, TypeInfo::Never, None),
+    ))
+}
+
+/// Signature: `__jmpb_ssp(offset: u64) -> !`
+/// Description: Jumps to `$ssp - offset`.
+/// Constraints: offset has type `u64`.
+fn type_check_jmpb_ssp(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if arguments.len() != 1 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    // Type check the argument which is the jmpb_ssp offset
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
+    let offset = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![offset],
+            type_arguments: vec![],
+            span,
+        },
+        type_engine.insert(engines, TypeInfo::Never, None),
     ))
 }
 

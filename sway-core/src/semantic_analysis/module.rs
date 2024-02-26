@@ -261,7 +261,7 @@ impl ty::TyModule {
             typed_nodes_res.map(|all_nodes| Self {
                 span: span.clone(),
                 submodules,
-                namespace: ctx.namespace.clone(),
+                namespace: ctx.namespace().clone(),
                 all_nodes,
                 attributes: attributes.clone(),
             })

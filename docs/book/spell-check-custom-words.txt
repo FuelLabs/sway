@@ -54,6 +54,8 @@ UTXOs
 Utils
 VM
 VSCode
+OSS
+Linux
 abigen
 args
 async

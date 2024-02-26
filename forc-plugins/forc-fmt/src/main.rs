@@ -2,7 +2,10 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_pkg::{manifest::ManifestFile, WorkspaceManifestFile};
+use forc_pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    WorkspaceManifestFile,
+};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,

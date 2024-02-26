@@ -22,10 +22,10 @@ use crate::{
     Type,
 };
 
-/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
+/// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
-pub struct Block(pub generational_arena::Index);
+pub struct Block(pub slotmap::DefaultKey);
 
 #[doc(hidden)]
 pub struct BlockContent {
@@ -368,7 +368,10 @@ impl Block {
             matches!(
                 i,
                 Instruction {
-                    op: InstOp::Ret(..) | InstOp::FuelVm(FuelVmInstruction::Revert(..)),
+                    op: InstOp::Ret(..)
+                        | InstOp::FuelVm(
+                            FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..)
+                        ),
                     ..
                 }
             )
@@ -570,7 +573,7 @@ impl Block {
 
 /// An iterator over each block in a [`Function`].
 pub struct BlockIterator {
-    blocks: Vec<generational_arena::Index>,
+    blocks: Vec<slotmap::DefaultKey>,
     next: usize,
 }
 

@@ -53,10 +53,9 @@ impl ty::TyAbiDecl {
         let self_type_id = self_type_param.type_id;
 
         // A temporary namespace for checking within this scope.
-        let mut abi_namespace = ctx.namespace.clone();
         ctx.with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
             .with_self_type(Some(self_type_id))
-            .scoped(&mut abi_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 // Insert the "self" type param into the namespace.
                 self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
 
@@ -302,17 +301,21 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Constant(decl_ref.clone()));
                         let const_shadowing_mode = ctx.const_shadowing_mode();
                         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-                        let _ = ctx.namespace.module_mut().items_mut().insert_symbol(
-                            handler,
-                            const_name.clone(),
-                            ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: const_name,
-                                decl_id: *decl_ref.id(),
-                                decl_span: const_decl.span.clone(),
-                            }),
-                            const_shadowing_mode,
-                            generic_shadowing_mode,
-                        );
+                        let _ = ctx
+                            .namespace_mut()
+                            .module_mut()
+                            .current_items_mut()
+                            .insert_symbol(
+                                handler,
+                                const_name.clone(),
+                                ty::TyDecl::ConstantDecl(ty::ConstantDecl {
+                                    name: const_name,
+                                    decl_id: *decl_ref.id(),
+                                    decl_span: const_decl.span.clone(),
+                                }),
+                                const_shadowing_mode,
+                                generic_shadowing_mode,
+                            );
                     }
                     ty::TyTraitInterfaceItem::Type(decl_ref) => {
                         all_items.push(TyImplItem::Type(decl_ref.clone()));

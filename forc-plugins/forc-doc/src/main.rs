@@ -8,6 +8,7 @@ use clap::Parser;
 use cli::Command;
 use colored::*;
 use forc_pkg as pkg;
+use forc_pkg::manifest::GenericManifestFile;
 use forc_util::default_output_directory;
 use include_dir::{include_dir, Dir};
 use pkg::{manifest::ManifestFile, PackageManifestFile};
@@ -175,7 +176,7 @@ pub fn compile_html(
     } else {
         std::env::current_dir()?
     };
-    let manifest = ManifestFile::from_dir(&dir)?;
+    let manifest = ManifestFile::from_dir(dir)?;
     let pkg_manifest = if let ManifestFile::Package(pkg_manifest) = &manifest {
         pkg_manifest
     } else {
