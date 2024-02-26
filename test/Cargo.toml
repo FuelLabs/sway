@@ -26,7 +26,7 @@ prettydiff = "0.6"
 rand = "0.8"
 regex = "1.7"
 revm = "2.3.1"
-serde_json = "1.0.73"
+serde_json = "1"
 sway-core = { path = "../sway-core" }
 sway-error = { path = "../sway-error" }
 sway-ir = { path = "../sway-ir" }

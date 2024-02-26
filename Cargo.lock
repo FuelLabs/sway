@@ -2082,6 +2082,7 @@ dependencies = [
  "escargot",
  "forc-pkg",
  "forc-test",
+ "forc-util",
  "fuel-core-client",
  "fuel-types",
  "fuel-vm",
@@ -2102,7 +2103,7 @@ name = "forc-doc"
 version = "0.51.1"
 dependencies = [
  "anyhow",
- "clap 4.5.1",
+ "clap 3.2.25",
  "colored",
  "comrak",
  "dir_indexer",

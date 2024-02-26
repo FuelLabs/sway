@@ -1,7 +1,7 @@
 //! A `forc` plugin for running the Sway code formatter.
 
 use anyhow::{bail, Result};
-use clap::Parser;
+use clap::{IntoApp, Parser};
 use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     WorkspaceManifestFile,
@@ -66,6 +66,7 @@ fn main() {
 }
 
 fn run() -> Result<()> {
+    forc_util::cli::register(App::into_app());
     let app = App::parse();
 
     let dir = match app.path.as_ref() {
