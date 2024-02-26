@@ -9,13 +9,15 @@ mod unify;
 #[allow(unused)]
 use std::ops::Deref;
 
+#[cfg(test)]
+use crate::language::CallPath;
+#[cfg(test)]
+use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
 pub use priv_prelude::*;
 #[cfg(test)]
 use sway_error::handler::Handler;
-
 #[cfg(test)]
-use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
-
+use sway_types::BaseIdent;
 #[cfg(test)]
 use sway_types::{integer_bits::IntegerBits, Span};
 
@@ -78,8 +80,10 @@ fn generic_enum_resolution() {
         attributes: transform::AttributesMap::default(),
     }];
 
+    let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
+    call_path.is_absolute = true;
     let decl_ref_1 = engines.de().insert(TyEnumDecl {
-        call_path: result_name.clone().into(),
+        call_path,
         type_parameters: vec![placeholder_type_param],
         variants: variant_types,
         span: sp.clone(),
@@ -116,8 +120,11 @@ fn generic_enum_resolution() {
         trait_constraints_span: sp.clone(),
         is_from_parent: false,
     };
+
+    let mut call_path: CallPath<BaseIdent> = result_name.into();
+    call_path.is_absolute = true;
     let decl_ref_2 = engines.de().insert(TyEnumDecl {
-        call_path: result_name.into(),
+        call_path,
         type_parameters: vec![type_param],
         variants: variant_types.clone(),
         span: sp.clone(),
