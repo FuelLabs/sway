@@ -65,12 +65,10 @@ pub fn contract_id() -> ContractId {
 /// }
 /// ```
 pub fn msg_asset_id() -> AssetId {
-    AssetId {
-        value: { asm(asset_id) {
-                addi asset_id fp i32;
-                asset_id: b256
-            }         },
-    }
+    AssetId::from(asm(asset_id) {
+        addi asset_id fp i32;
+        asset_id: b256
+    })
 }
 
 /// Get the code size in bytes (padded to word alignment) from the current call frame.
