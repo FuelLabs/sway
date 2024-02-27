@@ -83,8 +83,8 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
-            Intrinsic::JmpbSsp => {
-                type_check_jmpb_ssp(handler, ctx, kind, arguments, type_arguments, span)
+            Intrinsic::JmpMem => {
+                type_check_jmp_mem(handler, ctx, kind, arguments, type_arguments, span)
             }
         }
     }
@@ -1173,12 +1173,11 @@ fn type_check_revert(
     ))
 }
 
-/// Signature: `__jmpb_ssp(offset: u64) -> !`
-/// Description: Jumps to `$ssp - offset`.
-/// Constraints: offset has type `u64`.
-fn type_check_jmpb_ssp(
+/// Signature: `__jmp_mem() -> !`
+/// Description: Jumps to `MEM[$hp]`.
+fn type_check_jmp_mem(
     handler: &Handler,
-    mut ctx: TypeCheckContext,
+    ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: Vec<Expression>,
     type_arguments: Vec<TypeArgument>,
@@ -1187,7 +1186,7 @@ fn type_check_jmpb_ssp(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    if arguments.len() != 1 {
+    if !arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
             name: kind.to_string(),
             expected: 0,
@@ -1203,18 +1202,10 @@ fn type_check_jmpb_ssp(
         }));
     }
 
-    // Type check the argument which is the jmpb_ssp offset
-    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
-        engines,
-        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-        None,
-    ));
-    let offset = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
-
     Ok((
         ty::TyIntrinsicFunctionKind {
             kind,
-            arguments: vec![offset],
+            arguments: vec![],
             type_arguments: vec![],
             span,
         },
