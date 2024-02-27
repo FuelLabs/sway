@@ -219,6 +219,17 @@ fn in_return() -> u64 {
     i
 }
 
+fn in_match_scrutinee_break() -> u64 {
+    let mut i = 42;
+    while i < 52 {
+        match break {
+            _ => return 5411,
+        }
+        i = i + 1;
+    }
+
+    i
+}
 
 fn main() -> u64 {
     assert(42 == in_init());
@@ -238,6 +249,7 @@ fn main() -> u64 {
     assert(42 == in_lazy_and());
     assert(42 == in_lazy_or());
     assert(42 == in_return());
+    assert(42 == in_match_scrutinee_break());
 
     8193
 }
