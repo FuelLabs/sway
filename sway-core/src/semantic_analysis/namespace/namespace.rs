@@ -1,5 +1,5 @@
 use crate::{
-    language::{ty, CallPath, Visibility},
+    language::{ty, ty::TyTraitItem, CallPath, Visibility},
     Engines, Ident, TypeId,
 };
 
@@ -70,80 +70,31 @@ impl Namespace {
         &self.root
     }
 
-    /// A mutable reference to the root of the project namespace.
-    pub fn root_mut(&mut self) -> &mut Root {
-        &mut self.root
+    pub fn root_module(&self) -> &Module {
+        &self.root.module
+    }
+
+    /// The name of the root module
+    pub fn root_module_name(&self) -> &Option<Ident> {
+        &self.root.module.name
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
-    ///
-    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
-    /// to call any [Module] methods.
     pub fn module(&self) -> &Module {
         &self.root.module[&self.mod_path]
     }
 
     /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
-    ///
-    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
-    /// to call any [Module] methods.
     pub fn module_mut(&mut self) -> &mut Module {
         &mut self.root.module[&self.mod_path]
     }
 
-    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
-    pub(crate) fn resolve_symbol(
+    pub fn check_absolute_path_to_submodule(
         &self,
         handler: &Handler,
-        engines: &Engines,
-        symbol: &Ident,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.root
-            .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
-    }
-
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
-        &self,
-        handler: &Handler,
-        engines: &Engines,
-        call_path: &CallPath,
-        self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.root
-            .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
-    }
-
-    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
-    ///
-    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
-    /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
-    /// back to the original path so that we can continue type-checking the current module after
-    /// finishing with the dependency.
-    pub(crate) fn enter_submodule(
-        &mut self,
-        mod_name: Ident,
-        visibility: Visibility,
-        module_span: Span,
-    ) -> SubmoduleNamespace {
-        let init = self.init.clone();
-        self.submodules.entry(mod_name.to_string()).or_insert(init);
-        let submod_path: Vec<_> = self
-            .mod_path
-            .iter()
-            .cloned()
-            .chain(Some(mod_name.clone()))
-            .collect();
-        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = Some(mod_name);
-        self.span = Some(module_span);
-        self.visibility = visibility;
-        self.is_external = false;
-        SubmoduleNamespace {
-            namespace: self,
-            parent_mod_path,
-        }
+        path: &[Ident],
+    ) -> Result<&Module, ErrorEmitted> {
+        self.root.module.check_submodule(handler, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
@@ -164,7 +115,7 @@ impl Namespace {
     ) -> bool {
         // `mod_path` does not contain the root name, so we have to separately check
         // that the root name is equal to the module package name.
-        let root_name = match &self.root.name {
+        let root_name = match &self.root.module.name {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
@@ -198,7 +149,7 @@ impl Namespace {
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.
     pub(crate) fn module_is_external(&self, absolute_module_path: &Path) -> bool {
-        let root_name = match &self.root.name {
+        let root_name = match &self.root.module.name {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
@@ -207,17 +158,94 @@ impl Namespace {
 
         root_name != &absolute_module_path[0]
     }
-}
 
-impl std::ops::Deref for Namespace {
-    type Target = Module;
-    fn deref(&self) -> &Self::Target {
-        self.module()
+    pub fn get_root_trait_item_for_type(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        name: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+    ) -> Result<TyTraitItem, ErrorEmitted> {
+        self.root
+            .module
+            .current_items()
+            .implemented_traits
+            .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
     }
-}
 
-impl std::ops::DerefMut for Namespace {
-    fn deref_mut(&mut self) -> &mut Self::Target {
+    pub fn resolve_root_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.root
+            .module
+            .resolve_symbol(handler, engines, mod_path, symbol, self_type)
+    }
+
+    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.root
+            .module
+            .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.root
+            .module
+            .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
+    }
+
+    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
+    ///
+    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
+    /// [SubmoduleNamespace] type. When dropped, the [SubmoduleNamespace] resets the `mod_path`
+    /// back to the original path so that we can continue type-checking the current module after
+    /// finishing with the dependency.
+    pub(crate) fn enter_submodule(
+        &mut self,
+        mod_name: Ident,
+        visibility: Visibility,
+        module_span: Span,
+    ) -> SubmoduleNamespace {
+        let init = self.init.clone();
         self.module_mut()
+            .submodules
+            .entry(mod_name.to_string())
+            .or_insert(init);
+        let submod_path: Vec<_> = self
+            .mod_path
+            .iter()
+            .cloned()
+            .chain(Some(mod_name.clone()))
+            .collect();
+        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        // self.module() now refers to a different module, so refetch
+        let new_module = self.module_mut();
+        new_module.name = Some(mod_name);
+        new_module.span = Some(module_span);
+        new_module.visibility = visibility;
+        new_module.is_external = false;
+        SubmoduleNamespace {
+            namespace: self,
+            parent_mod_path,
+        }
     }
 }

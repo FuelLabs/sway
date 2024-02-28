@@ -15,8 +15,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  RUST_VERSION: 1.75.0
-  NIGHTLY_RUST_VERSION: nightly-2023-12-27
+  RUST_VERSION: 1.76.0
+  NIGHTLY_RUST_VERSION: nightly-2024-02-07
 
 jobs:
   get-fuel-core-version:
@@ -149,7 +149,12 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc
       - name: Install Forc plugins
@@ -365,7 +370,12 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Build All Tests
         run: cargo run --locked --release -p forc -- build --release --locked --path ./test/src/sdk-harness
       - name: Cargo Test sway-lib-std
@@ -456,8 +466,7 @@ jobs:
               exit 0
               ;;
           esac
-
-  cargo-test-workspace:
+  cargo-test-forc-debug:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
     steps:
@@ -473,7 +482,18 @@ jobs:
           version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --release
+        run: cargo test --locked --release -p forc-debug
+  cargo-test-workspace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test --locked --release --workspace --exclude forc-debug
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:

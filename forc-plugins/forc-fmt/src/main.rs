@@ -2,7 +2,10 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_pkg::{manifest::ManifestFile, WorkspaceManifestFile};
+use forc_pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    WorkspaceManifestFile,
+};
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -19,12 +22,14 @@ use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_fi
 use swayfmt::Formatter;
 
 forc_util::cli_examples! {
-    [ Run the formatter in check mode on the current directory => fmt "--check"]
-    [ Run the formatter in check mode on the current directory with short format => fmt "-c"]
-    [ Run formatter against a given file => fmt "--file src/main.sw"]
-    [ Run formatter against a given file with short format => fmt "-f src/main.sw"]
-    [ Run formatter against a given dir => fmt "--path ../tests/"]
-    [ Run formatter against a given dir with short format => fmt "-p ../tests"]
+    crate::App {
+        [ Run the formatter in check mode on the current directory => "forc fmt --check"]
+        [ Run the formatter in check mode on the current directory with short format => "forc fmt -c"]
+        [ Run formatter against a given file => "forc fmt --file {path}/src/main.sw"]
+        [ Run formatter against a given file with short format => "forc fmt -f {path}/src/main.sw"]
+        [ Run formatter against a given dir => "forc fmt --path {path}"]
+        [ Run formatter against a given dir with short format => "forc fmt -p {path}"]
+    }
 }
 
 #[derive(Debug, Parser)]

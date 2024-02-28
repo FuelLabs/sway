@@ -268,6 +268,29 @@ impl Format for Expr {
                     },
                 )?;
             }
+            Self::For {
+                for_token,
+                in_token,
+                value_pattern,
+                iterator,
+                block,
+            } => {
+                formatter.with_shape(
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+                    |formatter| -> Result<(), FormatterError> {
+                        write!(formatted_code, "{} ", for_token.span().as_str())?;
+                        value_pattern.format(formatted_code, formatter)?;
+                        write!(formatted_code, "{} ", in_token.span().as_str())?;
+                        iterator.format(formatted_code, formatter)?;
+                        IfExpr::open_curly_brace(formatted_code, formatter)?;
+                        block.get().format(formatted_code, formatter)?;
+                        IfExpr::close_curly_brace(formatted_code, formatter)?;
+                        Ok(())
+                    },
+                )?;
+            }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(
                     formatter
@@ -400,9 +423,14 @@ impl Format for Expr {
             }
             Self::Ref {
                 ampersand_token,
+                mut_token,
                 expr,
             } => {
+                // TODO-IG: Add unit tests.
                 write!(formatted_code, "{}", ampersand_token.span().as_str())?;
+                if let Some(mut_token) = mut_token {
+                    write!(formatted_code, "{} ", mut_token.span().as_str())?;
+                }
                 expr.format(formatted_code, formatter)?;
             }
             Self::Deref { star_token, expr } => {
@@ -1014,6 +1042,20 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
             collected_spans.append(&mut block.leaf_spans());
             collected_spans
         }
+        Expr::For {
+            for_token,
+            in_token,
+            value_pattern,
+            iterator,
+            block,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(for_token.span())];
+            collected_spans.append(&mut value_pattern.leaf_spans());
+            collected_spans.append(&mut vec![ByteSpan::from(in_token.span())]);
+            collected_spans.append(&mut iterator.leaf_spans());
+            collected_spans.append(&mut block.leaf_spans());
+            collected_spans
+        }
         Expr::FuncApp { func, args } => {
             let mut collected_spans = Vec::new();
             collected_spans.append(&mut func.leaf_spans());
@@ -1068,9 +1110,13 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
         }
         Expr::Ref {
             ampersand_token,
+            mut_token,
             expr,
         } => {
             let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
+            if let Some(mut_token) = mut_token {
+                collected_spans.push(ByteSpan::from(mut_token.span()));
+            }
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
         }

@@ -18,6 +18,7 @@ use crate::{
     type_system::*,
     types::*,
 };
+use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
 use sway_ir::{Context, *};
@@ -240,18 +241,22 @@ impl<'eng> FnCompiler<'eng> {
                 ty::TyDecl::TraitTypeDecl { .. } => unexpected_decl("trait type"),
             },
             ty::TyAstNodeContent::Expression(te) => {
-                // An expression with an ignored return value... I assume.
-                let value = self.compile_expression_to_value(context, md_mgr, te)?;
-                // Terminating values should end the compilation of the block
-                if value.is_terminator {
-                    Ok(Some(value))
-                } else {
-                    Ok(None)
+                match &te.expression {
+                    TyExpressionVariant::ImplicitReturn(exp) => self
+                        .compile_expression_to_value(context, md_mgr, exp)
+                        .map(Some),
+                    _ => {
+                        // An expression with an ignored return value... I assume.
+                        let value = self.compile_expression_to_value(context, md_mgr, te)?;
+                        // Terminating values should end the compilation of the block
+                        if value.is_terminator {
+                            Ok(Some(value))
+                        } else {
+                            Ok(None)
+                        }
+                    }
                 }
             }
-            ty::TyAstNodeContent::ImplicitReturnExpression(te) => self
-                .compile_expression_to_value(context, md_mgr, te)
-                .map(Some),
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
@@ -563,7 +568,8 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
                 let span_md_idx = md_mgr.span_to_md(context, &access.span());
-                self.compile_storage_access(context, &access.fields, &access.ix, span_md_idx)
+                let ns = access.namespace.as_ref().map(|ns| ns.as_str());
+                self.compile_storage_access(context, ns, &access.ix, &access.fields, span_md_idx)
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
@@ -582,6 +588,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::WhileLoop { body, condition } => {
                 self.compile_while_loop(context, md_mgr, body, condition, span_md_idx)
+            }
+            ty::TyExpressionVariant::ForLoop { desugared } => {
+                self.compile_expression(context, md_mgr, desugared)
             }
             ty::TyExpressionVariant::Break => {
                 match self.block_to_break_to {
@@ -617,6 +626,10 @@ impl<'eng> FnCompiler<'eng> {
             },
             ty::TyExpressionVariant::Reassignment(reassignment) => {
                 self.compile_reassignment(context, md_mgr, reassignment, span_md_idx)
+            }
+            ty::TyExpressionVariant::ImplicitReturn(_exp) => {
+                // This is currently handled at the top-level handler, `compile_ast_node`.
+                unreachable!();
             }
             ty::TyExpressionVariant::Return(exp) => {
                 self.compile_return(context, md_mgr, exp, span_md_idx)
@@ -1082,6 +1095,19 @@ impl<'eng> FnCompiler<'eng> {
                     .add_metadatum(context, span_md_idx);
                 Ok(TerminatorValue::new(val, context))
             }
+            Intrinsic::JmpbSsp => {
+                let offset_val = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &arguments[0])?
+                );
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+                let val = self
+                    .current_block
+                    .append(context)
+                    .jmpb_ssp(offset_val)
+                    .add_metadatum(context, span_md_idx);
+                Ok(TerminatorValue::new(val, context))
+            }
             Intrinsic::PtrAdd | Intrinsic::PtrSub => {
                 let op = match kind {
                     Intrinsic::PtrAdd => BinaryOpKind::Add,
@@ -1337,7 +1363,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
 
-        let result = if referenced_type.is_copy_type() || referenced_type.is_reference_type() {
+        let result = if referenced_type.is_copy_type() || referenced_type.is_reference() {
             // For non aggregates, we need to return the value.
             // This means, loading the value the `ptr` is pointing to.
             self.current_block.append(context).load(ptr)
@@ -1410,7 +1436,7 @@ impl<'eng> FnCompiler<'eng> {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         call_params: &ty::ContractCallParams,
-        contract_call_parameters: &HashMap<String, ty::TyExpression>,
+        contract_call_parameters: &IndexMap<String, ty::TyExpression>,
         ast_name: &str,
         ast_args: &[(Ident, ty::TyExpression)],
         ast_return_type: TypeId,
@@ -2138,10 +2164,11 @@ impl<'eng> FnCompiler<'eng> {
 
         // We must compile the RHS before checking for shadowing, as it will still be in the
         // previous scope.
-        let init_val = self.compile_expression_to_value(context, md_mgr, body)?;
-        if init_val.is_terminator {
-            return Ok(Some(init_val));
-        }
+        // Corner case: If compilation of the expression fails, then this call returns an error.
+        // However, the declared name must be added to the local environment before the error is
+        // thrown - otherwise we will get an internal compiler error later on when the name is
+        // accessed and isn't present in the environment.
+        let init_val = self.compile_expression_to_value(context, md_mgr, body);
 
         let return_type = convert_resolved_typeid(
             self.engines.te(),
@@ -2158,6 +2185,13 @@ impl<'eng> FnCompiler<'eng> {
             .new_local_var(context, local_name.clone(), return_type, None, mutable)
             .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
 
+        // The name has now been added, so we can check if the initializer threw an error
+        let val = init_val?;
+
+        if val.is_terminator {
+            return Ok(Some(val));
+        };
+
         // We can have empty aggregates, especially arrays, which shouldn't be initialized, but
         // otherwise use a store.
         let var_ty = local_var.get_type(context);
@@ -2169,7 +2203,7 @@ impl<'eng> FnCompiler<'eng> {
                 .add_metadatum(context, span_md_idx);
             self.current_block
                 .append(context)
-                .store(local_ptr, init_val.value)
+                .store(local_ptr, val.value)
                 .add_metadatum(context, span_md_idx);
         }
         Ok(None)
@@ -2181,7 +2215,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_const_decl: &ty::TyConstantDecl,
         span_md_idx: Option<MetadataIndex>,
-        is_const_expression: bool,
+        is_expression: bool,
     ) -> Result<TerminatorValue, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
@@ -2193,6 +2227,11 @@ impl<'eng> FnCompiler<'eng> {
             ..
         } = ast_const_decl;
         if let Some(value) = value {
+            // Corner case: If compilation of the expression fails (e.g., because it is not
+            // constant), then this call returns an error.
+            // However, if is_expression = false then the declared name must be added to the local
+            // environment before the error is thrown - otherwise we will get an internal compiler
+            // error later on when the name is accessed and isn't present in the environment.
             let const_expr_val = compile_constant_expression(
                 self.engines,
                 context,
@@ -2203,11 +2242,13 @@ impl<'eng> FnCompiler<'eng> {
                 call_path,
                 value,
                 *is_configurable,
-            )?;
+            );
 
-            if is_const_expression {
-                Ok(TerminatorValue::new(const_expr_val, context))
+            if is_expression {
+                // No declaration. Throw any error, and return on success.
+                Ok(TerminatorValue::new(const_expr_val?, context))
             } else {
+                // Declaration. The name needs to be added to the local environment
                 let local_name = self
                     .lexical_map
                     .insert(call_path.suffix.as_str().to_owned());
@@ -2232,6 +2273,13 @@ impl<'eng> FnCompiler<'eng> {
                         CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
                     })?;
 
+                // The name has now been added, so we can check if the initializer threw an error
+                let val = const_expr_val?;
+
+                if val.is_terminator(context) {
+                    return Ok(TerminatorValue::new(val, context));
+                };
+
                 // We can have empty aggregates, especially arrays, which shouldn't be initialised, but
                 // otherwise use a store.
                 let var_ty = local_var.get_type(context);
@@ -2244,11 +2292,11 @@ impl<'eng> FnCompiler<'eng> {
                     let val = self
                         .current_block
                         .append(context)
-                        .store(local_val, const_expr_val)
+                        .store(local_val, val)
                         .add_metadatum(context, span_md_idx);
                     TerminatorValue::new(val, context)
                 } else {
-                    TerminatorValue::new(const_expr_val, context)
+                    TerminatorValue::new(val, context)
                 })
             }
         } else {
@@ -2385,18 +2433,6 @@ impl<'eng> FnCompiler<'eng> {
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // If the first element diverges, then the element type has not been determined,
-        // so we can't use the normal compilation scheme. Instead just generate code for
-        // the first element and return.
-        let first_elem_value = if !contents.is_empty() {
-            let first_elem_value = return_on_termination_or_extract!(
-                self.compile_expression_to_value(context, md_mgr, &contents[0])?
-            );
-            Some(first_elem_value)
-        } else {
-            None
-        };
-
         let elem_type = convert_resolved_typeid_no_span(
             self.engines.te(),
             self.engines.de(),
@@ -2418,14 +2454,6 @@ impl<'eng> FnCompiler<'eng> {
             .get_local(array_var)
             .add_metadatum(context, span_md_idx);
 
-        // Nothing more to do if the array is empty
-        if contents.is_empty() {
-            return Ok(TerminatorValue::new(array_value, context));
-        }
-
-        // The array is not empty, so it's safe to unwrap the first element
-        let first_elem_value = first_elem_value.unwrap();
-
         // If all elements are the same constant, then we can initialize the array
         // in a loop, reducing code size. But to check for that we've to compile
         // the expressions first, to compare. If it turns out that they're not all
@@ -2442,15 +2470,10 @@ impl<'eng> FnCompiler<'eng> {
             // We can compile all elements ahead of time without affecting register pressure.
             let compiled_elems = contents
                 .iter()
-                .enumerate()
-                .map(|(idx, e)| {
-                    if idx == 0 {
-                        // The first element has already been compiled
-                        Ok::<Value, CompileError>(first_elem_value)
-                    } else {
-                        let val = self.compile_expression_to_value(context, md_mgr, e)?;
-                        Ok(val.value)
-                    }
+                .map(|e| {
+                    Ok::<_, CompileError>(
+                        self.compile_expression_to_value(context, md_mgr, e)?.value,
+                    )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let mut compiled_elems_iter = compiled_elems.iter();
@@ -2539,13 +2562,9 @@ impl<'eng> FnCompiler<'eng> {
 
         // Compile each element and insert it immediately.
         for (idx, elem_expr) in contents.iter().enumerate() {
-            let elem_value = if idx == 0 {
-                first_elem_value
-            } else {
-                return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, elem_expr)?
-                )
-            };
+            let elem_value = return_on_termination_or_extract!(
+                self.compile_expression_to_value(context, md_mgr, elem_expr)?
+            );
             let gep_val = self.current_block.append(context).get_elem_ptr_with_idx(
                 array_value,
                 elem_type,
@@ -2933,8 +2952,9 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
-        fields: &[ty::TyStorageAccessDescriptor],
+        ns: Option<&str>,
         ix: &StateIndex,
+        fields: &[ty::TyStorageAccessDescriptor],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
         // Get the list of indices used to access the storage field. This will be empty
@@ -2958,7 +2978,7 @@ impl<'eng> FnCompiler<'eng> {
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(context, ix, &field_idcs, &base_type, span_md_idx)
+        self.compile_storage_read(context, ns, ix, &field_idcs, &base_type, span_md_idx)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -2997,7 +3017,7 @@ impl<'eng> FnCompiler<'eng> {
                     if initializer_val
                         .get_type(context)
                         .map_or(false, |ty| ty.is_ptr(context))
-                        && (init_type.is_copy_type() || init_type.is_reference_type())
+                        && (init_type.is_copy_type() || init_type.is_reference())
                     {
                         // It's a pointer to a copy type, or a reference behind a pointer. We need to dereference it.
                         // We can get a reference behind a pointer if a reference variable is passed to the ASM block.
@@ -3057,6 +3077,7 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
+        ns: Option<&str>,
         ix: &StateIndex,
         indices: &[u64],
         base_type: &Type,
@@ -3094,7 +3115,7 @@ impl<'eng> FnCompiler<'eng> {
             // plus the offset, in number of slots, computed above. The offset within this
             // particular slot is the remaining offset, in words.
             (
-                add_to_b256(get_storage_key::<u64>(ix, &[]), offset_in_slots),
+                add_to_b256(get_storage_key::<u64>(ns, ix, &[]), offset_in_slots),
                 offset_remaining,
             )
         };
@@ -3149,7 +3170,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the field identifier as the third field in the `StorageKey` struct
-        let unique_field_id = get_storage_key(ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
+        let unique_field_id = get_storage_key(ns, ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
         let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
             .add_metadatum(context, span_md_idx);
         let gep_2_val =

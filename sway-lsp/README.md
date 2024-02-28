@@ -16,7 +16,6 @@ This extension provides LSP support for the Sway smart contract programming lang
 - code actions
 - imports insertion
 
-
 _Coming Soon_
 - code completion
 - apply suggestions from errors

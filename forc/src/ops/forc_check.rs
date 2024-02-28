@@ -1,6 +1,7 @@
 use crate::cli::CheckCommand;
 use anyhow::Result;
 use forc_pkg as pkg;
+use forc_pkg::manifest::GenericManifestFile;
 use pkg::manifest::ManifestFile;
 use std::path::PathBuf;
 use sway_core::{language::ty, Engines};
@@ -22,7 +23,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
     } else {
         std::env::current_dir()?
     };
-    let manifest_file = ManifestFile::from_dir(&this_dir)?;
+    let manifest_file = ManifestFile::from_dir(this_dir)?;
     let member_manifests = manifest_file.member_manifests()?;
     let lock_path = manifest_file.lock_path()?;
     let plan = pkg::BuildPlan::from_lock_and_manifests(
@@ -38,7 +39,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         &plan,
         build_target,
         terse_mode,
-        false,
+        None,
         tests_enabled,
         engines,
         None,

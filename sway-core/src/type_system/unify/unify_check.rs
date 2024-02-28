@@ -1,8 +1,8 @@
 use crate::{
     engine_threading::*,
+    language::ty::{TyEnumDecl, TyStructDecl},
     type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
 };
-use sway_types::Spanned;
 
 #[derive(Debug)]
 enum UnifyCheckMode {
@@ -236,6 +236,7 @@ impl<'a> UnifyCheck<'a> {
             (Array(l0, l1), Array(r0, r1)) => {
                 return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
             }
+
             (Tuple(l_types), Tuple(r_types)) => {
                 let l_types = l_types.iter().map(|x| x.type_id).collect::<Vec<_>>();
                 let r_types = r_types.iter().map(|x| x.type_id).collect::<Vec<_>>();
@@ -245,30 +246,10 @@ impl<'a> UnifyCheck<'a> {
             (Struct(l_decl_ref), Struct(r_decl_ref)) => {
                 let l_decl = self.engines.de().get_struct(l_decl_ref);
                 let r_decl = self.engines.de().get_struct(r_decl_ref);
-                let l_names = l_decl
-                    .fields
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let r_names = r_decl
-                    .fields
-                    .iter()
-                    .map(|x| x.name.clone())
-                    .collect::<Vec<_>>();
-                let l_types = l_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                let r_types = r_decl
-                    .type_parameters
-                    .iter()
-                    .map(|x| x.type_id)
-                    .collect::<Vec<_>>();
-                return l_decl_ref.name().clone() == r_decl_ref.name().clone()
-                    && l_names == r_names
-                    && self.check_multiple(&l_types, &r_types);
+
+                return self.check_structs(&l_decl, &r_decl);
             }
+
             (
                 Custom {
                     qualified_call_path: l_name,
@@ -325,6 +306,12 @@ impl<'a> UnifyCheck<'a> {
                     && self.check_multiple(&l_types, &r_types)
                     && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
             }
+            (Enum(l_decl_ref), Enum(r_decl_ref)) => {
+                let l_decl = self.engines.de().get_enum(l_decl_ref);
+                let r_decl = self.engines.de().get_enum(r_decl_ref);
+
+                return self.check_enums(&l_decl, &r_decl);
+            }
 
             (Ref(l_ty), Ref(r_ty)) => {
                 return self.check_inner(l_ty.type_id, r_ty.type_id);
@@ -357,40 +344,8 @@ impl<'a> UnifyCheck<'a> {
                         !OccursCheck::new(self.engines).check(right, left)
                     }
 
-                    // Let empty enums to coerce to any other type. This is useful for Never enum.
-                    (Enum(r_decl_ref), _)
-                        if self.engines.de().get_enum(r_decl_ref).variants.is_empty() =>
-                    {
-                        true
-                    }
-                    (Enum(l_decl_ref), Enum(r_decl_ref)) => {
-                        let l_decl = self.engines.de().get_enum(l_decl_ref);
-                        let r_decl = self.engines.de().get_enum(r_decl_ref);
-                        let l_names = l_decl
-                            .variants
-                            .iter()
-                            .map(|x| x.name.clone())
-                            .collect::<Vec<_>>();
-                        let r_names = r_decl
-                            .variants
-                            .iter()
-                            .map(|x| x.name.clone())
-                            .collect::<Vec<_>>();
-                        let l_types = l_decl
-                            .type_parameters
-                            .iter()
-                            .map(|x| x.type_id)
-                            .collect::<Vec<_>>();
-                        let r_types = r_decl
-                            .type_parameters
-                            .iter()
-                            .map(|x| x.type_id)
-                            .collect::<Vec<_>>();
-
-                        l_decl_ref.name().clone() == r_decl_ref.name().clone()
-                            && l_names == r_names
-                            && self.check_multiple(&l_types, &r_types)
-                    }
+                    // Never coerces to any other type.
+                    (Never, _) => true,
 
                     // the placeholder type can be coerced into any type
                     (Placeholder(_), _) => true,
@@ -448,40 +403,11 @@ impl<'a> UnifyCheck<'a> {
                             trait_constraints: rtc,
                         },
                     ) => rtc.eq(ltc, self.engines),
+
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {
                         !OccursCheck::new(self.engines).check(right, left)
-                    }
-
-                    (Enum(l_decl_ref), Enum(r_decl_ref)) => {
-                        let l_decl = self.engines.de().get_enum(l_decl_ref);
-                        let r_decl = self.engines.de().get_enum(r_decl_ref);
-                        let l_names = l_decl
-                            .variants
-                            .iter()
-                            .map(|x| x.name.clone())
-                            .collect::<Vec<_>>();
-                        let r_names = r_decl
-                            .variants
-                            .iter()
-                            .map(|x| x.name.clone())
-                            .collect::<Vec<_>>();
-                        let l_types = l_decl
-                            .type_parameters
-                            .iter()
-                            .map(|x| x.type_id)
-                            .collect::<Vec<_>>();
-                        let r_types = r_decl
-                            .type_parameters
-                            .iter()
-                            .map(|x| x.type_id)
-                            .collect::<Vec<_>>();
-
-                        l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
-                            && l_decl_ref.name().clone() == r_decl_ref.name().clone()
-                            && l_names == r_names
-                            && self.check_multiple(&l_types, &r_types)
                     }
 
                     (Alias { ty: l_ty, .. }, Alias { ty: r_ty, .. }) => {
@@ -524,36 +450,6 @@ impl<'a> UnifyCheck<'a> {
                     },
                 ) => rn.as_str() == en.as_str() && rtc.eq(etc, self.engines),
                 (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
-
-                (Enum(l_decl_ref), Enum(r_decl_ref)) => {
-                    let l_decl = self.engines.de().get_enum(l_decl_ref);
-                    let r_decl = self.engines.de().get_enum(r_decl_ref);
-                    let l_names = l_decl
-                        .variants
-                        .iter()
-                        .map(|x| x.name.clone())
-                        .collect::<Vec<_>>();
-                    let r_names = r_decl
-                        .variants
-                        .iter()
-                        .map(|x| x.name.clone())
-                        .collect::<Vec<_>>();
-                    let l_types = l_decl
-                        .type_parameters
-                        .iter()
-                        .map(|x| x.type_id)
-                        .collect::<Vec<_>>();
-                    let r_types = r_decl
-                        .type_parameters
-                        .iter()
-                        .map(|x| x.type_id)
-                        .collect::<Vec<_>>();
-
-                    l_decl_ref.name().clone() == r_decl_ref.name().clone()
-                        && l_names == r_names
-                        && self.check_multiple(&l_types, &r_types)
-                }
-
                 (
                     TypeInfo::ContractCaller {
                         abi_name: l_abi_name,
@@ -687,6 +583,8 @@ impl<'a> UnifyCheck<'a> {
                                     | (Placeholder(_), _)
                                     | (UnsignedInteger(_), Numeric)
                                     | (Numeric, UnsignedInteger(_))
+                                    | (_, Unknown)
+                                    | (Unknown, _)
                             ))
                         {
                             continue;
@@ -707,6 +605,8 @@ impl<'a> UnifyCheck<'a> {
                                 | (Placeholder(_), _)
                                 | (UnsignedInteger(_), Numeric)
                                 | (Numeric, UnsignedInteger(_))
+                                | (_, Unknown)
+                                | (Unknown, _)
                         ))
                     {
                         continue;
@@ -723,5 +623,125 @@ impl<'a> UnifyCheck<'a> {
         // if all of the invariants are met, then `self` can be coerced into
         // `other`!
         true
+    }
+
+    pub(crate) fn check_enums(&self, left: &TyEnumDecl, right: &TyEnumDecl) -> bool {
+        assert!(
+            left.call_path.is_absolute && right.call_path.is_absolute,
+            "The call paths of the enum declarations must always be absolute."
+        );
+
+        // Avoid unnecessary `collect::<Vec>>` of variant names
+        // and enum type parameters by short-circuiting.
+
+        if left.call_path != right.call_path {
+            return false;
+        }
+
+        // TODO: Is checking of variants necessary? Can we have two enums with the same `call_path`
+        //       with different variants?
+        //       We can have multiple declarations in a file and "already exist" errors, but those
+        //       different declarations shouldn't reach the type checking phase. The last one
+        //       will always win.
+        if left.variants.len() != right.variants.len() {
+            return false;
+        }
+
+        // Cheap name check first.
+        if left
+            .variants
+            .iter()
+            .zip(right.variants.iter())
+            .any(|(l, r)| l.name != r.name)
+        {
+            return false;
+        }
+
+        if left
+            .variants
+            .iter()
+            .zip(right.variants.iter())
+            .any(|(l, r)| !self.check_inner(l.type_argument.type_id, r.type_argument.type_id))
+        {
+            return false;
+        }
+
+        if left.type_parameters.len() != right.type_parameters.len() {
+            return false;
+        }
+
+        let l_types = left
+            .type_parameters
+            .iter()
+            .map(|x| x.type_id)
+            .collect::<Vec<_>>();
+
+        let r_types = right
+            .type_parameters
+            .iter()
+            .map(|x| x.type_id)
+            .collect::<Vec<_>>();
+
+        self.check_multiple(&l_types, &r_types)
+    }
+
+    pub(crate) fn check_structs(&self, left: &TyStructDecl, right: &TyStructDecl) -> bool {
+        assert!(
+            left.call_path.is_absolute && right.call_path.is_absolute,
+            "The call paths of the struct declarations must always be absolute."
+        );
+
+        // Avoid unnecessary `collect::<Vec>>` of variant names
+        // and enum type parameters by short-circuiting.
+
+        if left.call_path != right.call_path {
+            return false;
+        }
+
+        // TODO: Is checking of fields necessary? Can we have two structs with the same `call_path`
+        //       with different fields?
+        //       We can have multiple declarations in a file and "already exist" errors, but those
+        //       different declarations shouldn't reach the type checking phase. The last one
+        //       will always win.
+        if left.fields.len() != right.fields.len() {
+            return false;
+        }
+
+        // Cheap name check first.
+        if left
+            .fields
+            .iter()
+            .zip(right.fields.iter())
+            .any(|(l, r)| l.name != r.name)
+        {
+            return false;
+        }
+
+        if left
+            .fields
+            .iter()
+            .zip(right.fields.iter())
+            .any(|(l, r)| !self.check_inner(l.type_argument.type_id, r.type_argument.type_id))
+        {
+            return false;
+        }
+
+        if left.type_parameters.len() != right.type_parameters.len() {
+            return false;
+        }
+
+        let l_types = left
+            .type_parameters
+            .iter()
+            .map(|x| x.type_id)
+            .collect::<Vec<_>>();
+
+        let r_types = right
+            .type_parameters
+            .iter()
+            .map(|x| x.type_id)
+            .collect::<Vec<_>>();
+
+        self.check_multiple(&l_types, &r_types)
     }
 }

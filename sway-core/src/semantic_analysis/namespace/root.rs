@@ -13,19 +13,6 @@ pub struct Root {
     pub(crate) module: Module,
 }
 
-impl std::ops::Deref for Root {
-    type Target = Module;
-    fn deref(&self) -> &Self::Target {
-        &self.module
-    }
-}
-
-impl std::ops::DerefMut for Root {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.module
-    }
-}
-
 impl From<Module> for Root {
     fn from(module: Module) -> Self {
         Root { module }

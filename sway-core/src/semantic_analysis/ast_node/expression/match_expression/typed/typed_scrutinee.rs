@@ -2,7 +2,6 @@ use itertools::Itertools;
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
-    warning::{CompileWarning, Warning},
 };
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
@@ -166,7 +165,7 @@ fn type_check_variable(
     let decl_engine = engines.de();
 
     let typed_scrutinee = match ctx
-        .namespace
+        .namespace()
         .resolve_symbol(&Handler::default(), engines, &name, ctx.self_type())
         .ok()
     {
@@ -221,7 +220,7 @@ fn type_check_struct(
 
     // find the struct definition from the name
     let unknown_decl =
-        ctx.namespace
+        ctx.namespace()
             .resolve_symbol(handler, engines, &struct_name, ctx.self_type())?;
     let struct_ref = unknown_decl.to_struct_ref(handler, ctx.engines())?;
     let mut struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
@@ -236,7 +235,7 @@ fn type_check_struct(
     )?;
 
     let (struct_can_be_changed, is_public_struct_access) =
-        StructAccessInfo::get_info(&struct_decl, ctx.namespace).into();
+        StructAccessInfo::get_info(&struct_decl, ctx.namespace()).into();
 
     let has_rest_pattern = fields
         .iter()
@@ -308,25 +307,13 @@ fn type_check_struct(
                             .expect("The struct field with the given field name must exist.");
 
                         if struct_field.is_private() {
-                            // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                            //       https://github.com/FuelLabs/sway/issues/5520
-                            // handler.emit_err(CompileError::StructFieldIsPrivate {
-                            //     field_name: field_name.into(),
-                            //     struct_name: struct_decl.call_path.suffix.clone(),
-                            //     field_decl_span: struct_field.name.span(),
-                            //     struct_can_be_changed,
-                            //     usage_context: StructFieldUsageContext::PatternMatching { has_rest_pattern },
-                            // });
-                            handler.emit_warn(CompileWarning {
-                                span: field_name.span(),
-                                warning_content: Warning::StructFieldIsPrivate {
-                                    field_name: field_name.into(),
-                                    struct_name: struct_decl.call_path.suffix.clone(),
-                                    field_decl_span: struct_field.name.span(),
-                                    struct_can_be_changed,
-                                    usage_context: StructFieldUsageContext::PatternMatching {
-                                        has_rest_pattern,
-                                    },
+                            handler.emit_err(CompileError::StructFieldIsPrivate {
+                                field_name: field_name.into(),
+                                struct_name: struct_decl.call_path.suffix.clone(),
+                                field_decl_span: struct_field.name.span(),
+                                struct_can_be_changed,
+                                usage_context: StructFieldUsageContext::PatternMatching {
+                                    has_rest_pattern,
                                 },
                             });
                         }
@@ -377,83 +364,48 @@ fn type_check_struct(
                         .collect_vec()
                 };
 
-                // TODO: Uncomment this code and delete the one with warnings once struct field privacy becomes a hard error.
-                //       https://github.com/FuelLabs/sway/issues/5520
-                // handler.emit_err(
-                //     match (is_public_struct_access, all_public_fields_are_matched, only_public_fields_are_matched) {
-                //         // Public access. Only all public fields are matched. All missing fields are private.
-                //         // -> Emit error for the mandatory ignore `..`.
-                //         (true, true, true) => CompileError::MatchStructPatternMustIgnorePrivateFields {
-                //             private_fields: missing_fields(false),
-                //             struct_name: struct_decl.call_path.suffix.clone(),
-                //             struct_decl_span: struct_decl.span(),
-                //             all_fields_are_private: struct_decl.has_only_private_fields(),
-                //             span: span.clone(),
-                //         },
-
-                //         // Public access. All public fields are matched. Some private fields are matched.
-                //         // -> Do not emit error here because it is already covered when reporting private field.
-                //         (true, true, false) => unreachable!("The above if condition eliminates this case."),
-
-                //         // Public access. Some or non of the public fields are matched. Some or none of the private fields are matched.
-                //         // -> Emit error listing only missing public fields. Recommendation for mandatory use of `..` is already given
-                //         //    when reporting the inaccessible private field.
-                //         //  or
-                //         // In struct decl module access. We do not distinguish between private and public fields here.
-                //         // -> Emit error listing all missing fields.
-                //         (true, false, _) | (false, _, _) => CompileError::MatchStructPatternMissingFields {
-                //             missing_fields: missing_fields(is_public_struct_access),
-                //             missing_fields_are_public: is_public_struct_access,
-                //             struct_name: struct_decl.call_path.suffix.clone(),
-                //             struct_decl_span: struct_decl.span(),
-                //             total_number_of_fields: struct_decl.fields.len(),
-                //             span: span.clone(),
-                //         },
-                // });
-
-                match (
-                    is_public_struct_access,
-                    all_public_fields_are_matched,
-                    only_public_fields_are_matched,
-                ) {
-                    // Public access. Only all public fields are matched. All missing fields are private.
-                    // -> Emit error for the mandatory ignore `..`.
-                    (true, true, true) => {
-                        handler.emit_warn(CompileWarning {
-                            span: span.clone(),
-                            warning_content: Warning::MatchStructPatternMustIgnorePrivateFields {
+                handler.emit_err(
+                    match (
+                        is_public_struct_access,
+                        all_public_fields_are_matched,
+                        only_public_fields_are_matched,
+                    ) {
+                        // Public access. Only all public fields are matched. All missing fields are private.
+                        // -> Emit error for the mandatory ignore `..`.
+                        (true, true, true) => {
+                            CompileError::MatchStructPatternMustIgnorePrivateFields {
                                 private_fields: missing_fields(false),
                                 struct_name: struct_decl.call_path.suffix.clone(),
                                 struct_decl_span: struct_decl.span(),
                                 all_fields_are_private: struct_decl.has_only_private_fields(),
                                 span: span.clone(),
-                            },
-                        });
-                    }
+                            }
+                        }
 
-                    // Public access. All public fields are matched. Some private fields are matched.
-                    // -> Do not emit error here because it is already covered when reporting private field.
-                    (true, true, false) => {
-                        unreachable!("The above if condition eliminates this case.")
-                    }
+                        // Public access. All public fields are matched. Some private fields are matched.
+                        // -> Do not emit error here because it is already covered when reporting private field.
+                        (true, true, false) => {
+                            unreachable!("The above if condition eliminates this case.")
+                        }
 
-                    // Public access. Some or non of the public fields are matched. Some or none of the private fields are matched.
-                    // -> Emit error listing only missing public fields. Recommendation for mandatory use of `..` is already given
-                    //    when reporting the inaccessible private field.
-                    //  or
-                    // In struct decl module access. We do not distinguish between private and public fields here.
-                    // -> Emit error listing all missing fields.
-                    (true, false, _) | (false, _, _) => {
-                        handler.emit_err(CompileError::MatchStructPatternMissingFields {
-                            missing_fields: missing_fields(is_public_struct_access),
-                            missing_fields_are_public: is_public_struct_access,
-                            struct_name: struct_decl.call_path.suffix.clone(),
-                            struct_decl_span: struct_decl.span(),
-                            total_number_of_fields: struct_decl.fields.len(),
-                            span: span.clone(),
-                        });
-                    }
-                };
+                        // Public access. Some or non of the public fields are matched. Some or none of the private fields are matched.
+                        // -> Emit error listing only missing public fields. Recommendation for mandatory use of `..` is already given
+                        //    when reporting the inaccessible private field.
+                        //  or
+                        // In struct decl module access. We do not distinguish between private and public fields here.
+                        // -> Emit error listing all missing fields.
+                        (true, false, _) | (false, _, _) => {
+                            CompileError::MatchStructPatternMissingFields {
+                                missing_fields: missing_fields(is_public_struct_access),
+                                missing_fields_are_public: is_public_struct_access,
+                                struct_name: struct_decl.call_path.suffix.clone(),
+                                struct_decl_span: struct_decl.span(),
+                                total_number_of_fields: struct_decl.fields.len(),
+                                span: span.clone(),
+                            }
+                        }
+                    },
+                );
             }
         }
 
@@ -533,7 +485,7 @@ fn type_check_enum(
                 is_absolute: call_path.is_absolute,
             };
             // find the enum definition from the name
-            let unknown_decl = ctx.namespace.resolve_call_path(
+            let unknown_decl = ctx.namespace().resolve_call_path(
                 handler,
                 engines,
                 &enum_callpath,
@@ -549,7 +501,7 @@ fn type_check_enum(
         None => {
             // we may have an imported variant
             let decl =
-                ctx.namespace
+                ctx.namespace()
                     .resolve_call_path(handler, engines, &call_path, ctx.self_type())?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (

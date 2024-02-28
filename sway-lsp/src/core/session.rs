@@ -23,7 +23,10 @@ use lsp_types::{
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, BuildPlan};
+use pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    BuildPlan,
+};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::PathBuf,
@@ -37,7 +40,7 @@ use sway_core::{
         ty::{self},
         HasSubmodules,
     },
-    BuildTarget, Engines, Namespace, Programs,
+    BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
@@ -186,7 +189,7 @@ impl Session {
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             let program = compiled_program.typed.clone()?;
             return Some(capabilities::completion::to_completion_items(
-                &program.root.namespace,
+                program.root.namespace.module().current_items(),
                 &self.engines.read(),
                 ident_to_complete,
                 &fn_decl,
@@ -323,7 +326,7 @@ impl Session {
 pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
-        ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
+        ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
     let member_manifests =
@@ -348,6 +351,7 @@ pub fn compile(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    lsp_mode: Option<LspConfig>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
@@ -355,7 +359,7 @@ pub fn compile(
         &build_plan,
         BuildTarget::default(),
         true,
-        true,
+        lsp_mode,
         tests_enabled,
         engines,
         retrigger_compilation,
@@ -402,7 +406,11 @@ pub fn traverse(
 
         // Create context with write guards to make readers wait until the update to token_map is complete.
         // This operation is fast because we already have the compile results.
-        let ctx = ParseContext::new(&session.token_map, engines, &typed_program.root.namespace);
+        let ctx = ParseContext::new(
+            &session.token_map,
+            engines,
+            typed_program.root.namespace.module(),
+        );
 
         // The final element in the results is the main program.
         if i == results_len - 1 {
@@ -445,16 +453,22 @@ pub fn parse_project(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
 ) -> Result<(), LanguageServerError> {
-    let results = compile(uri, engines, retrigger_compilation)?;
+    let results = compile(uri, engines, retrigger_compilation, lsp_mode.clone())?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
     let diagnostics = traverse(results, engines, session.clone())?;
-    if let Some((errors, warnings)) = &diagnostics {
-        *session.diagnostics.write() =
-            capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
+    if let Some(config) = &lsp_mode {
+        // Only write the diagnostics results on didSave or didOpen.
+        if !config.optimized_build {
+            if let Some((errors, warnings)) = &diagnostics {
+                *session.diagnostics.write() =
+                    capabilities::diagnostic::get_diagnostics(warnings, errors, engines.se());
+            }
+        }
     }
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
@@ -579,7 +593,7 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(&uri, &engines, None, session)
+        let result = parse_project(&uri, &engines, None, None, session)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,

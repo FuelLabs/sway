@@ -1,4 +1,4 @@
-category = "disabled" # Until struct field privacy warnings do not become hard errors.
+category = "fail"
 
 #check: $()Struct cannot be instantiated due to inaccessible private fields
 #check: $()let _ = LibOnlyPrivateFields { };
@@ -197,21 +197,21 @@ category = "disabled" # Until struct field privacy warnings do not become hard e
 #check: $()let _ = MainStruct { x: 0, y: 0 };
 #nextln: $()Instantiation of the struct "MainStruct" is missing the field "z".
 
+#check: $()let _ = MainStruct { nn: 0 };
+#nextln: $()Field "nn" does not exist in the struct "MainStruct".
+
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { nn: 0 };
 #nextln: $()Instantiation of the struct "MainStruct" is missing the fields "x", "y", and one more.
 
-#check: $()let _ = MainStruct { nn: 0 };
+#check: $()let _ = MainStruct { nn: 0, x: 0 };
 #nextln: $()Field "nn" does not exist in the struct "MainStruct".
 
 #check: $()Struct instantiation has missing fields
 #check: $()Struct "MainStruct" is declared here, and has three fields.
 #check: $()let _ = MainStruct { nn: 0, x: 0 };
 #nextln: $()Instantiation of the struct "MainStruct" is missing the fields "y" and "z".
-
-#check: $()let _ = MainStruct { nn: 0, x: 0 };
-#nextln: $()Field "nn" does not exist in the struct "MainStruct".
 
 #not: $()"MainStruct" is missing the fields
 

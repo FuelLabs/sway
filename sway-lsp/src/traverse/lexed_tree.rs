@@ -207,7 +207,12 @@ impl Parse for Expr {
             Expr::TupleFieldProjection { target, .. } => {
                 target.parse(ctx);
             }
-            Expr::Ref { expr, .. } => {
+            Expr::Ref {
+                mut_token, expr, ..
+            } => {
+                if let Some(mut_token) = mut_token {
+                    insert_keyword(ctx, mut_token.span());
+                }
                 expr.parse(ctx);
             }
             Expr::Deref { expr, .. } => {

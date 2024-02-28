@@ -1,7 +1,7 @@
 # Cargo
 
 <!-- markdown-link-check-disable -->
-Cargo can be used to install the Sway toolchain with various [`plugins`](https://fuellabs.github.io/sway/v0.49.1/book/forc/plugins/index.html).
+Cargo can be used to install the Sway toolchain with various [`plugins`](https://fuellabs.github.io/sway/v0.51.1/book/forc/plugins/index.html).
 <!-- markdown-link-check-enable -->
 
 ## Dependencies

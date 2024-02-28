@@ -19,10 +19,10 @@ use crate::{
     Block, Instruction,
 };
 
-/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
+/// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
-pub struct Value(#[in_context(values)] pub generational_arena::Index);
+pub struct Value(#[in_context(values)] pub slotmap::DefaultKey);
 
 #[doc(hidden)]
 #[derive(Debug, Clone, DebugWithContext)]
@@ -122,7 +122,7 @@ impl Value {
                 InstOp::Branch(_)
                     | InstOp::ConditionalBranch { .. }
                     | InstOp::Ret(_, _)
-                    | InstOp::FuelVm(FuelVmInstruction::Revert(_))
+                    | InstOp::FuelVm(FuelVmInstruction::Revert(_) | FuelVmInstruction::JmpbSsp(_))
             ),
             ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
                 false

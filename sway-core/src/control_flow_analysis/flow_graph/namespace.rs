@@ -8,6 +8,7 @@ use crate::{
     type_system::TypeInfo,
     Ident,
 };
+use indexmap::IndexMap;
 use petgraph::prelude::NodeIndex;
 use std::collections::HashMap;
 use sway_types::{IdentUnique, Named};
@@ -25,7 +26,7 @@ pub(crate) struct FunctionNamespaceEntry {
 #[derive(Default, Clone)]
 pub(crate) struct StructNamespaceEntry {
     pub(crate) struct_decl_ix: NodeIndex,
-    pub(crate) fields: HashMap<String, NodeIndex>,
+    pub(crate) fields: IndexMap<String, NodeIndex>,
 }
 
 #[derive(Clone, Debug)]
@@ -47,7 +48,7 @@ pub(crate) struct VariableNamespaceEntry {
 /// of scope at this point, as that would have been caught earlier and aborted the compilation
 /// process.
 pub struct ControlFlowNamespace {
-    pub(crate) function_namespace: HashMap<(IdentUnique, TyFunctionSig), FunctionNamespaceEntry>,
+    pub(crate) function_namespace: IndexMap<(IdentUnique, TyFunctionSig), FunctionNamespaceEntry>,
     pub(crate) enum_namespace: HashMap<IdentUnique, (NodeIndex, HashMap<Ident, NodeIndex>)>,
     pub(crate) trait_namespace: HashMap<CallPath, TraitNamespaceEntry>,
     /// This is a mapping from trait name to method names and their node indexes

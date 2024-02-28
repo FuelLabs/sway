@@ -30,6 +30,7 @@ pub struct TyFunctionDecl {
     pub body: TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
     pub implementing_type: Option<TyDecl>,
+    pub implementing_for_typeid: Option<TypeId>,
     pub span: Span,
     pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
@@ -159,6 +160,7 @@ impl HashWithEngines for TyFunctionDecl {
             span: _,
             attributes: _,
             implementing_type: _,
+            implementing_for_typeid: _,
             where_clause: _,
             is_trait_method_dummy: _,
         } = self;
@@ -183,6 +185,9 @@ impl SubstTypes for TyFunctionDecl {
             .for_each(|x| x.subst(type_mapping, engines));
         self.return_type.subst(type_mapping, engines);
         self.body.subst(type_mapping, engines);
+        if let Some(implementing_for) = self.implementing_for_typeid.as_mut() {
+            implementing_for.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -193,7 +198,9 @@ impl ReplaceDecls for TyFunctionDecl {
         handler: &Handler,
         ctx: &mut TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
-        self.body.replace_decls(decl_mapping, handler, ctx)
+        let mut func_ctx = ctx.by_ref().with_self_type(self.implementing_for_typeid);
+        self.body
+            .replace_decls(decl_mapping, handler, &mut func_ctx)
     }
 }
 
@@ -296,6 +303,7 @@ impl TyFunctionDecl {
             name: name.clone(),
             body: TyCodeBlock::default(),
             implementing_type: None,
+            implementing_for_typeid: None,
             span: span.clone(),
             call_path: CallPath::from(Ident::dummy()),
             attributes: Default::default(),
