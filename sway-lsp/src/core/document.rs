@@ -114,7 +114,7 @@ impl TextDocument {
 pub async fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
     tokio::task::spawn_blocking(move || {
-        Ok(PidFileLocking::lsp(&path)
+        Ok(PidFileLocking::lsp(path)
             .lock()
             .map_err(|_| DirectoryError::LspLocksDirFailed)?)
     })
@@ -129,12 +129,12 @@ pub async fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
     let uri = uri.clone();
     tokio::task::spawn_blocking(move || {
-        Ok(PidFileLocking::lsp(&path).remove().map_err(|err| {
-            DocumentError::UnableToRemoveFile {
+        Ok(PidFileLocking::lsp(path)
+            .remove()
+            .map_err(|err| DocumentError::UnableToRemoveFile {
                 path: uri.path().to_string(),
                 err: err.to_string(),
-            }
-        })?)
+            })?)
     })
     .await
     .map_err(|_| DirectoryError::LspLocksDirFailed)?
