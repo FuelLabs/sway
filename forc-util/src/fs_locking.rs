@@ -72,7 +72,7 @@ impl PidFileLocking {
                 }
             }
         }
-        return false;
+        false
     }
 
     /// Locks the given filepath if it is not already locked
