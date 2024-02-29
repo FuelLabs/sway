@@ -97,14 +97,32 @@ mod test {
     use std::{
         fs::{metadata, File},
         io::{ErrorKind, Write},
+        os::unix::fs::MetadataExt,
     };
 
     #[test]
     fn test_fs_locking_same_process() {
         let x = PidFileLocking::lsp("test");
+        assert!(!x.is_locked()); // checks the non-existance of the lock (therefore it is not locked)
         assert!(x.lock().is_ok());
         // The current process is locking "test"
         let x = PidFileLocking::lsp("test");
+        assert!(!x.is_locked());
+    }
+
+    #[test]
+    fn test_legacy() {
+        // tests against an empty file (as legacy were creating this files)
+        let x = PidFileLocking::lsp("legacy");
+        assert!(x.lock().is_ok());
+        // lock file exists,
+        assert!(metadata(&x.0).is_ok());
+
+        // simulate a stale lock file from legacy (which should be empty)
+        let _ = File::create(&x.0).unwrap();
+        assert_eq!(metadata(&x.0).unwrap().size(), 0);
+
+        let x = PidFileLocking::lsp("legacy");
         assert!(!x.is_locked());
     }
 
