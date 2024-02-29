@@ -28,10 +28,13 @@ impl PidFileLocking {
         )
     }
 
+    /// Create a new PidFileLocking instance that is shared between the LSP and any other process
+    /// that may want to update the file and needs to wait for the LSP to finish (like forc-fmt)
     pub fn lsp<X: AsRef<Path>>(path: X) -> PidFileLocking {
         Self::new(path, ".lsp-locks", "dirty")
     }
 
+    /// Checks if the given pid is active
     fn is_pid_active(pid: usize) -> bool {
         use sysinfo::{Pid, System};
         if pid == std::process::id() as usize {
@@ -40,6 +43,7 @@ impl PidFileLocking {
         System::new_all().process(Pid::from(pid)).is_some()
     }
 
+    /// Removes the lock file if it is not locked or the process that locked it is no longer active
     pub fn remove(&self) -> io::Result<()> {
         if self.is_locked()? {
             Err(io::Error::new(
@@ -51,6 +55,7 @@ impl PidFileLocking {
         }
     }
 
+    /// A thin wrapper on top of std::fs::remove_file that does not error if the file does not exist
     fn remove_file(&self) -> io::Result<()> {
         match remove_file(&self.0) {
             Err(error) => {
@@ -64,9 +69,9 @@ impl PidFileLocking {
         }
     }
 
+    /// Checks if the given filepath is locked by any process
     pub fn is_locked(&self) -> io::Result<bool> {
         let fs = File::open(&self.0);
-        println!("{:#?}", fs);
         match fs {
             Ok(mut file) => {
                 let mut pid = String::new();
@@ -92,6 +97,7 @@ impl PidFileLocking {
         }
     }
 
+    /// Locks the given filepath if it is not already locked
     pub fn lock(&self) -> io::Result<()> {
         self.remove()?;
         if let Some(dir) = self.0.parent() {
