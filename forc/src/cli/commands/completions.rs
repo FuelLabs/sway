@@ -4,15 +4,15 @@ use forc_util::ForcResult;
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, clap::ValueEnum)]
 enum Target {
-    /// Bourne Again SHell (bash)
+    /// Bourne Again Shell (bash)
     Bash,
     /// Elvish shell
     Elvish,
-    /// Friendly Interactive SHell (fish)
+    /// Friendly Interactive Shell (fish)
     Fish,
     /// PowerShell
     PowerShell,
-    /// Z SHell (zsh)
+    /// Z Shell (zsh)
     Zsh,
     /// Fig
     Fig,
