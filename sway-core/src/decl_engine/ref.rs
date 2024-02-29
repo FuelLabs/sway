@@ -161,18 +161,27 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone,
 {
+    /// Returns Ok(None), if nothing was replaced.
+    /// Ok(true), if something was replaced.
+    /// and errors when appropriated.
     pub(crate) fn replace_decls_and_insert_new_with_parent(
         &self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<Option<Self>, ErrorEmitted> {
         let decl_engine = ctx.engines().de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.replace_decls(decl_mapping, handler, ctx)?;
-        Ok(decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into()))
+
+        let original = decl_engine.get(&self.id);
+
+        let mut new = (*original).clone();
+        let changed = new.replace_decls(decl_mapping, handler, ctx)?;
+
+        Ok(changed.then(|| {
+            decl_engine
+                .insert(new)
+                .with_parent(decl_engine, self.id.into())
+        }))
     }
 }
 
@@ -296,7 +305,7 @@ impl ReplaceDecls for DeclRefFunction {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         let engines = ctx.engines();
         let decl_engine = engines.de();
 
@@ -309,10 +318,14 @@ impl ReplaceDecls for DeclRefFunction {
             func.implementing_for_typeid,
             ctx.self_type(),
         )? {
-            if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
-                self.id = new_decl_ref;
-            }
-            return Ok(());
+            return Ok(
+                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                    self.id = new_decl_ref;
+                    true
+                } else {
+                    false
+                },
+            );
         }
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
         for parent in all_parents.iter() {
@@ -323,13 +336,17 @@ impl ReplaceDecls for DeclRefFunction {
                 func.implementing_for_typeid,
                 ctx.self_type(),
             )? {
-                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
-                    self.id = new_decl_ref;
-                }
-                return Ok(());
+                return Ok(
+                    if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                        self.id = new_decl_ref;
+                        true
+                    } else {
+                        false
+                    },
+                );
             }
         }
-        Ok(())
+        Ok(false)
     }
 }
 
