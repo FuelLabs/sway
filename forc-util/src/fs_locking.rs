@@ -30,8 +30,8 @@ impl PidFileLocking {
 
     /// Create a new PidFileLocking instance that is shared between the LSP and any other process
     /// that may want to update the file and needs to wait for the LSP to finish (like forc-fmt)
-    pub fn lsp<X: AsRef<Path>>(path: X) -> PidFileLocking {
-        Self::new(path, ".lsp-locks", "dirty")
+    pub fn lsp<X: AsRef<Path>>(filename: X) -> PidFileLocking {
+        Self::new(filename, ".lsp-locks", "dirty")
     }
 
     /// Checks if the given pid is active
@@ -45,56 +45,34 @@ impl PidFileLocking {
 
     /// Removes the lock file if it is not locked or the process that locked it is no longer active
     pub fn remove(&self) -> io::Result<()> {
-        if self.is_locked()? {
+        if self.is_locked() {
             Err(io::Error::new(
                 std::io::ErrorKind::Other,
                 "Cannot remove a dirty lock file, it is locked by another process",
             ))
         } else {
-            self.remove_file()
+            Ok(())
         }
     }
 
-    /// A thin wrapper on top of std::fs::remove_file that does not error if the file does not exist
-    fn remove_file(&self) -> io::Result<()> {
-        match remove_file(&self.0) {
-            Err(error) => {
-                if error.kind() == io::ErrorKind::NotFound {
-                    Ok(())
-                } else {
-                    Err(error)
-                }
-            }
-            _ => Ok(()),
-        }
-    }
-
-    /// Checks if the given filepath is locked by any process
-    pub fn is_locked(&self) -> io::Result<bool> {
+    /// Checks if the given filepath is locked by any active process.
+    /// If the file exists but the process ID is no longer active, the file is removed.
+    pub fn is_locked(&self) -> bool {
         let fs = File::open(&self.0);
-        match fs {
-            Ok(mut file) => {
-                let mut pid = String::new();
-                file.read_to_string(&mut pid)?;
-                let is_locked = pid
-                    .trim()
-                    .parse::<usize>()
-                    .map(Self::is_pid_active)
-                    .unwrap_or_default();
-                drop(file);
-                if !is_locked {
-                    self.remove_file()?;
-                }
-                Ok(is_locked)
-            }
-            Err(err) => {
-                if err.kind() == io::ErrorKind::NotFound {
-                    Ok(false)
+        if let Ok(mut file) = fs {
+            let mut contents = String::new();
+            file.read_to_string(&mut contents).ok();
+            drop(file);
+            if let Ok(pid) = contents.trim().parse::<usize>() {
+                if Self::is_pid_active(pid) {
+                    return true;
                 } else {
-                    Err(err)
+                    let _ = remove_file(&self.0);
+                    return false;
                 }
             }
         }
+        return false;
     }
 
     /// Locks the given filepath if it is not already locked
@@ -127,7 +105,7 @@ mod test {
         assert!(x.lock().is_ok());
         // The current process is locking "test"
         let x = PidFileLocking::lsp("test");
-        assert!(!x.is_locked().unwrap());
+        assert!(!x.is_locked());
     }
 
     #[test]
@@ -146,7 +124,7 @@ mod test {
 
         // PID=191919191919 does not exists, hopefully, and this should remove the lock file
         let x = PidFileLocking::lsp("stale");
-        assert!(!x.is_locked().unwrap());
+        assert!(!x.is_locked());
         let e = metadata(&x.0).unwrap_err().kind();
         assert_eq!(e, ErrorKind::NotFound);
     }

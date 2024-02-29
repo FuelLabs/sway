@@ -112,9 +112,7 @@ fn run() -> Result<()> {
 ///
 /// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
 fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
-    PidFileLocking::lsp(path.as_ref())
-        .is_locked()
-        .unwrap_or(false)
+    PidFileLocking::lsp(path.as_ref()).is_locked()
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.
