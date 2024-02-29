@@ -10,12 +10,16 @@ use std::{
 /// The goal of this struct is to signal other processes that a path is being used by another
 /// process exclusively.
 ///
-/// This struct will self-healh if the process that locked the file is no longer running.
+/// This struct will self-heal if the process that locked the file is no longer running.
 pub struct PidFileLocking(PathBuf);
 
 impl PidFileLocking {
-    pub fn new<X: AsRef<Path>, Y: AsRef<Path>>(path: X, dir: Y, extension: &str) -> PidFileLocking {
-        let file_name = hash_path(path);
+    pub fn new<X: AsRef<Path>, Y: AsRef<Path>>(
+        filename: X,
+        dir: Y,
+        extension: &str,
+    ) -> PidFileLocking {
+        let file_name = hash_path(filename);
         Self(
             user_forc_directory()
                 .join(dir)
@@ -112,7 +116,7 @@ mod test {
     };
 
     #[test]
-    fn same_process() {
+    fn test_fs_locking_same_process() {
         let x = PidFileLocking::lsp("test");
         assert!(x.lock().is_ok());
         // The current process is locking "test"
@@ -121,7 +125,7 @@ mod test {
     }
 
     #[test]
-    fn stale() {
+    fn test_fs_locking_stale() {
         let x = PidFileLocking::lsp("stale");
         assert!(x.lock().is_ok());
 
@@ -135,7 +139,7 @@ mod test {
         drop(x);
 
         // PID=191919191919 does not exists, hopefully, and this should remove the lock file
-        let x = PidFileLocking::lsp("test");
+        let x = PidFileLocking::lsp("stale");
         assert!(!x.is_locked().unwrap());
         let e = metadata(&x.0).unwrap_err().kind();
         assert_eq!(e, ErrorKind::NotFound);
