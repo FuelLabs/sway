@@ -7,7 +7,6 @@ use crate::{
     decl_engine::DeclEngineGet,
     engine_threading::*,
     engine_threading::*,
-    language::ty,
     language::{ty, CallPath},
     type_system::priv_prelude::*,
     type_system::priv_prelude::*,

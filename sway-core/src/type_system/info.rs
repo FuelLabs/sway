@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, SourceId};
+use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
 
 use std::{
     cmp::Ordering,

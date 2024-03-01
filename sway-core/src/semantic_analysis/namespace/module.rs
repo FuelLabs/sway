@@ -167,7 +167,7 @@ impl Module {
         ns.root.module.name = ns_name;
         ns.root.module.is_external = true;
         ns.root.module.visibility = Visibility::Public;
-        let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines);
+        let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
         let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in

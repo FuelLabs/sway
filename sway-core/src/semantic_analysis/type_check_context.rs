@@ -109,7 +109,25 @@ impl<'a> TypeCheckContext<'a> {
         engines: &'a Engines,
         experimental: ExperimentalFlags,
     ) -> Self {
-        todo!()
+        Self {
+            namespace,
+            engines,
+            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            unify_generic: false,
+            self_type: None,
+            type_subst: TypeSubstMap::new(),
+            help_text: "",
+            abi_mode: AbiMode::NonAbi,
+            const_shadowing_mode: ConstShadowingMode::ItemStyle,
+            generic_shadowing_mode: GenericShadowingMode::Disallow,
+            purity: Purity::default(),
+            kind: TreeType::Contract,
+            disallow_functions: false,
+            defer_monomorphization: false,
+            storage_declaration: false,
+            experimental,
+        }
     }
 
     /// Initialize a context at the top-level of a module with its namespace.
@@ -223,6 +241,8 @@ impl<'a> TypeCheckContext<'a> {
         module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
     ) -> T {
+        let experimental = self.experimental.clone();
+
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
@@ -230,7 +250,7 @@ impl<'a> TypeCheckContext<'a> {
             .namespace_mut()
             .enter_submodule(mod_name, visibility, module_span);
         let submod_ctx =
-            TypeCheckContext::from_namespace(&mut submod_ns, engines, self.experimental);
+            TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
         with_submod_ctx(submod_ctx)
     }
 

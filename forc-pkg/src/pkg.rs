@@ -2097,7 +2097,7 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental = crate::manifest::ExperimentalFlags {
+    profile.experimental = ExperimentalFlags {
         new_encoding: experimental.new_encoding,
     };
 

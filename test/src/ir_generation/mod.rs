@@ -171,7 +171,7 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(build_target, &engines);
+    let core_lib = compile_core(build_target, &engines, experimental);
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -528,7 +528,7 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Module {
+fn compile_core(build_target: BuildTarget, engines: &Engines, experimental: ExperimentalFlags) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -540,6 +540,7 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         disable_tests: false,
         locked: false,
         ipfs_node: None,
+        experimental_new_encoding: experimental.new_encoding,
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {
