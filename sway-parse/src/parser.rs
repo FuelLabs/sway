@@ -293,7 +293,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             };
 
             let current_span = current_token.span();
-            let current_span_line = current_span.start_pos().line_col().0;
+            let current_span_line = current_span.start_pos().line_col().line;
 
             if current_span_line != line {
                 break;
@@ -445,7 +445,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             self.last_consumed_token()
                 .map(|x| x.span())
                 .or_else(|| self.fork_token_trees.first().map(|x| x.span()))
-                .map(|x| x.start_pos().line_col().0)
+                .map(|x| x.start_pos().line_col().line)
         };
 
         self.start(|p| {

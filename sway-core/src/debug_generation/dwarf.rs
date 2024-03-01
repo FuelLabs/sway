@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::io::Write;
 
 use gimli::write::{
     self, DebugLine, DebugLineStrOffsets, DebugStrOffsets, DwarfUnit, EndianVec, LineProgram,
@@ -7,41 +6,17 @@ use gimli::write::{
 };
 use gimli::{BigEndian, LineEncoding};
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{SourceEngine, Span};
-
-use crate::asm_generation::instruction_set::InstructionSet;
+use sway_types::Span;
 
 use crate::source_map::SourceMap;
-use crate::CompiledAsm;
 
 use object::write::Object;
 
-use super::DebugInfo;
-
-pub fn generate_debug_info(
-    handler: &Handler,
-    asm: &CompiledAsm,
-    source_map: &mut SourceMap,
-    source_engine: &SourceEngine,
-) -> Result<DebugInfo, ErrorEmitted> {
-    // Lets gather all the files used by the allocated ops in the compiled assembly.
-    let source_spans = gather_source_file_spans(asm);
-
-    let source_ids: Vec<_> = source_spans
-        .iter()
-        .map(|span| span.source_id())
-        .filter_map(|source_id| match source_id {
-            Some(source_id) => source_engine.get_file_name(source_id),
-            None => None,
-        })
-        .collect();
-
-    let dir1 = &b"dir1"[..];
-    let file1 = &b"file1"[..];
-    let file2 = &b"file2"[..];
-
-    let debug_line_str_offsets = DebugLineStrOffsets::none();
-    let debug_str_offsets = DebugStrOffsets::none();
+pub fn generate_debug_info(handler: &Handler, source_map: &SourceMap) -> Result<(), ErrorEmitted> {
+    // working directory
+    let working_dir = &b"sway"[..];
+    // primary source file
+    let primary_src = &b"main.sw"[..];
 
     let encoding = gimli::Encoding {
         format: gimli::Format::Dwarf64,
@@ -51,33 +26,19 @@ pub fn generate_debug_info(
     let mut program = LineProgram::new(
         encoding,
         LineEncoding::default(),
-        LineString::String(dir1.to_vec()),
-        LineString::String(file1.to_vec()),
+        LineString::String(working_dir.to_vec()),
+        LineString::String(primary_src.to_vec()),
         None,
     );
-    let dir_id = program.default_directory();
-    program.add_file(LineString::String(file1.to_vec()), dir_id, None);
-    program.add_file(LineString::String(file2.to_vec()), dir_id, None);
 
-    // Create a base program.
-    program.begin_sequence(None);
-    //program.row.line = 0x1000;
-
-    program.generate_row();
-    let current_row = program.row();
-    current_row.line = 100;
-
-    program.end_sequence(0);
-
-    let mut debug_line = DebugLine::from(EndianVec::new(BigEndian));
-    //let mut debug_line_offsets = Vec::new();
+    build_line_number_program(source_map, &mut program)?;
 
     program
         .write(
-            &mut debug_line,
+            &mut DebugLine::from(EndianVec::new(BigEndian)),
             encoding,
-            &debug_line_str_offsets,
-            &debug_str_offsets,
+            &DebugLineStrOffsets::none(),
+            &DebugStrOffsets::none(),
         )
         .map_err(|err| {
             handler.emit_err(sway_error::error::CompileError::InternalOwned(
@@ -119,24 +80,46 @@ pub fn generate_debug_info(
         ))
     })?;
 
-    Ok(DebugInfo {})
+    Ok(())
 }
 
-fn gather_source_file_spans(asm: &CompiledAsm) -> Vec<Span> {
-    // Gather the set of spans used by all the allocated ops.
-    match &asm.0.program_section {
-        InstructionSet::Fuel { ops } => ops
-            .iter()
-            .filter_map(|op| match op.owning_span.as_ref() {
-                Some(span) => Some(span.clone()),
-                None => None,
-            })
-            .collect::<Vec<_>>(),
-        InstructionSet::Evm { .. } => {
-            unreachable!()
-        }
-        InstructionSet::MidenVM { .. } => {
-            unreachable!()
-        }
+fn build_line_number_program(
+    source_map: &SourceMap,
+    program: &mut LineProgram,
+) -> Result<(), ErrorEmitted> {
+    program.begin_sequence(Some(write::Address::Constant(0)));
+
+    for (ix, span) in &source_map.map {
+        let (path, span) = span.to_span(&source_map.paths, &source_map.dependency_paths);
+
+        let dir = path.parent().expect("Path doesn't have proper prefix");
+        let file = path.file_name().expect("Path doesn't have proper filename");
+
+        let dir_id = program.add_directory(LineString::String(
+            dir.as_os_str().as_encoded_bytes().into(),
+        ));
+        let file_id = program.add_file(
+            LineString::String(file.as_encoded_bytes().into()),
+            dir_id,
+            None,
+        );
+
+        program.generate_row();
+
+        let current_row = program.row();
+        current_row.line = span.start.line as u64;
+        current_row.column = span.start.col as u64;
+        current_row.address_offset = *ix as u64;
+        current_row.file = file_id;
     }
+
+    program.end_sequence(
+        source_map
+            .map
+            .last_key_value()
+            .map(|(key, _)| *key)
+            .unwrap_or_default() as u64
+            + 1,
+    );
+    Ok(())
 }

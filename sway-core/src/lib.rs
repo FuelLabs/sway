@@ -11,8 +11,8 @@ mod build_config;
 pub mod compiler_generated;
 mod concurrent_slab;
 mod control_flow_analysis;
-pub mod decl_engine;
 mod debug_generation;
+pub mod decl_engine;
 pub mod ir_generation;
 pub mod language;
 mod metadata;
@@ -30,8 +30,8 @@ use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
+use debug_generation::generate_debug_info;
 use indexmap::IndexMap;
-use debug_generation::{generate_debug_info, DebugInfo};
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
 use std::collections::hash_map::DefaultHasher;
@@ -910,14 +910,9 @@ pub fn compile_to_bytecode(
     asm_to_bytecode(handler, asm_res, source_map, engines.se())
 }
 
-/// Given the assembly (opcodes), compile to [DebugInfo], containing the debug info.
-pub fn asm_to_debug(
-    handler: &Handler,
-    asm: &CompiledAsm,
-    source_map: &mut SourceMap,
-    source_engine: &SourceEngine,
-) -> Result<DebugInfo, ErrorEmitted> {
-    generate_debug_info(handler, asm, source_map, source_engine)
+/// Given source mapping, compile to [DebugInfo], containing the debug info.
+pub fn asm_to_debug(handler: &Handler, source_map: &SourceMap) -> Result<(), ErrorEmitted> {
+    generate_debug_info(handler, source_map)
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.

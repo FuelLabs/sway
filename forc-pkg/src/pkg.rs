@@ -1887,21 +1887,25 @@ pub fn compile(
         Ok(asm) => asm,
     };
 
-    let debug_gen = time_expr!(
-        "compile asm to debug",
-        "compile_asm_to_debug",
-        sway_core::asm_to_debug(&handler, &asm, source_map, engines.se()),
-        Some(sway_build_config.clone()),
-        metrics
-    );
-
     let bc_res = time_expr!(
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
         sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se()),
+        Some(sway_build_config.clone()),
+        metrics
+    );
+
+    let debug_gen = time_expr!(
+        "compile asm to debug",
+        "compile_asm_to_debug",
+        sway_core::asm_to_debug(&handler, source_map),
         Some(sway_build_config),
         metrics
     );
+
+    if debug_gen.is_err() {
+        return fail(handler);
+    }
 
     let errored = handler.has_errors() || (handler.has_warnings() && profile.error_on_warnings);
 
