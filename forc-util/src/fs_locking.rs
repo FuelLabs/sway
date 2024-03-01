@@ -45,7 +45,7 @@ impl PidFileLocking {
             .expect("Failed to execute ps command");
 
         let output_str = String::from_utf8_lossy(&output.stdout);
-        output_str.contains(&format!(" {}", pid))
+        output_str.contains(&format!("{} ", pid))
     }
 
     #[cfg(target = "windows")]
@@ -63,40 +63,61 @@ impl PidFileLocking {
     }
 
     /// Removes the lock file if it is not locked or the process that locked it is no longer active
-    pub fn remove(&self) -> io::Result<()> {
+    pub fn release(&self) -> io::Result<()> {
         if self.is_locked() {
             Err(io::Error::new(
                 std::io::ErrorKind::Other,
                 "Cannot remove a dirty lock file, it is locked by another process",
             ))
         } else {
+            self.remove_file()?;
             Ok(())
         }
     }
 
-    /// Checks if the given filepath is locked by any active process.
-    /// If the file exists but the process ID is no longer active, the file is removed.
-    pub fn is_locked(&self) -> bool {
+    fn remove_file(&self) -> io::Result<()> {
+        match remove_file(&self.0) {
+            Err(e) => {
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    return Err(e);
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// Returns the PID of the owner of the current lock. If the PID is not longer active the lock
+    /// file will be removed
+    pub fn get_locker_pid(&self) -> Option<usize> {
         let fs = File::open(&self.0);
         if let Ok(mut file) = fs {
             let mut contents = String::new();
             file.read_to_string(&mut contents).ok();
             drop(file);
             if let Ok(pid) = contents.trim().parse::<usize>() {
-                if Self::is_pid_active(pid) {
-                    return true;
+                return if Self::is_pid_active(pid) {
+                    Some(pid)
                 } else {
-                    let _ = remove_file(&self.0);
-                    return false;
-                }
+                    let _ = self.remove_file();
+                    None
+                };
             }
         }
-        false
+        None
+    }
+
+    /// Checks if the current path is owned by any other process. This will return false if there is
+    /// no lock file or the current process is the owner of the lock file
+    pub fn is_locked(&self) -> bool {
+        self.get_locker_pid()
+            .map(|pid| pid != (std::process::id() as usize))
+            .unwrap_or_default()
     }
 
     /// Locks the given filepath if it is not already locked
     pub fn lock(&self) -> io::Result<()> {
-        self.remove()?;
+        self.release()?;
         if let Some(dir) = self.0.parent() {
             // Ensure the directory exists
             create_dir_all(dir)?;
@@ -143,6 +164,14 @@ mod test {
 
         let x = PidFileLocking::lsp("legacy");
         assert!(!x.is_locked());
+    }
+
+    #[test]
+    fn test_remove() {
+        let x = PidFileLocking::lsp("lock");
+        assert!(x.lock().is_ok());
+        assert!(x.release().is_ok());
+        assert!(x.release().is_ok());
     }
 
     #[test]
