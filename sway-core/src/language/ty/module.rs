@@ -4,7 +4,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineGet, DeclRef, DeclRefFunction},
+    decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
     language::ModName,
     language::{ty::*, HasModule, HasSubmodules},
     semantic_analysis::namespace,
@@ -77,7 +77,9 @@ impl TyModule {
         &'b self,
         engines: &'a Engines,
     ) -> impl '_ + Iterator<Item = DeclRefFunction> {
-        self.all_nodes.iter().flat_map(move |node| node.contract_fns(engines))
+        self.all_nodes
+            .iter()
+            .flat_map(move |node| node.contract_fns(engines))
     }
 
     pub(crate) fn check_deprecated(

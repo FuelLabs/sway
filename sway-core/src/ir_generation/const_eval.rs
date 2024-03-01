@@ -1153,24 +1153,11 @@ fn const_eval_intrinsic(
                 }
             }
         }
-        Intrinsic::AddrOf
-        | Intrinsic::PtrAdd
-        | Intrinsic::PtrSub
-        | Intrinsic::IsReferenceType
-        | Intrinsic::IsStrArray
-        | Intrinsic::Gtf
-        | Intrinsic::StateClear
-        | Intrinsic::StateLoadWord
-        | Intrinsic::StateStoreWord
-        | Intrinsic::StateLoadQuad
-        | Intrinsic::StateStoreQuad
-        | Intrinsic::Log
-        | Intrinsic::Revert
-        | Intrinsic::Smo
-        | Intrinsic::ContractCall
-        | Intrinsic::ContractRet => Err(ConstEvalError::CannotBeEvaluatedToConst {
-            span: intrinsic.span.clone(),
-        }),
+        Intrinsic::ContractCall | Intrinsic::ContractRet => {
+            Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: intrinsic.span.clone(),
+            })
+        }
     }
 }
 

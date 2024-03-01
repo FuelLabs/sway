@@ -384,7 +384,7 @@ impl TyDecl {
         };
         Some(DeclRef::new(
             decl.name.clone(),
-            decl.decl_id.clone(),
+            decl.decl_id,
             decl.decl_span.clone(),
         ))
     }

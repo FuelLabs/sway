@@ -742,9 +742,9 @@ mod tests {
         /// The first word is the pointer to the actual content, and the second the
         /// length of the slice.
         fn slice() {
-            let mut context = create_context();
+            let context = create_context();
 
-            let s_slice = Type::get_slice(&mut context).size(&context);
+            let s_slice = Type::get_slice(&context).size(&context);
 
             assert_eq!(s_slice.in_bytes(), 16);
             assert_eq!(s_slice.in_bytes(), s_slice.in_bytes_aligned());

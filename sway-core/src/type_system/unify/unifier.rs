@@ -4,11 +4,8 @@ use sway_error::{handler::Handler, type_error::TypeError};
 use sway_types::Span;
 
 use crate::{
-    decl_engine::DeclEngineGet,
-    engine_threading::*,
     engine_threading::*,
     language::{ty, CallPath},
-    type_system::priv_prelude::*,
     type_system::priv_prelude::*,
 };
 

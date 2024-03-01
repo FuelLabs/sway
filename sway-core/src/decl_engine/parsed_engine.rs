@@ -331,15 +331,15 @@ impl ParsedDeclEngine {
     pub fn pretty_print(&self) -> String {
         use std::fmt::Write;
         let mut s = String::new();
-        write!(
+        let _ = write!(
             &mut s,
             "Function Count: {}",
             self.function_slab.values().len()
         );
         for f in self.function_slab.values() {
-            write!(&mut s, "Function: {}", f.name);
+            let _ = write!(&mut s, "Function: {}", f.name);
             for node in f.body.contents.iter() {
-                write!(&mut s, "    Node: {:#?}", node);
+                let _ = write!(&mut s, "    Node: {:#?}", node);
             }
         }
 

@@ -528,7 +528,11 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(build_target: BuildTarget, engines: &Engines, experimental: ExperimentalFlags) -> namespace::Module {
+fn compile_core(
+    build_target: BuildTarget,
+    engines: &Engines,
+    experimental: ExperimentalFlags,
+) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 

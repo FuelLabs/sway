@@ -260,7 +260,7 @@ impl<'eng> FnCompiler<'eng> {
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
-            ty::TyAstNodeContent::Error(a, b) => {
+            ty::TyAstNodeContent::Error(a, _) => {
                 unreachable!("error node found when generating IR: {:?}", a);
             }
         }
@@ -1749,22 +1749,22 @@ impl<'eng> FnCompiler<'eng> {
         };
 
         // Convert the return type.  If it's a reference type then make it a pointer.
-        let return_type = convert_resolved_typeid_no_span(
-            self.engines.te(),
-            self.engines.de(),
-            context,
-            &ast_return_type,
-        )?;
+        // let return_type = convert_resolved_typeid_no_span(
+        //     self.engines.te(),
+        //     self.engines.de(),
+        //     context,
+        //     &ast_return_type,
+        // )?;
         let ret_is_copy_type = self
             .engines
             .te()
             .get_unaliased(ast_return_type)
             .is_copy_type();
-        let return_type = if ret_is_copy_type {
-            return_type
-        } else {
-            Type::new_ptr(context, return_type)
-        };
+        // let return_type = if ret_is_copy_type {
+        //     return_type
+        // } else {
+        //     Type::new_ptr(context, return_type)
+        // };
 
         // Insert the contract_call instruction
         let call_val = self

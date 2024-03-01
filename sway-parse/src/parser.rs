@@ -19,7 +19,7 @@ pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
     full_span: Span,
     handler: &'e Handler,
-    pub check_double_underscore: bool
+    pub check_double_underscore: bool,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {

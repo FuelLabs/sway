@@ -7,7 +7,7 @@ use std::{
 use sway_types::{ModuleId, Named, Spanned};
 
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     engine_threading::*,
     language::ty::{
@@ -444,7 +444,7 @@ impl DeclEngine {
         let mut list = String::with_capacity(1024 * 1024);
         let funcs = self.function_slab.values();
         for (i, func) in funcs.iter().enumerate() {
-            list.push_str(&format!("{i} - {:?}\n", engines.help_out(&*func)));
+            list.push_str(&format!("{i} - {:?}\n", engines.help_out(func)));
 
             if func.name.as_str().contains("__entry") || func.name.as_str().contains("main") {
                 for item in func.body.contents.iter() {

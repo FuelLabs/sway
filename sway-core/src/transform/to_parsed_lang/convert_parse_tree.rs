@@ -78,8 +78,15 @@ pub fn module_to_sway_parse_tree(
         let mut root_nodes: Vec<AstNode> = vec![];
         let mut prev_item: Option<Annotated<ItemKind>> = None;
         for item in module.items {
-            let ast_nodes =
-                item_to_ast_nodes(context, handler, engines, item.clone(), true, prev_item, None)?;
+            let ast_nodes = item_to_ast_nodes(
+                context,
+                handler,
+                engines,
+                item.clone(),
+                true,
+                prev_item,
+                None,
+            )?;
             root_nodes.extend(ast_nodes);
             prev_item = Some(item);
         }
@@ -105,7 +112,7 @@ pub fn item_to_ast_nodes(
     item: Item,
     is_root: bool,
     prev_item: Option<Annotated<ItemKind>>,
-    override_kind: Option<FunctionDeclarationKind>
+    override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
     if !cfg_eval(context, handler, &attributes, context.experimental)? {
@@ -173,7 +180,14 @@ pub fn item_to_ast_nodes(
         )),
         ItemKind::Fn(item_fn) => {
             let function_declaration_decl_id = item_fn_to_function_declaration(
-                context, handler, engines, item_fn, attributes, None, None, override_kind
+                context,
+                handler,
+                engines,
+                item_fn,
+                attributes,
+                None,
+                None,
+                override_kind,
             )?;
             let function_declaration = engines.pe().get_function(&function_declaration_decl_id);
             error_if_self_param_is_not_allowed(
@@ -473,6 +487,7 @@ fn item_enum_to_enum_declaration(
     Ok(enum_declaration_id)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn item_fn_to_function_declaration(
     context: &mut Context,
     handler: &Handler,
@@ -660,7 +675,7 @@ fn item_trait_to_trait_declaration(
                     attributes,
                     item_trait.generics.clone(),
                     item_trait.where_clause_opt.clone(),
-                    None
+                    None,
                 )?))
             })
             .filter_map_ok(|fn_decl| fn_decl)
@@ -710,7 +725,7 @@ pub fn item_impl_to_declaration(
                     attributes,
                     item_impl.generic_params_opt.clone(),
                     item_impl.where_clause_opt.clone(),
-                    None
+                    None,
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(

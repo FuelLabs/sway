@@ -16,7 +16,6 @@ use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
 use std::collections::VecDeque;
-use sway_ast::Intrinsic;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -407,7 +406,7 @@ pub(crate) fn type_check_method_application(
             ctx: &mut TypeCheckContext,
             return_type: TypeId,
             method_name_expr: Expression,
-            caller: Expression,
+            _caller: Expression,
             arguments: Vec<Expression>,
             typed_argumens: Vec<TypeId>,
             coins_expr: Expression,
@@ -508,7 +507,7 @@ pub(crate) fn type_check_method_application(
             &mut ctx,
             method.return_type.type_id,
             string_slice_literal(&method.name),
-            old_arguments.get(0).cloned().unwrap(),
+            old_arguments.first().cloned().unwrap(),
             old_arguments.into_iter().skip(1).collect(),
             arguments.iter().map(|x| x.1.return_type).collect(),
             coins_expr,

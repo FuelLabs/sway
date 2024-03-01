@@ -1010,8 +1010,7 @@ impl TraitMap {
                 let all = constraints.iter().all(|required| {
                     trait_constraints
                         .iter()
-                        .position(|constraint| constraint.eq(required, engines))
-                        .is_some()
+                        .any(|constraint| constraint.eq(required, engines))
                 });
                 if all {
                     return Ok(());
@@ -1021,8 +1020,7 @@ impl TraitMap {
                 let all = constraints.iter().all(|required| {
                     p.trait_constraints
                         .iter()
-                        .position(|constraint| constraint.eq(required, engines))
-                        .is_some()
+                        .any(|constraint| constraint.eq(required, engines))
                 });
                 if all {
                     return Ok(());

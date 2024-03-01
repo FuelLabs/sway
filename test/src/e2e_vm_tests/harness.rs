@@ -5,7 +5,9 @@ use forc_client::{
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage, PrintOpts};
+use forc_pkg::{
+    manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage, PrintOpts,
+};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;

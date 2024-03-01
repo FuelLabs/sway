@@ -241,7 +241,7 @@ impl<'a> TypeCheckContext<'a> {
         module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
     ) -> T {
-        let experimental = self.experimental.clone();
+        let experimental = self.experimental;
 
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
@@ -249,8 +249,7 @@ impl<'a> TypeCheckContext<'a> {
         let mut submod_ns = self
             .namespace_mut()
             .enter_submodule(mod_name, visibility, module_span);
-        let submod_ctx =
-            TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
+        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
         with_submod_ctx(submod_ctx)
     }
 
@@ -1661,17 +1660,6 @@ impl<'a> TypeCheckContext<'a> {
             .current_items_mut()
             .implemented_traits
             .insert_for_type(engines, type_id);
-    }
-
-    pub(crate) fn with_experimental_flags(self, experimental: Option<ExperimentalFlags>) -> Self {
-        let Some(experimental) = experimental else {
-            return self;
-        };
-
-        Self {
-            experimental,
-            ..self
-        }
     }
 
     pub fn check_type_impls_traits(

@@ -2422,7 +2422,7 @@ fn check_asm_block_validity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Engines;
+    use crate::{Engines, ExperimentalFlags};
     use sway_error::type_error::TypeError;
 
     fn do_type_check(
@@ -2430,9 +2430,10 @@ mod tests {
         engines: &Engines,
         expr: Expression,
         type_annotation: TypeId,
+        experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines)
+        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }
@@ -2459,6 +2460,9 @@ mod tests {
                 ),
                 None,
             ),
+            ExperimentalFlags {
+                new_encoding: false,
+            },
         )
     }
 
@@ -2603,6 +2607,9 @@ mod tests {
                 ),
                 None,
             ),
+            ExperimentalFlags {
+                new_encoding: false,
+            },
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

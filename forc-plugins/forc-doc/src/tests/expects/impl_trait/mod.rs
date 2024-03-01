@@ -10,6 +10,7 @@ use std::{
     collections::HashSet,
     path::{Path, PathBuf},
 };
+use sway_core::ExperimentalFlags;
 
 /// The path to the generated HTML of the type the traits are implemented on.
 const IMPL_FOR: &str = "bar/struct.Bar.html";
@@ -25,7 +26,14 @@ fn test_impl_traits_default() {
         doc_path: Some(doc_dir_name.into()),
         ..Default::default()
     };
-    let (doc_path, _) = compile_html(&command, &get_doc_dir).unwrap();
+    let (doc_path, _) = compile_html(
+        &command,
+        &get_doc_dir,
+        ExperimentalFlags {
+            new_encoding: false,
+        },
+    )
+    .unwrap();
     assert_index_html(
         &doc_path,
         project_name,
@@ -91,7 +99,14 @@ fn test_impl_traits_no_deps() {
         no_deps: true,
         ..Default::default()
     };
-    let (doc_path, _) = compile_html(&command, &get_doc_dir).unwrap();
+    let (doc_path, _) = compile_html(
+        &command,
+        &get_doc_dir,
+        ExperimentalFlags {
+            new_encoding: false,
+        },
+    )
+    .unwrap();
     assert_index_html(
         &doc_path,
         project_name,

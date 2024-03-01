@@ -2619,6 +2619,7 @@ fn update_json_type_declaration(
 /// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependencies and project.
 /// The final item in the returned vector is the project.
+#[allow(clippy::too_many_arguments)]
 pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,

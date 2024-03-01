@@ -1,5 +1,5 @@
 use sway_error::error::CompileError;
-use sway_types::{Named, Span, Spanned};
+use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::*,

@@ -15,8 +15,7 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     value::{Value, ValueDatum},
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, DebugWithContext, Module, Pass, PassMutability, ScopedPass, TypeOption,
-    UnaryOpKind,
+    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;

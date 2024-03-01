@@ -6,10 +6,7 @@ use crate::{
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
-use std::{
-    backtrace::Backtrace,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
