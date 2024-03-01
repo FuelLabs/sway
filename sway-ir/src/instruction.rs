@@ -74,6 +74,7 @@ pub enum InstOp {
     },
     /// A contract call with a list of arguments
     ContractCall {
+        return_type: Type,
         name: String,
         params: Value,
         coins: Value,
@@ -276,7 +277,7 @@ impl InstOp {
             InstOp::Call(function, _) => Some(context.functions[function.0].return_type),
             InstOp::CastPtr(_val, ty) => Some(*ty),
             InstOp::Cmp(..) => Some(Type::get_bool(context)),
-            InstOp::ContractCall { .. } => None,
+            InstOp::ContractCall { return_type, .. } => Some(*return_type),
             InstOp::FuelVm(FuelVmInstruction::Gtf { .. }) => Some(Type::get_uint64(context)),
             InstOp::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::get_unit(context)),
             InstOp::FuelVm(FuelVmInstruction::ReadRegister(_)) => Some(Type::get_uint64(context)),
@@ -359,6 +360,7 @@ impl InstOp {
                 v
             }
             InstOp::ContractCall {
+                return_type: _,
                 name: _,
                 params,
                 coins,
@@ -965,6 +967,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn contract_call(
         self,
+        return_type: Type,
         name: String,
         params: Value,
         coins: Value,    // amount of coins to forward
@@ -974,6 +977,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         insert_instruction!(
             self,
             InstOp::ContractCall {
+                return_type,
                 name,
                 params,
                 coins,

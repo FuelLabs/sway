@@ -260,8 +260,8 @@ impl<'eng> FnCompiler<'eng> {
             // a side effect can be () because it just impacts the type system/namespacing.
             // There should be no new IR generated.
             ty::TyAstNodeContent::SideEffect(_) => Ok(None),
-            ty::TyAstNodeContent::Error(a, _) => {
-                unreachable!("error node found when generating IR: {:?}", a);
+            ty::TyAstNodeContent::Error(_, _) => {
+                unreachable!("error node found when generating IR");
             }
         }
     }
@@ -1300,13 +1300,14 @@ impl<'eng> FnCompiler<'eng> {
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
-                let returned_value = self
-                    .current_block
-                    .append(context)
-                    .contract_call("SOMETHING".into(), params, coins, asset_id, gas)
-                    .add_metadatum(context, span_md_idx);
+                todo!();
+                // let returned_value = self
+                //     .current_block
+                //     .append(context)
+                //     .contract_call("SOMETHING".into(), params, coins, asset_id, gas)
+                //     .add_metadatum(context, span_md_idx);
 
-                Ok(TerminatorValue::new(returned_value, context))
+                // Ok(TerminatorValue::new(returned_value, context))
             }
             Intrinsic::ContractRet => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);
@@ -1750,28 +1751,29 @@ impl<'eng> FnCompiler<'eng> {
         };
 
         // Convert the return type.  If it's a reference type then make it a pointer.
-        // let return_type = convert_resolved_typeid_no_span(
-        //     self.engines.te(),
-        //     self.engines.de(),
-        //     context,
-        //     &ast_return_type,
-        // )?;
+        let return_type = convert_resolved_typeid_no_span(
+            self.engines.te(),
+            self.engines.de(),
+            context,
+            &ast_return_type,
+        )?;
         let ret_is_copy_type = self
             .engines
             .te()
             .get_unaliased(ast_return_type)
             .is_copy_type();
-        // let return_type = if ret_is_copy_type {
-        //     return_type
-        // } else {
-        //     Type::new_ptr(context, return_type)
-        // };
+        let return_type = if ret_is_copy_type {
+            return_type
+        } else {
+            Type::new_ptr(context, return_type)
+        };
 
         // Insert the contract_call instruction
         let call_val = self
             .current_block
             .append(context)
             .contract_call(
+                return_type,
                 ast_name.to_string(),
                 ra_struct_ptr_val,
                 coins,
@@ -2260,7 +2262,6 @@ impl<'eng> FnCompiler<'eng> {
 
         let mutable = matches!(mutability, ty::VariableMutability::Mutable);
         let local_name = self.lexical_map.insert(name.as_str().to_owned());
-
         let local_var = self
             .function
             .new_local_var(context, local_name.clone(), return_type, None, mutable)

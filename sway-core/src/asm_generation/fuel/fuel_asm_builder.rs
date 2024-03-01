@@ -889,16 +889,16 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
 
-        // // now, move the return value of the contract call to the return register.
-        // // TODO validate RETL matches the expected type (this is a comment from the old codegen)
-        // let instr_reg = self.reg_seqr.next();
-        // self.cur_bytecode.push(Op::register_move(
-        //     instr_reg.clone(),
-        //     VirtualRegister::Constant(ConstantRegister::ReturnValue),
-        //     "save call result",
-        //     None,
-        // ));
-        // self.reg_map.insert(*instr_val, instr_reg);
+        // now, move the return value of the contract call to the return register.
+        // TODO validate RETL matches the expected type (this is a comment from the old codegen)
+        let instr_reg = self.reg_seqr.next();
+        self.cur_bytecode.push(Op::register_move(
+            instr_reg.clone(),
+            VirtualRegister::Constant(ConstantRegister::ReturnValue),
+            "save call result",
+            None,
+        ));
+        self.reg_map.insert(*instr_val, instr_reg);
         Ok(())
     }
 

@@ -534,8 +534,6 @@ pub(crate) fn type_check_method_application(
             _ => unreachable!(),
         }
 
-        dbg!(&expr.span);
-
         return Ok(expr);
     }
 

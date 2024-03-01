@@ -437,10 +437,6 @@ fn compile_fn(
     } = ast_fn_decl;
 
     if *is_trait_method_dummy {
-        dbg!(ast_fn_decl);
-        dbg!(engines.help_out(ast_fn_decl.return_type.initial_type_id));
-        dbg!(engines.help_out(ast_fn_decl.return_type.type_id));
-        dbg!(engines.help_out(ast_fn_decl.implementing_for_typeid));
         return Err(vec![CompileError::InternalOwned(
             format!("Method {name} is a trait method dummy and was not properly replaced."),
             span.clone(),
