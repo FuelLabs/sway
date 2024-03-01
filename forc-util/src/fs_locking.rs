@@ -35,12 +35,31 @@ impl PidFileLocking {
     }
 
     /// Checks if the given pid is active
+    #[cfg(not(target = "windows"))]
     fn is_pid_active(pid: usize) -> bool {
-        use sysinfo::{Pid, System};
-        if pid == std::process::id() as usize {
-            return false;
-        }
-        System::new_all().process(Pid::from(pid)).is_some()
+        use std::process::Command;
+        let output = Command::new("ps")
+            .arg("-p")
+            .arg(pid.to_string())
+            .output()
+            .expect("Failed to execute ps command");
+
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        output_str.contains(&format!(" {}", pid))
+    }
+
+    #[cfg(target = "windows")]
+    fn is_pid_active(pid: usize) -> bool {
+        use std::process::Command;
+        let output = Command::new("tasklist")
+            .arg("/FI")
+            .arg(format!("PID eq {}", pid))
+            .output()
+            .expect("Failed to execute tasklist command");
+
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        // Check if the output contains the PID, indicating the process is active
+        output_str.contains(&format!("{}", pid))
     }
 
     /// Removes the lock file if it is not locked or the process that locked it is no longer active
