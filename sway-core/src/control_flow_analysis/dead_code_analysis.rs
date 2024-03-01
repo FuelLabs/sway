@@ -1099,6 +1099,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             contract_call_params,
             selector,
             call_path_typeid,
+            contract_caller,
             ..
         } => {
             let fn_decl = decl_engine.get_function(fn_ref);
@@ -1225,9 +1226,27 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 }
             }
 
-            // we evaluate every one of the function arguments
             let mut current_leaf = vec![fn_entrypoint];
+
+            // Connect contract call to contract caller
+            if let Some(contract_caller) = contract_caller {
+                let span = contract_caller.span.clone();
+                connect_expression(
+                    engines,
+                    &contract_caller.expression,
+                    graph,
+                    &current_leaf,
+                    exit_node,
+                    "arg eval",
+                    tree_type,
+                    span,
+                    options,
+                )?;
+            }
+
+            // we evaluate every one of the function arguments
             for (_name, arg) in arguments {
+                let span = arg.span.clone();
                 current_leaf = connect_expression(
                     engines,
                     &arg.expression,
@@ -1236,7 +1255,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     exit_node,
                     "arg eval",
                     tree_type,
-                    arg.clone().span,
+                    span,
                     options,
                 )?;
             }

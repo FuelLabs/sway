@@ -401,9 +401,10 @@ pub(crate) fn type_check_method_application(
         .zip(args_buf.iter().cloned())
         .collect::<Vec<_>>();
 
-    if method.is_contract_call {
+    if ctx.experimental.new_encoding && method.is_contract_call {
         fn call_contract_call(
             ctx: &mut TypeCheckContext,
+            original_span: Span,
             return_type: TypeId,
             method_name_expr: Expression,
             _caller: Expression,
@@ -466,7 +467,7 @@ pub(crate) fn type_check_method_application(
                         ],
                     },
                 )),
-                span: Span::dummy(),
+                span: original_span,
             }
         }
 
@@ -505,6 +506,7 @@ pub(crate) fn type_check_method_application(
 
         let contract_call = call_contract_call(
             &mut ctx,
+            span,
             method.return_type.type_id,
             string_slice_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
@@ -517,26 +519,36 @@ pub(crate) fn type_check_method_application(
         let mut expr = TyExpression::type_check(handler, ctx.by_ref(), contract_call)?;
 
         // We need to "fix" contract_id here because it was created with zero
-        // given that we only have access to it after type_checking the contract caller
+        // given that we only have it as TyExpression, therefore can only use it after we type_check
+        // `expr``
         match &mut expr.expression {
-            ty::TyExpressionVariant::FunctionApplication { arguments, .. } => {
-                arguments[0].1 = (*selector.unwrap().contract_address).clone()
+            ty::TyExpressionVariant::FunctionApplication {
+                arguments,
+                contract_caller,
+                ..
+            } => {
+                let selector = selector.unwrap();
+                arguments[0].1 = (*selector.contract_address).clone();
+                *contract_caller = Some(selector.contract_caller);
             }
             _ => unreachable!(),
         }
+
+        dbg!(&expr.span);
 
         return Ok(expr);
     }
 
     let mut fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
-        contract_call_params: contract_call_params_map,
         arguments,
         fn_ref: original_decl_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
         deferred_monomorphization: ctx.defer_monomorphization(),
+        contract_call_params: contract_call_params_map,
+        contract_caller: None,
     };
 
     let mut exp = ty::TyExpression {

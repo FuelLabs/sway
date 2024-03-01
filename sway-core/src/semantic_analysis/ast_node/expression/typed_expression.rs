@@ -123,13 +123,14 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
                 call_path,
-                contract_call_params: IndexMap::new(),
                 arguments: args_and_names,
                 fn_ref: decl_ref,
                 selector: None,
                 type_binding: None,
                 call_path_typeid: None,
                 deferred_monomorphization: false,
+                contract_call_params: IndexMap::new(),
+                contract_caller: None,
             },
             return_type: return_type.type_id,
             span,

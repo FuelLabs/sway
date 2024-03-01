@@ -440,6 +440,7 @@ impl<'eng> FnCompiler<'eng> {
                 type_binding: _,
                 call_path_typeid: _,
                 deferred_monomorphization,
+                ..
             } => {
                 if *deferred_monomorphization {
                     return Err(CompileError::Internal("Trying to compile a deferred function application with deferred monomorphization", name.span()));
