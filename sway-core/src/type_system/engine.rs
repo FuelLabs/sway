@@ -241,7 +241,7 @@ impl TypeEngine {
         }
 
         let h = Handler::default();
-        let unifier = Unifier::new(engines, "help_text", unify_kind);
+        let unifier = Unifier::new(engines, help_text, unify_kind);
         unifier.unify(handler, received, expected, span);
 
         match err_override {
