@@ -21,6 +21,7 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
+use std::env::args;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
@@ -31,6 +32,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::language::ty::{TyAstNodeContent, TyExpression, TyExpressionVariant};
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -49,9 +51,10 @@ use sway_core::{
     transform::AttributeKind,
     BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
+use sway_core::{TypeId, TypeInfo};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, SourceId, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
 
@@ -162,6 +165,7 @@ pub struct PkgTestEntry {
     pub pass_condition: TestPassCondition,
     pub span: Span,
     pub file_path: Arc<PathBuf>,
+    pub log_params: Vec<(SourceId, Option<Arc<TypeInfo>>)>,
 }
 
 /// The result of successfully compiling a workspace.
@@ -2011,16 +2015,55 @@ impl PkgTestEntry {
             bail!("Invalid test argument(s) for test: {test_name}.")
         }?;
 
+        /// Given an AST node, checks:
+        /// - it is function,
+        /// - it is a log,
+        ///
+        /// If condition holds, returns type of log's param.
+        fn collect_log_type_from_decl(
+            expr: &TyExpression,
+            log_param_types: &mut Vec<(SourceId, Option<Arc<TypeInfo>>)>,
+            engines: &Engines,
+        ) {
+            if let TyExpressionVariant::FunctionApplication {
+                call_path,
+                arguments,
+                ..
+            } = &expr.expression
+            {
+                let suffix = call_path.suffix.to_string();
+                if suffix == "log" {
+                    let arg_type = arguments
+                        .iter()
+                        .map(|(_, arg_expr)| arg_expr.return_type)
+                        .map(|type_id| engines.te().get(type_id))
+                        .next();
+                    log_param_types.push((expr.span.source_id().cloned().unwrap(), arg_type));
+                }
+            }
+        }
+
+        let mut log_params = Vec::new();
+        for ast_node in test_function_decl.body.contents.iter() {
+            if let TyAstNodeContent::Expression(expr) = &ast_node.content {
+                // We found an expression node, try to extract the arguments if this is an assert.
+                collect_log_type_from_decl(expr, &mut log_params, engines);
+            }
+        }
+
         let file_path = Arc::new(
             engines.se().get_path(
                 span.source_id()
                     .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?,
             ),
         );
+
+        println!("{log_params:?}");
         Ok(Self {
             pass_condition,
             span,
             file_path,
+            log_params,
         })
     }
 }
