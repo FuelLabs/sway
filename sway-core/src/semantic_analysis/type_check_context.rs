@@ -1269,14 +1269,12 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         src: &Path,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .module
-            .star_import(handler, engines, src, &mod_path, is_absolute)
+            .star_import(handler, engines, src, &mod_path)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -1285,17 +1283,15 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &Path,
         enum_name: &Ident,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.variant_star_import(
+        self.namespace_mut().root.variant_star_import(
             handler,
             engines,
             src,
             &mod_path,
             enum_name,
-            is_absolute,
         )
     }
 
@@ -1305,17 +1301,15 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &Path,
         alias: Option<Ident>,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.self_import(
+        self.namespace_mut().root.self_import(
             handler,
             engines,
             src,
             &mod_path,
             alias,
-            is_absolute,
         )
     }
 
@@ -1326,18 +1320,16 @@ impl<'a> TypeCheckContext<'a> {
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.item_import(
+        self.namespace_mut().root.item_import(
             handler,
             engines,
             src,
             item,
             &mod_path,
             alias,
-            is_absolute,
         )
     }
 
@@ -1350,11 +1342,10 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.variant_import(
+        self.namespace_mut().root.variant_import(
             handler,
             engines,
             src,
@@ -1362,7 +1353,6 @@ impl<'a> TypeCheckContext<'a> {
             variant_name,
             &mod_path,
             alias,
-            is_absolute,
         )
     }
 

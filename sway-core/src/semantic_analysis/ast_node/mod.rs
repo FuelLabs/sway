@@ -50,7 +50,7 @@ impl ty::TyAstNode {
                             // try a standard starimport first
                             let star_import_handler = Handler::default();
                             let import =
-                                ctx.star_import(&star_import_handler, &path, a.is_absolute);
+                                ctx.star_import(&star_import_handler, &path);
                             if import.is_ok() {
                                 handler.append(star_import_handler);
                                 import
@@ -62,7 +62,6 @@ impl ty::TyAstNode {
                                         &variant_import_handler,
                                         path,
                                         enum_name,
-                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         handler.append(variant_import_handler);
@@ -78,7 +77,7 @@ impl ty::TyAstNode {
                             }
                         }
                         ImportType::SelfImport(_) => {
-                            ctx.self_import(handler, &path, a.alias.clone(), a.is_absolute)
+                            ctx.self_import(handler, &path, a.alias.clone())
                         }
                         ImportType::Item(ref s) => {
                             // try a standard item import first
@@ -88,7 +87,6 @@ impl ty::TyAstNode {
                                 &path,
                                 s,
                                 a.alias.clone(),
-                                a.is_absolute,
                             );
 
                             if import.is_ok() {
@@ -104,7 +102,6 @@ impl ty::TyAstNode {
                                         enum_name,
                                         s,
                                         a.alias.clone(),
-                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         handler.append(variant_import_handler);

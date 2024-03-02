@@ -71,7 +71,6 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
                 Ident::new_no_span("core".into()),
                 Ident::new_no_span("codec".into()),
             ],
-            true,
         );
 
         !handler.has_errors()
@@ -585,7 +584,6 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
                 Ident::new_no_span("core".into()),
                 Ident::new_no_span("codec".into()),
             ],
-            true,
         );
 
         if import_handler.has_errors() {
