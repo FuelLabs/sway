@@ -21,7 +21,6 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
-use std::env::args;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
@@ -34,6 +33,7 @@ use std::{
 };
 use sway_core::language::ty::{TyAstNodeContent, TyExpression, TyExpressionVariant};
 pub use sway_core::Programs;
+use sway_core::TypeInfo;
 use sway_core::{
     abi_generation::{
         evm_abi,
@@ -51,7 +51,6 @@ use sway_core::{
     transform::AttributeKind,
     BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
-use sway_core::{TypeId, TypeInfo};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, SourceId, Span, Spanned};
@@ -2797,13 +2796,11 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
 mod test {
     use super::*;
     use regex::Regex;
+    use sway_types::integer_bits::IntegerBits;
 
-    fn setup_build_plan() -> BuildPlan {
+    fn setup_build_plan(path: &str) -> BuildPlan {
         let current_dir = env!("CARGO_MANIFEST_DIR");
-        let manifest_dir = PathBuf::from(current_dir)
-            .parent()
-            .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
+        let manifest_dir = PathBuf::from(current_dir).parent().unwrap().join(path);
         let manifest_file = ManifestFile::from_dir(manifest_dir).unwrap();
         let member_manifests = manifest_file.member_manifests().unwrap();
         let lock_path = manifest_file.lock_path().unwrap();
@@ -2818,8 +2815,53 @@ mod test {
     }
 
     #[test]
+    fn test_collect_test_entry_logs() {
+        let current_dir = env!("CARGO_MANIFEST_DIR");
+        let manifest_dir = format!("{current_dir}/tests/test_pkg_entry");
+        let build_opts = BuildOpts {
+            pkg: PkgOpts {
+                path: Some(manifest_dir),
+                ..Default::default()
+            },
+            build_target: BuildTarget::Fuel,
+            tests: true,
+            experimental: ExperimentalFlags { new_encoding: true },
+            ..Default::default()
+        };
+        let built_pkgs = build_with_options(build_opts).unwrap();
+        let built_pkg = built_pkgs.expect_pkg().unwrap();
+        let test_entry = built_pkg
+            .bytecode
+            .entries
+            .iter()
+            .find_map(|entry| {
+                if let PkgEntryKind::Test(test_entry) = &entry.kind {
+                    Some(test_entry)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        let log_params: Vec<_> = test_entry
+            .log_params
+            .iter()
+            .map(|(_, type_info)| type_info)
+            .collect();
+        assert_eq!(log_params.len(), 1);
+        let type_info = log_params[0].clone().unwrap();
+
+        assert!(matches!(
+            type_info.as_ref(),
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+        ))
+    }
+
+    #[test]
     fn test_root_pkg_order() {
-        let build_plan = setup_build_plan();
+        let build_plan = setup_build_plan(
+            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building",
+        );
         let graph = build_plan.graph();
         let order: Vec<String> = build_plan
             .member_nodes()
@@ -2830,7 +2872,9 @@ mod test {
 
     #[test]
     fn test_visualize_with_url_prefix() {
-        let build_plan = setup_build_plan();
+        let build_plan = setup_build_plan(
+            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building",
+        );
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
     0 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
@@ -2846,7 +2890,9 @@ mod test {
 
     #[test]
     fn test_visualize_without_prefix() {
-        let build_plan = setup_build_plan();
+        let build_plan = setup_build_plan(
+            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building",
+        );
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
     0 [ label = "test_contract" shape = box ]

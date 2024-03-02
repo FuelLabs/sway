@@ -1,0 +1,13 @@
+[[package]]
+name = 'core'
+source = 'path+from-root-B2871353A775FFA4'
+
+[[package]]
+name = 'std'
+source = 'path+from-root-B2871353A775FFA4'
+dependencies = ['core']
+
+[[package]]
+name = 'test_library'
+source = 'member'
+dependencies = ['std']
