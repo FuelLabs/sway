@@ -364,7 +364,7 @@ impl ty::TyExpression {
             ExpressionKind::Break => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Break,
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
+                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
                     span,
                 };
                 Ok(expr)
@@ -372,7 +372,7 @@ impl ty::TyExpression {
             ExpressionKind::Continue => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Continue,
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
+                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
                     span,
                 };
                 Ok(expr)
@@ -408,8 +408,7 @@ impl ty::TyExpression {
                     .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
                 let typed_expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Return(Box::new(expr)),
-                    return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
-                    // FIXME: This should be Yes?
+                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
                     span,
                 };
                 Ok(typed_expr)
@@ -1758,20 +1757,20 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let unknown_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+            let never_type = type_engine.insert(engines, TypeInfo::Never, None);
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
-                    elem_type: unknown_type,
+                    elem_type: never_type,
                     contents: Vec::new(),
                 },
                 return_type: type_engine.insert(
                     engines,
                     TypeInfo::Array(
                         TypeArgument {
-                            type_id: unknown_type,
+                            type_id: never_type,
                             span: Span::dummy(),
                             call_path_tree: None,
-                            initial_type_id: unknown_type,
+                            initial_type_id: never_type,
                         },
                         Length::new(0, Span::dummy()),
                     ),
@@ -1781,7 +1780,8 @@ impl ty::TyExpression {
             });
         };
 
-        // start each element with the known array element type
+        // start each element with the known array element type, or Unknown if it is to be inferred
+        // from the elements
         let initial_type = match &*ctx.engines().te().get(ctx.type_annotation()) {
             TypeInfo::Array(element_type, _) => {
                 (*ctx.engines().te().get(element_type.type_id)).clone()
