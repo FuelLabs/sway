@@ -1662,7 +1662,6 @@ pub fn dependency_namespace(
         engines,
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
-        true,
     );
 
     if has_std_dep(graph, node) {
@@ -1671,7 +1670,6 @@ pub fn dependency_namespace(
             engines,
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
-            true,
         );
     }
 

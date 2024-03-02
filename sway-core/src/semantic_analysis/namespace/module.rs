@@ -593,8 +593,8 @@ impl Module {
             .get(symbol.as_str())
             .unwrap_or(symbol);
         match module.current_items().use_synonyms.get(symbol) {
-            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl.clone()),
-            Some((src_path, _, _, _)) if mod_path != src_path => {
+            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => Ok(decl.clone()),
+            Some((src_path, _, _)) if mod_path != src_path => {
                 // If the symbol is imported, before resolving to it,
                 // we need to check if there is a local symbol withing the module with
                 // the same name, and if yes resolve to the local symbol, because it

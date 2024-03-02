@@ -74,7 +74,6 @@ impl Root {
                     src.to_vec(),
                     GlobImport::Yes,
                     symbol_and_decl.1,
-                    true,
                 ),
             );
         }
@@ -159,14 +158,14 @@ impl Root {
                 // no matter what, import it this way though.
                 let dst_mod = &mut self.module[dst];
                 let add_synonym = |name| {
-                    if let Some((_, GlobImport::No, _, _)) =
+                    if let Some((_, GlobImport::No, _)) =
                         dst_mod.current_items().use_synonyms.get(name)
                     {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
                     dst_mod.current_items_mut().use_synonyms.insert(   // TODO: No difference made between imported and declared items
                         name.clone(),
-                        (src.to_vec(), GlobImport::No, decl, true),
+                        (src.to_vec(), GlobImport::No, decl),
                     );
                 };
                 match alias {
@@ -244,7 +243,7 @@ impl Root {
                         // import it this way.
                         let dst_mod = &mut self.module[dst];
                         let mut add_synonym = |name| {
-                            if let Some((_, GlobImport::No, _, _)) =
+                            if let Some((_, GlobImport::No, _)) =
                                 dst_mod.current_items().use_synonyms.get(name)
                             {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
@@ -261,7 +260,6 @@ impl Root {
                                         variant_name: variant_name.clone(),
                                         variant_decl_span: variant_decl.span.clone(),
                                     }),
-                                    true,
                                 ),
                             );
                         };
@@ -352,7 +350,6 @@ impl Root {
                                     variant_name: variant_name.clone(),
                                     variant_decl_span: variant_decl.span.clone(),
                                 }),
-				true
                             ),
                         );
                     }
@@ -386,7 +383,6 @@ impl Root {
         engines: &Engines,
         src: &Path,
         dst: &Path,
-        is_src_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src)?;
 
@@ -400,7 +396,7 @@ impl Root {
             .current_items()
             .use_synonyms
             .iter()
-            .map(|(symbol, (_, _, decl, _))| (symbol.clone(), decl.clone()))
+            .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
@@ -409,7 +405,7 @@ impl Root {
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, _, decl, _)) in use_synonyms {
+        for (symbol, (mod_path, _, decl)) in use_synonyms {
             let mut is_external = false;
             let submodule = src_mod.submodule(&[mod_path[0].clone()]);
             if let Some(submodule) = submodule {
@@ -436,7 +432,7 @@ impl Root {
             dst_mod
                 .current_items_mut()
                 .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl, is_src_absolute));   // TODO: No difference made between imported and declared items
+                .insert(symbol, (path, GlobImport::Yes, decl));   // TODO: No difference made between imported and declared items
         };
 
         for (symbol, decl) in symbols_and_decls {

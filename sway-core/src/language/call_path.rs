@@ -320,7 +320,7 @@ impl CallPath {
                 .get(&self.suffix)
             {
                 synonym_prefixes = use_synonym.0.clone();
-                is_absolute = use_synonym.3;
+                is_absolute = true;
                 let submodule = namespace.module().submodule(&[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
                     is_external = submodule.is_external;
