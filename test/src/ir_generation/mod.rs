@@ -230,8 +230,9 @@ pub(super) async fn run(
                 // standard libraries. The namespace, thus its root module, must have the
                 // name set.
                 const PACKAGE_NAME: &str = "test_lib";
-                let mut initial_namespace = core_lib.clone();
-                initial_namespace.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
+		let mut clone_core_lib = core_lib.clone();
+                clone_core_lib.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
+                let initial_namespace = namespace::Root::from(core_lib.clone());
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,

@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    lexical_scope::{GlobImport, Items, LexicalScope, SymbolMap},
+    lexical_scope::{Items, LexicalScope, SymbolMap},
     root::Root,
     LexicalScopeId, ModuleName, Path, PathBuf,
 };
@@ -22,7 +22,6 @@ use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
 use sway_types::{span::Span, Spanned};
-use sway_utils::iter_prefixes;
 
 /// A single `Module` within a Sway project.
 ///
@@ -154,7 +153,8 @@ impl Module {
             content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
             span: const_item_span.clone(),
         };
-        let mut ns = Namespace::init_root(Default::default());
+	let root = Root::from(Module::default());
+        let mut ns = Namespace::init_root(root);
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
         ns.root.module.name = ns_name;
         ns.root.module.is_external = true;
@@ -278,101 +278,6 @@ impl Module {
     pub fn pop_lexical_scope(&mut self) {
         let parent_scope_id = self.current_lexical_scope().parent;
         self.current_lexical_scope_id = parent_scope_id.unwrap_or(0);
-    }
-
-    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
-    /// `dst` module.
-    ///
-    /// This is used when an import path contains an asterisk.
-    ///
-    /// Paths are assumed to be relative to `self`.
-    pub fn star_import_with_reexports(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        src: &Path,
-        dst: &Path,
-        is_src_absolute: bool,
-    ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
-
-        let decl_engine = engines.de();
-
-        let src_mod = self.check_submodule(handler, src)?;
-
-        let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let use_synonyms = src_mod.current_items().use_synonyms.clone();
-        let mut symbols_and_decls = src_mod
-            .current_items()
-            .use_synonyms
-            .iter()
-            .map(|(symbol, (_, _, decl, _))| (symbol.clone(), decl.clone()))
-            .collect::<Vec<_>>();
-        for (symbol, decl) in src_mod.current_items().symbols.iter() {
-            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-                symbols_and_decls.push((symbol.clone(), decl.clone()));
-            }
-        }
-
-        let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, _, decl, _)) in use_synonyms {
-            let mut is_external = false;
-            let submodule = src_mod.submodule(&[mod_path[0].clone()]);
-            if let Some(submodule) = submodule {
-                is_external = submodule.is_external
-            };
-
-            let mut path = src[..1].to_vec();
-            if is_external {
-                path = mod_path;
-            } else {
-                path.extend(mod_path);
-            }
-
-            symbols_paths_and_decls.push((symbol, path, decl));
-        }
-
-        let dst_mod = &mut self[dst];
-        dst_mod
-            .current_items_mut()
-            .implemented_traits
-            .extend(implemented_traits, engines);
-
-        let mut try_add = |symbol, path, decl: ty::TyDecl| {
-            dst_mod
-                .current_items_mut()
-                .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl, is_src_absolute));
-        };
-
-        for (symbol, decl) in symbols_and_decls {
-            try_add(symbol, src.to_vec(), decl);
-        }
-
-        for (symbol, path, decl) in symbols_paths_and_decls {
-            try_add(symbol, path, decl);
-        }
-
-        Ok(())
-    }
-
-    fn check_module_privacy(&self, handler: &Handler, src: &Path) -> Result<(), ErrorEmitted> {
-        let dst = &self.mod_path;
-        // you are always allowed to access your ancestor's symbols
-        if !is_ancestor(src, dst) {
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(src).skip(1) {
-                let module = self.check_submodule(handler, prefix)?;
-                if module.visibility.is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    handler.emit_err(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
@@ -749,8 +654,4 @@ fn module_not_found(path: &[Ident]) -> CompileError {
             .collect::<Vec<_>>()
             .join("::"),
     }
-}
-
-fn is_ancestor(src: &Path, dst: &Path) -> bool {
-    dst.len() >= src.len() && src.iter().zip(dst).all(|(src, dst)| src == dst)
 }

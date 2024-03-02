@@ -374,6 +374,82 @@ impl Root {
         Ok(())
     }
 
+    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
+    /// `dst` module.
+    ///
+    /// This is used when an import path contains an asterisk.
+    ///
+    /// Paths are assumed to be absolute.
+    pub fn star_import_with_reexports(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &Path,
+        dst: &Path,
+        is_src_absolute: bool,
+    ) -> Result<(), ErrorEmitted> {
+        self.check_module_privacy(handler, src)?;
+
+        let decl_engine = engines.de();
+
+        let src_mod = self.module.check_submodule(handler, src)?;
+
+        let implemented_traits = src_mod.current_items().implemented_traits.clone();
+        let use_synonyms = src_mod.current_items().use_synonyms.clone();
+        let mut symbols_and_decls = src_mod
+            .current_items()
+            .use_synonyms
+            .iter()
+            .map(|(symbol, (_, _, decl, _))| (symbol.clone(), decl.clone()))
+            .collect::<Vec<_>>();
+        for (symbol, decl) in src_mod.current_items().symbols.iter() {
+            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
+                symbols_and_decls.push((symbol.clone(), decl.clone()));
+            }
+        }
+
+        let mut symbols_paths_and_decls = vec![];
+        for (symbol, (mod_path, _, decl, _)) in use_synonyms {
+            let mut is_external = false;
+            let submodule = src_mod.submodule(&[mod_path[0].clone()]);
+            if let Some(submodule) = submodule {
+                is_external = submodule.is_external
+            };
+
+            let mut path = src[..1].to_vec();
+            if is_external {
+                path = mod_path;
+            } else {
+                path.extend(mod_path);
+            }
+
+            symbols_paths_and_decls.push((symbol, path, decl));
+        }
+
+        let dst_mod = &mut self.module[dst];
+        dst_mod
+            .current_items_mut()
+            .implemented_traits
+            .extend(implemented_traits, engines);   // TODO: No difference made between imported and declared items
+
+        let mut try_add = |symbol, path, decl: ty::TyDecl| {
+            dst_mod
+                .current_items_mut()
+                .use_synonyms
+                .insert(symbol, (path, GlobImport::Yes, decl, is_src_absolute));   // TODO: No difference made between imported and declared items
+        };
+
+        for (symbol, decl) in symbols_and_decls {
+            try_add(symbol, src.to_vec(), decl);
+        }
+
+        for (symbol, path, decl) in symbols_paths_and_decls {
+            try_add(symbol, path, decl);
+        }
+
+        Ok(())
+    }
+
     fn check_module_privacy(&self, handler: &Handler, src: &Path) -> Result<(), ErrorEmitted> {
         let dst = &self.module.mod_path;
         // you are always allowed to access your ancestor's symbols
