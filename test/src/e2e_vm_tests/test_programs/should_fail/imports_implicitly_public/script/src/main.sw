@@ -13,6 +13,7 @@ use std::hash::core::ops::Add;
 use internal_mod::internal_submod::std::hash::core::ops::Subtract;
 use external_mod::external_submod::std::core::ops::Multiply;
 use internal_mod::internal_submod::external_mod::external_submod::std::core::ops::Divide;
+use internal_mod::internal_submod::external_mod::external_submod::ExtSubmodEnum;
 
 fn main() {
     assert(internal_mod_foo() +
