@@ -789,31 +789,34 @@ impl ReplaceDecls for TyExpressionVariant {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         handler.scope(|handler| {
             use TyExpressionVariant::*;
             match self {
-                Literal(..) => (),
+                Literal(..) => Ok(false),
                 FunctionApplication {
                     ref mut fn_ref,
                     ref mut arguments,
                     ..
                 } => {
-                    fn_ref.replace_decls(decl_mapping, handler, ctx)?;
+                    let mut has_changes = false;
 
-                    let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
-                        decl_mapping,
-                        handler,
-                        ctx,
-                    )?;
-                    fn_ref.replace_id(*new_decl_ref.id());
+                    // TODO do we need this call?
+                    // The next call seems to make this one redundant
+                    has_changes |= fn_ref.replace_decls(decl_mapping, handler, ctx)?;
+
+                    if let Some(new_decl_ref) = fn_ref
+                        .clone()
+                        .replace_decls_and_insert_new_with_parent(decl_mapping, handler, ctx)?
+                    {
+                        fn_ref.replace_id(*new_decl_ref.id());
+                        has_changes = true;
+                    };
+
                     for (_, arg) in arguments.iter_mut() {
-                        match arg.replace_decls(decl_mapping, handler, ctx) {
-                            Ok(res) => res,
-                            Err(_) => {
-                                continue;
-                            }
-                        };
+                        if let Ok(r) = arg.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
                     }
 
                     let decl_engine = ctx.engines().de();
@@ -829,61 +832,96 @@ impl ReplaceDecls for TyExpressionVariant {
                             method.name.as_str(),
                             &method.name.span(),
                         )?;
-                    method.replace_decls(&inner_decl_mapping, handler, ctx)?;
-                    decl_engine.replace(*new_decl_ref.id(), method);
+
+                    if method.replace_decls(&inner_decl_mapping, handler, ctx)? {
+                        decl_engine.replace(*fn_ref.id(), method);
+                        has_changes = true;
+                    }
+
+                    Ok(has_changes)
                 }
                 LazyOperator { lhs, rhs, .. } => {
-                    (*lhs).replace_decls(decl_mapping, handler, ctx)?;
-                    (*rhs).replace_decls(decl_mapping, handler, ctx)?;
+                    let mut has_changes = (*lhs).replace_decls(decl_mapping, handler, ctx)?;
+                    has_changes |= (*rhs).replace_decls(decl_mapping, handler, ctx)?;
+                    Ok(has_changes)
                 }
                 ConstantExpression { const_decl, .. } => {
-                    const_decl.replace_decls(decl_mapping, handler, ctx)?
+                    const_decl.replace_decls(decl_mapping, handler, ctx)
                 }
-                VariableExpression { .. } => (),
-                Tuple { fields } => fields.iter_mut().for_each(|x| {
-                    x.replace_decls(decl_mapping, handler, ctx).ok();
-                }),
+                VariableExpression { .. } => Ok(false),
+                Tuple { fields } => {
+                    let mut has_changes = false;
+                    for item in fields.iter_mut() {
+                        if let Ok(r) = item.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
+                }
                 Array {
                     elem_type: _,
                     contents,
-                } => contents.iter_mut().for_each(|x| {
-                    x.replace_decls(decl_mapping, handler, ctx).ok();
-                }),
+                } => {
+                    let mut has_changes = false;
+                    for expr in contents.iter_mut() {
+                        if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
+                }
                 ArrayIndex { prefix, index } => {
-                    (*prefix).replace_decls(decl_mapping, handler, ctx).ok();
-                    (*index).replace_decls(decl_mapping, handler, ctx).ok();
+                    let mut has_changes = false;
+                    if let Ok(r) = (*prefix).replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    if let Ok(r) = (*index).replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    Ok(has_changes)
                 }
                 StructExpression {
                     struct_ref: _,
                     fields,
                     instantiation_span: _,
                     call_path_binding: _,
-                } => fields.iter_mut().for_each(|x| {
-                    x.replace_decls(decl_mapping, handler, ctx).ok();
-                }),
-                CodeBlock(block) => block.replace_decls(decl_mapping, handler, ctx)?,
-                FunctionParameter => (),
-                MatchExp { desugared, .. } => {
-                    desugared.replace_decls(decl_mapping, handler, ctx)?
+                } => {
+                    let mut has_changes = false;
+                    for field in fields.iter_mut() {
+                        if let Ok(r) = field.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
                 }
+                CodeBlock(block) => block.replace_decls(decl_mapping, handler, ctx),
+                FunctionParameter => Ok(false),
+                MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, handler, ctx),
                 IfExp {
                     condition,
                     then,
                     r#else,
                 } => {
-                    condition.replace_decls(decl_mapping, handler, ctx).ok();
-                    then.replace_decls(decl_mapping, handler, ctx).ok();
-                    if let Some(ref mut r#else) = r#else {
-                        r#else.replace_decls(decl_mapping, handler, ctx).ok();
+                    let mut has_changes = false;
+                    if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
                     }
+                    if let Ok(r) = then.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    if let Some(r) = r#else
+                        .as_mut()
+                        .and_then(|expr| expr.replace_decls(decl_mapping, handler, ctx).ok())
+                    {
+                        has_changes |= r;
+                    }
+                    Ok(has_changes)
                 }
-                AsmExpression { .. } => {}
+                AsmExpression { .. } => Ok(false),
                 StructFieldAccess { prefix, .. } => {
-                    prefix.replace_decls(decl_mapping, handler, ctx)?
+                    prefix.replace_decls(decl_mapping, handler, ctx)
                 }
-                TupleElemAccess { prefix, .. } => {
-                    prefix.replace_decls(decl_mapping, handler, ctx)?
-                }
+                TupleElemAccess { prefix, .. } => prefix.replace_decls(decl_mapping, handler, ctx),
                 EnumInstantiation {
                     enum_ref: _,
                     contents,
@@ -892,41 +930,51 @@ impl ReplaceDecls for TyExpressionVariant {
                     // TODO: replace enum decl
                     //enum_decl.replace_decls(decl_mapping);
                     if let Some(ref mut contents) = contents {
-                        contents.replace_decls(decl_mapping, handler, ctx)?;
-                    };
+                        contents.replace_decls(decl_mapping, handler, ctx)
+                    } else {
+                        Ok(false)
+                    }
                 }
-                AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx)?,
-                StorageAccess { .. } => (),
+                AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx),
+                StorageAccess { .. } => Ok(false),
                 IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) => {
-                    arguments.iter_mut().for_each(|x| {
-                        x.replace_decls(decl_mapping, handler, ctx).ok();
-                    })
+                    let mut has_changes = false;
+                    for expr in arguments.iter_mut() {
+                        if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
                 }
-                EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx)?,
-                UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx)?,
-                AbiName(_) => (),
+                EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx),
+                UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx),
+                AbiName(_) => Ok(false),
                 WhileLoop {
                     ref mut condition,
                     ref mut body,
                 } => {
-                    condition.replace_decls(decl_mapping, handler, ctx).ok();
-                    body.replace_decls(decl_mapping, handler, ctx)?;
+                    let mut has_changes = false;
+                    if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    if let Ok(r) = body.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    Ok(has_changes)
                 }
                 ForLoop { ref mut desugared } => {
-                    desugared.replace_decls(decl_mapping, handler, ctx).ok();
+                    desugared.replace_decls(decl_mapping, handler, ctx)
                 }
-                Break => (),
-                Continue => (),
+                Break => Ok(false),
+                Continue => Ok(false),
                 Reassignment(reassignment) => {
-                    reassignment.replace_decls(decl_mapping, handler, ctx)?
+                    reassignment.replace_decls(decl_mapping, handler, ctx)
                 }
                 ImplicitReturn(expr) | Return(expr) => {
-                    expr.replace_decls(decl_mapping, handler, ctx)?
+                    expr.replace_decls(decl_mapping, handler, ctx)
                 }
-                Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
+                Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx),
             }
-
-            Ok(())
         })
     }
 }

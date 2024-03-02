@@ -14,19 +14,19 @@ pub trait ReplaceDecls {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted>;
+    ) -> Result<bool, ErrorEmitted>;
 
     fn replace_decls(
         &mut self,
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         if !decl_mapping.is_empty() {
-            self.replace_decls_inner(decl_mapping, handler, ctx)?;
+            self.replace_decls_inner(decl_mapping, handler, ctx)
+        } else {
+            Ok(false)
         }
-
-        Ok(())
     }
 }
 
