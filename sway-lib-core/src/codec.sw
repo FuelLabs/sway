@@ -61,9 +61,10 @@ impl BufferReader {
             fp: raw_ptr
         };
         let ptr = ptr.add::<u64>(FIRST_PARAMETER_OFFSET);
+        let ptr = ptr.read::<u64>();
 
         BufferReader {
-            ptr,
+            ptr: asm(ptr: ptr) { ptr: raw_ptr },
             pos: 0,
         }
     }
@@ -75,9 +76,10 @@ impl BufferReader {
             fp: raw_ptr
         };
         let ptr = ptr.add::<u64>(SECOND_PARAMETER_OFFSET);
+        let ptr = ptr.read::<u64>();
 
         BufferReader {
-            ptr,
+            ptr: asm(ptr: ptr) { ptr: raw_ptr },
             pos: 0,
         }
     }

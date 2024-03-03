@@ -1300,14 +1300,16 @@ impl<'eng> FnCompiler<'eng> {
 
                 let span_md_idx = md_mgr.span_to_md(context, &span);
 
-                todo!();
-                // let returned_value = self
-                //     .current_block
-                //     .append(context)
-                //     .contract_call("SOMETHING".into(), params, coins, asset_id, gas)
-                //     .add_metadatum(context, span_md_idx);
+                let return_type = Type::get_unit(context);
+                let return_type = Type::new_ptr(context, return_type);
 
-                // Ok(TerminatorValue::new(returned_value, context))
+                let returned_value = self
+                    .current_block
+                    .append(context)
+                    .contract_call(return_type, "unit".into(), params, coins, asset_id, gas)
+                    .add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(returned_value, context))
             }
             Intrinsic::ContractRet => {
                 let span_md_idx = md_mgr.span_to_md(context, &span);

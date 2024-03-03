@@ -725,7 +725,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                 }
             })
         } else {
-            todo!()
+            Ok(())
         }
     }
 

@@ -33,8 +33,6 @@ pub(crate) fn type_check_method_application(
     arguments: Vec<Expression>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
-    // let aaaa = arguments.clone();
-
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();

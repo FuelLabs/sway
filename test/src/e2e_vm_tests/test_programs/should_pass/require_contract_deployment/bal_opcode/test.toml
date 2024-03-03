@@ -2,3 +2,4 @@ category = "run_on_node"
 expected_result = { action = "result", value = 1 }
 contracts = ["should_pass/test_contracts/balance_test_contract"]
 unsupported_profiles = ["debug"]
+extra_run_with_experimental_new_encoding = true

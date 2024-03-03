@@ -3,11 +3,18 @@ script;
 use increment_abi::Incrementor;
 
 fn main() -> bool {
-    let the_abi = abi(Incrementor, 0xa1aa9555466ef3c61914e5426973e2257cb4dcd8311ffbbe0e8850a9742f312d);
-    let _ = the_abi.increment(5);
-    let _ = the_abi.increment(5);
+    let the_abi = abi(Incrementor, 0x44c604b49090f343f26f1c27e7433aecf49193165db564a0aa21c361c6d64000);
+
+    let initial = the_abi.get();
+
+    let result = the_abi.increment(5);
+    assert(result == initial + 5);
+
+    let result = the_abi.increment(5);
+    assert(result == initial + 10);
+
     let result = the_abi.get();
-    assert(result == 10);
+    assert(result == initial + 10);
     log(result);
 
     true

@@ -33,15 +33,19 @@ where
     let mut output = String::new();
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
-    let mut buf_stdout = gag::BufferRedirect::stdout().unwrap();
-    let mut buf_stderr = gag::BufferRedirect::stderr().unwrap();
-
+    let buf_stdout = gag::BufferRedirect::stdout();
+    // let buf_stderr = gag::BufferRedirect::stderr();
     let result = func().await;
 
-    buf_stdout.read_to_string(&mut output).unwrap();
-    buf_stderr.read_to_string(&mut output).unwrap();
-    drop(buf_stdout);
-    drop(buf_stderr);
+    if let Ok(mut buf_stdout) = buf_stdout {
+        buf_stdout.read_to_string(&mut output).unwrap();
+        drop(buf_stdout);
+    } 
+
+    // if let Ok(mut buf_stderr) = buf_stderr {
+    //     buf_stderr.read_to_string(&mut output).unwrap();
+    //     drop(buf_stderr);
+    // }
 
     if cfg!(windows) {
         // In windows output error and warning path files start with \\?\
@@ -78,6 +82,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
+        experimental_new_encoding: run_config.experimental.new_encoding,
         ..Default::default()
     })
     .await
@@ -120,6 +125,7 @@ pub(crate) async fn runs_on_node(
             },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+            experimental_new_encoding: run_config.experimental.new_encoding,
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {

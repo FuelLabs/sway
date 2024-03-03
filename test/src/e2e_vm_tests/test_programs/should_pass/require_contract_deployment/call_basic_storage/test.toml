@@ -2,3 +2,4 @@ category = "run_on_node"
 expected_result = { action = "result", value = 4242 }
 contracts = ["should_pass/test_contracts/basic_storage"]
 unsupported_profiles = ["debug"]
+extra_run_with_experimental_new_encoding = true

@@ -3,3 +3,4 @@ expected_result = { action = "result", value = 1 }
 contracts = ["should_pass/test_contracts/context_testing_contract"]
 unsupported_profiles = ["debug"]
 expected_warnings = 1
+extra_run_with_experimental_new_encoding = true
