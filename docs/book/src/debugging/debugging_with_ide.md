@@ -5,9 +5,10 @@ The `forc debug` plugin also enables line-by-line debugging of Sway unit tests i
 ## Installation
 
 1. Install the Sway VSCode extension from the [marketplace](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin).
-2. Ensure you have the forc-debug binary installed. `which forc-debug`. 
+2. Ensure you have the forc-debug binary installed. `which forc-debug`.
 It can be installed with `fuelup component add forc-debug`.
 3. Create a `.vscode/launch.json` file with the following contents:
+
 ```json
 {
     "version": "0.2.0",
@@ -56,6 +57,6 @@ fn test_multi_contract_calls() {
 
 Within the sway file open in VSCode, you can set breakpoints on lines within the test or functions that it calls, and click Run -> Start Debugging to begin debugging the unit test.
 
-This will build the sway project and run it in debug mode. The debugger will stop the VM execution when a breakpoint is hit. 
+This will build the sway project and run it in debug mode. The debugger will stop the VM execution when a breakpoint is hit.
 
 The debug panel will show VM registers under the Variables tab, as well as the current VM opcode where execution is suspended. You can continue execution, or use the Step Over function to step forward, instruction by instruction.
