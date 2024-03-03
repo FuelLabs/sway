@@ -185,7 +185,7 @@ impl Token {
 /// This type is used as the key in the [TokenMap]. It's constructed during AST traversal
 /// where we compute the [Range] of the token and the convert [SourceId]'s to [PathBuf]'s.
 /// Although this introduces a small amount of overhead while traversing, precomputing this
-/// greatly speeds up performace in all other areas of the language server.
+/// greatly speeds up performance in all other areas of the language server.
 ///
 /// [TokenMap]: crate::core::token_map::TokenMap
 /// [SourceId]: sway_types::SourceId

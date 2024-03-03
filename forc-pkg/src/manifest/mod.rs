@@ -437,7 +437,7 @@ impl PackageManifestFile {
         pkg_dir.pop();
         if let Some(nested_package) = find_nested_manifest_dir(&pkg_dir) {
             // remove file name from nested_package_manifest
-            bail!("Nested packages are not supported, please consider seperating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
+            bail!("Nested packages are not supported, please consider separating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
         }
         Ok(())
     }
