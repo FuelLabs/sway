@@ -535,9 +535,7 @@ fn inline_instruction(
                     new_block.append(context).read_register(reg)
                 }
                 FuelVmInstruction::Revert(val) => new_block.append(context).revert(map_value(val)),
-                FuelVmInstruction::JmpbSsp(offset) => {
-                    new_block.append(context).jmpb_ssp(map_value(offset))
-                }
+                FuelVmInstruction::JmpMem => new_block.append(context).jmp_mem(),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
