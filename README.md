@@ -1,56 +1,47 @@
 # Sway
 
-[![build](https://github.com/FuelLabs/sway/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/sway/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/forc?label=latest)](https://crates.io/crates/forc)
-[![docs](https://docs.rs/forc/badge.svg)](https://docs.rs/forc/)
-[![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
+[![构建](https://github.com/FuelLabs/sway/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/sway/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/forc?label=最新版本)](https://crates.io/crates/forc)
+[![文档](https://docs.rs/forc/badge.svg)](https://docs.rs/forc/)
+[![discord](https://img.shields.io/badge/在-discord上聊天-橙色?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
 
-Sway is a language developed for the Fuel blockchain. It is heavily inspired by Rust and aims to bring modern language development and performance to the blockchain ecosystem.
+Sway是为Fuel区块链开发的一种语言。它深受Rust的启发，旨在将现代语言开发和性能引入到区块链生态系统中。
 
-## Documentation
+## 文档
 
-For user documentation, including installing release builds, see the Sway Book: <https://fuellabs.github.io/sway/latest/>.
+有关用户文档，包括安装发布版本的信息，请参阅Sway Book：<https://fuellabs.github.io/sway/latest/>。
 
-For Sway Standard library documentation, see: <https://fuellabs.github.io/sway/master/std/>
+有关Sway标准库文档，请参阅：<https://fuellabs.github.io/sway/master/std/>
 
-Also view the technical reference for the Sway programming language: <https://fuellabs.github.io/sway/master/reference/>
+还可以查看Sway编程语言的技术参考：<https://fuellabs.github.io/sway/master/reference/>
 
-## Building from Source
+## 从源代码构建
 
-This section is for developing the Sway compiler and toolchain. For developing contracts and using Sway, see the above documentation section.
+此部分用于开发Sway编译器和工具链。要开发合同并使用Sway，请参阅上面的文档部分。
 
-### Dependencies
+### 依赖关系
 
-Sway is built in Rust. To begin, install the Rust toolchain following instructions at <https://www.rust-lang.org/tools/install>. Then configure your Rust toolchain to use Rust `stable`:
+Sway是用Rust构建的。首先，请按照<https://www.rust-lang.org/tools/install>上的说明安装Rust工具链。然后配置您的Rust工具链以使用Rust“stable”：
 
 ```sh
 rustup default stable
-```
 
-If not already done, add the Cargo bin directory to your `PATH` by adding the following line to `~/.profile` and restarting the shell session.
+如果尚未完成，请通过将以下行添加到~/.profile并重新启动shell会话来将Cargo二进制目录添加到您的PATH中。
 
-```sh
 export PATH="${HOME}/.cargo/bin:${PATH}"
-```
 
-### Building Forc
+构建Forc
+克隆存储库并构建Sway工具链：
 
-Clone the repository and build the Sway toolchain:
-
-```sh
 git clone git@github.com:FuelLabs/sway.git
 cd sway
 cargo build
-```
 
-Confirm the Sway toolchain built successfully:
+确认Sway工具链已成功构建：
 
-```sh
 cargo run --bin forc -- --help
-```
 
-## Contributing to Sway
+参与Sway开发
+我们欢迎对Sway的贡献！
 
-We welcome contributions to Sway!
-
-Please see the [Contributing To Sway](https://fuellabs.github.io/sway/master/book/reference/contributing_to_sway.html) section of the Sway book for guidelines and instructions to help you get started.
+请参阅Sway书中的Contributing To Sway(https://fuellabs.github.io/sway/master/book/reference/contributing_to_sway.html) 部分，以获取开始的指南和说明。
