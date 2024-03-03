@@ -10,14 +10,14 @@ fn main() -> bool {
     let _one_upper = U128::from((1, 0));
 
     let div_max_two = max_u64 / two;
-    assert(div_max_two.upper == 0);
-    assert(div_max_two.lower == u64::max() >> 1);
+    assert(div_max_two.upper() == 0);
+    assert(div_max_two.lower() == u64::max() >> 1);
 
     // Product of u64::MAX and u64::MAX.
     let dividend = U128::from((u64::max() - 1, 1));
     let div_max_max = dividend / max_u64;
-    assert(div_max_max.upper == 0);
-    assert(div_max_max.lower == u64::max());
+    assert(div_max_max.upper() == 0);
+    assert(div_max_max.lower() == u64::max());
 
     true
 }
