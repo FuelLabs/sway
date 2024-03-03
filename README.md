@@ -1,9 +1,9 @@
 # Sway
 
-[![构建](https://github.com/FuelLabs/sway/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/sway/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/forc?label=最新版本)](https://crates.io/crates/forc)
-[![文档](https://docs.rs/forc/badge.svg)](https://docs.rs/forc/)
-[![discord](https://img.shields.io/badge/在-discord上聊天-橙色?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
+[![build](https://github.com/FuelLabs/sway/actions/workflows/ci.yml/badge.svg)](https://github.com/FuelLabs/sway/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/forc?label=latest)](https://crates.io/crates/forc)
+[![docs](https://docs.rs/forc/badge.svg)](https://docs.rs/forc/)
+[![discord](https://img.shields.io/badge/chat%20on-discord-orange?&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/xfpK4Pe)
 
 Sway是为Fuel区块链开发的一种语言。它深受Rust的启发，旨在将现代语言开发和性能引入到区块链生态系统中。
 
