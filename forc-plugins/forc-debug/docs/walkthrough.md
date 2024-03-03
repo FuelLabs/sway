@@ -73,7 +73,7 @@ We can recognize the `while` loop by the conditional jumps `JNZI`. The condition
 ## Setting up the debugging
 
 We can start up the debug infrastructure. On a new terminal session run `fuel-core run --db-type in-memory --debug`; we need to have that running because it actually executes the program. Now we can fire up the debugger itself: `forc-debug`. Now
-if everything is set up correctly, you shoould see the debugger prompt (`>>`). You can use `help` command to list available commands.
+if everything is set up correctly, you should see the debugger prompt (`>>`). You can use `help` command to list available commands.
 
 Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. `fuel-core`. To do so, we need a *transaction specification*, `tx.json`. It looks something like this:
 
@@ -143,7 +143,7 @@ Receipt: ScriptResult { result: Success, gas_used: 60 }
 Terminated
 ```
 
-Looking at the first output line, we can see that it logged `ra: 120` which is the correct return value for `factorial(5)`. It also tells us that the exection terminated without hitting any breakpoints. That's unsurprising, because we haven't set up any. We can do so with `breakpoint` command:
+Looking at the first output line, we can see that it logged `ra: 120` which is the correct return value for `factorial(5)`. It also tells us that the execution terminated without hitting any breakpoints. That's unsurprising, because we haven't set up any. We can do so with `breakpoint` command:
 
 ```text
 >> breakpoint 0
@@ -199,7 +199,7 @@ Stopped on breakpoint at address 56 of contract 0x000000000000000000000000000000
 
 ```
 
-Now we can inspect the inputs tu multiply. Looking at [the specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply) tells us that the instruction `MUL { ra: 18, rb: 18, rc: 17 }` means `reg[18] = reg[18] * reg[17]`. So inpecting the inputs tells us that
+Now we can inspect the inputs tu multiply. Looking at [the specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply) tells us that the instruction `MUL { ra: 18, rb: 18, rc: 17 }` means `reg[18] = reg[18] * reg[17]`. So inspecting the inputs tells us that
 
 ```text
 >> r 18 17

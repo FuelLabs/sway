@@ -63,6 +63,8 @@ backend
 backtraces
 blockchain
 blockchain's
+breakpoint
+breakpoints
 bytecode
 codespace
 codespaces
