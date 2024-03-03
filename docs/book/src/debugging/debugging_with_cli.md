@@ -171,7 +171,7 @@ reg[0x9] = 1000000  # ggas
  000010: e9 5c 58 86 c8 87 26 dd
 ```
 
-However, that's not too interesting either, so let's just execute until the end, and then reset the vm to remove the breakpoints.
+However, that's not too interesting either, so let's just execute until the end, and then reset the VM to remove the breakpoints.
 
 ```text
 >> continue
@@ -203,7 +203,7 @@ Stopped on breakpoint at address 56 of contract 0x000000000000000000000000000000
 
 ```
 
-Now we can inspect the inputs tu multiply. Looking at [the specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply) tells us that the instruction `MUL { ra: 18, rb: 18, rc: 17 }` means `reg[18] = reg[18] * reg[17]`. So inspecting the inputs tells us that
+Now we can inspect the inputs to multiply. Looking at [the specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply) tells us that the instruction `MUL { ra: 18, rb: 18, rc: 17 }` means `reg[18] = reg[18] * reg[17]`. So inspecting the inputs tells us that
 
 ```text
 >> r 18 17

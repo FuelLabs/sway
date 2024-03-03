@@ -86,6 +86,7 @@ graphQL
 graphql
 http
 https
+halfword
 js
 localhost
 mainnet
