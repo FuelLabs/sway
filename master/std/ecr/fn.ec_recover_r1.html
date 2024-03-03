@@ -24,8 +24,8 @@ fn foo() {
     // A recovered public key pair.
     let public_key = ec_recover_r1(signature, msg_hash).unwrap();
 
-    assert(public_key.bytes[0] == pub_hi);
-    assert(public_key.bytes[1] == pub_lo);
+    assert(public_key.bits()[0] == pub_hi);
+    assert(public_key.bits()[1] == pub_lo);
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
