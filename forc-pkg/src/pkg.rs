@@ -596,7 +596,7 @@ impl BuildPlan {
         )
     }
 
-    /// Create a new build plan for the project by fetching and pinning all dependenies.
+    /// Create a new build plan for the project by fetching and pinning all dependencies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
     pub fn from_manifests(
@@ -2314,7 +2314,7 @@ pub fn build(
 
         let is_contract_dependency = is_contract_dependency(plan.graph(), node);
         // If we are building a contract and tests are enabled or we are building a contract
-        // dependency, we need the tests exlcuded bytecode.
+        // dependency, we need the tests excluded bytecode.
         let bytecode_without_tests = if (include_tests
             && matches!(manifest.program_type(), Ok(TreeType::Contract)))
             || is_contract_dependency
