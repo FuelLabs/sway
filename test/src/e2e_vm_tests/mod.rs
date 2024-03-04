@@ -89,6 +89,7 @@ struct TestDescription {
     script_data_new_encoding: Option<Vec<u8>>,
     witness_data: Option<Vec<Vec<u8>>>,
     expected_result: Option<TestResult>,
+    expected_result_new_encoding: Option<TestResult>,
     expected_warnings: u32,
     contract_paths: Vec<String>,
     validate_abi: bool,
@@ -97,12 +98,17 @@ struct TestDescription {
     unsupported_profiles: Vec<&'static str>,
     checker: FileCheck,
     run_config: RunConfig,
-    extra_run_with_experimental_new_encoding: bool,
+}
+
+#[derive(PartialEq, Eq, Hash)]
+struct DeployedContractKey {
+    pub contract_path: String,
+    pub new_encoding: bool
 }
 
 #[derive(Clone)]
 struct TestContext {
-    deployed_contracts: Arc<Mutex<HashMap<String, ContractId>>>,
+    deployed_contracts: Arc<Mutex<HashMap<DeployedContractKey, ContractId>>>,
 }
 
 fn print_receipts(output: &mut String, receipts: &[Receipt]) {
@@ -235,14 +241,19 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
 
 impl TestContext {
     async fn deploy_contract(&self, run_config: &RunConfig, contract_path: String) -> Result<ContractId> {
+        let key = DeployedContractKey {
+            contract_path: contract_path.clone(),
+            new_encoding: run_config.experimental.new_encoding
+        };
+
         let mut deployed_contracts = self.deployed_contracts.lock().await;
         Ok(
-            if let Some(contract_id) = deployed_contracts.get(&contract_path) {
+            if let Some(contract_id) = deployed_contracts.get(&key) {
                 *contract_id
             } else {
                 let contract_id =
                     harness::deploy_contract(contract_path.as_str(), run_config).await?;
-                deployed_contracts.insert(contract_path, contract_id);
+                deployed_contracts.insert(key, contract_id);
                 contract_id
             },
         )
@@ -256,6 +267,7 @@ impl TestContext {
             script_data_new_encoding,
             witness_data,
             expected_result,
+            expected_result_new_encoding,
             expected_warnings,
             contract_paths,
             validate_abi,
@@ -273,26 +285,15 @@ impl TestContext {
             script_data
         };
 
+        let expected_result = if run_config.experimental.new_encoding {
+            expected_result_new_encoding
+        } else {
+            expected_result
+        };
+
         match category {
             TestCategory::Runs => {
-                let expected_result = match expected_result {
-                    Some(TestResult::Return(v)) => {
-                        // With the new encoding, `Return` is actually `ReturnData`
-                        if run_config.experimental.new_encoding {
-                            TestResult::ReturnData(v.to_bytes())
-                        } else {
-                            expected_result.unwrap()
-                        }
-                    }
-                    Some(TestResult::ReturnData(_)) | Some(TestResult::Revert(_)) => {
-                        expected_result.unwrap()
-                    }
-
-                    _ => panic!(
-                        "For {name}:\n\
-                        Invalid expected result for a 'runs' test: {expected_result:?}."
-                    ),
-                };
+                let expected_result = expected_result.unwrap();
 
                 let (result, out) = run_and_capture_output(|| {
                     harness::compile_to_bytes(&name, &run_config)
@@ -457,15 +458,6 @@ impl TestContext {
             }
 
             TestCategory::RunsWithContract => {
-                let val = if let Some(TestResult::Result(val)) = expected_result {
-                    val
-                } else {
-                    panic!(
-                        "For {name}:\nExpecting a 'result' action for a 'run_on_node' test, \
-                        found: {expected_result:?}."
-                    )
-                };
-
                 if contract_paths.is_empty() {
                     panic!(
                         "For {name}\n\
@@ -517,18 +509,35 @@ impl TestContext {
                     )));
                 }
 
-                if !matches!(receipts[receipts.len() - 2], fuel_tx::Receipt::Return { .. }) {
-                    return Err(anyhow::Error::msg(format!(
-                        "unexpected receipt"
-                    )));
-                }
+                match &receipts[receipts.len() - 2] {
+                    Receipt::Return { val, .. } => {
+                        match expected_result.unwrap() {
+                            TestResult::Result(v) => {
+                                if v != *val {
+                                    return Err(anyhow::Error::msg(format!(
+                                        "return value does not match expected: {v:?}, {val:?}"
+                                    )));
+                                }
+                            }
+                            _ => todo!()
+                        }
+                    },
+                    Receipt::ReturnData { data, .. } => {
+                        match expected_result.unwrap() {
+                            TestResult::ReturnData(v) => {
+                                if v != *data.as_ref().unwrap() {
+                                    return Err(anyhow::Error::msg(format!(
+                                        "return value does not match expected: {v:?}, {data:?}"
+                                    )));
+                                }
+                            }
+                            _ => todo!()
+                        }
+                    },
+                    _ => {
 
-                let v = receipts[receipts.len() - 2].val().unwrap();
-                if v != val {
-                    return Err(anyhow::Error::msg(format!(
-                        "return value does not match expected: {v:?}, {val:?}"
-                    )));
-                }
+                    }
+                };
 
                 Ok(())
             }
@@ -630,11 +639,12 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     for expansion in expansions {
         tests = tests
             .into_iter()
-            .flat_map(|mut t| {
-                let is_script_data_new_encoding = t.script_data_new_encoding.is_some();
-                let extra_run_with_experimental_new_encoding = t.extra_run_with_experimental_new_encoding;
+            .flat_map(|t| {
+                let has_script_data_new_encoding = t.script_data_new_encoding.is_some();
+                let has_contracts = !t.contract_paths.is_empty();
+                let has_expected_return = t.expected_result_new_encoding.is_some();
                 if expansion == "new_encoding"
-                    && (is_script_data_new_encoding || extra_run_with_experimental_new_encoding)
+                    && (has_script_data_new_encoding || has_contracts || has_expected_return)
                 {
                     let mut with_new_encoding = t.clone();
                     with_new_encoding.suffix = Some("New Encoding".into());
@@ -643,15 +653,13 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
                     run_config_with_new_encoding.experimental.new_encoding = true;
                     with_new_encoding.run_config = run_config_with_new_encoding;
 
-                    vec![with_new_encoding]
+                    vec![t, with_new_encoding]
                 } else {
-                    vec![]
+                    vec![t]
                 }
             })
             .collect();
     }
-
-    
 
     // Run tests
     let context = TestContext {
@@ -924,12 +932,19 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     let expected_result = match &category {
         TestCategory::Runs | TestCategory::RunsWithContract => {
-            Some(get_expected_result(&toml_content)?)
+            Some(get_expected_result("expected_result", &toml_content)?)
         }
         TestCategory::Compiles
         | TestCategory::FailsToCompile
         | TestCategory::UnitTestsPass
         | TestCategory::Disabled => None,
+    };
+
+    let expected_result_new_encoding = match (&category, get_expected_result("expected_result_new_encoding", &toml_content)) {
+        (TestCategory::Runs | TestCategory::RunsWithContract, Ok(value)) => {
+            Some(value)
+        }
+        _ => None,
     };
 
     let contract_paths = match toml_content.get("contracts") {
@@ -963,11 +978,6 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
 
     let validate_storage_slots = toml_content
         .get("validate_storage_slots")
-        .map(|v| v.as_bool().unwrap_or(false))
-        .unwrap_or(false);
-
-    let extra_run_with_experimental_new_encoding = toml_content
-        .get("extra_run_with_experimental_new_encoding")
         .map(|v| v.as_bool().unwrap_or(false))
         .unwrap_or(false);
 
@@ -1018,9 +1028,9 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         category,
         script_data,
         script_data_new_encoding,
-        extra_run_with_experimental_new_encoding,
         witness_data,
         expected_result,
+        expected_result_new_encoding,
         expected_warnings,
         contract_paths,
         validate_abi,
@@ -1053,7 +1063,7 @@ fn get_build_profile_from_value(value: &toml::Value) -> Result<&'static str> {
     }
 }
 
-fn get_expected_result(toml_content: &toml::Value) -> Result<TestResult> {
+fn get_expected_result(key: &str, toml_content: &toml::Value) -> Result<TestResult> {
     fn get_action_value(action: &toml::Value, expected_value: &toml::Value) -> Result<TestResult> {
         match (action.as_str(), expected_value) {
             // A simple integer value.
@@ -1075,7 +1085,7 @@ fn get_expected_result(toml_content: &toml::Value) -> Result<TestResult> {
     }
 
     toml_content
-        .get("expected_result")
+        .get(key)
         .ok_or_else(|| anyhow!( "Could not find mandatory 'expected_result' entry."))
         .and_then(|expected_result_table| {
             expected_result_table
