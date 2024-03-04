@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     fmt::{self, Write},
     hash::{Hash, Hasher},
 };
@@ -11,6 +12,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -821,6 +823,29 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     let decl_engine = ctx.engines().de();
                     let mut method = (*decl_engine.get(fn_ref)).clone();
+
+                    // Finds method implementation for method dummy and replaces it.
+                    // This is required because dummy methods don't have type parameters from impl traits.
+                    // Thus we use the implementated method that already contains all the required type parameters,
+                    // including those from the impl trait.
+                    if method.is_trait_method_dummy {
+                        if let Some(implementing_for_typeid) = method.implementing_for_typeid {
+                            let implementing_type_method_ref = ctx.find_method_for_type(
+                                handler,
+                                implementing_for_typeid,
+                                &[],
+                                method.name(),
+                                method.return_type.type_id,
+                                &arguments
+                                    .iter()
+                                    .map(|a| a.1.return_type)
+                                    .collect::<VecDeque<_>>(),
+                                None,
+                                TryInsertingTraitImplOnFailure::Yes,
+                            )?;
+                            method = (*decl_engine.get(&implementing_type_method_ref)).clone();
+                        }
+                    }
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
