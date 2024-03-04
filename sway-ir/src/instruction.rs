@@ -194,7 +194,7 @@ pub enum FuelVmInstruction {
         arg1: Value,
         arg2: Value,
     },
-    JmpbSsp(Value),
+    JmpMem,
 }
 
 /// Comparison operations.
@@ -299,7 +299,7 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -408,7 +408,8 @@ impl InstOp {
                     log_val, log_id, ..
                 } => vec![*log_val, *log_id],
                 FuelVmInstruction::ReadRegister(_) => vec![],
-                FuelVmInstruction::Revert(v) | FuelVmInstruction::JmpbSsp(v) => vec![*v],
+                FuelVmInstruction::Revert(v) => vec![*v],
+                FuelVmInstruction::JmpMem => vec![],
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -545,7 +546,7 @@ impl InstOp {
                 }
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
-                FuelVmInstruction::JmpbSsp(contr_id) => replace(contr_id),
+                FuelVmInstruction::JmpMem => (),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -631,7 +632,7 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. })
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
             | InstOp::MemCopyBytes { .. }
             | InstOp::MemCopyVal { .. }
             | InstOp::Store { .. }
@@ -666,7 +667,7 @@ impl InstOp {
             InstOp::Branch(_)
                 | InstOp::ConditionalBranch { .. }
                 | InstOp::Ret(..)
-                | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..))
+                | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
         )
     }
 }
@@ -1074,11 +1075,11 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         revert_val
     }
 
-    pub fn jmpb_ssp(self, offset: Value) -> Value {
+    pub fn jmp_mem(self) -> Value {
         let ldc_exec = Value::new_instruction(
             self.context,
             self.block,
-            InstOp::FuelVm(FuelVmInstruction::JmpbSsp(offset)),
+            InstOp::FuelVm(FuelVmInstruction::JmpMem),
         );
         self.context.blocks[self.block.0]
             .instructions

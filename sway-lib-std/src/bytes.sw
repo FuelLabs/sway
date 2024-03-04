@@ -8,7 +8,7 @@ use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 
 struct RawBytes {
-    pub ptr: raw_ptr,
+    ptr: raw_ptr,
     cap: u64,
 }
 
@@ -50,12 +50,42 @@ impl RawBytes {
     }
 }
 
+impl From<raw_slice> for RawBytes {
+    /// Creates a `RawBytes` from a `raw_slice`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::RawBytes;
+    ///
+    /// let mut vec = Vec::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    ///
+    /// vec.push(a);
+    /// vec.push(b);
+    /// vec.push(c);
+    ///
+    /// let vec_as_raw_slice = vec.as_raw_slice();
+    /// let raw_bytes = RawBytes::from(vec_as_raw_slice);
+    ///
+    /// assert(raw_bytes.capacity == 3);
+    /// ```
+    fn from(slice: raw_slice) -> Self {
+        Self {
+            ptr: slice.ptr(),
+            cap: slice.number_of_bytes(),
+        }
+    }
+}
+
 /// A type used to represent raw bytes.
 pub struct Bytes {
     /// A barebones struct for the bytes.
-    pub buf: RawBytes,
+    buf: RawBytes,
     /// The number of bytes being stored.
-    pub len: u64,
+    len: u64,
 }
 
 impl Bytes {
@@ -111,7 +141,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::with_capacity(2);
+    ///     let mut bytes = Bytes::with_capacity(2);
     ///     // does not allocate
     ///     bytes.push(5);
     ///     // does not re-allocate
@@ -175,7 +205,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///
     ///     let res = bytes.pop();
     ///     assert(res.is_none());
@@ -214,7 +244,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     bytes.push(5u8);
     ///     bytes.push(10u8);
     ///     bytes.push(15u8);
@@ -252,7 +282,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 5u8;
     ///     let b = 7u8;
     ///     let c = 9u8;
@@ -296,7 +326,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 11u8;
     ///     let b = 11u8;
     ///     let c = 11u8;
@@ -316,7 +346,7 @@ impl Bytes {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.cap {
+        if self.len == self.buf.capacity() {
             self.buf.grow();
         }
 
@@ -362,7 +392,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Byte::new();
+    ///     let mut bytes = Byte::new();
     ///     bytes.push(5);
     ///     bytes.push(10);
     ///     bytes.push(15);
@@ -413,7 +443,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 5u8;
     ///     let b = 7u8;
     ///     let c = 9u8;
@@ -464,7 +494,7 @@ impl Bytes {
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
-        self.buf.cap
+        self.buf.capacity()
     }
 
     /// Gets the length of the `Bytes`.
@@ -479,7 +509,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     assert(bytes.len() == 0);
     ///     bytes.push(5);
     ///     assert(bytes.len() == 1);
@@ -502,16 +532,15 @@ impl Bytes {
     /// use std:bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     bytes.push(5);
     ///     bytes.clear()
     ///     assert(bytes.is_empty());
     /// }
     /// ```
     pub fn clear(ref mut self) {
-        self.buf.ptr = alloc_bytes(0);
+        self.buf = RawBytes::new();
         self.len = 0;
-        self.buf.cap = 0;
     }
 
     /// Returns `true` if the type contains no elements.
@@ -526,7 +555,7 @@ impl Bytes {
     /// use std:bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     assert(bytes.is_empty());
     ///     bytes.push(5);
     ///     assert(!bytes.is_empty());
@@ -536,6 +565,26 @@ impl Bytes {
     /// ```
     pub fn is_empty(self) -> bool {
         self.len == 0
+    }
+
+    /// Gets the pointer of the allocation.
+    ///
+    /// # Returns
+    ///
+    /// [raw_ptr] - The location in memory that the allocated bytes live.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     assert(!bytes.ptr().is_null());
+    /// }
+    /// ```
+    pub fn ptr(self) -> raw_ptr {
+        self.buf.ptr()
     }
 }
 
@@ -592,13 +641,13 @@ impl Bytes {
         };
 
         if mid > 0 {
-            self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
+            self.buf.ptr().copy_bytes_to(left_bytes.ptr(), left_len);
         };
         if mid != self.len {
             self.buf
                 .ptr()
                 .add_uint_offset(mid)
-                .copy_bytes_to(right_bytes.buf.ptr(), right_len);
+                .copy_bytes_to(right_bytes.ptr(), right_len);
         };
 
         left_bytes.len = left_len;
@@ -641,7 +690,8 @@ impl Bytes {
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {
-        if other.len == 0 {
+        let other_len = other.len();
+        if other_len == 0 {
             return
         };
 
@@ -652,23 +702,22 @@ impl Bytes {
             return;
         };
 
-        let both_len = self.len + other.len;
+        let both_len = self.len + other_len;
         let other_start = self.len;
 
         // reallocate with combined capacity, write `other`, set buffer capacity
-        self.buf.ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len);
-
-        let mut i = 0;
-        while i < other.len {
-            let new_ptr = self.buf.ptr().add_uint_offset(other_start);
-            new_ptr
-                .add_uint_offset(i)
-                .write_byte(other.buf.ptr.add_uint_offset(i).read_byte());
-            i += 1;
+        if self.buf.capacity() < both_len {
+            let new_slice = raw_slice::from_parts::<u8>(
+                realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len),
+                both_len,
+            );
+            self.buf = RawBytes::from(new_slice);
         }
 
+        let new_ptr = self.buf.ptr().add_uint_offset(other_start);
+        other.ptr().copy_bytes_to(new_ptr, other_len);
+
         // set capacity and length
-        self.buf.cap = both_len;
         self.len = both_len;
 
         // clear `other`
@@ -678,11 +727,11 @@ impl Bytes {
 
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
-        if self.len != other.len {
+        if self.len != other.len() {
             return false;
         }
 
-        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
+        asm(result, r2: self.buf.ptr(), r3: other.ptr(), r4: self.len) {
             meq result r2 r3 r4;
             result: bool
         }
@@ -705,7 +754,7 @@ impl From<b256> for Bytes {
         let mut bytes = Self::with_capacity(32);
         bytes.len = 32;
         // Copy bytes from contract_id into the buffer of the target bytes
-        __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
+        __addr_of(b).copy_bytes_to(bytes.buf.ptr(), 32);
 
         bytes
     }
@@ -751,13 +800,9 @@ impl From<raw_slice> for Bytes {
     /// assert(bytes.get(2).unwrap() == c);
     /// ```
     fn from(slice: raw_slice) -> Self {
-        let number_of_bytes = slice.number_of_bytes();
         Self {
-            buf: RawBytes {
-                ptr: slice.ptr(),
-                cap: number_of_bytes,
-            },
-            len: number_of_bytes,
+            buf: RawBytes::from(slice),
+            len: slice.number_of_bytes(),
         }
     }
 }

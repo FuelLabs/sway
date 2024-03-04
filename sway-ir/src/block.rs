@@ -369,9 +369,7 @@ impl Block {
                 i,
                 Instruction {
                     op: InstOp::Ret(..)
-                        | InstOp::FuelVm(
-                            FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpbSsp(..)
-                        ),
+                        | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem),
                     ..
                 }
             )
