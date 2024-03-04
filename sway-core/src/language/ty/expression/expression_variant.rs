@@ -817,13 +817,6 @@ impl ReplaceDecls for TyExpressionVariant {
                         has_changes = true;
                     };
 
-                    let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
-                        decl_mapping,
-                        handler,
-                        ctx,
-                    )?;
-
-                    fn_ref.replace_id(*new_decl_ref.id());
                     for (_, arg) in arguments.iter_mut() {
                         if let Ok(r) = arg.replace_decls(decl_mapping, handler, ctx) {
                             has_changes |= r;

@@ -195,7 +195,6 @@ pub enum FuelVmInstruction {
         arg2: Value,
     },
     JmpMem,
-    JmpbSsp(Value),
     Retd {
         ptr: Value,
         len: Value,
@@ -305,7 +304,7 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem | FuelVmInstruction::JmpbSsp(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -416,7 +415,6 @@ impl InstOp {
                 FuelVmInstruction::ReadRegister(_) => vec![],
                 FuelVmInstruction::Revert(v) => vec![*v],
                 FuelVmInstruction::JmpMem => vec![],
-                FuelVmInstruction::JmpbSsp(v) => vec![*v],
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -557,7 +555,6 @@ impl InstOp {
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
                 FuelVmInstruction::JmpMem => (),
-                FuelVmInstruction::JmpbSsp(val) => replace(val),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -649,7 +646,6 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::Revert(..))
             | InstOp::FuelVm(FuelVmInstruction::JmpMem)
-            | InstOp::FuelVm(FuelVmInstruction::JmpbSsp(..))
             | InstOp::FuelVm(FuelVmInstruction::Retd { .. })
             | InstOp::MemCopyBytes { .. }
             | InstOp::MemCopyVal { .. }

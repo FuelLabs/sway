@@ -238,7 +238,6 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         } => self.verify_log(log_val, log_ty, log_id)?,
                         FuelVmInstruction::ReadRegister(_) => (),
                         FuelVmInstruction::JmpMem => (),
-                        FuelVmInstruction::JmpbSsp(..) => (),
                         FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
                         FuelVmInstruction::Smo {
                             recipient,

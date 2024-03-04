@@ -306,7 +306,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
                     FuelVmInstruction::JmpMem => self.compile_jmp_mem(instr_val),
-                    FuelVmInstruction::JmpbSsp(offset) => self.compile_jmpb_ssp(instr_val, offset),
                     FuelVmInstruction::Retd { ptr, len } => self.compile_retd(instr_val, ptr, len),
                 },
                 InstOp::GetElemPtr {

@@ -86,9 +86,6 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::JmpMem => {
                 type_check_jmp_mem(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::JmpbSsp => {
-                type_check_jmpb_ssp(handler, ctx, kind, arguments, type_arguments, span)
-            }
             Intrinsic::ContractCall => {
                 type_check_contract_call(handler, ctx, kind, arguments, type_arguments, span)
             }
