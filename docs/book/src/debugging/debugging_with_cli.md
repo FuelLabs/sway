@@ -34,7 +34,7 @@ fn main() {
 
 ## Building and bytecode output
 
-Now we are ready to build the thing.
+Now we are ready to build the project.
 
 ```bash
 forc build
