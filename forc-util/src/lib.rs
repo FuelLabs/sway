@@ -214,6 +214,11 @@ pub fn lock_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join(constants::LOCK_FILE_NAME)
 }
 
+pub fn validate_project_name(name: &str) -> Result<()> {
+    restricted::is_valid_project_name_format(name)?;
+    validate_name(name, "project name")
+}
+
 // Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
 // https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/ops/cargo_new.rs) for reference
 
@@ -222,17 +227,17 @@ pub fn validate_name(name: &str, use_case: &str) -> Result<()> {
     restricted::contains_invalid_char(name, use_case)?;
 
     if restricted::is_keyword(name) {
-        bail!("the name `{name}` cannot be used as a package name, it is a Sway keyword");
+        bail!("the name `{name}` cannot be used as a {use_case}, it is a Sway keyword");
     }
     if restricted::is_conflicting_artifact_name(name) {
         bail!(
-            "the name `{name}` cannot be used as a package name, \
+            "the name `{name}` cannot be used as a {use_case}, \
             it conflicts with Forc's build directory names"
         );
     }
     if name.to_lowercase() == "test" {
         bail!(
-            "the name `test` cannot be used as a project name, \
+            "the name `test` cannot be used as a {use_case}, \
             it conflicts with Sway's built-in test library"
         );
     }

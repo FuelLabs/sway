@@ -2,6 +2,7 @@
 // This is based on https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/restricted_names.rs
 
 use anyhow::{bail, Result};
+use regex::Regex;
 use std::path::Path;
 
 /// Returns `true` if the name contains non-ASCII characters.
@@ -92,6 +93,19 @@ pub fn is_windows_reserved_path(path: &Path) -> bool {
 /// Returns `true` if the name contains any glob pattern wildcards.
 pub fn is_glob_pattern<T: AsRef<str>>(name: T) -> bool {
     name.as_ref().contains(&['*', '?', '[', ']'][..])
+}
+
+/// Check the project name format.
+pub fn is_valid_project_name_format(name: &str) -> Result<()> {
+    let re = Regex::new(r"^([a-zA-Z]([a-zA-Z0-9-_]+)|)$").unwrap();
+    if !re.is_match(name) {
+        bail!(
+            "the project name `{name}` cannot be used as a project name.\n\
+        project name can be a combination of letters, numbers, and underscores, \
+        and must start with a letter."
+        );
+    }
+    Ok(())
 }
 
 #[test]
