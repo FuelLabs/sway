@@ -40,7 +40,7 @@ where
     if let Ok(mut buf_stdout) = buf_stdout {
         buf_stdout.read_to_string(&mut output).unwrap();
         drop(buf_stdout);
-    } 
+    }
 
     // if let Ok(mut buf_stderr) = buf_stderr {
     //     buf_stderr.read_to_string(&mut output).unwrap();

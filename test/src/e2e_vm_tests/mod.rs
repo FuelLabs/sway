@@ -7,12 +7,10 @@ use crate::e2e_vm_tests::harness::run_and_capture_output;
 use crate::{FilterConfig, RunConfig};
 
 use anyhow::{anyhow, bail, Result};
-use assert_matches::assert_matches;
 use colored::*;
 use core::fmt;
 use forc_pkg::BuildProfile;
 use fuel_vm::fuel_tx;
-use fuel_vm::fuel_types::canonical::Serialize;
 use fuel_vm::prelude::*;
 use regex::Regex;
 use std::collections::HashSet;
@@ -103,7 +101,7 @@ struct TestDescription {
 #[derive(PartialEq, Eq, Hash)]
 struct DeployedContractKey {
     pub contract_path: String,
-    pub new_encoding: bool
+    pub new_encoding: bool,
 }
 
 #[derive(Clone)]
@@ -240,23 +238,24 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
 }
 
 impl TestContext {
-    async fn deploy_contract(&self, run_config: &RunConfig, contract_path: String) -> Result<ContractId> {
+    async fn deploy_contract(
+        &self,
+        run_config: &RunConfig,
+        contract_path: String,
+    ) -> Result<ContractId> {
         let key = DeployedContractKey {
             contract_path: contract_path.clone(),
-            new_encoding: run_config.experimental.new_encoding
+            new_encoding: run_config.experimental.new_encoding,
         };
 
         let mut deployed_contracts = self.deployed_contracts.lock().await;
-        Ok(
-            if let Some(contract_id) = deployed_contracts.get(&key) {
-                *contract_id
-            } else {
-                let contract_id =
-                    harness::deploy_contract(contract_path.as_str(), run_config).await?;
-                deployed_contracts.insert(key, contract_id);
-                contract_id
-            },
-        )
+        Ok(if let Some(contract_id) = deployed_contracts.get(&key) {
+            *contract_id
+        } else {
+            let contract_id = harness::deploy_contract(contract_path.as_str(), run_config).await?;
+            deployed_contracts.insert(key, contract_id);
+            contract_id
+        })
     }
 
     async fn run(&self, test: TestDescription, output: &mut String, verbose: bool) -> Result<()> {
@@ -295,10 +294,8 @@ impl TestContext {
             TestCategory::Runs => {
                 let expected_result = expected_result.unwrap();
 
-                let (result, out) = run_and_capture_output(|| {
-                    harness::compile_to_bytes(&name, &run_config)
-                })
-                .await;
+                let (result, out) =
+                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
 
                 let compiled = result?;
@@ -384,10 +381,8 @@ impl TestContext {
             }
 
             TestCategory::Compiles => {
-                let (result, out) = run_and_capture_output(|| {
-                    harness::compile_to_bytes(&name, &run_config)
-                })
-                .await;
+                let (result, out) =
+                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
 
                 let compiled_pkgs = match result? {
@@ -443,10 +438,8 @@ impl TestContext {
             }
 
             TestCategory::FailsToCompile => {
-                let (result, out) = run_and_capture_output(|| {
-                    harness::compile_to_bytes(&name, &run_config)
-                })
-                .await;
+                let (result, out) =
+                    run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
 
                 if result.is_ok() {
@@ -476,8 +469,7 @@ impl TestContext {
                 }
                 let contract_ids = contract_ids.into_iter().collect::<Result<Vec<_>, _>>()?;
 
-                let (result, out) =
-                    harness::runs_on_node(&name, &run_config, &contract_ids).await;
+                let (result, out) = harness::runs_on_node(&name, &run_config, &contract_ids).await;
 
                 output.push_str(&out);
 
@@ -498,45 +490,38 @@ impl TestContext {
                         println!("Deployed contract: 0x{cid}");
                     }
 
-                    return Err(anyhow::Error::msg(format!(
-                        "Receipts contain reverts or panics"
-                    )));
+                    return Err(anyhow::Error::msg("Receipts contain reverts or panics"));
                 }
-                
+
                 if receipts.len() < 2 {
                     return Err(anyhow::Error::msg(format!(
-                        "less than 2 receipts: {:?} receipts", receipts.len()
+                        "less than 2 receipts: {:?} receipts",
+                        receipts.len()
                     )));
                 }
 
                 match &receipts[receipts.len() - 2] {
-                    Receipt::Return { val, .. } => {
-                        match expected_result.unwrap() {
-                            TestResult::Result(v) => {
-                                if v != *val {
-                                    return Err(anyhow::Error::msg(format!(
-                                        "return value does not match expected: {v:?}, {val:?}"
-                                    )));
-                                }
+                    Receipt::Return { val, .. } => match expected_result.unwrap() {
+                        TestResult::Result(v) => {
+                            if v != *val {
+                                return Err(anyhow::Error::msg(format!(
+                                    "return value does not match expected: {v:?}, {val:?}"
+                                )));
                             }
-                            _ => todo!()
                         }
+                        _ => todo!(),
                     },
-                    Receipt::ReturnData { data, .. } => {
-                        match expected_result.unwrap() {
-                            TestResult::ReturnData(v) => {
-                                if v != *data.as_ref().unwrap() {
-                                    return Err(anyhow::Error::msg(format!(
-                                        "return value does not match expected: {v:?}, {data:?}"
-                                    )));
-                                }
+                    Receipt::ReturnData { data, .. } => match expected_result.unwrap() {
+                        TestResult::ReturnData(v) => {
+                            if v != *data.as_ref().unwrap() {
+                                return Err(anyhow::Error::msg(format!(
+                                    "return value does not match expected: {v:?}, {data:?}"
+                                )));
                             }
-                            _ => todo!()
                         }
+                        _ => todo!(),
                     },
-                    _ => {
-
-                    }
+                    _ => {}
                 };
 
                 Ok(())
@@ -675,7 +660,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         } else {
             BuildProfile::DEBUG
         };
-        
+
         if test.unsupported_profiles.contains(&cur_profile) {
             continue;
         }
@@ -788,7 +773,11 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
 }
 
 fn discover_test_configs(run_config: &RunConfig) -> Result<Vec<TestDescription>> {
-    fn recursive_search(path: &Path, run_config: &RunConfig, configs: &mut Vec<TestDescription>) -> Result<()> {
+    fn recursive_search(
+        path: &Path,
+        run_config: &RunConfig,
+        configs: &mut Vec<TestDescription>,
+    ) -> Result<()> {
         let wrap_err = |e| {
             let relative_path = path
                 .iter()
@@ -940,10 +929,11 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         | TestCategory::Disabled => None,
     };
 
-    let expected_result_new_encoding = match (&category, get_expected_result("expected_result_new_encoding", &toml_content)) {
-        (TestCategory::Runs | TestCategory::RunsWithContract, Ok(value)) => {
-            Some(value)
-        }
+    let expected_result_new_encoding = match (
+        &category,
+        get_expected_result("expected_result_new_encoding", &toml_content),
+    ) {
+        (TestCategory::Runs | TestCategory::RunsWithContract, Ok(value)) => Some(value),
         _ => None,
     };
 
