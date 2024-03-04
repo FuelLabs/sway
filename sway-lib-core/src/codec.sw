@@ -662,88 +662,34 @@ impl AbiDecode for () {
     }
 }
 
-impl<A> AbiDecode for (A,) 
-where
-    A: AbiDecode 
-{
-    fn abi_decode(ref mut buffer: BufferReader) -> (A,) {
-        let a = A::abi_decode(buffer);
-        (a,)
-    }
-}
-
-impl<A, B> AbiDecode for (A, B) 
-where
-    A: AbiDecode,
-    B: AbiDecode,
-{
-    fn abi_decode(ref mut buffer: BufferReader) -> (A, B) {
-        let a = A::abi_decode(buffer);
-        let b = B::abi_decode(buffer);
-        (a, b)
-    }
-}
-
-impl<A, B, C> AbiDecode for (A, B, C) 
-where
-    A: AbiDecode,
-    B: AbiDecode,
-    C: AbiDecode,
-{
-    fn abi_decode(ref mut buffer: BufferReader) -> (A, B, C) {
-        let a = A::abi_decode(buffer);
-        let b = B::abi_decode(buffer);
-        let c = C::abi_decode(buffer);
-        (a, b, c)
-    }
-}
-
-impl<A, B, C, D> AbiDecode for (A, B, C, D) 
-where
-    A: AbiDecode,
-    B: AbiDecode,
-    C: AbiDecode,
-    D: AbiDecode,
-{
-    fn abi_decode(ref mut buffer: BufferReader) -> (A, B, C, D) {
-        let a = A::abi_decode(buffer);
-        let b = B::abi_decode(buffer);
-        let c = C::abi_decode(buffer);
-        let d = D::abi_decode(buffer);
-        (a, b, c, d)
-    }
-}
-
-impl<A, B, C, D, E, F, G, H, I, J, K> AbiDecode for (A, B, C, D, E, F, G, H, I, J, K) 
-where
-    A: AbiDecode,
-    B: AbiDecode,
-    C: AbiDecode,
-    D: AbiDecode,
-    E: AbiDecode,
-    F: AbiDecode,
-    G: AbiDecode,
-    H: AbiDecode,
-    I: AbiDecode,
-    J: AbiDecode,
-    K: AbiDecode,
-{
-    fn abi_decode(ref mut buffer: BufferReader) -> (A, B, C, D, E, F, G, H, I, J, K) {
-        let a = A::abi_decode(buffer);
-        let b = B::abi_decode(buffer);
-        let c = C::abi_decode(buffer);
-        let d = D::abi_decode(buffer);
-        let e = E::abi_decode(buffer);
-        let f = F::abi_decode(buffer);
-        let g = G::abi_decode(buffer);
-        let h = H::abi_decode(buffer);
-        let i = I::abi_decode(buffer);
-        let j = J::abi_decode(buffer);
-        let k = K::abi_decode(buffer);
-        (a, b, c, d, e, f, g, h, i, j, k)
-    }
-}
-
+// BEGIN TUPLES_DECODE
+impl< A,> AbiDecode for ( A,) where  A: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer),) } }
+impl< A, B,> AbiDecode for ( A, B,) where  A: AbiDecode,  B: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer),) } }
+impl< A, B, C,> AbiDecode for ( A, B, C,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer),) } }
+impl< A, B, C, D,> AbiDecode for ( A, B, C, D,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer),) } }
+impl< A, B, C, D, E,> AbiDecode for ( A, B, C, D, E,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F,> AbiDecode for ( A, B, C, D, E, F,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G,> AbiDecode for ( A, B, C, D, E, F, G,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H,> AbiDecode for ( A, B, C, D, E, F, G, H,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I,> AbiDecode for ( A, B, C, D, E, F, G, H, I,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode,  T: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer), T::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode,  T: AbiDecode,  U: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer), T::abi_decode(buffer), U::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode,  T: AbiDecode,  U: AbiDecode,  V: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer), T::abi_decode(buffer), U::abi_decode(buffer), V::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode,  T: AbiDecode,  U: AbiDecode,  V: AbiDecode,  W: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer), T::abi_decode(buffer), U::abi_decode(buffer), V::abi_decode(buffer), W::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode,  T: AbiDecode,  U: AbiDecode,  V: AbiDecode,  W: AbiDecode,  X: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer), T::abi_decode(buffer), U::abi_decode(buffer), V::abi_decode(buffer), W::abi_decode(buffer), X::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode,  T: AbiDecode,  U: AbiDecode,  V: AbiDecode,  W: AbiDecode,  X: AbiDecode,  Y: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer), T::abi_decode(buffer), U::abi_decode(buffer), V::abi_decode(buffer), W::abi_decode(buffer), X::abi_decode(buffer), Y::abi_decode(buffer),) } }
+impl< A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,> AbiDecode for ( A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,) where  A: AbiDecode,  B: AbiDecode,  C: AbiDecode,  D: AbiDecode,  E: AbiDecode,  F: AbiDecode,  G: AbiDecode,  H: AbiDecode,  I: AbiDecode,  J: AbiDecode,  K: AbiDecode,  L: AbiDecode,  M: AbiDecode,  N: AbiDecode,  O: AbiDecode,  P: AbiDecode,  Q: AbiDecode,  R: AbiDecode,  S: AbiDecode,  T: AbiDecode,  U: AbiDecode,  V: AbiDecode,  W: AbiDecode,  X: AbiDecode,  Y: AbiDecode,  Z: AbiDecode, { fn abi_decode(ref mut buffer: BufferReader) -> Self { ( A::abi_decode(buffer), B::abi_decode(buffer), C::abi_decode(buffer), D::abi_decode(buffer), E::abi_decode(buffer), F::abi_decode(buffer), G::abi_decode(buffer), H::abi_decode(buffer), I::abi_decode(buffer), J::abi_decode(buffer), K::abi_decode(buffer), L::abi_decode(buffer), M::abi_decode(buffer), N::abi_decode(buffer), O::abi_decode(buffer), P::abi_decode(buffer), Q::abi_decode(buffer), R::abi_decode(buffer), S::abi_decode(buffer), T::abi_decode(buffer), U::abi_decode(buffer), V::abi_decode(buffer), W::abi_decode(buffer), X::abi_decode(buffer), Y::abi_decode(buffer), Z::abi_decode(buffer),) } }
+// END TUPLES_DECODE
 
 #[test]
 fn ok_encode() {
