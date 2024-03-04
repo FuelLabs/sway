@@ -11,7 +11,7 @@ remove_generated_code() {
 
 remove_generated_code "STRARRAY_ENCODE"
 START=1
-END=16
+END=64
 for ((i=END;i>=START;i--)); do
     CODE="impl AbiEncode for str[$i] { fn abi_encode(self, ref mut buffer: Buffer) { use ::str::*; let s = from_str_array(self); let len = s.len(); let ptr = s.as_ptr(); let mut i = 0; while i < len { let byte = ptr.add::<u8>(i).read::<u8>(); buffer.push(byte); i += 1; } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
@@ -19,7 +19,7 @@ done
 
 remove_generated_code "STRARRAY_DECODE"
 START=1
-END=16
+END=64
 for ((i=END;i>=START;i--)); do
     CODE="impl AbiDecode for str[$i] { fn abi_decode(ref mut buffer: BufferReader) -> str[$i] { let data = buffer.read_bytes($i); asm(s: data.ptr()) { s: str[$i] } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_DECODE/\/\/ BEGIN STRARRAY_DECODE\n$CODE/g" ./src/codec.sw

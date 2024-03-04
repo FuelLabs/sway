@@ -1,5 +1,6 @@
 category = "run_on_node"
 expected_result = { action = "result", value = 0 }
+expected_result_new_encoding = { action = "return_data", value = "" }
 contracts = ["should_pass/test_contracts/contract_with_type_aliases"]
 unsupported_profiles = ["debug"]
 extra_run_with_experimental_new_encoding = true

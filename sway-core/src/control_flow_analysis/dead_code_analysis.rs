@@ -2091,7 +2091,6 @@ fn construct_dead_code_warning_from_node(
             content: ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl(decl)),
             span,
         } => {
-            dbg!(&decl);
             // In rare cases, variable declaration spans don't have a path, so we need to check for that
             if decl.name.span().source_id().is_some() {
                 CompileWarning {
