@@ -111,12 +111,21 @@ where
             self.generate_type_parameters_constraints_code(type_parameters, "AbiEncode");
 
         let name = name.as_str();
-        format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-            #[allow(dead_code)]
-            fn abi_encode(self, ref mut buffer: Buffer) {{
-                {body}
-            }}
-        }}")
+
+        if body.is_empty() {
+            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn abi_encode(self, ref mut _buffer: Buffer) {{
+                }}
+            }}")
+        } else {
+            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn abi_encode(self, ref mut buffer: Buffer) {{
+                    {body}
+                }}
+            }}")
+        }
     }
 
     fn generate_abi_decode_code(
@@ -131,12 +140,22 @@ where
             self.generate_type_parameters_constraints_code(type_parameters, "AbiDecode");
 
         let name = name.as_str();
-        format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
-            #[allow(dead_code)]
-            fn abi_decode(ref mut buffer: BufferReader) -> Self {{
-                {body}
-            }}
-        }}")
+
+        if body == "Self {  }" {
+            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn abi_decode(ref mut _buffer: BufferReader) -> Self {{
+                    {body}
+                }}
+            }}")
+        } else {
+            format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiDecode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
+                #[allow(dead_code)]
+                fn abi_decode(ref mut buffer: BufferReader) -> Self {{
+                    {body}
+                }}
+            }}")
+        }
     }
 
     fn generate_abi_encode_struct_body(&self, _engines: &Engines, decl: &TyStructDecl) -> String {
@@ -522,11 +541,20 @@ where
 
             let method_name = decl.name.as_str();
 
-            code.push_str(&format!("if method_name == \"{method_name}\" {{
-                let args = decode_second_param::<{args_types}>();
-                let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
-                __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
-            }}\n"));
+            if args_types == "()" {
+                code.push_str(&format!("if method_name == \"{method_name}\" {{
+                    let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}());
+                    __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
+                }}\n"));
+            } else {
+                code.push_str(&format!("if method_name == \"{method_name}\" {{
+                    let args = decode_second_param::<{args_types}>();
+                    let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
+                    __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
+                }}\n"));
+            }
+
+            
         }
 
         let att: String = match (reads, writes) {
@@ -616,13 +644,22 @@ where
 
         let return_type = Self::generate_type(engines, decl.return_type.type_id);
 
-        let code = format!(
-            "pub fn __entry() -> raw_slice {{
-            let args = decode_script_data::<{args_types}>();
-            let result: {return_type} = main({expanded_args}); 
-            encode::<{return_type}>(result)
-        }}"
-        );
+        let code = if args_types == "()" {
+            format!(
+                "pub fn __entry() -> raw_slice {{
+                let result: {return_type} = main(); 
+                encode::<{return_type}>(result)
+            }}"
+            )
+        } else {
+            format!(
+                "pub fn __entry() -> raw_slice {{
+                let args = decode_script_data::<{args_types}>();
+                let result: {return_type} = main({expanded_args}); 
+                encode::<{return_type}>(result)
+            }}"
+            )
+        };
 
         // println!("Generate Script Entry");
         // println!("---------------------");
