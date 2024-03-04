@@ -2141,9 +2141,10 @@ fn construct_dead_code_warning_from_node(
         } => {
             dbg!(decl);
             CompileWarning {
-            span: span.clone(),
-            warning_content: Warning::DeadDeclaration,
-        }},
+                span: span.clone(),
+                warning_content: Warning::DeadDeclaration,
+            }
+        }
         // Otherwise, this is unreachable.
         ty::TyAstNode {
             span,

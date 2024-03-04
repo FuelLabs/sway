@@ -553,8 +553,6 @@ where
                     __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
                 }}\n"));
             }
-
-            
         }
 
         let att: String = match (reads, writes) {
