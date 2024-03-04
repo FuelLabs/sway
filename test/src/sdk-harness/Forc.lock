@@ -241,6 +241,16 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "run_external_proxy"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "run_external_target"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "script_bytecode"
 source = "member"
 dependencies = ["std"]

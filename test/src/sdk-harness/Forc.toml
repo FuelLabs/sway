@@ -42,6 +42,8 @@ members = [
   "test_projects/tx_fields",
   "test_projects/type_aliases",
   "test_projects/vec_in_abi",
+  "test_projects/run_external_target",
+  "test_projects/run_external_proxy",
   "test_artifacts/auth_caller_contract",
   "test_artifacts/auth_caller_script",
   "test_artifacts/auth_predicate",
