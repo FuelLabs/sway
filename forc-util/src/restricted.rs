@@ -101,7 +101,7 @@ pub fn is_valid_project_name_format(name: &str) -> Result<()> {
     if !re.is_match(name) {
         bail!(
             "the project name `{name}` cannot be used as a project name.\n\
-        project name can be a combination of letters, numbers, and underscores, \
+        project name can be a combination of letters, numbers, hyphen, and underscores, \
         and must start with a letter."
         );
     }
@@ -143,4 +143,22 @@ fn test_invalid_char() {
         contains_invalid_char("test_proj", "package name"),
         std::result::Result::Ok(())
     ));
+}
+
+#[test]
+fn test_is_valid_project_name_format() {
+    is_valid_project_name_format("mock_project_name").expect("this should be pass");
+
+    is_valid_project_name_format("mock_project_name123").expect("this should be pass");
+
+    is_valid_project_name_format("mock_project_name-123-_").expect("this should be pass");
+
+    is_valid_project_name_format("1mock_project")
+        .expect_err("project name doesn't start with letter should be fail");
+
+    is_valid_project_name_format("mock_.project")
+        .expect_err("project name contains '.' should be fail");
+
+    is_valid_project_name_format("mock_/project")
+        .expect_err("project name contains '/' should be fail");
 }
