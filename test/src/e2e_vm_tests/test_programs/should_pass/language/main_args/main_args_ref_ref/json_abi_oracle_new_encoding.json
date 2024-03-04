@@ -17,8 +17,8 @@
   "messagesTypes": [],
   "types": [
     {
-      "components": [],
-      "type": "()",
+      "components": null,
+      "type": "raw untyped slice",
       "typeId": 0,
       "typeParameters": null
     }

@@ -34,7 +34,7 @@ where
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
     let buf_stdout = gag::BufferRedirect::stdout();
-    // let buf_stderr = gag::BufferRedirect::stderr();
+    let buf_stderr = gag::BufferRedirect::stderr();
     let result = func().await;
 
     if let Ok(mut buf_stdout) = buf_stdout {
@@ -42,10 +42,10 @@ where
         drop(buf_stdout);
     }
 
-    // if let Ok(mut buf_stderr) = buf_stderr {
-    //     buf_stderr.read_to_string(&mut output).unwrap();
-    //     drop(buf_stderr);
-    // }
+    if let Ok(mut buf_stderr) = buf_stderr {
+        buf_stderr.read_to_string(&mut output).unwrap();
+        drop(buf_stderr);
+    }
 
     if cfg!(windows) {
         // In windows output error and warning path files start with \\?\
@@ -365,6 +365,7 @@ pub(crate) fn test_json_abi(
             manifest_dir, file_name, "json_abi_oracle.json"
         )
     };
+
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_abi_output.json"
