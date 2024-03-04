@@ -153,12 +153,33 @@ fn test_is_valid_project_name_format() {
 
     is_valid_project_name_format("mock_project_name-123-_").expect("this should be pass");
 
-    is_valid_project_name_format("1mock_project")
-        .expect_err("project name doesn't start with letter should be fail");
+    assert_eq!(
+        is_valid_project_name_format("1mock_project").map_err(|e| e.to_string()),
+        std::result::Result::Err(
+            "the project name `1mock_project` cannot be used as a project name.\n\
+    project name can be a combination of letters, numbers, hyphen, and underscores, \
+    and must start with a letter."
+                .into()
+        )
+    );
 
-    is_valid_project_name_format("mock_.project")
-        .expect_err("project name contains '.' should be fail");
+    assert_eq!(
+        is_valid_project_name_format("mock_.project").map_err(|e| e.to_string()),
+        std::result::Result::Err(
+            "the project name `mock_.project` cannot be used as a project name.\n\
+    project name can be a combination of letters, numbers, hyphen, and underscores, \
+    and must start with a letter."
+                .into()
+        )
+    );
 
-    is_valid_project_name_format("mock_/project")
-        .expect_err("project name contains '/' should be fail");
+    assert_eq!(
+        is_valid_project_name_format("mock_/project").map_err(|e| e.to_string()),
+        std::result::Result::Err(
+            "the project name `mock_/project` cannot be used as a project name.\n\
+    project name can be a combination of letters, numbers, hyphen, and underscores, \
+    and must start with a letter."
+                .into()
+        )
+    );
 }
