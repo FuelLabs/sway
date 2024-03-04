@@ -305,7 +305,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
             // Free our stack allocated locals.  This is unneeded for entries since they will have
             // actually returned to the calling context via a VM RET.
-            self.drop_locals(function);
+            self.drop_locals();
 
             // Restore $reta.
             self.cur_bytecode.push(Op::register_move(
@@ -946,7 +946,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .push((locals_size_bytes, locals_base_reg, max_num_extra_args));
     }
 
-    fn drop_locals(&mut self, _function: Function) {
+    pub(super) fn drop_locals(&mut self) {
         let (locals_size_bytes, max_num_extra_args) =
             (self.locals_size_bytes(), self.max_num_extra_args());
         if locals_size_bytes > compiler_constants::TWENTY_FOUR_BITS {
