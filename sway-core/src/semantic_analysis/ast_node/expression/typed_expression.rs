@@ -2431,7 +2431,6 @@ mod tests {
         type_annotation: TypeId,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let mut root_module = namespace::Module::default();
-        root_module.name = Some(Ident::new_no_span("test_lib".to_string()));
         let mut namespace = Namespace::init_root(root_module);
         let ctx = TypeCheckContext::from_namespace(&mut namespace, engines)
             .with_type_annotation(type_annotation);

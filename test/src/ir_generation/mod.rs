@@ -171,7 +171,12 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(build_target, &engines);
+    let mut core_lib = compile_core(build_target, &engines);
+    // Create new initial namespace for every test by reusing the precompiled
+    // standard libraries. The namespace, thus its root module, must have the
+    // name set.
+    const PACKAGE_NAME: &str = "test_lib";
+    core_lib.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -226,12 +231,6 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-                // Create new initial namespace for every test by reusing the precompiled
-                // standard libraries. The namespace, thus its root module, must have the
-                // name set.
-                const PACKAGE_NAME: &str = "test_lib";
-		let mut clone_core_lib = core_lib.clone();
-                clone_core_lib.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
                 let initial_namespace = namespace::Root::from(core_lib.clone());
                 let compile_res = compile_to_ast(
                     &handler,
