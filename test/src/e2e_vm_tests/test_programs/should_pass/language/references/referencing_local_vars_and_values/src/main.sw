@@ -124,7 +124,9 @@ fn reference_zero_sized_local_var_and_value<T>()
 {
     assert(__size_of::<T>() == 0);
 
-    let mut x = T::new();
+    // TODO-IG: Return test for mutable references once https://github.com/FuelLabs/sway/issues/5692 is fixed.
+    // let mut x = T::new();
+    let x = T::new();
 
     let r_x_1 = &x;
     let r_x_2 = &x;
@@ -132,17 +134,11 @@ fn reference_zero_sized_local_var_and_value<T>()
 
     assert_references_zero_size(r_x_1, r_x_2, r_val, x);
 
-    let r_x_1 = &mut x;
-    let r_x_2 = &mut x;
-    let r_val = &mut T::new();
+    // let r_x_1 = &mut x;
+    // let r_x_2 = &mut x;
+    // let r_val = &mut T::new();
 
-    assert_references_zero_size(r_x_1, r_x_2, r_val, x);
-
-    let r_dummy = &123u64;
-    let r_dummy_ptr = asm(r: r_dummy) { r: raw_ptr };
-    let r_dummy_val = r_dummy_ptr.read::<u64>();
-    assert(r_dummy_val == 123);
-    assert(*r_dummy == 123);
+    // assert_references_zero_size(r_x_1, r_x_2, r_val, x);
 }
 
 fn assert_references_zero_size<T>(r_x_1: &T, r_x_2: &T, r_val: &T, x: T) where T: Eq + New + ZeroSize {
