@@ -31,7 +31,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
-use sway_core::language::ty::{TyAstNodeContent, TyExpression, TyExpressionVariant};
+use sway_core::language::ty::{TyAstNodeContent, TyExpressionVariant};
 pub use sway_core::Programs;
 use sway_core::TypeInfo;
 use sway_core::{
@@ -164,7 +164,7 @@ pub struct PkgTestEntry {
     pub pass_condition: TestPassCondition,
     pub span: Span,
     pub file_path: Arc<PathBuf>,
-    pub log_params: Vec<(SourceId, Option<Arc<TypeInfo>>)>,
+    pub log_params: Vec<(SourceId, Arc<TypeInfo>)>,
 }
 
 /// The result of successfully compiling a workspace.
@@ -2014,39 +2014,28 @@ impl PkgTestEntry {
             bail!("Invalid test argument(s) for test: {test_name}.")
         }?;
 
-        /// Given an AST node, checks:
-        /// - it is function,
-        /// - it is a log,
-        ///
-        /// If condition holds, returns type of log's param.
-        fn collect_log_type_from_decl(
-            expr: &TyExpression,
-            log_param_types: &mut Vec<(SourceId, Option<Arc<TypeInfo>>)>,
-            engines: &Engines,
-        ) {
-            if let TyExpressionVariant::FunctionApplication {
-                call_path,
-                arguments,
-                ..
-            } = &expr.expression
-            {
-                let suffix = call_path.suffix.to_string();
-                if suffix == "log" {
-                    let arg_type = arguments
-                        .iter()
-                        .map(|(_, arg_expr)| arg_expr.return_type)
-                        .map(|type_id| engines.te().get(type_id))
-                        .next();
-                    log_param_types.push((expr.span.source_id().cloned().unwrap(), arg_type));
-                }
-            }
-        }
-
         let mut log_params = Vec::new();
         for ast_node in test_function_decl.body.contents.iter() {
             if let TyAstNodeContent::Expression(expr) = &ast_node.content {
-                // We found an expression node, try to extract the arguments if this is an assert.
-                collect_log_type_from_decl(expr, &mut log_params, engines);
+                if let TyExpressionVariant::FunctionApplication {
+                    call_path,
+                    arguments,
+                    ..
+                } = &expr.expression
+                {
+                    let suffix = call_path.suffix.to_string();
+                    if suffix == "log" {
+                        let arg_type = arguments
+                            .iter()
+                            .map(|(_, arg_expr)| arg_expr.return_type)
+                            .map(|type_id| engines.te().get(type_id))
+                            .next();
+                        if let (Some(source_id), Some(arg_type)) = (expr.span.source_id(), arg_type)
+                        {
+                            log_params.push((*source_id, arg_type));
+                        }
+                    }
+                }
             }
         }
 
@@ -2057,7 +2046,6 @@ impl PkgTestEntry {
             ),
         );
 
-        println!("{log_params:?}");
         Ok(Self {
             pass_condition,
             span,
@@ -2796,6 +2784,7 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
 mod test {
     use super::*;
     use regex::Regex;
+    use sway_core::TypeArgument;
     use sway_types::integer_bits::IntegerBits;
 
     fn setup_build_plan(path: &str) -> BuildPlan {
@@ -2814,8 +2803,7 @@ mod test {
         .unwrap()
     }
 
-    #[test]
-    fn test_collect_test_entry_logs() {
+    fn get_test_entry_logs(entry_name: &str) -> Vec<Arc<TypeInfo>> {
         let current_dir = env!("CARGO_MANIFEST_DIR");
         let manifest_dir = format!("{current_dir}/tests/test_pkg_entry");
         let build_opts = BuildOpts {
@@ -2830,10 +2818,11 @@ mod test {
         };
         let built_pkgs = build_with_options(build_opts).unwrap();
         let built_pkg = built_pkgs.expect_pkg().unwrap();
-        let test_entry = built_pkg
+        let pkg_entry = built_pkg
             .bytecode
             .entries
             .iter()
+            .filter(|pkg_entry| pkg_entry.finalized.fn_name == entry_name)
             .find_map(|entry| {
                 if let PkgEntryKind::Test(test_entry) = &entry.kind {
                     Some(test_entry)
@@ -2843,18 +2832,64 @@ mod test {
             })
             .unwrap();
 
-        let log_params: Vec<_> = test_entry
+        pkg_entry
             .log_params
             .iter()
             .map(|(_, type_info)| type_info)
-            .collect();
-        assert_eq!(log_params.len(), 1);
-        let type_info = log_params[0].clone().unwrap();
+            .cloned()
+            .collect()
+    }
 
+    #[test]
+    fn collect_test_entry_log_unsigned_int() {
+        let log_types = get_test_entry_logs("log_unsigned_int");
+        assert_eq!(log_types.len(), 1);
         assert!(matches!(
-            type_info.as_ref(),
+            *log_types[0],
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
         ))
+    }
+
+    #[test]
+    fn collect_test_entry_log_bool() {
+        let log_types = get_test_entry_logs("log_bool");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Boolean))
+    }
+
+    #[test]
+    fn collect_test_entry_log_string_slice() {
+        let log_types = get_test_entry_logs("log_string_slice");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::StringSlice))
+    }
+
+    #[test]
+    fn collect_test_entry_log_array() {
+        let log_types = get_test_entry_logs("log_array");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Array(_, _)))
+    }
+
+    #[test]
+    fn collect_test_entry_log_tuple() {
+        let log_types = get_test_entry_logs("log_tuple");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Tuple(_)))
+    }
+
+    #[test]
+    fn collect_test_entry_log_struct() {
+        let log_types = get_test_entry_logs("log_struct");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Struct(_)))
+    }
+
+    #[test]
+    fn collect_test_entry_log_enum() {
+        let log_types = get_test_entry_logs("log_enum");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Enum(_)))
     }
 
     #[test]
