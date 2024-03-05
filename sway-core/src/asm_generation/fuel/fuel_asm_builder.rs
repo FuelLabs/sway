@@ -305,7 +305,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg2,
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
-                    FuelVmInstruction::JmpbSsp(offset) => self.compile_jmpb_ssp(instr_val, offset),
+                    FuelVmInstruction::JmpMem => self.compile_jmp_mem(instr_val),
                 },
                 InstOp::GetElemPtr {
                     base,
@@ -1452,45 +1452,44 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         Ok(())
     }
 
-    fn compile_jmpb_ssp(&mut self, instr_val: &Value, offset: &Value) -> Result<(), CompileError> {
+    fn compile_jmp_mem(&mut self, instr_val: &Value) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
-        let offset_reg = self.value_to_register(offset)?;
-        let is_offset_reg = self.reg_seqr.next();
-        let prev_ssp_reg = self.reg_seqr.next();
+        let target_reg = self.reg_seqr.next();
+        let is_target_reg = self.reg_seqr.next();
         let by4_reg = self.reg_seqr.next();
 
         self.cur_bytecode.push(Op {
             owning_span: owning_span.clone(),
-            opcode: Either::Left(VirtualOp::SUB(
-                prev_ssp_reg.clone(),
-                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                offset_reg,
+            opcode: Either::Left(VirtualOp::LW(
+                target_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::HeapPointer),
+                VirtualImmediate12::new(0, Span::dummy()).unwrap(),
             )),
-            comment: "jmpb_ssp: Compute $ssp - offset".into(),
+            comment: "jmp_mem: Load MEM[$hp]".into(),
         });
         self.cur_bytecode.push(Op {
             owning_span: owning_span.clone(),
             opcode: Either::Left(VirtualOp::SUB(
-                is_offset_reg.clone(),
-                prev_ssp_reg,
+                is_target_reg.clone(),
+                target_reg,
                 VirtualRegister::Constant(ConstantRegister::InstructionStart),
             )),
-            comment: "jmpb_ssp: Subtract $is since $jmp adds it back.".into(),
+            comment: "jmp_mem: Subtract $is since Jmp adds it back.".into(),
         });
         self.cur_bytecode.push(Op {
             owning_span: owning_span.clone(),
             opcode: Either::Left(VirtualOp::DIVI(
                 by4_reg.clone(),
-                is_offset_reg.clone(),
+                is_target_reg.clone(),
                 VirtualImmediate12::new(4, Span::dummy()).unwrap(),
             )),
-            comment: "jmpb_ssp: Divide by 4 since Jmp multiplies by 4.".into(),
+            comment: "jmp_mem: Divide by 4 since Jmp multiplies by 4.".into(),
         });
 
         self.cur_bytecode.push(Op {
             owning_span,
             opcode: Either::Left(VirtualOp::JMP(by4_reg)),
-            comment: "jmpb_ssp: Jump to computed value".into(),
+            comment: "jmp_mem: Jump to computed value".into(),
         });
 
         Ok(())

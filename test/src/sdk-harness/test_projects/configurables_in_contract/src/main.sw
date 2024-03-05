@@ -1,5 +1,7 @@
 contract;
 
+use std::constants::ZERO_B256;
+
 enum EnumWithGeneric<D> {
     VariantOne: D,
     VariantTwo: (),
@@ -20,14 +22,16 @@ configurable {
         field_2: 16,
     },
     ENUM: EnumWithGeneric<bool> = EnumWithGeneric::VariantOne(true),
+    ADDRESS: Address = Address::from(ZERO_B256),
+    CONTRACT_ID: ContractId = ContractId::from(ZERO_B256),
 }
 
 abi TestContract {
-    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>);
+    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>, Address, ContractId);
 }
 
 impl TestContract for Contract {
-    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>) {
-        (U8, BOOL, ARRAY, STR_4, STRUCT, ENUM)
+    fn return_configurables() -> (u8, bool, [u32; 3], str[4], StructWithGeneric<u8>, EnumWithGeneric<bool>, Address, ContractId) {
+        (U8, BOOL, ARRAY, STR_4, STRUCT, ENUM, ADDRESS, CONTRACT_ID)
     }
 }

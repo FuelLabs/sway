@@ -198,7 +198,7 @@ impl U256 {
     ///     let zero_u256 = U256 { a: 0, b: 0, c: 0, d: 0 };
     ///     let zero_u128 = zero_u256.as_u128().unwrap();
     ///
-    ///     assert(zero_u128 == U128 { upper: 0, lower: 0 });
+    ///     assert(zero_u128 == U128::from(0, 0));
     ///
     ///     let max_u256 = U256::max();
     ///     let result = U256.as_u64();
@@ -462,21 +462,21 @@ impl core::ops::Add for U256 {
 
         let mut overflow = 0;
         let mut local_res = U128::from((0, word_4)) + U128::from((0, other_word_4));
-        let result_d = local_res.lower;
-        overflow = local_res.upper;
+        let result_d = local_res.lower();
+        overflow = local_res.upper();
 
         local_res = U128::from((0, word_3)) + U128::from((0, other_word_3)) + U128::from((0, overflow));
-        let result_c = local_res.lower;
-        overflow = local_res.upper;
+        let result_c = local_res.lower();
+        overflow = local_res.upper();
 
         local_res = U128::from((0, word_2)) + U128::from((0, other_word_2)) + U128::from((0, overflow));
-        let result_b = local_res.lower;
-        overflow = local_res.upper;
+        let result_b = local_res.lower();
+        overflow = local_res.upper();
 
         local_res = U128::from((0, word_1)) + U128::from((0, other_word_1)) + U128::from((0, overflow));
-        let result_a = local_res.lower;
+        let result_a = local_res.lower();
         // panic on overflow
-        assert(local_res.upper == 0);
+        assert(local_res.upper() == 0);
         Self::from((result_a, result_b, result_c, result_d))
     }
 }
@@ -573,20 +573,20 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
-                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
-                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower).into();
+                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper().overflowing_add(result_c_d.lower()).into();
+                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower()).into();
 
                 let (overflow_of_b_to_a_0, overflow_of_c_to_b_2): (u64, u64) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
 
-                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
-                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_b_d.lower().overflowing_add(result_c_d.upper()).into();
+                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper()).into();
                 let (overflow_of_b_to_a_3, b): (u64, u64) = b.overflowing_add(overflow_of_c_to_b_2).into();
 
                 Self::from((
-                    self.b * other.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+                    self.b * other.c + result_b_d.upper() + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
                     b,
                     c,
-                    result_d_d.lower,
+                    result_d_d.lower(),
                 ))
             } else if other.b != 0 {
                 // If `other.b` is nonzero, `self.b` has to be zero. Otherwise, overflow is
@@ -598,20 +598,20 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = other.d.overflowing_mul(self.c);
                 let result_d_d = other.d.overflowing_mul(self.d);
 
-                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
-                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower).into();
+                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper().overflowing_add(result_c_d.lower()).into();
+                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower()).into();
 
                 let (overflow_of_b_to_a_0, overflow_of_c_to_b_2): (u64, u64) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
 
-                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_b_d.lower.overflowing_add(result_c_d.upper).into();
-                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_b_d.lower().overflowing_add(result_c_d.upper()).into();
+                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper()).into();
                 let (overflow_of_b_to_a_3, b): (u64, u64) = b.overflowing_add(overflow_of_c_to_b_2).into();
 
                 Self::from((
-                    other.b * self.c + result_b_d.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+                    other.b * self.c + result_b_d.upper() + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
                     b,
                     c,
-                    result_d_d.lower,
+                    result_d_d.lower(),
                 ))
             } else {
                 // note, that `self.a`, `self.b`, `other.a`, `other.b` are all equal to 0
@@ -620,22 +620,22 @@ impl core::ops::Multiply for U256 {
                 let result_d_c = self.d.overflowing_mul(other.c);
                 let result_d_d = self.d.overflowing_mul(other.d);
 
-                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper.overflowing_add(result_c_d.lower).into();
+                let (overflow_of_c_to_b_1, mut c): (u64, u64) = result_d_d.upper().overflowing_add(result_c_d.lower()).into();
 
-                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower).into();
+                let (mut overflow_of_c_to_b_2, c): (u64, u64) = c.overflowing_add(result_d_c.lower()).into();
 
                 let (overflow_of_b_to_a_0, overflow_of_c_to_b_2): (u64, u64) = overflow_of_c_to_b_1.overflowing_add(overflow_of_c_to_b_2).into();
 
-                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_c_c.lower.overflowing_add(result_c_d.upper).into();
-                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper).into();
+                let (overflow_of_b_to_a_1, mut b): (u64, u64) = result_c_c.lower().overflowing_add(result_c_d.upper()).into();
+                let (overflow_of_b_to_a_2, b): (u64, u64) = b.overflowing_add(result_d_c.upper()).into();
                 let (overflow_of_b_to_a_3, b): (u64, u64) = b.overflowing_add(overflow_of_c_to_b_2).into();
 
                 Self::from((
                     // as overflow for a means overflow for the whole number, we are adding as is, not using `overflowing_add`
-                    result_c_c.upper + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
+                    result_c_c.upper() + overflow_of_b_to_a_3 + overflow_of_b_to_a_2 + overflow_of_b_to_a_1 + overflow_of_b_to_a_0,
                     b,
                     c,
-                    result_d_d.lower,
+                    result_d_d.lower(),
                 ))
             }
         }
@@ -657,7 +657,7 @@ impl core::ops::Divide for U256 {
             && divisor.b == 0
         {
             let res = U128::from((self.c, self.d)) / U128::from((divisor.c, divisor.d));
-            return Self::from((0, 0, res.upper, res.lower));
+            return Self::from((0, 0, res.upper(), res.lower()));
         }
 
         let mut quotient = Self::from((0, 0, 0, 0));

@@ -9,12 +9,12 @@ impl<K, V> StorageKey<MyStorageMap<K, V>> where K: Hash {
     // annotated with `Vec<V>`.
     #[storage(read)]
     fn to_vec1(self, key: K) -> Vec<V> {
-        let k = sha256((key, self.slot));
+        let k = sha256((key, self.slot()));
         let len = read::<u64>(k, 0).unwrap_or(0);
         let mut i = 0;
         let mut vec: Vec<V> = Vec::new();
         while len > i {
-            let k = sha256((key, i, self.slot));
+            let k = sha256((key, i, self.slot()));
             let item = read::<K>(k, 0).unwrap();
             vec.push(item); // <-----
             i += 1;
@@ -26,12 +26,12 @@ impl<K, V> StorageKey<MyStorageMap<K, V>> where K: Hash {
     // the type of `vec` (`Vec<K>`) is taken from the `vec.push` statement.
     #[storage(read)]
     fn to_vec2(self, key: K) -> Vec<V> {
-        let k = sha256((key, self.slot));
+        let k = sha256((key, self.slot()));
         let len = read::<u64>(k, 0).unwrap_or(0);
         let mut i = 0;
         let mut vec/*: Vec<V>*/ = Vec::new();
         while len > i {
-            let k = sha256((key, i, self.slot));
+            let k = sha256((key, i, self.slot()));
             let item = read::<K>(k, 0).unwrap();
             vec.push(item); // <-----
             i += 1;
