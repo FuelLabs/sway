@@ -1,5 +1,5 @@
-use sway_types::span;
 use super::{Expression, Scrutinee};
+use sway_types::span;
 
 #[derive(Debug, Clone)]
 pub struct MatchBranch {
