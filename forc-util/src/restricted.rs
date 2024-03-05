@@ -147,39 +147,34 @@ fn test_invalid_char() {
 
 #[test]
 fn test_is_valid_project_name_format() {
-    is_valid_project_name_format("mock_project_name").expect("this should be pass");
+    let assert_valid = |name: &str| {
+        is_valid_project_name_format(name).expect("this should pass");
+    };
 
-    is_valid_project_name_format("mock_project_name123").expect("this should be pass");
+    let assert_invalid = |name: &str, expected_error: &str| {
+        assert_eq!(
+            is_valid_project_name_format(name).map_err(|e| e.to_string()),
+            Err(expected_error.into())
+        );
+    };
 
-    is_valid_project_name_format("mock_project_name-123-_").expect("this should be pass");
+    let format_error_message = |name: &str| -> String {
+        let formatted_err_str = format!(
+            "the project name `{}` cannot be used as a project name.\n\
+        project name can be a combination of letters, numbers, hyphen, and underscores, \
+        and must start with a letter.",
+            name
+        );
+        formatted_err_str
+    };
 
-    assert_eq!(
-        is_valid_project_name_format("1mock_project").map_err(|e| e.to_string()),
-        std::result::Result::Err(
-            "the project name `1mock_project` cannot be used as a project name.\n\
-    project name can be a combination of letters, numbers, hyphen, and underscores, \
-    and must start with a letter."
-                .into()
-        )
-    );
+    // Test valid project names
+    assert_valid("mock_project_name");
+    assert_valid("mock_project_name123");
+    assert_valid("mock_project_name-123-_");
 
-    assert_eq!(
-        is_valid_project_name_format("mock_.project").map_err(|e| e.to_string()),
-        std::result::Result::Err(
-            "the project name `mock_.project` cannot be used as a project name.\n\
-    project name can be a combination of letters, numbers, hyphen, and underscores, \
-    and must start with a letter."
-                .into()
-        )
-    );
-
-    assert_eq!(
-        is_valid_project_name_format("mock_/project").map_err(|e| e.to_string()),
-        std::result::Result::Err(
-            "the project name `mock_/project` cannot be used as a project name.\n\
-    project name can be a combination of letters, numbers, hyphen, and underscores, \
-    and must start with a letter."
-                .into()
-        )
-    );
+    // Test invalid project names
+    assert_invalid("1mock_project", &format_error_message("1mock_project"));
+    assert_invalid("mock_.project", &format_error_message("mock_.project"));
+    assert_invalid("mock_/project", &format_error_message("mock_/project"));
 }
