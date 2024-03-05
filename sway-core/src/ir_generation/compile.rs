@@ -593,7 +593,7 @@ fn compile_abi_method(
         md_mgr,
         module,
         &ast_fn_decl,
-        // ABI are only entries when the new encoding if off
+        // ABI are only entries when the "new encoding" is off
         !context.experimental.new_encoding,
         Some(selector),
         logged_types_map,

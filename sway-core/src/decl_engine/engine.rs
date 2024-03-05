@@ -445,12 +445,6 @@ impl DeclEngine {
         let funcs = self.function_slab.values();
         for (i, func) in funcs.iter().enumerate() {
             list.push_str(&format!("{i} - {:?}\n", engines.help_out(func)));
-
-            if func.name.as_str().contains("__entry") || func.name.as_str().contains("main") {
-                for item in func.body.contents.iter() {
-                    list.push_str(&format!("    {:#?}\n", item));
-                }
-            }
         }
         write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
         builder

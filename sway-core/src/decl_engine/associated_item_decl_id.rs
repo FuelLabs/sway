@@ -1,5 +1,5 @@
 use sway_error::error::CompileError;
-use sway_types::{Span, Spanned};
+use sway_types::{Named, Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -116,30 +116,18 @@ impl DisplayWithEngines for AssociatedItemDeclId {
             Self::TraitFn(decl_id) => {
                 write!(
                     f,
-                    "decl(trait function {:#?})",
-                    engines.help_out(engines.de().get(decl_id))
+                    "decl(trait function {})",
+                    engines.de().get(decl_id).name()
                 )
             }
             Self::Function(decl_id) => {
-                write!(
-                    f,
-                    "decl(function {:#?})",
-                    engines.help_out(engines.de().get(decl_id))
-                )
+                write!(f, "decl(function {})", engines.de().get(decl_id).name())
             }
             Self::Constant(decl_id) => {
-                write!(
-                    f,
-                    "decl(constant {:#?})",
-                    engines.help_out(engines.de().get(decl_id))
-                )
+                write!(f, "decl(constant {})", engines.de().get(decl_id).name())
             }
             Self::Type(decl_id) => {
-                write!(
-                    f,
-                    "decl(type {:#?})",
-                    engines.help_out(engines.de().get(decl_id))
-                )
+                write!(f, "decl(type {})", engines.de().get(decl_id).name())
             }
         }
     }
