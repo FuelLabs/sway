@@ -230,6 +230,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             log_id,
                         } => self.verify_log(log_val, log_ty, log_id)?,
                         FuelVmInstruction::ReadRegister(_) => (),
+                        FuelVmInstruction::JmpMem => (),
                         FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
                         FuelVmInstruction::Smo {
                             recipient,

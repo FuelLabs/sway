@@ -194,6 +194,7 @@ pub enum FuelVmInstruction {
         arg1: Value,
         arg2: Value,
     },
+    JmpMem,
 }
 
 /// Comparison operations.
@@ -298,7 +299,7 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -408,6 +409,7 @@ impl InstOp {
                 } => vec![*log_val, *log_id],
                 FuelVmInstruction::ReadRegister(_) => vec![],
                 FuelVmInstruction::Revert(v) => vec![*v],
+                FuelVmInstruction::JmpMem => vec![],
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -544,6 +546,7 @@ impl InstOp {
                 }
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
+                FuelVmInstruction::JmpMem => (),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -629,7 +632,7 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. })
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
             | InstOp::MemCopyBytes { .. }
             | InstOp::MemCopyVal { .. }
             | InstOp::Store { .. }
@@ -664,7 +667,7 @@ impl InstOp {
             InstOp::Branch(_)
                 | InstOp::ConditionalBranch { .. }
                 | InstOp::Ret(..)
-                | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+                | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
         )
     }
 }
@@ -1070,6 +1073,18 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
             .instructions
             .push(revert_val);
         revert_val
+    }
+
+    pub fn jmp_mem(self) -> Value {
+        let ldc_exec = Value::new_instruction(
+            self.context,
+            self.block,
+            InstOp::FuelVm(FuelVmInstruction::JmpMem),
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(ldc_exec);
+        ldc_exec
     }
 
     pub fn smo(self, recipient: Value, message: Value, message_size: Value, coins: Value) -> Value {

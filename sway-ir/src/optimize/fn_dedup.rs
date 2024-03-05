@@ -154,6 +154,7 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                     crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
                     crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
                     crate::FuelVmInstruction::Revert(_)
+                    | crate::FuelVmInstruction::JmpMem
                     | crate::FuelVmInstruction::Smo { .. }
                     | crate::FuelVmInstruction::StateClear { .. }
                     | crate::FuelVmInstruction::StateLoadQuadWord { .. }

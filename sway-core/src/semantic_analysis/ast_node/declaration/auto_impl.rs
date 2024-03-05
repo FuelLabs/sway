@@ -502,7 +502,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
         // skip module "core"
         // Because of ordering, we cannot guarantee auto impl
         // for structs inside "core"
-        if matches!(self.ctx.namespace.root_module_name(), Some(x) if x.as_str() == "core") {
+        if matches!(self.ctx.namespace().root_module_name(), Some(x) if x.as_str() == "core") {
             return false;
         }
 
@@ -529,8 +529,9 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
             }
 
             let handler = Handler::default();
+            let engines = self.ctx.engines;
             self.ctx
-                .namespace
+                .namespace_mut()
                 .module_mut()
                 .current_items_mut()
                 .implemented_traits
@@ -549,7 +550,7 @@ impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b> {
                         type_arguments: vec![],
                     }],
                     &Span::dummy(),
-                    self.ctx.engines,
+                    engines,
                     crate::namespace::TryInsertingTraitImplOnFailure::Yes,
                 )
                 .is_ok()

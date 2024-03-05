@@ -77,17 +77,17 @@ impl ReplaceDecls for TyAstNode {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         match self.content {
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
                 decl.body.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::Declaration(_) => Ok(()),
+            TyAstNodeContent::Declaration(_) => Ok(false),
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::SideEffect(_) => Ok(()),
-            TyAstNodeContent::Error(_, _) => Ok(()),
+            TyAstNodeContent::SideEffect(_) => Ok(false),
+            TyAstNodeContent::Error(_, _) => Ok(false),
         }
     }
 }

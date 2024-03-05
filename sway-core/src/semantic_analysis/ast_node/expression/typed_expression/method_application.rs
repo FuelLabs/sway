@@ -197,7 +197,7 @@ pub(crate) fn type_check_method_application(
         // it's considered to be zero and hence no error needs to be reported
         if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
             if coins_analysis::possibly_nonzero_u64_expression(
-                ctx.namespace,
+                ctx.namespace(),
                 ctx.engines,
                 coins_expr,
             ) && !method
@@ -259,7 +259,7 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl = ctx.namespace.resolve_symbol(
+                let unknown_decl = ctx.namespace().resolve_symbol(
                     &Handler::default(),
                     ctx.engines,
                     name,
@@ -488,9 +488,9 @@ pub(crate) fn resolve_method_name(
 
             // find the module that the symbol is in
             let type_info_prefix = ctx
-                .namespace
+                .namespace()
                 .find_module_path(&call_path_binding.inner.prefixes);
-            ctx.namespace
+            ctx.namespace()
                 .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
             // find the method
@@ -510,12 +510,12 @@ pub(crate) fn resolve_method_name(
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
             let module_path = if !call_path.is_absolute {
-                ctx.namespace.find_module_path(&call_path.prefixes)
+                ctx.namespace().find_module_path(&call_path.prefixes)
             } else {
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), Some(root_name)) = (
                     module_path.first().cloned(),
-                    ctx.namespace.root_module_name().clone(),
+                    ctx.namespace().root_module_name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);
@@ -546,7 +546,7 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace.find_module_path(vec![]);
+            let module_path = ctx.namespace().find_module_path(vec![]);
 
             // find the type of the first argument
             let type_id = arguments_types

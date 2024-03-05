@@ -83,6 +83,9 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
+            Intrinsic::JmpMem => {
+                type_check_jmp_mem(handler, ctx, kind, arguments, type_arguments, span)
+            }
         }
     }
 }
@@ -1163,6 +1166,46 @@ fn type_check_revert(
         ty::TyIntrinsicFunctionKind {
             kind,
             arguments: vec![revert_code],
+            type_arguments: vec![],
+            span,
+        },
+        type_engine.insert(engines, TypeInfo::Never, None),
+    ))
+}
+
+/// Signature: `__jmp_mem() -> !`
+/// Description: Jumps to `MEM[$hp]`.
+fn type_check_jmp_mem(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![],
             type_arguments: vec![],
             span,
         },

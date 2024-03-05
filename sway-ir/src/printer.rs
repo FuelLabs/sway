@@ -656,6 +656,10 @@ fn instruction_to_doc<'a>(
                         Doc::text(format!("revert {}", namer.name(context, v),))
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                     )),
+                FuelVmInstruction::JmpMem => Doc::line(
+                    Doc::text("jmp_mem".to_string())
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                ),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,

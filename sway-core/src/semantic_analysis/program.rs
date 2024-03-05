@@ -32,7 +32,7 @@ impl TyProgram {
         build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx = TypeCheckContext::from_root(&mut namespace, engines)
+        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines)
             .with_kind(parsed.kind.clone())
             .with_experimental_flags(build_config.map(|x| x.experimental));
 
