@@ -22,6 +22,7 @@ use std::{
     },
 };
 use sway_core::LspConfig;
+use sysinfo::{Pid, System};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -166,6 +167,26 @@ impl ServerState {
                         return;
                     }
                 }
+            }
+        });
+    }
+
+    /// Spawns a new thread dedicated to checking if the client process is still active,
+    /// and if not, shutting down the server.
+    pub fn spawn_client_heartbeat(&self, client_pid: usize) {
+        tokio::spawn(async move {
+            let system = System::new_all();
+            loop {
+                if let Some(process) = system.process(Pid::from(client_pid)) {
+                    tracing::trace!(
+                        "Client Heartbeat: {} is still running ({})",
+                        process.name(),
+                        client_pid
+                    );
+                } else {
+                    std::process::exit(0);
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             }
         });
     }

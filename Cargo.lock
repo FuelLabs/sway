@@ -2166,7 +2166,7 @@ dependencies = [
  "sway-error",
  "sway-types",
  "sway-utils",
- "sysinfo",
+ "sysinfo 0.29.11",
  "tar",
  "toml 0.7.8",
  "tracing",
@@ -6489,7 +6489,7 @@ dependencies = [
  "sway-parse",
  "sway-types",
  "sway-utils",
- "sysinfo",
+ "sysinfo 0.29.11",
  "thiserror",
  "tracing",
  "uint",
@@ -6575,6 +6575,7 @@ dependencies = [
  "sway-utils",
  "swayfmt",
  "syn 1.0.109",
+ "sysinfo 0.30.6",
  "tempfile",
  "thiserror",
  "tikv-jemallocator",
@@ -6754,6 +6755,21 @@ dependencies = [
  "once_cell",
  "rayon",
  "winapi",
+]
+
+[[package]]
+name = "sysinfo"
+version = "0.30.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6746919caf9f2a85bff759535664c060109f21975c5ac2e8652e60102bd4d196"
+dependencies = [
+ "cfg-if 1.0.0",
+ "core-foundation-sys",
+ "libc",
+ "ntapi",
+ "once_cell",
+ "rayon",
+ "windows",
 ]
 
 [[package]]
@@ -7812,6 +7828,16 @@ name = "winapi-x86_64-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
+
+[[package]]
+name = "windows"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e48a53791691ab099e5e2ad123536d0fff50652600abaf43bbf952894110d0be"
+dependencies = [
+ "windows-core",
+ "windows-targets 0.52.3",
+]
 
 [[package]]
 name = "windows-core"
