@@ -13,6 +13,7 @@ use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
+use std::process::Command;
 use std::{
     mem,
     path::PathBuf,
@@ -22,7 +23,6 @@ use std::{
     },
 };
 use sway_core::LspConfig;
-use sysinfo::{Pid, System};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -175,14 +175,17 @@ impl ServerState {
     /// and if not, shutting down the server.
     pub fn spawn_client_heartbeat(&self, client_pid: usize) {
         tokio::spawn(async move {
-            let system = System::new_all();
             loop {
-                if let Some(process) = system.process(Pid::from(client_pid)) {
-                    tracing::trace!(
-                        "Client Heartbeat: {} is still running ({})",
-                        process.name(),
-                        client_pid
-                    );
+                // Not using sysinfo here because it has compatibility issues with fuel.nix
+                // https://github.com/FuelLabs/fuel.nix/issues/64
+                let output = Command::new("ps")
+                    .arg("-p")
+                    .arg(client_pid.to_string())
+                    .output()
+                    .expect("Failed to execute ps command");
+
+                if String::from_utf8_lossy(&output.stdout).contains(&format!("{} ", client_pid)) {
+                    tracing::trace!("Client Heartbeat: still running ({})", client_pid);
                 } else {
                     std::process::exit(0);
                 }
