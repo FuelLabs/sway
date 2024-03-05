@@ -159,13 +159,12 @@ fn test_is_valid_project_name_format() {
     };
 
     let format_error_message = |name: &str| -> String {
-        let formatted_err_str = format!(
+        format!(
             "the project name `{}` cannot be used as a project name.\n\
         project name can be a combination of letters, numbers, hyphen, and underscores, \
         and must start with a letter.",
             name
-        );
-        formatted_err_str
+        )
     };
 
     // Test valid project names
