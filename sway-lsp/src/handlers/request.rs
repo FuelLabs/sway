@@ -31,6 +31,12 @@ pub fn handle_initialize(
             .ok()
             .unwrap_or_default();
     }
+
+    // Start a thread that will shutdown the server if the client process is no longer active.
+    if let Some(client_pid) = params.process_id {
+        state.spawn_client_heartbeat(client_pid as usize);
+    }
+
     // Initalizing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
