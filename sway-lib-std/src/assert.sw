@@ -58,7 +58,7 @@ pub fn assert(condition: bool) {
 #[cfg(experimental_new_encoding = false)]
 pub fn assert_eq<T>(v1: T, v2: T)
 where
-    T: Eq
+    T: Eq,
 {
     if (v1 != v2) {
         log(v1);

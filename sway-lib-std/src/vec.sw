@@ -701,7 +701,6 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-
 #[test()]
 fn test_vec_with_len_1() {
     let mut ve: Vec<u64> = Vec::new();
