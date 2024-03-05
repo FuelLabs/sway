@@ -1,21 +1,15 @@
+use super::{
+    lexical_scope::GlobImport, module::Module, namespace::Namespace, trait_map::TraitMap, Ident,
+};
 use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
-    language::{
-	ty::{self, TyDecl},
-    },
+    language::ty::{self, TyDecl},
     namespace::Path,
-};
-use super::{
-    lexical_scope::GlobImport,
-    module::Module,
-    namespace::Namespace,
-    trait_map::TraitMap,
-    Ident, 
 };
 use sway_error::{
     error::CompileError,
-    handler::{ErrorEmitted, Handler}
+    handler::{ErrorEmitted, Handler},
 };
 use sway_types::Spanned;
 use sway_utils::iter_prefixes;
@@ -34,7 +28,6 @@ pub struct Root {
 }
 
 impl Root {
-
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
     /// `dst` module.
     ///
@@ -66,15 +59,12 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(implemented_traits, engines);  // TODO: No difference made between imported and declared items
+            .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
         for symbol_and_decl in symbols_and_decls {
-            dst_mod.current_items_mut().use_synonyms.insert( // TODO: No difference made between imported and declared items
+            dst_mod.current_items_mut().use_synonyms.insert(
+                // TODO: No difference made between imported and declared items
                 symbol_and_decl.0,
-                (
-                    src.to_vec(),
-                    GlobImport::Yes,
-                    symbol_and_decl.1,
-                ),
+                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1),
             );
         }
 
@@ -94,14 +84,7 @@ impl Root {
         alias: Option<Ident>,
     ) -> Result<(), ErrorEmitted> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(
-            handler,
-            engines,
-            src,
-            last_item,
-            dst,
-            alias,
-        )
+        self.item_import(handler, engines, src, last_item, dst, alias)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -163,7 +146,8 @@ impl Root {
                     {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
-                    dst_mod.current_items_mut().use_synonyms.insert(   // TODO: No difference made between imported and declared items
+                    dst_mod.current_items_mut().use_synonyms.insert(
+                        // TODO: No difference made between imported and declared items
                         name.clone(),
                         (src.to_vec(), GlobImport::No, decl),
                     );
@@ -174,7 +158,7 @@ impl Root {
                         dst_mod
                             .current_items_mut()
                             .use_aliases
-                            .insert(alias.as_str().to_string(), item.clone());   // TODO: No difference made between imported and declared items
+                            .insert(alias.as_str().to_string(), item.clone()); // TODO: No difference made between imported and declared items
                     }
                     None => add_synonym(item),
                 };
@@ -191,7 +175,7 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(impls_to_insert, engines);   // TODO: No difference made between imported and declared items
+            .extend(impls_to_insert, engines); // TODO: No difference made between imported and declared items
 
         Ok(())
     }
@@ -250,7 +234,8 @@ impl Root {
                                     name: name.into(),
                                 });
                             }
-                            dst_mod.current_items_mut().use_synonyms.insert(   // TODO: No difference made between imported and declared items
+                            dst_mod.current_items_mut().use_synonyms.insert(
+                                // TODO: No difference made between imported and declared items
                                 name.clone(),
                                 (
                                     src.to_vec(),
@@ -269,7 +254,8 @@ impl Root {
                                 dst_mod
                                     .current_items_mut()
                                     .use_aliases
-                                    .insert(alias.as_str().to_string(), variant_name.clone());    // TODO: No difference made between imported and declared items
+                                    .insert(alias.as_str().to_string(), variant_name.clone());
+                                // TODO: No difference made between imported and declared items
                             }
                             None => add_synonym(variant_name),
                         };
@@ -340,7 +326,8 @@ impl Root {
 
                         // import it this way.
                         let dst_mod = &mut self.module[dst];
-                        dst_mod.current_items_mut().use_synonyms.insert(   // TODO: No difference made between imported and declared items
+                        dst_mod.current_items_mut().use_synonyms.insert(
+                            // TODO: No difference made between imported and declared items
                             variant_name.clone(),
                             (
                                 src.to_vec(),
@@ -426,13 +413,13 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(implemented_traits, engines);   // TODO: No difference made between imported and declared items
+            .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
 
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_mod
                 .current_items_mut()
                 .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl));   // TODO: No difference made between imported and declared items
+                .insert(symbol, (path, GlobImport::Yes, decl)); // TODO: No difference made between imported and declared items
         };
 
         for (symbol, decl) in symbols_and_decls {

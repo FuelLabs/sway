@@ -261,8 +261,7 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name)
-        {
+        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name) {
             append_shadowing_error(
                 ident,
                 decl,

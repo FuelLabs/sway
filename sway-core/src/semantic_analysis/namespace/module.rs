@@ -153,7 +153,7 @@ impl Module {
             content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
             span: const_item_span.clone(),
         };
-	let root = Root::from(Module::default());
+        let root = Root::from(Module::default());
         let mut ns = Namespace::init_root(root);
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
         ns.root.module.name = ns_name;

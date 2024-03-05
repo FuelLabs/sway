@@ -1656,7 +1656,7 @@ pub fn dependency_namespace(
     }
 
     let mut root = namespace::Root::from(root_module);
-    
+
     let _ = root.star_import_with_reexports(
         &Handler::default(),
         engines,

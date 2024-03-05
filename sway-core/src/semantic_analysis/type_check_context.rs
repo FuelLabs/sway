@@ -1286,13 +1286,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.variant_star_import(
-            handler,
-            engines,
-            src,
-            &mod_path,
-            enum_name,
-        )
+        self.namespace_mut()
+            .root
+            .variant_star_import(handler, engines, src, &mod_path, enum_name)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -1304,13 +1300,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.self_import(
-            handler,
-            engines,
-            src,
-            &mod_path,
-            alias,
-        )
+        self.namespace_mut()
+            .root
+            .self_import(handler, engines, src, &mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
@@ -1323,14 +1315,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.item_import(
-            handler,
-            engines,
-            src,
-            item,
-            &mod_path,
-            alias,
-        )
+        self.namespace_mut()
+            .root
+            .item_import(handler, engines, src, item, &mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.

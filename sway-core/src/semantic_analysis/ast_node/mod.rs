@@ -49,8 +49,7 @@ impl ty::TyAstNode {
                         ImportType::Star => {
                             // try a standard starimport first
                             let star_import_handler = Handler::default();
-                            let import =
-                                ctx.star_import(&star_import_handler, &path);
+                            let import = ctx.star_import(&star_import_handler, &path);
                             if import.is_ok() {
                                 handler.append(star_import_handler);
                                 import
@@ -82,12 +81,8 @@ impl ty::TyAstNode {
                         ImportType::Item(ref s) => {
                             // try a standard item import first
                             let item_import_handler = Handler::default();
-                            let import = ctx.item_import(
-                                &item_import_handler,
-                                &path,
-                                s,
-                                a.alias.clone(),
-                            );
+                            let import =
+                                ctx.item_import(&item_import_handler, &path, s, a.alias.clone());
 
                             if import.is_ok() {
                                 handler.append(item_import_handler);
