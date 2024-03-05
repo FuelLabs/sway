@@ -7,7 +7,7 @@ use context_testing_abi::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x65dae4fedb02e2d70cdb56e2b82d23a2baa69a6acdbf01cc1271c7c1a1abe2cc;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x7d07b0644dbb7e20d8c584bc7956cfc22fcaa15372a9a8b0a00c9772a673cc2a;
+const CONTRACT_ID = 0x441f75894772629af8addf3bac4b04f92800aa9e509b1a438f9c82d7f5dd7972;
 
 fn main() -> bool {
     let gas: u64 = u64::max();

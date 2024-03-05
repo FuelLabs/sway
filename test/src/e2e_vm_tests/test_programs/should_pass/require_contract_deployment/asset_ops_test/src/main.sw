@@ -7,9 +7,9 @@ use std::constants::DEFAULT_SUB_ID;
 use test_fuel_coin_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const FUEL_COIN_CONTRACT_ID = 0x5d10689c7eecb405937a3f35fab7baf05a3f6189f9a2993ee70e21ccc1212460;
+const FUEL_COIN_CONTRACT_ID = 0x542c6e67e5e8768a2c119a80ddcbd1f8d01110ced16fda37e4aa77ebb6d6cdb9;
 #[cfg(experimental_new_encoding = true)]
-const FUEL_COIN_CONTRACT_ID = 0xd5d2269a1e1b747a13339ee234248d9bc66e2d0103023939ded58a20cb8cfccd;
+const FUEL_COIN_CONTRACT_ID = 0x819fafa79acf18c418188f02ebd7eb20c03597a9b986bb73284df6b4d501c86f;
 
 #[cfg(experimental_new_encoding = false)]
 const BALANCE_CONTRACT_ID = 0xe50966cd6b1da8fe006e3e876e08f3df6948ce426e1a7cfe49fba411b0a11f89;

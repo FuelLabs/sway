@@ -131,9 +131,8 @@ pub(crate) async fn runs_on_node(
         run(command).await.map(|ran_scripts| {
             ran_scripts
                 .into_iter()
-                .next()
-                .map(|ran_script| ran_script.receipts)
-                .unwrap()
+                .flat_map(|ran_script| ran_script.receipts)
+                .collect::<Vec<_>>()
         })
     })
     .await
