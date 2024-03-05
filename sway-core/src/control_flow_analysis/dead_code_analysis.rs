@@ -2133,12 +2133,10 @@ fn construct_dead_code_warning_from_node(
         ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(_),
             span,
-        } => {
-            CompileWarning {
-                span: span.clone(),
-                warning_content: Warning::DeadDeclaration,
-            }
-        }
+        } => CompileWarning {
+            span: span.clone(),
+            warning_content: Warning::DeadDeclaration,
+        },
         // Otherwise, this is unreachable.
         ty::TyAstNode {
             span,
