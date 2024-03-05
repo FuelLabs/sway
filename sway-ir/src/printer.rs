@@ -593,7 +593,7 @@ fn instruction_to_doc<'a>(
                         "{} = contract_call {} {} {}, {}, {}, {}",
                         namer.name(context, ins_value),
                         return_type.as_string(context),
-                        name,
+                        name.as_deref().unwrap_or(""),
                         namer.name(context, params),
                         namer.name(context, coins),
                         namer.name(context, asset_id),

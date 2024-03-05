@@ -75,7 +75,7 @@ pub enum InstOp {
     /// A contract call with a list of arguments
     ContractCall {
         return_type: Type,
-        name: String,
+        name: Option<String>,
         params: Value,
         coins: Value,
         asset_id: Value,
@@ -964,7 +964,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     pub fn contract_call(
         self,
         return_type: Type,
-        name: String,
+        name: Option<String>,
         params: Value,
         coins: Value,    // amount of coins to forward
         asset_id: Value, // b256 asset ID of the coint being forwarded

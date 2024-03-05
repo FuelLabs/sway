@@ -1306,7 +1306,7 @@ impl<'eng> FnCompiler<'eng> {
                 let returned_value = self
                     .current_block
                     .append(context)
-                    .contract_call(return_type, "unit".into(), params, coins, asset_id, gas)
+                    .contract_call(return_type, None, params, coins, asset_id, gas)
                     .add_metadatum(context, span_md_idx);
 
                 Ok(TerminatorValue::new(returned_value, context))
@@ -1776,7 +1776,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .contract_call(
                 return_type,
-                ast_name.to_string(),
+                Some(ast_name.to_string()),
                 ra_struct_ptr_val,
                 coins,
                 asset_id,
