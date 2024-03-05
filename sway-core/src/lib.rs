@@ -30,7 +30,7 @@ use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel};
 use control_flow_analysis::ControlFlowGraph;
-use debug_generation::generate_debug_info;
+pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
@@ -908,11 +908,6 @@ pub fn compile_to_bytecode(
         package_name,
     )?;
     asm_to_bytecode(handler, asm_res, source_map, engines.se())
-}
-
-/// Given source mapping, compile to [DebugInfo], containing the debug info.
-pub fn asm_to_debug(handler: &Handler, source_map: &SourceMap) -> Result<(), ErrorEmitted> {
-    generate_debug_info(handler, source_map)
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.

@@ -1,37 +1,32 @@
 use std::fs::File;
+use std::os::unix::ffi::OsStringExt;
+use std::path::Path;
 
 use gimli::write::{
     self, DebugLine, DebugLineStrOffsets, DebugStrOffsets, DwarfUnit, EndianVec, LineProgram,
     LineString,
 };
-use gimli::{BigEndian, LineEncoding};
-use sway_error::handler::{ErrorEmitted, Handler};
+use gimli::{BigEndian, Encoding, LineEncoding};
+use sway_error::error::CompileError;
 use sway_types::Span;
 
 use crate::source_map::SourceMap;
 
 use object::write::Object;
 
-pub fn generate_debug_info(handler: &Handler, source_map: &SourceMap) -> Result<(), ErrorEmitted> {
-    // working directory
-    let working_dir = &b"sway"[..];
-    // primary source file
-    let primary_src = &b"main.sw"[..];
-
+pub fn write_dwarf(
+    source_map: &SourceMap,
+    primary_dir: &Path,
+    primary_src: &Path,
+    out_file: &Path,
+) -> Result<(), CompileError> {
     let encoding = gimli::Encoding {
         format: gimli::Format::Dwarf64,
         version: 5,
         address_size: 8,
     };
-    let mut program = LineProgram::new(
-        encoding,
-        LineEncoding::default(),
-        LineString::String(working_dir.to_vec()),
-        LineString::String(primary_src.to_vec()),
-        None,
-    );
 
-    build_line_number_program(source_map, &mut program)?;
+    let program = build_line_number_program(encoding, primary_dir, primary_src, source_map)?;
 
     program
         .write(
@@ -41,10 +36,7 @@ pub fn generate_debug_info(handler: &Handler, source_map: &SourceMap) -> Result<
             &DebugStrOffsets::none(),
         )
         .map_err(|err| {
-            handler.emit_err(sway_error::error::CompileError::InternalOwned(
-                err.to_string(),
-                Span::dummy(),
-            ))
+            sway_error::error::CompileError::InternalOwned(err.to_string(), Span::dummy())
         })?;
 
     let mut dwarf = DwarfUnit::new(encoding);
@@ -55,7 +47,7 @@ pub fn generate_debug_info(handler: &Handler, source_map: &SourceMap) -> Result<
         .write(&mut debug_sections)
         .expect("Should write DWARF information");
 
-    let file = File::create("test.debug").unwrap();
+    let file = File::create(out_file).unwrap();
     let mut obj = Object::new(
         object::BinaryFormat::Elf,
         object::Architecture::X86_64,
@@ -74,19 +66,29 @@ pub fn generate_debug_info(handler: &Handler, source_map: &SourceMap) -> Result<
         .unwrap();
 
     obj.write_stream(file).map_err(|err| {
-        handler.emit_err(sway_error::error::CompileError::InternalOwned(
-            err.to_string(),
-            Span::dummy(),
-        ))
+        sway_error::error::CompileError::InternalOwned(err.to_string(), Span::dummy())
     })?;
 
     Ok(())
 }
 
 fn build_line_number_program(
+    encoding: Encoding,
+    primary_dir: &Path,
+    primary_src: &Path,
     source_map: &SourceMap,
-    program: &mut LineProgram,
-) -> Result<(), ErrorEmitted> {
+) -> Result<LineProgram, CompileError> {
+    let primary_src = primary_src.strip_prefix(primary_dir).map_err(|err| {
+        sway_error::error::CompileError::InternalOwned(err.to_string(), Span::dummy())
+    })?;
+    let mut program = LineProgram::new(
+        encoding,
+        LineEncoding::default(),
+        LineString::String(primary_dir.to_path_buf().into_os_string().into_vec()),
+        LineString::String(primary_src.to_path_buf().into_os_string().into_vec()),
+        None,
+    );
+
     program.begin_sequence(Some(write::Address::Constant(0)));
 
     for (ix, span) in &source_map.map {
@@ -121,5 +123,6 @@ fn build_line_number_program(
             .unwrap_or_default() as u64
             + 1,
     );
-    Ok(())
+
+    Ok(program)
 }
