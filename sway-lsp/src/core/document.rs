@@ -111,33 +111,25 @@ impl TextDocument {
 /// Marks the specified file as "dirty" by creating a corresponding flag file.
 ///
 /// This function ensures the necessary directory structure exists before creating the flag file.
-pub async fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
+pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
-    tokio::task::spawn_blocking(move || {
-        Ok(PidFileLocking::lsp(path)
-            .lock()
-            .map_err(|_| DirectoryError::LspLocksDirFailed)?)
-    })
-    .await
-    .map_err(|_| DirectoryError::LspLocksDirFailed)?
+    Ok(PidFileLocking::lsp(path)
+        .lock()
+        .map_err(|_| DirectoryError::LspLocksDirFailed)?)
 }
 
 /// Removes the corresponding flag file for the specifed Url.
 ///
 /// If the flag file does not exist, this function will do nothing.
-pub async fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
+pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
     let uri = uri.clone();
-    tokio::task::spawn_blocking(move || {
-        Ok(PidFileLocking::lsp(path).release().map_err(|err| {
-            DocumentError::UnableToRemoveFile {
-                path: uri.path().to_string(),
-                err: err.to_string(),
-            }
+    Ok(PidFileLocking::lsp(path)
+        .release()
+        .map_err(|err| DocumentError::UnableToRemoveFile {
+            path: uri.path().to_string(),
+            err: err.to_string(),
         })?)
-    })
-    .await
-    .map_err(|_| DirectoryError::LspLocksDirFailed)?
 }
 
 #[derive(Debug)]

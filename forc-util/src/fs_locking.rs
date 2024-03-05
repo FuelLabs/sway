@@ -31,12 +31,14 @@ impl PidFileLocking {
     /// Create a new PidFileLocking instance that is shared between the LSP and any other process
     /// that may want to update the file and needs to wait for the LSP to finish (like forc-fmt)
     pub fn lsp<X: AsRef<Path>>(filename: X) -> PidFileLocking {
-        Self::new(filename, ".lsp-locks", "dirty")
+        Self::new(filename, ".lsp-locks", "lock")
     }
 
     /// Checks if the given pid is active
     #[cfg(not(target = "windows"))]
     fn is_pid_active(pid: usize) -> bool {
+        // Not using sysinfo here because it has compatibility issues with fuel.nix
+        // https://github.com/FuelLabs/fuel.nix/issues/64
         use std::process::Command;
         let output = Command::new("ps")
             .arg("-p")
@@ -50,6 +52,8 @@ impl PidFileLocking {
 
     #[cfg(target = "windows")]
     fn is_pid_active(pid: usize) -> bool {
+        // Not using sysinfo here because it has compatibility issues with fuel.nix
+        // https://github.com/FuelLabs/fuel.nix/issues/64
         use std::process::Command;
         let output = Command::new("tasklist")
             .arg("/FI")
