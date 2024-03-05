@@ -368,6 +368,7 @@ pub(super) async fn run(
 
                             let _ = pass_mgr.run(&mut ir, &group);
                             let ir_output = sway_ir::printer::to_string(&ir);
+                            println!("{}", ir_output);
 
                             match checker.explain(&ir_output, filecheck::NO_VARIABLES)
                             {

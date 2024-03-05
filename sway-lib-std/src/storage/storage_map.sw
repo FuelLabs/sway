@@ -54,7 +54,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((key, self.field_id));
+        let key = sha256((key, self.field_id()));
         write::<V>(key, 0, value);
     }
 
@@ -89,9 +89,9 @@ where
         K: Hash,
     {
         StorageKey::<V>::new(
-            sha256((key, self.field_id)),
+            sha256((key, self.field_id())),
             0,
-            sha256((key, self.field_id)),
+            sha256((key, self.field_id())),
         )
     }
 
@@ -130,7 +130,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((key, self.slot));
+        let key = sha256((key, self.slot()));
         clear::<V>(key, 0)
     }
 
@@ -181,7 +181,7 @@ where
     where
         K: Hash,
     {
-        let key = sha256((key, self.field_id));
+        let key = sha256((key, self.field_id()));
 
         let val = read::<V>(key, 0);
 
