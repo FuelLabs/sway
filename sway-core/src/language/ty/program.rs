@@ -415,19 +415,7 @@ impl TyProgram {
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
             .chain(self.root.test_fns(decl_engine))
     }
-
-    // /// All entry function declarations within the program.
-    // pub fn entry_fns<'a: 'b, 'b>(
-    //     &'b self,
-    //     decl_engine: &'a DeclEngine,
-    //     tree_type: TreeType,
-    // ) -> impl '_ + Iterator<Item = DeclRefFunction> {
-    //     self.root
-    //         .submodules_recursive()
-    //         .flat_map(move |(_, submod)| submod.module.entry_fns(decl_engine, tree_type.clone()))
-    //         .chain(self.root.entry_fns(decl_engine, tree_type.clone()))
-    // }
-
+    
     pub fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
         let mut allow_deprecated = AllowDeprecatedState::default();
         self.root

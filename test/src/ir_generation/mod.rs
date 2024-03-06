@@ -261,14 +261,6 @@ pub(super) async fn run(
                     println!("Declaration Engine");
                     println!("-----------------------");
                     println!("{}", engines.de().pretty_print(&engines));
-
-                    // println!("Parsed");
-                    // println!("-----------------------");
-                    // dbg!(&programs.parsed);
-
-                    // println!("Typed");
-                    // println!("-----------------------");
-                    // dbg!(&programs.typed);
                 }
 
                 let typed_program = programs.typed.as_ref().unwrap();

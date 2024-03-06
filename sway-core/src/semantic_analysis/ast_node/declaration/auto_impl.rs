@@ -250,8 +250,6 @@ where
         kind: FunctionDeclarationKind,
         code: &str,
     ) -> Option<TyAstNode> {
-        // println!("{}", code);
-
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
             self.ctx.experimental,
@@ -301,8 +299,6 @@ where
         engines: &Engines,
         code: &str,
     ) -> Option<TyAstNode> {
-        // println!("{}", code);
-
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
             self.ctx.experimental,
@@ -659,8 +655,6 @@ where
             )
         };
 
-        // println!("Generate Script Entry");
-        // println!("---------------------");
         self.parse_item_fn_to_typed_ast_node(engines, FunctionDeclarationKind::Entry, &code)
     }
 }

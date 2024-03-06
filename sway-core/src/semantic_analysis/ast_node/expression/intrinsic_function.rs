@@ -1478,14 +1478,6 @@ fn type_check_contract_call(
         return Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span }));
     }
 
-    // if arguments.len() != 1 {
-    //     return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
-    //         name: kind.to_string(),
-    //         expected: 1,
-    //         span,
-    //     }));
-    // }
-
     let return_type_id = ctx
         .engines
         .te()

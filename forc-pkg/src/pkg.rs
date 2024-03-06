@@ -1809,10 +1809,7 @@ pub fn compile(
     };
 
     if profile.print_ast {
-        // tracing::info!("{:#?}", &programs.parsed);
-        // tracing::info!("{:#?}", engines.pe().pretty_print());
-        // tracing::info!("{}", engines.de().pretty_print(&engines));
-        // tracing::info!("{:#?}", typed_program);
+        tracing::info!("{:#?}", typed_program);
     }
 
     let storage_slots = typed_program.storage_slots.clone();
