@@ -2784,8 +2784,6 @@ pub fn fuel_core_not_running(node_url: &str) -> anyhow::Error {
 mod test {
     use super::*;
     use regex::Regex;
-    use sway_core::TypeArgument;
-    use sway_types::integer_bits::IntegerBits;
 
     fn setup_build_plan(path: &str) -> BuildPlan {
         let current_dir = env!("CARGO_MANIFEST_DIR");
@@ -2844,10 +2842,7 @@ mod test {
     fn collect_test_entry_log_unsigned_int() {
         let log_types = get_test_entry_logs("log_unsigned_int");
         assert_eq!(log_types.len(), 1);
-        assert!(matches!(
-            *log_types[0],
-            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-        ))
+        assert!(matches!(*log_types[0], TypeInfo::Numeric,))
     }
 
     #[test]
@@ -2890,6 +2885,19 @@ mod test {
         let log_types = get_test_entry_logs("log_enum");
         assert_eq!(log_types.len(), 1);
         assert!(matches!(*log_types[0], TypeInfo::Enum(_)))
+    }
+
+    #[test]
+    fn collect_test_entry_multiple_log() {
+        let log_types = get_test_entry_logs("log_multiple");
+        assert_eq!(log_types.len(), 7);
+        assert!(matches!(*log_types[0], TypeInfo::Numeric));
+        assert!(matches!(*log_types[1], TypeInfo::Boolean));
+        assert!(matches!(*log_types[2], TypeInfo::StringSlice));
+        assert!(matches!(*log_types[3], TypeInfo::Array(_, _)));
+        assert!(matches!(*log_types[4], TypeInfo::Tuple(_)));
+        assert!(matches!(*log_types[5], TypeInfo::Struct(_)));
+        assert!(matches!(*log_types[6], TypeInfo::Enum(_)));
     }
 
     #[test]
