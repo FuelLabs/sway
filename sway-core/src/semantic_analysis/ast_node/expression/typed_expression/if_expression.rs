@@ -80,6 +80,7 @@ pub(crate) fn instantiate_if_expression(
             help_text: "The two branches of an if expression must return the same type."
                 .to_string(),
             span: span.clone(),
+            internal: "".into(),
         }));
     }
 

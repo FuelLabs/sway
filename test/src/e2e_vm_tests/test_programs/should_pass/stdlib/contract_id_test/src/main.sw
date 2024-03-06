@@ -5,7 +5,7 @@ fn main() -> bool {
 
     // test from()
     let id = ContractId::from(bits);
-    assert(id.value == bits);
+    assert(id.bits() == bits);
 
     // test into()
     let new_bits:b256 = id.into();

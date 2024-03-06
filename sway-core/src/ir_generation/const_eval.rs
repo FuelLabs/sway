@@ -1111,7 +1111,7 @@ fn const_eval_intrinsic(
         | Intrinsic::StateStoreQuad
         | Intrinsic::Log
         | Intrinsic::Revert
-        | Intrinsic::JmpbSsp
+        | Intrinsic::JmpMem
         | Intrinsic::Smo => Err(ConstEvalError::CannotBeEvaluatedToConst {
             span: intrinsic.span.clone(),
         }),
@@ -1152,6 +1152,11 @@ fn const_eval_intrinsic(
                     unreachable!("Type checker allowed non integer value for Not");
                 }
             }
+        }
+        Intrinsic::ContractCall | Intrinsic::ContractRet => {
+            Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: intrinsic.span.clone(),
+            })
         }
     }
 }

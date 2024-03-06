@@ -593,7 +593,7 @@ fn instruction_to_doc<'a>(
                         "{} = contract_call {} {} {}, {}, {}, {}",
                         namer.name(context, ins_value),
                         return_type.as_string(context),
-                        name,
+                        name.as_deref().unwrap_or(""),
                         namer.name(context, params),
                         namer.name(context, coins),
                         namer.name(context, asset_id),
@@ -656,12 +656,10 @@ fn instruction_to_doc<'a>(
                         Doc::text(format!("revert {}", namer.name(context, v),))
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                     )),
-                FuelVmInstruction::JmpbSsp(offset) => {
-                    maybe_constant_to_doc(context, md_namer, namer, offset).append(Doc::line(
-                        Doc::text(format!("jmpb_ssp {}", namer.name(context, offset),))
-                            .append(md_namer.md_idx_to_doc(context, metadata)),
-                    ))
-                }
+                FuelVmInstruction::JmpMem => Doc::line(
+                    Doc::text("jmp_mem".to_string())
+                        .append(md_namer.md_idx_to_doc(context, metadata)),
+                ),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -818,7 +816,6 @@ fn instruction_to_doc<'a>(
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                         ))
                 }
-
                 FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
                     let pred_str = match op {
                         Predicate::Equal => "eq",
@@ -833,6 +830,18 @@ fn instruction_to_doc<'a>(
                                 namer.name(context, ins_value),
                                 namer.name(context, arg1),
                                 namer.name(context, arg2),
+                            ))
+                            .append(md_namer.md_idx_to_doc(context, metadata)),
+                        ))
+                }
+                FuelVmInstruction::Retd { ptr, len } => {
+                    maybe_constant_to_doc(context, md_namer, namer, ptr)
+                        .append(maybe_constant_to_doc(context, md_namer, namer, len))
+                        .append(Doc::line(
+                            Doc::text(format!(
+                                "retd {} {}",
+                                namer.name(context, ptr),
+                                namer.name(context, len),
                             ))
                             .append(md_namer.md_idx_to_doc(context, metadata)),
                         ))

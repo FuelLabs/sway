@@ -378,6 +378,18 @@ impl TyDecl {
         }
     }
 
+    pub fn get_trait_decl_ref(&self) -> Option<DeclRefTrait> {
+        if let TyDecl::TraitDecl(decl) = self {
+            Some(DeclRef::new(
+                decl.name.clone(),
+                decl.decl_id,
+                decl.decl_span.clone(),
+            ))
+        } else {
+            None
+        }
+    }
+
     pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
         if let TyDecl::FunctionDecl(FunctionDecl {
             name,

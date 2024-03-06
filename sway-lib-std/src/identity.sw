@@ -2,6 +2,7 @@
 //! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
 library;
 
+use core::codec::*;
 use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
@@ -124,6 +125,29 @@ impl Identity {
             Self::ContractId(_) => true,
         }
     }
+
+    /// Returns the underlying raw `b256` data of the identity.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The raw data of the identity.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() -> {
+    ///     let my_identity = Identity::Address(Address::from(ZERO_B256));
+    ///     assert(my_identity.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        match self {
+            Self::Address(address) => address.bits(),
+            Self::ContractId(contract_id) => contract_id.bits(),
+        }
+    }
 }
 
 impl Hash for Identity {
@@ -157,6 +181,6 @@ fn test_contract_id() {
     let identity = Identity::ContractId(ContractId::from(ZERO_B256));
     assert(!identity.is_address());
     assert(identity.is_contract_id());
-    assert(identity.as_contract_id().unwrap().value == id);
+    assert(identity.as_contract_id().unwrap().bits() == id);
     assert(identity.as_address().is_none());
 }

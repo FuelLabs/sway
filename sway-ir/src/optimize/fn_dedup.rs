@@ -143,10 +143,7 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                     get_localised_id(true_block.block, localised_block_id).hash(state);
                     get_localised_id(false_block.block, localised_block_id).hash(state);
                 }
-                crate::InstOp::ContractCall {
-                    return_type, name, ..
-                } => {
-                    return_type.hash(state);
+                crate::InstOp::ContractCall { name, .. } => {
                     name.hash(state);
                 }
                 crate::InstOp::FuelVm(fuel_vm_inst) => match fuel_vm_inst {
@@ -154,7 +151,7 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                     crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
                     crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
                     crate::FuelVmInstruction::Revert(_)
-                    | crate::FuelVmInstruction::JmpbSsp(_)
+                    | crate::FuelVmInstruction::JmpMem
                     | crate::FuelVmInstruction::Smo { .. }
                     | crate::FuelVmInstruction::StateClear { .. }
                     | crate::FuelVmInstruction::StateLoadQuadWord { .. }
@@ -165,6 +162,10 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                     crate::FuelVmInstruction::WideBinaryOp { op, .. } => op.hash(state),
                     crate::FuelVmInstruction::WideModularOp { op, .. } => op.hash(state),
                     crate::FuelVmInstruction::WideCmpOp { op, .. } => op.hash(state),
+                    crate::FuelVmInstruction::Retd { ptr, len } => {
+                        ptr.hash(state);
+                        len.hash(state);
+                    }
                 },
                 crate::InstOp::GetLocal(local) => function
                     .lookup_local_name(context, local)
