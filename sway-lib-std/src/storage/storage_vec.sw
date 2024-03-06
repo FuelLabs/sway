@@ -886,7 +886,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// use std::storage::storage_vec::*;
     ///
     /// storage {
-    ///     vec: StorageVec<u64> = StorageVec {}   
+    ///     vec: StorageVec<u64> = StorageVec {} 
     /// }
     ///
     /// fn foo() {
