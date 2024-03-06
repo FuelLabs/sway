@@ -72,6 +72,16 @@ impl TyModule {
         })
     }
 
+    /// All contract functions within this module.
+    pub fn contract_fns<'a: 'b, 'b>(
+        &'b self,
+        engines: &'a Engines,
+    ) -> impl '_ + Iterator<Item = DeclRefFunction> {
+        self.all_nodes
+            .iter()
+            .flat_map(move |node| node.contract_fns(engines))
+    }
+
     pub(crate) fn check_deprecated(
         &self,
         engines: &Engines,
