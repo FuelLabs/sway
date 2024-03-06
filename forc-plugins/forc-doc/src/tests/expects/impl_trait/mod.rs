@@ -10,6 +10,7 @@ use std::{
     collections::HashSet,
     path::{Path, PathBuf},
 };
+use sway_core::ExperimentalFlags;
 
 /// The path to the generated HTML of the type the traits are implemented on.
 const IMPL_FOR: &str = "bar/struct.Bar.html";
@@ -25,7 +26,14 @@ fn test_impl_traits_default() {
         doc_path: Some(doc_dir_name.into()),
         ..Default::default()
     };
-    let (doc_path, _) = compile_html(&command, &get_doc_dir).unwrap();
+    let (doc_path, _) = compile_html(
+        &command,
+        &get_doc_dir,
+        ExperimentalFlags {
+            new_encoding: false,
+        },
+    )
+    .unwrap();
     assert_index_html(
         &doc_path,
         project_name,
@@ -37,7 +45,7 @@ fn test_impl_traits_default() {
     assert_search_js(
         &doc_path,
         &expect![[r#"
-            var SEARCH_INDEX={"core":[{"html_filename":"trait.AsRawSlice.html","module_info":["core","raw_slice"],"name":"AsRawSlice","preview":"Trait to return a type as a <code>raw_slice</code>.\n","type_name":"trait"},{"html_filename":"fn.from_str_array.html","module_info":["core","str"],"name":"from_str_array","preview":"","type_name":"function"},{"html_filename":"trait.Add.html","module_info":["core","ops"],"name":"Add","preview":"Trait for the addition of two values.\n","type_name":"trait"},{"html_filename":"trait.Subtract.html","module_info":["core","ops"],"name":"Subtract","preview":"Trait for the subtraction of two values.\n","type_name":"trait"},{"html_filename":"trait.Multiply.html","module_info":["core","ops"],"name":"Multiply","preview":"Trait for the multiplication of two values.\n","type_name":"trait"},{"html_filename":"trait.Divide.html","module_info":["core","ops"],"name":"Divide","preview":"Trait for the division of two values.\n","type_name":"trait"},{"html_filename":"trait.Mod.html","module_info":["core","ops"],"name":"Mod","preview":"Trait for the modulo of two values.\n","type_name":"trait"},{"html_filename":"trait.Not.html","module_info":["core","ops"],"name":"Not","preview":"Trait to invert a type.\n","type_name":"trait"},{"html_filename":"trait.Eq.html","module_info":["core","ops"],"name":"Eq","preview":"Trait to evaluate if two types are equal.\n","type_name":"trait"},{"html_filename":"trait.Ord.html","module_info":["core","ops"],"name":"Ord","preview":"Trait to evaluate if one value is greater or less than another of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseAnd.html","module_info":["core","ops"],"name":"BitwiseAnd","preview":"Trait to bitwise AND two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseOr.html","module_info":["core","ops"],"name":"BitwiseOr","preview":"Trait to bitwise OR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseXor.html","module_info":["core","ops"],"name":"BitwiseXor","preview":"Trait to bitwise XOR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.Shift.html","module_info":["core","ops"],"name":"Shift","preview":"Trait to bit shift a value.\n","type_name":"trait"},{"html_filename":"struct.StorageKey.html","module_info":["core","storage"],"name":"StorageKey","preview":"Describes a location in storage.\n","type_name":"struct"},{"html_filename":"struct.Buffer.html","module_info":["core","codec"],"name":"Buffer","preview":"","type_name":"struct"},{"html_filename":"trait.AbiEncode.html","module_info":["core","codec"],"name":"AbiEncode","preview":"","type_name":"trait"},{"html_filename":"fn.encode.html","module_info":["core","codec"],"name":"encode","preview":"","type_name":"function"}],"impl_traits":[{"html_filename":"trait.Foo.html","module_info":["impl_traits","foo"],"name":"Foo","preview":"","type_name":"trait"},{"html_filename":"trait.Baz.html","module_info":["impl_traits","foo"],"name":"Baz","preview":"","type_name":"trait"},{"html_filename":"struct.Bar.html","module_info":["impl_traits","bar"],"name":"Bar","preview":"","type_name":"struct"}]};
+            var SEARCH_INDEX={"core":[{"html_filename":"trait.AsRawSlice.html","module_info":["core","raw_slice"],"name":"AsRawSlice","preview":"Trait to return a type as a <code>raw_slice</code>.\n","type_name":"trait"},{"html_filename":"fn.from_str_array.html","module_info":["core","str"],"name":"from_str_array","preview":"","type_name":"function"},{"html_filename":"trait.Add.html","module_info":["core","ops"],"name":"Add","preview":"Trait for the addition of two values.\n","type_name":"trait"},{"html_filename":"trait.Subtract.html","module_info":["core","ops"],"name":"Subtract","preview":"Trait for the subtraction of two values.\n","type_name":"trait"},{"html_filename":"trait.Multiply.html","module_info":["core","ops"],"name":"Multiply","preview":"Trait for the multiplication of two values.\n","type_name":"trait"},{"html_filename":"trait.Divide.html","module_info":["core","ops"],"name":"Divide","preview":"Trait for the division of two values.\n","type_name":"trait"},{"html_filename":"trait.Mod.html","module_info":["core","ops"],"name":"Mod","preview":"Trait for the modulo of two values.\n","type_name":"trait"},{"html_filename":"trait.Not.html","module_info":["core","ops"],"name":"Not","preview":"Trait to invert a type.\n","type_name":"trait"},{"html_filename":"trait.Eq.html","module_info":["core","ops"],"name":"Eq","preview":"Trait to evaluate if two types are equal.\n","type_name":"trait"},{"html_filename":"trait.Ord.html","module_info":["core","ops"],"name":"Ord","preview":"Trait to evaluate if one value is greater or less than another of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseAnd.html","module_info":["core","ops"],"name":"BitwiseAnd","preview":"Trait to bitwise AND two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseOr.html","module_info":["core","ops"],"name":"BitwiseOr","preview":"Trait to bitwise OR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.BitwiseXor.html","module_info":["core","ops"],"name":"BitwiseXor","preview":"Trait to bitwise XOR two values of the same type.\n","type_name":"trait"},{"html_filename":"trait.Shift.html","module_info":["core","ops"],"name":"Shift","preview":"Trait to bit shift a value.\n","type_name":"trait"},{"html_filename":"fn.ok_str_eq.html","module_info":["core","ops"],"name":"ok_str_eq","preview":"","type_name":"function"},{"html_filename":"struct.StorageKey.html","module_info":["core","storage"],"name":"StorageKey","preview":"Describes a location in storage.\n","type_name":"struct"},{"html_filename":"struct.Buffer.html","module_info":["core","codec"],"name":"Buffer","preview":"","type_name":"struct"},{"html_filename":"struct.BufferReader.html","module_info":["core","codec"],"name":"BufferReader","preview":"","type_name":"struct"},{"html_filename":"trait.AbiDecode.html","module_info":["core","codec"],"name":"AbiDecode","preview":"","type_name":"trait"},{"html_filename":"trait.AbiEncode.html","module_info":["core","codec"],"name":"AbiEncode","preview":"","type_name":"trait"},{"html_filename":"fn.encode.html","module_info":["core","codec"],"name":"encode","preview":"","type_name":"function"},{"html_filename":"fn.abi_decode.html","module_info":["core","codec"],"name":"abi_decode","preview":"","type_name":"function"},{"html_filename":"fn.contract_call.html","module_info":["core","codec"],"name":"contract_call","preview":"","type_name":"function"},{"html_filename":"fn.decode_script_data.html","module_info":["core","codec"],"name":"decode_script_data","preview":"","type_name":"function"},{"html_filename":"fn.decode_first_param.html","module_info":["core","codec"],"name":"decode_first_param","preview":"","type_name":"function"},{"html_filename":"fn.decode_second_param.html","module_info":["core","codec"],"name":"decode_second_param","preview":"","type_name":"function"}],"impl_traits":[{"html_filename":"trait.Foo.html","module_info":["impl_traits","foo"],"name":"Foo","preview":"","type_name":"trait"},{"html_filename":"trait.Baz.html","module_info":["impl_traits","foo"],"name":"Baz","preview":"","type_name":"trait"},{"html_filename":"struct.Bar.html","module_info":["impl_traits","bar"],"name":"Bar","preview":"","type_name":"struct"}]};
             "object"==typeof exports&&"undefined"!=typeof module&&(module.exports=SEARCH_INDEX);"#]],
     );
     assert_file_tree(
@@ -45,11 +53,19 @@ fn test_impl_traits_default() {
         project_name,
         vec![
             "core/all.html",
+            "core/codec/fn.abi_decode.html",
+            "core/codec/fn.contract_call.html",
+            "core/codec/fn.decode_first_param.html",
+            "core/codec/fn.decode_script_data.html",
+            "core/codec/fn.decode_second_param.html",
             "core/codec/fn.encode.html",
             "core/codec/index.html",
             "core/codec/struct.Buffer.html",
+            "core/codec/struct.BufferReader.html",
+            "core/codec/trait.AbiDecode.html",
             "core/codec/trait.AbiEncode.html",
             "core/index.html",
+            "core/ops/fn.ok_str_eq.html",
             "core/ops/index.html",
             "core/ops/trait.Add.html",
             "core/ops/trait.BitwiseAnd.html",
@@ -91,7 +107,14 @@ fn test_impl_traits_no_deps() {
         no_deps: true,
         ..Default::default()
     };
-    let (doc_path, _) = compile_html(&command, &get_doc_dir).unwrap();
+    let (doc_path, _) = compile_html(
+        &command,
+        &get_doc_dir,
+        ExperimentalFlags {
+            new_encoding: false,
+        },
+    )
+    .unwrap();
     assert_index_html(
         &doc_path,
         project_name,

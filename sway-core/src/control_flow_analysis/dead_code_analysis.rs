@@ -284,13 +284,14 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         // do a depth first traversal and cover individual inner ast nodes
         let decl_engine = engines.de();
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
+
         let mut entry_points = vec![];
         let mut non_entry_points = vec![];
-        for ast_entrypoint in module_nodes {
-            if ast_entrypoint.is_entry_point(decl_engine, tree_type) {
-                entry_points.push(ast_entrypoint);
+        for ast_node in module_nodes {
+            if ast_node.is_entry_point(decl_engine, tree_type) {
+                entry_points.push(ast_node);
             } else {
-                non_entry_points.push(ast_entrypoint);
+                non_entry_points.push(ast_node);
             }
         }
         for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
@@ -741,7 +742,7 @@ fn connect_trait_declaration(
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
-            module_tree_type: tree_type.clone(),
+            module_tree_type: *tree_type,
         },
     );
 }
@@ -765,7 +766,7 @@ fn connect_abi_declaration(
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
-            module_tree_type: tree_type.clone(),
+            module_tree_type: *tree_type,
         },
     );
 
@@ -1098,6 +1099,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             contract_call_params,
             selector,
             call_path_typeid,
+            contract_caller,
             ..
         } => {
             let fn_decl = decl_engine.get_function(fn_ref);
@@ -1224,9 +1226,27 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 }
             }
 
-            // we evaluate every one of the function arguments
             let mut current_leaf = vec![fn_entrypoint];
+
+            // Connect contract call to contract caller
+            if let Some(contract_caller) = contract_caller {
+                let span = contract_caller.span.clone();
+                connect_expression(
+                    engines,
+                    &contract_caller.expression,
+                    graph,
+                    &current_leaf,
+                    exit_node,
+                    "arg eval",
+                    tree_type,
+                    span,
+                    options,
+                )?;
+            }
+
+            // we evaluate every one of the function arguments
             for (_name, arg) in arguments {
+                let span = arg.span.clone();
                 current_leaf = connect_expression(
                     engines,
                     &arg.expression,
@@ -1235,7 +1255,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     exit_node,
                     "arg eval",
                     tree_type,
-                    arg.clone().span,
+                    span,
                     options,
                 )?;
             }
@@ -2111,7 +2131,7 @@ fn construct_dead_code_warning_from_node(
             ..
         } => return None,
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(..),
+            content: ty::TyAstNodeContent::Declaration(_),
             span,
         } => CompileWarning {
             span: span.clone(),

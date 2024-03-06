@@ -440,6 +440,7 @@ impl<'eng> FnCompiler<'eng> {
                 type_binding: _,
                 call_path_typeid: _,
                 deferred_monomorphization,
+                ..
             } => {
                 if *deferred_monomorphization {
                     return Err(CompileError::Internal("Trying to compile a deferred function application with deferred monomorphization", name.span()));
@@ -1019,7 +1020,7 @@ impl<'eng> FnCompiler<'eng> {
                         return Err(CompileError::Internal(
                             "Unable to determine ID for log instance.",
                             span,
-                        ))
+                        ));
                     }
                     Some(log_id) => {
                         convert_literal_to_value(context, &Literal::U64(**log_id as u64))
@@ -1256,6 +1257,79 @@ impl<'eng> FnCompiler<'eng> {
                     .append(context)
                     .unary_op(UnaryOpKind::Not, value);
                 Ok(TerminatorValue::new(val, context))
+            }
+            Intrinsic::ContractCall => {
+                assert!(type_arguments.is_empty());
+
+                // Contract method arguments
+                let params = return_on_termination_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[0]
+                )?);
+
+                // Coins
+                let coins = return_on_termination_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[1]
+                )?);
+
+                // AssetId
+                let b256_ty = Type::get_b256(context);
+                let asset_id = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, &arguments[2])?
+                );
+                let tmp_asset_id_name = self.lexical_map.insert_anon();
+                let tmp_var = self
+                    .function
+                    .new_local_var(context, tmp_asset_id_name, b256_ty, None, false)
+                    .map_err(|ir_error| {
+                        CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                    })?;
+                let tmp_val = self.current_block.append(context).get_local(tmp_var);
+                self.current_block.append(context).store(tmp_val, asset_id);
+                let asset_id = self.current_block.append(context).get_local(tmp_var);
+
+                // Gas
+                let gas = return_on_termination_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[3]
+                )?);
+
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let return_type = Type::get_unit(context);
+                let return_type = Type::new_ptr(context, return_type);
+
+                let returned_value = self
+                    .current_block
+                    .append(context)
+                    .contract_call(return_type, None, params, coins, asset_id, gas)
+                    .add_metadatum(context, span_md_idx);
+
+                Ok(TerminatorValue::new(returned_value, context))
+            }
+            Intrinsic::ContractRet => {
+                let span_md_idx = md_mgr.span_to_md(context, &span);
+
+                let ptr = return_on_termination_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[0]
+                )?);
+                let len = return_on_termination_or_extract!(self.compile_expression_to_value(
+                    context,
+                    md_mgr,
+                    &arguments[1]
+                )?);
+                let r = self
+                    .current_block
+                    .append(context)
+                    .retd(ptr, len)
+                    .add_metadatum(context, span_md_idx);
+                Ok(TerminatorValue::new(r, context))
             }
         }
     }
@@ -1702,7 +1776,7 @@ impl<'eng> FnCompiler<'eng> {
             .append(context)
             .contract_call(
                 return_type,
-                ast_name.to_string(),
+                Some(ast_name.to_string()),
                 ra_struct_ptr_val,
                 coins,
                 asset_id,
@@ -1745,16 +1819,26 @@ impl<'eng> FnCompiler<'eng> {
         // cache, to uniquely identify a function instance, is the span and the type IDs of any
         // args and type parameters.  It's using the Sway types rather than IR types, which would
         // be more accurate but also more fiddly.
-        let fn_key = (
-            callee.span(),
-            callee
-                .parameters
-                .iter()
-                .map(|p| p.type_argument.type_id)
-                .collect(),
-            callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
-        );
-        let new_callee = match self.recreated_fns.get(&fn_key).copied() {
+
+        let (fn_key, item) = if !callee.span().as_str().is_empty() {
+            let fn_key = (
+                callee.span(),
+                callee
+                    .parameters
+                    .iter()
+                    .map(|p| p.type_argument.type_id)
+                    .collect(),
+                callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
+            );
+            (
+                Some(fn_key.clone()),
+                self.recreated_fns.get(&fn_key).copied(),
+            )
+        } else {
+            (None, None)
+        };
+
+        let new_callee = match item {
             Some(func) => func,
             None => {
                 let callee_fn_decl = ty::TyFunctionDecl {
@@ -1781,7 +1865,11 @@ impl<'eng> FnCompiler<'eng> {
                 )
                 .map_err(|mut x| x.pop().unwrap())?
                 .unwrap();
-                self.recreated_fns.insert(fn_key, new_func);
+
+                if let Some(fn_key) = fn_key {
+                    self.recreated_fns.insert(fn_key, new_func);
+                }
+
                 new_func
             }
         };

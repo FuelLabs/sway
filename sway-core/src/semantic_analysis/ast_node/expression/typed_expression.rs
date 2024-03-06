@@ -123,13 +123,14 @@ impl ty::TyExpression {
         let exp = ty::TyExpression {
             expression: ty::TyExpressionVariant::FunctionApplication {
                 call_path,
-                contract_call_params: IndexMap::new(),
                 arguments: args_and_names,
                 fn_ref: decl_ref,
                 selector: None,
                 type_binding: None,
                 call_path_typeid: None,
                 deferred_monomorphization: false,
+                contract_call_params: IndexMap::new(),
+                contract_caller: None,
             },
             return_type: return_type.type_id,
             span,
@@ -156,6 +157,7 @@ impl ty::TyExpression {
                     suffix: name.clone(),
                     is_absolute: false,
                 };
+
                 if matches!(
                     ctx.namespace()
                         .resolve_call_path(
@@ -2421,7 +2423,7 @@ fn check_asm_block_validity(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Engines;
+    use crate::{Engines, ExperimentalFlags};
     use sway_error::type_error::TypeError;
 
     fn do_type_check(
@@ -2429,9 +2431,10 @@ mod tests {
         engines: &Engines,
         expr: Expression,
         type_annotation: TypeId,
+        experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let mut namespace = Namespace::init_root(namespace::Module::default());
-        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines)
+        let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)
     }
@@ -2458,6 +2461,9 @@ mod tests {
                 ),
                 None,
             ),
+            ExperimentalFlags {
+                new_encoding: false,
+            },
         )
     }
 
@@ -2602,6 +2608,9 @@ mod tests {
                 ),
                 None,
             ),
+            ExperimentalFlags {
+                new_encoding: false,
+            },
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());
