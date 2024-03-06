@@ -1,4 +1,8 @@
-# An example project
+# Debugging with CLI
+
+The `forc debug` CLI enables debugging a live transaction on a running Fuel Client node.
+
+## An example project
 
 First, we need a project to debug, so create a new project using
 
@@ -30,7 +34,7 @@ fn main() {
 
 ## Building and bytecode output
 
-Now we are ready to build the thing.
+Now we are ready to build the project.
 
 ```bash
 forc build

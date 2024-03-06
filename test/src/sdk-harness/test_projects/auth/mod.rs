@@ -104,7 +104,7 @@ async fn get_contracts() -> (
 }
 
 #[tokio::test]
-async fn can_get_predicate_id() {
+async fn can_get_predicate_address() {
     // Setup Wallets
     let asset_id = AssetId::default();
     let wallets_config = WalletsConfig::new_multiple_assets(
