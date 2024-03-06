@@ -876,6 +876,32 @@ impl<V> StorageKey<StorageVec<V>> {
             }
         }
     }
+
+    /// Clears the `StorageVec`, removing all values.
+    ///
+    /// Note that this method has no effect on the allocated capacity of the vector.
+    ///
+    /// # Examples
+    /// ```sway
+    /// use std::storage::storage_vec::*;
+    ///
+    /// storage {
+    ///     vec: StorageVec<u64> = StorageVec {}   
+    /// }
+    ///
+    /// fn foo() {
+    ///     storage.vec.push(1_u64);
+    ///     storage.vec.push(2_u64);
+    ///     storage.vec.push(3_u64);
+    ///     storage.vec.clear_vec();
+    ///     assert!(storage.vec.is_empty());
+    /// }
+    /// ```
+    #[storage(write)]
+    pub fn clear_vec(self) {
+        // reduces the len to 0, effectively removing all items in the vec
+        write(self.field_id(), 0, 0);
+    }
 }
 
 // Add padding to type so it can correctly use the storage api
