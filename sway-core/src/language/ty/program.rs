@@ -415,7 +415,7 @@ impl TyProgram {
             .flat_map(|(_, submod)| submod.module.test_fns(decl_engine))
             .chain(self.root.test_fns(decl_engine))
     }
-    
+
     pub fn check_deprecated(&self, engines: &Engines, handler: &Handler) {
         let mut allow_deprecated = AllowDeprecatedState::default();
         self.root
