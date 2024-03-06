@@ -584,7 +584,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     /// Read the returns the base pointer for predicate data
     fn read_args_base_from_predicate_data(&mut self, base_reg: &VirtualRegister) {
-        // Final label to jump to to continue execution, once the predicate data pointer is
+        // Final label to jump to continue execution, once the predicate data pointer is
         // successfully found
         let success_label = self.reg_seqr.get_label();
 
