@@ -266,7 +266,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         build_profile: BuildProfile::DEBUG.into(),
         release: run_config.release,
         print: PrintOpts {
-            ast: true,
+            ast: false,
             dca_graph: None,
             dca_graph_url_format: None,
             finalized_asm: false,
