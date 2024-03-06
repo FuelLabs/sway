@@ -207,7 +207,7 @@ impl TyAstNode {
                         ..
                     } => {
                         let decl = decl_engine.get_function(decl_id);
-                        decl.is_entry()
+                        decl.is_entry_or_test()
                     }
                     _ => false,
                 }
@@ -394,6 +394,23 @@ impl TyAstNode {
             };
             Ok(())
         })
+    }
+
+    pub fn contract_fns(&self, engines: &Engines) -> Vec<DeclRefFunction> {
+        let mut fns = vec![];
+
+        if let TyAstNodeContent::Declaration(TyDecl::ImplTrait(decl)) = &self.content {
+            let decl = engines.de().get(&decl.decl_id);
+            if decl.is_impl_contract(engines.te()) {
+                for item in &decl.items {
+                    if let TyTraitItem::Fn(f) = item {
+                        fns.push(f.clone());
+                    }
+                }
+            }
+        }
+
+        fns
     }
 }
 

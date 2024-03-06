@@ -609,8 +609,9 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
         Revert | JmpMem | IsReferenceType | IsStrArray | SizeOfType | SizeOfVal | SizeOfStr
-        | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf | AddrOf | Log | Add | Sub | Mul
-        | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => HashSet::new(),
+        | ContractCall | ContractRet | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf
+        | AddrOf | Log | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd
+        | PtrSub | Not => HashSet::new(),
     }
 }
 

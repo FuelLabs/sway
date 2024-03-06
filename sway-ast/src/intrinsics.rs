@@ -36,6 +36,8 @@ pub enum Intrinsic {
     Smo,
     Not,
     JmpMem,
+    ContractCall, // __contract_call(params, coins, asset_id, gas)
+    ContractRet,  // __contract_ret(ptr, len)
 }
 
 impl fmt::Display for Intrinsic {
@@ -75,6 +77,8 @@ impl fmt::Display for Intrinsic {
             Intrinsic::Smo => "smo",
             Intrinsic::Not => "not",
             Intrinsic::JmpMem => "jmp_mem",
+            Intrinsic::ContractCall => "contract_call",
+            Intrinsic::ContractRet => "contract_ret",
         };
         write!(f, "{s}")
     }
@@ -118,6 +122,8 @@ impl Intrinsic {
             "__smo" => Smo,
             "__not" => Not,
             "__jmp_mem" => JmpMem,
+            "__contract_call" => ContractCall,
+            "__contract_ret" => ContractRet,
             _ => return None,
         })
     }
