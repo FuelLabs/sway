@@ -2785,9 +2785,12 @@ mod test {
     use super::*;
     use regex::Regex;
 
-    fn setup_build_plan(path: &str) -> BuildPlan {
+    fn setup_build_plan() -> BuildPlan {
         let current_dir = env!("CARGO_MANIFEST_DIR");
-        let manifest_dir = PathBuf::from(current_dir).parent().unwrap().join(path);
+        let manifest_dir = PathBuf::from(current_dir)
+            .parent()
+            .unwrap()
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building");
         let manifest_file = ManifestFile::from_dir(manifest_dir).unwrap();
         let member_manifests = manifest_file.member_manifests().unwrap();
         let lock_path = manifest_file.lock_path().unwrap();
@@ -2902,9 +2905,7 @@ mod test {
 
     #[test]
     fn test_root_pkg_order() {
-        let build_plan = setup_build_plan(
-            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building",
-        );
+        let build_plan = setup_build_plan();
         let graph = build_plan.graph();
         let order: Vec<String> = build_plan
             .member_nodes()
@@ -2915,9 +2916,7 @@ mod test {
 
     #[test]
     fn test_visualize_with_url_prefix() {
-        let build_plan = setup_build_plan(
-            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building",
-        );
+        let build_plan = setup_build_plan();
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
     0 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
@@ -2933,9 +2932,7 @@ mod test {
 
     #[test]
     fn test_visualize_without_prefix() {
-        let build_plan = setup_build_plan(
-            "test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building",
-        );
+        let build_plan = setup_build_plan();
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
     0 [ label = "test_contract" shape = box ]
