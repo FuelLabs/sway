@@ -23,6 +23,15 @@ fn main() -> bool {
 
     log(result);
 
+    // Call the fallback fn
+    let call_params = (CONTRACT_ID, 0, 0);
+    let coins = 0;
+    let asset_id = 0x0000000000000000000000000000000000000000000000000000000000000000;
+    let gas = std::registers::global_gas();
+    asm(ra: __addr_of(call_params), rb: coins, rc: __addr_of(asset_id), rd: gas) {
+        call ra rb rc rd;
+    }
+
     true
 }
 

@@ -38,6 +38,7 @@ pub struct FunctionContent {
     pub module: Module,
     pub is_public: bool,
     pub is_entry: bool,
+    pub is_fallback: bool,
     pub selector: Option<[u8; 4]>,
     pub metadata: Option<MetadataIndex>,
 
@@ -64,6 +65,7 @@ impl Function {
         selector: Option<[u8; 4]>,
         is_public: bool,
         is_entry: bool,
+        is_fallback: bool,
         metadata: Option<MetadataIndex>,
     ) -> Function {
         let content = FunctionContent {
@@ -76,6 +78,7 @@ impl Function {
             module,
             is_public,
             is_entry,
+            is_fallback,
             selector,
             metadata,
             local_storage: BTreeMap::new(),
@@ -275,6 +278,11 @@ impl Function {
     /// methods.
     pub fn is_entry(&self, context: &Context) -> bool {
         context.functions[self.0].is_entry
+    }
+
+     /// Whether or not this function is a contract fallback function
+    pub fn is_fallback(&self, context: &Context) -> bool {
+        context.functions[self.0].is_fallback
     }
 
     // Get the function return type.

@@ -59,7 +59,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 ..
             } => {
                 let decl = decl_engine.get_function(decl_id);
-                decl.visibility == Visibility::Public || decl.is_test()
+                decl.visibility == Visibility::Public || decl.is_test() || decl.is_fallback()
             }
             TyAstNode {
                 content:
@@ -384,7 +384,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
             let (_l_leaves, _new_exit_node) = connect_node(
                 engines,
-                ast_entrypoint,
+                node,
                 graph,
                 &[],
                 exit_node,

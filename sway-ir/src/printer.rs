@@ -225,8 +225,9 @@ fn function_to_doc<'a>(
 ) -> Doc {
     let public = if function.is_public { "pub " } else { "" };
     let entry = if function.is_entry { "entry " } else { "" };
+    let fallback = if function.is_fallback { "fallback " } else { "" };
     Doc::line(
-        Doc::text(format!("{}{}fn {}", public, entry, function.name))
+        Doc::text(format!("{}{}{}fn {}", public, entry, fallback, function.name))
             .append(
                 function
                     .selector
