@@ -8,7 +8,7 @@ use ::convert::From;
 use ::iterator::*;
 
 struct RawVec<T> {
-    pub ptr: raw_ptr,
+    ptr: raw_ptr,
     cap: u64,
 }
 
@@ -129,9 +129,18 @@ impl<T> RawVec<T> {
     }
 }
 
+impl<T> From<raw_slice> for RawVec<T> {
+    fn from(slice: raw_slice) -> Self {
+        Self {
+            ptr: slice.ptr(),
+            cap: slice.len::<T>(),
+        }
+    }
+}
+
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
-    pub buf: RawVec<T>,
+    buf: RawVec<T>,
     len: u64,
 }
 
@@ -257,7 +266,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
-        self.buf.cap
+        self.buf.capacity()
     }
 
     /// Clears the vector, removing all values.
@@ -456,7 +465,7 @@ impl<T> Vec<T> {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.cap {
+        if self.len == self.buf.capacity() {
             self.buf.grow();
         }
 
@@ -595,6 +604,24 @@ impl<T> Vec<T> {
             index: 0,
         }
     }
+
+    /// Gets the pointer of the allocation.
+    ///
+    /// # Returns
+    ///
+    /// [raw_ptr] - The location in memory that the allocated vec lives.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let vec = Vec::new();
+    ///     assert(!vec.ptr().is_null());
+    /// }
+    /// ```
+    pub fn ptr(self) -> raw_ptr {
+        self.buf.ptr()
+    }
 }
 
 impl<T> AsRawSlice for Vec<T> {
@@ -605,20 +632,16 @@ impl<T> AsRawSlice for Vec<T> {
 
 impl<T> From<raw_slice> for Vec<T> {
     fn from(slice: raw_slice) -> Self {
-        let buf = RawVec {
-            ptr: slice.ptr(),
-            cap: slice.len::<T>(),
-        };
         Self {
-            buf,
-            len: buf.cap,
+            buf: RawVec::from(slice),
+            len: slice.len::<T>(),
         }
     }
 }
 
 impl<T> From<Vec<T>> for raw_slice {
     fn from(vec: Vec<T>) -> Self {
-        asm(ptr: (vec.buf.ptr(), vec.len)) {
+        asm(ptr: (vec.ptr(), vec.len())) {
             ptr: raw_slice
         }
     }

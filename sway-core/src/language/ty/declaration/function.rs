@@ -197,7 +197,7 @@ impl ReplaceDecls for TyFunctionDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         let mut func_ctx = ctx.by_ref().with_self_type(self.implementing_for_typeid);
         self.body
             .replace_decls(decl_mapping, handler, &mut func_ctx)
