@@ -6901,7 +6901,6 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "assert_matches",
  "bytes",
  "clap 4.5.1",
  "colored",

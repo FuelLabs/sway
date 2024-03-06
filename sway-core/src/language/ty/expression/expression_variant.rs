@@ -25,7 +25,6 @@ pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
-        contract_call_params: IndexMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
         fn_ref: DeclRefFunction,
         selector: Option<ContractCallParams>,
@@ -35,6 +34,8 @@ pub enum TyExpressionVariant {
         call_path_typeid: Option<TypeId>,
         /// This tracks whether monomorphization has been deferred between compiler stages.
         deferred_monomorphization: bool,
+        contract_call_params: IndexMap<String, TyExpression>,
+        contract_caller: Option<Box<TyExpression>>,
     },
     LazyOperator {
         op: LazyOp,
@@ -447,6 +448,7 @@ impl HashWithEngines for TyExpressionVariant {
                 type_binding: _,
                 call_path_typeid: _,
                 deferred_monomorphization: _,
+                ..
             } => {
                 call_path.hash(state);
                 fn_ref.hash(state, engines);

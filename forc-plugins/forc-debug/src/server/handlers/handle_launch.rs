@@ -53,6 +53,10 @@ impl DapServer {
             }
         }
 
+        let experimental = sway_core::ExperimentalFlags {
+            new_encoding: false,
+        };
+
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
             .map_err(|err| AdapterError::BuildFailed {
@@ -105,6 +109,7 @@ impl DapServer {
                 ..Default::default()
             },
             &outputs,
+            experimental,
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build packages: {:?}", err),

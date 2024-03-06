@@ -134,7 +134,10 @@ impl Parse for Ident {
         match parser.take::<Ident>() {
             Some(ident) => {
                 let ident_str = ident.as_str();
-                if ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none() {
+
+                if parser.check_double_underscore
+                    && (ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none())
+                {
                     return Err(parser.emit_error_with_span(
                         ParseErrorKind::InvalidDoubleUnderscore,
                         ident.span(),

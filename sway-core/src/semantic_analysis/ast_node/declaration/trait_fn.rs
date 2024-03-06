@@ -112,6 +112,7 @@ impl ty::TyTraitFn {
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
             is_trait_method_dummy: true,
+            kind: ty::TyFunctionDeclKind::Default,
         }
     }
 }

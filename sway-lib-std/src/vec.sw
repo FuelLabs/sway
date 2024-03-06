@@ -664,6 +664,26 @@ where
     }
 }
 
+impl<T> AbiDecode for Vec<T>
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
+        let mut v = Vec::new();
+
+        let len = u64::abi_decode(buffer);
+
+        let mut i = 0;
+        while i < len {
+            let item = T::abi_decode(buffer);
+            v.push(item);
+            i += 1;
+        }
+
+        v
+    }
+}
+
 pub struct VecIter<T> {
     values: Vec<T>,
     index: u64,
