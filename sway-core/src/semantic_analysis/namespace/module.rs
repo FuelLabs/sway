@@ -87,17 +87,23 @@ impl Module {
         engines: &Engines,
         name: Option<Ident>,
         contract_id_value: String,
+        experimental: crate::ExperimentalFlags,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_contract_id_inner(&handler, engines, name, contract_id_value).map_err(
-            |_| {
-                let (errors, warnings) = handler.consume();
-                assert!(warnings.is_empty());
-
-                // Invariant: `.value == None` => `!errors.is_empty()`.
-                vec1::Vec1::try_from_vec(errors).unwrap()
-            },
+        Module::default_with_contract_id_inner(
+            &handler,
+            engines,
+            name,
+            contract_id_value,
+            experimental,
         )
+        .map_err(|_| {
+            let (errors, warnings) = handler.consume();
+            assert!(warnings.is_empty());
+
+            // Invariant: `.value == None` => `!errors.is_empty()`.
+            vec1::Vec1::try_from_vec(errors).unwrap()
+        })
     }
 
     fn default_with_contract_id_inner(
@@ -105,6 +111,7 @@ impl Module {
         engines: &Engines,
         ns_name: Option<Ident>,
         contract_id_value: String,
+        experimental: crate::ExperimentalFlags,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
@@ -159,7 +166,7 @@ impl Module {
         ns.root.module.name = ns_name;
         ns.root.module.is_external = true;
         ns.root.module.visibility = Visibility::Public;
-        let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines);
+        let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
         let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in

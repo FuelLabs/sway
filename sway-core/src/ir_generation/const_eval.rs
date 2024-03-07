@@ -1153,6 +1153,11 @@ fn const_eval_intrinsic(
                 }
             }
         }
+        Intrinsic::ContractCall | Intrinsic::ContractRet => {
+            Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: intrinsic.span.clone(),
+            })
+        }
     }
 }
 

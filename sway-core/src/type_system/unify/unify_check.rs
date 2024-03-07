@@ -208,6 +208,7 @@ impl<'a> UnifyCheck<'a> {
         if left == right {
             return true;
         }
+
         let left_info = self.engines.te().get(left);
         let right_info = self.engines.te().get(right);
 

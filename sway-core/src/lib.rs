@@ -109,7 +109,7 @@ pub fn parse(
                  parse_module,
              }| {
                 let lexed = lexed::LexedProgram {
-                    kind: kind.clone(),
+                    kind,
                     root: lexed_module,
                 };
                 let parsed = parsed::ParseProgram {
@@ -212,7 +212,7 @@ fn parse_in_memory(
         hash,
     };
     let lexed_program = lexed::LexedProgram::new(
-        kind.clone(),
+        kind,
         lexed::LexedModule {
             tree: module.value,
             submodules: Default::default(),
