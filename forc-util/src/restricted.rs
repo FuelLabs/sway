@@ -95,8 +95,8 @@ pub fn is_glob_pattern<T: AsRef<str>>(name: T) -> bool {
     name.as_ref().contains(&['*', '?', '[', ']'][..])
 }
 
-/// Check the project/package name format.
-pub fn is_valid_project_and_package_name_format(name: &str) -> Result<()> {
+/// Check the project name format.
+pub fn is_valid_project_name_format(name: &str) -> Result<()> {
     let re = Regex::new(r"^([a-zA-Z]([a-zA-Z0-9-_]+)|)$").unwrap();
     if !re.is_match(name) {
         bail!(
@@ -147,12 +147,12 @@ fn test_invalid_char() {
 #[test]
 fn test_is_valid_project_name_format() {
     let assert_valid = |name: &str| {
-        is_valid_project_and_package_name_format(name).expect("this should pass");
+        is_valid_project_name_format(name).expect("this should pass");
     };
 
     let assert_invalid = |name: &str, expected_error: &str| {
         assert_eq!(
-            is_valid_project_and_package_name_format(name).map_err(|e| e.to_string()),
+            is_valid_project_name_format(name).map_err(|e| e.to_string()),
             Err(expected_error.into())
         );
     };

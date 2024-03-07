@@ -214,9 +214,9 @@ pub fn lock_path(manifest_dir: &Path) -> PathBuf {
     manifest_dir.join(constants::LOCK_FILE_NAME)
 }
 
-pub fn validate_project_and_package_name(name: &str, use_case: &str) -> Result<()> {
-    restricted::is_valid_project_and_package_name_format(name)?;
-    validate_name(name, use_case)
+pub fn validate_project_name(name: &str) -> Result<()> {
+    restricted::is_valid_project_name_format(name)?;
+    validate_name(name, "project name")
 }
 
 // Using (https://github.com/rust-lang/cargo/blob/489b66f2e458404a10d7824194d3ded94bc1f4e4/src/cargo/util/toml/mod.rs +
