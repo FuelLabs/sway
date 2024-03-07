@@ -24,7 +24,7 @@ use std::{collections::HashMap, sync::Arc};
 pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
-    main_function: &DeclId<ty::TyFunctionDecl>,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -49,7 +49,7 @@ pub(super) fn compile_script(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         logged_types_map,
         messages_types_map,
         None,
@@ -71,7 +71,7 @@ pub(super) fn compile_script(
 pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
-    main_function: &DeclId<ty::TyFunctionDecl>,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
@@ -96,7 +96,7 @@ pub(super) fn compile_predicate(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         &HashMap::new(),
         &HashMap::new(),
         None,
@@ -117,7 +117,7 @@ pub(super) fn compile_predicate(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
-    main_function: Option<&DeclId<ty::TyFunctionDecl>>,
+    entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
@@ -140,7 +140,7 @@ pub(super) fn compile_contract(
     )
     .map_err(|err| vec![err])?;
 
-    if let Some(main_function) = main_function {
+    if let Some(main_function) = entry_function {
         compile_entry_function(
             engines,
             context,

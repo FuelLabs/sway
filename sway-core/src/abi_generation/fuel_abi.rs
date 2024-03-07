@@ -44,14 +44,8 @@ pub fn generate_program_abi(
                 configurables: Some(configurables),
             }
         }
-        TyProgramKind::Script {
-            entry_function: main_function,
-            ..
-        }
-        | TyProgramKind::Predicate {
-            entry_function: main_function,
-            ..
-        } => {
+        TyProgramKind::Script { main_function, .. }
+        | TyProgramKind::Predicate { main_function, .. } => {
             let main_function = decl_engine.get_function(main_function);
             let functions =
                 vec![main_function.generate_abi_function(ctx, type_engine, decl_engine, types)];
