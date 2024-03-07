@@ -213,7 +213,8 @@ impl TraitMap {
                 // Types are subset if the `type_id` that we want to insert can unify with the
                 // existing `map_type_id`. In addition we need to additionally check for the case of
                 // `&mut <type>` and `&<type>`.
-                let types_are_subset = unify_checker.check(type_id, *map_type_id) && is_unified_type_subset(engines.te(), type_id, *map_type_id);
+                let types_are_subset = unify_checker.check(type_id, *map_type_id)
+                    && is_unified_type_subset(engines.te(), type_id, *map_type_id);
 
                 /// `left` can unify into `right`. Additionally we need to check subset condition in case of
                 /// [TypeInfo::Ref] types.  Although `&mut <type>` can unify with `&<type>`
