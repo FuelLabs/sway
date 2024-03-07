@@ -142,7 +142,7 @@ macro_rules! decl_engine_clear_module {
                         let span = $getter(item);
                         match span.source_id() {
                             Some(source_id) => &source_id.module_id() != module_id,
-                            None => false,
+                            None => true,
                         }
                     });
                 )*
