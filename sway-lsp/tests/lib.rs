@@ -60,6 +60,7 @@ async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
 async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathBuf) -> Url {
     let _ = lsp::initialize_request(service).await;
     lsp::initialized_notification(service).await;
+    eprintln!("entry_point: {:?}", entry_point);
     let (uri, sway_program) = load_sway_example(entry_point);
     lsp::did_open_notification(service, &uri, &sway_program).await;
     uri
@@ -147,12 +148,13 @@ async fn did_change_stress_test_random_wait() {
         default_panic(panic_info); // Print the panic message
         std::process::exit(1);
     }));
-
     let (mut service, _) = LspService::build(ServerState::new)
         .custom_method("sway/metrics", ServerState::metrics)
         .finish();
-    let bench_dir = sway_workspace_dir().join("sway-lsp/tests/fixtures/benchmark");
-    let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
+    let example_dir = sway_workspace_dir()
+        .join(e2e_language_dir())
+        .join("generics_in_contract");
+    let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
     let times = 400;
     for version in 0..times {
         //eprintln!("version: {}", version);
@@ -165,7 +167,6 @@ async fn did_change_stress_test_random_wait() {
             rand::random::<u64>() % 30 + 1,
         ))
         .await;
-
         // there is a 10% chance that a longer 300-1000ms wait will be added
         if rand::random::<u64>() % 10 < 1 {
             tokio::time::sleep(tokio::time::Duration::from_millis(
