@@ -60,7 +60,6 @@ async fn open(server: &ServerState, entry_point: PathBuf) -> Url {
 async fn init_and_open(service: &mut LspService<ServerState>, entry_point: PathBuf) -> Url {
     let _ = lsp::initialize_request(service).await;
     lsp::initialized_notification(service).await;
-    eprintln!("entry_point: {:?}", entry_point);
     let (uri, sway_program) = load_sway_example(entry_point);
     lsp::did_open_notification(service, &uri, &sway_program).await;
     uri
