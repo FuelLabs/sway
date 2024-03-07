@@ -6,19 +6,19 @@ struct Struct {
     x: u64,
 }
 
-impl core::ops::Eq for Struct {
+impl Eq for Struct {
     fn eq(self, other: Self) -> bool {
         self.x == other.x
     }
 }
 
-impl core::ops::Eq for [Struct; 3] {
+impl Eq for [Struct; 3] {
     fn eq(self, other: Self) -> bool {
         self[0] == other[0] && self[1] == other[1] && self[2] == other[2]
     }
 }
 
-// TODO-IG: Add tests for other expressions that can be referenced.
+// TODO-IG: Add tests for other expressions.
 
 #[inline(always)]
 fn if_expr<T>(input: u64, left: T, right: T) where T: Eq {

@@ -2173,7 +2173,7 @@ impl ty::TyExpression {
         // Otherwise, we pass a new `TypeInfo::Unknown` as the annotation, to allow the `expr`
         // to be evaluated without any expectations.
         // Since `&mut T` coerces into `&T` we always go with a lesser expectation, `&T`.
-        // Thus, `to_mutable_vale` is set to false.
+        // Thus, `to_mutable_value` is set to false.
         let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
             TypeInfo::Unknown => type_engine.insert(engines, TypeInfo::Unknown, None),
             _ => type_engine.insert(
