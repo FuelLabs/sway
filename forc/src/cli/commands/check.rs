@@ -44,6 +44,10 @@ pub struct Command {
     /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
+
+    /// Set of experimental flags
+    #[clap(long)]
+    pub experimental_new_encoding: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

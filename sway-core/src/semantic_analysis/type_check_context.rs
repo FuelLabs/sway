@@ -104,7 +104,11 @@ pub struct TypeCheckContext<'a> {
 
 impl<'a> TypeCheckContext<'a> {
     /// Initialize a type-checking context with a namespace.
-    pub fn from_namespace(namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
+    pub fn from_namespace(
+        namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
         Self {
             namespace,
             engines,
@@ -122,7 +126,49 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: false,
             defer_monomorphization: false,
             storage_declaration: false,
-            experimental: ExperimentalFlags::default(),
+            experimental,
+        }
+    }
+
+    /// Initialize a context at the top-level of a module with its namespace.
+    ///
+    /// Initializes with:
+    ///
+    /// - type_annotation: unknown
+    /// - mode: NoneAbi
+    /// - help_text: ""
+    /// - purity: Pure
+    pub fn from_root(
+        root_namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
+        Self::from_module_namespace(root_namespace, engines, experimental)
+    }
+
+    fn from_module_namespace(
+        namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
+        Self {
+            namespace,
+            engines,
+            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            unify_generic: false,
+            self_type: None,
+            type_subst: TypeSubstMap::new(),
+            help_text: "",
+            abi_mode: AbiMode::NonAbi,
+            const_shadowing_mode: ConstShadowingMode::ItemStyle,
+            generic_shadowing_mode: GenericShadowingMode::Disallow,
+            purity: Purity::default(),
+            kind: TreeType::Contract,
+            disallow_functions: false,
+            defer_monomorphization: false,
+            storage_declaration: false,
+            experimental,
         }
     }
 
@@ -147,7 +193,7 @@ impl<'a> TypeCheckContext<'a> {
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
-            kind: self.kind.clone(),
+            kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
@@ -195,13 +241,15 @@ impl<'a> TypeCheckContext<'a> {
         module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
     ) -> T {
+        let experimental = self.experimental;
+
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
         let mut submod_ns = self
             .namespace_mut()
             .enter_submodule(mod_name, visibility, module_span);
-        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines);
+        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
         with_submod_ctx(submod_ctx)
     }
 
@@ -375,7 +423,7 @@ impl<'a> TypeCheckContext<'a> {
 
     #[allow(dead_code)]
     pub(crate) fn kind(&self) -> TreeType {
-        self.kind.clone()
+        self.kind
     }
 
     pub(crate) fn functions_disallowed(&self) -> bool {
@@ -1620,17 +1668,6 @@ impl<'a> TypeCheckContext<'a> {
             .current_items_mut()
             .implemented_traits
             .insert_for_type(engines, type_id);
-    }
-
-    pub(crate) fn with_experimental_flags(self, experimental: Option<ExperimentalFlags>) -> Self {
-        let Some(experimental) = experimental else {
-            return self;
-        };
-
-        Self {
-            experimental,
-            ..self
-        }
     }
 
     pub fn check_type_impls_traits(

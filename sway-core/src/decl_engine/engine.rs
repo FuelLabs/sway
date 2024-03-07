@@ -7,7 +7,7 @@ use std::{
 use sway_types::{ModuleId, Named, Spanned};
 
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     engine_threading::*,
     language::ty::{
@@ -441,11 +441,11 @@ impl DeclEngine {
     /// [DisplayWithEngines].
     pub fn pretty_print(&self, engines: &Engines) -> String {
         let mut builder = String::new();
-        let mut list = vec![];
-        for func in self.function_slab.values() {
-            list.push(format!("{:?}", engines.help_out(&*func)));
+        let mut list = String::with_capacity(1024 * 1024);
+        let funcs = self.function_slab.values();
+        for (i, func) in funcs.iter().enumerate() {
+            list.push_str(&format!("{i} - {:?}\n", engines.help_out(func)));
         }
-        let list = ListDisplay { list };
         write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
         builder
     }

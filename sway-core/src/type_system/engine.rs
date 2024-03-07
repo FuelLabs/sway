@@ -229,15 +229,21 @@ impl TypeEngine {
                         received: engines.help_out(received).to_string(),
                         help_text: help_text.to_string(),
                         span: span.clone(),
+                        internal: format!(
+                            "expected:[{:?}]; received:[{:?}]",
+                            engines.help_out(expected),
+                            engines.help_out(received),
+                        ),
                     }));
                 }
             }
             return;
         }
+
         let h = Handler::default();
         let unifier = Unifier::new(engines, help_text, unify_kind);
-
         unifier.unify(handler, received, expected, span);
+
         match err_override {
             Some(err_override) if h.has_errors() => {
                 handler.emit_err(err_override);

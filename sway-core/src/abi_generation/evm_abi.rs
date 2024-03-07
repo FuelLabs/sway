@@ -15,10 +15,10 @@ pub fn generate_abi_program(program: &TyProgram, engines: &Engines) -> EvmAbiRes
             .iter()
             .map(|x| generate_abi_function(x, type_engine, decl_engine))
             .collect(),
-        TyProgramKind::Script { main_function, .. }
-        | TyProgramKind::Predicate { main_function, .. } => {
+        TyProgramKind::Script { entry_function, .. }
+        | TyProgramKind::Predicate { entry_function, .. } => {
             vec![generate_abi_function(
-                main_function,
+                entry_function,
                 type_engine,
                 decl_engine,
             )]
