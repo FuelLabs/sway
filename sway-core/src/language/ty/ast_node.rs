@@ -9,7 +9,7 @@ use sway_types::{Ident, Span};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{parsed::TreeType, ty::*, Visibility},
+    language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,

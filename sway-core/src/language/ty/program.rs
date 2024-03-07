@@ -94,7 +94,7 @@ impl TyProgram {
 
                     match func.kind {
                         TyFunctionDeclKind::Main => mains.push(*decl_id),
-                        TyFunctionDeclKind::Entry =>  entries.push(*decl_id),
+                        TyFunctionDeclKind::Entry => entries.push(*decl_id),
                         _ => {}
                     }
 
@@ -266,10 +266,12 @@ impl TyProgram {
                     let mut last_error = None;
                     for m in mains.iter().skip(1) {
                         let mains_last = decl_engine.get_function(m);
-                        last_error = Some(handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                            name: mains_last.name.clone(),
-                            span: mains_last.name.span(),
-                        }));
+                        last_error = Some(handler.emit_err(
+                            CompileError::MultipleDefinitionsOfFunction {
+                                name: mains_last.name.clone(),
+                                span: mains_last.name.span(),
+                            },
+                        ));
                     }
                     return Err(last_error.unwrap());
                 }
@@ -278,7 +280,7 @@ impl TyProgram {
                     assert!(entries.len() == 1);
                     (entries[0], mains[0])
                 } else {
-                    assert!(entries.len() == 0);
+                    assert!(entries.is_empty());
                     (mains[0], mains[0])
                 };
 
@@ -291,7 +293,7 @@ impl TyProgram {
 
                 TyProgramKind::Predicate {
                     entry_function: entry_fn_id,
-                    main_function: main_fn_id
+                    main_function: main_fn_id,
                 }
             }
             parsed::TreeType::Script => {
@@ -306,10 +308,12 @@ impl TyProgram {
                     let mut last_error = None;
                     for m in mains.iter().skip(1) {
                         let mains_last = decl_engine.get_function(m);
-                        last_error = Some(handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                            name: mains_last.name.clone(),
-                            span: mains_last.name.span(),
-                        }));
+                        last_error = Some(handler.emit_err(
+                            CompileError::MultipleDefinitionsOfFunction {
+                                name: mains_last.name.clone(),
+                                span: mains_last.name.span(),
+                            },
+                        ));
                     }
                     return Err(last_error.unwrap());
                 }
@@ -318,7 +322,7 @@ impl TyProgram {
                     assert!(entries.len() == 1);
                     (entries[0], mains[0])
                 } else {
-                    assert!(entries.len() == 0);
+                    assert!(entries.is_empty());
                     (mains[0], mains[0])
                 };
 
@@ -378,14 +382,8 @@ impl TyProgram {
 
         // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
         match &typed_program_kind {
-            TyProgramKind::Script {
-                main_function,
-                ..
-            }
-            | TyProgramKind::Predicate {
-                main_function,
-                ..
-            } => {
+            TyProgramKind::Script { main_function, .. }
+            | TyProgramKind::Predicate { main_function, .. } => {
                 let main_function = decl_engine.get_function(main_function);
                 for param in &main_function.parameters {
                     if param.is_reference && param.is_mutable {

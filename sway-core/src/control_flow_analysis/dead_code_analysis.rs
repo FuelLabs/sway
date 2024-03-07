@@ -3,7 +3,10 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::TreeType,
-        ty::{self, ConstantDecl, FunctionDecl, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl},
+        ty::{
+            self, ConstantDecl, FunctionDecl, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent,
+            TyDecl, TyImplItem, TypeAliasDecl,
+        },
         CallPath, Visibility,
     },
     transform::{self, AttributesMap},
@@ -69,9 +72,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
             } => decl_engine.get_trait(decl_id).visibility.is_public(),
             TyAstNode {
                 content:
-                    TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl {
-                        decl_id, ..
-                    })),
+                    TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl { decl_id, .. })),
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(decl_id);
@@ -96,8 +97,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
             TyAstNode {
                 content:
                     TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
-                        decl_id,
-                        ..
+                        decl_id, ..
                     })),
                 ..
             } => {
@@ -380,7 +380,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 non_entry_points.push(ast_node);
             }
         }
-        
+
         for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
             let (_l_leaves, _new_exit_node) = connect_node(
                 engines,
