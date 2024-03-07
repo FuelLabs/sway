@@ -124,12 +124,14 @@ impl ServerState {
                             if version % 3 == 0 {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
-                                if let Err(err) = session.garbage_collect(&mut engines_clone) {
-                                    tracing::error!(
-                                        "Unable to perform garbage collection: {}",
-                                        err.to_string()
-                                    );
-                                }
+
+                                // Temporarily disable garbage collection until this issue is solved: https://github.com/FuelLabs/sway/issues/5698
+                                // if let Err(err) = session.garbage_collect(&mut engines_clone) {
+                                //     tracing::error!(
+                                //         "Unable to perform garbage collection: {}",
+                                //         err.to_string()
+                                //     );
+                                // }
                             }
                         }
 
