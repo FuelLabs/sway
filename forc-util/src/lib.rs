@@ -1,5 +1,4 @@
 //! Utility items shared between forc crates.
-
 use annotate_snippets::{
     renderer::{AnsiColor, Style},
     Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
@@ -26,6 +25,7 @@ use sway_types::{LineCol, SourceEngine, Span};
 use sway_utils::constants;
 use tracing::error;
 
+pub mod fs_locking;
 pub mod restricted;
 
 #[macro_use]
@@ -156,7 +156,8 @@ pub mod tx_utils {
     pub struct Salt {
         /// Added salt used to derive the contract ID.
         ///
-        /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+        /// By default, this is
+        /// `0x0000000000000000000000000000000000000000000000000000000000000000`.
         #[clap(long = "salt")]
         pub salt: Option<fuel_tx::Salt>,
     }
@@ -293,7 +294,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 ///
 /// Note: This has nothing to do with `Forc.lock` files, rather this is about fd locks for
 /// coordinating access to particular paths (e.g. git checkout directories).
-fn fd_lock_path(path: &Path) -> PathBuf {
+fn fd_lock_path<X: AsRef<Path>>(path: X) -> PathBuf {
     const LOCKS_DIR_NAME: &str = ".locks";
     const LOCK_EXT: &str = "forc-lock";
     let file_name = hash_path(path);
@@ -303,22 +304,10 @@ fn fd_lock_path(path: &Path) -> PathBuf {
         .with_extension(LOCK_EXT)
 }
 
-/// Constructs the path for the "dirty" flag file corresponding to the specified file.
-///
-/// This function uses a hashed representation of the original path for uniqueness.
-pub fn is_dirty_path(path: &Path) -> PathBuf {
-    const LOCKS_DIR_NAME: &str = ".lsp-locks";
-    const LOCK_EXT: &str = "dirty";
-    let file_name = hash_path(path);
-    user_forc_directory()
-        .join(LOCKS_DIR_NAME)
-        .join(file_name)
-        .with_extension(LOCK_EXT)
-}
-
 /// Hash the path to produce a file-system friendly file name.
 /// Append the file stem for improved readability.
-fn hash_path(path: &Path) -> String {
+fn hash_path<X: AsRef<Path>>(path: X) -> String {
+    let path = path.as_ref();
     let mut hasher = hash_map::DefaultHasher::default();
     path.hash(&mut hasher);
     let hash = hasher.finish();
@@ -332,7 +321,7 @@ fn hash_path(path: &Path) -> String {
 /// Create an advisory lock over the given path.
 ///
 /// See [fd_lock_path] for details.
-pub fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
+pub fn path_lock<X: AsRef<Path>>(path: X) -> Result<fd_lock::RwLock<File>> {
     let lock_path = fd_lock_path(path);
     let lock_dir = lock_path
         .parent()
