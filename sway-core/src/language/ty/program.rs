@@ -77,6 +77,7 @@ impl TyProgram {
         }
 
         let mut entries = Vec::new();
+        let mut mains = Vec::new();
         let mut declarations = Vec::<TyDecl>::new();
         let mut abi_entries = Vec::new();
         let mut fn_declarations = std::collections::HashSet::new();
@@ -91,8 +92,10 @@ impl TyProgram {
                 })) => {
                     let func = decl_engine.get_function(decl_id);
 
-                    if matches!(func.kind, TyFunctionDeclKind::Entry) {
-                        entries.push(*decl_id);
+                    match func.kind {
+                        TyFunctionDeclKind::Main => mains.push(*decl_id),
+                        TyFunctionDeclKind::Entry =>  entries.push(*decl_id),
+                        _ => {}
                     }
 
                     if !fn_declarations.insert(func.name.clone()) {
@@ -253,56 +256,77 @@ impl TyProgram {
                 }
             }
             parsed::TreeType::Predicate => {
-                // A predicate must have a main function and that function must return a boolean.
-                if entries.is_empty() {
+                if mains.is_empty() {
                     return Err(
                         handler.emit_err(CompileError::NoPredicateMainFunction(root.span.clone()))
                     );
                 }
-                if entries.len() > 1 {
-                    let mains_last = decl_engine.get_function(entries.last().unwrap());
-                    handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                        name: mains_last.name.clone(),
-                        span: mains_last.name.span(),
-                    });
-                }
-                let main_func_id = entries.remove(0);
-                let main_func = decl_engine.get_function(&main_func_id);
-                match &*ty_engine.get(main_func.return_type.type_id) {
-                    TypeInfo::Boolean => (),
-                    _ => {
-                        handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
-                            main_func.span.clone(),
-                        ));
+
+                if mains.len() > 1 {
+                    let mut last_error = None;
+                    for m in mains.iter().skip(1) {
+                        let mains_last = decl_engine.get_function(m);
+                        last_error = Some(handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
+                            name: mains_last.name.clone(),
+                            span: mains_last.name.span(),
+                        }));
                     }
+                    return Err(last_error.unwrap());
                 }
+
+                let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
+                    assert!(entries.len() == 1);
+                    (entries[0], mains[0])
+                } else {
+                    assert!(entries.len() == 0);
+                    (mains[0], mains[0])
+                };
+
+                let main_fn = decl_engine.get(&main_fn_id);
+                if !ty_engine.get(main_fn.return_type.type_id).is_bool() {
+                    handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
+                        main_fn.span.clone(),
+                    ));
+                }
+
                 TyProgramKind::Predicate {
-                    entry_function: main_func_id,
+                    entry_function: entry_fn_id,
+                    main_function: main_fn_id
                 }
             }
             parsed::TreeType::Script => {
                 // A script must have exactly one main function
-                if entries.is_empty() {
+                if mains.is_empty() {
                     return Err(
                         handler.emit_err(CompileError::NoScriptMainFunction(root.span.clone()))
                     );
                 }
 
-                if entries.len() > 1 {
-                    let mains_last = decl_engine.get_function(entries.last().unwrap());
-                    handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                        name: mains_last.name.clone(),
-                        span: mains_last.name.span(),
-                    });
+                if mains.len() > 1 {
+                    let mut last_error = None;
+                    for m in mains.iter().skip(1) {
+                        let mains_last = decl_engine.get_function(m);
+                        last_error = Some(handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
+                            name: mains_last.name.clone(),
+                            span: mains_last.name.span(),
+                        }));
+                    }
+                    return Err(last_error.unwrap());
                 }
+
+                let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
+                    assert!(entries.len() == 1);
+                    (entries[0], mains[0])
+                } else {
+                    assert!(entries.len() == 0);
+                    (mains[0], mains[0])
+                };
 
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
-                let main_func_decl_id = entries.remove(0);
-                let main_func = decl_engine.get_function(&main_func_decl_id);
-
-                for p in main_func.parameters() {
+                let main_fn = decl_engine.get(&main_fn_id);
+                for p in main_fn.parameters() {
                     if let Some(error) = get_type_not_allowed_error(
                         engines,
                         p.type_argument.type_id,
@@ -324,8 +348,8 @@ impl TyProgram {
                 // Check main return type is valid
                 if let Some(error) = get_type_not_allowed_error(
                     engines,
-                    main_func.return_type.type_id,
-                    &main_func.return_type,
+                    main_fn.return_type.type_id,
+                    &main_fn.return_type,
                     |t| match t {
                         TypeInfo::StringSlice => {
                             Some(TypeNotAllowedReason::StringSliceInMainReturn)
@@ -338,7 +362,7 @@ impl TyProgram {
                 ) {
                     // Let main return `raw_slice` directly
                     if !matches!(
-                        &*engines.te().get(main_func.return_type.type_id),
+                        &*engines.te().get(main_fn.return_type.type_id),
                         TypeInfo::RawUntypedSlice
                     ) {
                         handler.emit_err(error);
@@ -346,18 +370,20 @@ impl TyProgram {
                 }
 
                 TyProgramKind::Script {
-                    entry_function: main_func_decl_id,
+                    entry_function: entry_fn_id,
+                    main_function: main_fn_id,
                 }
             }
         };
+
         // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
         match &typed_program_kind {
             TyProgramKind::Script {
-                entry_function: main_function,
+                main_function,
                 ..
             }
             | TyProgramKind::Predicate {
-                entry_function: main_function,
+                main_function,
                 ..
             } => {
                 let main_function = decl_engine.get_function(main_function);
@@ -532,9 +558,11 @@ pub enum TyProgramKind {
     },
     Predicate {
         entry_function: DeclId<TyFunctionDecl>,
+        main_function: DeclId<TyFunctionDecl>,
     },
     Script {
         entry_function: DeclId<TyFunctionDecl>,
+        main_function: DeclId<TyFunctionDecl>,
     },
 }
 

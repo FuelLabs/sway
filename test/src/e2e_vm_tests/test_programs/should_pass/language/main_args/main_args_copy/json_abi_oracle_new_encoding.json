@@ -4,8 +4,14 @@
   "functions": [
     {
       "attributes": null,
-      "inputs": [],
-      "name": "__entry",
+      "inputs": [
+        {
+          "name": "baba",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
+      "name": "main",
       "output": {
         "name": "",
         "type": 0,
@@ -18,7 +24,7 @@
   "types": [
     {
       "components": null,
-      "type": "raw untyped slice",
+      "type": "u64",
       "typeId": 0,
       "typeParameters": null
     }

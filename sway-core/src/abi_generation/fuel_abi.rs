@@ -45,11 +45,11 @@ pub fn generate_program_abi(
             }
         }
         TyProgramKind::Script {
-            entry_function: main_function,
+            main_function,
             ..
         }
         | TyProgramKind::Predicate {
-            entry_function: main_function,
+            main_function,
             ..
         } => {
             let main_function = decl_engine.get_function(main_function);
