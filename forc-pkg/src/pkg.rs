@@ -1602,12 +1602,18 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
+    experimental: sway_core::ExperimentalFlags,
 ) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
     let mut namespace = if let Some(contract_id_value) = contract_id_value {
-        namespace::Module::default_with_contract_id(engines, name.clone(), contract_id_value)?
+        namespace::Module::default_with_contract_id(
+            engines,
+            name.clone(),
+            contract_id_value,
+            experimental,
+        )?
     } else {
         namespace::Module::default()
     };
@@ -1641,6 +1647,7 @@ pub fn dependency_namespace(
                     engines,
                     name.clone(),
                     contract_id_value,
+                    experimental,
                 )?;
                 ns.is_external = true;
                 ns.name = name;
@@ -2095,7 +2102,9 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
-    profile.experimental = experimental.clone();
+    profile.experimental = ExperimentalFlags {
+        new_encoding: experimental.new_encoding,
+    };
 
     Ok(profile)
 }
@@ -2127,6 +2136,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         pkg,
         build_target,
         member_filter,
+        experimental,
         ..
     } = &build_options;
 
@@ -2166,7 +2176,15 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     // Build it!
     let mut built_workspace = Vec::new();
     let build_start = std::time::Instant::now();
-    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
+    let built_packages = build(
+        &build_plan,
+        *build_target,
+        &build_profile,
+        &outputs,
+        sway_core::ExperimentalFlags {
+            new_encoding: experimental.new_encoding,
+        },
+    )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
 
     let finished = ansi_term::Colour::Green.bold().paint("Finished");
@@ -2269,6 +2287,7 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
+    experimental: sway_core::ExperimentalFlags,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2347,6 +2366,7 @@ pub fn build(
                 node,
                 &engines,
                 None,
+                experimental,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2410,6 +2430,7 @@ pub fn build(
             node,
             &engines,
             contract_id_value.clone(),
+            experimental,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2603,6 +2624,7 @@ fn update_json_type_declaration(
 /// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependencies and project.
 /// The final item in the returned vector is the project.
+#[allow(clippy::too_many_arguments)]
 pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
@@ -2611,6 +2633,7 @@ pub fn check(
     include_tests: bool,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    experimental: sway_core::ExperimentalFlags,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2641,6 +2664,7 @@ pub fn check(
             node,
             engines,
             contract_id_value,
+            experimental,
         )
         .expect("failed to create dependency namespace");
 

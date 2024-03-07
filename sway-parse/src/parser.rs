@@ -19,6 +19,7 @@ pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
     full_span: Span,
     handler: &'e Handler,
+    pub check_double_underscore: bool,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
@@ -27,6 +28,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
             handler,
+            check_double_underscore: true,
         }
     }
 
@@ -96,6 +98,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match parsing_function(&mut fork) {
@@ -155,6 +158,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match fork.parse() {
@@ -188,6 +192,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
         let r = match T::parse(&mut fork) {
             Ok(result) => {
@@ -244,6 +249,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     token_trees: token_stream.token_trees(),
                     full_span: token_stream.span(),
                     handler: self.handler,
+                    check_double_underscore: self.check_double_underscore,
                 };
                 Some((parser, span.clone()))
             }
@@ -469,6 +475,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             token_trees: self.fork_token_trees,
             full_span: self.fork_full_span.clone(),
             handler: &self.handler,
+            check_double_underscore: self.original.borrow().check_double_underscore,
         };
         f(&mut p);
         self.finish(p)

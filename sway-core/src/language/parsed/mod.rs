@@ -14,9 +14,8 @@ pub use include_statement::IncludeStatement;
 pub use module::{ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
 use sway_error::handler::ErrorEmitted;
-pub use use_statement::{ImportType, UseStatement};
-
 use sway_types::span::Span;
+pub use use_statement::{ImportType, UseStatement};
 
 use crate::Engines;
 
