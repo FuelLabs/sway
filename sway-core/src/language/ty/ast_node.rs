@@ -9,7 +9,7 @@ use sway_types::{Ident, Span};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{parsed::TreeType, ty::*, Visibility},
+    language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
@@ -189,90 +189,6 @@ impl TyAstNode {
                 attributes.contains_key(&AttributeKind::Test)
             }
             _ => false,
-        }
-    }
-
-    pub(crate) fn is_entry_point(&self, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
-        match tree_type {
-            TreeType::Predicate | TreeType::Script => {
-                // Predicates and scripts have main and test functions as entry points.
-                match self {
-                    TyAstNode {
-                        span: _,
-                        content:
-                            TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                                decl_id,
-                                ..
-                            })),
-                        ..
-                    } => {
-                        let decl = decl_engine.get_function(decl_id);
-                        decl.is_entry_or_test()
-                    }
-                    _ => false,
-                }
-            }
-            TreeType::Contract | TreeType::Library { .. } => match self {
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_function(decl_id);
-                    decl.visibility == Visibility::Public || decl.is_test()
-                }
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => decl_engine.get_trait(decl_id).visibility.is_public(),
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl {
-                            decl_id, ..
-                        })),
-                    ..
-                } => {
-                    let struct_decl = decl_engine.get_struct(decl_id);
-                    struct_decl.visibility == Visibility::Public
-                }
-                TyAstNode {
-                    content: TyAstNodeContent::Declaration(TyDecl::ImplTrait { .. }),
-                    ..
-                } => true,
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_constant(decl_id);
-                    decl.visibility.is_public()
-                }
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
-                            decl_id,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_type_alias(decl_id);
-                    decl.visibility.is_public()
-                }
-                _ => false,
-            },
         }
     }
 

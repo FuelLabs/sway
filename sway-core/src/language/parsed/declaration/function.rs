@@ -10,6 +10,7 @@ use sway_types::{ident::Ident, span::Span};
 pub enum FunctionDeclarationKind {
     Default,
     Entry,
+    Main,
     Test,
 }
 

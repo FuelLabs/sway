@@ -5,7 +5,7 @@
     {
       "attributes": null,
       "inputs": [],
-      "name": "__entry",
+      "name": "main",
       "output": {
         "name": "",
         "type": 0,
@@ -18,7 +18,7 @@
   "types": [
     {
       "components": null,
-      "type": "raw untyped slice",
+      "type": "u64",
       "typeId": 0,
       "typeParameters": null
     }
