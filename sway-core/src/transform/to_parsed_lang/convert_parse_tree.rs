@@ -516,12 +516,10 @@ pub fn item_fn_to_function_declaration(
         }
     };
 
-    let kind = match (
-        context.experimental.new_encoding,
-        item_fn.fn_signature.name.as_str() == "main",
-    ) {
-        (false, true) => FunctionDeclarationKind::Entry,
-        _ => FunctionDeclarationKind::Default,
+    let kind = if item_fn.fn_signature.name.as_str() == "main" {
+        FunctionDeclarationKind::Main
+    } else {
+        FunctionDeclarationKind::Default
     };
 
     let kind = override_kind.unwrap_or(kind);
