@@ -190,15 +190,23 @@ macro_rules! decl_engine_clear_module {
                 self.parents.write().unwrap().retain(|key, _| {
                     match key {
                         AssociatedItemDeclId::TraitFn(decl_id) => {
+                            // WARNING: Setting to true disables garbage collection for these cases.
+                            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
                             self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                         AssociatedItemDeclId::Function(decl_id) => {
+                            // WARNING: Setting to true disables garbage collection for these cases.
+                            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
                             self.get_function(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                         AssociatedItemDeclId::Type(decl_id) => {
+                            // WARNING: Setting to true disables garbage collection for these cases.
+                            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
                             self.get_type(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                         AssociatedItemDeclId::Constant(decl_id) => {
+                            // WARNING: Setting to true disables garbage collection for these cases.
+                            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
                             self.get_constant(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                     }
@@ -207,6 +215,8 @@ macro_rules! decl_engine_clear_module {
                 $(
                     self.$slab.retain(|_k, ty| match ty.span().source_id() {
                         Some(source_id) => &source_id.module_id() != module_id,
+                        // WARNING: Setting to true disables garbage collection for these cases.
+                        // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
                         None => true,
                     });
                 )*
