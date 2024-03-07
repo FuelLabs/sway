@@ -1,19 +1,10 @@
 library;
 
 // ANCHOR: to_bytes_import
-use std::{
-    bytes_conversions::{
-        u16::*,
-        u32::*,
-        u64::*,
-        u256::*,
-        b256::*,
-    },
-    bytes::Bytes
-};
+use std::{bytes::Bytes, bytes_conversions::{b256::*, u16::*, u256::*, u32::*, u64::*,}};
 // ANCHOR_END: to_bytes_import
 
-pub fn convert_to_bytes(){
+pub fn convert_to_bytes() {
     // Convert any unsigned integeger to `Bytes`
     // ANCHOR: to_bytes
     let num = 5;
@@ -22,7 +13,7 @@ pub fn convert_to_bytes(){
     // ANCHOR_END: to_bytes
 }
 
-pub fn convert_from_bytes(){
+pub fn convert_from_bytes() {
     let num = 5;
     let little_endian_bytes: Bytes = num.to_le_bytes();
     let big_endian_bytes: Bytes = num.to_be_bytes();

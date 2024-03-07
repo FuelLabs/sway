@@ -7,9 +7,9 @@ use std::primitive_conversions::str::*;
 
 pub fn convert_str_to_str_array() {
     // ANCHOR: str_to_str_array
-   let fuel_str: str = "fuel";
-   let fuel_str_array: str[4] = fuel_str.try_as_str_array().unwrap();
-   // ANCHOR_END: str_to_str_array
+    let fuel_str: str = "fuel";
+    let fuel_str_array: str[4] = fuel_str.try_as_str_array().unwrap();
+    // ANCHOR_END: str_to_str_array
 }
 
 pub fn convert_str_array_to_str() {

@@ -1,17 +1,10 @@
 library;
 
 // ANCHOR: to_u8_import
-use std::{
-    primitive_conversions::{
-        u8::*,
-        u16::*,
-        u32::*,
-        u64::*,
-    },
-};
+use std::{primitive_conversions::{u16::*, u32::*, u64::*, u8::*,},};
 // ANCHOR_END: to_u8_import
 
-pub fn convert_uint_to_u8(){
+pub fn convert_uint_to_u8() {
     // Convert any unsigned integer to `u8`
     // ANCHOR: to_u8
     let u16_1: u16 = 2u16;
@@ -30,7 +23,6 @@ pub fn convert_uint_to_u8(){
 
     let u8_from_u256: Option<u8> = <u8 as TryFrom<u256>>::try_from(u256_1);
     // ANCHOR_END: to_u8
-
     assert(u8_from_u16_1.unwrap() == 2u8);
     assert(u8_from_u16_2.unwrap() == 2u8);
     assert(u8_from_u32_1.unwrap() == 2u8);

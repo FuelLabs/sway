@@ -1,6 +1,6 @@
 library;
 
-pub fn convert_to_u256(){
+pub fn convert_to_u256() {
     // Convert any unsigned integer to `u256`
     // ANCHOR: to_u256
     let u8_1: u8 = 2u8;

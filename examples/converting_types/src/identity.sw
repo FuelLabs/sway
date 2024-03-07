@@ -1,12 +1,11 @@
 library;
 
-pub fn convert_to_identity(){
+pub fn convert_to_identity() {
     let b256_address: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     // ANCHOR: convert_b256_to_address_or_contract_id
     let address_from_b256: Address = Address::from(b256_address);
     let contract_id_from_b256: ContractId = ContractId::from(b256_address);
     // ANCHOR_END: convert_b256_to_address_or_contract_id
-
     let address = address_from_b256;
     let contract_id = contract_id_from_b256;
 
@@ -17,7 +16,7 @@ pub fn convert_to_identity(){
     // ANCHOR_END: convert_to_identity
 }
 
-pub fn convert_from_identity(my_identity: Identity){
+pub fn convert_from_identity(my_identity: Identity) {
     // ANCHOR: convert_from_identity
     match my_identity {
         Identity::Address(address) => log(address),
@@ -26,7 +25,7 @@ pub fn convert_from_identity(my_identity: Identity){
     // ANCHOR_END: convert_from_identity
 }
 
-pub fn convert_to_b256(){
+pub fn convert_to_b256() {
     let b256_address: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     let address: Address = Address::from(b256_address);
     let contract_id: ContractId = ContractId::from(b256_address);
