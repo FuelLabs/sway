@@ -29,7 +29,7 @@ source = "member"
 [[package]]
 name = "converting_types"
 source = "member"
-dependencies = ["std git+https://github.com/fuellabs/sway?rev#c1c25014f9913a0031d8fcdd2c893008f3a5b821"]
+dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.51.1#d1e8f019c1da46273c3d3a72b385ce356ba2bc20"]
 
 [[package]]
 name = "core"
@@ -37,7 +37,7 @@ source = "path+from-root-087D5D776F294F03"
 
 [[package]]
 name = "core"
-source = "path+from-root-EE4F0D2A59077061"
+source = "path+from-root-4F1FAAE4510FEB23"
 
 [[package]]
 name = "counter"
@@ -115,8 +115,8 @@ dependencies = ["std path+from-root-087D5D776F294F03"]
 
 [[package]]
 name = "std"
-source = "git+https://github.com/fuellabs/sway?rev#c1c25014f9913a0031d8fcdd2c893008f3a5b821"
-dependencies = ["core path+from-root-EE4F0D2A59077061"]
+source = "git+https://github.com/fuellabs/sway?tag=v0.51.1#d1e8f019c1da46273c3d3a72b385ce356ba2bc20"
+dependencies = ["core path+from-root-4F1FAAE4510FEB23"]
 
 [[package]]
 name = "std"
