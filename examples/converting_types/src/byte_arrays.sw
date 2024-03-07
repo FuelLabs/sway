@@ -12,23 +12,20 @@ pub fn to_byte_array() {
     let u256_1: u256 = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
     let b256_1: b256 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     // little endian
-    let le_byte_array_from_u16
-: [u8; 2] = u16_1.to_le_bytes();
+    let le_byte_array_from_u16: [u8; 2] = u16_1.to_le_bytes();
     let le_byte_array_from_u32: [u8; 4] = u32_1.to_le_bytes();
     let le_byte_array_from_u64: [u8; 8] = u64_1.to_le_bytes();
     let le_byte_array_from_u256: [u8; 32] = u256_1.to_le_bytes();
     let le_byte_array_from_b256: [u8; 32] = b256_1.to_le_bytes();
     // big endian
-    let be_byte_array_from_u16
-: [u8; 2] = u16_1.to_be_bytes();
+    let be_byte_array_from_u16: [u8; 2] = u16_1.to_be_bytes();
     let be_byte_array_from_u32: [u8; 4] = u32_1.to_be_bytes();
     let be_byte_array_from_u64: [u8; 8] = u64_1.to_be_bytes();
     let be_byte_array_from_u256: [u8; 32] = u256_1.to_be_bytes();
     let be_byte_array_from_b256: [u8; 32] = b256_1.to_be_bytes();
     // ANCHOR_END: to_byte_array
 }
-pub fn
- from_byte_array() {
+pub fn from_byte_array() {
     // ANCHOR: from_byte_array
     let u16_byte_array: [u8; 2] = [2_u8, 1_u8];
     let u32_byte_array: [u8; 4] = [4_u8, 3_u8, 2_u8, 1_u8];
@@ -39,15 +36,13 @@ pub fn
         10_u8, 9_u8, 8_u8, 7_u8, 6_u8, 5_u8, 4_u8, 3_u8, 2_u8, 1_u8,
     ];
     // little endian
-    let le_u16_from_byte_array
-: u16 = u16::from_le_bytes(u16_byte_array);
+    let le_u16_from_byte_array: u16 = u16::from_le_bytes(u16_byte_array);
     let le_u32_from_byte_array: u32 = u32::from_le_bytes(u32_byte_array);
     let le_u64_from_byte_array: u64 = u64::from_le_bytes(u64_byte_array);
     let le_u256_from_byte_array: u256 = u256::from_le_bytes(u256_byte_array);
     let le_b256_from_byte_array: b256 = b256::from_le_bytes(u256_byte_array);
     // big endian
-    let be_u16_from_byte_array
-: u16 = u16::from_be_bytes(u16_byte_array);
+    let be_u16_from_byte_array: u16 = u16::from_be_bytes(u16_byte_array);
     let be_u32_from_byte_array: u32 = u32::from_be_bytes(u32_byte_array);
     let be_u64_from_byte_array: u64 = u64::from_be_bytes(u64_byte_array);
     let be_u256_from_byte_array: u256 = u256::from_be_bytes(u256_byte_array);
