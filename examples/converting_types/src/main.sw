@@ -8,3 +8,4 @@ mod to_u64;
 mod to_u256;
 mod strings;
 mod identity;
+mod byte_arrays;

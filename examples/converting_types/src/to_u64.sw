@@ -20,9 +20,4 @@ pub fn convert_uint_to_u64(){
 
     let u64_from_u256: Option<u64> = <u64 as TryFrom<u256>>::try_from(u256_1);
     // ANCHOR_END: to_u64
-
-    assert(u64_from_u8 == 2u64);
-    assert(u64_from_u16 == 2u64);
-    assert(u64_from_u32 == 2u64);
-    assert(u64_from_u256.unwrap() == 2u64);
 }

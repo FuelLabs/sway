@@ -2,9 +2,54 @@
 
 Below are some common type conversions in Sway:
 
-- [Number Conversions](#number-conversions)
-- [String Conversions](#string-conversions)
 - [Identity Conversions](#identity-conversions)
+- [String Conversions](#string-conversions)
+- [Number Conversions](#number-conversions)
+- [Byte Array Conversions](#byte-array-conversions)
+
+## Identity Conversions
+
+### Convert to `Identity`
+
+```sway
+{{#include ../../../../examples/converting_types/src/identity.sw:convert_to_identity}}
+```
+
+### Convert `Identity` to `ContractId` or `Address`
+
+```sway
+{{#include ../../../../examples/converting_types/src/identity.sw:convert_from_identity}}
+```
+
+### Convert `ContractId` or `Address` to `b256`
+
+```sway
+{{#include ../../../../examples/converting_types/src/identity.sw:convert_to_b256}}
+```
+
+### Convert `b256` to `ContractId` or `Address`
+
+```sway
+{{#include ../../../../examples/converting_types/src/identity.sw:convert_b256_to_address_or_contract_id}}
+```
+
+## String Conversions
+
+### Convert `str` to `str[]`
+
+```sway
+{{#include ../../../../examples/converting_types/src/strings.sw:strings_import}}
+```
+
+```sway
+{{#include ../../../../examples/converting_types/src/strings.sw:str_to_str_array}}
+```
+
+### Convert `str[]` to `str`
+
+```sway
+{{#include ../../../../examples/converting_types/src/strings.sw:str_array_to_str}}
+```
 
 ## Number Conversions
 
@@ -74,46 +119,24 @@ Below are some common type conversions in Sway:
 {{#include ../../../../examples/converting_types/src/bytes.sw:from_bytes}}
 ```
 
-## String Conversions
+## Byte Array Conversions
 
-### Convert `str` to `str[]`
+### Convert to a Byte Array
 
 ```sway
-{{#include ../../../../examples/converting_types/src/strings.sw:strings_import}}
+{{#include ../../../../examples/converting_types/src/byte_arrays.sw:to_byte_array_import}}
 ```
 
 ```sway
-{{#include ../../../../examples/converting_types/src/strings.sw:str_to_str_array}}
+{{#include ../../../../examples/converting_types/src/byte_arrays.sw:to_byte_array}}
 ```
 
-### Convert `str[]` to `str`
+### Convert from a Byte Array
 
 ```sway
-{{#include ../../../../examples/converting_types/src/strings.sw:str_array_to_str}}
+{{#include ../../../../examples/converting_types/src/byte_arrays.sw:to_byte_array_import}}
 ```
 
-## Identity Conversions
-
-### Convert to `Identity`
-
 ```sway
-{{#include ../../../../examples/converting_types/src/identity.sw:convert_to_identity}}
-```
-
-### Convert `Identity` to `ContractId` or `Address`
-
-```sway
-{{#include ../../../../examples/converting_types/src/identity.sw:convert_from_identity}}
-```
-
-### Convert `ContractId` or `Address` to `b256`
-
-```sway
-{{#include ../../../../examples/converting_types/src/identity.sw:convert_to_b256}}
-```
-
-### Convert `b256` to `ContractId` or `Address`
-
-```sway
-{{#include ../../../../examples/converting_types/src/identity.sw:convert_b256_to_address_or_contract_id}}
+{{#include ../../../../examples/converting_types/src/byte_arrays.sw:from_byte_array}}
 ```

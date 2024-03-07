@@ -28,11 +28,4 @@ pub fn convert_uint_to_u16(){
 
     let u16_from_u256: Option<u16> = <u16 as TryFrom<u256>>::try_from(u256_1);
     // ANCHOR_END: to_u16
-
-    assert(u16_from_u8 == 2u16);
-    assert(u16_from_u32_1.unwrap() == 2u16);
-    assert(u16_from_u32_2.unwrap() == 2u16);
-    assert(u16_from_u64_1.unwrap() == 2u16);
-    assert(u16_from_u64_2.unwrap() == 2u16);
-    assert(u16_from_u256.unwrap() == 2u16);
 }

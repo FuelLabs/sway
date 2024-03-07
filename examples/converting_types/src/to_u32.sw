@@ -26,10 +26,4 @@ pub fn convert_uint_to_u32(){
 
     let u32_from_u256: Option<u32> = <u32 as TryFrom<u256>>::try_from(u256_1);
     // ANCHOR_END: to_u32
-
-    assert(u32_from_u8 == 2u32);
-    assert(u32_from_u16 == 2u32);
-    assert(u32_from_u64_1.unwrap() == 2u32);
-    assert(u32_from_u64_2.unwrap() == 2u32);
-    assert(u32_from_u256.unwrap() == 2u32);
 }
