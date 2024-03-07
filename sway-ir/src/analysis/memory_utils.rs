@@ -210,6 +210,7 @@ pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
         InstOp::FuelVm(FuelVmInstruction::WideModularOp {
             arg1, arg2, arg3, ..
         }) => vec![*arg1, *arg2, *arg3],
+        InstOp::FuelVm(FuelVmInstruction::Retd { ptr, .. }) => vec![*ptr],
     }
 }
 
@@ -264,6 +265,7 @@ pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
             | FuelVmInstruction::WideBinaryOp { result, .. }
             | FuelVmInstruction::WideModularOp { result, .. } => vec![*result],
             FuelVmInstruction::WideCmpOp { .. } => vec![],
+            _ => vec![],
         },
     }
 }

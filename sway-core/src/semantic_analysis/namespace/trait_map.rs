@@ -1000,6 +1000,35 @@ impl TraitMap {
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
+
+        // If the type is generic/placeholder, its definition needs to contains all
+        // constraints
+        match &*type_engine.get(type_id) {
+            TypeInfo::UnknownGeneric {
+                trait_constraints, ..
+            } => {
+                let all = constraints.iter().all(|required| {
+                    trait_constraints
+                        .iter()
+                        .any(|constraint| constraint.eq(required, engines))
+                });
+                if all {
+                    return Ok(());
+                }
+            }
+            TypeInfo::Placeholder(p) => {
+                let all = constraints.iter().all(|required| {
+                    p.trait_constraints
+                        .iter()
+                        .any(|constraint| constraint.eq(required, engines))
+                });
+                if all {
+                    return Ok(());
+                }
+            }
+            _ => {}
+        }
+
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
@@ -1094,6 +1123,7 @@ impl TraitMap {
                     {
                         type_arguments_string = format!("<{}>", engines.help_out(type_arguments));
                     }
+
                     // TODO: use a better span
                     handler.emit_err(CompileError::TraitConstraintNotSatisfied {
                         ty: engines.help_out(type_id).to_string(),
