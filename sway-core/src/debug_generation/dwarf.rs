@@ -43,9 +43,9 @@ pub fn write_dwarf(
     dwarf.unit.line_program = program;
     // Write to new sections
     let mut debug_sections = write::Sections::new(EndianVec::new(BigEndian));
-    dwarf
-        .write(&mut debug_sections)
-        .expect("Should write DWARF information");
+    dwarf.write(&mut debug_sections).map_err(|err| {
+        sway_error::error::CompileError::InternalOwned(err.to_string(), Span::dummy())
+    })?;
 
     let file = File::create(out_file).unwrap();
     let mut obj = Object::new(
@@ -94,8 +94,18 @@ fn build_line_number_program(
     for (ix, span) in &source_map.map {
         let (path, span) = span.to_span(&source_map.paths, &source_map.dependency_paths);
 
-        let dir = path.parent().expect("Path doesn't have proper prefix");
-        let file = path.file_name().expect("Path doesn't have proper filename");
+        let dir = path
+            .parent()
+            .ok_or(sway_error::error::CompileError::InternalOwned(
+                "Path doesn't have a proper prefix".to_string(),
+                Span::dummy(),
+            ))?;
+        let file = path
+            .file_name()
+            .ok_or(sway_error::error::CompileError::InternalOwned(
+                "Path doesn't have proper filename".to_string(),
+                Span::dummy(),
+            ))?;
 
         let dir_id = program.add_directory(LineString::String(
             dir.as_os_str().as_encoded_bytes().into(),

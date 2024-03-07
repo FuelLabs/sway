@@ -1900,7 +1900,7 @@ pub fn compile(
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
         sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se()),
-        Some(sway_build_config.clone()),
+        Some(sway_build_config),
         metrics
     );
 
