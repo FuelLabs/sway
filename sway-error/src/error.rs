@@ -1932,8 +1932,8 @@ impl ToDiagnostic for CompileError {
                     ),
                 ],
                 help: vec![
-                    format!("In Sway, there can be at most one implementation of a trait for any given type."),
-                    format!("This property is called \"trait coherence\"."),
+                    "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
+                    "This property is called \"trait coherence\".".to_string(),
                 ],
             },
            _ => Diagnostic {
