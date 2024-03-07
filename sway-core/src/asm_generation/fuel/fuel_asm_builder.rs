@@ -306,6 +306,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
                     FuelVmInstruction::JmpMem => self.compile_jmp_mem(instr_val),
+                    FuelVmInstruction::Retd { ptr, len } => self.compile_retd(instr_val, ptr, len),
                 },
                 InstOp::GetElemPtr {
                     base,
@@ -662,6 +663,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        Ok(())
+    }
+
+    fn compile_retd(
+        &mut self,
+        instr_val: &Value,
+        ptr: &Value,
+        len: &Value,
+    ) -> Result<(), CompileError> {
+        let ptr = self.value_to_register(ptr)?;
+        let len = self.value_to_register(len)?;
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::RETD(ptr, len)),
             comment: String::new(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });

@@ -70,7 +70,7 @@ impl Context {
 
     /// Returns the program type.
     pub fn program_type(&self) -> Option<TreeType> {
-        self.program_type.clone()
+        self.program_type
     }
 
     /// Updates the value of `program_type`.

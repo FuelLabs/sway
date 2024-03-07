@@ -1,17 +1,20 @@
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Named, Spanned};
+use sway_types::{Ident, Named, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
+    decl_engine::{
+        DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType, Template,
+    },
     language::{
         parsed,
-        ty::{self, TyDecl},
+        ty::{self, FunctionDecl, TyDecl},
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
+        type_check_context::EnforceTypeArguments, ConstShadowingMode, GenericShadowingMode,
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
     },
     type_system::*,
 };
@@ -198,11 +201,11 @@ impl TyDecl {
                         Ok(res) => res,
                         Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
+
                 // if this ImplTrait implements a trait and not an ABI,
                 // we insert its methods into the context
-                // otherwise, if it implements an ABI, we do not
-                // insert those since we do not allow calling contract methods
-                // from contract methods
+                // otherwise, if it implements an ABI,
+                // we insert its methods with a prefix
                 let emp_vec = vec![];
                 let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) =
                     ctx.namespace().resolve_call_path(
@@ -213,6 +216,31 @@ impl TyDecl {
                     ) {
                     &impl_trait.items
                 } else {
+                    for i in &impl_trait.items {
+                        if let ty::TyTraitItem::Fn(f) = i {
+                            let decl = engines.de().get(f.id());
+                            let _ = ctx
+                                .namespace
+                                .module_mut()
+                                .current_items_mut()
+                                .insert_symbol(
+                                    handler,
+                                    Ident::new_no_span(format!(
+                                        "__contract_entry_{}",
+                                        decl.name.clone()
+                                    )),
+                                    TyDecl::FunctionDecl(FunctionDecl {
+                                        name: decl.name.clone(),
+                                        decl_id: *f.id(),
+                                        subst_list: Template::default(),
+                                        decl_span: f.span(),
+                                    }),
+                                    ConstShadowingMode::ItemStyle,
+                                    GenericShadowingMode::Allow,
+                                );
+                        }
+                    }
+
                     &emp_vec
                 };
 
