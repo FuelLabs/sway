@@ -297,8 +297,8 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         Some(TyAstNode {
+            span: decl.span(),
             content: ty::TyAstNodeContent::Declaration(decl),
-            span: Span::dummy(),
         })
     }
 
@@ -335,8 +335,8 @@ where
             None
         } else {
             Some(TyAstNode {
+                span: decl.span(),
                 content: ty::TyAstNodeContent::Declaration(decl),
-                span: Span::dummy(),
             })
         }
     }
