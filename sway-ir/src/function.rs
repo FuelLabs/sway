@@ -280,7 +280,7 @@ impl Function {
         context.functions[self.0].is_entry
     }
 
-     /// Whether or not this function is a contract fallback function
+    /// Whether or not this function is a contract fallback function
     pub fn is_fallback(&self, context: &Context) -> bool {
         context.functions[self.0].is_fallback
     }

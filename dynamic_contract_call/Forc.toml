@@ -1,7 +1,0 @@
-[project]
-authors = ["Xunilrj"]
-entry = "lib.sw"
-license = "Apache-2.0"
-name = "dynamic_contract_call"
-
-[dependencies]

@@ -141,13 +141,13 @@ pub(super) fn compile_contract(
     )
     .map_err(|err| vec![err])?;
 
-    if let Some(main_function) = entry_function {
+    if let Some(entry_function) = entry_function {
         compile_entry_function(
             engines,
             context,
             &mut md_mgr,
             module,
-            main_function,
+            entry_function,
             logged_types_map,
             messages_types_map,
             None,
@@ -167,25 +167,21 @@ pub(super) fn compile_contract(
     }
 
     // Fallback function needs to be compiled
-
     for decl in declarations {
-        match decl {
-            ty::TyDecl::FunctionDecl(decl) => {
-                let decl_id = decl.decl_id;
-                let decl = engines.de().get(&decl_id);
-                if decl.attributes.get(&AttributeKind::Fallback).is_some() {
-                    compile_abi_method(
-                        context,
-                        &mut md_mgr,
-                        module,
-                        &decl_id,
-                        logged_types_map,
-                        messages_types_map,
-                        engines,
-                    )?;
-                }
+        if let ty::TyDecl::FunctionDecl(decl) = decl {
+            let decl_id = decl.decl_id;
+            let decl = engines.de().get(&decl_id);
+            if decl.attributes.get(&AttributeKind::Fallback).is_some() {
+                compile_abi_method(
+                    context,
+                    &mut md_mgr,
+                    module,
+                    &decl_id,
+                    logged_types_map,
+                    messages_types_map,
+                    engines,
+                )?;
             }
-            _ => {}
         }
     }
 
@@ -457,7 +453,6 @@ fn compile_fn(
         purity,
         span,
         is_trait_method_dummy,
-        attributes,
         ..
     } = ast_fn_decl;
 
@@ -520,8 +515,6 @@ fn compile_fn(
         metadata = md_combine(context, &metadata, &inline_md_idx);
     }
 
-    let is_fallback = attributes.get(&AttributeKind::Fallback).is_some();
-
     let func = Function::new(
         context,
         module,
@@ -531,7 +524,7 @@ fn compile_fn(
         selector,
         *visibility == Visibility::Public,
         is_entry,
-        is_fallback,
+        ast_fn_decl.is_fallback(),
         metadata,
     );
 

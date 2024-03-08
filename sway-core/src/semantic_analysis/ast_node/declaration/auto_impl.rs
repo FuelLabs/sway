@@ -1,9 +1,13 @@
 use crate::{
-    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE, decl_engine::{DeclEngineGet, DeclId, DeclRef}, language::{
+    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
+    decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
         Purity,
-    }, semantic_analysis::TypeCheckContext, Engines, TypeId, TypeInfo, TypeParameter
+    },
+    semantic_analysis::TypeCheckContext,
+    Engines, TypeId, TypeInfo, TypeParameter,
 };
 use itertools::Itertools;
 use sway_error::handler::Handler;
@@ -567,6 +571,7 @@ where
             .collect::<String>();
 
             let return_type = Self::generate_type(engines, decl.return_type.type_id);
+
             let method_name = decl.name.as_str();
 
             if args_types == "()" {
@@ -608,7 +613,7 @@ where
             {code}
             {fallback}
         }}");
-        self.parse_item_fn_to_typed_ast_node(engines, module_id, FunctionDeclarationKind::Entry, &code)
+        self.parse_item_fn_to_typed_ast_node(engines, FunctionDeclarationKind::Entry, &code)
     }
 
     pub(crate) fn generate_predicate_entry(

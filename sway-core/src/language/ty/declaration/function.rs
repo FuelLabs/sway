@@ -10,7 +10,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use crate::{
     language::{parsed::FunctionDeclarationKind, CallPath},
     semantic_analysis::type_check_context::MonomorphizeHelper,
-    transform::AttributeKind
+    transform::AttributeKind,
 };
 
 use crate::{

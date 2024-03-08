@@ -39,7 +39,10 @@ impl AbstractProgram {
         }
     }
 
-    pub(crate) fn into_allocated_program(mut self, fallback_fn: Option<crate::asm_lang::Label>) -> Result<AllocatedProgram, CompileError> {
+    pub(crate) fn into_allocated_program(
+        mut self,
+        fallback_fn: Option<crate::asm_lang::Label>,
+    ) -> Result<AllocatedProgram, CompileError> {
         // Build our bytecode prologue which has a preamble and for contracts is the switch based on
         // function selector.
         let mut prologue = self.build_preamble();
@@ -172,7 +175,11 @@ impl AbstractProgram {
     /// 'selector'.
     /// See https://fuellabs.github.io/fuel-specs/master/vm#call-frames which
     /// describes the first argument to be at word offset 73.
-    fn build_contract_abi_switch(&mut self, asm_buf: &mut AllocatedAbstractInstructionSet, fallback_fn: Option<crate::asm_lang::Label>) {
+    fn build_contract_abi_switch(
+        &mut self,
+        asm_buf: &mut AllocatedAbstractInstructionSet,
+        fallback_fn: Option<crate::asm_lang::Label>,
+    ) {
         const SELECTOR_WORD_OFFSET: u64 = 73;
         const INPUT_SELECTOR_REG: AllocatedRegister = AllocatedRegister::Allocated(0);
         const PROG_SELECTOR_REG: AllocatedRegister = AllocatedRegister::Allocated(1);
@@ -240,49 +247,32 @@ impl AbstractProgram {
                 owning_span: None,
             });
         }
- 
+
         if let Some(fallback_fn) = fallback_fn {
             asm_buf.ops.push(AllocatedAbstractOp {
                 opcode: Either::Right(ControlFlowOp::Call(fallback_fn)),
-                comment: "jump to fallback function".into(),
-                owning_span: None,
-            });
-            asm_buf.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::MOVI(
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    VirtualImmediate18 {
-                        value: 7777777,
-                    },
-                )),
-                comment: "special code for fallback not returning".into(),
-                owning_span: None,
-            });
-            asm_buf.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
-                    ConstantRegister::Scratch,
-                ))),
-                comment: "revert if fallback do not return to caller".into(),
-                owning_span: None,
-            });
-        } else {
-            asm_buf.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::MOVI(
-                    AllocatedRegister::Constant(ConstantRegister::Scratch),
-                    VirtualImmediate18 {
-                        value: compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-                    },
-                )),
-                comment: "special code for mismatched selector".into(),
-                owning_span: None,
-            });
-            asm_buf.ops.push(AllocatedAbstractOp {
-                opcode: Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
-                    ConstantRegister::Scratch,
-                ))),
-                comment: "revert if no selectors matched".into(),
+                comment: "call fallback function".into(),
                 owning_span: None,
             });
         }
+
+        asm_buf.ops.push(AllocatedAbstractOp {
+            opcode: Either::Left(AllocatedOpcode::MOVI(
+                AllocatedRegister::Constant(ConstantRegister::Scratch),
+                VirtualImmediate18 {
+                    value: compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
+                },
+            )),
+            comment: "special code for mismatched selector".into(),
+            owning_span: None,
+        });
+        asm_buf.ops.push(AllocatedAbstractOp {
+            opcode: Either::Left(AllocatedOpcode::RVRT(AllocatedRegister::Constant(
+                ConstantRegister::Scratch,
+            ))),
+            comment: "revert if no selectors matched".into(),
+            owning_span: None,
+        });
     }
 }
 

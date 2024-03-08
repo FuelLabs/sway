@@ -895,8 +895,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     };
     res?;
 
-    
-
     let final_asm = compile_ir_to_asm(handler, &ir, Some(build_config))?;
 
     Ok(final_asm)

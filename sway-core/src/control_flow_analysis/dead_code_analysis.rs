@@ -27,7 +27,7 @@ use sway_types::{
     Ident, Named, Spanned,
 };
 
-// Defines if this node starts the dca graph or not
+// Defines if this node is a root in the dca graph or not
 fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
     match tree_type {
         TreeType::Predicate | TreeType::Script => {
@@ -372,7 +372,6 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
         let mut entry_points = vec![];
         let mut non_entry_points = vec![];
-
         for ast_node in module_nodes {
             if is_entry_point(ast_node, decl_engine, tree_type) {
                 entry_points.push(ast_node);
@@ -380,11 +379,10 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 non_entry_points.push(ast_node);
             }
         }
-
-        for node in non_entry_points.into_iter().chain(entry_points) {
+        for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
             let (_l_leaves, _new_exit_node) = connect_node(
                 engines,
-                node,
+                ast_entrypoint,
                 graph,
                 &[],
                 exit_node,
