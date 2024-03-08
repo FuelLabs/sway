@@ -82,7 +82,6 @@ fn compile_module_to_asm(
     // before compiling them if needed.
     for func in module.function_iter(context) {
         let (start, _) = builder.func_to_labels(&func);
-
         if func.is_fallback(context) {
             fallback_fn = Some(start);
         }

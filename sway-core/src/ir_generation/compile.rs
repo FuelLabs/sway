@@ -171,7 +171,7 @@ pub(super) fn compile_contract(
         if let ty::TyDecl::FunctionDecl(decl) = decl {
             let decl_id = decl.decl_id;
             let decl = engines.de().get(&decl_id);
-            if decl.attributes.get(&AttributeKind::Fallback).is_some() {
+            if decl.is_fallback() {
                 compile_abi_method(
                     context,
                     &mut md_mgr,

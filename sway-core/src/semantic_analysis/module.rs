@@ -349,7 +349,6 @@ impl ty::TyModule {
                         }
                         _ => None,
                     });
-                    // let fallback_fn = None;
 
                     let mut fn_generator =
                         auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
