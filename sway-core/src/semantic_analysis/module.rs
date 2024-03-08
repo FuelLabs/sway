@@ -341,10 +341,20 @@ impl ty::TyModule {
                         .chain(all_nodes.iter().flat_map(|x| x.contract_fns(engines)))
                         .collect::<Vec<_>>();
 
+                    // collect the fallback fn
+                    let fallback_fn = all_nodes.iter().find_map(|x| match &x.content {
+                        ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
+                            let d = engines.de().get(&decl.decl_id);
+                            d.is_fallback().then_some(decl.decl_id)
+                        }
+                        _ => None,
+                    });
+                    // let fallback_fn = None;
+
                     let mut fn_generator =
                         auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
                     let node = fn_generator
-                        .generate_contract_entry(engines, &contract_fns)
+                        .generate_contract_entry(engines, &contract_fns, fallback_fn)
                         .unwrap();
                     all_nodes.push(node)
                 }
