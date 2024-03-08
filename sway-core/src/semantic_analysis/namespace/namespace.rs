@@ -42,11 +42,10 @@ pub struct Namespace {
 
 impl Namespace {
     /// Initialise the namespace at its root from the given initial namespace.
-    pub fn init_root(init: Module) -> Self {
-        let root = Root::from(init.clone());
+    pub fn init_root(root: Root) -> Self {
         let mod_path = vec![];
         Self {
-            init,
+            init: root.module.clone(),
             root,
             mod_path,
         }

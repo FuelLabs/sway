@@ -27,7 +27,7 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        initial_namespace: namespace::Module,
+        initial_namespace: namespace::Root,
         package_name: &str,
         build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
