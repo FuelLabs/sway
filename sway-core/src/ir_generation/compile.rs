@@ -171,19 +171,17 @@ pub(super) fn compile_contract(
     for decl in declarations {
         match decl {
             ty::TyDecl::FunctionDecl(decl) => {
-                let decl = engines.de().get(&decl.decl_id);
+                let decl_id = decl.decl_id;
+                let decl = engines.de().get(&decl_id);
                 if decl.attributes.get(&AttributeKind::Fallback).is_some() {
-                    compile_fn(
-                        engines,
+                    compile_abi_method(
                         context,
                         &mut md_mgr,
                         module,
-                        &decl,
-                        false,
-                        None,
+                        &decl_id,
                         logged_types_map,
                         messages_types_map,
-                        None,
+                        engines,
                     )?;
                 }
             }

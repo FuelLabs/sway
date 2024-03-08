@@ -21,6 +21,6 @@ impl Incrementor for Contract {
 }
 
 #[fallback]
-fn fallback() {
-    __revert(444444444);
+fn fallback() -> u64 {
+    444444444
 }

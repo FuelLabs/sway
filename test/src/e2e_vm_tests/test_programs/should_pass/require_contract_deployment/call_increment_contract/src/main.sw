@@ -28,9 +28,11 @@ fn main() -> bool {
     let coins = 0;
     let asset_id = 0x0000000000000000000000000000000000000000000000000000000000000000;
     let gas = std::registers::global_gas();
-    asm(ra: __addr_of(call_params), rb: coins, rc: __addr_of(asset_id), rd: gas) {
-        call ra rb rc rd;
-    }
+    let result = asm(a: __addr_of(call_params), b: coins, c: __addr_of(asset_id), d: gas) {
+        call a b c d;
+        ra: u64
+    };
+    assert(result == 444444444);
 
     true
 }
