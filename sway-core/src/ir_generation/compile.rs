@@ -3,7 +3,6 @@ use crate::{
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
-    transform::AttributeKind,
     type_system::TypeId,
     types::{LogId, MessageId},
     Engines,
