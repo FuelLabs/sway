@@ -1,11 +1,12 @@
 script;
 
 use increment_abi::Incrementor;
+use dynamic_contract_call::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0xa1aa9555466ef3c61914e5426973e2257cb4dcd8311ffbbe0e8850a9742f312d;
+const CONTRACT_ID = 0xa698cff085906a3cda153e2edf5ed274b2d42197373868ce7395c88329a4a84f;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xfc785a275345b2344f3dafe03cc910d36691de6456e4d3277d5b2b0fe85479b2;
+const CONTRACT_ID = 0xf1a869ea2fc67e7d7359c93d5c3d4cec48c09e3eb0f25dac1f44a1f673db6550;
 
 fn main() -> bool {
     let the_abi = abi(Incrementor, CONTRACT_ID);
@@ -24,14 +25,7 @@ fn main() -> bool {
     log(result);
 
     // Call the fallback fn
-    let call_params = (CONTRACT_ID, 0, 0);
-    let coins = 0;
-    let asset_id = 0x0000000000000000000000000000000000000000000000000000000000000000;
-    let gas = std::registers::global_gas();
-    let result = asm(a: __addr_of(call_params), b: coins, c: __addr_of(asset_id), d: gas) {
-        call a b c d;
-        ra: u64
-    };
+    let result = dynamic_contract_call(CONTRACT_ID);
     assert(result == 444444444);
 
     true

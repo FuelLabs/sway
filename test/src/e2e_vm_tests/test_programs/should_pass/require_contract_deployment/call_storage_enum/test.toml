@@ -3,4 +3,3 @@ expected_result = { action = "result", value = 171 }
 expected_result_new_encoding = { action = "return_data", value = "00000000000000AB" }
 contracts = ["should_pass/test_contracts/storage_enum_contract"]
 unsupported_profiles = ["debug"]
-extra_run_with_experimental_new_encoding = true

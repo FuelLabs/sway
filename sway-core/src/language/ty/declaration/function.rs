@@ -442,18 +442,10 @@ impl TyFunctionDecl {
         }
     }
 
-<<<<<<< HEAD
-=======
     pub fn is_fallback(&self) -> bool {
         self.attributes.contains_key(&AttributeKind::Fallback)
     }
 
-    /// Whether or not this function describes a program entry point.
-    pub fn is_entry(&self) -> bool {
-        self.is_main_entry() || self.is_test()
-    }
-
->>>>>>> 25e15f594 (fallback when all contract selectors fail)
     /// Whether or not this function is a constructor for the type given by `type_id`.
     ///
     /// Returns `Some(true)` if the function is surely the constructor and `Some(false)` if

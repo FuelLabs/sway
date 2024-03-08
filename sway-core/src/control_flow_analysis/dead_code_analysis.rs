@@ -381,7 +381,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
             }
         }
 
-        for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
+        for node in non_entry_points.into_iter().chain(entry_points) {
             let (_l_leaves, _new_exit_node) = connect_node(
                 engines,
                 node,
