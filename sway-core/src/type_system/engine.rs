@@ -72,14 +72,18 @@ impl TypeEngine {
     pub fn clear_module(&mut self, module_id: &ModuleId) {
         self.slab.retain(|_, tsi| match tsi.source_id {
             Some(source_id) => &source_id.module_id() != module_id,
-            None => false,
+            // WARNING: Setting to true disables garbage collection for these cases.
+            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
+            None => true,
         });
         self.id_map
             .write()
             .unwrap()
             .retain(|tsi, _| match tsi.source_id {
                 Some(source_id) => &source_id.module_id() != module_id,
-                None => false,
+                // WARNING: Setting to true disables garbage collection for these cases.
+                // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
+                None => true,
             });
     }
 

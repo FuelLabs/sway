@@ -1017,6 +1017,45 @@ async fn go_to_definition_for_consts() {
 }
 
 #[tokio::test]
+#[allow(dead_code)]
+async fn did_change_stress_test_random_wait() {
+    std::env::set_var("RUST_BACKTRACE", "1");
+    let default_panic = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        default_panic(panic_info); // Print the panic message
+        std::process::exit(1);
+    }));
+    let (mut service, _) = LspService::build(ServerState::new)
+        .custom_method("sway/metrics", ServerState::metrics)
+        .finish();
+    let example_dir = sway_workspace_dir()
+        .join(e2e_language_dir())
+        .join("generics_in_contract");
+    let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
+    let times = 400;
+    for version in 0..times {
+        //eprintln!("version: {}", version);
+        let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
+        if version == 0 {
+            service.inner().wait_for_parsing().await;
+        }
+        // wait for a random amount of time between 1-30ms
+        tokio::time::sleep(tokio::time::Duration::from_millis(
+            rand::random::<u64>() % 30 + 1,
+        ))
+        .await;
+        // there is a 10% chance that a longer 300-1000ms wait will be added
+        if rand::random::<u64>() % 10 < 1 {
+            tokio::time::sleep(tokio::time::Duration::from_millis(
+                rand::random::<u64>() % 700 + 300,
+            ))
+            .await;
+        }
+    }
+    shutdown_and_exit(&mut service).await;
+}
+
+#[tokio::test]
 async fn go_to_definition_for_functions() {
     let server = ServerState::default();
     let uri = open(
