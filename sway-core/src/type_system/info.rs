@@ -782,6 +782,10 @@ impl TypeInfo {
         }
     }
 
+    pub(crate) fn is_bool(&self) -> bool {
+        matches!(self, TypeInfo::Boolean)
+    }
+
     /// maps a type to a name that is used when constructing function selectors
     pub(crate) fn to_selector_name(
         &self,

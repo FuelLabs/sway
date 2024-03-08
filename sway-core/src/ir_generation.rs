@@ -63,7 +63,7 @@ pub fn compile_program<'eng>(
     match kind {
         // predicates and scripts have the same codegen, their only difference is static
         // type-check time checks.
-        ty::TyProgramKind::Script { entry_function } => compile::compile_script(
+        ty::TyProgramKind::Script { entry_function, .. } => compile::compile_script(
             engines,
             &mut ctx,
             entry_function,
@@ -73,7 +73,7 @@ pub fn compile_program<'eng>(
             &messages_types,
             &test_fns,
         ),
-        ty::TyProgramKind::Predicate { entry_function } => compile::compile_predicate(
+        ty::TyProgramKind::Predicate { entry_function, .. } => compile::compile_predicate(
             engines,
             &mut ctx,
             entry_function,

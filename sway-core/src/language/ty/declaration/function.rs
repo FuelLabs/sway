@@ -31,6 +31,7 @@ use sway_types::{
 pub enum TyFunctionDeclKind {
     Default,
     Entry,
+    Main,
     Test,
 }
 
@@ -336,6 +337,7 @@ impl TyFunctionDecl {
                 FunctionDeclarationKind::Default => TyFunctionDeclKind::Default,
                 FunctionDeclarationKind::Entry => TyFunctionDeclKind::Entry,
                 FunctionDeclarationKind::Test => TyFunctionDeclKind::Test,
+                FunctionDeclarationKind::Main => TyFunctionDeclKind::Main,
             },
         }
     }
@@ -412,6 +414,10 @@ impl TyFunctionDecl {
         matches!(self.kind, TyFunctionDeclKind::Entry)
     }
 
+    pub fn is_main(&self) -> bool {
+        matches!(self.kind, TyFunctionDeclKind::Main)
+    }
+
     /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
     pub fn is_test(&self) -> bool {
         //TODO match kind to Test
@@ -433,11 +439,6 @@ impl TyFunctionDecl {
             INLINE_ALWAYS_NAME => Some(Inline::Always),
             _ => None,
         }
-    }
-
-    /// Whether or not this function describes a program entry point.
-    pub fn is_entry_or_test(&self) -> bool {
-        self.is_entry() || self.is_test()
     }
 
     /// Whether or not this function is a constructor for the type given by `type_id`.
