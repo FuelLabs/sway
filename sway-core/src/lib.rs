@@ -486,6 +486,15 @@ pub fn parsed_to_ast(
     let modules_dep_graph = ty::TyModule::build_dep_graph(handler, &parse_program.root)?;
     let module_eval_order = modules_dep_graph.compute_order(handler)?;
 
+    // Collect the program symbols.
+    let _collection_ctx = ty::TyProgram::collect(
+        handler,
+        engines,
+        parse_program,
+        initial_namespace.clone(),
+        &module_eval_order,
+    )?;
+
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,

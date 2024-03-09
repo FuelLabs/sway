@@ -23,7 +23,10 @@ use crate::{
     Engines, TypeInfo,
 };
 
-use super::declaration::auto_impl::{self, AutoImplAbiEncodeContext};
+use super::{
+    collection_context::SymbolCollectionContext,
+    declaration::auto_impl::{self, AutoImplAbiEncodeContext},
+};
 
 #[derive(Clone, Debug)]
 pub struct ModuleDepGraphEdge();
@@ -213,6 +216,44 @@ impl ty::TyModule {
         });
 
         Ok(dep_graph)
+    }
+
+    /// Collects the given parsed module to produce a module symbol map.
+    ///
+    /// Recursively collects submodules first.
+    pub fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        parsed: &ParseModule,
+        module_eval_order: &ModuleEvaluationOrder,
+    ) -> Result<(), ErrorEmitted> {
+        let ParseModule {
+            submodules,
+            tree,
+            attributes: _,
+            span: _,
+            hash: _,
+            ..
+        } = parsed;
+
+        // Analyze submodules first in order of evaluation previously computed by the dependency graph.
+        module_eval_order.iter().for_each(|eval_mod_name| {
+            let (name, submodule) = submodules
+                .iter()
+                .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
+                .unwrap();
+            let _ = ty::TySubmodule::collect(handler, engines, ctx, name.clone(), submodule);
+        });
+
+        let _ = tree
+            .root_nodes
+            .iter()
+            .map(|node| ty::TyAstNode::collect(handler, engines, ctx, node))
+            .filter_map(|res| res.ok())
+            .collect::<Vec<_>>();
+
+        Ok(())
     }
 
     /// Type-check the given parsed module to produce a typed module.
@@ -453,6 +494,25 @@ impl ty::TySubmodule {
             }
         }
         Ok(())
+    }
+
+    pub fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        parent_ctx: &mut SymbolCollectionContext,
+        mod_name: ModName,
+        submodule: &ParseSubmodule,
+    ) -> Result<(), ErrorEmitted> {
+        let ParseSubmodule {
+            module,
+            mod_name_span: _,
+            visibility,
+        } = submodule;
+        let modules_dep_graph = ty::TyModule::build_dep_graph(handler, module)?;
+        let module_eval_order = modules_dep_graph.compute_order(handler)?;
+        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
+            ty::TyModule::collect(handler, engines, submod_ctx, module, &module_eval_order)
+        })
     }
 
     pub fn type_check(
