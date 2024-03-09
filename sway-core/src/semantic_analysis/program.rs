@@ -14,8 +14,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
 use super::{
-    TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
-    TypeCheckFinalizationContext,
+    module::ModuleEvaluationOrder, TypeCheckAnalysis, TypeCheckAnalysisContext,
+    TypeCheckFinalization, TypeCheckFinalizationContext,
 };
 
 impl TyProgram {
@@ -30,6 +30,7 @@ impl TyProgram {
         initial_namespace: namespace::Root,
         package_name: &str,
         build_config: Option<&BuildConfig>,
+        module_eval_order: ModuleEvaluationOrder,
     ) -> Result<Self, ErrorEmitted> {
         let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
 
@@ -38,11 +39,6 @@ impl TyProgram {
             .with_kind(parsed.kind);
 
         let ParseProgram { root, kind } = parsed;
-
-        // Analyze the dependency order for the submodules.
-        let modules_dep_graph = ty::TyModule::analyze(handler, root)?;
-        let module_eval_order: Vec<sway_types::BaseIdent> =
-            modules_dep_graph.compute_order(handler)?;
 
         let root = ty::TyModule::type_check(
             handler,

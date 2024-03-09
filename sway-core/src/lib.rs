@@ -482,6 +482,10 @@ pub fn parsed_to_ast(
     let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
+    // Build the dependency graph for the submodules.
+    let modules_dep_graph = ty::TyModule::build_dep_graph(handler, &parse_program.root)?;
+    let module_eval_order = modules_dep_graph.compute_order(handler)?;
+
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
@@ -490,6 +494,7 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
         build_config,
+        module_eval_order,
     );
 
     check_should_abort(handler, retrigger_compilation.clone())?;

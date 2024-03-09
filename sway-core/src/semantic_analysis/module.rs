@@ -188,7 +188,7 @@ impl ModuleDepGraph {
 
 impl ty::TyModule {
     /// Analyzes the given parsed module to produce a dependency graph.
-    pub fn analyze(
+    pub fn build_dep_graph(
         handler: &Handler,
         parsed: &ParseModule,
     ) -> Result<ModuleDepGraph, ErrorEmitted> {
@@ -208,7 +208,8 @@ impl ty::TyModule {
 
         // Analyze submodules first in order of declaration.
         submodules.iter().for_each(|(name, submodule)| {
-            let _ = ty::TySubmodule::analyze(handler, &mut dep_graph, name.clone(), submodule);
+            let _ =
+                ty::TySubmodule::build_dep_graph(handler, &mut dep_graph, name.clone(), submodule);
         });
 
         Ok(dep_graph)
@@ -418,7 +419,7 @@ impl ty::TyModule {
 }
 
 impl ty::TySubmodule {
-    pub fn analyze(
+    pub fn build_dep_graph(
         _handler: &Handler,
         module_dep_graph: &mut ModuleDepGraph,
         mod_name: ModName,
@@ -467,7 +468,7 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
-        let modules_dep_graph = ty::TyModule::analyze(handler, module)?;
+        let modules_dep_graph = ty::TyModule::build_dep_graph(handler, module)?;
         let module_eval_order = modules_dep_graph.compute_order(handler)?;
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
             let module_res = ty::TyModule::type_check(
