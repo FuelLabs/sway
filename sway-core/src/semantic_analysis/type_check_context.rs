@@ -24,7 +24,7 @@ use sway_error::{
 use sway_types::{span::Span, Ident, Spanned};
 use sway_utils::iter_prefixes;
 
-use super::GenericShadowingMode;
+use super::{collection_context::SymbolCollectionContext, GenericShadowingMode};
 
 /// Contextual state tracked and accumulated throughout type-checking.
 pub struct TypeCheckContext<'a> {
@@ -39,6 +39,8 @@ pub struct TypeCheckContext<'a> {
     pub(crate) namespace: &'a mut Namespace,
 
     pub(crate) engines: &'a Engines,
+
+    pub(crate) symbol_collection_ctx: &'a SymbolCollectionContext,
 
     // The following set of fields are intentionally private. When a `TypeCheckContext` is passed
     // into a new node during type checking, these fields should be updated using the `with_*`
@@ -107,11 +109,13 @@ impl<'a> TypeCheckContext<'a> {
     pub fn from_namespace(
         namespace: &'a mut Namespace,
         engines: &'a Engines,
+        symbol_collection_ctx: &'a SymbolCollectionContext,
         experimental: ExperimentalFlags,
     ) -> Self {
         Self {
             namespace,
             engines,
+            symbol_collection_ctx,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
             function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
             unify_generic: false,
@@ -141,19 +145,22 @@ impl<'a> TypeCheckContext<'a> {
     pub fn from_root(
         root_namespace: &'a mut Namespace,
         engines: &'a Engines,
+        symbol_collection_ctx: &'a SymbolCollectionContext,
         experimental: ExperimentalFlags,
     ) -> Self {
-        Self::from_module_namespace(root_namespace, engines, experimental)
+        Self::from_module_namespace(root_namespace, engines, symbol_collection_ctx, experimental)
     }
 
     fn from_module_namespace(
         namespace: &'a mut Namespace,
         engines: &'a Engines,
+        symbol_collection_ctx: &'a SymbolCollectionContext,
         experimental: ExperimentalFlags,
     ) -> Self {
         Self {
             namespace,
             engines,
+            symbol_collection_ctx,
             type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
             function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
             unify_generic: false,
@@ -184,6 +191,7 @@ impl<'a> TypeCheckContext<'a> {
         TypeCheckContext {
             namespace: self.namespace,
             type_annotation: self.type_annotation,
+            symbol_collection_ctx: self.symbol_collection_ctx,
             function_type_annotation: self.function_type_annotation,
             unify_generic: self.unify_generic,
             self_type: self.self_type,
@@ -211,6 +219,7 @@ impl<'a> TypeCheckContext<'a> {
         let ctx = TypeCheckContext {
             namespace: &mut namespace,
             type_annotation: self.type_annotation,
+            symbol_collection_ctx: self.symbol_collection_ctx,
             function_type_annotation: self.function_type_annotation,
             unify_generic: self.unify_generic,
             self_type: self.self_type,
@@ -246,10 +255,16 @@ impl<'a> TypeCheckContext<'a> {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
+        let symbol_collection_ctx = self.symbol_collection_ctx;
         let mut submod_ns = self
             .namespace_mut()
             .enter_submodule(mod_name, visibility, module_span);
-        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
+        let submod_ctx = TypeCheckContext::from_namespace(
+            &mut submod_ns,
+            engines,
+            symbol_collection_ctx,
+            experimental,
+        );
         with_submod_ctx(submod_ctx)
     }
 

@@ -42,9 +42,11 @@ impl TyProgram {
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
+    #[allow(clippy::too_many_arguments)]
     pub fn type_check(
         handler: &Handler,
         engines: &Engines,
+        symbol_collection_ctx: &SymbolCollectionContext,
         parsed: &ParseProgram,
         initial_namespace: namespace::Root,
         package_name: &str,
@@ -54,8 +56,13 @@ impl TyProgram {
         let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
 
         let mut namespace = Namespace::init_root(initial_namespace);
-        let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
-            .with_kind(parsed.kind);
+        let mut ctx = TypeCheckContext::from_root(
+            &mut namespace,
+            engines,
+            symbol_collection_ctx,
+            experimental,
+        )
+        .with_kind(parsed.kind);
 
         let ParseProgram { root, kind } = parsed;
 
