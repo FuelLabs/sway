@@ -2433,7 +2433,8 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let mut namespace = Namespace::init_root(namespace::Module::default());
+        let root_module = namespace::Root::from(namespace::Module::default());
+        let mut namespace = Namespace::init_root(root_module);
         let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
             .with_type_annotation(type_annotation);
         ty::TyExpression::type_check(handler, ctx, expr)

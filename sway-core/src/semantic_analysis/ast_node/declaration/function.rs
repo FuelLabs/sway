@@ -162,6 +162,7 @@ impl ty::TyFunctionDecl {
                         FunctionDeclarationKind::Default => ty::TyFunctionDeclKind::Default,
                         FunctionDeclarationKind::Entry => ty::TyFunctionDeclKind::Entry,
                         FunctionDeclarationKind::Test => ty::TyFunctionDeclKind::Test,
+                        FunctionDeclarationKind::Main => ty::TyFunctionDeclKind::Main,
                     },
                 };
 
