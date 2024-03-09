@@ -68,7 +68,7 @@ impl ty::TyFunctionParameter {
     pub(crate) fn type_check_interface_parameter(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        parameter: FunctionParameter,
+        parameter: &FunctionParameter,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
@@ -78,10 +78,11 @@ impl ty::TyFunctionParameter {
             is_reference,
             is_mutable,
             mutability_span,
-            mut type_argument,
+            type_argument,
         } = parameter;
 
-        type_argument.type_id = ctx
+        let mut new_type_argument = type_argument.clone();
+        new_type_argument.type_id = ctx
             .resolve_type(
                 handler,
                 type_argument.type_id,
@@ -92,11 +93,11 @@ impl ty::TyFunctionParameter {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         let typed_parameter = ty::TyFunctionParameter {
-            name,
-            is_reference,
-            is_mutable,
-            mutability_span,
-            type_argument,
+            name: name.clone(),
+            is_reference: *is_reference,
+            is_mutable: *is_mutable,
+            mutability_span: mutability_span.clone(),
+            type_argument: new_type_argument,
         };
 
         Ok(typed_parameter)
