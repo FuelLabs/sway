@@ -236,6 +236,11 @@ pub struct WhileLoopExpression {
 }
 
 #[derive(Debug, Clone)]
+pub struct ForLoopExpression {
+    pub desugared: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ReassignmentExpression {
     pub lhs: ReassignmentTarget,
     pub rhs: Box<Expression>,
@@ -304,12 +309,27 @@ pub enum ExpressionKind {
     /// A control flow element which loops continually until some boolean expression evaluates as
     /// `false`.
     WhileLoop(WhileLoopExpression),
+    /// A control flow element which loops between values of an iterator.
+    ForLoop(ForLoopExpression),
     Break,
     Continue,
     Reassignment(ReassignmentExpression),
+    /// An implicit return expression is different from a [Expression::Return] because
+    /// it is not a control flow item. Therefore it is a different variant.
+    ///
+    /// An implicit return expression is an [Expression] at the end of a code block which has no
+    /// semicolon, denoting that it is the [Expression] to be returned from that block.
+    ImplicitReturn(Box<Expression>),
     Return(Box<Expression>),
-    Ref(Box<Expression>),
+    Ref(RefExpression),
     Deref(Box<Expression>),
+}
+
+#[derive(Debug, Clone)]
+pub struct RefExpression {
+    /// True if the reference is a reference to a mutable `value`.
+    pub to_mutable_value: bool,
+    pub value: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -321,7 +341,6 @@ pub enum ReassignmentTarget {
 pub struct StructExpressionField {
     pub name: Ident,
     pub value: Expression,
-    pub(crate) span: Span,
 }
 
 impl Spanned for Expression {

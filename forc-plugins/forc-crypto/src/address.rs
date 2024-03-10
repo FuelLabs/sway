@@ -4,11 +4,17 @@ use fuels_core::types::bech32::Bech32Address;
 use serde_json::json;
 use std::str::{from_utf8, FromStr};
 
+forc_util::cli_examples! {
+    crate::Command {
+        [ Convert an address to another format => "forc crypto address fuel12e0xwx34nfp7jrzvn9mp5qkac3yvp7h8fx37ghl7klf82vv2wkys6wd523" ]
+    }
+}
+
 #[derive(Debug, clap::Args)]
 #[clap(
-    author,
     version,
-    about = "Converts any valid address to all supported formats"
+    about = "Converts an address to another format",
+    after_help = help(),
 )]
 pub struct Args {
     /// The address to convert. It can be either a valid address in any format

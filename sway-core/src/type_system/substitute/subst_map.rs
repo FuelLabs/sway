@@ -476,6 +476,7 @@ impl TypeSubstMap {
                 type_engine.insert(engines, TypeInfo::Ref(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::StringArray(..)
             | TypeInfo::StringSlice
             | TypeInfo::UnsignedInteger(..)

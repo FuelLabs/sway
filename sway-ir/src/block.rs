@@ -22,10 +22,10 @@ use crate::{
     Type,
 };
 
-/// A wrapper around an [ECS](https://github.com/fitzgen/generational-arena) handle into the
+/// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
-pub struct Block(pub generational_arena::Index);
+pub struct Block(pub slotmap::DefaultKey);
 
 #[doc(hidden)]
 pub struct BlockContent {
@@ -204,28 +204,38 @@ impl Block {
         context.blocks[self.0].instructions.get(pos).cloned()
     }
 
-    /// Get a reference to the block terminator.
+    /// Get a reference to the final instruction in the block, provided it is a terminator.
     ///
-    /// Returns `None` if block is empty.
+    /// Returns `None` if the final instruction is not a terminator. This can only happen during IR
+    /// generation when the block is still being populated.
     pub fn get_terminator<'a>(&self, context: &'a Context) -> Option<&'a Instruction> {
         context.blocks[self.0].instructions.last().and_then(|val| {
             // It's guaranteed to be an instruction value.
             if let ValueDatum::Instruction(term_inst) = &context.values[val.0].value {
-                Some(term_inst)
+                if term_inst.op.is_terminator() {
+                    Some(term_inst)
+                } else {
+                    None
+                }
             } else {
                 None
             }
         })
     }
 
-    /// Get a mut reference to the block terminator.
+    /// Get a mutable reference to the final instruction in the block, provided it is a terminator.
     ///
-    /// Returns `None` if block is empty.
+    /// Returns `None` if the final instruction is not a terminator. This can only happen during IR
+    /// generation when the block is still being populated.
     pub fn get_terminator_mut<'a>(&self, context: &'a mut Context) -> Option<&'a mut Instruction> {
         context.blocks[self.0].instructions.last().and_then(|val| {
             // It's guaranteed to be an instruction value.
             if let ValueDatum::Instruction(term_inst) = &mut context.values[val.0].value {
-                Some(term_inst)
+                if term_inst.op.is_terminator() {
+                    Some(term_inst)
+                } else {
+                    None
+                }
             } else {
                 None
             }
@@ -352,22 +362,14 @@ impl Block {
         }
     }
 
-    /// Return whether this block is already terminated.  Checks if the final instruction, if it
-    /// exists, is a terminator.
-    pub fn is_terminated(&self, context: &Context) -> bool {
-        context.blocks[self.0]
-            .instructions
-            .last()
-            .map_or(false, |val| val.is_terminator(context))
-    }
-
     /// Return whether this block is already terminated specifically by a Ret instruction.
     pub fn is_terminated_by_ret_or_revert(&self, context: &Context) -> bool {
         self.get_terminator(context).map_or(false, |i| {
             matches!(
                 i,
                 Instruction {
-                    op: InstOp::Ret(..) | InstOp::FuelVm(FuelVmInstruction::Revert(..)),
+                    op: InstOp::Ret(..)
+                        | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem),
                     ..
                 }
             )
@@ -569,7 +571,7 @@ impl Block {
 
 /// An iterator over each block in a [`Function`].
 pub struct BlockIterator {
-    blocks: Vec<generational_arena::Index>,
+    blocks: Vec<slotmap::DefaultKey>,
     next: usize,
 }
 

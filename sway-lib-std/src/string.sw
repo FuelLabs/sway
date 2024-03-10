@@ -1,8 +1,8 @@
 library;
 
 use ::assert::assert;
-use ::bytes::Bytes;
-use ::convert::From;
+use ::bytes::*;
+use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 
@@ -138,12 +138,9 @@ impl String {
         let str_size = s.len();
         let str_ptr = s.as_ptr();
 
-        let mut bytes = Bytes::with_capacity(str_size);
-        bytes.len = str_size;
-
-        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-
-        Self { bytes }
+        Self {
+            bytes: Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)),
+        }
     }
 
     /// Returns a `bool` indicating whether the `String` is empty.
@@ -216,26 +213,42 @@ impl String {
             bytes: Bytes::with_capacity(capacity),
         }
     }
+
+    /// Gets the pointer of the allocation.
+    ///
+    /// # Returns
+    ///
+    /// [raw_ptr] - The location in memory that the allocated string lives.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let string = String::new();
+    ///     assert(!string.ptr().is_null());
+    /// }
+    /// ```
+    pub fn ptr(self) -> raw_ptr {
+        self.bytes.ptr()
+    }
 }
 
 impl From<Bytes> for String {
     fn from(b: Bytes) -> Self {
-        let mut string = Self::new();
-        string.bytes = b;
-        string
+        Self { bytes: b }
     }
+}
 
-    fn into(self) -> Bytes {
-        self.bytes
+impl From<String> for Bytes {
+    fn from(s: String) -> Bytes {
+        s.as_bytes()
     }
 }
 
 impl AsRawSlice for String {
     /// Returns a raw slice to all of the elements in the string.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.bytes.buf.ptr(), self.bytes.len)) {
-            ptr: raw_slice
-        }
+        self.bytes.as_raw_slice()
     }
 }
 
@@ -245,17 +258,17 @@ impl From<raw_slice> for String {
             bytes: Bytes::from(slice),
         }
     }
+}
 
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.bytes.buf.ptr(), self.bytes.len)) {
-            ptr: raw_slice
-        }
+impl From<String> for raw_slice {
+    fn from(s: String) -> raw_slice {
+        raw_slice::from(s.as_bytes())
     }
 }
 
 impl Eq for String {
     fn eq(self, other: Self) -> bool {
-        self.bytes == other.bytes
+        self.bytes == other.as_bytes()
     }
 }
 

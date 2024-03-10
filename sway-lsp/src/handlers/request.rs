@@ -8,7 +8,8 @@ use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWri
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
-    SemanticTokensParams, SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use std::{
     fs::File,
@@ -30,6 +31,12 @@ pub fn handle_initialize(
             .ok()
             .unwrap_or_default();
     }
+
+    // Start a thread that will shutdown the server if the client process is no longer active.
+    if let Some(client_pid) = params.process_id {
+        state.spawn_client_heartbeat(client_pid as usize);
+    }
+
     // Initalizing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
@@ -52,17 +59,15 @@ pub async fn handle_document_symbol(
     state: &ServerState,
     params: lsp_types::DocumentSymbolParams,
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
+    let _ = state.wait_for_parsing().await;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
-            Ok(session
-                .symbol_information(&uri)
-                .map(DocumentSymbolResponse::Flat))
-        }
+        Ok((uri, session)) => Ok(session
+            .symbol_information(&uri)
+            .map(DocumentSymbolResponse::Flat)),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -196,6 +201,7 @@ pub async fn handle_document_highlight(
     state: &ServerState,
     params: lsp_types::DocumentHighlightParams,
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
+    let _ = state.wait_for_parsing().await;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
@@ -218,6 +224,7 @@ pub async fn handle_formatting(
     state: &ServerState,
     params: DocumentFormattingParams,
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+    let _ = state.wait_for_parsing().await;
     state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -256,15 +263,35 @@ pub async fn handle_code_lens(
     state: &ServerState,
     params: lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
+    let _ = state.wait_for_parsing().await;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((url, session)) => {
-            let _ = session.wait_for_parsing();
-            Ok(Some(capabilities::code_lens::code_lens(&session, &url)))
+        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
+        Err(err) => {
+            tracing::error!("{}", err.to_string());
+            Ok(None)
         }
+    }
+}
+
+pub async fn handle_semantic_tokens_range(
+    state: &ServerState,
+    params: SemanticTokensRangeParams,
+) -> Result<Option<SemanticTokensRangeResult>> {
+    let _ = state.wait_for_parsing().await;
+    match state
+        .sessions
+        .uri_and_session_from_workspace(&params.text_document.uri)
+        .await
+    {
+        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_range(
+            session,
+            &uri,
+            &params.range,
+        )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -276,17 +303,15 @@ pub async fn handle_semantic_tokens_full(
     state: &ServerState,
     params: SemanticTokensParams,
 ) -> Result<Option<SemanticTokensResult>> {
+    let _ = state.wait_for_parsing().await;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
-            Ok(capabilities::semantic_tokens::semantic_tokens_full(
-                session, &uri,
-            ))
-        }
+        Ok((uri, session)) => Ok(capabilities::semantic_tokens::semantic_tokens_full(
+            session, &uri,
+        )),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -298,13 +323,13 @@ pub(crate) async fn handle_inlay_hints(
     state: &ServerState,
     params: InlayHintParams,
 ) -> Result<Option<Vec<InlayHint>>> {
+    let _ = state.wait_for_parsing().await;
     match state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
         Ok((uri, session)) => {
-            let _ = session.wait_for_parsing();
             let config = &state.config.read().inlay_hints;
             Ok(capabilities::inlay_hints::inlay_hints(
                 session,
@@ -360,8 +385,11 @@ pub async fn handle_show_ast(
 
             // Returns true if the current path matches the path of a submodule
             let path_is_submodule = |ident: &Ident, path: &Option<PathBuf>| -> bool {
-                let engines = session.engines.read();
-                ident.span().source_id().map(|p| engines.se().get_path(p)) == *path
+                ident
+                    .span()
+                    .source_id()
+                    .map(|p| session.engines.read().se().get_path(p))
+                    == *path
             };
 
             let ast_path = PathBuf::from(params.save_path.path());
@@ -481,10 +509,11 @@ pub(crate) async fn metrics(
         .await
     {
         Ok((_, session)) => {
-            let engines = session.engines.read();
             let mut metrics = vec![];
             for kv in session.metrics.iter() {
-                let path = engines
+                let path = session
+                    .engines
+                    .read()
                     .se()
                     .get_path(kv.key())
                     .to_string_lossy()

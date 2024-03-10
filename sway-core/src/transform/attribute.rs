@@ -20,15 +20,17 @@
 //!
 //!   #[foo(bar, bar)]
 
+use indexmap::IndexMap;
 use sway_ast::Literal;
 use sway_types::{
     constants::{
-        ALLOW_DEAD_CODE_NAME, ALLOW_DEPRECATED_NAME, CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
+        ALLOW_DEAD_CODE_NAME, ALLOW_DEPRECATED_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
+        CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME,
     },
     Ident, Span, Spanned,
 };
 
-use std::{collections::HashMap, hash::Hash, sync::Arc};
+use std::{hash::Hash, sync::Arc};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AttributeArg {
@@ -65,54 +67,45 @@ pub enum AttributeKind {
     Allow,
     Cfg,
     Deprecated,
+    Namespace,
 }
 
 impl AttributeKind {
     // Returns tuple with the minimum and maximum number of expected args
     // None can be returned in the second position of the tuple if there is no maximum
     pub fn expected_args_len_min_max(self) -> (usize, Option<usize>) {
+        use AttributeKind::*;
         match self {
-            AttributeKind::Doc => (0, None),
-            AttributeKind::DocComment => (0, None),
-            AttributeKind::Storage => (0, None),
-            AttributeKind::Inline => (0, None),
-            AttributeKind::Test => (0, None),
-            AttributeKind::Payable => (0, None),
-            AttributeKind::Allow => (1, Some(1)),
-            AttributeKind::Cfg => (1, Some(1)),
-            AttributeKind::Deprecated => (0, None),
+            Doc | DocComment | Storage | Inline | Test | Payable | Deprecated => (0, None),
+            Allow | Cfg | Namespace => (1, Some(1)),
         }
     }
 
     // Returns the expected values for an attribute argument
     pub fn expected_args_values(self, _arg_index: usize) -> Option<Vec<String>> {
+        use AttributeKind::*;
         match self {
-            AttributeKind::Doc => None,
-            AttributeKind::DocComment => None,
-            AttributeKind::Storage => None,
-            AttributeKind::Inline => None,
-            AttributeKind::Test => None,
-            AttributeKind::Payable => None,
-            AttributeKind::Allow => Some(vec![
+            Deprecated | Namespace | Doc | DocComment | Storage | Inline | Test | Payable => None,
+            Allow => Some(vec![
                 ALLOW_DEAD_CODE_NAME.to_string(),
                 ALLOW_DEPRECATED_NAME.to_string(),
             ]),
-            AttributeKind::Cfg => Some(vec![
+            Cfg => Some(vec![
                 CFG_TARGET_ARG_NAME.to_string(),
                 CFG_PROGRAM_TYPE_ARG_NAME.to_string(),
+                CFG_EXPERIMENTAL_NEW_ENCODING.to_string(),
             ]),
-            AttributeKind::Deprecated => None,
         }
     }
 }
 
 /// Stores the attributes associated with the type.
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
-pub struct AttributesMap(Arc<HashMap<AttributeKind, Vec<Attribute>>>);
+pub struct AttributesMap(Arc<IndexMap<AttributeKind, Vec<Attribute>>>);
 
 impl AttributesMap {
     /// Create a new attributes map.
-    pub fn new(attrs_map: Arc<HashMap<AttributeKind, Vec<Attribute>>>) -> AttributesMap {
+    pub fn new(attrs_map: Arc<IndexMap<AttributeKind, Vec<Attribute>>>) -> AttributesMap {
         AttributesMap(attrs_map)
     }
 
@@ -133,13 +126,13 @@ impl AttributesMap {
         first
     }
 
-    pub fn inner(&self) -> &HashMap<AttributeKind, Vec<Attribute>> {
+    pub fn inner(&self) -> &IndexMap<AttributeKind, Vec<Attribute>> {
         &self.0
     }
 }
 
 impl std::ops::Deref for AttributesMap {
-    type Target = Arc<HashMap<AttributeKind, Vec<Attribute>>>;
+    type Target = Arc<IndexMap<AttributeKind, Vec<Attribute>>>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

@@ -79,6 +79,69 @@ pub struct Foo<T, P> {
         &mut formatter,
     );
 }
+
+#[test]
+fn struct_alignment_with_public_fields() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::AlignFields(40);
+
+    check_with_formatter(
+        r#"contract;
+pub struct Foo<T, P> {
+   barbazfoo: u64,
+   pub baz     : bool,
+}
+"#,
+        r#"contract;
+pub struct Foo<T, P> {
+    barbazfoo : u64,
+    pub baz   : bool,
+}
+"#,
+        &mut formatter,
+    );
+
+    check_with_formatter(
+        r#"contract;
+pub struct Foo<T, P> {
+   pub barbazfoo: u64,
+   baz     : bool,
+}
+"#,
+        r#"contract;
+pub struct Foo<T, P> {
+    pub barbazfoo : u64,
+    baz           : bool,
+}
+"#,
+        &mut formatter,
+    );
+}
+
+#[test]
+fn struct_public_fields() {
+    let mut formatter = Formatter::default();
+    formatter.config.structures.field_alignment = FieldAlignment::Off;
+
+    check_with_formatter(
+        r#"contract;
+pub struct Foo<T, P> {
+   pub  barbaz:   T,
+   foo: u64,
+     pub  baz  : bool,
+}
+"#,
+        r#"contract;
+pub struct Foo<T, P> {
+    pub barbaz: T,
+    foo: u64,
+    pub baz: bool,
+}
+"#,
+        &mut formatter,
+    );
+}
+
 #[test]
 fn struct_ending_comma() {
     check(
@@ -2836,6 +2899,40 @@ fn single_argument_method() {
 
 pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
     let a = u64::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]]);
+}
+"#,
+    );
+}
+
+#[test]
+fn impl_func_where() {
+    check(
+        r#"library;
+
+        impl<K, V> Foo<Bar<K, V>>
+        where
+            K: Hash,
+        {
+            pub fn baz(self, _: K, _: V)
+            where
+                K: Hash,
+        {
+                debug();
+            }
+        }
+    "#,
+        r#"library;
+
+impl<K, V> Foo<Bar<K, V>>
+where
+    K: Hash,
+{
+    pub fn baz(self, _: K, _: V)
+    where
+        K: Hash,
+    {
+        debug();
+    }
 }
 "#,
     );

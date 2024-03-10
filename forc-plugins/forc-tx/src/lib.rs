@@ -12,9 +12,115 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use thiserror::Error;
 
+forc_util::cli_examples! {
+    {
+        // This parser has a custom parser
+        super::Command::try_parse_from_args
+    } {
+    [ Script example => r#"forc tx script --bytecode "{path}/out/debug/name.bin" --data "{path}/data.bin" \
+        --receipts-root 0x2222222222222222222222222222222222222222222222222222222222222222"# ]
+    [ Multiple inputs => r#"forc tx create --bytecode "{name}/out/debug/name.bin"
+        --storage-slots "{path}/out/debug/name-storage_slots.json"
+        --script-gas-limit 100 \
+        --gas-price 0 \
+        --maturity 0 \
+        --witness ADFD \
+        --witness DFDA \
+        input coin \
+            --utxo-id 0 \
+            --output-ix 0 \
+            --owner 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --tx-ptr 89ACBDEFBDEF \
+            --witness-ix 0 \
+            --maturity 0 \
+        input contract \
+            --utxo-id 1 \
+            --output-ix 1 \
+            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --tx-ptr 89ACBDEFBDEF \
+            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
+        output coin \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output contract \
+            --input-ix 1 \
+            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output change \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output variable \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output contract-created \
+            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000
+        "#
+    ]
+    [ An example constructing a create transaction => r#"forc tx create \
+        --bytecode {path}/out/debug/name.bin \
+        --storage-slots {path}/out/debug/name-storage_slots.json \
+        --script-gas-limit 100 \
+        --gas-price 0 \
+        --maturity 0 \
+        --witness ADFD \
+        --witness DFDA \
+        input coin \
+            --utxo-id 0 \
+            --output-ix 0 \
+            --owner 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --tx-ptr 89ACBDEFBDEF \
+            --witness-ix 0 \
+            --maturity 0 \
+        input contract \
+            --utxo-id 1 \
+            --output-ix 1 \
+            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --tx-ptr 89ACBDEFBDEF \
+            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
+        input message \
+            --sender 0x1111111111111111111111111111111111111111111111111111111111111111 \
+            --recipient 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 1 \
+            --nonce 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB \
+            --msg-data {path}/message.dat \
+            --predicate {path}/my-predicate2.bin \
+            --predicate-data {path}/my-predicate2.dat \
+        output coin \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output contract \
+            --input-ix 1 \
+            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output change \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output variable \
+            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
+            --amount 100 \
+            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
+        output contract-created \
+            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
+            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000"#
+    ]
+    }
+}
+
 /// The top-level `forc tx` command.
 #[derive(Debug, Parser, Deserialize, Serialize)]
-#[clap(about, version, after_help = EXAMPLES)]
+#[clap(about, version, after_help = help())]
 pub struct Command {
     #[clap(long, short = 'o')]
     pub output_path: Option<PathBuf>,
@@ -387,64 +493,6 @@ pub enum ConvertInputError {
     #[error("input accepts either witness index or predicate, not both")]
     WitnessPredicateMismatch,
 }
-
-const EXAMPLES: &str = r"EXAMPLES:
-    # An example constructing a `create` transaction.
-    forc tx create \
-        --bytecode ./my-contract/out/debug/my-contract.bin \
-        --storage-slots ./my-contract/out/debug/my-contract-storage_slots.json \
-        --script-gas-limit 100 \
-        --gas-price 0 \
-        --maturity 0 \
-        --witness ADFD \
-        --witness DFDA \
-        input coin \
-            --utxo-id 0 \
-            --output-ix 0 \
-            --owner 0x0000000000000000000000000000000000000000000000000000000000000000 \
-            --amount 100 \
-            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
-            --tx-ptr 89ACBDEFBDEF \
-            --witness-ix 0 \
-            --maturity 0 \
-            --predicate ./my-predicate/out/debug/my-predicate.bin \
-            --predicate-data ./my-predicate.dat \
-        input contract \
-            --utxo-id 1 \
-            --output-ix 1 \
-            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
-            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
-            --tx-ptr 89ACBDEFBDEF \
-            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
-        input message \
-            --sender 0x1111111111111111111111111111111111111111111111111111111111111111 \
-            --recipient 0x2222222222222222222222222222222222222222222222222222222222222222 \
-            --amount 1 \
-            --nonce 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB \
-            --witness-ix 1 \
-            --msg-data ./message.dat \
-            --predicate ./my-predicate2/out/debug/my-predicate2.bin \
-            --predicate-data ./my-predicate2.dat \
-        output coin \
-            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
-            --amount 100 \
-            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
-        output contract \
-            --input-ix 1 \
-            --balance-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
-            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000 \
-        output change \
-            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
-            --amount 100 \
-            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
-        output variable \
-            --to 0x2222222222222222222222222222222222222222222222222222222222222222 \
-            --amount 100 \
-            --asset-id 0x0000000000000000000000000000000000000000000000000000000000000000 \
-        output contract-created \
-            --contract-id 0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC \
-            --state-root 0x0000000000000000000000000000000000000000000000000000000000000000
-";
 
 impl ParseError {
     /// Print the error with clap's fancy formatting.

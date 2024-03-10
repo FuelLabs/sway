@@ -40,19 +40,18 @@ pub(crate) fn import_code_action(
     let mut include_statements = Vec::<TyIncludeStatement>::new();
     let mut program_type_keyword = None;
 
-    ctx.tokens
-        .tokens_for_file(ctx.temp_uri)
-        .for_each(|(_, token)| {
-            if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
-                use_statements.push(use_stmt);
-            } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = token.typed {
-                include_statements.push(include_stmt);
-            } else if token.kind == SymbolKind::ProgramTypeKeyword {
-                if let AstToken::Keyword(ident) = token.parsed {
-                    program_type_keyword = Some(ident);
-                }
+    ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
+        if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().typed {
+            use_statements.push(use_stmt.clone());
+        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = &item.value().typed
+        {
+            include_statements.push(include_stmt.clone());
+        } else if item.value().kind == SymbolKind::ProgramTypeKeyword {
+            if let AstToken::Keyword(ident) = &item.value().parsed {
+                program_type_keyword = Some(ident.clone());
             }
-        });
+        }
+    });
 
     // Create a list of code actions, one for each potential call path.
     let actions = call_paths
@@ -95,9 +94,9 @@ pub(crate) fn get_call_paths_for_name<'s>(
     let mut call_paths = ctx
         .tokens
         .tokens_for_name(symbol_name)
-        .filter_map(move |(_, token)| {
+        .filter_map(move |item| {
             // If the typed token is a declaration, then we can import it.
-            match token.typed.as_ref() {
+            match item.value().typed.as_ref() {
                 Some(TypedAstToken::TypedDeclaration(ty_decl)) => {
                     return match ty_decl {
                         TyDecl::StructDecl(decl) => {

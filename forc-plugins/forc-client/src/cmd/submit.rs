@@ -2,9 +2,19 @@ use crate::NodeTarget;
 use devault::Devault;
 use std::path::PathBuf;
 
+forc_util::cli_examples! {
+    super::Command {
+        [ Submit a transaction from a json file => "forc submit {path}/mint.json" ]
+        [ Submit a transaction from a json file and wait for confirmation => "forc submit {path}/mint.json --await true" ]
+        [ Submit a transaction from a json file and get output in json => "forc submit {path}/mint.json --tx-status-json true" ]
+        [ Submit a transaction from a json file to testnet => "forc submit {path}/mint.json --testnet" ]
+        [ Submit a transaction from a json file to a local net => "forc submit {path}/mint.json --target local" ]
+    }
+}
+
 /// Submit a transaction to the specified fuel node.
 #[derive(Debug, Default, clap::Parser)]
-#[clap(about, version)]
+#[clap(about, version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub network: Network,

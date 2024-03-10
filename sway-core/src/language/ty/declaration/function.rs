@@ -7,7 +7,10 @@ use std::{
 use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
-use crate::{language::CallPath, semantic_analysis::type_check_context::MonomorphizeHelper};
+use crate::{
+    language::{parsed::FunctionDeclarationKind, CallPath},
+    semantic_analysis::type_check_context::MonomorphizeHelper,
+};
 
 use crate::{
     decl_engine::*,
@@ -25,11 +28,20 @@ use sway_types::{
 };
 
 #[derive(Clone, Debug)]
+pub enum TyFunctionDeclKind {
+    Default,
+    Entry,
+    Main,
+    Test,
+}
+
+#[derive(Clone, Debug)]
 pub struct TyFunctionDecl {
     pub name: Ident,
     pub body: TyCodeBlock,
     pub parameters: Vec<TyFunctionParameter>,
     pub implementing_type: Option<TyDecl>,
+    pub implementing_for_typeid: Option<TypeId>,
     pub span: Span,
     pub call_path: CallPath,
     pub attributes: transform::AttributesMap,
@@ -41,13 +53,14 @@ pub struct TyFunctionDecl {
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub is_trait_method_dummy: bool,
+    pub kind: TyFunctionDeclKind,
 }
 
 impl DebugWithEngines for TyFunctionDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
-            "{}{:?}{}({}):{}",
+            "{}{:?}{}({}):{}->{}",
             if self.is_trait_method_dummy {
                 "dummy ".to_string()
             } else {
@@ -59,7 +72,11 @@ impl DebugWithEngines for TyFunctionDecl {
                     "<{}>",
                     self.type_parameters
                         .iter()
-                        .map(|p| format!("{:?}", engines.help_out(p.initial_type_id)))
+                        .map(|p| format!(
+                            "{:?} -> {:?}",
+                            engines.help_out(p.initial_type_id),
+                            engines.help_out(p.type_id)
+                        ))
                         .collect::<Vec<_>>()
                         .join(", ")
                 )
@@ -70,6 +87,39 @@ impl DebugWithEngines for TyFunctionDecl {
                 .iter()
                 .map(|p| format!(
                     "{}:{}",
+                    p.name.as_str(),
+                    engines.help_out(p.type_argument.initial_type_id)
+                ))
+                .collect::<Vec<_>>()
+                .join(", "),
+            engines.help_out(self.return_type.initial_type_id),
+            engines.help_out(self.return_type.type_id),
+        )
+    }
+}
+
+impl DisplayWithEngines for TyFunctionDecl {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "{}{}({}) -> {}",
+            self.name,
+            if !self.type_parameters.is_empty() {
+                format!(
+                    "<{}>",
+                    self.type_parameters
+                        .iter()
+                        .map(|p| format!("{}", engines.help_out(p.initial_type_id)))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+            } else {
+                "".to_string()
+            },
+            self.parameters
+                .iter()
+                .map(|p| format!(
+                    "{}: {}",
                     p.name.as_str(),
                     engines.help_out(p.type_argument.initial_type_id)
                 ))
@@ -127,8 +177,10 @@ impl HashWithEngines for TyFunctionDecl {
             span: _,
             attributes: _,
             implementing_type: _,
+            implementing_for_typeid: _,
             where_clause: _,
             is_trait_method_dummy: _,
+            kind: _,
         } = self;
         name.hash(state);
         body.hash(state, engines);
@@ -151,6 +203,9 @@ impl SubstTypes for TyFunctionDecl {
             .for_each(|x| x.subst(type_mapping, engines));
         self.return_type.subst(type_mapping, engines);
         self.body.subst(type_mapping, engines);
+        if let Some(implementing_for) = self.implementing_for_typeid.as_mut() {
+            implementing_for.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -160,8 +215,10 @@ impl ReplaceDecls for TyFunctionDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
-        self.body.replace_decls(decl_mapping, handler, ctx)
+    ) -> Result<bool, ErrorEmitted> {
+        let mut func_ctx = ctx.by_ref().with_self_type(self.implementing_for_typeid);
+        self.body
+            .replace_decls(decl_mapping, handler, &mut func_ctx)
     }
 }
 
@@ -249,7 +306,7 @@ impl TyFunctionDecl {
 
     /// Used to create a stubbed out function when the function fails to
     /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(decl: parsed::FunctionDeclaration) -> TyFunctionDecl {
+    pub(crate) fn error(decl: &parsed::FunctionDeclaration) -> TyFunctionDecl {
         let parsed::FunctionDeclaration {
             name,
             return_type,
@@ -257,23 +314,31 @@ impl TyFunctionDecl {
             visibility,
             purity,
             where_clause,
+            kind,
             ..
         } = decl;
         TyFunctionDecl {
-            purity,
-            name,
+            purity: *purity,
+            name: name.clone(),
             body: TyCodeBlock::default(),
             implementing_type: None,
-            span,
+            implementing_for_typeid: None,
+            span: span.clone(),
             call_path: CallPath::from(Ident::dummy()),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),
-            visibility,
-            return_type,
+            visibility: *visibility,
+            return_type: return_type.clone(),
             type_parameters: Default::default(),
-            where_clause,
+            where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
+            kind: match kind {
+                FunctionDeclarationKind::Default => TyFunctionDeclKind::Default,
+                FunctionDeclarationKind::Entry => TyFunctionDeclKind::Entry,
+                FunctionDeclarationKind::Test => TyFunctionDeclKind::Test,
+                FunctionDeclarationKind::Main => TyFunctionDeclKind::Main,
+            },
         }
     }
 
@@ -345,14 +410,17 @@ impl TyFunctionDecl {
     }
 
     /// Whether or not this function is the default entry point.
-    pub fn is_main_entry(&self) -> bool {
-        // NOTE: We may want to make this check more sophisticated or customisable in the future,
-        // but for now this assumption is baked in throughout the compiler.
-        self.name.as_str() == sway_types::constants::DEFAULT_ENTRY_POINT_FN_NAME
+    pub fn is_entry(&self) -> bool {
+        matches!(self.kind, TyFunctionDeclKind::Entry)
+    }
+
+    pub fn is_main(&self) -> bool {
+        matches!(self.kind, TyFunctionDeclKind::Main)
     }
 
     /// Whether or not this function is a unit test, i.e. decorated with `#[test]`.
     pub fn is_test(&self) -> bool {
+        //TODO match kind to Test
         self.attributes
             .contains_key(&transform::AttributeKind::Test)
     }
@@ -373,9 +441,41 @@ impl TyFunctionDecl {
         }
     }
 
-    /// Whether or not this function describes a program entry point.
-    pub fn is_entry(&self) -> bool {
-        self.is_main_entry() || self.is_test()
+    /// Whether or not this function is a constructor for the type given by `type_id`.
+    ///
+    /// Returns `Some(true)` if the function is surely the constructor and `Some(false)` if
+    /// it is surely not a constructor, and `None` if it cannot decide.
+    pub fn is_constructor(&self, engines: &Engines, type_id: TypeId) -> Option<bool> {
+        if self
+            .parameters
+            .first()
+            .map(|param| param.is_self())
+            .unwrap_or_default()
+        {
+            return Some(false);
+        };
+
+        match &self.implementing_type {
+            Some(TyDecl::ImplTrait(t)) => {
+                let unify_check = UnifyCheck::non_dynamic_equality(engines);
+
+                let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id;
+
+                // TODO: Implement the check in detail for all possible cases (e.g. trait impls for generics etc.)
+                //       and return just the definite `bool` and not `Option<bool>`.
+                //       That would be too much effort at the moment for the immediate practical need of
+                //       error reporting where we suggest obvious most common constructors
+                //       that will be found using this simple check.
+                if unify_check.check(type_id, implementing_for)
+                    && unify_check.check(type_id, self.return_type.type_id)
+                {
+                    Some(true)
+                } else {
+                    None
+                }
+            }
+            _ => Some(false),
+        }
     }
 }
 

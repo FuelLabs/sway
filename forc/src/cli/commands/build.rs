@@ -2,6 +2,14 @@ use crate::{cli, ops::forc_build};
 use clap::Parser;
 use forc_util::ForcResult;
 
+forc_util::cli_examples! {
+   crate::cli::Opt {
+        [ Compile the current projectx => "forc build" ]
+        [ Compile the current project from a different path => "forc build --path <PATH>" ]
+        [ Compile the current project without updating dependencies => "forc build --path <PATH> --locked" ]
+    }
+}
+
 /// Compile the current or target project.
 ///
 /// The output produced will depend on the project's program type.
@@ -17,12 +25,17 @@ use forc_util::ForcResult;
 /// - `contract` and `library` projects will also produce the public ABI in JSON format
 /// `<project-name>-abi.json`.
 #[derive(Debug, Default, Parser)]
+#[clap(bin_name = "forc build", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub build: cli::shared::Build,
     /// Also build all tests within the project.
     #[clap(long)]
     pub tests: bool,
+
+    #[clap(long)]
+    /// Experimental flag for the "new encoding" feature
+    pub experimental_new_encoding: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

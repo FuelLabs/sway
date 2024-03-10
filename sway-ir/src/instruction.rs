@@ -75,7 +75,7 @@ pub enum InstOp {
     /// A contract call with a list of arguments
     ContractCall {
         return_type: Type,
-        name: String,
+        name: Option<String>,
         params: Value,
         coins: Value,
         asset_id: Value,
@@ -194,6 +194,11 @@ pub enum FuelVmInstruction {
         arg1: Value,
         arg2: Value,
     },
+    JmpMem,
+    Retd {
+        ptr: Value,
+        len: Value,
+    },
 }
 
 /// Comparison operations.
@@ -276,6 +281,7 @@ impl InstOp {
             InstOp::FuelVm(FuelVmInstruction::Log { .. }) => Some(Type::get_unit(context)),
             InstOp::FuelVm(FuelVmInstruction::ReadRegister(_)) => Some(Type::get_uint64(context)),
             InstOp::FuelVm(FuelVmInstruction::Smo { .. }) => Some(Type::get_unit(context)),
+            InstOp::FuelVm(FuelVmInstruction::Retd { .. }) => None,
 
             // Load needs to strip the pointer from the source type.
             InstOp::Load(ptr_val) => match &context.values[ptr_val.0].value {
@@ -298,7 +304,7 @@ impl InstOp {
             // These are all terminators which don't return, essentially.  No type.
             InstOp::Branch(_)
             | InstOp::ConditionalBranch { .. }
-            | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+            | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
             | InstOp::Ret(..) => None,
 
             // No-op is also no-type.
@@ -408,6 +414,7 @@ impl InstOp {
                 } => vec![*log_val, *log_id],
                 FuelVmInstruction::ReadRegister(_) => vec![],
                 FuelVmInstruction::Revert(v) => vec![*v],
+                FuelVmInstruction::JmpMem => vec![],
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -444,6 +451,9 @@ impl InstOp {
                     arg3,
                     ..
                 } => vec![*result, *arg1, *arg2, *arg3],
+                FuelVmInstruction::Retd { ptr, len } => {
+                    vec![*ptr, *len]
+                }
             },
         }
     }
@@ -544,6 +554,7 @@ impl InstOp {
                 }
                 FuelVmInstruction::ReadRegister { .. } => (),
                 FuelVmInstruction::Revert(revert_val) => replace(revert_val),
+                FuelVmInstruction::JmpMem => (),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -614,6 +625,10 @@ impl InstOp {
                     replace(arg2);
                     replace(arg3);
                 }
+                FuelVmInstruction::Retd { ptr, len } => {
+                    replace(ptr);
+                    replace(len);
+                }
             },
         }
     }
@@ -630,6 +645,8 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. })
             | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+            | InstOp::FuelVm(FuelVmInstruction::JmpMem)
+            | InstOp::FuelVm(FuelVmInstruction::Retd { .. })
             | InstOp::MemCopyBytes { .. }
             | InstOp::MemCopyVal { .. }
             | InstOp::Store { .. }
@@ -664,14 +681,14 @@ impl InstOp {
             InstOp::Branch(_)
                 | InstOp::ConditionalBranch { .. }
                 | InstOp::Ret(..)
-                | InstOp::FuelVm(FuelVmInstruction::Revert(..))
+                | InstOp::FuelVm(FuelVmInstruction::Revert(..) | FuelVmInstruction::JmpMem)
         )
     }
 }
 
 /// Iterate over all [`Instruction`]s in a specific [`Block`].
 pub struct InstructionIterator {
-    instructions: Vec<generational_arena::Index>,
+    instructions: Vec<slotmap::DefaultKey>,
     next: usize,
     next_back: isize,
 }
@@ -947,7 +964,7 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
     pub fn contract_call(
         self,
         return_type: Type,
-        name: String,
+        name: Option<String>,
         params: Value,
         coins: Value,    // amount of coins to forward
         asset_id: Value, // b256 asset ID of the coint being forwarded
@@ -1060,6 +1077,10 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
         insert_instruction!(self, InstOp::Ret(value, ty))
     }
 
+    pub fn retd(self, ptr: Value, len: Value) -> Value {
+        insert_instruction!(self, InstOp::FuelVm(FuelVmInstruction::Retd { ptr, len }))
+    }
+
     pub fn revert(self, value: Value) -> Value {
         let revert_val = Value::new_instruction(
             self.context,
@@ -1070,6 +1091,18 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
             .instructions
             .push(revert_val);
         revert_val
+    }
+
+    pub fn jmp_mem(self) -> Value {
+        let ldc_exec = Value::new_instruction(
+            self.context,
+            self.block,
+            InstOp::FuelVm(FuelVmInstruction::JmpMem),
+        );
+        self.context.blocks[self.block.0]
+            .instructions
+            .push(ldc_exec);
+        ldc_exec
     }
 
     pub fn smo(self, recipient: Value, message: Value, message_size: Value, coins: Value) -> Value {

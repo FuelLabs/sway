@@ -3,9 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::ty::*, type_system::*, types::*,
-};
+use crate::{engine_threading::*, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -17,6 +15,33 @@ pub struct TyIntrinsicFunctionKind {
     pub arguments: Vec<TyExpression>,
     pub type_arguments: Vec<TypeArgument>,
     pub span: Span,
+}
+
+impl TyIntrinsicFunctionKind {
+    /// Returns the actual type being logged. When the "new_encoding" is off,
+    /// this is just the `__log` argument; but when it is on, it is actually the
+    /// type of the argument to fn `encode`.
+    pub fn get_logged_type(&self, new_encoding: bool) -> Option<TypeId> {
+        if new_encoding {
+            if matches!(self.kind, Intrinsic::Log) {
+                match &self.arguments[0].expression {
+                    TyExpressionVariant::FunctionApplication {
+                        call_path,
+                        arguments,
+                        ..
+                    } => {
+                        assert!(call_path.suffix.as_str() == "encode");
+                        Some(arguments[0].1.return_type)
+                    }
+                    _ => None,
+                }
+            } else {
+                None
+            }
+        } else {
+            Some(self.arguments[0].return_type)
+        }
+    }
 }
 
 impl EqWithEngines for TyIntrinsicFunctionKind {}
@@ -72,16 +97,6 @@ impl DebugWithEngines for TyIntrinsicFunctionKind {
     }
 }
 
-impl DeterministicallyAborts for TyIntrinsicFunctionKind {
-    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
-        matches!(self.kind, Intrinsic::Revert)
-            || self
-                .arguments
-                .iter()
-                .any(|x| x.deterministically_aborts(decl_engine, check_call_body))
-    }
-}
-
 impl CollectTypesMetadata for TyIntrinsicFunctionKind {
     fn collect_types_metadata(
         &self,
@@ -98,9 +113,10 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
 
         match self.kind {
             Intrinsic::Log => {
+                let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(ctx.log_id_counter()),
-                    self.arguments[0].return_type,
+                    logged_type,
                 ));
                 *ctx.log_id_counter_mut() += 1;
             }

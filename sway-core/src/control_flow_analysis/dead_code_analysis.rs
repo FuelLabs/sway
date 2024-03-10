@@ -3,7 +3,10 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::TreeType,
-        ty::{self, TyAstNodeContent, TyImplItem},
+        ty::{
+            self, ConstantDecl, FunctionDecl, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent,
+            TyDecl, TyImplItem, TypeAliasDecl,
+        },
         CallPath, Visibility,
     },
     transform::{self, AttributesMap},
@@ -23,6 +26,88 @@ use sway_types::{
     span::Span,
     Ident, Named, Spanned,
 };
+
+// Defines if this node starts the dca graph or not
+fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
+    match tree_type {
+        TreeType::Predicate | TreeType::Script => {
+            // Predicates and scripts have main and test functions as entry points.
+            match node {
+                TyAstNode {
+                    span: _,
+                    content:
+                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                            decl_id,
+                            ..
+                        })),
+                    ..
+                } => {
+                    let decl = decl_engine.get_function(decl_id);
+                    decl.is_entry() || decl.is_main() || decl.is_test()
+                }
+                _ => false,
+            }
+        }
+        TreeType::Contract | TreeType::Library { .. } => match node {
+            TyAstNode {
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
+                        decl_id,
+                        decl_span: _,
+                        ..
+                    })),
+                ..
+            } => {
+                let decl = decl_engine.get_function(decl_id);
+                decl.visibility == Visibility::Public || decl.is_test()
+            }
+            TyAstNode {
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
+                        decl_id,
+                        decl_span: _,
+                        ..
+                    })),
+                ..
+            } => decl_engine.get_trait(decl_id).visibility.is_public(),
+            TyAstNode {
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl { decl_id, .. })),
+                ..
+            } => {
+                let struct_decl = decl_engine.get_struct(decl_id);
+                struct_decl.visibility == Visibility::Public
+            }
+            TyAstNode {
+                content: TyAstNodeContent::Declaration(TyDecl::ImplTrait { .. }),
+                ..
+            } => true,
+            TyAstNode {
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
+                        decl_id,
+                        decl_span: _,
+                        ..
+                    })),
+                ..
+            } => {
+                let decl = decl_engine.get_constant(decl_id);
+                decl.visibility.is_public()
+            }
+            TyAstNode {
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
+                        decl_id, ..
+                    })),
+                ..
+            } => {
+                let decl = decl_engine.get_type_alias(decl_id);
+                decl.visibility.is_public()
+            }
+            _ => false,
+        },
+    }
+}
 
 impl<'cfg> ControlFlowGraph<'cfg> {
     pub(crate) fn find_dead_code(&self, decl_engine: &DeclEngine) -> Vec<CompileWarning> {
@@ -284,15 +369,18 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         // do a depth first traversal and cover individual inner ast nodes
         let decl_engine = engines.de();
         let exit_node = Some(graph.add_node(("Program exit".to_string()).into()));
+
         let mut entry_points = vec![];
         let mut non_entry_points = vec![];
-        for ast_entrypoint in module_nodes {
-            if ast_entrypoint.is_entry_point(decl_engine, tree_type) {
-                entry_points.push(ast_entrypoint);
+
+        for ast_node in module_nodes {
+            if is_entry_point(ast_node, decl_engine, tree_type) {
+                entry_points.push(ast_node);
             } else {
-                non_entry_points.push(ast_entrypoint);
+                non_entry_points.push(ast_node);
             }
         }
+
         for ast_entrypoint in non_entry_points.into_iter().chain(entry_points) {
             let (_l_leaves, _new_exit_node) = connect_node(
                 engines,
@@ -319,7 +407,7 @@ fn collect_entry_points(
     for i in graph.node_indices() {
         let is_entry = match &graph[i] {
             ControlFlowGraphNode::ProgramNode { node, .. } => {
-                node.is_entry_point(decl_engine, tree_type)
+                is_entry_point(node, decl_engine, tree_type)
             }
             _ => false,
         };
@@ -353,34 +441,6 @@ fn connect_node<'eng: 'cfg, 'cfg>(
     //    let mut graph = graph.clone();
     let span = node.span.clone();
     Ok(match &node.content {
-        ty::TyAstNodeContent::ImplicitReturnExpression(expr) => {
-            let this_index = graph.add_node(ControlFlowGraphNode::from_node_with_parent(
-                node,
-                options.parent_node,
-            ));
-            for leaf_ix in leaves {
-                graph.add_edge(*leaf_ix, this_index, "".into());
-            }
-            // evaluate the expression
-
-            let return_contents = connect_expression(
-                engines,
-                &expr.expression,
-                graph,
-                &[this_index],
-                exit_node,
-                "",
-                tree_type,
-                expr.span.clone(),
-                options,
-            )?;
-
-            // connect return to the exit node
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
-            }
-            (return_contents, None)
-        }
         ty::TyAstNodeContent::Expression(ty::TyExpression {
             expression: expr_variant,
             span,
@@ -408,7 +468,10 @@ fn connect_node<'eng: 'cfg, 'cfg>(
                     span.clone(),
                     options,
                 )?,
-                exit_node,
+                match expr_variant {
+                    ty::TyExpressionVariant::ImplicitReturn(_) => None,
+                    _ => exit_node,
+                },
             )
         }
         ty::TyAstNodeContent::SideEffect(_) => (leaves.to_vec(), exit_node),
@@ -766,7 +829,7 @@ fn connect_trait_declaration(
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
-            module_tree_type: tree_type.clone(),
+            module_tree_type: *tree_type,
         },
     );
 }
@@ -790,7 +853,7 @@ fn connect_abi_declaration(
         },
         TraitNamespaceEntry {
             trait_idx: entry_node,
-            module_tree_type: tree_type.clone(),
+            module_tree_type: *tree_type,
         },
     );
 
@@ -1123,6 +1186,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             contract_call_params,
             selector,
             call_path_typeid,
+            contract_caller,
             ..
         } => {
             let fn_decl = decl_engine.get_function(fn_ref);
@@ -1249,9 +1313,27 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 }
             }
 
-            // we evaluate every one of the function arguments
             let mut current_leaf = vec![fn_entrypoint];
+
+            // Connect contract call to contract caller
+            if let Some(contract_caller) = contract_caller {
+                let span = contract_caller.span.clone();
+                connect_expression(
+                    engines,
+                    &contract_caller.expression,
+                    graph,
+                    &current_leaf,
+                    exit_node,
+                    "arg eval",
+                    tree_type,
+                    span,
+                    options,
+                )?;
+            }
+
+            // we evaluate every one of the function arguments
             for (_name, arg) in arguments {
+                let span = arg.span.clone();
                 current_leaf = connect_expression(
                     engines,
                     &arg.expression,
@@ -1260,7 +1342,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     exit_node,
                     "arg eval",
                     tree_type,
-                    arg.clone().span,
+                    span,
                     options,
                 )?;
             }
@@ -1797,6 +1879,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![while_loop_exit])
         }
+        ForLoop { desugared, .. } => connect_expression(
+            engines,
+            &desugared.expression,
+            graph,
+            leaves,
+            exit_node,
+            label,
+            tree_type,
+            expression_span,
+            options,
+        ),
         Break => {
             let break_node = graph.add_node("break".to_string().into());
             for leaf in leaves {
@@ -1832,7 +1925,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 options,
             )
         }
-        Return(exp) => {
+        ImplicitReturn(exp) | Return(exp) => {
             let this_index = graph.add_node("return entry".into());
             for leaf in leaves {
                 graph.add_edge(*leaf, this_index, "".into());
@@ -1848,15 +1941,19 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 exp.span.clone(),
                 options,
             )?;
-            // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
-            // node?
-            for leaf in return_contents {
-                graph.add_edge(this_index, leaf, "".into());
+            if let Return(_) = expr_variant {
+                // TODO: is this right? Shouldn't we connect the return_contents leaves to the exit
+                // node?
+                for leaf in return_contents {
+                    graph.add_edge(this_index, leaf, "".into());
+                }
+                if let Some(exit_node) = exit_node {
+                    graph.add_edge(this_index, exit_node, "return".into());
+                }
+                Ok(vec![])
+            } else {
+                Ok(return_contents)
             }
-            if let Some(exit_node) = exit_node {
-                graph.add_edge(this_index, exit_node, "return".into());
-            }
-            Ok(vec![])
         }
         Ref(exp) | Deref(exp) => connect_expression(
             engines,
@@ -2121,7 +2218,7 @@ fn construct_dead_code_warning_from_node(
             ..
         } => return None,
         ty::TyAstNode {
-            content: ty::TyAstNodeContent::Declaration(..),
+            content: ty::TyAstNodeContent::Declaration(_),
             span,
         } => CompileWarning {
             span: span.clone(),
@@ -2130,10 +2227,7 @@ fn construct_dead_code_warning_from_node(
         // Otherwise, this is unreachable.
         ty::TyAstNode {
             span,
-            content:
-                ty::TyAstNodeContent::ImplicitReturnExpression(_)
-                | ty::TyAstNodeContent::Expression(_)
-                | ty::TyAstNodeContent::SideEffect(_),
+            content: ty::TyAstNodeContent::Expression(_) | ty::TyAstNodeContent::SideEffect(_),
         } => CompileWarning {
             span: span.clone(),
             warning_content: Warning::UnreachableCode,
@@ -2304,7 +2398,6 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::StorageDecl { .. } => false,
         },
         ty::TyAstNodeContent::Expression(_) => false,
-        ty::TyAstNodeContent::ImplicitReturnExpression(_) => false,
         ty::TyAstNodeContent::SideEffect(_) => false,
         ty::TyAstNodeContent::Error(_, _) => false,
     }

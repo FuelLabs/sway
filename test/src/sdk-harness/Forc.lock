@@ -3,6 +3,11 @@ name = "abi_impl_methods_callable"
 source = "member"
 
 [[package]]
+name = "asset_ops"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "auth_caller_contract"
 source = "member"
 dependencies = [
@@ -105,7 +110,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "core"
-source = "path+from-root-5781B31F5E4458CC"
+source = "path+from-root-872BB25145BD9C7F"
 
 [[package]]
 name = "ec_recover"
@@ -221,6 +226,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "private_struct_fields_in_storage_and_abi"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "registers"
 source = "member"
 dependencies = ["std"]
@@ -242,7 +252,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-5781B31F5E4458CC"
+source = "path+from-root-872BB25145BD9C7F"
 dependencies = ["core"]
 
 [[package]]
@@ -352,11 +362,6 @@ dependencies = ["std"]
 
 [[package]]
 name = "svec_u8"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "token_ops"
 source = "member"
 dependencies = ["std"]
 

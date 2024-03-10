@@ -4,7 +4,17 @@ use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
+use pkg::manifest::build_profile::ExperimentalFlags;
 use tracing::info;
+
+forc_util::cli_examples! {
+    crate::cli::Opt {
+        [ Run test => "forc test" ]
+        [ Run test with a filter => "forc test $filter" ]
+        [ Run test without any output => "forc test --silent" ]
+        [ Run test without creating or update the lock file  => "forc test --locked" ]
+    }
+}
 
 /// Run the Sway unit tests for the current project.
 ///
@@ -24,6 +34,7 @@ use tracing::info;
 /// considered a failure in the case that a revert (`rvrt`) instruction is encountered during
 /// execution. Otherwise, it is considered a success.
 #[derive(Debug, Parser)]
+#[clap(bin_name = "forc test", version, after_help = help())]
 pub struct Command {
     #[clap(flatten)]
     pub build: cli::shared::Build,
@@ -38,10 +49,15 @@ pub struct Command {
     /// Number of threads to utilize when running the tests. By default, this is the number of
     /// threads available in your system.
     pub test_threads: Option<usize>,
+
+    #[clap(long)]
+    /// Experimental flag for the "new encoding" feature
+    pub experimental_new_encoding: bool,
 }
 
 /// The set of options provided for controlling output of a test.
 #[derive(Parser, Debug, Clone)]
+#[clap(after_help = help())]
 pub struct TestPrintOpts {
     #[clap(long = "pretty-print", short = 'r')]
     /// Pretty-print the logs emiited from tests.
@@ -183,8 +199,8 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
     Ok(())
 }
 
-fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
-    forc_test::Opts {
+fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
+    forc_test::TestOpts {
         pkg: pkg::PkgOpts {
             path: cmd.build.pkg.path,
             offline: cmd.build.pkg.offline,
@@ -215,6 +231,9 @@ fn opts_from_cmd(cmd: Command) -> forc_test::Opts {
         binary_outfile: cmd.build.output.bin_file,
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
+        experimental: ExperimentalFlags {
+            new_encoding: cmd.experimental_new_encoding,
+        },
     }
 }
 

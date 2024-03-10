@@ -13,8 +13,6 @@ CLI
 Deserialization
 deserializing
 DApp
-subcurrency
-Subcurrency
 intrinsics
 Intrinsics
 workspace
@@ -56,6 +54,8 @@ UTXOs
 Utils
 VM
 VSCode
+OSS
+Linux
 abigen
 args
 async
@@ -63,6 +63,8 @@ backend
 backtraces
 blockchain
 blockchain's
+breakpoint
+breakpoints
 bytecode
 codespace
 codespaces
@@ -84,6 +86,7 @@ graphQL
 graphql
 http
 https
+halfword
 js
 localhost
 mainnet

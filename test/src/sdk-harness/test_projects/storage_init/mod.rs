@@ -3,17 +3,17 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageInitContract",
-    abi = "test_projects/storage_init/out/debug/storage_init-abi.json",
+    abi = "test_projects/storage_init/out/release/storage_init-abi.json",
 ));
 
 async fn test_storage_init_instance() -> TestStorageInitContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/storage_init/out/debug/storage_init.bin",
+        "test_projects/storage_init/out/release/storage_init.bin",
         LoadConfiguration::default().with_storage_configuration(
             StorageConfiguration::default()
                 .add_slot_overrides_from_file(
-                    "test_projects/storage_init/out/debug/storage_init-storage_slots.json",
+                    "test_projects/storage_init/out/release/storage_init-storage_slots.json",
                 )
                 .unwrap(),
         ),

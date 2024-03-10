@@ -8,7 +8,7 @@ use crate::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    Engines,
+    BuildConfig, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
@@ -27,30 +27,52 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        initial_namespace: namespace::Module,
+        initial_namespace: namespace::Root,
         package_name: &str,
+        build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
+        let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
+
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+        let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
+            .with_kind(parsed.kind);
+
         let ParseProgram { root, kind } = parsed;
 
         // Analyze the dependency order for the submodules.
         let modules_dep_graph = ty::TyModule::analyze(handler, root)?;
-        let module_eval_order = modules_dep_graph.compute_order(handler)?;
+        let module_eval_order: Vec<sway_types::BaseIdent> =
+            modules_dep_graph.compute_order(handler)?;
 
-        ty::TyModule::type_check(handler, ctx, root, module_eval_order).and_then(|root| {
-            let res = Self::validate_root(handler, engines, &root, kind.clone(), package_name);
-            res.map(|(kind, declarations, configurables)| Self {
-                kind,
-                root,
-                declarations,
-                configurables,
-                storage_slots: vec![],
-                logged_types: vec![],
-                messages_types: vec![],
-            })
-        })
+        let root = ty::TyModule::type_check(
+            handler,
+            ctx.by_ref(),
+            engines,
+            parsed.kind,
+            root,
+            module_eval_order,
+        )?;
+
+        let (kind, declarations, configurables) = Self::validate_root(
+            handler,
+            engines,
+            &root,
+            *kind,
+            package_name,
+            ctx.experimental,
+        )?;
+
+        let program = TyProgram {
+            kind,
+            root,
+            declarations,
+            configurables,
+            storage_slots: vec![],
+            logged_types: vec![],
+            messages_types: vec![],
+        };
+
+        Ok(program)
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(

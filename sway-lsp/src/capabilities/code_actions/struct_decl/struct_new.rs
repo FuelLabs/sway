@@ -30,10 +30,10 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             .tokens
             .iter()
             .all_references_of_token(ctx.token, ctx.engines)
-            .find_map(|(_, token)| {
+            .find_map(|item| {
                 if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
                     ty::ImplTrait { decl_id, .. },
-                ))) = token.typed
+                ))) = item.value().typed
                 {
                     Some((*ctx.engines.de().get_impl_trait(&decl_id)).clone())
                 } else {

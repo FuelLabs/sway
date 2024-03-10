@@ -5,6 +5,7 @@ use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
+use ::iterator::*;
 
 struct RawVec<T> {
     ptr: raw_ptr,
@@ -128,6 +129,15 @@ impl<T> RawVec<T> {
     }
 }
 
+impl<T> From<raw_slice> for RawVec<T> {
+    fn from(slice: raw_slice) -> Self {
+        Self {
+            ptr: slice.ptr(),
+            cap: slice.len::<T>(),
+        }
+    }
+}
+
 /// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
 pub struct Vec<T> {
     buf: RawVec<T>,
@@ -151,7 +161,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     // allocates when an element is pushed
     ///     vec.push(5);
     /// }
@@ -187,7 +197,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::with_capacity(2);
+    ///     let mut vec = Vec::with_capacity(2);
     ///     // does not allocate
     ///     vec.push(5);
     ///     // does not re-allocate
@@ -215,7 +225,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     let last_element = vec.pop().unwrap();
     ///     assert(last_element == 5);
@@ -256,7 +266,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
-        self.buf.cap
+        self.buf.capacity()
     }
 
     /// Clears the vector, removing all values.
@@ -270,7 +280,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.clear()
     ///     assert(vec.is_empty());
@@ -296,7 +306,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -332,7 +342,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     assert(vec.len() == 1);
     ///     vec.push(10);
@@ -355,7 +365,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     assert(vec.is_empty());
     ///     vec.push(5);
     ///     assert(!vec.is_empty());
@@ -386,7 +396,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///     vec.push(15);
@@ -440,7 +450,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -455,7 +465,7 @@ impl<T> Vec<T> {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.cap {
+        if self.len == self.buf.capacity() {
             self.buf.grow();
         }
 
@@ -491,7 +501,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///
     ///     let res = vec.pop();
     ///     assert(res.is_none());
@@ -527,7 +537,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -570,7 +580,7 @@ impl<T> Vec<T> {
     /// use std::vec::Vec;
     ///
     /// fn foo() {
-    ///     let vec = Vec::new();
+    ///     let mut vec = Vec::new();
     ///     vec.push(5);
     ///     vec.push(10);
     ///
@@ -587,6 +597,31 @@ impl<T> Vec<T> {
 
         index_ptr.write::<T>(value);
     }
+
+    pub fn iter(self) -> VecIter<T> {
+        VecIter {
+            values: self,
+            index: 0,
+        }
+    }
+
+    /// Gets the pointer of the allocation.
+    ///
+    /// # Returns
+    ///
+    /// [raw_ptr] - The location in memory that the allocated vec lives.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let vec = Vec::new();
+    ///     assert(!vec.ptr().is_null());
+    /// }
+    /// ```
+    pub fn ptr(self) -> raw_ptr {
+        self.buf.ptr()
+    }
 }
 
 impl<T> AsRawSlice for Vec<T> {
@@ -597,20 +632,72 @@ impl<T> AsRawSlice for Vec<T> {
 
 impl<T> From<raw_slice> for Vec<T> {
     fn from(slice: raw_slice) -> Self {
-        let buf = RawVec {
-            ptr: slice.ptr(),
-            cap: slice.len::<T>(),
-        };
         Self {
-            buf,
-            len: buf.cap,
+            buf: RawVec::from(slice),
+            len: slice.len::<T>(),
         }
     }
+}
 
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) {
+impl<T> From<Vec<T>> for raw_slice {
+    fn from(vec: Vec<T>) -> Self {
+        asm(ptr: (vec.ptr(), vec.len())) {
             ptr: raw_slice
         }
+    }
+}
+
+impl<T> AbiEncode for Vec<T>
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let len = self.len();
+        buffer.push(len);
+
+        let mut i = 0;
+        while i < len {
+            let item = self.get(i).unwrap();
+            item.abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+
+impl<T> AbiDecode for Vec<T>
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
+        let mut v = Vec::new();
+
+        let len = u64::abi_decode(buffer);
+
+        let mut i = 0;
+        while i < len {
+            let item = T::abi_decode(buffer);
+            v.push(item);
+            i += 1;
+        }
+
+        v
+    }
+}
+
+pub struct VecIter<T> {
+    values: Vec<T>,
+    index: u64,
+}
+
+impl<T> Iterator for VecIter<T> {
+    type Item = T;
+    fn next(ref mut self) -> Option<Self::Item> {
+        if self.index >= self.values.len() {
+            return None
+        }
+
+        self.index += 1;
+        self.values.get(self.index - 1)
     }
 }
 

@@ -1,6 +1,8 @@
 category = "fail"
 
-# check: $()"b" is a bool, which is not an indexable expression.
+# check: $()Type is not indexable
+# check: $()b[0] = true;
+# nextln: $()This expression has type "bool", which is not an indexable type.
 
 # check: $()Assignment to immutable variable. Variable my_array is not declared as mutable.
 
@@ -8,4 +10,6 @@ category = "fail"
 
 # check: $()Mismatched types.
 
-# check: $()"my_array_2" is a u64, which is not an indexable expression.
+# check: $()Type is not indexable
+# check: $()my_array_2[0][1] = false;
+# nextln: $()This expression has type "u64", which is not an indexable type.

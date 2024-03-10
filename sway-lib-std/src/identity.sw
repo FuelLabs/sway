@@ -2,13 +2,15 @@
 //! The use of this type allows for handling interactions with contracts and addresses in a unified manner.
 library;
 
+use core::codec::*;
 use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
+use ::asset_id::AssetId;
 use ::call_frames::contract_id;
 use ::constants::{BASE_ASSET_ID, ZERO_B256};
-use ::contract_id::{AssetId, ContractId};
-use ::hash::*;
+use ::contract_id::ContractId;
+use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};
 
 /// The `Identity` type: either an `Address` or a `ContractId`.
@@ -124,79 +126,42 @@ impl Identity {
         }
     }
 
-    /// Transfer `amount` coins of the type `asset_id` and send them
-    /// to the Identity.
+    /// Returns the underlying raw `b256` data of the identity.
     ///
-    /// # Additional Information
+    /// # Returns
     ///
-    /// **_WARNING:_**
-    /// If the Identity is a contract this may transfer coins to the contract even with no way to retrieve them
-    /// (i.e. no withdrawal functionality on receiving contract), possibly leading
-    /// to the **_PERMANENT LOSS OF COINS_** if not used with care.
-    ///
-    /// # Arguments
-    ///
-    /// * `asset_id`: [AssetId] - The `AssetId` of the token to transfer.
-    /// * `amount`: [u64] - The amount of tokens to transfer.
-    ///
-    /// # Reverts
-    ///
-    /// * When `amount` is greater than the contract balance for `asset_id`.
-    /// * When `amount` is equal to zero.
-    /// * When there are no free variable outputs when transferring to an `Address`.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::constants::{BASE_ASSET_ID, ZERO_B256};
-    ///
-    /// fn foo() {
-    ///     let to_address = Identity::Address(Address::from(ZERO_B256));
-    ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-    ///     to_address.transfer(BASE_ASSET_ID, 500);
-    ///     to_contract_id.transfer(BASE_ASSET_ID, 500);
-    /// }
-    /// ```
-    pub fn transfer(self, asset_id: AssetId, amount: u64) {
-        match self {
-            Identity::Address(addr) => addr.transfer(asset_id, amount),
-            Identity::ContractId(id) => id.transfer(asset_id, amount),
-        };
-    }
-}
-
-impl Identity {
-    /// Mint `amount` coins of `sub_id` and transfer them to the Identity.
-    ///
-    /// # Additional Information
-    ///
-    /// **_WARNING:_**
-    /// If the Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
-    /// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-    /// the **_PERMANENT LOSS OF COINS_** if not used with care.
-    ///
-    /// # Arguments
-    ///
-    /// * `sub_id`: [SubId] - The  sub identifier of the asset which to mint.
-    /// * `amount`: [u64] - The amount of tokens to mint.
+    /// * [b256] - The raw data of the identity.
     ///
     /// # Examples
     ///
     /// ```sway
     /// use std::constants::ZERO_B256;
     ///
-    /// fn foo() {
-    ///     let address_identity = Identity::Address(Address::from(ZERO_B256));
-    ///     let contract_identity = Identity::ContractId(ContractId::from(ZERO_B256));
-    ///     address_identity.mint_to(ZERO_B256, 500);
-    ///     contract_identity.mint_to(ZERO_B256, 500);
+    /// fn foo() -> {
+    ///     let my_identity = Identity::Address(Address::from(ZERO_B256));
+    ///     assert(my_identity.bits() == ZERO_B256);
     /// }
     /// ```
-    pub fn mint_to(self, sub_id: SubId, amount: u64) {
-        asm(r1: amount, r2: sub_id) {
-            mint r1 r2;
-        };
-        self.transfer(AssetId::new(contract_id(), sub_id), amount);
+    pub fn bits(self) -> b256 {
+        match self {
+            Self::Address(address) => address.bits(),
+            Self::ContractId(contract_id) => contract_id.bits(),
+        }
+    }
+}
+
+impl Hash for Identity {
+    fn hash(self, ref mut state: Hasher) {
+        match self {
+            Identity::Address(address) => {
+                0_u8.hash(state);
+                address.hash(state);
+            },
+            Identity::ContractId(id) => {
+                1_u8.hash(state);
+                id.hash(state);
+            },
+        }
     }
 }
 
@@ -216,21 +181,6 @@ fn test_contract_id() {
     let identity = Identity::ContractId(ContractId::from(ZERO_B256));
     assert(!identity.is_address());
     assert(identity.is_contract_id());
-    assert(identity.as_contract_id().unwrap().value == id);
+    assert(identity.as_contract_id().unwrap().bits() == id);
     assert(identity.as_address().is_none());
-}
-
-impl Hash for Identity {
-    fn hash(self, ref mut state: Hasher) {
-        match self {
-            Identity::Address(address) => {
-                0_u8.hash(state);
-                address.hash(state);
-            },
-            Identity::ContractId(id) => {
-                1_u8.hash(state);
-                id.hash(state);
-            },
-        }
-    }
 }

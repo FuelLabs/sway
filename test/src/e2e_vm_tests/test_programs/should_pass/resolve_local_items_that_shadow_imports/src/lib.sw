@@ -5,15 +5,15 @@ pub enum Enum {
 }
 
 pub struct Struct {
-    x: u64,
+    pub x: u64,
 }
 
 pub struct PubStruct {
-   x: u64,
+    pub x: u64,
 }
 
 pub struct GenericStruct<T> {
-    x: T,
+    pub x: T,
 }
 
 pub const X: u64 = 0u64;

@@ -43,7 +43,7 @@ pub fn is_sway_file(file: &Path) -> bool {
 /// assert_eq!(it.next(), None);
 ///
 /// ```
-pub fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
+pub fn iter_prefixes<T>(slice: &[T]) -> impl DoubleEndedIterator<Item = &[T]> {
     (1..=slice.len()).map(move |len| &slice[..len])
 }
 
@@ -62,17 +62,18 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     } else {
         starter_path.parent()?
     };
-    WalkDir::new(starter_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|entry| entry.path() != starter_dir.join(file_name))
-        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
-        .map(|entry| {
+    WalkDir::new(starter_path).into_iter().find_map(|e| {
+        let entry = e.ok()?;
+        if entry.path() != starter_dir.join(file_name)
+            && entry.file_name().to_string_lossy() == file_name
+        {
             let mut entry = entry.path().to_path_buf();
             entry.pop();
-            entry
-        })
-        .next()
+            Some(entry)
+        } else {
+            None
+        }
+    })
 }
 
 /// Continually go up in the file tree until a specified file is found.

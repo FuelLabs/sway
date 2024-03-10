@@ -6,13 +6,13 @@ use fuels::{
 
 abigen!(Contract(
     name = "ParsingLogsTestContract",
-    abi = "test_projects/parsing_logs/out/debug/parsing_logs-abi.json"
+    abi = "test_projects/parsing_logs/out/release/parsing_logs-abi.json"
 ));
 
 async fn get_parsing_logs_instance() -> (ParsingLogsTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/parsing_logs/out/debug/parsing_logs.bin",
+        "test_projects/parsing_logs/out/release/parsing_logs.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -45,6 +45,29 @@ async fn test_parse_logged_varibles() -> Result<()> {
     assert_eq!(log_bits256, vec![expected_bits256]);
     assert_eq!(log_string, vec!["Fuel"]);
     assert_eq!(log_array, vec![[1, 2, 3]]);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_parse_logged_private_structs() -> Result<()> {
+    let (instance, _id) = get_parsing_logs_instance().await;
+
+    let contract_methods = instance.methods();
+    let response = contract_methods.produce_logs_private_structs().call().await?;
+
+    let log_address = response.decode_logs_with_type::<Address>().unwrap().pop().unwrap();
+    let log_contract_id = response.decode_logs_with_type::<ContractId>().unwrap().pop().unwrap();
+    let log_asset_id = response.decode_logs_with_type::<AssetId>().unwrap().pop().unwrap();
+
+    let expected_bits256 = [
+        239, 134, 175, 169, 105, 108, 240, 220, 99, 133, 226, 196, 7, 166, 225, 89, 161, 16, 60,
+        239, 183, 226, 174, 6, 54, 251, 51, 211, 203, 42, 158, 74,
+    ];
+
+    assert_eq!(log_address, Address::new(expected_bits256));
+    assert_eq!(log_contract_id, ContractId::new(expected_bits256));
+    assert_eq!(log_asset_id, AssetId::new(expected_bits256));
 
     Ok(())
 }

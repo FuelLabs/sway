@@ -3,13 +3,13 @@ use fuels::prelude::*;
 
 abigen!(Contract(
     name = "TestStorageStringContract",
-    abi = "test_projects/storage_string/out/debug/storage_string-abi.json",
+    abi = "test_projects/storage_string/out/release/storage_string-abi.json",
 ));
 
 async fn setup() -> TestStorageStringContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/storage_string/out/debug/storage_string.bin",
+        "test_projects/storage_string/out/release/storage_string.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

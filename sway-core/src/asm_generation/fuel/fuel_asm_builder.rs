@@ -305,6 +305,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg2,
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
+                    FuelVmInstruction::JmpMem => self.compile_jmp_mem(instr_val),
+                    FuelVmInstruction::Retd { ptr, len } => self.compile_retd(instr_val, ptr, len),
                 },
                 InstOp::GetElemPtr {
                     base,
@@ -661,6 +663,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        Ok(())
+    }
+
+    fn compile_retd(
+        &mut self,
+        instr_val: &Value,
+        ptr: &Value,
+        len: &Value,
+    ) -> Result<(), CompileError> {
+        let ptr = self.value_to_register(ptr)?;
+        let len = self.value_to_register(len)?;
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::RETD(ptr, len)),
             comment: String::new(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
@@ -1264,27 +1284,64 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             // If the type is a pointer then we use LOGD to log the data. First put the size into
             // the data section, then add a LW to get it, then add a LOGD which uses it.
             let log_ty = log_ty.get_pointee_type(self.context).unwrap();
-            let size_in_bytes = log_ty.size(self.context).in_bytes();
 
-            let size_reg = self.reg_seqr.next();
-            self.immediate_to_reg(
-                size_in_bytes,
-                size_reg.clone(),
-                None,
-                "loading size for LOGD",
-                owning_span.clone(),
-            );
+            // Slices arrive here as "ptr slice" because they are demoted. (see fn log_demotion)
+            let is_slice = log_ty.is_slice(self.context);
 
-            self.cur_bytecode.push(Op {
-                owning_span,
-                opcode: Either::Left(VirtualOp::LOGD(
-                    VirtualRegister::Constant(ConstantRegister::Zero),
-                    log_id_reg,
-                    log_val_reg,
-                    size_reg,
-                )),
-                comment: "".into(),
-            });
+            if is_slice {
+                let ptr_reg = self.reg_seqr.next();
+                let size_reg = self.reg_seqr.next();
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        ptr_reg.clone(),
+                        log_val_reg.clone(),
+                        VirtualImmediate12 { value: 0 },
+                    )),
+                    owning_span: owning_span.clone(),
+                    comment: "load slice ptr".into(),
+                });
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::LW(
+                        size_reg.clone(),
+                        log_val_reg.clone(),
+                        VirtualImmediate12 { value: 1 },
+                    )),
+                    owning_span: owning_span.clone(),
+                    comment: "load slice size".into(),
+                });
+                self.cur_bytecode.push(Op {
+                    owning_span,
+                    opcode: Either::Left(VirtualOp::LOGD(
+                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        log_id_reg,
+                        ptr_reg,
+                        size_reg,
+                    )),
+                    comment: "log slice".into(),
+                });
+            } else {
+                let size_in_bytes = log_ty.size(self.context).in_bytes();
+
+                let size_reg = self.reg_seqr.next();
+                self.immediate_to_reg(
+                    size_in_bytes,
+                    size_reg.clone(),
+                    None,
+                    "loading size for LOGD",
+                    owning_span.clone(),
+                );
+
+                self.cur_bytecode.push(Op {
+                    owning_span: owning_span.clone(),
+                    opcode: Either::Left(VirtualOp::LOGD(
+                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        log_id_reg.clone(),
+                        log_val_reg.clone(),
+                        size_reg,
+                    )),
+                    comment: "log ptr".into(),
+                });
+            }
         }
 
         Ok(())
@@ -1409,6 +1466,49 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             owning_span,
             opcode: Either::Left(VirtualOp::RVRT(revert_reg)),
             comment: "".into(),
+        });
+
+        Ok(())
+    }
+
+    fn compile_jmp_mem(&mut self, instr_val: &Value) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let target_reg = self.reg_seqr.next();
+        let is_target_reg = self.reg_seqr.next();
+        let by4_reg = self.reg_seqr.next();
+
+        self.cur_bytecode.push(Op {
+            owning_span: owning_span.clone(),
+            opcode: Either::Left(VirtualOp::LW(
+                target_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::HeapPointer),
+                VirtualImmediate12::new(0, Span::dummy()).unwrap(),
+            )),
+            comment: "jmp_mem: Load MEM[$hp]".into(),
+        });
+        self.cur_bytecode.push(Op {
+            owning_span: owning_span.clone(),
+            opcode: Either::Left(VirtualOp::SUB(
+                is_target_reg.clone(),
+                target_reg,
+                VirtualRegister::Constant(ConstantRegister::InstructionStart),
+            )),
+            comment: "jmp_mem: Subtract $is since Jmp adds it back.".into(),
+        });
+        self.cur_bytecode.push(Op {
+            owning_span: owning_span.clone(),
+            opcode: Either::Left(VirtualOp::DIVI(
+                by4_reg.clone(),
+                is_target_reg.clone(),
+                VirtualImmediate12::new(4, Span::dummy()).unwrap(),
+            )),
+            comment: "jmp_mem: Divide by 4 since Jmp multiplies by 4.".into(),
+        });
+
+        self.cur_bytecode.push(Op {
+            owning_span,
+            opcode: Either::Left(VirtualOp::JMP(by4_reg)),
+            comment: "jmp_mem: Jump to computed value".into(),
         });
 
         Ok(())
@@ -1691,6 +1791,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     // XXX reassess all the places we use this
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
         ty.is_unit(self.context)
+            || ty.is_never(self.context)
             || ty.is_bool(self.context)
             || ty
                 .get_uint_width(self.context)

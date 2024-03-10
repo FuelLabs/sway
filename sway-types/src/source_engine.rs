@@ -24,6 +24,19 @@ pub struct SourceEngine {
     module_to_sources_map: RwLock<HashMap<ModuleId, BTreeSet<SourceId>>>,
 }
 
+impl Clone for SourceEngine {
+    fn clone(&self) -> Self {
+        SourceEngine {
+            next_source_id: RwLock::new(*self.next_source_id.read().unwrap()),
+            path_to_source_map: RwLock::new(self.path_to_source_map.read().unwrap().clone()),
+            source_to_path_map: RwLock::new(self.source_to_path_map.read().unwrap().clone()),
+            next_module_id: RwLock::new(*self.next_module_id.read().unwrap()),
+            path_to_module_map: RwLock::new(self.path_to_module_map.read().unwrap().clone()),
+            module_to_sources_map: RwLock::new(self.module_to_sources_map.read().unwrap().clone()),
+        }
+    }
+}
+
 impl SourceEngine {
     /// This function retrieves an integer-based source ID for a provided path buffer.
     /// If an ID already exists for the given path, the function will return that
@@ -86,5 +99,12 @@ impl SourceEngine {
             .file_name()
             .map(|file_name| file_name.to_string_lossy())
             .map(|file_name| file_name.to_string())
+    }
+
+    pub fn all_files(&self) -> Vec<PathBuf> {
+        let s = self.source_to_path_map.read().unwrap();
+        let mut v = s.values().cloned().collect::<Vec<_>>();
+        v.sort();
+        v
     }
 }

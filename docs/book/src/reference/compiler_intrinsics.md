@@ -315,4 +315,13 @@ __not(op: T) -> T
 **Description:** Bitwise NOT of `op`
 
 **Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
+
 ___
+
+```sway
+__jmp_mem()
+```
+
+**Description:** Jumps to `MEM[$hp]`.
+
+**Constraints:** None.

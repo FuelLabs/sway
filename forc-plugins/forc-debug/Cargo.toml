@@ -1,6 +1,6 @@
 [package]
 name = "forc-debug"
-version = "0.48.1"
+version = "0.51.1"
 description = "Supports debugging Sway code via CLI and DAP server."
 authors.workspace = true
 edition.workspace = true
@@ -9,17 +9,30 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-clap = { version = "3.1", features = ["env", "derive"] }
-fuel-core-client = { version = "0.21" }
-fuel-types = { version = "0.43", features = ["serde"] }
-fuel-vm = { version = "0.43", features = ["serde"] }
+anyhow = "1.0" # Used by the examples and for conversion only
+clap = { version = "3", features = ["env", "derive"] }
+dap = "0.4.1-alpha1"
+forc-pkg = { version = "0.51.1", path = "../../forc-pkg" }
+forc-test = { version = "0.51.1", path = "../../forc-test" }
+fuel-core-client = { workspace = true }
+fuel-types = { workspace = true, features = ["serde"] }
+fuel-vm = { workspace = true, features = ["serde"] }
+rayon = "1.7.0"
+serde = "1.0"
 serde_json = "1.0"
 shellfish = { version = "0.6.0", features = ["rustyline", "async", "tokio"] }
+sway-core = { version = "0.51.1", path = "../../sway-core" }
+sway-types = { version = "0.51.1", path = "../../sway-types" }
 thiserror = "1.0"
-tokio = { version = "1.19", features = ["net", "io-util", "macros", "rt-multi-thread"] }
+tokio = { version = "1.8", features = [
+    "net",
+    "io-util",
+    "macros",
+    "rt-multi-thread",
+] }
 
 [dev-dependencies]
-anyhow = "1.0" # Used by the examples only
+dap = { version = "0.4.1-alpha1", features = ["client"] }
 escargot = "0.5.7"
 portpicker = "0.1.1"
 rexpect = "0.4"

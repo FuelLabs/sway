@@ -24,7 +24,11 @@ pub enum Ty {
     },
     Ref {
         ampersand_token: AmpersandToken,
+        // TODO-IG: Extend to support references to mutable values.
         ty: Box<Ty>,
+    },
+    Never {
+        bang_token: BangToken,
     },
 }
 
@@ -43,6 +47,7 @@ impl Spanned for Ty {
                 ampersand_token,
                 ty,
             } => Span::join(ampersand_token.span(), ty.span()),
+            Ty::Never { bang_token } => bang_token.span(),
         }
     }
 }

@@ -1,8 +1,7 @@
 //! Utility items shared between forc crates.
-
 use annotate_snippets::{
-    display_list::{DisplayList, FormatOptions},
-    snippet::{Annotation, AnnotationType, Slice, Snippet, SourceAnnotation},
+    renderer::{AnsiColor, Style},
+    Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
 use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
@@ -26,7 +25,16 @@ use sway_types::{LineCol, SourceEngine, Span};
 use sway_utils::constants;
 use tracing::error;
 
+pub mod fs_locking;
 pub mod restricted;
+
+#[macro_use]
+pub mod cli;
+
+pub use ansi_term;
+pub use paste;
+pub use regex::Regex;
+pub use serial_test;
 
 pub const DEFAULT_OUTPUT_DIRECTORY: &str = "out";
 pub const DEFAULT_ERROR_EXIT_CODE: u8 = 1;
@@ -148,7 +156,8 @@ pub mod tx_utils {
     pub struct Salt {
         /// Added salt used to derive the contract ID.
         ///
-        /// By default, this is `0x0000000000000000000000000000000000000000000000000000000000000000`.
+        /// By default, this is
+        /// `0x0000000000000000000000000000000000000000000000000000000000000000`.
         #[clap(long = "salt")]
         pub salt: Option<fuel_tx::Salt>,
     }
@@ -280,7 +289,7 @@ pub fn git_checkouts_directory() -> PathBuf {
 ///
 /// Note: This has nothing to do with `Forc.lock` files, rather this is about fd locks for
 /// coordinating access to particular paths (e.g. git checkout directories).
-fn fd_lock_path(path: &Path) -> PathBuf {
+fn fd_lock_path<X: AsRef<Path>>(path: X) -> PathBuf {
     const LOCKS_DIR_NAME: &str = ".locks";
     const LOCK_EXT: &str = "forc-lock";
     let file_name = hash_path(path);
@@ -290,22 +299,10 @@ fn fd_lock_path(path: &Path) -> PathBuf {
         .with_extension(LOCK_EXT)
 }
 
-/// Constructs the path for the "dirty" flag file corresponding to the specified file.
-///
-/// This function uses a hashed representation of the original path for uniqueness.
-pub fn is_dirty_path(path: &Path) -> PathBuf {
-    const LOCKS_DIR_NAME: &str = ".lsp-locks";
-    const LOCK_EXT: &str = "dirty";
-    let file_name = hash_path(path);
-    user_forc_directory()
-        .join(LOCKS_DIR_NAME)
-        .join(file_name)
-        .with_extension(LOCK_EXT)
-}
-
 /// Hash the path to produce a file-system friendly file name.
 /// Append the file stem for improved readability.
-fn hash_path(path: &Path) -> String {
+fn hash_path<X: AsRef<Path>>(path: X) -> String {
+    let path = path.as_ref();
     let mut hasher = hash_map::DefaultHasher::default();
     path.hash(&mut hasher);
     let hash = hasher.finish();
@@ -319,7 +316,7 @@ fn hash_path(path: &Path) -> String {
 /// Create an advisory lock over the given path.
 ///
 /// See [fd_lock_path] for details.
-pub fn path_lock(path: &Path) -> Result<fd_lock::RwLock<File>> {
+pub fn path_lock<X: AsRef<Path>>(path: X) -> Result<fd_lock::RwLock<File>> {
     let lock_path = fd_lock_path(path);
     let lock_dir = lock_path
         .parent()
@@ -345,7 +342,7 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
         Some(ty) => format!("{} ", program_type_str(ty)),
         None => "".to_string(),
     };
-    tracing::info!(
+    tracing::debug!(
         " {} {ty}{} ({src})",
         Colour::Green.bold().paint("Compiling"),
         ansi_term::Style::new().bold().paint(name)
@@ -427,6 +424,27 @@ pub fn print_on_failure(
     }
 }
 
+/// Creates [Renderer] for printing warnings and errors.
+///
+/// To ensure the same styling of printed warnings and errors across all the tools,
+/// always use this function to create [Renderer]s,
+pub fn create_diagnostics_renderer() -> Renderer {
+    // For the diagnostic messages we use bold and bright colors.
+    // Note that for the summaries of warnings and errors we use
+    // their regular equivalents which are defined in `forc-tracing` package.
+    Renderer::styled()
+        .warning(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightYellow.into())),
+        )
+        .error(
+            Style::new()
+                .bold()
+                .fg_color(Some(AnsiColor::BrightRed.into())),
+        )
+}
+
 fn format_diagnostic(diagnostic: &Diagnostic) {
     /// Temporary switch for testing the feature.
     /// Keep it false until we decide to fully support the diagnostic codes.
@@ -475,15 +493,12 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
         title: snippet_title,
         slices: snippet_slices,
         footer: snippet_footer,
-        opt: FormatOptions {
-            color: true,
-            ..Default::default()
-        },
     };
 
+    let renderer = create_diagnostics_renderer();
     match diagnostic.level() {
-        Level::Warning => tracing::warn!("{}\n____\n", DisplayList::from(snippet)),
-        Level::Error => tracing::error!("{}\n____\n", DisplayList::from(snippet)),
+        Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
+        Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
     }
 
     fn format_old_style_diagnostic(issue: &Issue) {
@@ -528,13 +543,10 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             title: snippet_title,
             footer: vec![],
             slices: snippet_slices,
-            opt: FormatOptions {
-                color: true,
-                ..Default::default()
-            },
         };
 
-        tracing::error!("{}\n____\n", DisplayList::from(snippet));
+        let renderer = create_diagnostics_renderer();
+        tracing::error!("{}\n____\n", renderer.render(snippet));
     }
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
@@ -568,7 +580,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
         "Slices can be constructed only for labels that are related to places in the same source code."
     );
 
-    let soruce_file = labels[0].source_path().map(|path| path.as_str());
+    let source_file = labels[0].source_path().map(|path| path.as_str());
     let source_code = labels[0].span().input();
 
     // Joint span of the code snippet that covers all the labels.
@@ -589,7 +601,7 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
     return Slice {
         source,
         line_start,
-        origin: soruce_file,
+        origin: source_file,
         fold: true,
         annotations,
     };
@@ -630,7 +642,7 @@ fn label_type_to_annotation_type(label_type: LabelType) -> AnnotationType {
 /// to show in the snippet.
 ///
 /// Returns the source to be shown, the line start, and the offset of the snippet in bytes relative
-/// to the begining of the input code.
+/// to the beginning of the input code.
 ///
 /// The library we use doesn't handle auto-windowing and line numbers, so we must manually
 /// calculate the line numbers and match them up with the input window. It is a bit fiddly.

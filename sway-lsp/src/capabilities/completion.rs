@@ -169,7 +169,7 @@ fn type_id_of_raw_ident(
             curr_type_id = struct_decl
                 .fields
                 .iter()
-                .find(|field| field.name.to_string() == parts[i])
+                .find(|field| field.name.as_str() == parts[i])
                 .map(|field| field.type_argument.type_id);
         }
         i += 1;

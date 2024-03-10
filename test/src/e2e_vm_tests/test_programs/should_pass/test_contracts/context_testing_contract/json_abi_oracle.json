@@ -101,19 +101,19 @@
     {
       "components": [
         {
-          "name": "value",
+          "name": "bits",
           "type": 0,
           "typeArguments": null
         }
       ],
-      "type": "struct std::contract_id::AssetId",
+      "type": "struct std::asset_id::AssetId",
       "typeId": 1,
       "typeParameters": null
     },
     {
       "components": [
         {
-          "name": "value",
+          "name": "bits",
           "type": 0,
           "typeArguments": null
         }

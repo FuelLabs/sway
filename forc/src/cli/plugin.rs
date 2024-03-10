@@ -93,6 +93,8 @@ pub(crate) fn find_all() -> impl Iterator<Item = PathBuf> {
         .into_iter()
         .flat_map(walkdir::WalkDir::new)
         .filter_map(Result::ok)
-        .map(|entry| entry.path().to_path_buf())
-        .filter(|p| is_plugin(p))
+        .filter_map(|entry| {
+            let path = entry.path().to_path_buf();
+            is_plugin(&path).then_some(path)
+        })
 }

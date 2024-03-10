@@ -24,7 +24,7 @@ use std::{collections::HashMap, sync::Arc};
 pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
-    main_function: &DeclId<ty::TyFunctionDecl>,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -49,7 +49,7 @@ pub(super) fn compile_script(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         logged_types_map,
         messages_types_map,
         None,
@@ -71,7 +71,7 @@ pub(super) fn compile_script(
 pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
-    main_function: &DeclId<ty::TyFunctionDecl>,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
@@ -96,7 +96,7 @@ pub(super) fn compile_predicate(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         &HashMap::new(),
         &HashMap::new(),
         None,
@@ -117,6 +117,7 @@ pub(super) fn compile_predicate(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
+    entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
@@ -138,6 +139,20 @@ pub(super) fn compile_contract(
         declarations,
     )
     .map_err(|err| vec![err])?;
+
+    if let Some(main_function) = entry_function {
+        compile_entry_function(
+            engines,
+            context,
+            &mut md_mgr,
+            module,
+            main_function,
+            logged_types_map,
+            messages_types_map,
+            None,
+        )?;
+    }
+
     for decl in abi_entries {
         compile_abi_method(
             context,
@@ -149,6 +164,7 @@ pub(super) fn compile_contract(
             engines,
         )?;
     }
+
     compile_tests(
         engines,
         context,
@@ -205,9 +221,9 @@ pub(crate) fn compile_constants(
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.get_all_declared_symbols() {
+    for decl_name in module_ns.current_items().get_all_declared_symbols() {
         if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
-            module_ns.symbols.get(decl_name)
+            module_ns.current_items().symbols.get(decl_name)
         {
             let const_decl = engines.de().get_constant(decl_id);
             let call_path = const_decl.call_path.clone();
@@ -499,7 +515,7 @@ fn compile_fn(
         logged_types_map,
         messages_types_map,
     );
-    let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
+    let mut ret_val = compiler.compile_code_block_to_value(context, md_mgr, body)?;
 
     // Special case: sometimes the returned value at the end of the function block is hacked
     // together and is invalid.  This can happen with diverging control flow or with implicit
@@ -571,16 +587,14 @@ fn compile_abi_method(
         }
     };
 
-    // An ABI method is always an entry point.
-    let is_entry = true;
-
     compile_fn(
         engines,
         context,
         md_mgr,
         module,
         &ast_fn_decl,
-        is_entry,
+        // ABI are only entries when the "new encoding" is off
+        !context.experimental.new_encoding,
         Some(selector),
         logged_types_map,
         messages_types_map,

@@ -9,10 +9,20 @@ use std::{
 };
 use tracing::info;
 
+forc_util::cli_examples! {
+    crate::cli::Opt {
+        [ List all plugins => "forc plugins" ]
+        [ List all plugins with their paths => "forc plugins --paths" ]
+        [ List all plugins with their descriptions => "forc plugins --describe" ]
+        [ List all plugins with their paths and descriptions => "forc plugins --paths --describe" ]
+    }
+}
+
 /// Find all forc plugins available via `PATH`.
 ///
 /// Prints information about each discovered plugin.
 #[derive(Debug, Parser)]
+#[clap(name = "forc plugins", about = "List all forc plugins", version, after_help = help())]
 pub struct Command {
     /// Prints the absolute path to each discovered plugin.
     #[clap(long = "paths", short = 'p')]
@@ -74,7 +84,7 @@ pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
 
 /// Find a plugin's description
 ///
-/// Given a cannonical plugin path, returns the description included in the `-h` opt.
+/// Given a canonical plugin path, returns the description included in the `-h` opt.
 /// Returns a generic description if a description cannot be found
 fn parse_description_for_plugin(plugin: &Path) -> String {
     use std::process::Command;

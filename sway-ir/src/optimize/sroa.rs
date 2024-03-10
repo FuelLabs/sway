@@ -395,7 +395,7 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
         match ty.get_content(context) {
             crate::TypeContent::Unit => true,
             crate::TypeContent::Bool => true,
-            crate::TypeContent::Uint(_) => true,
+            crate::TypeContent::Uint(width) => *width <= 64,
             crate::TypeContent::B256 => false,
             crate::TypeContent::Array(elm_ty, _) => check_sub_types(context, *elm_ty),
             crate::TypeContent::Union(_) => false,
@@ -406,6 +406,7 @@ fn is_processable_aggregate(context: &Context, ty: Type) -> bool {
             crate::TypeContent::Pointer(_) => true,
             crate::TypeContent::StringSlice => false,
             crate::TypeContent::StringArray(_) => false,
+            crate::TypeContent::Never => false,
         }
     }
     ty.is_aggregate(context) && check_sub_types(context, ty)

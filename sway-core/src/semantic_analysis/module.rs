@@ -1,17 +1,29 @@
-use std::{collections::HashMap, fmt::Display, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Display,
+    fs,
+};
 
 use graph_cycles::Cycles;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_types::{BaseIdent, Named};
 
 use crate::{
+    decl_engine::DeclEngineGet,
     engine_threading::DebugWithEngines,
-    language::{parsed::*, ty, ModName},
+    language::{
+        parsed::*,
+        ty::{self, TyAstNodeContent, TyDecl},
+        CallPath, ModName,
+    },
     semantic_analysis::*,
-    Engines,
+    Engines, TypeInfo,
 };
+
+use super::declaration::auto_impl::{self, AutoImplAbiEncodeContext};
 
 #[derive(Clone, Debug)]
 pub struct ModuleDepGraphEdge();
@@ -208,6 +220,8 @@ impl ty::TyModule {
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
+        engines: &Engines,
+        kind: TreeType,
         parsed: &ParseModule,
         module_eval_order: ModuleEvaluationOrder,
     ) -> Result<Self, ErrorEmitted> {
@@ -216,7 +230,6 @@ impl ty::TyModule {
             tree,
             attributes,
             span,
-            hash: _,
             ..
         } = parsed;
 
@@ -230,30 +243,122 @@ impl ty::TyModule {
                     .unwrap();
                 Ok((
                     name.clone(),
-                    ty::TySubmodule::type_check(handler, ctx.by_ref(), name.clone(), submodule)?,
+                    ty::TySubmodule::type_check(
+                        handler,
+                        ctx.by_ref(),
+                        engines,
+                        name.clone(),
+                        kind,
+                        submodule,
+                    )?,
                 ))
             })
             .collect::<Result<Vec<_>, _>>();
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
-        let ordered_nodes_res = node_dependencies::order_ast_nodes_by_dependency(
+        let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
             handler,
             ctx.engines(),
             tree.root_nodes.clone(),
-        );
+        )?;
 
-        let typed_nodes_res = ordered_nodes_res
-            .and_then(|ordered_nodes| Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes));
+        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes)?;
+        let submodules = submodules_res?;
 
-        submodules_res.and_then(|submodules| {
-            typed_nodes_res.map(|all_nodes| Self {
-                span: span.clone(),
-                submodules,
-                namespace: ctx.namespace.clone(),
-                all_nodes,
-                attributes: attributes.clone(),
-            })
+        if ctx.experimental.new_encoding {
+            let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
+                    (decl.name.as_str() == "main").then(|| engines.de().get(&decl.decl_id))
+                }
+                _ => None,
+            });
+
+            match (&kind, main_decl.is_some()) {
+                (TreeType::Predicate, true) => {
+                    let mut fn_generator =
+                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
+                    let node = fn_generator
+                        .generate_predicate_entry(engines, main_decl.as_ref().unwrap())
+                        .unwrap();
+                    all_nodes.push(node)
+                }
+                (TreeType::Script, true) => {
+                    let mut fn_generator =
+                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
+                    let node = fn_generator
+                        .generate_script_entry(engines, main_decl.as_ref().unwrap())
+                        .unwrap();
+                    all_nodes.push(node)
+                }
+                (TreeType::Contract, _) => {
+                    // collect all contract methods
+                    let contract_fns = submodules
+                        .iter()
+                        .flat_map(|x| x.1.module.submodules_recursive())
+                        .flat_map(|x| x.1.module.contract_fns(engines))
+                        .chain(all_nodes.iter().flat_map(|x| x.contract_fns(engines)))
+                        .collect::<Vec<_>>();
+
+                    let mut fn_generator =
+                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
+                    let node = fn_generator
+                        .generate_contract_entry(engines, &contract_fns)
+                        .unwrap();
+                    all_nodes.push(node)
+                }
+                _ => {}
+            }
+        }
+
+        Ok(Self {
+            span: span.clone(),
+            submodules,
+            namespace: ctx.namespace.clone(),
+            all_nodes,
+            attributes: attributes.clone(),
         })
+    }
+
+    // Filter and gather impl items
+    fn get_all_impls(
+        ctx: TypeCheckContext<'_>,
+        nodes: &[AstNode],
+        predicate: fn(&ImplTrait) -> bool,
+    ) -> HashMap<BaseIdent, HashSet<CallPath>> {
+        let engines = ctx.engines();
+        // Check which structs and enums needs to have auto impl for AbiEncode
+        // We need to do this before type checking, because the impls must be right after
+        // the declarations
+        let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();
+
+        for node in nodes.iter() {
+            if let AstNodeContent::Declaration(Declaration::ImplTrait(decl_id)) = &node.content {
+                let decl = &*engines.pe().get_impl_trait(decl_id);
+                let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
+                let implementing_for = match &*implementing_for {
+                    TypeInfo::Struct(decl) => {
+                        Some(ctx.engines().de().get(decl.id()).name().clone())
+                    }
+                    TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl.id()).name().clone()),
+                    TypeInfo::Custom {
+                        qualified_call_path,
+                        ..
+                    } => Some(qualified_call_path.call_path.suffix.clone()),
+                    _ => None,
+                };
+
+                if let Some(implementing_for) = implementing_for {
+                    if predicate(decl) {
+                        impls
+                            .entry(implementing_for)
+                            .or_default()
+                            .insert(decl.trait_name.clone());
+                    }
+                }
+            }
+        }
+
+        impls
     }
 
     fn type_check_nodes(
@@ -261,11 +366,53 @@ impl ty::TyModule {
         mut ctx: TypeCheckContext,
         nodes: Vec<AstNode>,
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
-        let typed_nodes = nodes
-            .into_iter()
-            .map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node))
-            .filter_map(|res| res.ok())
-            .collect();
+        let engines = ctx.engines();
+        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
+            decl.trait_name.suffix.as_str() == "AbiEncode"
+        });
+
+        let mut typed_nodes = vec![];
+        for node in nodes {
+            let auto_impl_encoding_traits = match &node.content {
+                AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_struct(decl_id);
+                    all_abiencode_impls.get(&decl.name).is_none()
+                }
+                AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
+                    let decl = ctx.engines().pe().get_enum(decl_id);
+                    all_abiencode_impls.get(&decl.name).is_none()
+                }
+                _ => false,
+            };
+
+            let Ok(node) = ty::TyAstNode::type_check(handler, ctx.by_ref(), node) else {
+                continue;
+            };
+
+            if ctx.experimental.new_encoding {
+                let mut generated = vec![];
+                if let (true, Some(mut ctx)) = (
+                    auto_impl_encoding_traits,
+                    AutoImplAbiEncodeContext::new(&mut ctx),
+                ) {
+                    match &node.content {
+                        TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
+                        | TyAstNodeContent::Declaration(decl @ TyDecl::EnumDecl(_)) => {
+                            let (a, b) = ctx.generate(engines, decl);
+                            generated.extend(a);
+                            generated.extend(b);
+                        }
+                        _ => {}
+                    }
+                };
+
+                typed_nodes.push(node);
+                typed_nodes.extend(generated);
+            } else {
+                typed_nodes.push(node);
+            }
+        }
+
         Ok(typed_nodes)
     }
 }
@@ -300,7 +447,6 @@ impl ty::TySubmodule {
                 }
                 AstNodeContent::Declaration(_) => {}
                 AstNodeContent::Expression(_) => {}
-                AstNodeContent::ImplicitReturnExpression(_) => {}
                 AstNodeContent::IncludeStatement(_) => {}
                 AstNodeContent::Error(_, _) => {}
             }
@@ -311,7 +457,9 @@ impl ty::TySubmodule {
     pub fn type_check(
         handler: &Handler,
         parent_ctx: TypeCheckContext,
+        engines: &Engines,
         mod_name: ModName,
+        kind: TreeType,
         submodule: &ParseSubmodule,
     ) -> Result<Self, ErrorEmitted> {
         let ParseSubmodule {
@@ -322,8 +470,14 @@ impl ty::TySubmodule {
         let modules_dep_graph = ty::TyModule::analyze(handler, module)?;
         let module_eval_order = modules_dep_graph.compute_order(handler)?;
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res =
-                ty::TyModule::type_check(handler, submod_ctx, module, module_eval_order);
+            let module_res = ty::TyModule::type_check(
+                handler,
+                submod_ctx,
+                engines,
+                kind,
+                module,
+                module_eval_order,
+            );
             module_res.map(|module| ty::TySubmodule {
                 module,
                 mod_name_span: mod_name_span.clone(),

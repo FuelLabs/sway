@@ -31,53 +31,58 @@ impl ty::TyTraitFn {
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        let mut fn_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.by_ref().scoped(&mut fn_namespace).with_purity(purity);
+        ctx.by_ref().with_purity(purity).scoped(|mut ctx| {
+            // TODO: when we add type parameters to trait fns, type check them here
 
-        // TODO: when we add type parameters to trait fns, type check them here
+            // Type check the parameters.
+            let mut typed_parameters = vec![];
+            for param in parameters.into_iter() {
+                typed_parameters.push(
+                    match ty::TyFunctionParameter::type_check_interface_parameter(
+                        handler,
+                        ctx.by_ref(),
+                        param,
+                    ) {
+                        Ok(res) => res,
+                        Err(_) => continue,
+                    },
+                );
+            }
 
-        // Type check the parameters.
-        let mut typed_parameters = vec![];
-        for param in parameters.into_iter() {
-            typed_parameters.push(
-                match ty::TyFunctionParameter::type_check_interface_parameter(
+            // Type check the return type.
+            return_type.type_id = ctx
+                .resolve_type(
                     handler,
-                    ctx.by_ref(),
-                    param,
-                ) {
-                    Ok(res) => res,
-                    Err(_) => continue,
-                },
-            );
-        }
+                    return_type.type_id,
+                    &return_type.span,
+                    EnforceTypeArguments::Yes,
+                    None,
+                )
+                .unwrap_or_else(|err| {
+                    type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
+                });
 
-        // Type check the return type.
-        return_type.type_id = ctx
-            .resolve_type(
-                handler,
-                return_type.type_id,
-                &return_type.span,
-                EnforceTypeArguments::Yes,
-                None,
-            )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+            let trait_fn = ty::TyTraitFn {
+                name,
+                span,
+                parameters: typed_parameters,
+                return_type,
+                purity,
+                attributes,
+            };
 
-        let trait_fn = ty::TyTraitFn {
-            name,
-            span,
-            parameters: typed_parameters,
-            return_type,
-            purity,
-            attributes,
-        };
-
-        Ok(trait_fn)
+            Ok(trait_fn)
+        })
     }
 
     /// This function is used in trait declarations to insert "placeholder"
     /// functions in the methods. This allows the methods to use functions
     /// declared in the interface surface.
-    pub(crate) fn to_dummy_func(&self, abi_mode: AbiMode) -> ty::TyFunctionDecl {
+    pub(crate) fn to_dummy_func(
+        &self,
+        abi_mode: AbiMode,
+        implementing_for_typeid: Option<TypeId>,
+    ) -> ty::TyFunctionDecl {
         ty::TyFunctionDecl {
             purity: self.purity,
             name: self.name.clone(),
@@ -97,6 +102,7 @@ impl ty::TyTraitFn {
                 }
                 AbiMode::NonAbi => None,
             },
+            implementing_for_typeid,
             span: self.name.span(),
             call_path: CallPath::from(self.name.clone()),
             attributes: self.attributes.clone(),
@@ -106,6 +112,7 @@ impl ty::TyTraitFn {
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
             is_trait_method_dummy: true,
+            kind: ty::TyFunctionDeclKind::Default,
         }
     }
 }

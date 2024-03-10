@@ -1,5 +1,6 @@
 use crate::cli::CleanCommand;
 use anyhow::{anyhow, bail, Result};
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::manifest::ManifestFile;
 use forc_util::default_output_directory;
 use std::path::PathBuf;
@@ -25,7 +26,7 @@ pub fn clean(command: CleanCommand) -> Result<()> {
             )
         }
     };
-    let manifest = ManifestFile::from_dir(&manifest_dir)?;
+    let manifest = ManifestFile::from_dir(manifest_dir)?;
     // If this is a workspace collect all member paths and clean each of them.
     let paths: Vec<PathBuf> = match manifest {
         ManifestFile::Package(_) => std::iter::once(this_dir).collect(),

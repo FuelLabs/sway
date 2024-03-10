@@ -3,10 +3,10 @@ use crate::{Parse, ParseBracket, ParseResult, ParseToEnd, Parser, ParserConsumed
 use sway_ast::brackets::{Braces, Parens, SquareBrackets};
 use sway_ast::expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant};
 use sway_ast::keywords::{
-    AbiToken, AddEqToken, AsmToken, CommaToken, ConfigurableToken, ConstToken, DivEqToken,
-    DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken, LetToken,
-    OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken, StarEqToken,
-    StorageToken, StructToken, SubEqToken, TraitToken, TrueToken, TypeToken, UseToken,
+    AbiToken, AddEqToken, AmpersandToken, AsmToken, CommaToken, ConfigurableToken, ConstToken,
+    DivEqToken, DoubleColonToken, EnumToken, EqToken, FalseToken, FnToken, IfToken, ImplToken,
+    LetToken, MutToken, OpenAngleBracketToken, PubToken, SemicolonToken, ShlEqToken, ShrEqToken,
+    StarEqToken, StorageToken, StructToken, SubEqToken, TraitToken, TrueToken, TypeToken, UseToken,
 };
 use sway_ast::literal::{LitBool, LitBoolType};
 use sway_ast::punctuated::Punctuated;
@@ -507,9 +507,10 @@ fn parse_mul(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
 }
 
 fn parse_unary_op(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
-    if let Some((ampersand_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
+    if let Some((ampersand_token, mut_token, expr)) = parse_referencing(parser, ctx)? {
         return Ok(Expr::Ref {
             ampersand_token,
+            mut_token,
             expr,
         });
     }
@@ -519,7 +520,20 @@ fn parse_unary_op(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     if let Some((bang_token, expr)) = parse_op_rhs(parser, ctx, parse_unary_op)? {
         return Ok(Expr::Not { bang_token, expr });
     }
-    parse_projection(parser, ctx)
+    return parse_projection(parser, ctx);
+
+    #[allow(clippy::type_complexity)] // Used just here for getting the three parsed elements.
+    fn parse_referencing(
+        parser: &mut Parser,
+        ctx: ParseExprCtx,
+    ) -> ParseResult<Option<(AmpersandToken, Option<MutToken>, Box<Expr>)>> {
+        if let Some(ampersand_token) = parser.take() {
+            let mut_token = parser.take::<MutToken>();
+            let expr = Box::new(parse_unary_op(parser, ctx.not_statement())?);
+            return Ok(Some((ampersand_token, mut_token, expr)));
+        }
+        Ok(None)
+    }
 }
 
 fn parse_projection(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
@@ -717,6 +731,19 @@ fn parse_atom(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
         return Ok(Expr::While {
             while_token,
             condition,
+            block,
+        });
+    }
+    if let Some(for_token) = parser.take() {
+        let value_pattern = parser.parse()?;
+        let in_token = parser.parse()?;
+        let iterator = Box::new(parse_condition(parser)?);
+        let block = parser.parse()?;
+        return Ok(Expr::For {
+            for_token,
+            value_pattern,
+            in_token,
+            iterator,
             block,
         });
     }

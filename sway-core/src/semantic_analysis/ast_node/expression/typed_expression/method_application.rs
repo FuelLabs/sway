@@ -5,7 +5,7 @@ use crate::{
     },
     language::{
         parsed::*,
-        ty::{self, TyDecl},
+        ty::{self, TyDecl, TyExpression},
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
@@ -13,7 +13,9 @@ use crate::{
     type_system::*,
 };
 use ast_node::typed_expression::check_function_arguments_arity;
-use std::collections::{HashMap, VecDeque};
+use indexmap::IndexMap;
+use itertools::izip;
+use std::collections::VecDeque;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -35,17 +37,23 @@ pub(crate) fn type_check_method_application(
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
-    // type check the function arguments
-    let mut args_buf = VecDeque::new();
-    for arg in &arguments {
+    // type check the function arguments (1st pass)
+    // Some arguments may fail on this first pass because they may require the type_annotation to the parameter type.
+    // If they fail the args_opt_buf will contain a None value.
+    let mut args_opt_buf = VecDeque::new();
+    for (index, arg) in arguments.iter().enumerate() {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        args_buf.push_back(
-            ty::TyExpression::type_check(handler, ctx, arg.clone())
-                .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
-        );
+        if index == 0 {
+            args_opt_buf.push_back(ty::TyExpression::type_check(handler, ctx, arg.clone()).ok());
+        } else {
+            // Ignore errors in method parameters
+            // On the second pass we will throw the errors if they persist.
+            let h = Handler::default();
+            args_opt_buf.push_back(ty::TyExpression::type_check(&h, ctx, arg.clone()).ok());
+        };
     }
 
     // resolve the method name to a typed function declaration and type_check
@@ -53,10 +61,54 @@ pub(crate) fn type_check_method_application(
         handler,
         ctx.by_ref(),
         &method_name_binding,
-        args_buf.clone(),
+        args_opt_buf
+            .iter()
+            .map(|arg| match arg {
+                Some(arg) => arg.return_type,
+                None => type_engine.insert(engines, TypeInfo::Unknown, None),
+            })
+            .collect(),
     )?;
 
     let method = decl_engine.get_function(&original_decl_ref);
+
+    // type check the function arguments (2nd pass)
+    let mut args_buf = VecDeque::new();
+    for (arg, index, arg_opt) in izip!(arguments.iter(), 0.., args_opt_buf.iter().cloned()) {
+        if let Some(arg) = arg_opt {
+            args_buf.push_back(arg);
+        } else {
+            let param_index = if method.is_contract_call {
+                index - 1 //contract call methods don't have self parameter.
+            } else {
+                index
+            };
+            // This arg_opt is None because it failed in the first pass.
+            // We now try to type check it again, this time with the type annotation.
+            let ctx = if param_index > 0 {
+                ctx.by_ref()
+                    .with_help_text(
+                        "Function application argument type must match function parameter type.",
+                    )
+                    .with_type_annotation(
+                        method
+                            .parameters
+                            .get(param_index)
+                            .unwrap()
+                            .type_argument
+                            .type_id,
+                    )
+            } else {
+                ctx.by_ref()
+                    .with_help_text("")
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            };
+            args_buf.push_back(
+                ty::TyExpression::type_check(handler, ctx, arg.clone())
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
+            );
+        }
+    }
 
     // check the method visibility
     if span.source_id() != method.span.source_id() && method.visibility.is_private() {
@@ -83,7 +135,8 @@ pub(crate) fn type_check_method_application(
     }
 
     // generate the map of the contract call params
-    let mut contract_call_params_map = HashMap::new();
+    let mut untyped_contract_call_params_map = std::collections::HashMap::new();
+    let mut contract_call_params_map = IndexMap::new();
     if method.is_contract_call {
         for param_name in &[
             constants::CONTRACT_CALL_GAS_PARAMETER_NAME,
@@ -108,6 +161,8 @@ pub(crate) fn type_check_method_application(
                 constants::CONTRACT_CALL_GAS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_COINS_PARAMETER_NAME
                 | constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME => {
+                    untyped_contract_call_params_map
+                        .insert(param.name.to_string(), param.value.clone());
                     let type_annotation = type_engine.insert(
                         engines,
                         if param.name.span().as_str()
@@ -145,7 +200,7 @@ pub(crate) fn type_check_method_application(
         // it's considered to be zero and hence no error needs to be reported
         if let Some(coins_expr) = contract_call_params_map.get(CONTRACT_CALL_COINS_PARAMETER_NAME) {
             if coins_analysis::possibly_nonzero_u64_expression(
-                ctx.namespace,
+                ctx.namespace(),
                 ctx.engines,
                 coins_expr,
             ) && !method
@@ -207,7 +262,7 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl = ctx.namespace.resolve_symbol(
+                let unknown_decl = ctx.namespace().resolve_symbol(
                     &Handler::default(),
                     ctx.engines,
                     name,
@@ -336,6 +391,7 @@ pub(crate) fn type_check_method_application(
         is_method_call_syntax_used,
     )?;
 
+    let old_arguments = arguments;
     let arguments = method
         .parameters
         .iter()
@@ -343,15 +399,152 @@ pub(crate) fn type_check_method_application(
         .zip(args_buf.iter().cloned())
         .collect::<Vec<_>>();
 
+    if ctx.experimental.new_encoding && method.is_contract_call {
+        fn call_contract_call(
+            ctx: &mut TypeCheckContext,
+            original_span: Span,
+            return_type: TypeId,
+            method_name_expr: Expression,
+            _caller: Expression,
+            arguments: Vec<Expression>,
+            typed_argumens: Vec<TypeId>,
+            coins_expr: Expression,
+            asset_id_expr: Expression,
+            gas_expr: Expression,
+        ) -> Expression {
+            let tuple_args_type_id = ctx.engines.te().insert(
+                ctx.engines,
+                TypeInfo::Tuple(
+                    typed_argumens
+                        .iter()
+                        .map(|&type_id| TypeArgument {
+                            type_id,
+                            initial_type_id: type_id,
+                            span: Span::dummy(),
+                            call_path_tree: None,
+                        })
+                        .collect(),
+                ),
+                None,
+            );
+            Expression {
+                kind: ExpressionKind::FunctionApplication(Box::new(
+                    FunctionApplicationExpression {
+                        call_path_binding: TypeBinding {
+                            inner: CallPath {
+                                prefixes: vec![],
+                                suffix: Ident::new_no_span("contract_call".into()),
+                                is_absolute: false,
+                            },
+                            type_arguments: TypeArgs::Regular(vec![
+                                TypeArgument {
+                                    type_id: return_type,
+                                    initial_type_id: return_type,
+                                    span: Span::dummy(),
+                                    call_path_tree: None,
+                                },
+                                TypeArgument {
+                                    type_id: tuple_args_type_id,
+                                    initial_type_id: tuple_args_type_id,
+                                    span: Span::dummy(),
+                                    call_path_tree: None,
+                                },
+                            ]),
+                            span: Span::dummy(),
+                        },
+                        arguments: vec![
+                            Expression {
+                                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
+                                span: Span::dummy(),
+                            },
+                            method_name_expr,
+                            as_tuple(arguments),
+                            coins_expr,
+                            asset_id_expr,
+                            gas_expr,
+                        ],
+                    },
+                )),
+                span: original_span,
+            }
+        }
+
+        fn string_slice_literal(ident: &BaseIdent) -> Expression {
+            Expression {
+                kind: ExpressionKind::Literal(Literal::String(ident.span())),
+                span: ident.span(),
+            }
+        }
+
+        fn as_tuple(elements: Vec<Expression>) -> Expression {
+            Expression {
+                kind: ExpressionKind::Tuple(elements),
+                span: Span::dummy(),
+            }
+        }
+
+        let gas_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_GAS_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::U64(u64::MAX)),
+                span: Span::dummy(),
+            });
+        let coins_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_COINS_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::U64(0)),
+                span: Span::dummy(),
+            });
+        let asset_id_expr = untyped_contract_call_params_map
+            .remove(constants::CONTRACT_CALL_ASSET_ID_PARAMETER_NAME)
+            .unwrap_or_else(|| Expression {
+                kind: ExpressionKind::Literal(Literal::B256([0u8; 32])),
+                span: Span::dummy(),
+            });
+
+        let contract_call = call_contract_call(
+            &mut ctx,
+            span,
+            method.return_type.type_id,
+            string_slice_literal(&method.name),
+            old_arguments.first().cloned().unwrap(),
+            old_arguments.into_iter().skip(1).collect(),
+            arguments.iter().map(|x| x.1.return_type).collect(),
+            coins_expr,
+            asset_id_expr,
+            gas_expr,
+        );
+        let mut expr = TyExpression::type_check(handler, ctx.by_ref(), contract_call)?;
+
+        // We need to "fix" contract_id here because it was created with zero
+        // given that we only have it as TyExpression, therefore can only use it after we type_check
+        // `expr``
+        match &mut expr.expression {
+            ty::TyExpressionVariant::FunctionApplication {
+                arguments,
+                contract_caller,
+                ..
+            } => {
+                let selector = selector.unwrap();
+                arguments[0].1 = (*selector.contract_address).clone();
+                *contract_caller = Some(selector.contract_caller);
+            }
+            _ => unreachable!(),
+        }
+
+        return Ok(expr);
+    }
+
     let mut fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
-        contract_call_params: contract_call_params_map,
         arguments,
         fn_ref: original_decl_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
         deferred_monomorphization: ctx.defer_monomorphization(),
+        contract_call_params: contract_call_params_map,
+        contract_caller: None,
     };
 
     let mut exp = ty::TyExpression {
@@ -416,7 +609,7 @@ pub(crate) fn resolve_method_name(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     method_name: &TypeBinding<MethodName>,
-    arguments: VecDeque<ty::TyExpression>,
+    arguments_types: VecDeque<TypeId>,
 ) -> Result<(DeclRefFunction, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
@@ -436,11 +629,10 @@ pub(crate) fn resolve_method_name(
 
             // find the module that the symbol is in
             let type_info_prefix = ctx
-                .namespace
+                .namespace()
                 .find_module_path(&call_path_binding.inner.prefixes);
-            ctx.namespace
-                .root()
-                .check_submodule(handler, &type_info_prefix)?;
+            ctx.namespace()
+                .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -449,7 +641,7 @@ pub(crate) fn resolve_method_name(
                 &type_info_prefix,
                 method_name,
                 ctx.type_annotation(),
-                &arguments,
+                &arguments_types,
                 None,
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
@@ -459,12 +651,12 @@ pub(crate) fn resolve_method_name(
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
             let module_path = if !call_path.is_absolute {
-                ctx.namespace.find_module_path(&call_path.prefixes)
+                ctx.namespace().find_module_path(&call_path.prefixes)
             } else {
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), Some(root_name)) = (
                     module_path.first().cloned(),
-                    ctx.namespace.root().name.clone(),
+                    ctx.namespace().root_module_name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);
@@ -474,9 +666,9 @@ pub(crate) fn resolve_method_name(
             };
 
             // find the type of the first argument
-            let type_id = arguments
+            let type_id = arguments_types
                 .front()
-                .map(|x| x.return_type)
+                .cloned()
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
@@ -486,7 +678,7 @@ pub(crate) fn resolve_method_name(
                 &module_path,
                 &call_path.suffix,
                 ctx.type_annotation(),
-                &arguments,
+                &arguments_types,
                 None,
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
@@ -495,12 +687,12 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace.find_module_path(vec![]);
+            let module_path = ctx.namespace().find_module_path(vec![]);
 
             // find the type of the first argument
-            let type_id = arguments
+            let type_id = arguments_types
                 .front()
-                .map(|x| x.return_type)
+                .cloned()
                 .unwrap_or_else(|| type_engine.insert(engines, TypeInfo::Unknown, None));
 
             // find the method
@@ -510,7 +702,7 @@ pub(crate) fn resolve_method_name(
                 &module_path,
                 method_name,
                 ctx.type_annotation(),
-                &arguments,
+                &arguments_types,
                 None,
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
@@ -533,7 +725,7 @@ pub(crate) fn resolve_method_name(
                 &type_info_prefix,
                 method_name,
                 ctx.type_annotation(),
-                &arguments,
+                &arguments_types,
                 Some(*as_trait),
                 TryInsertingTraitImplOnFailure::Yes,
             )?;
@@ -570,6 +762,7 @@ pub(crate) fn monomorphize_method_application(
             type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
         )?;
         let mut method = (*decl_engine.get_function(fn_ref)).clone();
+        method.is_trait_method_dummy = false;
 
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =

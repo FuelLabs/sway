@@ -83,6 +83,15 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
+            Intrinsic::JmpMem => {
+                type_check_jmp_mem(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::ContractCall => {
+                type_check_contract_call(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::ContractRet => {
+                type_check_contract_ret(handler, ctx, kind, arguments, type_arguments, span)
+            }
         }
     }
 }
@@ -134,6 +143,7 @@ fn type_check_not(
                 received: engines.help_out(return_type).to_string(),
                 help_text: "".into(),
                 span,
+                internal: "8".into(),
             },
         ))),
     }
@@ -1042,6 +1052,7 @@ fn type_check_bitwise_binary_op(
                 received: engines.help_out(return_type).to_string(),
                 help_text: "".into(),
                 span,
+                internal: "7".into(),
             },
         ))),
     }
@@ -1116,6 +1127,7 @@ fn type_check_shift_binary_op(
                 received: engines.help_out(return_type).to_string(),
                 help_text: "Incorrect argument type".into(),
                 span: lhs.span,
+                internal: "6".into(),
             },
         ))),
     }
@@ -1166,8 +1178,47 @@ fn type_check_revert(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Unknown, None), // TODO: change this to the `Never` type when
-                                                              // available
+        type_engine.insert(engines, TypeInfo::Never, None),
+    ))
+}
+
+/// Signature: `__jmp_mem() -> !`
+/// Description: Jumps to `MEM[$hp]`.
+fn type_check_jmp_mem(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![],
+            type_arguments: vec![],
+            span,
+        },
+        type_engine.insert(engines, TypeInfo::Never, None),
     ))
 }
 
@@ -1366,4 +1417,90 @@ fn type_check_smo(
         },
         type_engine.insert(engines, TypeInfo::Tuple(vec![]), None),
     ))
+}
+
+/// Signature: `__contract_call<T>()`
+/// Description: Calls another contract
+/// Constraints: None.
+fn type_check_contract_ret(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    _kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    _type_arguments: Vec<TypeArgument>,
+    _span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let arguments: Vec<ty::TyExpression> = arguments
+        .iter()
+        .map(|x| {
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+            ty::TyExpression::type_check(handler, ctx, x.clone())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let t = ctx
+        .engines
+        .te()
+        .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind: Intrinsic::ContractRet,
+            arguments,
+            type_arguments: vec![],
+            span: Span::dummy(),
+        },
+        t,
+    ))
+}
+
+/// Signature: `__contract_call()`
+/// Description: Calls another contract
+/// Constraints: None.
+fn type_check_contract_call(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span }));
+    }
+
+    let return_type_id = ctx
+        .engines
+        .te()
+        .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
+
+    // Arguments
+    let arguments: Vec<ty::TyExpression> = arguments
+        .iter()
+        .map(|x| {
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+            ty::TyExpression::type_check(handler, ctx, x.clone())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments,
+        type_arguments: vec![],
+        span,
+    };
+
+    Ok((intrinsic_function, return_type_id))
 }

@@ -5,7 +5,9 @@ use forc_client::{
     op::{deploy, run},
     NodeTarget,
 };
-use forc_pkg::{Built, BuiltPackage};
+use forc_pkg::{
+    manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage, PrintOpts,
+};
 use fuel_tx::TransactionBuilder;
 use fuel_vm::fuel_tx;
 use fuel_vm::interpreter::Interpreter;
@@ -31,15 +33,19 @@ where
     let mut output = String::new();
 
     // Capture both stdout and stderr to buffers, run the code and save to a string.
-    let mut buf_stdout = gag::BufferRedirect::stdout().unwrap();
-    let mut buf_stderr = gag::BufferRedirect::stderr().unwrap();
-
+    let buf_stdout = gag::BufferRedirect::stdout();
+    let buf_stderr = gag::BufferRedirect::stderr();
     let result = func().await;
 
-    buf_stdout.read_to_string(&mut output).unwrap();
-    buf_stderr.read_to_string(&mut output).unwrap();
-    drop(buf_stdout);
-    drop(buf_stderr);
+    if let Ok(mut buf_stdout) = buf_stdout {
+        buf_stdout.read_to_string(&mut output).unwrap();
+        drop(buf_stdout);
+    }
+
+    if let Ok(mut buf_stderr) = buf_stderr {
+        buf_stderr.read_to_string(&mut output).unwrap();
+        drop(buf_stderr);
+    }
 
     if cfg!(windows) {
         // In windows output error and warning path files start with \\?\
@@ -72,6 +78,11 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
         },
         signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
         default_salt: true,
+        build_profile: match run_config.release {
+            true => BuildProfile::RELEASE.to_string(),
+            false => BuildProfile::DEBUG.to_string(),
+        },
+        experimental_new_encoding: run_config.experimental.new_encoding,
         ..Default::default()
     })
     .await
@@ -114,14 +125,14 @@ pub(crate) async fn runs_on_node(
             },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
+            experimental_new_encoding: run_config.experimental.new_encoding,
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {
             ran_scripts
                 .into_iter()
-                .next()
-                .map(|ran_script| ran_script.receipts)
-                .unwrap()
+                .flat_map(|ran_script| ran_script.receipts)
+                .collect::<Vec<_>>()
         })
     })
     .await
@@ -189,6 +200,7 @@ pub(crate) fn runs_in_vm(
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
+
             Ok(VMExecutionResult::Fuel(
                 *transition.state(),
                 transition.receipts().to_vec(),
@@ -251,6 +263,17 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let build_opts = forc_pkg::BuildOpts {
         build_target: run_config.build_target,
+        build_profile: BuildProfile::DEBUG.into(),
+        release: run_config.release,
+        print: PrintOpts {
+            ast: false,
+            dca_graph: None,
+            dca_graph_url_format: None,
+            finalized_asm: false,
+            intermediate_asm: false,
+            ir: false,
+            reverse_order: false,
+        },
         pkg: forc_pkg::PkgOpts {
             path: Some(format!(
                 "{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}",
@@ -259,6 +282,9 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             terse: false,
             json_abi_with_callpaths: true,
             ..Default::default()
+        },
+        experimental: ExperimentalFlags {
+            new_encoding: run_config.experimental.new_encoding,
         },
         ..Default::default()
     };
@@ -294,7 +320,7 @@ pub(crate) async fn compile_and_run_unit_tests(
         .iter()
         .collect();
         match std::panic::catch_unwind(|| {
-            forc_test::build(forc_test::Opts {
+            forc_test::build(forc_test::TestOpts {
                 pkg: forc_pkg::PkgOpts {
                     path: Some(path.to_string_lossy().into_owned()),
                     locked: run_config.locked,
@@ -319,17 +345,36 @@ pub(crate) async fn compile_and_run_unit_tests(
     .await
 }
 
-pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Result<()> {
+pub(crate) fn test_json_abi(
+    file_name: &str,
+    built_package: &BuiltPackage,
+    experimental_new_encoding: bool,
+    update_output_files: bool,
+) -> Result<()> {
     emit_json_abi(file_name, built_package)?;
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let oracle_path = format!(
-        "{}/src/e2e_vm_tests/test_programs/{}/{}",
-        manifest_dir, file_name, "json_abi_oracle.json"
-    );
+    let oracle_path = if experimental_new_encoding {
+        format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_oracle_new_encoding.json"
+        )
+    } else {
+        format!(
+            "{}/src/e2e_vm_tests/test_programs/{}/{}",
+            manifest_dir, file_name, "json_abi_oracle.json"
+        )
+    };
+
     let output_path = format!(
         "{}/src/e2e_vm_tests/test_programs/{}/{}",
         manifest_dir, file_name, "json_abi_output.json"
     );
+
+    // Update the oracle failing silently
+    if update_output_files {
+        let _ = std::fs::copy(&output_path, &oracle_path);
+    }
+
     if fs::metadata(oracle_path.clone()).is_err() {
         bail!("JSON ABI oracle file does not exist for this test.");
     }
@@ -337,11 +382,11 @@ pub(crate) fn test_json_abi(file_name: &str, built_package: &BuiltPackage) -> Re
         bail!("JSON ABI output file does not exist for this test.");
     }
     let oracle_contents =
-        fs::read_to_string(oracle_path).expect("Something went wrong reading the file.");
+        fs::read_to_string(&oracle_path).expect("Something went wrong reading the file.");
     let output_contents =
-        fs::read_to_string(output_path).expect("Something went wrong reading the file.");
+        fs::read_to_string(&output_path).expect("Something went wrong reading the file.");
     if oracle_contents != output_contents {
-        println!("Mismatched ABI JSON output.");
+        println!("Mismatched ABI JSON output [{oracle_path}] versus [{output_path}]",);
         println!(
             "{}",
             prettydiff::diff_lines(&oracle_contents, &output_contents)

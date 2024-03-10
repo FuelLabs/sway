@@ -28,6 +28,14 @@ Both checks against IR and ASM may be provided in the same Sway test source file
 To delimit between checks against IR and those against ASM the source file may be split into sections using delimiting marker text.
 
 * `::check-ir::` marks the beginning of the IR checks.
+* `::check-ir-optimized::` marks the begingging of the optimized IR checks.
 * `::check-asm::` marks the beginning of the ASM checks.
+
+  Optimized IR chekcer can be configured with `pass: <PASSNAME or o1>`. When
+  `o1` is chosen, all the configured passes are chosen automatically.
+  ```
+  ::check-ir-optimized::
+  pass: o1
+  ```
 
 The sections may go in either order.  If there are no markers then it is assumed that all checks are for IR.

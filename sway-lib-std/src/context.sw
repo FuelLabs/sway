@@ -1,8 +1,9 @@
 //! Functionality for accessing context-specific information about the current contract or message.
 library;
 
+use ::asset_id::AssetId;
 use ::call_frames::contract_id;
-use ::contract_id::{AssetId, ContractId};
+use ::contract_id::ContractId;
 use ::registers::balance;
 
 /// Get the balance of coin `asset_id` for the current contract.
@@ -18,11 +19,12 @@ use ::registers::balance;
 /// # Examples
 ///
 /// ```sway
-/// use std::{context::this_balance, constants::ZERO_B256, hash::sha256, token::mint, call_frames::contract_id};
+/// use std::{context::this_balance, constants::DEFAULT_SUB_ID, asset::mint};
 ///
 /// fn foo() {
-///     mint(ZERO_B256, 50);
-///     assert(this_balance(sha256((ZERO_B256, contract_id()))) == 50);
+///     mint(DEFAULT_SUB_ID, 50);
+///     let asset_id = AssetId::default();
+///     assert(this_balance(asset_id)) == 50);
 /// }
 /// ```
 pub fn this_balance(asset_id: AssetId) -> u64 {
@@ -43,16 +45,17 @@ pub fn this_balance(asset_id: AssetId) -> u64 {
 /// # Examples
 ///
 /// ```sway
-/// use std::{context::balance_of, constants::ZERO_B256, hash::sha256, token::mint, call_frames::contract_id};
+/// use std::{asset::mint, call_frames::contract_id, constants::DEFAULT_SUB_ID, context::balance_of};
 ///
 /// fn foo() {
-///     mint(ZERO_B256, 50);
-///     assert(balance_of(contract_id(), sha256((ZERO_B256, contract_id()))) == 50);
+///     mint(DEFAULT_SUB_ID, 50);
+///     let asset_id = AssetId::default();
+///     assert(balance_of(contract_id(), asset_id) == 50);
 /// }
 /// ```
 pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
-    asm(balance, token: asset_id.value, id: target.value) {
-        bal balance token id;
+    asm(balance, asset: asset_id.bits(), id: target.bits()) {
+        bal balance asset id;
         balance: u64
     }
 }
@@ -61,7 +64,7 @@ pub fn balance_of(target: ContractId, asset_id: AssetId) -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The amount of tokens being sent.
+/// * [u64] - The amount of coins being sent.
 ///
 /// # Examples
 ///

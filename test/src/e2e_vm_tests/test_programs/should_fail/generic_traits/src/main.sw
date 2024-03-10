@@ -93,10 +93,6 @@ impl<T> Returner<T> for Self {
     }
 }
 
-trait Setter<T> {
-    fn set(mut self, new_value: T);
-}
-
 struct Data<T> {
     value: T
 }

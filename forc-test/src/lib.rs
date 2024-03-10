@@ -10,6 +10,7 @@ use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
+use pkg::manifest::build_profile::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
@@ -53,7 +54,7 @@ pub struct TestFilter<'a> {
 }
 
 /// The result of executing a single test within a single package.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestResult {
     /// The name of the function.
     pub name: String,
@@ -124,7 +125,7 @@ pub enum PackageWithDeploymentToTest {
 
 /// The set of options provided to the `test` function.
 #[derive(Default, Clone)]
-pub struct Opts {
+pub struct TestOpts {
     pub pkg: pkg::PkgOpts,
     pub print: pkg::PrintOpts,
     pub minify: pkg::MinifyOpts,
@@ -135,11 +136,9 @@ pub struct Opts {
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     pub release: bool,
     /// Should warnings be treated as errors?
     pub error_on_warnings: bool,
@@ -147,6 +146,8 @@ pub struct Opts {
     pub time_phases: bool,
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -242,23 +243,48 @@ impl PackageWithDeploymentToTest {
     }
 }
 
+/// Returns a mapping of each member package of a build plan to its compiled contract dependencies,
+/// ordered by deployment order.
+///
+/// Each dependency package needs to be deployed before executing the test for that package.
+fn get_contract_dependency_map(
+    built: &Built,
+    build_plan: &pkg::BuildPlan,
+) -> ContractDependencyMap {
+    let built_members: HashMap<&pkg::Pinned, Arc<pkg::BuiltPackage>> =
+        built.into_members().collect();
+    // For each member node, collect their contract dependencies.
+    build_plan
+        .member_nodes()
+        .map(|member_node| {
+            let graph = build_plan.graph();
+            let pinned_member = graph[member_node].clone();
+            let contract_dependencies = build_plan
+                .contract_dependencies(member_node)
+                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                .filter_map(|pinned| built_members.get(&pinned))
+                .cloned()
+                .collect::<Vec<_>>();
+            (pinned_member, contract_dependencies)
+        })
+        .collect()
+}
+
 impl BuiltTests {
     /// Constructs a `PackageTests` from `Built`.
-    ///
-    /// `contract_dependencies` represents ordered (by deployment order) packages that needs to be deployed for each package, before executing the test.
-    pub(crate) fn from_built(
-        built: Built,
-        contract_dependencies: &ContractDependencyMap,
-    ) -> anyhow::Result<BuiltTests> {
+    pub fn from_built(built: Built, build_plan: &pkg::BuildPlan) -> anyhow::Result<BuiltTests> {
+        let contract_dependencies = get_contract_dependency_map(&built, build_plan);
         let built = match built {
             Built::Package(built_pkg) => BuiltTests::Package(PackageTests::from_built_pkg(
                 built_pkg,
-                contract_dependencies,
+                &contract_dependencies,
             )),
             Built::Workspace(built_workspace) => {
                 let pkg_tests = built_workspace
                     .into_iter()
-                    .map(|built_pkg| PackageTests::from_built_pkg(built_pkg, contract_dependencies))
+                    .map(|built_pkg| {
+                        PackageTests::from_built_pkg(built_pkg, &contract_dependencies)
+                    })
                     .collect();
                 BuiltTests::Workspace(pkg_tests)
             }
@@ -371,7 +397,7 @@ impl<'a> PackageTests {
     ///
     /// For testing contracts, storage returned from this function contains the deployed contract.
     /// For other types, default storage is returned.
-    fn setup(&self) -> anyhow::Result<TestSetup> {
+    pub fn setup(&self) -> anyhow::Result<TestSetup> {
         match self {
             PackageTests::Contract(contract_to_test) => {
                 let test_setup = contract_to_test.deploy()?;
@@ -388,7 +414,28 @@ impl<'a> PackageTests {
     }
 }
 
-impl Opts {
+impl From<TestOpts> for pkg::BuildOpts {
+    fn from(val: TestOpts) -> Self {
+        pkg::BuildOpts {
+            pkg: val.pkg,
+            print: val.print,
+            minify: val.minify,
+            binary_outfile: val.binary_outfile,
+            debug_outfile: val.debug_outfile,
+            build_target: val.build_target,
+            build_profile: val.build_profile,
+            release: val.release,
+            error_on_warnings: val.error_on_warnings,
+            time_phases: val.time_phases,
+            metrics_outfile: val.metrics_outfile,
+            tests: true,
+            member_filter: Default::default(),
+            experimental: val.experimental,
+        }
+    }
+}
+
+impl TestOpts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
         pkg::BuildOpts {
@@ -405,6 +452,7 @@ impl Opts {
             metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
+            experimental: self.experimental,
         }
     }
 }
@@ -527,30 +575,11 @@ impl BuiltTests {
 }
 
 /// First builds the package or workspace, ready for execution.
-pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.into_build_opts();
+pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
+    let build_opts = opts.into();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
     let built = pkg::build_with_options(build_opts)?;
-    let built_members: HashMap<&pkg::Pinned, Arc<BuiltPackage>> = built.into_members().collect();
-
-    // For each member node collect their contract dependencies.
-    let member_contract_dependencies: HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>> =
-        build_plan
-            .member_nodes()
-            .map(|member_node| {
-                let graph = build_plan.graph();
-                let pinned_member = graph[member_node].clone();
-                let contract_dependencies = build_plan
-                    .contract_dependencies(member_node)
-                    .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-                    .filter_map(|pinned| built_members.get(&pinned))
-                    .cloned()
-                    .collect();
-
-                (pinned_member, contract_dependencies)
-            })
-            .collect();
-    BuiltTests::from_built(built, &member_contract_dependencies)
+    BuiltTests::from_built(built, &build_plan)
 }
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
@@ -618,7 +647,7 @@ fn run_tests(
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{build, BuiltTests, Opts, TestFilter, TestResult};
+    use crate::{build, BuiltTests, TestFilter, TestOpts, TestResult};
 
     /// Name of the folder containing required data for tests to run, such as an example forc
     /// project.
@@ -640,7 +669,7 @@ mod tests {
             .join(TEST_DATA_FOLDER_NAME)
             .join(package_name);
         let library_package_dir_string = library_package_dir.to_string_lossy().to_string();
-        let build_options = Opts {
+        let build_options = TestOpts {
             pkg: forc_pkg::PkgOpts {
                 path: Some(library_package_dir_string),
                 ..Default::default()

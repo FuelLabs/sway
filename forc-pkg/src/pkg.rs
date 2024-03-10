@@ -1,14 +1,20 @@
+use crate::manifest::GenericManifestFile;
 use crate::{
     lock::Lock,
-    manifest::{BuildProfile, Dependency, ManifestFile, MemberManifestFiles, PackageManifestFile},
+    manifest::{
+        build_profile::ExperimentalFlags, Dependency, ManifestFile, MemberManifestFiles,
+        PackageManifestFile,
+    },
     source::{self, IPFSNode, Source},
+    BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
+use forc_tracing::println_warning;
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
 };
-use fuel_abi_types::program_abi;
+use fuel_abi_types::abi::program as program_abi;
 use petgraph::{
     self, dot,
     visit::{Bfs, Dfs, EdgeRef, Walker},
@@ -23,7 +29,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
+    sync::{atomic::AtomicBool, Arc},
 };
 pub use sway_core::Programs;
 use sway_core::{
@@ -41,13 +47,13 @@ use sway_core::{
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, Engines, FinalizedEntry,
+    BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
-use tracing::{info, warn};
+use tracing::{debug, info};
 
 type GraphIx = u32;
 type Node = Pinned;
@@ -101,7 +107,7 @@ pub struct BuiltPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub warnings: Vec<CompileWarning>,
-    source_map: SourceMap,
+    pub source_map: SourceMap,
     pub tree_type: TreeType,
     pub bytecode: BuiltPackageBytecode,
     /// `Some` for contract member builds where tests were included. This is
@@ -176,7 +182,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub namespace: namespace::Root,
+    pub root_module: namespace::Module,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -292,11 +298,9 @@ pub struct BuildOpts {
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     pub release: bool,
     /// Output the time elapsed over each part of the compilation process.
     pub time_phases: bool,
@@ -308,6 +312,8 @@ pub struct BuildOpts {
     pub tests: bool,
     /// The set of options to filter by member project kind.
     pub member_filter: MemberFilter,
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 /// The set of options to filter type of projects to build in a workspace.
@@ -487,7 +493,7 @@ impl BuiltPackage {
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify.clone())?;
 
-        info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
+        debug!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -574,7 +580,7 @@ impl BuildPlan {
             std::env::current_dir()?
         };
 
-        let manifest_file = ManifestFile::from_dir(&manifest_dir)?;
+        let manifest_file = ManifestFile::from_dir(manifest_dir)?;
         let member_manifests = manifest_file.member_manifests()?;
         // Check if we have members to build so that we are not trying to build an empty workspace.
         if member_manifests.is_empty() {
@@ -750,7 +756,7 @@ impl BuildPlan {
 
     /// Produce an iterator yielding all workspace member nodes in order of compilation.
     ///
-    /// In the case that this `BuildPlan` was constructed for a single package,
+    /// In the case that this [BuildPlan] was constructed for a single package,
     /// only that package's node will be yielded.
     pub fn member_nodes(&self) -> impl Iterator<Item = NodeIx> + '_ {
         self.compilation_order()
@@ -1551,14 +1557,18 @@ pub fn sway_build_config(
         manifest_dir.to_path_buf(),
         build_target,
     )
-    .print_dca_graph(build_profile.print_dca_graph.clone())
-    .print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
-    .print_finalized_asm(build_profile.print_finalized_asm)
-    .print_intermediate_asm(build_profile.print_intermediate_asm)
-    .print_ir(build_profile.print_ir)
-    .include_tests(build_profile.include_tests)
-    .time_phases(build_profile.time_phases)
-    .metrics(build_profile.metrics_outfile.clone());
+    .with_print_dca_graph(build_profile.print_dca_graph.clone())
+    .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
+    .with_print_finalized_asm(build_profile.print_finalized_asm)
+    .with_print_intermediate_asm(build_profile.print_intermediate_asm)
+    .with_print_ir(build_profile.print_ir)
+    .with_include_tests(build_profile.include_tests)
+    .with_time_phases(build_profile.time_phases)
+    .with_metrics(build_profile.metrics_outfile.clone())
+    .with_optimization_level(build_profile.optimization_level)
+    .with_experimental(sway_core::ExperimentalFlags {
+        new_encoding: build_profile.experimental.new_encoding,
+    });
     Ok(build_config)
 }
 
@@ -1584,19 +1594,25 @@ pub fn dependency_namespace(
     node: NodeIx,
     engines: &Engines,
     contract_id_value: Option<ContractIdConst>,
-) -> Result<namespace::Module, vec1::Vec1<CompileError>> {
+    experimental: sway_core::ExperimentalFlags,
+) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
-    let mut namespace = if let Some(contract_id_value) = contract_id_value {
-        namespace::Module::default_with_contract_id(engines, name.clone(), contract_id_value)?
+    let mut root_module = if let Some(contract_id_value) = contract_id_value {
+        namespace::Module::default_with_contract_id(
+            engines,
+            name.clone(),
+            contract_id_value,
+            experimental,
+        )?
     } else {
         namespace::Module::default()
     };
 
-    namespace.is_external = true;
-    namespace.name = name;
-    namespace.visibility = Visibility::Public;
+    root_module.is_external = true;
+    root_module.name = name;
+    root_module.visibility = Visibility::Public;
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1623,6 +1639,7 @@ pub fn dependency_namespace(
                     engines,
                     name.clone(),
                     contract_id_value,
+                    experimental,
                 )?;
                 ns.is_external = true;
                 ns.name = name;
@@ -1630,7 +1647,7 @@ pub fn dependency_namespace(
                 ns
             }
         };
-        namespace.insert_submodule(dep_name, dep_namespace);
+        root_module.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1641,29 +1658,29 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            namespace.insert_submodule(CORE.to_string(), core_namespace.clone());
+            root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
         }
     }
 
-    let _ = namespace.star_import_with_reexports(
+    let mut root = namespace::Root::from(root_module);
+
+    let _ = root.star_import_with_reexports(
         &Handler::default(),
+        engines,
         &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
         &[],
-        engines,
-        true,
     );
 
     if has_std_dep(graph, node) {
-        let _ = namespace.star_import_with_reexports(
+        let _ = root.star_import_with_reexports(
             &Handler::default(),
+            engines,
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
-            engines,
-            true,
         );
     }
 
-    Ok(namespace)
+    Ok(root)
 }
 
 /// Find the `std` dependency, if it is a direct one, of the given node.
@@ -1740,7 +1757,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: namespace::Module,
+    namespace: namespace::Root,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
@@ -1776,6 +1793,7 @@ pub fn compile(
             namespace,
             Some(&sway_build_config),
             &pkg.name,
+            None,
         ),
         Some(sway_build_config.clone()),
         metrics
@@ -1797,7 +1815,7 @@ pub fn compile(
     let storage_slots = typed_program.storage_slots.clone();
     let tree_type = typed_program.kind.tree_type();
 
-    let namespace = typed_program.root.namespace.clone().into();
+    let namespace = typed_program.root.namespace.clone();
 
     if handler.has_errors() {
         return fail(handler);
@@ -1810,6 +1828,8 @@ pub fn compile(
         Some(sway_build_config.clone()),
         metrics
     );
+
+    const NEW_ENCODING_VERSION: &str = "1";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
@@ -1824,7 +1844,11 @@ pub fn compile(
                     },
                     engines.te(),
                     engines.de(),
-                    &mut types
+                    &mut types,
+                    profile
+                        .experimental
+                        .new_encoding
+                        .then(|| NEW_ENCODING_VERSION.into()),
                 ),
                 Some(sway_build_config.clone()),
                 metrics
@@ -1916,7 +1940,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        namespace,
+        root_module: namespace.root_module().clone(),
         warnings,
         metrics,
     };
@@ -2020,51 +2044,38 @@ pub const SWAY_BIN_ROOT_SUFFIX: &str = "-bin-root";
 fn build_profile_from_opts(
     build_profiles: &HashMap<String, BuildProfile>,
     build_options: &BuildOpts,
-) -> Result<(String, BuildProfile)> {
+) -> Result<BuildProfile> {
     let BuildOpts {
         pkg,
         print,
+        time_phases,
         build_profile,
         release,
-        time_phases,
         metrics_outfile,
         tests,
         error_on_warnings,
+        experimental,
         ..
     } = build_options;
-    let mut selected_build_profile = BuildProfile::DEBUG;
 
-    match &build_profile {
-        Some(build_profile) => {
-            if *release {
-                warn!(
-                    "You specified both {} and 'release' profiles. Using the 'release' profile",
-                    build_profile
-                );
-                selected_build_profile = BuildProfile::RELEASE;
-            } else {
-                selected_build_profile = build_profile;
-            }
-        }
-        None => {
-            if *release {
-                selected_build_profile = BuildProfile::RELEASE;
-            }
-        }
-    }
+    let selected_profile_name = match release {
+        true => BuildProfile::RELEASE,
+        false => build_profile,
+    };
 
     // Retrieve the specified build profile
     let mut profile = build_profiles
-        .get(selected_build_profile)
+        .get(selected_profile_name)
         .cloned()
         .unwrap_or_else(|| {
-            warn!(
-                "provided profile option {} is not present in the manifest file. \
+            println_warning(&format!(
+                "The provided profile option {} is not present in the manifest file. \
             Using default profile.",
-                selected_build_profile
-            );
+                selected_profile_name
+            ));
             Default::default()
         });
+    profile.name = selected_profile_name.into();
     profile.print_ast |= print.ast;
     if profile.print_dca_graph.is_none() {
         profile.print_dca_graph = print.dca_graph.clone();
@@ -2083,8 +2094,22 @@ fn build_profile_from_opts(
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
+    profile.experimental = ExperimentalFlags {
+        new_encoding: experimental.new_encoding,
+    };
 
-    Ok((selected_build_profile.to_string(), profile))
+    Ok(profile)
+}
+
+/// Returns a formatted string of the selected build profile and targets.
+fn profile_target_string(profile_name: &str, build_target: &BuildTarget) -> String {
+    let mut targets = vec![format!("{build_target}")];
+    match profile_name {
+        BuildProfile::DEBUG => targets.insert(0, "unoptimized".into()),
+        BuildProfile::RELEASE => targets.insert(0, "optimized".into()),
+        _ => {}
+    };
+    format!("{profile_name} [{}] target(s)", targets.join(" + "))
 }
 
 /// Check if the given node is a contract dependency of any node in the graph.
@@ -2103,6 +2128,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         pkg,
         build_target,
         member_filter,
+        experimental,
         ..
     } = &build_options;
 
@@ -2125,7 +2151,7 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .find(|&pkg_manifest| pkg_manifest.dir() == path);
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
     // Get the selected build profile using build options
-    let (profile_name, build_profile) = build_profile_from_opts(&build_profiles, &build_options)?;
+    let build_profile = build_profile_from_opts(&build_profiles, &build_options)?;
     // If this is a workspace we want to have all members in the output.
     let outputs = match curr_manifest {
         Some(pkg_manifest) => std::iter::once(
@@ -2142,20 +2168,32 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
     // Build it!
     let mut built_workspace = Vec::new();
     let build_start = std::time::Instant::now();
-    let built_packages = build(&build_plan, *build_target, &build_profile, &outputs)?;
+    let built_packages = build(
+        &build_plan,
+        *build_target,
+        &build_profile,
+        &outputs,
+        sway_core::ExperimentalFlags {
+            new_encoding: experimental.new_encoding,
+        },
+    )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
 
     let finished = ansi_term::Colour::Green.bold().paint("Finished");
-    info!("  {finished} {profile_name} in {:?}", build_start.elapsed());
+    info!(
+        "  {finished} {} in {:.2}s",
+        profile_target_string(&build_profile.name, build_target),
+        build_start.elapsed().as_secs_f32()
+    );
     for (node_ix, built_package) in built_packages.into_iter() {
         print_pkg_summary_header(&built_package);
         let pinned = &graph[node_ix];
         let pkg_manifest = manifest_map
             .get(&pinned.id())
             .ok_or_else(|| anyhow!("Couldn't find member manifest for {}", pinned.name))?;
-        let output_dir = output_dir
-            .clone()
-            .unwrap_or_else(|| default_output_directory(pkg_manifest.dir()).join(&profile_name));
+        let output_dir = output_dir.clone().unwrap_or_else(|| {
+            default_output_directory(pkg_manifest.dir()).join(&build_profile.name)
+        });
         // Output artifacts for the built package
         if let Some(outfile) = &binary_outfile {
             built_package.write_bytecode(outfile.as_ref())?;
@@ -2190,7 +2228,7 @@ fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
     let name_ansi = ansi_term::Style::new()
         .bold()
         .paint(&built_pkg.descriptor.name);
-    info!("{padding}{ty_ansi} {name_ansi}");
+    debug!("{padding}{ty_ansi} {name_ansi}");
 }
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
@@ -2241,6 +2279,7 @@ pub fn build(
     target: BuildTarget,
     profile: &BuildProfile,
     outputs: &HashSet<NodeIx>,
+    experimental: sway_core::ExperimentalFlags,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
     let mut built_packages = Vec::new();
 
@@ -2319,6 +2358,7 @@ pub fn build(
                 node,
                 &engines,
                 None,
+                experimental,
             ) {
                 Ok(o) => o,
                 Err(errs) => return fail(&[], &errs),
@@ -2382,6 +2422,7 @@ pub fn build(
             node,
             &engines,
             contract_id_value.clone(),
+            experimental,
         ) {
             Ok(o) => o,
             Err(errs) => {
@@ -2412,9 +2453,9 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            let mut namespace = namespace::Module::from(compiled.namespace);
-            namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-            lib_namespace_map.insert(node, namespace);
+            let mut root_module = compiled.root_module;
+            root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
+            lib_namespace_map.insert(node, root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2575,12 +2616,16 @@ fn update_json_type_declaration(
 /// Compile the entire forc package and return the lexed, parsed and typed programs
 /// of the dependencies and project.
 /// The final item in the returned vector is the project.
+#[allow(clippy::too_many_arguments)]
 pub fn check(
     plan: &BuildPlan,
     build_target: BuildTarget,
     terse_mode: bool,
+    lsp_mode: Option<LspConfig>,
     include_tests: bool,
     engines: &Engines,
+    retrigger_compilation: Option<Arc<AtomicBool>>,
+    experimental: sway_core::ExperimentalFlags,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
     let mut lib_namespace_map = Default::default();
     let mut source_map = SourceMap::new();
@@ -2611,6 +2656,7 @@ pub fn check(
             node,
             engines,
             contract_id_value,
+            experimental,
         )
         .expect("failed to create dependency namespace");
 
@@ -2625,7 +2671,8 @@ pub fn check(
             build_target,
             &profile,
         )?
-        .include_tests(include_tests);
+        .with_include_tests(include_tests)
+        .with_lsp_mode(lsp_mode.clone());
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
@@ -2636,7 +2683,16 @@ pub fn check(
             dep_namespace,
             Some(&build_config),
             &pkg.name,
+            retrigger_compilation.clone(),
         );
+
+        if retrigger_compilation
+            .as_ref()
+            .map(|b| b.load(std::sync::atomic::Ordering::SeqCst))
+            .unwrap_or(false)
+        {
+            bail!("compilation was retriggered")
+        }
 
         let programs = match programs_res.as_ref() {
             Ok(programs) => programs,
@@ -2649,9 +2705,9 @@ pub fn check(
         match programs.typed.as_ref() {
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
-                    let mut namespace = typed_program.root.namespace.clone();
-                    namespace.name = Some(Ident::new_no_span(pkg.name.clone()));
-                    namespace.span = Some(
+                    let mut module = typed_program.root.namespace.module().clone();
+                    module.name = Some(Ident::new_no_span(pkg.name.clone()));
+                    module.span = Some(
                         Span::new(
                             manifest.entry_string()?,
                             0,
@@ -2660,7 +2716,7 @@ pub fn check(
                         )
                         .unwrap(),
                     );
-                    lib_namespace_map.insert(node, namespace.module().clone());
+                    lib_namespace_map.insert(node, module);
                 }
 
                 source_map.insert_dependency(manifest.dir());
@@ -2729,7 +2785,7 @@ mod test {
             .parent()
             .unwrap()
             .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
-        let manifest_file = ManifestFile::from_dir(&manifest_dir).unwrap();
+        let manifest_file = ManifestFile::from_dir(manifest_dir).unwrap();
         let member_manifests = manifest_file.member_manifests().unwrap();
         let lock_path = manifest_file.lock_path().unwrap();
         BuildPlan::from_lock_and_manifests(

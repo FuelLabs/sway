@@ -22,6 +22,15 @@ pub struct TypeEngine {
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
 }
 
+impl Clone for TypeEngine {
+    fn clone(&self) -> Self {
+        TypeEngine {
+            slab: self.slab.clone(),
+            id_map: RwLock::new(self.id_map.read().unwrap().clone()),
+        }
+    }
+}
+
 impl TypeEngine {
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
@@ -63,14 +72,18 @@ impl TypeEngine {
     pub fn clear_module(&mut self, module_id: &ModuleId) {
         self.slab.retain(|_, tsi| match tsi.source_id {
             Some(source_id) => &source_id.module_id() != module_id,
-            None => false,
+            // WARNING: Setting to true disables garbage collection for these cases.
+            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
+            None => true,
         });
         self.id_map
             .write()
             .unwrap()
             .retain(|tsi, _| match tsi.source_id {
                 Some(source_id) => &source_id.module_id() != module_id,
-                None => false,
+                // WARNING: Setting to true disables garbage collection for these cases.
+                // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
+                None => true,
             });
     }
 
@@ -92,6 +105,18 @@ impl TypeEngine {
         match &*tsi.type_info {
             TypeInfo::Alias { ty, .. } => self.get_unaliased(ty.type_id),
             _ => tsi.type_info.clone(),
+        }
+    }
+
+    /// Performs a lookup of `id` into the [TypeEngine] recursing when finding a
+    /// [TypeInfo::Alias].
+    pub fn get_unaliased_type_id(&self, id: TypeId) -> TypeId {
+        // A slight infinite loop concern if we somehow have self-referential aliases, but that
+        // shouldn't be possible.
+        let tsi = self.slab.get(id.index());
+        match &*tsi.type_info {
+            TypeInfo::Alias { ty, .. } => self.get_unaliased_type_id(ty.type_id),
+            _ => id,
         }
     }
 
@@ -208,15 +233,21 @@ impl TypeEngine {
                         received: engines.help_out(received).to_string(),
                         help_text: help_text.to_string(),
                         span: span.clone(),
+                        internal: format!(
+                            "expected:[{:?}]; received:[{:?}]",
+                            engines.help_out(expected),
+                            engines.help_out(received),
+                        ),
                     }));
                 }
             }
             return;
         }
+
         let h = Handler::default();
         let unifier = Unifier::new(engines, help_text, unify_kind);
-
         unifier.unify(handler, received, expected, span);
+
         match err_override {
             Some(err_override) if h.has_errors() => {
                 handler.emit_err(err_override);
@@ -263,6 +294,7 @@ impl TypeEngine {
             TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Ref(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)
@@ -318,6 +350,7 @@ impl TypeEngine {
             TypeInfo::Ref(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
 
             TypeInfo::Unknown
+            | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Placeholder(..)
             | TypeInfo::TypeParam(..)

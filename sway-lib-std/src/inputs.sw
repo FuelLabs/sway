@@ -3,10 +3,12 @@
 library;
 
 use ::address::Address;
+use ::alloc::alloc_bytes;
 use ::assert::assert;
+use ::asset_id::AssetId;
 use ::bytes::Bytes;
 use ::constants::BASE_ASSET_ID;
-use ::contract_id::{AssetId, ContractId};
+use ::contract_id::ContractId;
 use ::option::Option::{self, *};
 use ::revert::revert;
 use ::tx::{
@@ -410,12 +412,11 @@ pub fn input_predicate(index: u64) -> Bytes {
         revert(0);
     };
     let length = wrapped.unwrap().as_u64();
-    let mut data_bytes = Bytes::with_capacity(length);
+    let new_ptr = alloc_bytes(length);
     match input_predicate_pointer(index) {
         Some(d) => {
-            data_bytes.len = length;
-            d.copy_bytes_to(data_bytes.buf.ptr, length);
-            data_bytes
+            d.copy_bytes_to(new_ptr, length);
+            Bytes::from(raw_slice::from_parts::<u8>(new_ptr, length))
         },
         None => revert(0),
     }
@@ -609,10 +610,10 @@ pub fn input_message_data(index: u64, offset: u64) -> Bytes {
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
     let data_with_offset = data.add_uint_offset(offset);
     let length = input_message_data_length(index).as_u64();
-    let mut data_bytes = Bytes::with_capacity(length);
-    data_bytes.len = length;
-    data_with_offset.copy_bytes_to(data_bytes.buf.ptr, length);
-    data_bytes
+    let new_ptr = alloc_bytes(length);
+
+    data_with_offset.copy_bytes_to(new_ptr, length);
+    Bytes::from(raw_slice::from_parts::<u8>(new_ptr, length))
 }
 
 fn valid_input_type(index: u64, expected_type: Input) -> bool {

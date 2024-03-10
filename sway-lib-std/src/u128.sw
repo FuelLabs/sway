@@ -32,9 +32,11 @@ impl From<(u64, u64)> for U128 {
             lower: components.1,
         }
     }
+}
 
-    fn into(self) -> (u64, u64) {
-        (self.upper, self.lower)
+impl From<U128> for (u64, u64) {
+    fn from(val: U128) -> (u64, u64) {
+        (val.upper, val.lower)
     }
 }
 
@@ -82,7 +84,7 @@ impl u64 {
     ///     let y = u64::max();
     ///     let z = x.overflowing_add(y);
     ///
-    ///     assert(z == U128 { upper: 1, lower: 18446744073709551614 });
+    ///     assert(z == U128::from(1, 18446744073709551614));
     /// }
     /// ```
     pub fn overflowing_add(self, right: Self) -> U128 {
@@ -129,7 +131,7 @@ impl u64 {
     ///     let y = u64::max();
     ///     let z = x.overflowing_mul(y);
     ///
-    ///     assert(z == U128 { upper: 18446744073709551615, lower: 1 });
+    ///     assert(z == U128::from(18446744073709551615, 1));
     /// }
     /// ```
     pub fn overflowing_mul(self, right: Self) -> U128 {
@@ -173,7 +175,7 @@ impl U128 {
     ///
     /// fn foo() {
     ///     let new_u128 = U128::new();
-    ///     let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///     let zero_u128 = U128::from(0, 0);
     ///
     ///     assert(new_u128 == zero_u128);
     /// }
@@ -201,7 +203,7 @@ impl U128 {
     /// use std::u128::{U128, U128Error};
     ///
     /// fn foo() {
-    ///     let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///     let zero_u128 = U128::from(0, 0);
     ///     let zero_u64 = zero_u128.as_u64().unwrap();
     ///
     ///     assert(zero_u64 == 0);
@@ -232,7 +234,7 @@ impl U128 {
     ///
     /// fn foo() {
     ///     let min_u128 = U128::min();
-    ///     let zero_u128 = U128 { upper: 0, lower: 0 };
+    ///     let zero_u128 = U128::from(0, 0);
     ///
     ///     assert(min_u128 == zero_u128);
     /// }
@@ -257,7 +259,7 @@ impl U128 {
     ///
     /// fn foo() {
     ///     let max_u128 = U128::max();
-    ///     let maxed_u128 = U128 { upper: u64::max(), lower: u64::max() };
+    ///     let maxed_u128 = U128::from(u64::max(), u64::max());
     ///
     ///     assert(max_u128 == maxed_u128);
     /// }
@@ -288,6 +290,48 @@ impl U128 {
     /// ```
     pub fn bits() -> u32 {
         128
+    }
+
+    /// Returns the underlying upper u64 representing the most significant 64 bits of the `U128`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The most significant 64 bits of the `U128`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let maxed_u128 = U128::from(u64::max(), u64::min());
+    ///
+    ///     assert(maxed_u128.upper() == u64::max());
+    /// }
+    /// ```
+    pub fn upper(self) -> u64 {
+        self.upper
+    }
+
+    /// Returns the underlying lower u64 representing the least significant 64 bits of the `U128`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The least significant 64 bits of the `U128`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let maxed_u128 = U128::from(u64::max(), u64::min());
+    ///
+    ///     assert(maxed_u128.lower() == u64::min());
+    /// }
+    /// ```
+    pub fn lower(self) -> u64 {
+        self.lower
     }
 }
 

@@ -9,3 +9,4 @@ pub mod primitive_conversions;
 pub mod never;
 pub mod r#storage;
 pub mod prelude;
+pub mod codec;

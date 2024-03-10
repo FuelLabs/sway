@@ -2,13 +2,14 @@
 
 use sway_types::SourceEngine;
 
-use crate::{context::Context, error::IrError};
+use crate::{context::Context, error::IrError, ExperimentalFlags};
 
 // -------------------------------------------------------------------------------------------------
 /// Parse a string produced by [`crate::printer::to_string`] into a new [`Context`].
 pub fn parse<'eng>(
     input: &str,
     source_engine: &'eng SourceEngine,
+    experimental: ExperimentalFlags,
 ) -> Result<Context<'eng>, IrError> {
     let irmod = ir_builder::parser::ir_descrs(input).map_err(|err| {
         let found = if input.len() - err.location.offset <= 20 {
@@ -18,7 +19,7 @@ pub fn parse<'eng>(
         };
         IrError::ParseFailure(err.to_string(), found.into())
     })?;
-    ir_builder::build_context(irmod, source_engine)?.verify()
+    ir_builder::build_context(irmod, source_engine, experimental)?.verify()
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -202,6 +203,7 @@ mod ir_builder {
                 / op_read_register()
                 / op_ret()
                 / op_revert()
+                / op_jmp_mem()
                 / op_smo()
                 / op_state_load_quad_word()
                 / op_state_load_word()
@@ -359,6 +361,11 @@ mod ir_builder {
             rule op_revert() -> IrAstOperation
                 = "revert" _ vn:id() {
                     IrAstOperation::Revert(vn)
+                }
+
+            rule op_jmp_mem() -> IrAstOperation
+                = "jmp_mem" _ {
+                    IrAstOperation::JmpMem
                 }
 
             rule op_smo() -> IrAstOperation
@@ -651,7 +658,7 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, Instruction, UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, ExperimentalFlags, Instruction, UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -721,6 +728,7 @@ mod ir_builder {
         ReadRegister(String),
         Ret(IrAstTy, String),
         Revert(String),
+        JmpMem,
         Smo(String, String, String, String),
         StateClear(String, String),
         StateLoadQuadWord(String, String, String),
@@ -916,8 +924,9 @@ mod ir_builder {
     pub(super) fn build_context(
         ir_ast_mod: IrAstModule,
         source_engine: &SourceEngine,
+        experimental: ExperimentalFlags,
     ) -> Result<Context, IrError> {
-        let mut ctx = Context::new(source_engine);
+        let mut ctx = Context::new(source_engine, experimental);
         let md_map = build_metadata_map(&mut ctx, ir_ast_mod.metadata);
         let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
@@ -1236,7 +1245,7 @@ mod ir_builder {
                             .append(context)
                             .contract_call(
                                 ir_ty,
-                                name,
+                                Some(name),
                                 *val_map.get(&params).unwrap(),
                                 *val_map.get(&coins).unwrap(),
                                 *val_map.get(&asset_id).unwrap(),
@@ -1341,6 +1350,10 @@ mod ir_builder {
                     IrAstOperation::Revert(ret_val_name) => block
                         .append(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::JmpMem => block
+                        .append(context)
+                        .jmp_mem()
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::Smo(recipient, message, message_size, coins) => block
                         .append(context)

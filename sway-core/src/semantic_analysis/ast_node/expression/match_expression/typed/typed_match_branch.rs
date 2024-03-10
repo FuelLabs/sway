@@ -13,10 +13,9 @@ use crate::{
     },
     language::{
         parsed::MatchBranch,
-        ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars},
+        ty::{self, MatchBranchCondition, MatchedOrVariantIndexVars, TyExpression},
     },
     semantic_analysis::*,
-    types::DeterministicallyAborts,
     Engines, TypeArgument, TypeInfo, UnifyCheck,
 };
 
@@ -42,7 +41,6 @@ impl ty::TyMatchBranch {
         let instantiate = Instantiate::new(ctx.engines, branch_span.clone());
 
         let type_engine = ctx.engines.te();
-        let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
 
         // type check the scrutinee
@@ -87,85 +85,100 @@ impl ty::TyMatchBranch {
             )?;
 
         // create a new namespace for this branch result
-        let mut namespace = ctx.namespace.clone();
-        let mut branch_ctx = ctx.scoped(&mut namespace);
+        ctx.scoped(|mut scoped_ctx| {
+            // for every variable that comes into result block, create a variable declaration,
+            // insert it into the branch namespace, and add it to the block of code statements
+            let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
 
-        // for every variable that comes into result block, create a variable declaration,
-        // insert it into the branch namespace, and add it to the block of code statements
-        let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
-
-        for (var_ident, var_body) in result_var_declarations {
-            let var_decl = instantiate.var_decl(var_ident.clone(), var_body.clone());
-            let _ = branch_ctx.insert_symbol(handler, var_ident.clone(), var_decl.clone());
-            code_block_contents.push(ty::TyAstNode {
-                content: ty::TyAstNodeContent::Declaration(var_decl),
-                span: var_ident.span(),
-            });
-        }
-
-        // type check the branch result
-        let typed_result = {
-            let ctx = branch_ctx.by_ref().with_type_annotation(type_engine.insert(
-                engines,
-                TypeInfo::Unknown,
-                None,
-            ));
-            ty::TyExpression::type_check(handler, ctx, result)?
-        };
-
-        // unify the return type from the typed result with the type annotation
-        if !typed_result.deterministically_aborts(decl_engine, true) {
-            branch_ctx.unify_with_type_annotation(
-                handler,
-                typed_result.return_type,
-                &typed_result.span,
-            );
-        }
-
-        // if the typed branch result is a code block, then add the contents
-        // of that code block to the block of code statements that we are already
-        // generating. if the typed branch result is not a code block, then add
-        // the typed branch result as an ast node to the block of code statements
-        let ty::TyExpression {
-            expression: typed_result_expression_variant,
-            return_type: typed_result_return_type,
-            span: typed_result_span,
-        } = typed_result;
-        match typed_result_expression_variant {
-            ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { mut contents, .. }) => {
-                code_block_contents.append(&mut contents);
-            }
-            typed_result_expression_variant => {
+            for (var_ident, var_body) in result_var_declarations {
+                let var_decl = instantiate.var_decl(var_ident.clone(), var_body.clone());
+                let _ = scoped_ctx.insert_symbol(handler, var_ident.clone(), var_decl.clone());
                 code_block_contents.push(ty::TyAstNode {
-                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                        expression: typed_result_expression_variant,
-                        return_type: typed_result_return_type,
-                        span: typed_result_span.clone(),
-                    }),
-                    span: typed_result_span.clone(),
+                    content: ty::TyAstNodeContent::Declaration(var_decl),
+                    span: var_ident.span(),
                 });
             }
-        }
 
-        // assemble a new branch result that includes both the variable declarations
-        // that we create and the typed result from the original untyped branch
-        let new_result = ty::TyExpression {
-            expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                contents: code_block_contents,
-                whole_block_span: sway_types::Span::dummy(),
-            }),
-            return_type: typed_result.return_type,
-            span: typed_result_span,
-        };
+            // type check the branch result
+            let typed_result = {
+                // If there is an expectation coming from the context via `ctx.type_annotation()` we need
+                // to pass that contextual requirement to the branch in order to provide more specific contextual
+                // information. E.g., that `Option<u8>` is expected.
+                // But at the same time, we do not want to unify during type checking with that contextual information
+                // at this stage, because the branch might get `TypeInfo::Unknown` as the expectation and diverge
+                // at the same time. The divergence would unify `TypeInfo::Never` and `Unknown` in that case, leaving
+                // `Never` as the expected type for the subsequent branches.
+                // In order to pass the contextual information, but not to affect the original type with potential
+                // unwanted unification with `Never`, we create a copies of the `ctx.type_annotation()` type and pass
+                // it as the expectation to the branch.
+                let type_annotation = (*type_engine.get(scoped_ctx.type_annotation())).clone();
+                let branch_ctx = scoped_ctx.by_ref().with_type_annotation(type_engine.insert(
+                    engines,
+                    type_annotation,
+                    None,
+                ));
+                ty::TyExpression::type_check(handler, branch_ctx, result)?
+            };
 
-        let typed_branch = ty::TyMatchBranch {
-            matched_or_variant_index_vars: or_variant_vars,
-            condition,
-            result: new_result,
-            span: branch_span,
-        };
+            // Check if return type is Never if it is we don't unify as it would replace the Unknown annotation with Never.
+            if !matches!(*type_engine.get(typed_result.return_type), TypeInfo::Never) {
+                // unify the return type from the typed result with the type annotation
+                // Note here that the `scoped_ctx` is actually the original `ctx` just scoped
+                // to the `namespace`, thus, having the same original type annotation.
+                // This unification is also the mechanism for carrying the type of a branch to
+                // the subsequent branch. It potentially alters the type behind the `ctx.type_annotation()`
+                // which will then be picked by the next branch.
+                scoped_ctx.unify_with_type_annotation(
+                    handler,
+                    typed_result.return_type,
+                    &typed_result.span,
+                );
+            }
 
-        Ok((typed_branch, typed_scrutinee))
+            // if the typed branch result is a code block, then add the contents
+            // of that code block to the block of code statements that we are already
+            // generating. if the typed branch result is not a code block, then add
+            // the typed branch result as an ast node to the block of code statements
+            let typed_result_return_type = typed_result.return_type;
+            let typed_result_span = typed_result.span.clone();
+            match typed_result.expression {
+                ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock { mut contents, .. }) => {
+                    code_block_contents.append(&mut contents);
+                }
+                _ => {
+                    code_block_contents.push(ty::TyAstNode {
+                        content: ty::TyAstNodeContent::Expression(TyExpression {
+                            return_type: typed_result_return_type,
+                            span: typed_result_span.clone(),
+                            expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(
+                                typed_result,
+                            )),
+                        }),
+                        span: typed_result_span.clone(),
+                    });
+                }
+            }
+
+            // assemble a new branch result that includes both the variable declarations
+            // that we create and the typed result from the original untyped branch
+            let new_result = ty::TyExpression {
+                expression: ty::TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                    contents: code_block_contents,
+                    whole_block_span: sway_types::Span::dummy(),
+                }),
+                return_type: typed_result_return_type,
+                span: typed_result_span,
+            };
+
+            let typed_branch = ty::TyMatchBranch {
+                matched_or_variant_index_vars: or_variant_vars,
+                condition,
+                result: new_result,
+                span: branch_span,
+            };
+
+            Ok((typed_branch, typed_scrutinee))
+        })
     }
 }
 
@@ -638,16 +651,21 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                 }
 
                 // Add the implicit return tuple that captures the values of the variables.
+                let ret_expr = ty::TyExpression {
+                    expression: ty::TyExpressionVariant::Tuple {
+                        fields: vars_in_alternative
+                            .into_iter()
+                            .map(|(_, exp)| exp)
+                            .collect(),
+                    },
+                    return_type: tuple_type,
+                    span: instantiate.dummy_span(),
+                };
                 code_block_contents.push(ty::TyAstNode {
-                    content: ty::TyAstNodeContent::ImplicitReturnExpression(ty::TyExpression {
-                        expression: ty::TyExpressionVariant::Tuple {
-                            fields: vars_in_alternative
-                                .into_iter()
-                                .map(|(_, exp)| exp)
-                                .collect(),
-                        },
-                        return_type: tuple_type,
-                        span: instantiate.dummy_span(),
+                    content: ty::TyAstNodeContent::Expression(ty::TyExpression {
+                        return_type: ret_expr.return_type,
+                        span: ret_expr.span.clone(),
+                        expression: ty::TyExpressionVariant::ImplicitReturn(Box::new(ret_expr)),
                     }),
                     span: instantiate.dummy_span(),
                 });

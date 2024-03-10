@@ -1,5 +1,5 @@
 use crate::{
-    language::{ty, CallPath, Visibility},
+    language::{ty, ty::TyTraitItem, CallPath, Visibility},
     Engines, Ident, TypeId,
 };
 
@@ -42,11 +42,10 @@ pub struct Namespace {
 
 impl Namespace {
     /// Initialise the namespace at its root from the given initial namespace.
-    pub fn init_root(init: Module) -> Self {
-        let root = Root::from(init.clone());
+    pub fn init_root(root: Root) -> Self {
         let mod_path = vec![];
         Self {
-            init,
+            init: root.module.clone(),
             root,
             mod_path,
         }
@@ -70,25 +69,121 @@ impl Namespace {
         &self.root
     }
 
-    /// A mutable reference to the root of the project namespace.
-    pub fn root_mut(&mut self) -> &mut Root {
-        &mut self.root
+    pub fn root_module(&self) -> &Module {
+        &self.root.module
+    }
+
+    /// The name of the root module
+    pub fn root_module_name(&self) -> &Option<Ident> {
+        &self.root.module.name
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
-    ///
-    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
-    /// to call any [Module] methods.
     pub fn module(&self) -> &Module {
         &self.root.module[&self.mod_path]
     }
 
     /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
-    ///
-    /// Note that the [Namespace] will automatically dereference to this [Module] when attempting
-    /// to call any [Module] methods.
     pub fn module_mut(&mut self) -> &mut Module {
         &mut self.root.module[&self.mod_path]
+    }
+
+    pub fn check_absolute_path_to_submodule(
+        &self,
+        handler: &Handler,
+        path: &[Ident],
+    ) -> Result<&Module, ErrorEmitted> {
+        self.root.module.check_submodule(handler, path)
+    }
+
+    /// Returns true if the current module being checked is a direct or indirect submodule of
+    /// the module given by the `absolute_module_path`.
+    ///
+    /// The current module being checked is determined by `mod_path`.
+    ///
+    /// E.g., the `mod_path` `[fist, second, third]` of the root `foo` is a submodule of the module
+    /// `[foo, first]`. Note that the `mod_path` does not contain the root name, while the
+    /// `absolute_module_path` always contains it.
+    ///
+    /// If the current module being checked is the same as the module given by the `absolute_module_path`,
+    /// the `true_if_same` is returned.
+    pub(crate) fn module_is_submodule_of(
+        &self,
+        absolute_module_path: &Path,
+        true_if_same: bool,
+    ) -> bool {
+        // `mod_path` does not contain the root name, so we have to separately check
+        // that the root name is equal to the module package name.
+        let root_name = match &self.root.module.name {
+            Some(name) => name,
+            None => panic!("Root module must always have a name."),
+        };
+
+        let (package_name, modules) = absolute_module_path.split_first().expect("Absolute module path must have at least one element, because it always contains the package name.");
+
+        if root_name != package_name {
+            return false;
+        }
+
+        if self.mod_path.len() < modules.len() {
+            return false;
+        }
+
+        let is_submodule = modules
+            .iter()
+            .zip(self.mod_path.iter())
+            .all(|(left, right)| left == right);
+
+        if is_submodule {
+            if self.mod_path.len() == modules.len() {
+                true_if_same
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    }
+
+    /// Returns true if the module given by the `absolute_module_path` is external
+    /// to the current package. External modules are imported in the `Forc.toml` file.
+    pub(crate) fn module_is_external(&self, absolute_module_path: &Path) -> bool {
+        let root_name = match &self.root.module.name {
+            Some(name) => name,
+            None => panic!("Root module must always have a name."),
+        };
+
+        assert!(!absolute_module_path.is_empty(), "Absolute module path must have at least one element, because it always contains the package name.");
+
+        root_name != &absolute_module_path[0]
+    }
+
+    pub fn get_root_trait_item_for_type(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        name: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+    ) -> Result<TyTraitItem, ErrorEmitted> {
+        self.root
+            .module
+            .current_items()
+            .implemented_traits
+            .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
+    }
+
+    pub fn resolve_root_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &Path,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.root
+            .module
+            .resolve_symbol(handler, engines, mod_path, symbol, self_type)
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
@@ -100,6 +195,7 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.root
+            .module
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
@@ -112,6 +208,7 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.root
+            .module
             .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
@@ -128,7 +225,10 @@ impl Namespace {
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.submodules.entry(mod_name.to_string()).or_insert(init);
+        self.module_mut()
+            .submodules
+            .entry(mod_name.to_string())
+            .or_insert(init);
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
@@ -136,26 +236,15 @@ impl Namespace {
             .chain(Some(mod_name.clone()))
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
-        self.name = Some(mod_name);
-        self.span = Some(module_span);
-        self.visibility = visibility;
-        self.is_external = false;
+        // self.module() now refers to a different module, so refetch
+        let new_module = self.module_mut();
+        new_module.name = Some(mod_name);
+        new_module.span = Some(module_span);
+        new_module.visibility = visibility;
+        new_module.is_external = false;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
         }
-    }
-}
-
-impl std::ops::Deref for Namespace {
-    type Target = Module;
-    fn deref(&self) -> &Self::Target {
-        self.module()
-    }
-}
-
-impl std::ops::DerefMut for Namespace {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.module_mut()
     }
 }
