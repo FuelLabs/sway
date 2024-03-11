@@ -178,6 +178,12 @@ impl<T: DebugWithEngines> DebugWithEngines for &T {
     }
 }
 
+impl<T: DebugWithEngines> DebugWithEngines for std::sync::Arc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        (**self).fmt(f, engines)
+    }
+}
+
 impl<T: DebugWithEngines> DebugWithEngines for Option<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         match self {

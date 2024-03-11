@@ -1,9 +1,16 @@
 {
   "configurables": [],
+  "encoding": "1",
   "functions": [
     {
       "attributes": null,
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "baba",
+          "type": 0,
+          "typeArguments": null
+        }
+      ],
       "name": "main",
       "output": {
         "name": "",

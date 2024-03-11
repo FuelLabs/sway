@@ -1245,7 +1245,7 @@ mod ir_builder {
                             .append(context)
                             .contract_call(
                                 ir_ty,
-                                name,
+                                Some(name),
                                 *val_map.get(&params).unwrap(),
                                 *val_map.get(&coins).unwrap(),
                                 *val_map.get(&asset_id).unwrap(),

@@ -208,6 +208,7 @@ impl<'a> UnifyCheck<'a> {
         if left == right {
             return true;
         }
+
         let left_info = self.engines.te().get(left);
         let right_info = self.engines.te().get(right);
 
@@ -313,8 +314,23 @@ impl<'a> UnifyCheck<'a> {
                 return self.check_enums(&l_decl, &r_decl);
             }
 
-            (Ref(l_ty), Ref(r_ty)) => {
-                return self.check_inner(l_ty.type_id, r_ty.type_id);
+            (
+                Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => {
+                // Unification is possible in these situations, assuming that the referenced types
+                // can unify:
+                //     l  ->  r
+                //  - `&` -> `&`
+                //  - `&mut` -> `&`
+                //  - `&mut` -> `&mut`
+                return (*l_to_mut || !*r_to_mut) && self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
             _ => {}

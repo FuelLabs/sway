@@ -56,6 +56,7 @@ impl ty::TyFunctionDecl {
             visibility,
             purity,
             where_clause,
+            kind,
             ..
         } = fn_decl;
         let mut return_type = fn_decl.return_type.clone();
@@ -157,6 +158,12 @@ impl ty::TyFunctionDecl {
                     purity: *purity,
                     where_clause: where_clause.clone(),
                     is_trait_method_dummy: false,
+                    kind: match kind {
+                        FunctionDeclarationKind::Default => ty::TyFunctionDeclKind::Default,
+                        FunctionDeclarationKind::Entry => ty::TyFunctionDeclKind::Entry,
+                        FunctionDeclarationKind::Test => ty::TyFunctionDeclKind::Test,
+                        FunctionDeclarationKind::Main => ty::TyFunctionDeclKind::Main,
+                    },
                 };
 
                 Ok(function_decl)
@@ -315,6 +322,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        kind: ty::TyFunctionDeclKind::Default,
     };
 
     let selector_text = decl
@@ -374,6 +382,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        kind: ty::TyFunctionDeclKind::Default,
     };
 
     let selector_text = decl
