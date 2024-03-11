@@ -142,7 +142,9 @@ macro_rules! decl_engine_clear_module {
                         let span = $getter(item);
                         match span.source_id() {
                             Some(source_id) => &source_id.module_id() != module_id,
-                            None => false,
+                            // WARNING: Setting to true disables garbage collection for these cases.
+                            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
+                            None => true,
                         }
                     });
                 )*
@@ -326,5 +328,23 @@ impl ParsedDeclEngine {
         ParsedDeclEngine: ParsedDeclEngineGet<I, VariableDeclaration>,
     {
         self.get(index)
+    }
+
+    pub fn pretty_print(&self) -> String {
+        use std::fmt::Write;
+        let mut s = String::new();
+        let _ = write!(
+            &mut s,
+            "Function Count: {}",
+            self.function_slab.values().len()
+        );
+        for f in self.function_slab.values() {
+            let _ = write!(&mut s, "Function: {}", f.name);
+            for node in f.body.contents.iter() {
+                let _ = write!(&mut s, "    Node: {:#?}", node);
+            }
+        }
+
+        s
     }
 }

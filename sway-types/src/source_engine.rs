@@ -100,4 +100,11 @@ impl SourceEngine {
             .map(|file_name| file_name.to_string_lossy())
             .map(|file_name| file_name.to_string())
     }
+
+    pub fn all_files(&self) -> Vec<PathBuf> {
+        let s = self.source_to_path_map.read().unwrap();
+        let mut v = s.values().cloned().collect::<Vec<_>>();
+        v.sort();
+        v
+    }
 }

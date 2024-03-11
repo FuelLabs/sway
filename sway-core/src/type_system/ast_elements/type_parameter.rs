@@ -127,7 +127,11 @@ impl DebugWithEngines for TypeParameter {
 
 impl fmt::Debug for TypeParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {:?}", self.name_ident, self.type_id)
+        let _ = write!(f, "{}: {:?}", self.name_ident, self.type_id);
+        for c in self.trait_constraints.iter() {
+            let _ = write!(f, "+ {:?}", c.trait_name);
+        }
+        write!(f, "")
     }
 }
 

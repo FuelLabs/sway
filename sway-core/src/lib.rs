@@ -109,7 +109,7 @@ pub fn parse(
                  parse_module,
              }| {
                 let lexed = lexed::LexedProgram {
-                    kind: kind.clone(),
+                    kind,
                     root: lexed_module,
                 };
                 let parsed = parsed::ParseProgram {
@@ -212,7 +212,7 @@ fn parse_in_memory(
         hash,
     };
     let lexed_program = lexed::LexedProgram::new(
-        kind.clone(),
+        kind,
         lexed::LexedModule {
             tree: module.value,
             submodules: Default::default(),
@@ -474,7 +474,7 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &parsed::ParseProgram,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -638,7 +638,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -735,7 +735,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: BuildConfig,
     package_name: &str,
 ) -> Result<CompiledAsm, ErrorEmitted> {
@@ -892,7 +892,7 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
