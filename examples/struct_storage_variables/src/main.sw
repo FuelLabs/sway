@@ -36,25 +36,28 @@ abi StorageExample {
 }
 
 impl StorageExample for Contract {
-    // ANCHOR: struct_storage_write
     #[storage(write)]
     fn store_struct() {
+        // ANCHOR: struct_storage_write
+        // Store individual fields
         storage.var1.x.write(42);
         storage.var1.y.write(77);
 
+        // Store an entire struct
         let new_struct = Type2 {
             w: 0x1111111111111111111111111111111111111111111111111111111111111111,
             z: false,
         };
         storage.var2.write(new_struct);
+        // ANCHOR_END: struct_storage_write
     }
-    // ANCHOR_END: struct_storage_write
-    // ANCHOR: struct_storage_read
+
     #[storage(read)]
     fn get_struct() {
+        // ANCHOR: struct_storage_read
         let var1_x: u64 = storage.var1.x.try_read().unwrap_or(0);
         let var1_y: u64 = storage.var1.y.try_read().unwrap_or(0);
         let var2: Type2 = storage.var2.try_read().unwrap_or(Type2::default());
+        // ANCHOR_END: struct_storage_read
     }
-    // ANCHOR_END: struct_storage_read
 }

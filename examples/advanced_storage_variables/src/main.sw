@@ -41,19 +41,20 @@ abi StorageExample {
 }
 
 impl StorageExample for Contract {
-    // ANCHOR: map_storage_write
     #[storage(write)]
     fn store_map() {
+        // ANCHOR: map_storage_write
         storage.storage_map.insert(12, true);
         storage.storage_map.insert(59, false);
-        // try_insert() will only insert if a value does not already exist for the key.
+
+        // try_insert() will only insert if a value does not already exist for a key.
         let result = storage.storage_map.try_insert(103, true);
         assert(result.is_ok());
+        // ANCHOR_END: map_storage_write
     }
-    // ANCHOR_END: map_storage_write
-    // ANCHOR: map_storage_read
     #[storage(read)]
     fn get_map() {
+        // ANCHOR: map_storage_read
         // Access directly
         let stored_val1: bool = storage.storage_map.get(12).try_read().unwrap_or(false);
 
@@ -63,12 +64,12 @@ impl StorageExample for Contract {
 
         // Unsafely access the value.
         let stored_val3: bool = storage.storage_map.get(103).read();
+        // ANCHOR_END: map_storage_read
     }
-    // ANCHOR_END: map_storage_read
 
-    // ANCHOR: vec_storage_write
     #[storage(write)]
     fn store_vec() {
+        // ANCHOR: vec_storage_write
         storage
             .storage_vec
             .push(0x1111111111111111111111111111111111111111111111111111111111111111);
@@ -78,19 +79,19 @@ impl StorageExample for Contract {
         storage
             .storage_vec
             .push(0x0000000000000000000000000000000000000000000000000000000000000002);
+
         // Set will overwrite the element stored at the given index.
         storage.storage_vec.set(2, ZERO_B256);
+        // ANCHOR_END: vec_storage_write
     }
-    // ANCHOR_END: vec_storage_write
-    // ANCHOR: vec_storage_read
     #[storage(read, write)]
     fn get_vec() {
-        // get() does not remove the element from the vec.
-        let length: u64 = storage.storage_vec.len();
+        // ANCHOR: vec_storage_read
+        // Method 1: Access the element directly
+        // Note: get() does not remove the element from the vec.
         let stored_val1: b256 = storage.storage_vec.get(0).unwrap().try_read().unwrap_or(ZERO_B256);
-        assert(length == storage.storage_vec.len());
 
-        // First get the storage key and then access the value.
+        // Method 2: First get the storage key and then access the value.
         let storage_key2: StorageKey<b256> = storage.storage_vec.get(1).unwrap();
         let stored_val2: b256 = storage_key2.try_read().unwrap_or(ZERO_B256);
 
@@ -98,38 +99,40 @@ impl StorageExample for Contract {
         let length: u64 = storage.storage_vec.len();
         let stored_val3: b256 = storage.storage_vec.pop().unwrap();
         assert(length != storage.storage_vec.len());
+        // ANCHOR_END: vec_storage_read
     }
-    // ANCHOR_END: vec_storage_read
 
-    // ANCHOR: string_storage_write
     #[storage(write)]
     fn store_string() {
+        // ANCHOR: string_storage_write
         let my_string = String::from_ascii_str("Fuel is blazingly fast");
         storage.storage_string.write_slice(my_string);
+        // ANCHOR_END: string_storage_write
     }
-    // ANCHOR_END: string_storage_write
-    // ANCHOR: string_storage_read
     #[storage(read)]
     fn get_string() {
+        // ANCHOR: string_storage_read
         let stored_string: String = storage.storage_string.read_slice().unwrap();
+        // ANCHOR_END: string_storage_read
     }
-    // ANCHOR_END: string_storage_read
 
-    // ANCHOR: bytes_storage_write
     #[storage(write)]
     fn store_bytes() {
+        // ANCHOR: bytes_storage_write
+        // Setup Bytes
         let mut my_bytes = Bytes::new();
         my_bytes.push(1u8);
         my_bytes.push(2u8);
         my_bytes.push(3u8);
 
+        // Write to storage
         storage.storage_bytes.write_slice(my_bytes);
+        // ANCHOR_END: bytes_storage_write
     }
-    // ANCHOR_END: bytes_storage_write
-    // ANCHOR: bytes_storage_read
     #[storage(read)]
     fn get_bytes() {
+        // ANCHOR: bytes_storage_read
         let stored_bytes: Bytes = storage.storage_bytes.read_slice().unwrap();
+        // ANCHOR_END: bytes_storage_read
     }
-    // ANCHOR_END: bytes_storage_read
 }
