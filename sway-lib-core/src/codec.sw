@@ -2134,38 +2134,6 @@ where
     T::abi_decode(buffer)
 }
 
-fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
-where
-    T: AbiEncode,
-{
-    let len = __size_of::<SLICE>();
-
-    if len == 0 {
-        __revert(0);
-    }
-
-    let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
-    let actual = encode(value);
-
-    if actual.len::<u8>() != expected.len::<u8>() {
-        __revert(0);
-    }
-
-    let result = asm(
-        result,
-        expected: expected.ptr(),
-        actual: actual.ptr(),
-        len: len,
-    ) {
-        meq result expected actual len;
-        result: bool
-    };
-
-    if !result {
-        __revert(0);
-    }
-}
-
 // Decode 
 
 pub trait AbiDecode {
@@ -2192,13 +2160,21 @@ impl AbiDecode for u64 {
 
 impl AbiDecode for u32 {
     fn abi_decode(ref mut buffer: BufferReader) -> u32 {
-        buffer.read::<u32>()
+        use ::primitive_conversions::*;
+        let a = buffer.read::<u8>().as_u32();
+        let b = buffer.read::<u8>().as_u32();
+        let c = buffer.read::<u8>().as_u32();
+        let d = buffer.read::<u8>().as_u32();
+        (a << 24) | (b << 16) | (c << 8) | d
     }
 }
 
 impl AbiDecode for u16 {
     fn abi_decode(ref mut buffer: BufferReader) -> u16 {
-        buffer.read::<u16>()
+        use ::primitive_conversions::*;
+        let a = buffer.read::<u8>().as_u16();
+        let b = buffer.read::<u8>().as_u16();
+        (a << 8) | b
     }
 }
 
@@ -3708,41 +3684,112 @@ where
     }
 }
 // END TUPLES_DECODE
+use ::ops::*;
+
+fn assert_encoding<T, SLICE>(value: T, expected: SLICE)
+where
+    T: AbiEncode,
+{
+    let len = __size_of::<SLICE>();
+
+    if len == 0 {
+        __revert(0);
+    }
+
+    let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
+    let actual = encode(value);
+
+    if actual.len::<u8>() != expected.len::<u8>() {
+        __revert(0);
+    }
+
+    let result = asm(
+        result,
+        expected: expected.ptr(),
+        actual: actual.ptr(),
+        len: len,
+    ) {
+        meq result expected actual len;
+        result: bool
+    };
+
+    if !result {
+        __revert(0);
+    }
+}
+
+fn assert_encoding_and_decoding<T, SLICE>(value: T, expected: SLICE)
+where
+    T: Eq + AbiEncode + AbiDecode,
+{
+    let len = __size_of::<SLICE>();
+
+    if len == 0 {
+        __revert(0);
+    }
+
+    let expected = raw_slice::from_parts::<u8>(__addr_of(expected), len);
+    let actual = encode(value);
+
+    if actual.len::<u8>() != expected.len::<u8>() {
+        __revert(0);
+    }
+
+    let result = asm(
+        result,
+        expected: expected.ptr(),
+        actual: actual.ptr(),
+        len: len,
+    ) {
+        meq result expected actual len;
+        result: bool
+    };
+
+    if !result {
+        __revert(0);
+    }
+
+    let decoded = abi_decode::<T>(actual);
+    __log(decoded);
+    if !decoded.eq(value) {
+        __revert(0);
+    }
+}
 
 #[test]
-fn ok_encode() {
+fn ok_abi_encoding() {
     // bool
-    assert_encoding(false, [0u8]);
-    assert_encoding(true, [1u8]);
+    assert_encoding_and_decoding(false, [0u8]);
+    assert_encoding_and_decoding(true, [1u8]);
 
     // numbers
-    assert_encoding(0u8, [0u8; 1]);
-    assert_encoding(255u8, [255u8; 1]);
-    assert_encoding(0u16, [0u8; 2]);
-    assert_encoding(65535u16, [255u8; 2]);
-    assert_encoding(0u32, [0u8; 4]);
-    assert_encoding(4294967295u32, [255u8; 4]);
-    assert_encoding(0u64, [0u8; 8]);
-    assert_encoding(18446744073709551615u64, [255u8; 8]);
-    assert_encoding(
+    assert_encoding_and_decoding(0u8, [0u8; 1]);
+    assert_encoding_and_decoding(255u8, [255u8; 1]);
+    assert_encoding_and_decoding(0u16, [0u8; 2]);
+    assert_encoding_and_decoding(65535u16, [255u8; 2]);
+    assert_encoding_and_decoding(0u32, [0u8; 4]);
+    assert_encoding_and_decoding(4294967295u32, [255u8; 4]);
+    assert_encoding_and_decoding(0u64, [0u8; 8]);
+    assert_encoding_and_decoding(18446744073709551615u64, [255u8; 8]);
+    assert_encoding_and_decoding(
         0x0000000000000000000000000000000000000000000000000000000000000000u256,
         [0u8; 32],
     );
-    assert_encoding(
+    assert_encoding_and_decoding(
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256,
         [255u8; 32],
     );
-    assert_encoding(
+    assert_encoding_and_decoding(
         0x0000000000000000000000000000000000000000000000000000000000000000,
         [0u8; 32],
     );
-    assert_encoding(
+    assert_encoding_and_decoding(
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
         [255u8; 32],
     );
 
     // strings
-    assert_encoding(
+    assert_encoding_and_decoding(
         "Hello",
         [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8, 72u8, 101u8, 108u8, 108u8, 111u8],
     );
