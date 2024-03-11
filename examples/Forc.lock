@@ -3,6 +3,11 @@ name = "abi_supertraits"
 source = "member"
 
 [[package]]
+name = "advanced_storage_variables"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "array"
 source = "member"
 dependencies = ["std"]
@@ -33,7 +38,7 @@ source = "member"
 
 [[package]]
 name = "core"
-source = "path+from-root-087D5D776F294F03"
+source = "path+from-root-70EE78029FACCEF1"
 
 [[package]]
 name = "counter"
@@ -90,6 +95,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "nested_storage_variables"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "option"
 source = "member"
 dependencies = ["std"]
@@ -111,7 +121,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-087D5D776F294F03"
+source = "path+from-root-70EE78029FACCEF1"
 dependencies = ["core"]
 
 [[package]]
