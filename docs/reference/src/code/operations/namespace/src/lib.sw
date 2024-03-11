@@ -2,12 +2,12 @@ library;
 
 // ANCHOR: address
 pub struct Address {
-    value: b256,
+    bits: b256,
 }
 // ANCHOR_END: address
 // ANCHOR: contract_id
 pub struct ContractId {
-    value: b256,
+    bits: b256,
 }
 // ANCHOR_END: contract_id
 // ANCHOR: identity

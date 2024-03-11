@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-0E536E049C0227B9"
+
+[[package]]
+name = "dummy_method_issue"
+source = "member"
+dependencies = ["core"]

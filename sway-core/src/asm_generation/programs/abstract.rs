@@ -13,6 +13,7 @@ use crate::{
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, VirtualImmediate12,
         VirtualImmediate18,
     },
+    ExperimentalFlags,
 };
 
 use sway_error::error::CompileError;
@@ -26,6 +27,7 @@ impl AbstractProgram {
         entries: Vec<AbstractEntry>,
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
+        experimental: ExperimentalFlags,
     ) -> Self {
         AbstractProgram {
             kind,
@@ -33,6 +35,7 @@ impl AbstractProgram {
             entries,
             non_entries,
             reg_seqr,
+            experimental,
         }
     }
 
@@ -41,8 +44,14 @@ impl AbstractProgram {
         // function selector.
         let mut prologue = self.build_preamble();
 
-        if self.kind == ProgramKind::Contract {
-            self.build_contract_abi_switch(&mut prologue);
+        match (self.experimental.new_encoding, self.kind) {
+            (true, ProgramKind::Contract) => {
+                self.build_jump_to_entry(&mut prologue);
+            }
+            (false, ProgramKind::Contract) => {
+                self.build_contract_abi_switch(&mut prologue);
+            }
+            _ => {}
         }
 
         // Keep track of the labels (and names) that represent program entry points.
@@ -147,6 +156,16 @@ impl AbstractProgram {
             ]
             .to_vec(),
         }
+    }
+
+    // WHen the new encoding is used, jumps to the `__entry`  function
+    fn build_jump_to_entry(&mut self, asm_buf: &mut AllocatedAbstractInstructionSet) {
+        let entry = self.entries.iter().find(|x| x.name == "__entry").unwrap();
+        asm_buf.ops.push(AllocatedAbstractOp {
+            opcode: Either::Right(ControlFlowOp::Jump(entry.label)),
+            comment: "jump to abi method selector".into(),
+            owning_span: None,
+        });
     }
 
     /// Builds the contract switch statement based on the first argument to a contract call: the

@@ -6,7 +6,7 @@ use std::fmt::Write;
 use sway_ast::{
     brackets::SquareBrackets,
     expr::Expr,
-    keywords::{AmpersandToken, PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
+    keywords::{AmpersandToken, MutToken, PtrToken, SliceToken, StrToken, Token, UnderscoreToken},
     ty::{Ty, TyArrayDescriptor, TyTupleDescriptor},
 };
 use sway_types::{ast::Delimiter, Spanned};
@@ -47,8 +47,14 @@ impl Format for Ty {
             }
             Self::Ref {
                 ampersand_token,
+                mut_token,
                 ty,
-            } => format_ref(formatted_code, ampersand_token.clone(), ty.clone()),
+            } => format_ref(
+                formatted_code,
+                ampersand_token.clone(),
+                mut_token.clone(),
+                ty.clone(),
+            ),
             Self::Never { bang_token } => {
                 write!(formatted_code, "{}", bang_token.span().as_str(),)?;
                 Ok(())
@@ -126,12 +132,18 @@ fn format_slice(
 fn format_ref(
     formatted_code: &mut FormattedCode,
     ampersand_token: AmpersandToken,
+    mut_token: Option<MutToken>,
     ty: Box<Ty>,
 ) -> Result<(), FormatterError> {
     write!(
         formatted_code,
-        "{}{}",
+        "{}{}{}",
         ampersand_token.span().as_str(),
+        if let Some(mut_token) = mut_token {
+            format!("{} ", mut_token.span().as_str())
+        } else {
+            "".to_string()
+        },
         ty.span().as_str()
     )?;
     Ok(())
@@ -196,9 +208,13 @@ impl LeafSpans for Ty {
             }
             Ty::Ref {
                 ampersand_token,
+                mut_token,
                 ty,
             } => {
                 let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
+                if let Some(mut_token) = mut_token {
+                    collected_spans.push(ByteSpan::from(mut_token.span()));
+                }
                 collected_spans.append(&mut ty.leaf_spans());
                 collected_spans
             }

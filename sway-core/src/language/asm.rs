@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{Ident, Span};
+use sway_types::{BaseIdent, Ident, Span};
 
 #[derive(Debug, Clone)]
 pub struct AsmOp {
@@ -8,6 +8,17 @@ pub struct AsmOp {
     pub(crate) op_args: Vec<Ident>,
     pub(crate) span: Span,
     pub(crate) immediate: Option<Ident>,
+}
+
+impl AsmOp {
+    pub fn retd(ptr: BaseIdent, len: BaseIdent) -> Self {
+        AsmOp {
+            op_name: Ident::new_no_span("retd".to_string()),
+            op_args: vec![ptr, len],
+            span: Span::dummy(),
+            immediate: None,
+        }
+    }
 }
 
 impl Hash for AsmOp {

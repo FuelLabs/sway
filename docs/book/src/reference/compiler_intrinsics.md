@@ -319,11 +319,9 @@ __not(op: T) -> T
 ___
 
 ```sway
-__jmpb_ssp(offset: u64)
+__jmp_mem()
 ```
 
-**Description:** Jumps to `$ssp - offset`. When the offset is the growth
-of `$ssp` after an `ldc` call, this transfers control to the newly loaded
-contract.
+**Description:** Jumps to `MEM[$hp]`.
 
-**Constraints:** offset must have type `u64`.
+**Constraints:** None.

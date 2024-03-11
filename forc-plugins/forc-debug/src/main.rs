@@ -9,6 +9,8 @@ use shellfish::{async_fn, Command as ShCommand, Shell};
 use std::error::Error;
 
 #[derive(Parser, Debug)]
+#[clap(name = "forc-debug", version)]
+/// Forc plugin for the Sway DAP (Debug Adapter Protocol) implementation.
 pub struct Opt {
     /// The URL of the Fuel Client GraphQL API
     #[clap(default_value = "http://127.0.0.1:4000/graphql")]

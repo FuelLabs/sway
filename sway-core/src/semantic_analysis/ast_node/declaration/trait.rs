@@ -129,8 +129,9 @@ impl TyTraitDecl {
 
             for item in interface_surface.into_iter() {
                 let decl_name = match item {
-                    TraitItem::TraitFn(method) => {
-                        let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), method)?;
+                    TraitItem::TraitFn(decl_id) => {
+                        let method = engines.pe().get_trait_fn(&decl_id);
+                        let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), &method)?;
                         let decl_ref = decl_engine.insert(method.clone());
                         dummy_interface_surface.push(ty::TyImplItem::Fn(
                             decl_engine

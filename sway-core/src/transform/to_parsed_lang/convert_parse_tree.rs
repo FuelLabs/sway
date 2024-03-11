@@ -52,7 +52,7 @@ pub fn convert_parse_tree(
     module: Module,
 ) -> Result<(TreeType, ParseTree), ErrorEmitted> {
     let tree_type = convert_module_kind(&module.kind);
-    context.set_program_type(tree_type.clone());
+    context.set_program_type(tree_type);
     let tree = module_to_sway_parse_tree(context, handler, engines, module)?;
     Ok((tree_type, tree))
 }
@@ -78,8 +78,15 @@ pub fn module_to_sway_parse_tree(
         let mut root_nodes: Vec<AstNode> = vec![];
         let mut prev_item: Option<Annotated<ItemKind>> = None;
         for item in module.items {
-            let ast_nodes =
-                item_to_ast_nodes(context, handler, engines, item.clone(), true, prev_item)?;
+            let ast_nodes = item_to_ast_nodes(
+                context,
+                handler,
+                engines,
+                item.clone(),
+                true,
+                prev_item,
+                None,
+            )?;
             root_nodes.extend(ast_nodes);
             prev_item = Some(item);
         }
@@ -98,13 +105,14 @@ fn ast_node_is_test_fn(engines: &Engines, node: &AstNode) -> bool {
     false
 }
 
-fn item_to_ast_nodes(
+pub fn item_to_ast_nodes(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     item: Item,
     is_root: bool,
     prev_item: Option<Annotated<ItemKind>>,
+    override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<Vec<AstNode>, ErrorEmitted> {
     let attributes = item_attrs_to_map(context, handler, &item.attribute_list)?;
     if !cfg_eval(context, handler, &attributes, context.experimental)? {
@@ -172,7 +180,14 @@ fn item_to_ast_nodes(
         )),
         ItemKind::Fn(item_fn) => {
             let function_declaration_decl_id = item_fn_to_function_declaration(
-                context, handler, engines, item_fn, attributes, None, None,
+                context,
+                handler,
+                engines,
+                item_fn,
+                attributes,
+                None,
+                None,
+                override_kind,
             )?;
             let function_declaration = engines.pe().get_function(&function_declaration_decl_id);
             error_if_self_param_is_not_allowed(
@@ -472,7 +487,8 @@ fn item_enum_to_enum_declaration(
     Ok(enum_declaration_id)
 }
 
-fn item_fn_to_function_declaration(
+#[allow(clippy::too_many_arguments)]
+pub fn item_fn_to_function_declaration(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
@@ -480,6 +496,7 @@ fn item_fn_to_function_declaration(
     attributes: AttributesMap,
     parent_generic_params_opt: Option<GenericParams>,
     parent_where_clause_opt: Option<WhereClause>,
+    override_kind: Option<FunctionDeclarationKind>,
 ) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
     let span = item_fn.span();
     let return_type = match item_fn.fn_signature.return_type_opt {
@@ -498,6 +515,15 @@ fn item_fn_to_function_declaration(
             }
         }
     };
+
+    let kind = if item_fn.fn_signature.name.as_str() == "main" {
+        FunctionDeclarationKind::Main
+    } else {
+        FunctionDeclarationKind::Default
+    };
+
+    let kind = override_kind.unwrap_or(kind);
+
     let fn_decl = FunctionDeclaration {
         purity: get_attributed_purity(context, handler, &attributes)?,
         attributes,
@@ -529,6 +555,7 @@ fn item_fn_to_function_declaration(
             })
             .transpose()?
             .unwrap_or(vec![]),
+        kind,
     };
     let decl_id = engines.pe().insert(fn_decl);
     Ok(decl_id)
@@ -646,6 +673,7 @@ fn item_trait_to_trait_declaration(
                     attributes,
                     item_trait.generics.clone(),
                     item_trait.where_clause_opt.clone(),
+                    None,
                 )?))
             })
             .filter_map_ok(|fn_decl| fn_decl)
@@ -669,7 +697,7 @@ fn item_trait_to_trait_declaration(
     Ok(trait_decl_id)
 }
 
-fn item_impl_to_declaration(
+pub fn item_impl_to_declaration(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
@@ -695,6 +723,7 @@ fn item_impl_to_declaration(
                     attributes,
                     item_impl.generic_params_opt.clone(),
                     item_impl.where_clause_opt.clone(),
+                    None,
                 )
                 .map(ImplItem::Fn),
                 sway_ast::ItemImplItem::Const(const_item) => item_const_to_constant_declaration(
@@ -815,7 +844,7 @@ fn item_abi_to_abi_declaration(
                                 context,
                                 handler,
                                 engines,
-                                &trait_fn.parameters,
+                                &engines.pe().get_trait_fn(&trait_fn).parameters,
                                 "an ABI method signature",
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
@@ -854,6 +883,7 @@ fn item_abi_to_abi_declaration(
                         engines,
                         item_fn.value,
                         attributes,
+                        None,
                         None,
                         None,
                     )?;
@@ -1401,9 +1431,12 @@ fn ty_to_type_info(
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
             TypeInfo::Slice(type_argument)
         }
-        Ty::Ref { ty, .. } => {
+        Ty::Ref { mut_token, ty, .. } => {
             let type_argument = ty_to_type_argument(context, handler, engines, *ty)?;
-            TypeInfo::Ref(type_argument)
+            TypeInfo::Ref {
+                to_mutable_value: mut_token.is_some(),
+                referenced_type: type_argument,
+            }
         }
         Ty::Never { .. } => TypeInfo::Never,
     };
@@ -1504,7 +1537,7 @@ fn fn_signature_to_trait_fn(
     engines: &Engines,
     fn_signature: FnSignature,
     attributes: AttributesMap,
-) -> Result<TraitFn, ErrorEmitted> {
+) -> Result<ParsedDeclId<TraitFn>, ErrorEmitted> {
     let return_type = match &fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
         None => {
@@ -1536,6 +1569,7 @@ fn fn_signature_to_trait_fn(
         )?,
         return_type,
     };
+    let trait_fn = engines.pe().insert(trait_fn);
     Ok(trait_fn)
 }
 
@@ -2477,7 +2511,7 @@ fn statement_to_ast_nodes(
             statement_let_to_ast_nodes(context, handler, engines, statement_let)?
         }
         Statement::Item(item) => {
-            let nodes = item_to_ast_nodes(context, handler, engines, item, false, None)?;
+            let nodes = item_to_ast_nodes(context, handler, engines, item, false, None, None)?;
             nodes.iter().try_fold((), |res, node| {
                 if ast_node_is_test_fn(engines, node) {
                     let span = node.span.clone();

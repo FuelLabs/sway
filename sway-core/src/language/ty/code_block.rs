@@ -51,18 +51,15 @@ impl ReplaceDecls for TyCodeBlock {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         handler.scope(|handler| {
-            for x in self.contents.iter_mut() {
-                match x.replace_decls(decl_mapping, handler, ctx) {
-                    Ok(res) => res,
-                    Err(_) => {
-                        continue;
-                    }
-                };
+            let mut has_changes = false;
+            for node in self.contents.iter_mut() {
+                if let Ok(r) = node.replace_decls(decl_mapping, handler, ctx) {
+                    has_changes |= r;
+                }
             }
-
-            Ok(())
+            Ok(has_changes)
         })
     }
 }

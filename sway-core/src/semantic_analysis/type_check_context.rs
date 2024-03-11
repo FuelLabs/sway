@@ -104,7 +104,11 @@ pub struct TypeCheckContext<'a> {
 
 impl<'a> TypeCheckContext<'a> {
     /// Initialize a type-checking context with a namespace.
-    pub fn from_namespace(namespace: &'a mut Namespace, engines: &'a Engines) -> Self {
+    pub fn from_namespace(
+        namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
         Self {
             namespace,
             engines,
@@ -122,7 +126,49 @@ impl<'a> TypeCheckContext<'a> {
             disallow_functions: false,
             defer_monomorphization: false,
             storage_declaration: false,
-            experimental: ExperimentalFlags::default(),
+            experimental,
+        }
+    }
+
+    /// Initialize a context at the top-level of a module with its namespace.
+    ///
+    /// Initializes with:
+    ///
+    /// - type_annotation: unknown
+    /// - mode: NoneAbi
+    /// - help_text: ""
+    /// - purity: Pure
+    pub fn from_root(
+        root_namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
+        Self::from_module_namespace(root_namespace, engines, experimental)
+    }
+
+    fn from_module_namespace(
+        namespace: &'a mut Namespace,
+        engines: &'a Engines,
+        experimental: ExperimentalFlags,
+    ) -> Self {
+        Self {
+            namespace,
+            engines,
+            type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            function_type_annotation: engines.te().insert(engines, TypeInfo::Unknown, None),
+            unify_generic: false,
+            self_type: None,
+            type_subst: TypeSubstMap::new(),
+            help_text: "",
+            abi_mode: AbiMode::NonAbi,
+            const_shadowing_mode: ConstShadowingMode::ItemStyle,
+            generic_shadowing_mode: GenericShadowingMode::Disallow,
+            purity: Purity::default(),
+            kind: TreeType::Contract,
+            disallow_functions: false,
+            defer_monomorphization: false,
+            storage_declaration: false,
+            experimental,
         }
     }
 
@@ -147,7 +193,7 @@ impl<'a> TypeCheckContext<'a> {
             generic_shadowing_mode: self.generic_shadowing_mode,
             help_text: self.help_text,
             purity: self.purity,
-            kind: self.kind.clone(),
+            kind: self.kind,
             engines: self.engines,
             disallow_functions: self.disallow_functions,
             defer_monomorphization: self.defer_monomorphization,
@@ -195,13 +241,15 @@ impl<'a> TypeCheckContext<'a> {
         module_span: Span,
         with_submod_ctx: impl FnOnce(TypeCheckContext) -> T,
     ) -> T {
+        let experimental = self.experimental;
+
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
         let mut submod_ns = self
             .namespace_mut()
             .enter_submodule(mod_name, visibility, module_span);
-        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines);
+        let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
         with_submod_ctx(submod_ctx)
     }
 
@@ -375,7 +423,7 @@ impl<'a> TypeCheckContext<'a> {
 
     #[allow(dead_code)]
     pub(crate) fn kind(&self) -> TreeType {
-        self.kind.clone()
+        self.kind
     }
 
     pub(crate) fn functions_disallowed(&self) -> bool {
@@ -592,7 +640,10 @@ impl<'a> TypeCheckContext<'a> {
                     )));
                 }
             }
-            TypeInfo::Ref(mut ty) => {
+            TypeInfo::Ref {
+                referenced_type: mut ty,
+                to_mutable_value,
+            } => {
                 ty.type_id = self
                     .resolve(
                         handler,
@@ -608,9 +659,14 @@ impl<'a> TypeCheckContext<'a> {
                             .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
-                self.engines
-                    .te()
-                    .insert(self.engines, TypeInfo::Ref(ty.clone()), None)
+                self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Ref {
+                        to_mutable_value,
+                        referenced_type: ty.clone(),
+                    },
+                    None,
+                )
             }
             _ => type_id,
         };
@@ -1269,14 +1325,12 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         src: &Path,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .module
-            .star_import(handler, engines, src, &mod_path, is_absolute)
+            .star_import(handler, engines, src, &mod_path)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -1285,18 +1339,12 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &Path,
         enum_name: &Ident,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.variant_star_import(
-            handler,
-            engines,
-            src,
-            &mod_path,
-            enum_name,
-            is_absolute,
-        )
+        self.namespace_mut()
+            .root
+            .variant_star_import(handler, engines, src, &mod_path, enum_name)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -1305,18 +1353,12 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &Path,
         alias: Option<Ident>,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.self_import(
-            handler,
-            engines,
-            src,
-            &mod_path,
-            alias,
-            is_absolute,
-        )
+        self.namespace_mut()
+            .root
+            .self_import(handler, engines, src, &mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
@@ -1326,19 +1368,12 @@ impl<'a> TypeCheckContext<'a> {
         src: &Path,
         item: &Ident,
         alias: Option<Ident>,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.item_import(
-            handler,
-            engines,
-            src,
-            item,
-            &mod_path,
-            alias,
-            is_absolute,
-        )
+        self.namespace_mut()
+            .root
+            .item_import(handler, engines, src, item, &mod_path, alias)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -1350,11 +1385,10 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
-        is_absolute: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.module.variant_import(
+        self.namespace_mut().root.variant_import(
             handler,
             engines,
             src,
@@ -1362,7 +1396,6 @@ impl<'a> TypeCheckContext<'a> {
             variant_name,
             &mod_path,
             alias,
-            is_absolute,
         )
     }
 
@@ -1612,17 +1645,6 @@ impl<'a> TypeCheckContext<'a> {
             .current_items_mut()
             .implemented_traits
             .insert_for_type(engines, type_id);
-    }
-
-    pub(crate) fn with_experimental_flags(self, experimental: Option<ExperimentalFlags>) -> Self {
-        let Some(experimental) = experimental else {
-            return self;
-        };
-
-        Self {
-            experimental,
-            ..self
-        }
     }
 
     pub fn check_type_impls_traits(

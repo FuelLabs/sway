@@ -70,7 +70,7 @@ const EN1a = En1::Int(101);
 const EN1b = En1::Arr(ARR2);
 const EN1c = En1::NoVal;
 
-const ETH_ID0_VALUE = ETH_ID0.value;
+const ETH_ID0_VALUE = ETH_ID0.bits();
 const TUP1_idx2 = TUP1.2;
 
 const INT1 = 1;
@@ -145,7 +145,7 @@ fn main() -> u64 {
     }
 
     // Struct and enum field access.
-    assert(ETH_ID0.value == ETH_ID0_VALUE);
+    assert(ETH_ID0.bits() == ETH_ID0_VALUE);
     assert(TUP1_idx2 == TUP1.2);
     assert(XPY == 2);
     assert(SO == __size_of::<u64>());

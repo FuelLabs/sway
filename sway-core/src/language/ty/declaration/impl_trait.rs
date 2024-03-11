@@ -22,6 +22,12 @@ pub struct TyImplTrait {
     pub span: Span,
 }
 
+impl TyImplTrait {
+    pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
+        matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
+    }
+}
+
 impl Named for TyImplTrait {
     fn name(&self) -> &Ident {
         &self.trait_name.suffix

@@ -1,6 +1,6 @@
 script;
 
-use std::bytes::Bytes;
+use std::{alloc::alloc_bytes, bytes::Bytes};
 
 pub trait MyFrom<T> {
     fn my_from(b: T) -> Self;
@@ -10,18 +10,18 @@ pub trait MyFrom<T> {
 impl MyFrom<b256> for Bytes {
     fn my_from(b: b256) -> Self {
         // Artificially create bytes with capacity and len
-        let mut bytes = Self::with_capacity(32);
-        bytes.len = 32;
-        // Copy bytes from contract_id into the buffer of the target bytes
-        __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
+        let new_ptr = alloc_bytes(32);
 
-        bytes
+        // Copy bytes from contract_id into the buffer of the target bytes
+        __addr_of(b).copy_bytes_to(new_ptr, 32);
+
+        Bytes::from(raw_slice::from_parts::<u8>(new_ptr, 32))
     }
 
     fn my_into(self) -> b256 {
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
-        self.buf.ptr().copy_to::<b256>(ptr, 1);
+        self.ptr().copy_to::<b256>(ptr, 1);
 
         value
     }

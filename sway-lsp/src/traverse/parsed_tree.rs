@@ -987,17 +987,18 @@ impl Parse for Supertrait {
     }
 }
 
-impl Parse for TraitFn {
+impl Parse for ParsedDeclId<TraitFn> {
     fn parse(&self, ctx: &ParseContext) {
+        let trait_fn = ctx.engines.pe().get_trait_fn(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
-            Token::from_parsed(AstToken::TraitFn(self.clone()), SymbolKind::Function),
+            ctx.ident(&trait_fn.name),
+            Token::from_parsed(AstToken::TraitFn(*self), SymbolKind::Function),
         );
-        self.parameters.par_iter().for_each(|param| {
+        trait_fn.parameters.par_iter().for_each(|param| {
             param.parse(ctx);
         });
-        self.return_type.parse(ctx);
-        self.attributes.parse(ctx);
+        trait_fn.return_type.parse(ctx);
+        trait_fn.attributes.parse(ctx);
     }
 }
 

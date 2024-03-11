@@ -44,15 +44,15 @@ pub enum EcRecoverError {
 ///     // A recovered public key pair.
 ///     let public_key = ec_recover(signature, msg_hash).unwrap();
 ///
-///     assert(public_key.bytes[0] == pub_hi);
-///     assert(public_key.bytes[1] == pub_lo);
+///     assert(public_key.bits()[0] == pub_hi);
+///     assert(public_key.bits()[1] == pub_lo);
 /// }
 /// ```
 pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
     let was_error = asm(
-        buffer: public_key.bytes,
-        sig: signature.bytes,
+        buffer: __addr_of(public_key),
+        sig: __addr_of(signature),
         hash: msg_hash,
     ) {
         eck1 buffer sig hash;
@@ -97,15 +97,15 @@ pub fn ec_recover(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverErro
 ///     // A recovered public key pair.
 ///     let public_key = ec_recover_r1(signature, msg_hash).unwrap();
 ///
-///     assert(public_key.bytes[0] == pub_hi);
-///     assert(public_key.bytes[1] == pub_lo);
+///     assert(public_key.bits()[0] == pub_hi);
+///     assert(public_key.bits()[1] == pub_lo);
 /// }
 /// ```
 pub fn ec_recover_r1(signature: B512, msg_hash: b256) -> Result<B512, EcRecoverError> {
     let public_key = B512::new();
     let was_error = asm(
-        buffer: public_key.bytes,
-        sig: signature.bytes,
+        buffer: __addr_of(public_key),
+        sig: __addr_of(signature),
         hash: msg_hash,
     ) {
         ecr1 buffer sig hash;
@@ -159,7 +159,11 @@ pub fn ed_verify(
     signature: B512,
     msg_hash: b256,
 ) -> Result<bool, EcRecoverError> {
-    let was_error = asm(buffer: public_key, sig: signature.bytes, hash: msg_hash) {
+    let was_error = asm(
+        buffer: public_key,
+        sig: __addr_of(signature),
+        hash: msg_hash,
+    ) {
         ed19 buffer sig hash;
         err
     };
@@ -211,7 +215,7 @@ pub fn ec_recover_address(signature: B512, msg_hash: b256) -> Result<Address, Ec
         Err(e)
     } else {
         let pub_key = pub_key_result.unwrap();
-        let address = sha256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
+        let address = sha256(((pub_key.bits())[0], (pub_key.bits())[1]));
         Ok(Address::from(address))
     }
 }
@@ -256,7 +260,7 @@ pub fn ec_recover_address_r1(signature: B512, msg_hash: b256) -> Result<Address,
         Err(e)
     } else {
         let pub_key = pub_key_result.unwrap();
-        let address = sha256(((pub_key.bytes)[0], (pub_key.bytes)[1]));
+        let address = sha256(((pub_key.bits())[0], (pub_key.bits())[1]));
         Ok(Address::from(address))
     }
 }
@@ -274,8 +278,8 @@ fn test_ec_recover_r1() {
     // A recovered public key pair.
     let public_key = ec_recover_r1(signature, msg_hash).unwrap();
 
-    assert(public_key.bytes[0] == pub_hi);
-    assert(public_key.bytes[1] == pub_lo);
+    assert(public_key.bits()[0] == pub_hi);
+    assert(public_key.bits()[1] == pub_lo);
 }
 
 #[test(should_revert = "0")]

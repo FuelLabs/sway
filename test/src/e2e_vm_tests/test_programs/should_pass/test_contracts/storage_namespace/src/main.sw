@@ -60,13 +60,13 @@ impl BasicStorage for Contract {
             i += 1;
         }
 
-        let _ = __state_load_quad(key, values.buf.ptr(), slots);
+        let _ = __state_load_quad(key, values.ptr(), slots);
         values
     }
 
     #[storage(write)]
     fn intrinsic_store_quad(key: b256, values: Vec<Quad>) {
-        let _ = __state_store_quad(key, values.buf.ptr(), values.len());
+        let _ = __state_store_quad(key, values.ptr(), values.len());
     }
 
     #[storage(read, write)]

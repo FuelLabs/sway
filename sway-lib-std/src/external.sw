@@ -27,7 +27,7 @@ use ::contract_id::ContractId;
 pub fn bytecode_root(contract_id: ContractId) -> b256 {
     let root: b256 = ZERO_B256;
 
-    asm(root_addr: root, target: contract_id.value) {
+    asm(root_addr: root, target: contract_id.bits()) {
         croo root_addr target;
         root_addr: b256
     }

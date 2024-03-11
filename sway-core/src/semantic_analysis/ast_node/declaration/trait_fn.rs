@@ -16,14 +16,14 @@ impl ty::TyTraitFn {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        trait_fn: parsed::TraitFn,
+        trait_fn: &parsed::TraitFn,
     ) -> Result<ty::TyTraitFn, ErrorEmitted> {
         let parsed::TraitFn {
             name,
             span,
             purity,
             parameters,
-            mut return_type,
+            return_type,
             attributes,
         } = trait_fn;
 
@@ -31,12 +31,12 @@ impl ty::TyTraitFn {
         let engines = ctx.engines();
 
         // Create a namespace for the trait function.
-        ctx.by_ref().with_purity(purity).scoped(|mut ctx| {
+        ctx.by_ref().with_purity(*purity).scoped(|mut ctx| {
             // TODO: when we add type parameters to trait fns, type check them here
 
             // Type check the parameters.
             let mut typed_parameters = vec![];
-            for param in parameters.into_iter() {
+            for param in parameters.iter() {
                 typed_parameters.push(
                     match ty::TyFunctionParameter::type_check_interface_parameter(
                         handler,
@@ -50,7 +50,8 @@ impl ty::TyTraitFn {
             }
 
             // Type check the return type.
-            return_type.type_id = ctx
+            let mut new_return_type = return_type.clone();
+            new_return_type.type_id = ctx
                 .resolve_type(
                     handler,
                     return_type.type_id,
@@ -63,12 +64,12 @@ impl ty::TyTraitFn {
                 });
 
             let trait_fn = ty::TyTraitFn {
-                name,
-                span,
+                name: name.clone(),
+                span: span.clone(),
                 parameters: typed_parameters,
-                return_type,
-                purity,
-                attributes,
+                return_type: new_return_type,
+                purity: *purity,
+                attributes: attributes.clone(),
             };
 
             Ok(trait_fn)
@@ -112,6 +113,7 @@ impl ty::TyTraitFn {
             is_contract_call: matches!(abi_mode, AbiMode::ImplAbiFn(..)),
             where_clause: vec![],
             is_trait_method_dummy: true,
+            kind: ty::TyFunctionDeclKind::Default,
         }
     }
 }

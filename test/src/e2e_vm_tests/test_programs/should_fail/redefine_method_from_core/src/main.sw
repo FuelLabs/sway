@@ -1,11 +1,5 @@
 script;
 
-pub trait Shift {
-    fn lsh(self, other: u64) -> Self;
-    fn rsh(self, other: u64) -> Self;
-
-}
-
 impl Shift for u64 {
     fn lsh(self, other: u64) -> Self {
         asm(r1 : self, r2: other, r3) {
@@ -22,12 +16,6 @@ impl Shift for u64 {
     }
 }
 
-fn foo() -> u64 {
-    let mut x: u64 = 4;
-    x = 5 + 2;
-    x
-}
-
 fn main() -> u64 {
-  foo()
+  101 << 2
 }

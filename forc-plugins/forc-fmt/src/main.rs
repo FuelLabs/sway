@@ -6,6 +6,7 @@ use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     WorkspaceManifestFile,
 };
+use forc_util::fs_locking::PidFileLocking;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -110,9 +111,8 @@ fn run() -> Result<()> {
 /// with unsaved changes.
 ///
 /// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
-fn is_file_dirty(path: &Path) -> bool {
-    let dirty_file_path = forc_util::is_dirty_path(path);
-    dirty_file_path.exists()
+fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
+    PidFileLocking::lsp(path.as_ref()).is_locked()
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.

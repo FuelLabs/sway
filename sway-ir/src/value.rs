@@ -122,7 +122,7 @@ impl Value {
                 InstOp::Branch(_)
                     | InstOp::ConditionalBranch { .. }
                     | InstOp::Ret(_, _)
-                    | InstOp::FuelVm(FuelVmInstruction::Revert(_) | FuelVmInstruction::JmpbSsp(_))
+                    | InstOp::FuelVm(FuelVmInstruction::Revert(_) | FuelVmInstruction::JmpMem)
             ),
             ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
                 false

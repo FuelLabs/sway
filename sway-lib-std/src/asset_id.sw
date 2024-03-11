@@ -16,19 +16,19 @@ use ::hash::{Hash, Hasher};
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
-    pub value: b256,
+    bits: b256,
 }
 
 impl Hash for AssetId {
     fn hash(self, ref mut state: Hasher) {
-        let Self { value } = self;
-        value.hash(state);
+        let Self { bits } = self;
+        bits.hash(state);
     }
 }
 
 impl core::ops::Eq for AssetId {
     fn eq(self, other: Self) -> bool {
-        self.value == other.value
+        self.bits == other.bits
     }
 }
 
@@ -53,30 +53,7 @@ impl From<b256> for AssetId {
     /// }
     /// ```
     fn from(bits: b256) -> Self {
-        Self { value: bits }
-    }
-}
-
-impl From<AssetId> for b256 {
-    /// Casts an `AssetId` to raw `b256` data.
-    ///
-    /// # Returns
-    ///
-    /// * [b256] - The underlying raw `b256` data of the `AssetId`.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
-    /// fn foo() {
-    ///     let asset_id = AssetId::from(ZERO_B256);
-    ///     let b256_data = asset_id.into();
-    ///     assert(b256_data == ZERO_B256);
-    /// }
-    /// ```
-    fn from(id: AssetId) -> b256 {
-        id.value
+        Self { bits }
     }
 }
 
@@ -115,7 +92,7 @@ impl AssetId {
         };
 
         Self {
-            value: result_buffer,
+            bits: result_buffer,
         }
     }
 
@@ -152,7 +129,7 @@ impl AssetId {
         };
 
         Self {
-            value: result_buffer,
+            bits: result_buffer,
         }
     }
 
@@ -180,8 +157,51 @@ impl AssetId {
     /// ```
     pub fn base_asset_id() -> Self {
         Self {
-            value: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            bits: 0x0000000000000000000000000000000000000000000000000000000000000000,
         }
+    }
+
+    /// Returns the underlying raw `b256` data of the asset id.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The raw data of the asset id.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() -> {
+    ///     let my_asset = AssetId::from(ZERO_B256);
+    ///     assert(my_asset.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.bits
+    }
+}
+
+impl From<AssetId> for b256 {
+    /// Casts an `AssetId` to raw `b256` data.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The underlying raw `b256` data of the `AssetId`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let asset_id = AssetId::from(ZERO_B256);
+    ///     let b256_data = asset_id.into();
+    ///     assert(b256_data == ZERO_B256);
+    /// }
+    /// ```
+    fn from(id: AssetId) -> Self {
+        id.bits()
     }
 }
 

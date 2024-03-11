@@ -11,10 +11,10 @@ use super::{
     MidenVMAsmBuilder,
 };
 
-use crate::{BuildConfig, BuildTarget};
+use crate::{BuildConfig, BuildTarget, ExperimentalFlags};
 
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::*;
+use sway_ir::{Context, Kind, Module};
 
 pub fn compile_ir_to_asm(
     handler: &Handler,
@@ -106,8 +106,16 @@ fn compile_module_to_asm(
                 })
                 .collect();
 
-            let abstract_program =
-                AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr);
+            let abstract_program = AbstractProgram::new(
+                kind,
+                data_section,
+                entries,
+                non_entries,
+                reg_seqr,
+                ExperimentalFlags {
+                    new_encoding: context.experimental.new_encoding,
+                },
+            );
 
             if build_config
                 .map(|cfg| cfg.print_intermediate_asm)

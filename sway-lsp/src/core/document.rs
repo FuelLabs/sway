@@ -3,9 +3,9 @@ use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::document,
 };
+use forc_util::fs_locking::PidFileLocking;
 use lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
 use ropey::Rope;
-use tokio::fs::File;
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {
@@ -111,41 +111,25 @@ impl TextDocument {
 /// Marks the specified file as "dirty" by creating a corresponding flag file.
 ///
 /// This function ensures the necessary directory structure exists before creating the flag file.
-pub async fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
+pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
-    let dirty_file_path = forc_util::is_dirty_path(&path);
-    if let Some(dir) = dirty_file_path.parent() {
-        // Ensure the directory exists
-        tokio::fs::create_dir_all(dir)
-            .await
-            .map_err(|_| DirectoryError::LspLocksDirFailed)?;
-    }
-    // Create an empty "dirty" file
-    File::create(&dirty_file_path)
-        .await
-        .map_err(|err| DocumentError::UnableToCreateFile {
-            path: uri.path().to_string(),
-            err: err.to_string(),
-        })?;
-    Ok(())
+    Ok(PidFileLocking::lsp(path)
+        .lock()
+        .map_err(|_| DirectoryError::LspLocksDirFailed)?)
 }
 
 /// Removes the corresponding flag file for the specifed Url.
 ///
 /// If the flag file does not exist, this function will do nothing.
-pub async fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
+pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
-    let dirty_file_path = forc_util::is_dirty_path(&path);
-    if dirty_file_path.exists() {
-        // Remove the "dirty" file
-        tokio::fs::remove_file(dirty_file_path)
-            .await
-            .map_err(|err| DocumentError::UnableToRemoveFile {
-                path: uri.path().to_string(),
-                err: err.to_string(),
-            })?;
-    }
-    Ok(())
+    let uri = uri.clone();
+    Ok(PidFileLocking::lsp(path)
+        .release()
+        .map_err(|err| DocumentError::UnableToRemoveFile {
+            path: uri.path().to_string(),
+            err: err.to_string(),
+        })?)
 }
 
 #[derive(Debug)]

@@ -32,12 +32,6 @@ impl Eq for (u64,) {
     }
 }
 
-impl AbiEncode for (u64, ) {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self.0);
-    }
-}
-
 fn main() -> bool {
     assert_eq(f::<(u64, )>(), (42,));
 

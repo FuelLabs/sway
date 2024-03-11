@@ -188,7 +188,7 @@
     {
       "components": [
         {
-          "name": "value",
+          "name": "bits",
           "type": 3,
           "typeArguments": null
         }
@@ -200,7 +200,7 @@
     {
       "components": [
         {
-          "name": "value",
+          "name": "bits",
           "type": 3,
           "typeArguments": null
         }

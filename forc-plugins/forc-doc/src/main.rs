@@ -53,7 +53,13 @@ struct ProgramInfo<'a> {
 pub fn main() -> Result<()> {
     let build_instructions = Command::parse();
 
-    let (doc_path, pkg_manifest) = compile_html(&build_instructions, &get_doc_dir)?;
+    let (doc_path, pkg_manifest) = compile_html(
+        &build_instructions,
+        &get_doc_dir,
+        sway_core::ExperimentalFlags {
+            new_encoding: build_instructions.experimental_new_encoding,
+        },
+    )?;
 
     // CSS, icons and logos
     static ASSETS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/static.files");
@@ -169,6 +175,7 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
 pub fn compile_html(
     build_instructions: &Command,
     get_doc_dir: &dyn Fn(&Command) -> String,
+    experimental: sway_core::ExperimentalFlags,
 ) -> Result<(PathBuf, Box<PackageManifestFile>)> {
     // get manifest directory
     let dir = if let Some(ref path) = build_instructions.manifest_path {
@@ -221,6 +228,7 @@ pub fn compile_html(
         tests_enabled,
         &engines,
         None,
+        experimental,
     )?;
 
     let raw_docs = if !build_instructions.no_deps {

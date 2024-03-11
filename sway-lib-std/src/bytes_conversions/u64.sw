@@ -122,7 +122,7 @@ impl u64 {
     /// ```
     pub fn from_le_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 8);
-        let ptr = bytes.buf.ptr();
+        let ptr = bytes.ptr();
         let a = ptr.read_byte();
         let b = (ptr.add_uint_offset(1)).read_byte();
         let c = (ptr.add_uint_offset(2)).read_byte();
@@ -271,7 +271,7 @@ impl u64 {
     /// ```
     pub fn from_be_bytes(bytes: Bytes) -> Self {
         assert(bytes.len() == 8);
-        let ptr = bytes.buf.ptr();
+        let ptr = bytes.ptr();
         let h = ptr.read_byte();
         let g = (ptr.add_uint_offset(1)).read_byte();
         let f = (ptr.add_uint_offset(2)).read_byte();

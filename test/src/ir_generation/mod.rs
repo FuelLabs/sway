@@ -171,7 +171,12 @@ pub(super) async fn run(
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(build_target, &engines);
+    let mut core_lib = compile_core(build_target, &engines, experimental);
+    // Create new initial namespace for every test by reusing the precompiled
+    // standard libraries. The namespace, thus its root module, must have the
+    // name set.
+    const PACKAGE_NAME: &str = "test_lib";
+    core_lib.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -226,12 +231,7 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-                // Create new initial namespace for every test by reusing the precompiled
-                // standard libraries. The namespace, thus its root module, must have the
-                // name set.
-                const PACKAGE_NAME: &str = "test_lib";
-                let mut initial_namespace = core_lib.clone();
-                initial_namespace.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
+                let initial_namespace = namespace::Root::from(core_lib.clone());
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
@@ -256,6 +256,12 @@ pub(super) async fn run(
                 }
                 let programs = compile_res
                     .expect("there were no errors, so there should be a program");
+
+                if verbose {
+                    println!("Declaration Engine");
+                    println!("-----------------------");
+                    println!("{}", engines.de().pretty_print(&engines));
+                }
 
                 let typed_program = programs.typed.as_ref().unwrap();
 
@@ -367,6 +373,7 @@ pub(super) async fn run(
 
                             let _ = pass_mgr.run(&mut ir, &group);
                             let ir_output = sway_ir::printer::to_string(&ir);
+                            println!("{}", ir_output);
 
                             match checker.explain(&ir_output, filecheck::NO_VARIABLES)
                             {
@@ -513,7 +520,11 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Module {
+fn compile_core(
+    build_target: BuildTarget,
+    engines: &Engines,
+    experimental: ExperimentalFlags,
+) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -525,6 +536,7 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         disable_tests: false,
         locked: false,
         ipfs_node: None,
+        experimental_new_encoding: experimental.new_encoding,
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {

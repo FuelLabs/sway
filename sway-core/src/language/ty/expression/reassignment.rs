@@ -69,7 +69,7 @@ impl ReplaceDecls for TyReassignment {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         self.rhs.replace_decls(decl_mapping, handler, ctx)
     }
 }

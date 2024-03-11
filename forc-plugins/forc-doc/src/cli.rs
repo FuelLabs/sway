@@ -54,4 +54,7 @@ pub struct Command {
 
     #[cfg(test)]
     pub(crate) doc_path: Option<String>,
+
+    #[clap(long)]
+    pub experimental_new_encoding: bool,
 }

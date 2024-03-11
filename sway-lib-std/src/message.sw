@@ -38,7 +38,7 @@ pub fn send_message(recipient: b256, msg_data: Bytes, coins: u64) {
     // If msg_data is empty, we just ignore it and pass `smo` a pointer to the inner value of recipient.
     if !msg_data.is_empty() {
         size = msg_data.len();
-        msg_data_pointer = msg_data.buf.ptr;
+        msg_data_pointer = msg_data.ptr();
     }
 
     asm(

@@ -29,7 +29,7 @@ impl MyContract for Contract {
     fn get_string() -> Bytes {
         match storage.stored_string.read_slice() {
             Option::Some(string) => {
-                string.bytes
+                string.as_bytes()
             },
             Option::None => Bytes::new(),
         }

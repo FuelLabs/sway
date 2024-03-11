@@ -53,29 +53,50 @@ impl<T> Eq for & & &T
     }
 }
 
+struct EmbedsReferencesMut<T>
+    where T: TestInstance + Eq
+{
+    x: &mut &mut &mut T,
+    y: &mut &mut T
+}
+
 #[inline(always)]
 fn dereference_struct<T>()
     where T: TestInstance + Eq
 {
     let mut s = S { x: T::new(), y: T::different() };
+
     let r_s = &s;
     let r_r_s = &r_s;
     let r_r_r_s = &r_r_s;
+
+    let mut r_mut_s = &mut s;
+    let mut r_mut_r_mut_s = &mut r_mut_s;
+    let r_mut_r_mut_r_mut_s = &mut r_mut_r_mut_s;
 
     assert((*r_s).x == T::new());
     assert((*r_s).x == r_s.x);
     assert((*r_s).y == T::different());
     assert((*r_s).y == r_s.y);
 
+    assert(r_s.x == r_mut_s.x);
+    assert(r_s.y == r_mut_s.y);
+
     assert((**r_r_s).x == T::new());
     assert((**r_r_s).x == r_r_s.x);
     assert((**r_r_s).y == T::different());
     assert((**r_r_s).y == r_r_s.y);
 
+    assert(r_r_s.x == r_mut_r_mut_s.x);
+    assert(r_r_s.y == r_mut_r_mut_s.y);
+
     assert((***r_r_r_s).x == T::new());
     assert((***r_r_r_s).x == r_r_r_s.x);
     assert((***r_r_r_s).y == T::different());
     assert((***r_r_r_s).y == r_r_r_s.y);
+
+    assert(r_r_r_s.x == r_mut_r_mut_r_mut_s.x);
+    assert(r_r_r_s.y == r_mut_r_mut_r_mut_s.y);
 
     s.x = T::different();
     s.y = T::new();
@@ -85,15 +106,24 @@ fn dereference_struct<T>()
     assert((*r_s).y == T::new());
     assert((*r_s).y == r_s.y);
 
+    assert(r_s.x == r_mut_s.x);
+    assert(r_s.y == r_mut_s.y);
+
     assert((**r_r_s).x == T::different());
     assert((**r_r_s).x == r_r_s.x);
     assert((**r_r_s).y == T::new());
     assert((**r_r_s).y == r_r_s.y);
 
+    assert(r_r_s.x == r_mut_r_mut_s.x);
+    assert(r_r_s.y == r_mut_r_mut_s.y);
+
     assert((***r_r_r_s).x == T::different());
     assert((***r_r_r_s).x == r_r_r_s.x);
     assert((***r_r_r_s).y == T::new());
     assert((***r_r_r_s).y == r_r_r_s.y);
+
+    assert(r_r_r_s.x == r_mut_r_mut_r_mut_s.x);
+    assert(r_r_r_s.y == r_mut_r_mut_r_mut_s.y);
 }
 
 #[inline(never)]
@@ -109,25 +139,47 @@ fn dereference_struct_of_refs<T>()
 {
     let mut s1 = S { x: T::new(), y: T::different() };
     let mut s2 = S { x: T::new(), y: T::different() };
+
     let embed = EmbedsReferences { x: & & &s1, y: & &s2 };
+    let mut embed_mut = EmbedsReferencesMut { x: &mut &mut &mut s1, y: &mut &mut s2 };
+
     let r_embed = &embed;
     let r_r_embed = &r_embed;
     let r_r_r_embed = &r_r_embed;
+
+    let mut r_mut_embed_mut = &mut embed_mut;
+    let mut r_mut_r_mut_embed_mut = &mut r_mut_embed_mut;
+    let r_mut_r_mut_r_mut_embed_mut = &mut r_mut_r_mut_embed_mut;
 
     assert(r_embed.x.x == T::new());
     assert(r_embed.x.y == T::different());
     assert(r_embed.y.x == T::new());
     assert(r_embed.y.y == T::different());
 
+    assert(r_embed.x.x == r_mut_embed_mut.x.x);
+    assert(r_embed.x.y == r_mut_embed_mut.x.y);
+    assert(r_embed.y.x == r_mut_embed_mut.y.x);
+    assert(r_embed.y.y == r_mut_embed_mut.y.y);
+
     assert(r_r_embed.x.x == T::new());
     assert(r_r_embed.x.y == T::different());
     assert(r_r_embed.y.x == T::new());
     assert(r_r_embed.y.y == T::different());
 
+    assert(r_r_embed.x.x == r_mut_r_mut_embed_mut.x.x);
+    assert(r_r_embed.x.y == r_mut_r_mut_embed_mut.x.y);
+    assert(r_r_embed.y.x == r_mut_r_mut_embed_mut.y.x);
+    assert(r_r_embed.y.y == r_mut_r_mut_embed_mut.y.y);
+
     assert(r_r_r_embed.x.x == T::new());
     assert(r_r_r_embed.x.y == T::different());
     assert(r_r_r_embed.y.x == T::new());
     assert(r_r_r_embed.y.y == T::different());
+
+    assert(r_r_r_embed.x.x == r_mut_r_mut_r_mut_embed_mut.x.x);
+    assert(r_r_r_embed.x.y == r_mut_r_mut_r_mut_embed_mut.x.y);
+    assert(r_r_r_embed.y.x == r_mut_r_mut_r_mut_embed_mut.y.x);
+    assert(r_r_r_embed.y.y == r_mut_r_mut_r_mut_embed_mut.y.y);
 
     s1.x = T::different();
     s1.y = T::new();
@@ -140,20 +192,40 @@ fn dereference_struct_of_refs<T>()
     assert(r_embed.y.x == T::different());
     assert(r_embed.y.y == T::new());
 
+    assert(r_embed.x.x == r_mut_embed_mut.x.x);
+    assert(r_embed.x.y == r_mut_embed_mut.x.y);
+    assert(r_embed.y.x == r_mut_embed_mut.y.x);
+    assert(r_embed.y.y == r_mut_embed_mut.y.y);
+
     assert(r_r_embed.x.x == T::different());
     assert(r_r_embed.x.y == T::new());
     assert(r_r_embed.y.x == T::different());
     assert(r_r_embed.y.y == T::new());
+
+    assert(r_r_embed.x.x == r_mut_r_mut_embed_mut.x.x);
+    assert(r_r_embed.x.y == r_mut_r_mut_embed_mut.x.y);
+    assert(r_r_embed.y.x == r_mut_r_mut_embed_mut.y.x);
+    assert(r_r_embed.y.y == r_mut_r_mut_embed_mut.y.y);
 
     assert(r_r_r_embed.x.x == T::different());
     assert(r_r_r_embed.x.y == T::new());
     assert(r_r_r_embed.y.x == T::different());
     assert(r_r_r_embed.y.y == T::new());
 
+    assert(r_r_r_embed.x.x == r_mut_r_mut_r_mut_embed_mut.x.x);
+    assert(r_r_r_embed.x.y == r_mut_r_mut_r_mut_embed_mut.x.y);
+    assert(r_r_r_embed.y.x == r_mut_r_mut_r_mut_embed_mut.y.x);
+    assert(r_r_r_embed.y.y == r_mut_r_mut_r_mut_embed_mut.y.y);
+
     let r = & & & & &EmbedsReferences { x: & & &T::new(), y: & &T::different() };
 
     assert(r.x == & & &T::new());
     assert(r.y == & &T::different());
+
+    let r = & & & & &EmbedsReferencesMut { x: &mut &mut &mut T::new(), y: &mut &mut T::different() };
+
+    assert(r.x == &mut &mut &mut T::new());
+    assert(r.y == &mut &mut T::different());
 }
 
 #[inline(never)]

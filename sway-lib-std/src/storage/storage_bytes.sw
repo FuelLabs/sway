@@ -39,7 +39,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read, write)]
     fn write_slice(self, bytes: Bytes) {
-        write_slice(self.field_id, bytes.as_raw_slice());
+        write_slice(self.field_id(), bytes.as_raw_slice());
     }
 
     /// Constructs a `Bytes` type from a collection of tightly packed bytes in storage.
@@ -75,7 +75,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read)]
     fn read_slice(self) -> Option<Bytes> {
-        match read_slice(self.field_id) {
+        match read_slice(self.field_id()) {
             Some(slice) => {
                 Some(Bytes::from(slice))
             },
@@ -119,7 +119,7 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read, write)]
     fn clear(self) -> bool {
-        clear_slice(self.field_id)
+        clear_slice(self.field_id())
     }
 
     /// Returns the length of tightly packed bytes in storage.
@@ -154,6 +154,6 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     /// ```
     #[storage(read)]
     fn len(self) -> u64 {
-        read::<u64>(self.field_id, 0).unwrap_or(0)
+        read::<u64>(self.field_id(), 0).unwrap_or(0)
     }
 }

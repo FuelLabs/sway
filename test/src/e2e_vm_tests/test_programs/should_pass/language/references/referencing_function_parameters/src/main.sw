@@ -22,6 +22,8 @@ impl Eq for S {
     }
 }
 
+// TODO-IG: Extend with `mut` parameters once declaring `mut` parameters is implemented.
+
 // TODO-IG: Uncomment once proper referencing of copy type parameters is implemented.
 //#[inline(always)]
 //Fn u8_parameter(p: u8) {

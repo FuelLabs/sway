@@ -218,7 +218,7 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// }
 /// ```
 pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
-    asm(r1: amount, r2: asset_id, r3: to.value) {
+    asm(r1: amount, r2: asset_id, r3: to.bits()) {
         tr r3 r1 r2;
     }
 }
@@ -259,7 +259,7 @@ pub fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
     while index < number_of_outputs {
         if let Output::Variable = output_type(index) {
             if output_amount(index) == 0 {
-                asm(r1: to.value, r2: index, r3: amount, r4: asset_id) {
+                asm(r1: to.bits(), r2: index, r3: amount, r4: asset_id) {
                     tro r1 r2 r3 r4;
                 };
                 return;

@@ -5,7 +5,7 @@ use std::{b512::B512, constants::ZERO_B256, ecr::ec_recover_address, inputs::inp
 fn extract_public_key_and_match(signature: B512, expected_public_key: b256) -> u64 {
     if let Ok(pub_key_sig) = ec_recover_address(signature, ZERO_B256)
     {
-        if pub_key_sig.value == expected_public_key {
+        if pub_key_sig.bits() == expected_public_key {
             return 1;
         }
     }
