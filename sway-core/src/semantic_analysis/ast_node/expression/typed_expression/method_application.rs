@@ -51,8 +51,13 @@ pub(crate) fn type_check_method_application(
         } else {
             // Ignore errors in method parameters
             // On the second pass we will throw the errors if they persist.
-            let h = Handler::default();
-            args_opt_buf.push_back(ty::TyExpression::type_check(&h, ctx, arg.clone()).ok());
+            let arg_handler = Handler::default();
+            let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg.clone()).ok();
+            if arg_handler.has_errors() {
+                args_opt_buf.push_back(None);
+            } else {
+                args_opt_buf.push_back(arg_opt);
+            }
         };
     }
 
