@@ -2,8 +2,6 @@
 use clap::Parser;
 use forc_pkg::source::IPFSNode;
 
-const ABOUT: &str = "Forc plugin for building a Sway package's documentation";
-
 forc_util::cli_examples! {
     crate::Command {
         [ Build the docs for a project in the current path => "forc doc"]
@@ -14,6 +12,7 @@ forc_util::cli_examples! {
     }
 }
 
+/// Forc plugin for building a Sway package's documentation
 #[derive(Debug, Parser, Default)]
 #[clap(
     name = "forc-doc",
