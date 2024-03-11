@@ -264,8 +264,22 @@ impl<'a> Unifier<'a> {
             {
                 // if they are the same, then it's ok
             }
-            (Ref(r), Ref(e)) => {
-                self.unify_type_arguments_in_parents(handler, received, expected, span, r, e)
+            // Unification is possible in these situations, assuming that the referenced types
+            // can unify:
+            //  - `&` -> `&`
+            //  - `&mut` -> `&`
+            //  - `&mut` -> `&mut`
+            (
+                Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+                Ref {
+                    to_mutable_value: e_to_mut,
+                    referenced_type: e_ty,
+                },
+            ) if *r_to_mut || !*e_to_mut => {
+                self.unify_type_arguments_in_parents(handler, received, expected, span, r_ty, e_ty)
             }
 
             // If no previous attempts to unify were successful, raise an error.

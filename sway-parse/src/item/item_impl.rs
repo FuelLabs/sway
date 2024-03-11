@@ -113,7 +113,13 @@ mod tests {
             impl &T {}
             "#,
         );
-        assert_matches!(item.ty, Ty::Ref { .. });
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: None,
+                ..
+            }
+        );
     }
 
     #[test]
@@ -123,6 +129,44 @@ mod tests {
             impl Foo for &T {}
             "#,
         );
-        assert_matches!(item.ty, Ty::Ref { .. });
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: None,
+                ..
+            }
+        );
+    }
+
+    #[test]
+    fn parse_impl_mut_ref() {
+        let item = parse::<ItemImpl>(
+            r#"
+            impl &mut T {}
+            "#,
+        );
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: Some(_),
+                ..
+            }
+        );
+    }
+
+    #[test]
+    fn parse_impl_for_mut_ref() {
+        let item = parse::<ItemImpl>(
+            r#"
+            impl Foo for &mut T {}
+            "#,
+        );
+        assert_matches!(
+            item.ty,
+            Ty::Ref {
+                mut_token: Some(_),
+                ..
+            }
+        );
     }
 }

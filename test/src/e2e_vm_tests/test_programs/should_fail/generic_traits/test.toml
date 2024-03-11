@@ -15,12 +15,18 @@ category = "fail"
 # check: $()impl<L> Getter for FooBarData<L> {
 # check: $()"Getter" needs type arguments.
 
+# check: $()Trait is already implemented for type
+# check: $()impl<T> Multiple<u64> for FooBarData<T> {
+# nextln: $()fn unused(self, x: u64, other: u64) -> u64 {
+# check: $()}
+# nextln: $()}
+# nextln: $()This is the already existing implementation of "Multiple<u64>" for "FooBarData<F>".
+
 # check: $()impl<F> Multiple<u64> for FooBarData<F> {
-# check: $()fn unused(self, x: u64, other: u64) -> u64 {
-# check: $()other
+# nextln: $()fn unused(self, x: u64, other: u64) -> u64 {
 # check: $()}
-# check: $()}
-# check: $()Conflicting implementations of trait "Multiple<u64>" for type "FooBarData<F>".
+# nextln: $()}
+# nextln: $()Trait "generic_traits::Multiple<u64>" is already implemented for type "FooBarData<F>".
 
 # check: $()impl<T> Returner<T> for Self {
 # check: $()"Self" is not valid in the self type of an impl block
