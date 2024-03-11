@@ -13,6 +13,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "basic_storage_variables"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "break_and_continue"
 source = "member"
 dependencies = ["core"]
@@ -120,12 +125,12 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "storage_variables"
+name = "storage_vec"
 source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "storage_vec"
+name = "struct_storage_variables"
 source = "member"
 dependencies = ["std"]
 
