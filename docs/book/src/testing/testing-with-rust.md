@@ -52,7 +52,7 @@ With `--force`, this means that both `my_fuel_project` and `my-fuel-project` are
 depending on your needs.
 
 > _**Note**: `templates/sway-test-rs` can be replaced with `templates/sway-script-test-rs` or `templates/sway-predicate-test-rs` to generate a test
-> harness for scipts and predicates respectively.
+> harness for scripts and predicates respectively.
 
 If all goes well, the output should look as follows:
 
