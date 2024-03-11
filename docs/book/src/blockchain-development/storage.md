@@ -1,23 +1,5 @@
 # Storage
 
-Table of Contents
-- [Storage](#storage)
-  - [Basic Storage](#basic-storage)
-    - [Storage Accesses Via the `storage` Keyword](#storage-accesses-via-the-storage-keyword)
-    - [Storing Structs](#storing-structs)
-    - [Common Storage Collections](#common-storage-collections)
-      - [`StorageMaps<K, V>`](#storagemapsk-v)
-      - [`StorageVec<T>`](#storagevect)
-      - [`StorageBytes`](#storagebytes)
-      - [`StorageString`](#storagestring)
-  - [Advanced Storage](#advanced-storage)
-    - [Nested Storage Collections](#nested-storage-collections)
-      - [Storing a `StorageVec<T>` in a `StorageMap<K, V>`](#storing-a-storagevect-in-a-storagemapk-v)
-      - [Storing a `StorageString` in a `StorageMap<K, V>`](#storing-a-storagestring-in-a-storagemapk-v)
-      - [Storing a `StorageBytes` in a `StorageVec<T>`](#storing-a-storagebytes-in-a-storagevect)
-    - [Storage Namespace](#storage-namespace)
-    - [Manual Storage Management](#manual-storage-management)
-
 ## Basic Storage
 
 <!-- This section should explain storage in Sway -->
