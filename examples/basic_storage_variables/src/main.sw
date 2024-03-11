@@ -24,8 +24,12 @@ impl StorageExample for Contract {
     #[storage(write)]
     fn store_something() {
         storage.var1.write(42);
-        storage.var2.write(0x1111111111111111111111111111111111111111111111111111111111111111);
-        storage.var3.write(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
+        storage
+            .var2
+            .write(0x1111111111111111111111111111111111111111111111111111111111111111);
+        storage
+            .var3
+            .write(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
         storage.var4.write(Some(2u8));
     }
     // ANCHOR_END: basic_storage_write

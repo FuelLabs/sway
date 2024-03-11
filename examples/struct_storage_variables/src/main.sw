@@ -14,7 +14,7 @@ struct Type2 {
 impl Type2 {
     // a constructor that evaluates to a constant during compilation
     fn default() -> Self {
-        Self{
+        Self {
             w: 0x0000000000000000000000000000000000000000000000000000000000000000,
             z: true,
         }
