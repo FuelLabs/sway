@@ -9,11 +9,13 @@ use ::contract_id::ContractId;
 /// `run_external` is retained for the loaded code.
 ///
 /// As this function never returns to the original code that calls it, it returns `!`.
+#[inline(never)]
 pub fn run_external(load_target: ContractId) -> ! {
-    asm(load_target, word, length, ssp_saved) {
-        lw load_target fp i74;
+    asm(load_target: load_target, word, length, ssp_saved, cur_stack_size) {
         csiz length load_target;
         move ssp_saved ssp;
+        sub cur_stack_size sp ssp;
+        cfs cur_stack_size;
         ldc load_target zero length;
         addi word zero i64;
         aloc word;

@@ -106,27 +106,29 @@ impl AbstractProgram {
     /// Right now, it looks like this:
     ///
     /// WORD OP
-    /// 1    JI program_start
-    /// -    NOOP
+    /// 1    MOV $scratch $pc
+    /// -    JMPF $zero i2
     /// 2    DATA_START (0-32) (in bytes, offset from $is)
     /// -    DATA_START (32-64)
-    /// 3    LW $ds $is               1 (where 1 is in words and $is is a byte address to base off of)
-    /// -    ADD $ds $ds $is
+    /// 3    LW $ds $scratch 1
+    /// -    ADD $ds $ds $scratch
     /// 4    .program_start:
     fn build_preamble(&mut self) -> AllocatedAbstractInstructionSet {
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {
             ops: [
-                // word 1
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump(label)),
+                    opcode: Either::Left(AllocatedOpcode::MOVE(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    )),
                     comment: String::new(),
                     owning_span: None,
                 },
                 // word 1.5
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::NOOP),
-                    comment: "".into(),
+                    opcode: Either::Right(ControlFlowOp::Jump(label)),
+                    comment: String::new(),
                     owning_span: None,
                 },
                 // word 2 -- full word u64 placeholder
@@ -142,7 +144,11 @@ impl AbstractProgram {
                 },
                 // word 3 -- load the data offset into $ds
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::DataSectionRegisterLoadPlaceholder),
+                    opcode: Either::Left(AllocatedOpcode::LW(
+                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12::new_unchecked(1, "1 doesn't fit in 12 bits"),
+                    )),
                     comment: "".into(),
                     owning_span: None,
                 },
@@ -151,7 +157,7 @@ impl AbstractProgram {
                     opcode: Either::Left(AllocatedOpcode::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::InstructionStart),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
                     )),
                     comment: "".into(),
                     owning_span: None,
