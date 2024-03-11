@@ -11,7 +11,13 @@ use ::contract_id::ContractId;
 /// As this function never returns to the original code that calls it, it returns `!`.
 #[inline(never)]
 pub fn run_external(load_target: ContractId) -> ! {
-    asm(load_target: load_target, word, length, ssp_saved, cur_stack_size) {
+    asm(
+        load_target: load_target,
+        word,
+        length,
+        ssp_saved,
+        cur_stack_size,
+    ) {
         csiz length load_target;
         move ssp_saved ssp;
         sub cur_stack_size sp ssp;
