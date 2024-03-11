@@ -36,7 +36,10 @@ where
         },
         AstToken::StorageField(field) => callback(&field.attributes),
         AstToken::StructField(field) => callback(&field.attributes),
-        AstToken::TraitFn(trait_fn) => callback(&trait_fn.attributes),
+        AstToken::TraitFn(decl_id) => {
+            let decl = engines.pe().get_trait_fn(decl_id);
+            callback(&decl.attributes)
+        }
         AstToken::EnumVariant(variant) => callback(&variant.attributes),
         _ => {}
     }
