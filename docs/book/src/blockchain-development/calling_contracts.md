@@ -166,7 +166,7 @@ While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, 
 
 ## Fallback
 
-When a contract is compiled, a special section called "contract selection" is also generated. This section checks if the contract call method matches any of the available abi methods. If this fails one of two possible actions will happen:
+When a contract is compiled, a special section called "contract selection" is also generated. This section checks if the contract call method matches any of the available ABI methods. If this fails one of two possible actions will happen:
 
 1 - if none fallback function was specified, the contract will revert;
 2 - otherwise, the fallback function will be called.
