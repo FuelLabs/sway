@@ -14,7 +14,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum TraitItem {
-    TraitFn(TraitFn),
+    TraitFn(ParsedDeclId<TraitFn>),
     Constant(ParsedDeclId<ConstantDeclaration>),
     Type(ParsedDeclId<TraitTypeDeclaration>),
     // to handle parser recovery: Error represents an incomplete trait item

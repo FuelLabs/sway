@@ -158,7 +158,7 @@ fn convert_resolved_type(
         TypeInfo::Alias { ty, .. } => {
             convert_resolved_typeid(type_engine, decl_engine, context, &ty.type_id, span)?
         }
-        TypeInfo::Ref(_) => Type::get_uint64(context),
+        TypeInfo::Ref { .. } => Type::get_uint64(context),
         TypeInfo::Never => Type::get_never(context),
 
         // Unsupported types which shouldn't exist in the AST after type checking and
