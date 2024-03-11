@@ -292,7 +292,9 @@ impl TypeEngine {
             }
             TypeInfo::Ptr(targ) => self.contains_numeric(decl_engine, targ.type_id),
             TypeInfo::Slice(targ) => self.contains_numeric(decl_engine, targ.type_id),
-            TypeInfo::Ref(targ) => self.contains_numeric(decl_engine, targ.type_id),
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => self.contains_numeric(decl_engine, referenced_type.type_id),
             TypeInfo::Unknown
             | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
@@ -347,8 +349,9 @@ impl TypeEngine {
             }
             TypeInfo::Ptr(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
             TypeInfo::Slice(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
-            TypeInfo::Ref(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
-
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => self.decay_numeric(handler, engines, referenced_type.type_id, span)?,
             TypeInfo::Unknown
             | TypeInfo::Never
             | TypeInfo::UnknownGeneric { .. }
@@ -416,7 +419,7 @@ fn info_to_source_id(ty: &TypeInfo) -> Option<SourceId> {
         | TypeInfo::Contract
         | TypeInfo::StringArray(_)
         | TypeInfo::Array(_, _)
-        | TypeInfo::Ref(_) => Some(SourceId::reserved()),
+        | TypeInfo::Ref { .. } => Some(SourceId::reserved()),
         TypeInfo::Tuple(v) if v.is_empty() => Some(SourceId::reserved()),
         _ => None,
     }

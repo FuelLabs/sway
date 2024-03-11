@@ -25,6 +25,71 @@ for ((i=END;i>=START;i--)); do
     sed -i "s/\/\/ BEGIN STRARRAY_DECODE/\/\/ BEGIN STRARRAY_DECODE\n$CODE/g" ./src/codec.sw
 done
 
+generate_tuple_encode() {
+    local CODE="impl<"
+
+    local elements=("$1")
+    for element in ${elements[@]}
+    do
+        CODE="$CODE $element,"
+    done
+
+    CODE="$CODE> AbiEncode for ("
+
+    for element in ${elements[@]}
+    do
+        CODE="$CODE $element,"
+    done
+
+    CODE="$CODE) where " 
+
+    for element in ${elements[@]}
+    do
+        CODE="$CODE $element: AbiEncode, "
+    done
+
+    CODE="$CODE{ fn abi_encode(self, ref mut buffer: Buffer) { "
+
+    i=0
+    for element in ${elements[@]}
+    do
+        CODE="$CODE self.$i.abi_encode(buffer);"
+        i=$((i+1))
+    done
+
+    CODE="$CODE } }"
+
+    sed -i "s/\/\/ BEGIN TUPLES_ENCODE/\/\/ BEGIN TUPLES_ENCODE\n$CODE/g" ./src/codec.sw
+}
+
+remove_generated_code "TUPLES_ENCODE"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V W X Y"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V W X"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V W"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U V"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T U"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S T"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R S"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q R"
+generate_tuple_encode "A B C D E F G H I J K L M N O P Q"
+generate_tuple_encode "A B C D E F G H I J K L M N O P"
+generate_tuple_encode "A B C D E F G H I J K L M N O"
+generate_tuple_encode "A B C D E F G H I J K L M N"
+generate_tuple_encode "A B C D E F G H I J K L M"
+generate_tuple_encode "A B C D E F G H I J K L"
+generate_tuple_encode "A B C D E F G H I J K"
+generate_tuple_encode "A B C D E F G H I J"
+generate_tuple_encode "A B C D E F G H I"
+generate_tuple_encode "A B C D E F G H"
+generate_tuple_encode "A B C D E F G"
+generate_tuple_encode "A B C D E F"
+generate_tuple_encode "A B C D E"
+generate_tuple_encode "A B C D"
+generate_tuple_encode "A B C"
+generate_tuple_encode "A B"
+generate_tuple_encode "A"
+
 generate_tuple_decode() {
     local CODE="impl<"
 

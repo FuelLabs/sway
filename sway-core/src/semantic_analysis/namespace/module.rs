@@ -14,7 +14,7 @@ use crate::{
 use super::{
     lexical_scope::{Items, LexicalScope, SymbolMap},
     root::Root,
-    LexicalScopeId, ModuleName, Path, PathBuf,
+    LexicalScopeId, ModuleName, ModulePath, Path,
 };
 
 use sway_ast::ItemConst;
@@ -59,7 +59,7 @@ pub struct Module {
     ///
     /// When this is the root module, this is equal to `[]`. When this is a
     /// submodule of the root called "foo", this would be equal to `[foo]`.
-    pub mod_path: PathBuf,
+    pub mod_path: ModulePath,
 }
 
 impl Default for Module {
@@ -251,12 +251,12 @@ impl Module {
             .unwrap()
     }
 
-    /// The collection of items declared by this module's root lexical scope.
+    /// The collection of items declared by this module's current lexical scope.
     pub fn current_items(&self) -> &Items {
         &self.current_lexical_scope().items
     }
 
-    /// The mutable collection of items declared by this module's root lexical scope.
+    /// The mutable collection of items declared by this module's curent lexical scope.
     pub fn current_items_mut(&mut self) -> &mut Items {
         &mut self.current_lexical_scope_mut().items
     }

@@ -1251,10 +1251,12 @@ where
 
 // Encode Tuples
 
+
 impl AbiEncode for () {
     fn abi_encode(self, ref mut _buffer: Buffer) {}
 }
 
+// BEGIN TUPLES_ENCODE
 impl<A> AbiEncode for (A, )
 where
     A: AbiEncode,
@@ -1263,7 +1265,6 @@ where
         self.0.abi_encode(buffer);
     }
 }
-
 impl<A, B> AbiEncode for (A, B)
 where
     A: AbiEncode,
@@ -1274,7 +1275,6 @@ where
         self.1.abi_encode(buffer);
     }
 }
-
 impl<A, B, C> AbiEncode for (A, B, C)
 where
     A: AbiEncode,
@@ -1287,7 +1287,6 @@ where
         self.2.abi_encode(buffer);
     }
 }
-
 impl<A, B, C, D> AbiEncode for (A, B, C, D)
 where
     A: AbiEncode,
@@ -1302,7 +1301,6 @@ where
         self.3.abi_encode(buffer);
     }
 }
-
 impl<A, B, C, D, E> AbiEncode for (A, B, C, D, E)
 where
     A: AbiEncode,
@@ -1319,7 +1317,6 @@ where
         self.4.abi_encode(buffer);
     }
 }
-
 impl<A, B, C, D, E, F> AbiEncode for (A, B, C, D, E, F)
 where
     A: AbiEncode,
@@ -1338,6 +1335,787 @@ where
         self.5.abi_encode(buffer);
     }
 }
+impl<A, B, C, D, E, F, G> AbiEncode for (A, B, C, D, E, F, G)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H> AbiEncode for (A, B, C, D, E, F, G, H)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I> AbiEncode for (A, B, C, D, E, F, G, H, I)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J> AbiEncode for (A, B, C, D, E, F, G, H, I, J)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+        self.19.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+    T: AbiEncode,
+    U: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+        self.19.abi_encode(buffer);
+        self.20.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+    T: AbiEncode,
+    U: AbiEncode,
+    V: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+        self.19.abi_encode(buffer);
+        self.20.abi_encode(buffer);
+        self.21.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+    T: AbiEncode,
+    U: AbiEncode,
+    V: AbiEncode,
+    W: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+        self.19.abi_encode(buffer);
+        self.20.abi_encode(buffer);
+        self.21.abi_encode(buffer);
+        self.22.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+    T: AbiEncode,
+    U: AbiEncode,
+    V: AbiEncode,
+    W: AbiEncode,
+    X: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+        self.19.abi_encode(buffer);
+        self.20.abi_encode(buffer);
+        self.21.abi_encode(buffer);
+        self.22.abi_encode(buffer);
+        self.23.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+    T: AbiEncode,
+    U: AbiEncode,
+    V: AbiEncode,
+    W: AbiEncode,
+    X: AbiEncode,
+    Y: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+        self.19.abi_encode(buffer);
+        self.20.abi_encode(buffer);
+        self.21.abi_encode(buffer);
+        self.22.abi_encode(buffer);
+        self.23.abi_encode(buffer);
+        self.24.abi_encode(buffer);
+    }
+}
+impl<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z> AbiEncode for (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z)
+where
+    A: AbiEncode,
+    B: AbiEncode,
+    C: AbiEncode,
+    D: AbiEncode,
+    E: AbiEncode,
+    F: AbiEncode,
+    G: AbiEncode,
+    H: AbiEncode,
+    I: AbiEncode,
+    J: AbiEncode,
+    K: AbiEncode,
+    L: AbiEncode,
+    M: AbiEncode,
+    N: AbiEncode,
+    O: AbiEncode,
+    P: AbiEncode,
+    Q: AbiEncode,
+    R: AbiEncode,
+    S: AbiEncode,
+    T: AbiEncode,
+    U: AbiEncode,
+    V: AbiEncode,
+    W: AbiEncode,
+    X: AbiEncode,
+    Y: AbiEncode,
+    Z: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self.0.abi_encode(buffer);
+        self.1.abi_encode(buffer);
+        self.2.abi_encode(buffer);
+        self.3.abi_encode(buffer);
+        self.4.abi_encode(buffer);
+        self.5.abi_encode(buffer);
+        self.6.abi_encode(buffer);
+        self.7.abi_encode(buffer);
+        self.8.abi_encode(buffer);
+        self.9.abi_encode(buffer);
+        self.10.abi_encode(buffer);
+        self.11.abi_encode(buffer);
+        self.12.abi_encode(buffer);
+        self.13.abi_encode(buffer);
+        self.14.abi_encode(buffer);
+        self.15.abi_encode(buffer);
+        self.16.abi_encode(buffer);
+        self.17.abi_encode(buffer);
+        self.18.abi_encode(buffer);
+        self.19.abi_encode(buffer);
+        self.20.abi_encode(buffer);
+        self.21.abi_encode(buffer);
+        self.22.abi_encode(buffer);
+        self.23.abi_encode(buffer);
+        self.24.abi_encode(buffer);
+        self.25.abi_encode(buffer);
+    }
+}
+// END TUPLES_ENCODE
 
 pub fn encode<T>(item: T) -> raw_slice
 where
