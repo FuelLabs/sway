@@ -20,7 +20,7 @@ use sway_utils::iter_prefixes;
 ///
 /// We use a custom type for the `Root` in order to ensure that methods that only work with
 /// canonical paths, or that use canonical paths internally, are *only* called from the root. This
-/// normally includes methods that first lookup some canonical path via `use_synonyms` before using
+/// normally includes methods that first lookup some canonical path via `old_use_synonyms` before using
 /// that canonical path to look up the symbol declaration.
 #[derive(Clone, Debug)]
 pub struct Root {
@@ -61,7 +61,7 @@ impl Root {
             .implemented_traits
             .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
         for symbol_and_decl in symbols_and_decls {
-            dst_mod.current_items_mut().use_synonyms.insert(
+            dst_mod.current_items_mut().old_use_synonyms.insert(
                 // TODO: No difference made between imported and declared items
                 symbol_and_decl.0,
                 (src.to_vec(), GlobImport::Yes, symbol_and_decl.1),
@@ -142,11 +142,11 @@ impl Root {
                 let dst_mod = &mut self.module[dst];
                 let add_synonym = |name| {
                     if let Some((_, GlobImport::No, _)) =
-                        dst_mod.current_items().use_synonyms.get(name)
+                        dst_mod.current_items().old_use_synonyms.get(name)
                     {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
-                    dst_mod.current_items_mut().use_synonyms.insert(
+                    dst_mod.current_items_mut().old_use_synonyms.insert(
                         // TODO: No difference made between imported and declared items
                         name.clone(),
                         (src.to_vec(), GlobImport::No, decl),
@@ -157,7 +157,7 @@ impl Root {
                         add_synonym(&alias);
                         dst_mod
                             .current_items_mut()
-                            .use_aliases
+                            .old_use_aliases
                             .insert(alias.as_str().to_string(), item.clone()); // TODO: No difference made between imported and declared items
                     }
                     None => add_synonym(item),
@@ -228,13 +228,13 @@ impl Root {
                         let dst_mod = &mut self.module[dst];
                         let mut add_synonym = |name| {
                             if let Some((_, GlobImport::No, _)) =
-                                dst_mod.current_items().use_synonyms.get(name)
+                                dst_mod.current_items().old_use_synonyms.get(name)
                             {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
                                     name: name.into(),
                                 });
                             }
-                            dst_mod.current_items_mut().use_synonyms.insert(
+                            dst_mod.current_items_mut().old_use_synonyms.insert(
                                 // TODO: No difference made between imported and declared items
                                 name.clone(),
                                 (
@@ -253,7 +253,7 @@ impl Root {
                                 add_synonym(&alias);
                                 dst_mod
                                     .current_items_mut()
-                                    .use_aliases
+                                    .old_use_aliases
                                     .insert(alias.as_str().to_string(), variant_name.clone());
                                 // TODO: No difference made between imported and declared items
                             }
@@ -326,7 +326,7 @@ impl Root {
 
                         // import it this way.
                         let dst_mod = &mut self.module[dst];
-                        dst_mod.current_items_mut().use_synonyms.insert(
+                        dst_mod.current_items_mut().old_use_synonyms.insert(
                             // TODO: No difference made between imported and declared items
                             variant_name.clone(),
                             (
@@ -378,10 +378,10 @@ impl Root {
         let src_mod = self.module.check_submodule(handler, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let use_synonyms = src_mod.current_items().use_synonyms.clone();
+        let old_use_synonyms = src_mod.current_items().old_use_synonyms.clone();
         let mut symbols_and_decls = src_mod
             .current_items()
-            .use_synonyms
+            .old_use_synonyms
             .iter()
             .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
@@ -392,7 +392,7 @@ impl Root {
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, _, decl)) in use_synonyms {
+        for (symbol, (mod_path, _, decl)) in old_use_synonyms {
             let mut is_external = false;
             let submodule = src_mod.submodule(&[mod_path[0].clone()]);
             if let Some(submodule) = submodule {
@@ -418,7 +418,7 @@ impl Root {
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_mod
                 .current_items_mut()
-                .use_synonyms
+                .old_use_synonyms
                 .insert(symbol, (path, GlobImport::Yes, decl)); // TODO: No difference made between imported and declared items
         };
 

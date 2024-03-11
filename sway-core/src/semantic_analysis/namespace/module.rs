@@ -596,10 +596,10 @@ impl Module {
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let true_symbol = self[mod_path]
             .current_items()
-            .use_aliases
+            .old_use_aliases
             .get(symbol.as_str())
             .unwrap_or(symbol);
-        match module.current_items().use_synonyms.get(symbol) {
+        match module.current_items().old_use_synonyms.get(symbol) {
             Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => Ok(decl.clone()),
             Some((src_path, _, _)) if mod_path != src_path => {
                 // If the symbol is imported, before resolving to it,

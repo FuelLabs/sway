@@ -66,12 +66,12 @@ pub struct Items {
     ///
     /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
     /// path `foo::bar::Baz`.
-    pub(crate) use_synonyms: UseSynonyms,
+    pub(crate) old_use_synonyms: UseSynonyms,
     /// Represents an alternative name for an imported symbol.
     ///
     /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
     /// alias for `bar`.
-    pub(crate) use_aliases: UseAliases,
+    pub(crate) old_use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
 }
@@ -275,12 +275,12 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name) {
+        if let Some((ident, (_, GlobImport::No, decl))) = self.old_use_synonyms.get_key_value(&name) {
             append_shadowing_error(
                 ident,
                 decl,
                 true,
-                self.use_aliases.get(&name.to_string()).is_some(),
+                self.old_use_aliases.get(&name.to_string()).is_some(),
                 &item,
                 const_shadowing_mode,
             );

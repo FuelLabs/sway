@@ -316,7 +316,7 @@ impl CallPath {
             if let Some(use_synonym) = namespace
                 .module()
                 .current_items()
-                .use_synonyms
+                .old_use_synonyms
                 .get(&self.suffix)
             {
                 synonym_prefixes = use_synonym.0.clone();
