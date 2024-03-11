@@ -1431,9 +1431,12 @@ fn ty_to_type_info(
             let type_argument = ty_to_type_argument(context, handler, engines, *ty.into_inner())?;
             TypeInfo::Slice(type_argument)
         }
-        Ty::Ref { ty, .. } => {
+        Ty::Ref { mut_token, ty, .. } => {
             let type_argument = ty_to_type_argument(context, handler, engines, *ty)?;
-            TypeInfo::Ref(type_argument)
+            TypeInfo::Ref {
+                to_mutable_value: mut_token.is_some(),
+                referenced_type: type_argument,
+            }
         }
         Ty::Never { .. } => TypeInfo::Never,
     };
