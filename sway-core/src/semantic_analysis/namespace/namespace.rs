@@ -3,7 +3,9 @@ use crate::{
     Engines, Ident, TypeId,
 };
 
-use super::{module::Module, root::Root, submodule_namespace::SubmoduleNamespace, Path, PathBuf};
+use super::{
+    module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, Path, PathBuf,
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
@@ -37,7 +39,7 @@ pub struct Namespace {
     ///
     /// E.g. when type-checking the root module, this is equal to `[]`. When type-checking a
     /// submodule of the root called "foo", this would be equal to `[foo]`.
-    pub(crate) mod_path: PathBuf,
+    pub(crate) mod_path: ModulePath,
 }
 
 impl Namespace {
@@ -246,5 +248,30 @@ impl Namespace {
             namespace: self,
             parent_mod_path,
         }
+    }
+
+    /// Pushes a new submodule to the namespace's module hierarchy.
+    pub fn push_new_submodule(
+        &mut self,
+        mod_name: Ident,
+        visibility: Visibility,
+        module_span: Span,
+    ) {
+        let module = Module {
+            name: Some(mod_name.clone()),
+            visibility,
+            span: Some(module_span),
+            ..Default::default()
+        };
+        self.module_mut()
+            .submodules
+            .entry(mod_name.to_string())
+            .or_insert(module);
+        self.mod_path.push(mod_name);
+    }
+
+    /// Pops the current submodule from the namespace's module hierarchy.
+    pub fn pop_submodule(&mut self) {
+        self.mod_path.pop();
     }
 }

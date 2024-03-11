@@ -1,6 +1,7 @@
 use crate::{
+    engine_threading::DebugWithEngines,
     language::{parsed::Expression, Visibility},
-    transform, TypeArgument,
+    transform, Engines, TypeArgument,
 };
 use sway_types::{Ident, Span};
 
@@ -13,4 +14,10 @@ pub struct ConstantDeclaration {
     pub visibility: Visibility,
     pub is_configurable: bool,
     pub span: Span,
+}
+
+impl DebugWithEngines for ConstantDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.name))
+    }
 }
