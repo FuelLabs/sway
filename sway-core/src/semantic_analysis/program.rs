@@ -14,11 +14,30 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
 use super::{
-    TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
-    TypeCheckFinalizationContext,
+    collection_context::SymbolCollectionContext, module::ModuleEvaluationOrder, TypeCheckAnalysis,
+    TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
 };
 
 impl TyProgram {
+    /// Collects the given parsed program to produce a symbol map and module evaluation order.
+    ///
+    /// The given `initial_namespace` acts as an initial state for each module within this program.
+    /// It should contain a submodule for each library package dependency.
+    pub fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        parsed: &ParseProgram,
+        initial_namespace: namespace::Root,
+        module_eval_order: &ModuleEvaluationOrder,
+    ) -> Result<SymbolCollectionContext, ErrorEmitted> {
+        let namespace = Namespace::init_root(initial_namespace);
+        let mut ctx = SymbolCollectionContext::new(namespace);
+        let ParseProgram { root, kind: _ } = parsed;
+
+        ty::TyModule::collect(handler, engines, &mut ctx, root, module_eval_order)?;
+        Ok(ctx)
+    }
+
     /// Type-check the given parsed program to produce a typed program.
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
@@ -30,6 +49,7 @@ impl TyProgram {
         initial_namespace: namespace::Root,
         package_name: &str,
         build_config: Option<&BuildConfig>,
+        module_eval_order: ModuleEvaluationOrder,
     ) -> Result<Self, ErrorEmitted> {
         let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
 
@@ -38,11 +58,6 @@ impl TyProgram {
             .with_kind(parsed.kind);
 
         let ParseProgram { root, kind } = parsed;
-
-        // Analyze the dependency order for the submodules.
-        let modules_dep_graph = ty::TyModule::analyze(handler, root)?;
-        let module_eval_order: Vec<sway_types::BaseIdent> =
-            modules_dep_graph.compute_order(handler)?;
 
         let root = ty::TyModule::type_check(
             handler,
