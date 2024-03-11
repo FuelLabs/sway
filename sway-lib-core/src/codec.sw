@@ -3718,7 +3718,10 @@ where
     }
 }
 
-fn assert_encoding_and_decoding<T, SLICE>(value: T, expected: SLICE)
+fn assert_encoding_and_decoding<T, SLICE>(
+    value: T,
+    expected: SLICE,
+)
 where
     T: Eq + AbiEncode + AbiDecode,
 {
