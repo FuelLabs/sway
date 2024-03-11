@@ -85,3 +85,9 @@ pub struct TraitTypeDeclaration {
     pub ty_opt: Option<TypeArgument>,
     pub span: Span,
 }
+
+impl DebugWithEngines for TraitTypeDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.name))
+    }
+}

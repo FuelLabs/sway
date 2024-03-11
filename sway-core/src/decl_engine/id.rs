@@ -26,7 +26,7 @@ impl<T> fmt::Debug for DeclId<T> {
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct DeclUniqueId(u64);
+pub struct DeclUniqueId(pub(crate) u64);
 
 impl<T> DeclId<T> {
     pub(crate) fn inner(&self) -> DeclIdIndexType {

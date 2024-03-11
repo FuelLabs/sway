@@ -1,5 +1,8 @@
+use std::hash::{DefaultHasher, Hasher};
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
+
+use super::DeclUniqueId;
 
 pub type ParsedDeclIdIndexType = usize;
 
@@ -15,6 +18,17 @@ impl<T> fmt::Debug for ParsedDeclId<T> {
 impl<T> ParsedDeclId<T> {
     pub(crate) fn inner(&self) -> ParsedDeclIdIndexType {
         self.0
+    }
+
+    pub fn unique_id(&self) -> DeclUniqueId
+    where
+        T: 'static,
+    {
+        let mut hasher = DefaultHasher::default();
+        std::any::TypeId::of::<T>().hash(&mut hasher);
+        self.0.hash(&mut hasher);
+
+        DeclUniqueId(hasher.finish())
     }
 }
 
