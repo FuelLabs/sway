@@ -1,3 +1,5 @@
+# Storage
+
 Table of Contents
 - [Storage](#storage)
   - [Basic Storage](#basic-storage)
@@ -16,15 +18,13 @@ Table of Contents
     - [Storage Namespace](#storage-namespace)
     - [Manual Storage Management](#manual-storage-management)
 
-# Storage
-
 ## Basic Storage
 
 <!-- This section should explain storage in Sway -->
 <!-- storage:example:start -->
 When developing a [smart contract](../sway-program-types/smart_contracts.md), you will typically need some sort of persistent storage. In this case, persistent storage, often just called _storage_ in this context, is a place where you can store values that are persisted inside the contract itself. This is in contrast to a regular value in _memory_, which disappears after the contract exits.
 
-Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program which saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.
+Put in conventional programming terms, contract storage is like saving data to a hard drive. That data is saved even after the program that saved it exits. That data is persistent. Using memory is like declaring a variable in a program: it exists for the duration of the program and is non-persistent.
 
 Some basic use cases of storage include declaring an owner address for a contract and saving balances in a wallet.
 <!-- storage:example:end -->
@@ -43,7 +43,7 @@ To write into a storage variable, you need to use the `storage` keyword as follo
 {{#include ../../../../examples/basic_storage_variables/src/main.sw:basic_storage_write}}
 ```
 
-To read a storage variable, you also need to use the `storage` keyword. You may use `read()` or `try_read()`, however we recommend using `try_read()` for additional saftey. 
+To read a storage variable, you also need to use the `storage` keyword. You may use `read()` or `try_read()`, however we recommend using `try_read()` for additional safety.
 
 ```sway
 {{#include ../../../../examples/basic_storage_variables/src/main.sw:basic_storage_read}}
@@ -51,7 +51,7 @@ To read a storage variable, you also need to use the `storage` keyword. You may 
 
 ### Storing Structs
 
-To store a struct in storage, each variable must be assigned in the the `storage` block. This can be either my assigning the fields individually or using a public [constructor](../basics/methods_and_associated_functions.md#constructors) that can be evaluated to a constant during compilation.
+To store a struct in storage, each variable must be assigned in the `storage` block. This can be either my assigning the fields individually or using a public [constructor](../basics/methods_and_associated_functions.md#constructors) that can be evaluated to a constant during compilation.
 
 ```sway
 {{#include ../../../../examples/struct_storage_variables/src/main.sw:struct_storage_declaration}}
@@ -71,14 +71,14 @@ The same applies to reading structs from storage, where both the individual and 
 
 ### Common Storage Collections
 
-We support the following types in storage:
+We support the following common storage collections:
 
 - `StorageMap<K, V>`
 - `StorageVec<T>`
 - `StorageBytes`
 - `StorageString`
 
-Please note that these types are not initialized upon during compliation. This means that if you try to access a key from a storage map before the storage has been set for example, the call will revert.
+Please note that these types are not initialized during compilation. This means that if you try to access a key from a storage map before the storage has been set, for example, the call will revert.
 
 Declaring these variables in storage requires a `storage` block as follows:
 
@@ -104,7 +104,7 @@ The following demonstrates how to read from a storage map:
 
 #### `StorageVec<T>`
 
-Generic storage vectors are available in the standard library as `StorageVec<T>` which have to be defined inside a `storage` block and allow you to call `push()` and `pop()` to push and pop values from a vector respectively. Refer to [Storage Vec](../common-collections/storage_vec.md) for more information about `StorageVec<T>`.
+Generic storage vectors are available in the standard library as `StorageVec<T>` which have to be defined inside a `storage` block and allow you to call `push()` and `pop()` to push and pop values from a vector respectively. Refer to [Storage Vector](../common-collections/storage_vec.md) for more information about `StorageVec<T>`.
 
 The following demonstrates how to write to a `StorageVec<T>`:
 
@@ -120,7 +120,7 @@ The following demonstrates how to read from a `StorageVec<T>`:
 
 #### `StorageBytes`
 
-Storage of `Bytes` is available in the standard library as `StorageBytes` which have to be defined inside a `storage` block. `StorageBytes` cannot be manipluated in the same way a `StorageVec<T>` or `StorageMap<K, V>` can but stores bytes more effeciently thus reducing gas. Only the entirety of a `Bytes` may be read/written to storage. This means any changes would require loading the entire `Bytes` to the heap, making changes, and then storing once again. If frequent changes are needed, a `StorageVec<u8>` is recommended.
+Storage of `Bytes` is available in the standard library as `StorageBytes` which have to be defined inside a `storage` block. `StorageBytes` cannot be manipulated in the same way a `StorageVec<T>` or `StorageMap<K, V>` can but stores bytes more efficiently thus reducing gas. Only the entirety of a `Bytes` may be read/written to storage. This means any changes would require loading the entire `Bytes` to the heap, making changes, and then storing it once again. If frequent changes are needed, a `StorageVec<u8>` is recommended.
 
 The following demonstrates how to write to a `StorageBytes`:
 
@@ -134,10 +134,9 @@ The following demonstrates how to read from a `StorageBytes`:
 {{#include ../../../../examples/advanced_storage_variables/src/main.sw:bytes_storage_read}}
 ```
 
-
 #### `StorageString`
 
-Storage of `String` is available in the standard library as `StorageString` which have to be defined inside a `storage` block. `StorageString` cannot be manipluated in the same way a `StorageVec<T>` or `StorageMap<K, V>`. Only the entirety of a `String` may be read/written to storage.
+Storage of `String` is available in the standard library as `StorageString` which have to be defined inside a `storage` block. `StorageString` cannot be manipulated in the same way a `StorageVec<T>` or `StorageMap<K, V>`. Only the entirety of a `String` may be read/written to storage.
 
 The following demonstrates how to write to a `StorageString`:
 
@@ -155,7 +154,7 @@ The following demonstrates how to read from a `StorageString`:
 
 ### Nested Storage Collections
 
-Through the use of `StorageKey`s, you may have nested storage collections such as storing a `StorageString` in a `StorageMap<K, V>`. 
+Through the use of `StorageKey`s, you may have nested storage collections such as storing a `StorageString` in a `StorageMap<K, V>`.
 
 For example, here we have a few common nested storage types declared in a `storage` block:
 
@@ -217,7 +216,7 @@ If you want the values in storage to be positioned differently, for instance to 
 
 ### Manual Storage Management
 
-It is possible to leverage FuelVM storage operations directly using the `std::storage::storage_api::write` and `std::storage::storage_api::read` functions provided in the standard library. With this approach you will have to manually assign the internal key used for storage. An example is as follows:
+It is possible to leverage FuelVM storage operations directly using the `std::storage::storage_api::write` and `std::storage::storage_api::read` functions provided in the standard library. With this approach, you will have to manually assign the internal key used for storage. An example is as follows:
 
 ```sway
 {{#include ../../../../examples/storage_example/src/main.sw}}
