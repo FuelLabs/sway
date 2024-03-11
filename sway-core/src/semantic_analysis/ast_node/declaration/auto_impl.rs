@@ -612,8 +612,14 @@ where
             let method_name = decode_first_param::<str>();
             {code}
             {fallback}
-        }}");
-        self.parse_item_fn_to_typed_ast_node(engines, module_id, FunctionDeclarationKind::Entry, &code)
+        }}"
+        );
+        self.parse_item_fn_to_typed_ast_node(
+            engines,
+            module_id,
+            FunctionDeclarationKind::Entry,
+            &code,
+        )
     }
 
     pub(crate) fn generate_predicate_entry(

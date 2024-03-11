@@ -309,13 +309,13 @@ impl ty::TyModule {
 
         let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;
         match (&kind, &fallback_fn) {
-            (TreeType::Contract, _) | (_, None) => {},
+            (TreeType::Contract, _) | (_, None) => {}
             (_, Some(fallback_fn)) => {
                 let fallback_fn = engines.de().get(fallback_fn);
                 return Err(handler.emit_err(CompileError::FallbackFnsAreContractOnly {
-                    span: fallback_fn.span.clone()
+                    span: fallback_fn.span.clone(),
                 }));
-            },
+            }
         }
 
         if ctx.experimental.new_encoding {
@@ -470,34 +470,45 @@ impl ty::TyModule {
     }
 }
 
-fn collect_fallback_fn(all_nodes: &Vec<ty::TyAstNode>, engines: &Engines, handler: &Handler) -> Result<Option<DeclId<ty::TyFunctionDecl>>, ErrorEmitted> {
-    let mut fallback_fns = all_nodes.iter().filter_map(|x| match &x.content {
-        ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
-            let d = engines.de().get(&decl.decl_id);
-            d.is_fallback().then_some(decl.decl_id)
-        }
-        _ => None,
-    }).collect::<Vec<_>>();
+fn collect_fallback_fn(
+    all_nodes: &[ty::TyAstNode],
+    engines: &Engines,
+    handler: &Handler,
+) -> Result<Option<DeclId<ty::TyFunctionDecl>>, ErrorEmitted> {
+    let mut fallback_fns = all_nodes
+        .iter()
+        .filter_map(|x| match &x.content {
+            ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
+                let d = engines.de().get(&decl.decl_id);
+                d.is_fallback().then_some(decl.decl_id)
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
 
     let mut last_error = None;
     for f in fallback_fns.iter().skip(1) {
         let decl = engines.de().get(f);
-        last_error = Some(handler.emit_err(CompileError::MultipleDefinitionsOfFallbackFunction { 
-            name: decl.name.clone(), 
-            span: decl.span.clone()
-        }));
+        last_error = Some(
+            handler.emit_err(CompileError::MultipleDefinitionsOfFallbackFunction {
+                name: decl.name.clone(),
+                span: decl.span.clone(),
+            }),
+        );
     }
 
     if let Some(last_error) = last_error {
-        return Err(last_error)
+        return Err(last_error);
     }
 
     if let Some(fallback_fn) = fallback_fns.pop() {
         let f = engines.de().get(&fallback_fn);
         if !f.parameters.is_empty() {
-            Err(handler.emit_err(CompileError::FallbackFnsCannotHaveParameters{
-                span: f.span.clone()
-            }))
+            Err(
+                handler.emit_err(CompileError::FallbackFnsCannotHaveParameters {
+                    span: f.span.clone(),
+                }),
+            )
         } else {
             Ok(Some(fallback_fn))
         }

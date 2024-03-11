@@ -865,7 +865,7 @@ pub enum CompileError {
     #[error("Fallback functions can only exist in contracts")]
     FallbackFnsAreContractOnly { span: Span },
     #[error("Fallback functions cannot have parameters")]
-    FallbackFnsCannotHaveParameters { span: Span }
+    FallbackFnsCannotHaveParameters { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -896,7 +896,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
-            MultipleDefinitionsOfFallbackFunction { span, ..} => span.clone(),
+            MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
