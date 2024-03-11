@@ -10,7 +10,7 @@ use crate::{
     language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
-    Ident,
+    Engines, Ident,
 };
 
 use sway_error::{
@@ -19,7 +19,26 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
+use super::collection_context::SymbolCollectionContext;
+
 impl ty::TyAstNode {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        node: &AstNode,
+    ) -> Result<(), ErrorEmitted> {
+        match node.content.clone() {
+            AstNodeContent::UseStatement(_a) => {}
+            AstNodeContent::IncludeStatement(_i) => (),
+            AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
+            AstNodeContent::Expression(_expr) => (),
+            AstNodeContent::Error(_spans, _err) => (),
+        };
+
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
