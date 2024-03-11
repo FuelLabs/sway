@@ -390,11 +390,17 @@ impl TypeId {
                         .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
                 );
             }
-            TypeInfo::Ref(ty) => {
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => {
                 extend(
                     &mut found,
-                    ty.type_id
-                        .extract_any_including_self(engines, filter_fn, vec![], depth + 1),
+                    referenced_type.type_id.extract_any_including_self(
+                        engines,
+                        filter_fn,
+                        vec![],
+                        depth + 1,
+                    ),
                 );
             }
         }

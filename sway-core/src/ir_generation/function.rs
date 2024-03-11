@@ -1409,7 +1409,10 @@ impl<'eng> FnCompiler<'eng> {
         let reference_type = self.engines.te().get_unaliased(ast_expr.return_type);
 
         let referenced_ast_type = match *reference_type {
-            TypeInfo::Ref(ref referenced_type) => Ok(referenced_type.type_id),
+            TypeInfo::Ref {
+                ref referenced_type,
+                ..
+            } => Ok(referenced_type.type_id),
             _ => Err(CompileError::Internal(
                 "Cannot dereference a non-reference expression.",
                 ast_expr.span.clone(),

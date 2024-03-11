@@ -1,0 +1,28 @@
+category = "fail"
+
+#not: $()let _: &u8 = &x; // No error here.
+
+#not: $()let _: &mut u8 = &mut x; // No error here.
+
+#not: $()let _: &u8 = &mut x; // No error here.
+
+#check: $()error
+#check: $()let _: &mut u8 = &x;
+#nextln: $()Mismatched types.
+#nextln: $()expected: &mut u8
+#nextln: $()found:    &u8.
+
+#check: $()error
+#check: $()let _: &mut &mut &mut u8 = &mut &mut x;
+#nextln: $()Mismatched types.
+#nextln: $()expected: &mut u8
+#nextln: $()found:    u8.
+
+#check: $()error
+#check: $()error
+
+#check: $()error
+#check: $()let _: &mut &mut u8 = &mut &mut &mut x;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    &mut u8.
