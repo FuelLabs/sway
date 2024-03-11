@@ -40,8 +40,15 @@ impl MyContract for Contract {
 pub(crate) fn default_script() -> String {
     r#"script;
 
-fn main() {
+use std::logging::log;
 
+configurable {
+    SECRET_NUMBER: u64 = 0
+}
+
+fn main() -> u64 {
+    log(SECRET_NUMBER);
+    return SECRET_NUMBER;
 }
 "#
     .into()
@@ -59,7 +66,7 @@ pub(crate) fn default_predicate() -> String {
     r#"predicate;
 
 fn main() -> bool {
-    false
+    true
 }
 "#
     .into()
