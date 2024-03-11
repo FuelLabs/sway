@@ -844,7 +844,7 @@ fn item_abi_to_abi_declaration(
                                 context,
                                 handler,
                                 engines,
-                                &trait_fn.parameters,
+                                &engines.pe().get_trait_fn(&trait_fn).parameters,
                                 "an ABI method signature",
                             )?;
                             Ok(TraitItem::TraitFn(trait_fn))
@@ -1534,7 +1534,7 @@ fn fn_signature_to_trait_fn(
     engines: &Engines,
     fn_signature: FnSignature,
     attributes: AttributesMap,
-) -> Result<TraitFn, ErrorEmitted> {
+) -> Result<ParsedDeclId<TraitFn>, ErrorEmitted> {
     let return_type = match &fn_signature.return_type_opt {
         Some((_right_arrow, ty)) => ty_to_type_argument(context, handler, engines, ty.clone())?,
         None => {
@@ -1566,6 +1566,7 @@ fn fn_signature_to_trait_fn(
         )?,
         return_type,
     };
+    let trait_fn = engines.pe().insert(trait_fn);
     Ok(trait_fn)
 }
 
