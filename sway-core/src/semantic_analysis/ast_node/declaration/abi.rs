@@ -101,11 +101,12 @@ impl ty::TyAbiDecl {
 
                 for item in interface_surface.into_iter() {
                     let decl_name = match item {
-                        TraitItem::TraitFn(method) => {
+                        TraitItem::TraitFn(decl_id) => {
+                            let method = engines.pe().get_trait_fn(&decl_id);
                             // check that a super-trait does not define a method
                             // with the same name as the current interface method
                             error_on_shadowing_superabi_method(&method.name, &mut ctx);
-                            let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), method)?;
+                            let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), &method)?;
                             for param in &method.parameters {
                                 if param.is_reference || param.is_mutable {
                                     handler.emit_err(

@@ -28,8 +28,8 @@ pub(crate) enum GlobImport {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
-// The final `bool` field of `UseSynonyms` is true if the `Vec<Ident>` path is absolute.
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl, bool)>;
+// The `Vec<Ident>` path is absolute.
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
@@ -261,8 +261,7 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name)
-        {
+        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name) {
             append_shadowing_error(
                 ident,
                 decl,
