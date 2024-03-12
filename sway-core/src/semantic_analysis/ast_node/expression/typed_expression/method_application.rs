@@ -15,7 +15,7 @@ use crate::{
 use ast_node::typed_expression::check_function_arguments_arity;
 use indexmap::IndexMap;
 use itertools::izip;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -768,6 +768,59 @@ pub(crate) fn monomorphize_method_application(
         )?;
         let mut method = (*decl_engine.get_function(fn_ref)).clone();
         method.is_trait_method_dummy = false;
+
+        // Unify method type parameters with implementing type type parameters.
+        if let Some(implementing_for_typeid) = method.implementing_for_typeid {
+            if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+                let t = &engines.de().get(&t.decl_id).implementing_for;
+                if let TypeInfo::Custom {
+                    type_arguments: Some(type_arguments),
+                    ..
+                } = &*type_engine.get(t.initial_type_id)
+                {
+                    // Method type parameters that have is_from_parent set to true use the base ident as defined in
+                    // in the impl trait. The type parameter name may be different in the Struct or Enum.
+                    // Thus we use the index in the Struct's or Enum's type parameter the impl trait type parameter
+                    // was used on.
+                    let mut names_index = HashMap::<Ident, usize>::new();
+                    for (index, t_arg) in type_arguments.iter().enumerate() {
+                        if let TypeInfo::Custom {
+                            qualified_call_path,
+                            ..
+                        } = &*type_engine.get(t_arg.initial_type_id)
+                        {
+                            names_index.insert(qualified_call_path.call_path.suffix.clone(), index);
+                        }
+                    }
+                    let implementing_type_parameters =
+                        implementing_for_typeid.get_type_parameters(type_engine, decl_engine);
+                    if let Some(implementing_type_parameters) = implementing_type_parameters {
+                        for p in method.type_parameters.clone() {
+                            if p.is_from_parent {
+                                if let Some(type_param_index) = names_index.get(&p.name_ident) {
+                                    if let Some(impl_type_param) =
+                                        implementing_type_parameters.get(*type_param_index)
+                                    {
+                                        handler.scope(|handler| {
+                                            type_engine.unify_with_generic(
+                                                handler,
+                                                engines,
+                                                p.type_id,
+                                                impl_type_param.type_id,
+                                                &call_path.span(),
+                                                "Function type parameter does not match up with implementing type type parameter.",
+                                                None,
+                                            );
+                                            Ok(())
+                                        })?;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // unify the types of the arguments with the types of the parameters from the function declaration
         *arguments =

@@ -29,6 +29,12 @@ pub struct FunctionDeclaration {
     pub kind: FunctionDeclarationKind,
 }
 
+impl DebugWithEngines for FunctionDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.name))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FunctionParameter {
     pub name: Ident,
