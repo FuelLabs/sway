@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()let _ = S {}.method(non_existing);
+# nextln: $()Variable "non_existing" does not exist in this scope.
