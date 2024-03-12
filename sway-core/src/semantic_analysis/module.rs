@@ -344,9 +344,11 @@ impl ty::TyModule {
                     let mut fn_generator =
                         auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
                     let node = fn_generator
-                        .generate_contract_entry(engines,
+                        .generate_contract_entry(
+                            engines,
                             parsed.span.source_id().map(|x| x.module_id()),
-                            &contract_fns)
+                            &contract_fns,
+                        )
                         .unwrap();
                     all_nodes.push(node)
                 }
