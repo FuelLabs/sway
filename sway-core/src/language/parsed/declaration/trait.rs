@@ -14,7 +14,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum TraitItem {
-    TraitFn(TraitFn),
+    TraitFn(ParsedDeclId<TraitFn>),
     Constant(ParsedDeclId<ConstantDeclaration>),
     Type(ParsedDeclId<TraitTypeDeclaration>),
     // to handle parser recovery: Error represents an incomplete trait item
@@ -84,4 +84,10 @@ pub struct TraitTypeDeclaration {
     pub attributes: transform::AttributesMap,
     pub ty_opt: Option<TypeArgument>,
     pub span: Span,
+}
+
+impl DebugWithEngines for TraitTypeDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.name))
+    }
 }
