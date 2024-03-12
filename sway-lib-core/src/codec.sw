@@ -92,7 +92,11 @@ impl BufferReader {
     }
 
     pub fn from_predicate_data() -> BufferReader {
-        match __gtf::<u8>(0, 0x200) { // GTF_INPUT_TYPE
+        let predicate_index = asm(r1) {
+            gm r1 i3; // GET_VERIFYING_PREDICATE
+            r1: u64
+        };
+        match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
             0u8 => {
                 let ptr = __gtf::<raw_ptr>(0, 0x20C); // INPUT_COIN_PREDICATE_DATA
                 let _len = __gtf::<u64>(0, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
