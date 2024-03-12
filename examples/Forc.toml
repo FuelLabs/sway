@@ -9,6 +9,7 @@ members = [
   "break_and_continue",
   "cei_analysis",
   "configurable_constants",
+  "converting_types",
   "counter",
   "enums",
   "fizzbuzz",
