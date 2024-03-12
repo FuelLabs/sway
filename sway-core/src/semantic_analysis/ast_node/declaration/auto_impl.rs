@@ -511,13 +511,9 @@ where
     pub(crate) fn generate_contract_entry(
         &mut self,
         engines: &Engines,
+        module_id: Option<ModuleId>,
         contract_fns: &[DeclRef<DeclId<TyFunctionDecl>>],
     ) -> Option<TyAstNode> {
-        let module_id = contract_fns
-            .first()
-            .and_then(|x| x.decl_span().source_id())
-            .map(|x| x.module_id());
-
         let mut code = String::new();
 
         let mut reads = false;
