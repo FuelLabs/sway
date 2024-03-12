@@ -38,6 +38,7 @@
   - [Calling Contracts](./blockchain-development/calling_contracts.md)
 - [Advanced Concepts](./advanced/index.md)
   - [Advanced Types](./advanced/advanced_types.md)
+  - [Advanced Storage](./advanced/advanced_storage.md)
   - [Generic Types](./advanced/generic_types.md)
   - [Traits](./advanced/traits.md)
   - [Associated Types](./advanced/associated_types.md)
