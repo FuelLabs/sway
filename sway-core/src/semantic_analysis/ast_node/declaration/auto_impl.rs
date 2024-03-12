@@ -603,7 +603,10 @@ where
         engines: &Engines,
         decl: &TyFunctionDecl,
     ) -> Option<TyAstNode> {
-        let module_id = decl.span.source_id().map(|sid| sid.module_id());
+        let module_id = decl
+            .span
+            .source_id()
+            .map(|sid| sid.module_id());
 
         let args_types = itertools::intersperse(
             decl.parameters
