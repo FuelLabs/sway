@@ -476,13 +476,26 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &parsed::ParseProgram,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
     let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
+
+    // Build the dependency graph for the submodules.
+    let modules_dep_graph = ty::TyModule::build_dep_graph(handler, &parse_program.root)?;
+    let module_eval_order = modules_dep_graph.compute_order(handler)?;
+
+    // Collect the program symbols.
+    let _collection_ctx = ty::TyProgram::collect(
+        handler,
+        engines,
+        parse_program,
+        initial_namespace.clone(),
+        &module_eval_order,
+    )?;
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -492,6 +505,7 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
         build_config,
+        module_eval_order,
     );
 
     check_should_abort(handler, retrigger_compilation.clone())?;
@@ -640,7 +654,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -737,7 +751,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: BuildConfig,
     package_name: &str,
 ) -> Result<CompiledAsm, ErrorEmitted> {
@@ -894,7 +908,7 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: namespace::Module,
+    initial_namespace: namespace::Root,
     build_config: BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,

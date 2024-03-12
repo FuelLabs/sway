@@ -44,14 +44,8 @@ pub fn generate_program_abi(
                 configurables: Some(configurables),
             }
         }
-        TyProgramKind::Script {
-            entry_function: main_function,
-            ..
-        }
-        | TyProgramKind::Predicate {
-            entry_function: main_function,
-            ..
-        } => {
+        TyProgramKind::Script { main_function, .. }
+        | TyProgramKind::Predicate { main_function, .. } => {
             let main_function = decl_engine.get_function(main_function);
             let functions =
                 vec![main_function.generate_abi_function(ctx, type_engine, decl_engine, types)];
@@ -875,8 +869,15 @@ impl TypeInfo {
                 name,
                 trait_type_id: _,
             } => format!("trait type {}", name),
-            Ref(ty) => {
-                format!("__ref {}", ty.abi_str(ctx, type_engine, decl_engine)) // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+            Ref {
+                to_mutable_value,
+                referenced_type,
+            } => {
+                format!(
+                    "__ref {}{}", // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
+                    if *to_mutable_value { "mut " } else { "" },
+                    referenced_type.abi_str(ctx, type_engine, decl_engine)
+                )
             }
         }
     }
