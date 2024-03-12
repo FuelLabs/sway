@@ -640,7 +640,10 @@ impl<'a> TypeCheckContext<'a> {
                     )));
                 }
             }
-            TypeInfo::Ref(mut ty) => {
+            TypeInfo::Ref {
+                referenced_type: mut ty,
+                to_mutable_value,
+            } => {
                 ty.type_id = self
                     .resolve(
                         handler,
@@ -656,9 +659,14 @@ impl<'a> TypeCheckContext<'a> {
                             .insert(self.engines, TypeInfo::ErrorRecovery(err), None)
                     });
 
-                self.engines
-                    .te()
-                    .insert(self.engines, TypeInfo::Ref(ty.clone()), None)
+                self.engines.te().insert(
+                    self.engines,
+                    TypeInfo::Ref {
+                        to_mutable_value,
+                        referenced_type: ty.clone(),
+                    },
+                    None,
+                )
             }
             _ => type_id,
         };
