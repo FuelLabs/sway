@@ -3,9 +3,9 @@ script;
 use auth_testing_abi::AuthTesting;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x66d9f99ddeeff7d1c6d3b986afd5d20029860289cb74c64e30c255730966d24f;
+const CONTRACT_ID = 0xd7ef57c654a7e52ee8b85f34c64fa2f8e1a250eceb446cfe9805b175a0a7680f;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x105954328a6682ec269dc73fe74198a4c5311775aec8b809e754000b3524bd0d;
+const CONTRACT_ID = 0x246a74f84bb20656f38f38fe6c594d21b2ba873b8a94efd2d5499943c8077220;
 
 // should be false in the case of a script
 fn main() -> bool {
