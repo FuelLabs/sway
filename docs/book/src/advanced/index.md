@@ -3,6 +3,7 @@
 Advanced concepts.
 
 - [Advanced Types](./advanced_types.md)
+- [Advanced Storage](./advanced_storage.md)
 - [Generic Types](./generic_types.md)
 - [Traits](./traits.md)
 - [Associated Types](./associated_types.md)
