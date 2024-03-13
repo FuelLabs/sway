@@ -8,5 +8,5 @@ fn main() -> bool {
 
     let b: B512 = B512::from((hi_bits, lo_bits));
 
-    (b.bytes)[1] == lo_bits && (b.bytes)[0] == hi_bits
+    (b.bits())[1] == lo_bits && (b.bits())[0] == hi_bits
 }

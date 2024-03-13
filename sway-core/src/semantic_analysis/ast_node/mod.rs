@@ -33,22 +33,23 @@ impl ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     let mut is_external = false;
-                    if let Some(submodule) =
-                        ctx.namespace.module().submodule(&[a.call_path[0].clone()])
+                    if let Some(submodule) = ctx
+                        .namespace()
+                        .module()
+                        .submodule(&[a.call_path[0].clone()])
                     {
                         is_external = submodule.is_external;
                     }
                     let path = if is_external || a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        ctx.namespace.find_module_path(&a.call_path)
+                        ctx.namespace().find_module_path(&a.call_path)
                     };
                     let _ = match a.import_type {
                         ImportType::Star => {
                             // try a standard starimport first
                             let star_import_handler = Handler::default();
-                            let import =
-                                ctx.star_import(&star_import_handler, &path, a.is_absolute);
+                            let import = ctx.star_import(&star_import_handler, &path);
                             if import.is_ok() {
                                 handler.append(star_import_handler);
                                 import
@@ -60,7 +61,6 @@ impl ty::TyAstNode {
                                         &variant_import_handler,
                                         path,
                                         enum_name,
-                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         handler.append(variant_import_handler);
@@ -76,18 +76,13 @@ impl ty::TyAstNode {
                             }
                         }
                         ImportType::SelfImport(_) => {
-                            ctx.self_import(handler, &path, a.alias.clone(), a.is_absolute)
+                            ctx.self_import(handler, &path, a.alias.clone())
                         }
                         ImportType::Item(ref s) => {
                             // try a standard item import first
                             let item_import_handler = Handler::default();
-                            let import = ctx.item_import(
-                                &item_import_handler,
-                                &path,
-                                s,
-                                a.alias.clone(),
-                                a.is_absolute,
-                            );
+                            let import =
+                                ctx.item_import(&item_import_handler, &path, s, a.alias.clone());
 
                             if import.is_ok() {
                                 handler.append(item_import_handler);
@@ -102,7 +97,6 @@ impl ty::TyAstNode {
                                         enum_name,
                                         s,
                                         a.alias.clone(),
-                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         handler.append(variant_import_handler);

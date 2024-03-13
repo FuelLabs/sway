@@ -9,9 +9,11 @@ use crate::{
 };
 use crossbeam_channel::{Receiver, Sender};
 use dashmap::DashMap;
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
+use std::process::Command;
 use std::{
     mem,
     path::PathBuf,
@@ -105,6 +107,9 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
+        let experimental = sway_core::ExperimentalFlags {
+            new_encoding: false,
+        };
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
@@ -140,6 +145,7 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
+                            experimental,
                         ) {
                             Ok(_) => {
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);
@@ -165,6 +171,29 @@ impl ServerState {
                         return;
                     }
                 }
+            }
+        });
+    }
+
+    /// Spawns a new thread dedicated to checking if the client process is still active,
+    /// and if not, shutting down the server.
+    pub fn spawn_client_heartbeat(&self, client_pid: usize) {
+        tokio::spawn(async move {
+            loop {
+                // Not using sysinfo here because it has compatibility issues with fuel.nix
+                // https://github.com/FuelLabs/fuel.nix/issues/64
+                let output = Command::new("ps")
+                    .arg("-p")
+                    .arg(client_pid.to_string())
+                    .output()
+                    .expect("Failed to execute ps command");
+
+                if String::from_utf8_lossy(&output.stdout).contains(&format!("{} ", client_pid)) {
+                    tracing::trace!("Client Heartbeat: still running ({})", client_pid);
+                } else {
+                    std::process::exit(0);
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             }
         });
     }

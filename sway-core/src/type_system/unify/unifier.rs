@@ -1,9 +1,13 @@
 use std::fmt;
 
 use sway_error::{handler::Handler, type_error::TypeError};
-use sway_types::{Ident, Span};
+use sway_types::Span;
 
-use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
+use crate::{
+    engine_threading::*,
+    language::{ty, CallPath},
+    type_system::priv_prelude::*,
+};
 
 use super::occurs_check::OccursCheck;
 
@@ -94,9 +98,9 @@ impl<'a> Unifier<'a> {
         }
 
         let r_type_source_info = self.engines.te().get(received);
-        let l_type_source_info = self.engines.te().get(expected);
+        let e_type_source_info = self.engines.te().get(expected);
 
-        match (&*r_type_source_info, &*l_type_source_info) {
+        match (&*r_type_source_info, &*e_type_source_info) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (),
@@ -125,12 +129,12 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix.clone(),
+                        r_decl.call_path.clone(),
                         r_decl.type_parameters.clone(),
                         r_decl.fields.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix.clone(),
+                        e_decl.call_path.clone(),
                         e_decl.type_parameters.clone(),
                         e_decl.fields.clone(),
                     ),
@@ -199,12 +203,12 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix.clone(),
+                        r_decl.call_path.clone(),
                         r_decl.type_parameters.clone(),
                         r_decl.variants.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix.clone(),
+                        e_decl.call_path.clone(),
                         e_decl.type_parameters.clone(),
                         e_decl.variants.clone(),
                     ),
@@ -260,8 +264,22 @@ impl<'a> Unifier<'a> {
             {
                 // if they are the same, then it's ok
             }
-            (Ref(r), Ref(e)) => {
-                self.unify_type_arguments_in_parents(handler, received, expected, span, r, e)
+            // Unification is possible in these situations, assuming that the referenced types
+            // can unify:
+            //  - `&` -> `&`
+            //  - `&mut` -> `&`
+            //  - `&mut` -> `&mut`
+            (
+                Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+                Ref {
+                    to_mutable_value: e_to_mut,
+                    referenced_type: e_ty,
+                },
+            ) if *r_to_mut || !*e_to_mut => {
+                self.unify_type_arguments_in_parents(handler, received, expected, span, r_ty, e_ty)
             }
 
             // If no previous attempts to unify were successful, raise an error.
@@ -275,6 +293,7 @@ impl<'a> Unifier<'a> {
                         received,
                         help_text: self.help_text.clone(),
                         span: span.clone(),
+                        internal: "4".into(),
                     }
                     .into(),
                 );
@@ -303,6 +322,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "3".into(),
                 }
                 .into(),
             );
@@ -321,8 +341,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
     ) {
         let (rn, rtps, rfs) = r;
         let (en, etps, efs) = e;
@@ -346,6 +366,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "2".into(),
                 }
                 .into(),
             );
@@ -358,8 +379,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     ) {
         let (rn, rtps, rvs) = r;
         let (en, etps, evs) = e;
@@ -376,6 +397,8 @@ impl<'a> Unifier<'a> {
                 self.unify(handler, rtp.type_id, etp.type_id, span);
             });
         } else {
+            dbg!(rn == en, rvs.len() == evs.len(), rtps.len() == etps.len());
+            let internal = format!("[{:?}] versus [{:?}]", received, expected);
             let (received, expected) = self.assign_args(received, expected);
             handler.emit_err(
                 TypeError::MismatchedType {
@@ -383,6 +406,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal,
                 }
                 .into(),
             );
@@ -421,6 +445,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "1".into(),
                 }
                 .into(),
             );

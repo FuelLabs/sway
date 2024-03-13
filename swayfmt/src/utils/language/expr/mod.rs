@@ -423,9 +423,14 @@ impl Format for Expr {
             }
             Self::Ref {
                 ampersand_token,
+                mut_token,
                 expr,
             } => {
+                // TODO-IG: Add unit tests.
                 write!(formatted_code, "{}", ampersand_token.span().as_str())?;
+                if let Some(mut_token) = mut_token {
+                    write!(formatted_code, "{} ", mut_token.span().as_str())?;
+                }
                 expr.format(formatted_code, formatter)?;
             }
             Self::Deref { star_token, expr } => {
@@ -1105,9 +1110,13 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
         }
         Expr::Ref {
             ampersand_token,
+            mut_token,
             expr,
         } => {
             let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
+            if let Some(mut_token) = mut_token {
+                collected_spans.push(ByteSpan::from(mut_token.span()));
+            }
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
         }

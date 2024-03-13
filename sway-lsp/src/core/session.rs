@@ -23,7 +23,10 @@ use lsp_types::{
     TextDocumentContentChangeEvent, TextEdit, Url,
 };
 use parking_lot::RwLock;
-use pkg::{manifest::ManifestFile, BuildPlan};
+use pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    BuildPlan,
+};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::PathBuf,
@@ -34,8 +37,7 @@ use sway_core::{
     language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty::{self},
-        HasSubmodules,
+        ty, HasSubmodules,
     },
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
@@ -323,7 +325,7 @@ impl Session {
 pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
-        ManifestFile::from_dir(&manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
+        ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
         })?;
     let member_manifests =
@@ -349,6 +351,7 @@ pub fn compile(
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
+    experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
@@ -360,6 +363,7 @@ pub fn compile(
         tests_enabled,
         engines,
         retrigger_compilation,
+        experimental,
     )
     .map_err(LanguageServerError::FailedToCompile)
 }
@@ -452,8 +456,15 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
+    experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
-    let results = compile(uri, engines, retrigger_compilation, lsp_mode.clone())?;
+    let results = compile(
+        uri,
+        engines,
+        retrigger_compilation,
+        lsp_mode.clone(),
+        experimental,
+    )?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
@@ -542,7 +553,8 @@ fn create_runnables(
 
     // Insert runnable main function if the program is a script.
     if let ty::TyProgramKind::Script {
-        ref main_function, ..
+        entry_function: ref main_function,
+        ..
     } = typed_program.kind
     {
         let main_function = decl_engine.get_function(main_function);
@@ -590,8 +602,17 @@ mod tests {
         let uri = get_url(&dir);
         let engines = Engines::default();
         let session = Arc::new(Session::new());
-        let result = parse_project(&uri, &engines, None, None, session)
-            .expect_err("expected ManifestFileNotFound");
+        let result = parse_project(
+            &uri,
+            &engines,
+            None,
+            None,
+            session,
+            sway_core::ExperimentalFlags {
+                new_encoding: false,
+            },
+        )
+        .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
             LanguageServerError::DocumentError(

@@ -72,6 +72,7 @@ pub(crate) fn instantiate_function_application(
         function_decl.name.as_str(),
         &call_path_binding.span(),
     )?;
+
     function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
@@ -81,13 +82,14 @@ pub(crate) fn instantiate_function_application(
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
-            contract_call_params: IndexMap::new(),
             arguments: typed_arguments_with_names,
             fn_ref: new_decl_ref,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
             deferred_monomorphization: false,
+            contract_call_params: IndexMap::new(),
+            contract_caller: None,
         },
         return_type: return_type.type_id,
         span,

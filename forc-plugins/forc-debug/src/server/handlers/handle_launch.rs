@@ -1,5 +1,6 @@
 use crate::server::{AdapterError, DapServer};
 use crate::types::Instruction;
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self, BuildProfile, Built, BuiltPackage, PackageManifestFile};
 use forc_test::execute::TestExecutor;
 use forc_test::setup::TestSetup;
@@ -51,6 +52,10 @@ impl DapServer {
                 return Ok((pkg.clone(), setup.clone()));
             }
         }
+
+        let experimental = sway_core::ExperimentalFlags {
+            new_encoding: false,
+        };
 
         // 1. Build the packages
         let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&self.state.program_path)
@@ -104,6 +109,7 @@ impl DapServer {
                 ..Default::default()
             },
             &outputs,
+            experimental,
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build packages: {:?}", err),

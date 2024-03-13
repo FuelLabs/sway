@@ -1,12 +1,18 @@
 script;
 
+use core::codec::*;
 use std::constants::BASE_ASSET_ID;
 use context_testing_abi::*;
+
+#[cfg(experimental_new_encoding = false)]
+const CONTRACT_ID = 0x65dae4fedb02e2d70cdb56e2b82d23a2baa69a6acdbf01cc1271c7c1a1abe2cc;
+#[cfg(experimental_new_encoding = true)]
+const CONTRACT_ID = 0x441f75894772629af8addf3bac4b04f92800aa9e509b1a438f9c82d7f5dd7972;
 
 fn main() -> bool {
     let gas: u64 = u64::max();
     let amount: u64 = 11;
-    let other_contract_id = ContractId::from(0xa38576787f8900d66e6620548b6da8142b8bb4d129b2338609acd121ca126c10);
+    let other_contract_id = ContractId::from(CONTRACT_ID);
     let other_contract_id_b256: b256 = other_contract_id.into();
     let base_asset_id = BASE_ASSET_ID;
 
@@ -16,7 +22,7 @@ fn main() -> bool {
     let returned_contract_id = test_contract.get_id {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.value,
+        asset_id: BASE_ASSET_ID.bits(),
     }();
     let returned_contract_id_b256: b256 = returned_contract_id.into();
     assert(returned_contract_id_b256 == other_contract_id_b256);
@@ -26,7 +32,7 @@ fn main() -> bool {
     let returned_this_balance = test_contract.get_this_balance {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.value,
+        asset_id: BASE_ASSET_ID.bits(),
     }(base_asset_id);
     assert(returned_this_balance == 0);
 
@@ -34,7 +40,7 @@ fn main() -> bool {
     let returned_contract_balance = test_contract.get_balance_of_contract {
         gas: gas,
         coins: 0,
-        asset_id: BASE_ASSET_ID.value,
+        asset_id: BASE_ASSET_ID.bits(),
     }(base_asset_id, other_contract_id);
     assert(returned_contract_balance == 0);
 

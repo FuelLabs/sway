@@ -25,12 +25,12 @@ use sway_core::{
             FunctionParameter, IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType,
             IncludeStatement, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
-            QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, Scrutinee,
-            StorageAccessExpression, StorageDeclaration, StorageField, StructDeclaration,
-            StructExpression, StructExpressionField, StructField, StructScrutineeField,
-            SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TraitItem,
-            TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
-            VariableDeclaration, WhileLoopExpression,
+            QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, RefExpression,
+            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
+            StructDeclaration, StructExpression, StructExpressionField, StructField,
+            StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
+            TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
+            UseStatement, VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, HasSubmodules, Literal,
     },
@@ -347,7 +347,8 @@ impl Parse for Expression {
             ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 expr.parse(ctx);
             }
-            ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
+            ExpressionKind::Ref(RefExpression { value: expr, .. })
+            | ExpressionKind::Deref(expr) => {
                 expr.parse(ctx);
             }
             // We are collecting these tokens in the lexed phase.
@@ -986,17 +987,18 @@ impl Parse for Supertrait {
     }
 }
 
-impl Parse for TraitFn {
+impl Parse for ParsedDeclId<TraitFn> {
     fn parse(&self, ctx: &ParseContext) {
+        let trait_fn = ctx.engines.pe().get_trait_fn(self);
         ctx.tokens.insert(
-            ctx.ident(&self.name),
-            Token::from_parsed(AstToken::TraitFn(self.clone()), SymbolKind::Function),
+            ctx.ident(&trait_fn.name),
+            Token::from_parsed(AstToken::TraitFn(*self), SymbolKind::Function),
         );
-        self.parameters.par_iter().for_each(|param| {
+        trait_fn.parameters.par_iter().for_each(|param| {
             param.parse(ctx);
         });
-        self.return_type.parse(ctx);
-        self.attributes.parse(ctx);
+        trait_fn.return_type.parse(ctx);
+        trait_fn.attributes.parse(ctx);
     }
 }
 

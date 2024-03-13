@@ -56,6 +56,7 @@ impl ty::TyFunctionDecl {
             visibility,
             purity,
             where_clause,
+            kind,
             ..
         } = fn_decl;
         let mut return_type = fn_decl.return_type.clone();
@@ -80,12 +81,11 @@ impl ty::TyFunctionDecl {
         }
 
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace.clone();
         ctx.by_ref()
             .with_purity(*purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(&mut fn_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 // Type check the type parameters.
                 let new_type_parameters = TypeParameter::type_check_type_params(
                     handler,
@@ -140,7 +140,7 @@ impl ty::TyFunctionDecl {
                     )
                 };
 
-                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace);
+                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace());
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
@@ -158,6 +158,12 @@ impl ty::TyFunctionDecl {
                     purity: *purity,
                     where_clause: where_clause.clone(),
                     is_trait_method_dummy: false,
+                    kind: match kind {
+                        FunctionDeclarationKind::Default => ty::TyFunctionDeclKind::Default,
+                        FunctionDeclarationKind::Entry => ty::TyFunctionDeclKind::Entry,
+                        FunctionDeclarationKind::Test => ty::TyFunctionDeclKind::Test,
+                        FunctionDeclarationKind::Main => ty::TyFunctionDeclKind::Main,
+                    },
                 };
 
                 Ok(function_decl)
@@ -171,12 +177,11 @@ impl ty::TyFunctionDecl {
         ty_fn_decl: &mut Self,
     ) -> Result<Self, ErrorEmitted> {
         // create a namespace for the function
-        let mut fn_namespace = ctx.namespace.clone();
         ctx.by_ref()
             .with_purity(ty_fn_decl.purity)
             .with_const_shadowing_mode(ConstShadowingMode::Sequential)
             .disallow_functions()
-            .scoped(&mut fn_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 let FunctionDeclaration { body, .. } = fn_decl;
 
                 let ty::TyFunctionDecl {
@@ -317,6 +322,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        kind: ty::TyFunctionDeclKind::Default,
     };
 
     let selector_text = decl
@@ -376,6 +382,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        kind: ty::TyFunctionDeclKind::Default,
     };
 
     let selector_text = decl

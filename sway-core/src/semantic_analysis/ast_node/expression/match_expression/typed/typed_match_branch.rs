@@ -85,15 +85,14 @@ impl ty::TyMatchBranch {
             )?;
 
         // create a new namespace for this branch result
-        let mut namespace = ctx.namespace.clone();
-        ctx.scoped(&mut namespace, |mut branch_ctx| {
+        ctx.scoped(|mut scoped_ctx| {
             // for every variable that comes into result block, create a variable declaration,
             // insert it into the branch namespace, and add it to the block of code statements
             let mut code_block_contents: Vec<ty::TyAstNode> = vec![];
 
             for (var_ident, var_body) in result_var_declarations {
                 let var_decl = instantiate.var_decl(var_ident.clone(), var_body.clone());
-                let _ = branch_ctx.insert_symbol(handler, var_ident.clone(), var_decl.clone());
+                let _ = scoped_ctx.insert_symbol(handler, var_ident.clone(), var_decl.clone());
                 code_block_contents.push(ty::TyAstNode {
                     content: ty::TyAstNodeContent::Declaration(var_decl),
                     span: var_ident.span(),
@@ -102,18 +101,34 @@ impl ty::TyMatchBranch {
 
             // type check the branch result
             let typed_result = {
-                let ctx = branch_ctx.by_ref().with_type_annotation(type_engine.insert(
+                // If there is an expectation coming from the context via `ctx.type_annotation()` we need
+                // to pass that contextual requirement to the branch in order to provide more specific contextual
+                // information. E.g., that `Option<u8>` is expected.
+                // But at the same time, we do not want to unify during type checking with that contextual information
+                // at this stage, because the branch might get `TypeInfo::Unknown` as the expectation and diverge
+                // at the same time. The divergence would unify `TypeInfo::Never` and `Unknown` in that case, leaving
+                // `Never` as the expected type for the subsequent branches.
+                // In order to pass the contextual information, but not to affect the original type with potential
+                // unwanted unification with `Never`, we create a copies of the `ctx.type_annotation()` type and pass
+                // it as the expectation to the branch.
+                let type_annotation = (*type_engine.get(scoped_ctx.type_annotation())).clone();
+                let branch_ctx = scoped_ctx.by_ref().with_type_annotation(type_engine.insert(
                     engines,
-                    TypeInfo::Unknown,
+                    type_annotation,
                     None,
                 ));
-                ty::TyExpression::type_check(handler, ctx, result)?
+                ty::TyExpression::type_check(handler, branch_ctx, result)?
             };
 
             // Check if return type is Never if it is we don't unify as it would replace the Unknown annotation with Never.
             if !matches!(*type_engine.get(typed_result.return_type), TypeInfo::Never) {
                 // unify the return type from the typed result with the type annotation
-                branch_ctx.unify_with_type_annotation(
+                // Note here that the `scoped_ctx` is actually the original `ctx` just scoped
+                // to the `namespace`, thus, having the same original type annotation.
+                // This unification is also the mechanism for carrying the type of a branch to
+                // the subsequent branch. It potentially alters the type behind the `ctx.type_annotation()`
+                // which will then be picked by the next branch.
+                scoped_ctx.unify_with_type_annotation(
                     handler,
                     typed_result.return_type,
                     &typed_result.span,

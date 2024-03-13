@@ -3,7 +3,7 @@ use crate::{
     engine_threading::Engines,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyTraitItem},
+        ty::{self, TyTraitItem},
         CallPath, Visibility,
     },
     semantic_analysis::*,
@@ -12,9 +12,8 @@ use crate::{
 };
 
 use super::{
-    lexical_scope::{GlobImport, Items, LexicalScope, SymbolMap},
+    lexical_scope::{Items, LexicalScope, SymbolMap},
     root::Root,
-    trait_map::TraitMap,
     LexicalScopeId, ModuleName, Path, PathBuf,
 };
 
@@ -23,7 +22,6 @@ use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
 use sway_types::{span::Span, Spanned};
-use sway_utils::iter_prefixes;
 
 /// A single `Module` within a Sway project.
 ///
@@ -89,17 +87,23 @@ impl Module {
         engines: &Engines,
         name: Option<Ident>,
         contract_id_value: String,
+        experimental: crate::ExperimentalFlags,
     ) -> Result<Self, vec1::Vec1<CompileError>> {
         let handler = <_>::default();
-        Module::default_with_contract_id_inner(&handler, engines, name, contract_id_value).map_err(
-            |_| {
-                let (errors, warnings) = handler.consume();
-                assert!(warnings.is_empty());
-
-                // Invariant: `.value == None` => `!errors.is_empty()`.
-                vec1::Vec1::try_from_vec(errors).unwrap()
-            },
+        Module::default_with_contract_id_inner(
+            &handler,
+            engines,
+            name,
+            contract_id_value,
+            experimental,
         )
+        .map_err(|_| {
+            let (errors, warnings) = handler.consume();
+            assert!(warnings.is_empty());
+
+            // Invariant: `.value == None` => `!errors.is_empty()`.
+            vec1::Vec1::try_from_vec(errors).unwrap()
+        })
     }
 
     fn default_with_contract_id_inner(
@@ -107,6 +111,7 @@ impl Module {
         engines: &Engines,
         ns_name: Option<Ident>,
         contract_id_value: String,
+        experimental: crate::ExperimentalFlags,
     ) -> Result<Self, ErrorEmitted> {
         // it would be nice to one day maintain a span from the manifest file, but
         // we don't keep that around so we just use the span from the generated const decl instead.
@@ -155,12 +160,13 @@ impl Module {
             content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
             span: const_item_span.clone(),
         };
-        let mut ns = Namespace::init_root(Default::default());
+        let root = Root::from(Module::default());
+        let mut ns = Namespace::init_root(root);
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
         ns.root.module.name = ns_name;
         ns.root.module.is_external = true;
         ns.root.module.visibility = Visibility::Public;
-        let type_check_ctx = TypeCheckContext::from_root(&mut ns, engines);
+        let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
         let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in
@@ -279,446 +285,6 @@ impl Module {
     pub fn pop_lexical_scope(&mut self) {
         let parent_scope_id = self.current_lexical_scope().parent;
         self.current_lexical_scope_id = parent_scope_id.unwrap_or(0);
-    }
-
-    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
-    /// `dst` module.
-    ///
-    /// This is used when an import path contains an asterisk.
-    ///
-    /// Paths are assumed to be relative to `self`.
-    pub(crate) fn star_import(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        src: &Path,
-        dst: &Path,
-        is_src_absolute: bool,
-    ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
-
-        let decl_engine = engines.de();
-
-        let src_mod = self.check_submodule(handler, src)?;
-
-        let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let mut symbols_and_decls = vec![];
-        for (symbol, decl) in src_mod.current_items().symbols.iter() {
-            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-                symbols_and_decls.push((symbol.clone(), decl.clone()));
-            }
-        }
-
-        let dst_mod = &mut self[dst];
-        dst_mod
-            .current_items_mut()
-            .implemented_traits
-            .extend(implemented_traits, engines);
-        for symbol_and_decl in symbols_and_decls {
-            dst_mod.current_items_mut().use_synonyms.insert(
-                symbol_and_decl.0,
-                (
-                    src.to_vec(),
-                    GlobImport::Yes,
-                    symbol_and_decl.1,
-                    is_src_absolute,
-                ),
-            );
-        }
-
-        Ok(())
-    }
-
-    /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
-    /// `dst` module.
-    ///
-    /// This is used when an import path contains an asterisk.
-    ///
-    /// Paths are assumed to be relative to `self`.
-    pub fn star_import_with_reexports(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        src: &Path,
-        dst: &Path,
-        is_src_absolute: bool,
-    ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
-
-        let decl_engine = engines.de();
-
-        let src_mod = self.check_submodule(handler, src)?;
-
-        let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let use_synonyms = src_mod.current_items().use_synonyms.clone();
-        let mut symbols_and_decls = src_mod
-            .current_items()
-            .use_synonyms
-            .iter()
-            .map(|(symbol, (_, _, decl, _))| (symbol.clone(), decl.clone()))
-            .collect::<Vec<_>>();
-        for (symbol, decl) in src_mod.current_items().symbols.iter() {
-            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-                symbols_and_decls.push((symbol.clone(), decl.clone()));
-            }
-        }
-
-        let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, _, decl, _)) in use_synonyms {
-            let mut is_external = false;
-            let submodule = src_mod.submodule(&[mod_path[0].clone()]);
-            if let Some(submodule) = submodule {
-                is_external = submodule.is_external
-            };
-
-            let mut path = src[..1].to_vec();
-            if is_external {
-                path = mod_path;
-            } else {
-                path.extend(mod_path);
-            }
-
-            symbols_paths_and_decls.push((symbol, path, decl));
-        }
-
-        let dst_mod = &mut self[dst];
-        dst_mod
-            .current_items_mut()
-            .implemented_traits
-            .extend(implemented_traits, engines);
-
-        let mut try_add = |symbol, path, decl: ty::TyDecl| {
-            dst_mod
-                .current_items_mut()
-                .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl, is_src_absolute));
-        };
-
-        for (symbol, decl) in symbols_and_decls {
-            try_add(symbol, src.to_vec(), decl);
-        }
-
-        for (symbol, path, decl) in symbols_paths_and_decls {
-            try_add(symbol, path, decl);
-        }
-
-        Ok(())
-    }
-
-    /// Pull a single item from a `src` module and import it into the `dst` module.
-    ///
-    /// The item we want to import is basically the last item in path because this is a `self`
-    /// import.
-    pub(crate) fn self_import(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        src: &Path,
-        dst: &Path,
-        alias: Option<Ident>,
-        is_src_absolute: bool,
-    ) -> Result<(), ErrorEmitted> {
-        let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(
-            handler,
-            engines,
-            src,
-            last_item,
-            dst,
-            alias,
-            is_src_absolute,
-        )
-    }
-
-    /// Pull a single `item` from the given `src` module and import it into the `dst` module.
-    ///
-    /// Paths are assumed to be relative to `self`.
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn item_import(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        src: &Path,
-        item: &Ident,
-        dst: &Path,
-        alias: Option<Ident>,
-        is_src_absolute: bool,
-    ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
-
-        let decl_engine = engines.de();
-
-        let src_mod = self.check_submodule(handler, src)?;
-        let mut impls_to_insert = TraitMap::default();
-        match src_mod.current_items().symbols.get(item).cloned() {
-            Some(decl) => {
-                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
-                    handler.emit_err(CompileError::ImportPrivateSymbol {
-                        name: item.clone(),
-                        span: item.span(),
-                    });
-                }
-
-                //  if this is an enum or struct or function, import its implementations
-                if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
-                    impls_to_insert.extend(
-                        src_mod
-                            .current_items()
-                            .implemented_traits
-                            .filter_by_type_item_import(type_id, engines),
-                        engines,
-                    );
-                }
-                // if this is a trait, import its implementations
-                let decl_span = decl.span();
-                if let TyDecl::TraitDecl(_) = &decl {
-                    // TODO: we only import local impls from the source namespace
-                    // this is okay for now but we'll need to device some mechanism to collect all available trait impls
-                    impls_to_insert.extend(
-                        src_mod
-                            .current_items()
-                            .implemented_traits
-                            .filter_by_trait_decl_span(decl_span),
-                        engines,
-                    );
-                }
-                // no matter what, import it this way though.
-                let dst_mod = &mut self[dst];
-                let add_synonym = |name| {
-                    if let Some((_, GlobImport::No, _, _)) =
-                        dst_mod.current_items().use_synonyms.get(name)
-                    {
-                        handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
-                    }
-                    dst_mod.current_items_mut().use_synonyms.insert(
-                        name.clone(),
-                        (src.to_vec(), GlobImport::No, decl, is_src_absolute),
-                    );
-                };
-                match alias {
-                    Some(alias) => {
-                        add_synonym(&alias);
-                        dst_mod
-                            .current_items_mut()
-                            .use_aliases
-                            .insert(alias.as_str().to_string(), item.clone());
-                    }
-                    None => add_synonym(item),
-                };
-            }
-            None => {
-                return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: item.clone(),
-                    span: item.span(),
-                }));
-            }
-        };
-
-        let dst_mod = &mut self[dst];
-        dst_mod
-            .current_items_mut()
-            .implemented_traits
-            .extend(impls_to_insert, engines);
-
-        Ok(())
-    }
-
-    /// Pull a single variant `variant` from the enum `enum_name` from the given `src` module and import it into the `dst` module.
-    ///
-    /// Paths are assumed to be relative to `self`.
-    #[allow(clippy::too_many_arguments)] // TODO: remove lint bypass once private modules are no longer experimental
-    pub(crate) fn variant_import(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        src: &Path,
-        enum_name: &Ident,
-        variant_name: &Ident,
-        dst: &Path,
-        alias: Option<Ident>,
-        is_src_absolute: bool,
-    ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
-
-        let decl_engine = engines.de();
-
-        let src_mod = self.check_submodule(handler, src)?;
-        match src_mod.current_items().symbols.get(enum_name).cloned() {
-            Some(decl) => {
-                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
-                    handler.emit_err(CompileError::ImportPrivateSymbol {
-                        name: enum_name.clone(),
-                        span: enum_name.span(),
-                    });
-                }
-
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
-                    let enum_decl = decl_engine.get_enum(&decl_id);
-                    let enum_ref = DeclRef::new(
-                        enum_decl.call_path.suffix.clone(),
-                        decl_id,
-                        enum_decl.span(),
-                    );
-
-                    if let Some(variant_decl) =
-                        enum_decl.variants.iter().find(|v| v.name == *variant_name)
-                    {
-                        // import it this way.
-                        let dst_mod = &mut self[dst];
-                        let mut add_synonym = |name| {
-                            if let Some((_, GlobImport::No, _, _)) =
-                                dst_mod.current_items().use_synonyms.get(name)
-                            {
-                                handler.emit_err(CompileError::ShadowsOtherSymbol {
-                                    name: name.into(),
-                                });
-                            }
-                            dst_mod.current_items_mut().use_synonyms.insert(
-                                name.clone(),
-                                (
-                                    src.to_vec(),
-                                    GlobImport::No,
-                                    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                        enum_ref: enum_ref.clone(),
-                                        variant_name: variant_name.clone(),
-                                        variant_decl_span: variant_decl.span.clone(),
-                                    }),
-                                    is_src_absolute,
-                                ),
-                            );
-                        };
-                        match alias {
-                            Some(alias) => {
-                                add_synonym(&alias);
-                                dst_mod
-                                    .current_items_mut()
-                                    .use_aliases
-                                    .insert(alias.as_str().to_string(), variant_name.clone());
-                            }
-                            None => add_synonym(variant_name),
-                        };
-                    } else {
-                        return Err(handler.emit_err(CompileError::SymbolNotFound {
-                            name: variant_name.clone(),
-                            span: variant_name.span(),
-                        }));
-                    }
-                } else {
-                    return Err(handler.emit_err(CompileError::Internal(
-                        "Attempting to import variants of something that isn't an enum",
-                        enum_name.span(),
-                    )));
-                }
-            }
-            None => {
-                return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: enum_name.clone(),
-                    span: enum_name.span(),
-                }));
-            }
-        };
-
-        Ok(())
-    }
-
-    /// Pull all variants from the enum `enum_name` from the given `src` module and import them all into the `dst` module.
-    ///
-    /// Paths are assumed to be relative to `self`.
-    pub(crate) fn variant_star_import(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        src: &Path,
-        dst: &Path,
-        enum_name: &Ident,
-        is_src_absolute: bool,
-    ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
-
-        let decl_engine = engines.de();
-
-        let src_mod = self.check_submodule(handler, src)?;
-        match src_mod.current_items().symbols.get(enum_name).cloned() {
-            Some(decl) => {
-                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
-                    handler.emit_err(CompileError::ImportPrivateSymbol {
-                        name: enum_name.clone(),
-                        span: enum_name.span(),
-                    });
-                }
-
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
-                    let enum_decl = decl_engine.get_enum(&decl_id);
-                    let enum_ref = DeclRef::new(
-                        enum_decl.call_path.suffix.clone(),
-                        decl_id,
-                        enum_decl.span(),
-                    );
-
-                    for variant_decl in enum_decl.variants.iter() {
-                        let variant_name = &variant_decl.name;
-
-                        // import it this way.
-                        let dst_mod = &mut self[dst];
-                        dst_mod.current_items_mut().use_synonyms.insert(
-                            variant_name.clone(),
-                            (
-                                src.to_vec(),
-                                GlobImport::Yes,
-                                TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                    enum_ref: enum_ref.clone(),
-                                    variant_name: variant_name.clone(),
-                                    variant_decl_span: variant_decl.span.clone(),
-                                }),
-                                is_src_absolute,
-                            ),
-                        );
-                    }
-                } else {
-                    return Err(handler.emit_err(CompileError::Internal(
-                        "Attempting to import variants of something that isn't an enum",
-                        enum_name.span(),
-                    )));
-                }
-            }
-            None => {
-                return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: enum_name.clone(),
-                    span: enum_name.span(),
-                }));
-            }
-        };
-
-        Ok(())
-    }
-
-    fn check_module_privacy(&self, handler: &Handler, src: &Path) -> Result<(), ErrorEmitted> {
-        let dst = &self.mod_path;
-        // you are always allowed to access your ancestor's symbols
-        if !is_ancestor(src, dst) {
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(src).skip(1) {
-                let module = self.check_submodule(handler, prefix)?;
-                if module.visibility.is_private() {
-                    let prefix_last = prefix[prefix.len() - 1].clone();
-                    handler.emit_err(CompileError::ImportPrivateModule {
-                        span: prefix_last.span(),
-                        name: prefix_last,
-                    });
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
@@ -1034,8 +600,8 @@ impl Module {
             .get(symbol.as_str())
             .unwrap_or(symbol);
         match module.current_items().use_synonyms.get(symbol) {
-            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. }, _)) => Ok(decl.clone()),
-            Some((src_path, _, _, _)) if mod_path != src_path => {
+            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => Ok(decl.clone()),
+            Some((src_path, _, _)) if mod_path != src_path => {
                 // If the symbol is imported, before resolving to it,
                 // we need to check if there is a local symbol withing the module with
                 // the same name, and if yes resolve to the local symbol, because it
@@ -1095,8 +661,4 @@ fn module_not_found(path: &[Ident]) -> CompileError {
             .collect::<Vec<_>>()
             .join("::"),
     }
-}
-
-fn is_ancestor(src: &Path, dst: &Path) -> bool {
-    dst.len() >= src.len() && src.iter().zip(dst).all(|(src, dst)| src == dst)
 }

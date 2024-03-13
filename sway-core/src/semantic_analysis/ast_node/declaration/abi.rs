@@ -53,10 +53,9 @@ impl ty::TyAbiDecl {
         let self_type_id = self_type_param.type_id;
 
         // A temporary namespace for checking within this scope.
-        let mut abi_namespace = ctx.namespace.clone();
         ctx.with_abi_mode(AbiMode::ImplAbiFn(name.clone(), None))
             .with_self_type(Some(self_type_id))
-            .scoped(&mut abi_namespace, |mut ctx| {
+            .scoped(|mut ctx| {
                 // Insert the "self" type param into the namespace.
                 self_type_param.insert_self_type_into_namespace(handler, ctx.by_ref());
 
@@ -102,11 +101,12 @@ impl ty::TyAbiDecl {
 
                 for item in interface_surface.into_iter() {
                     let decl_name = match item {
-                        TraitItem::TraitFn(method) => {
+                        TraitItem::TraitFn(decl_id) => {
+                            let method = engines.pe().get_trait_fn(&decl_id);
                             // check that a super-trait does not define a method
                             // with the same name as the current interface method
                             error_on_shadowing_superabi_method(&method.name, &mut ctx);
-                            let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), method)?;
+                            let method = ty::TyTraitFn::type_check(handler, ctx.by_ref(), &method)?;
                             for param in &method.parameters {
                                 if param.is_reference || param.is_mutable {
                                     handler.emit_err(
@@ -303,7 +303,7 @@ impl ty::TyAbiDecl {
                         let const_shadowing_mode = ctx.const_shadowing_mode();
                         let generic_shadowing_mode = ctx.generic_shadowing_mode();
                         let _ = ctx
-                            .namespace
+                            .namespace_mut()
                             .module_mut()
                             .current_items_mut()
                             .insert_symbol(

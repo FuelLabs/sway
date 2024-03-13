@@ -345,11 +345,13 @@ impl Dependencies {
                 .gather_from_iter(
                     trait_decl.interface_surface.iter(),
                     |deps, item| match item {
-                        TraitItem::TraitFn(sig) => deps
-                            .gather_from_iter(sig.parameters.iter(), |deps, param| {
+                        TraitItem::TraitFn(decl_id) => {
+                            let sig = engines.pe().get_trait_fn(decl_id);
+                            deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
                                 deps.gather_from_type_argument(engines, &param.type_argument)
                             })
-                            .gather_from_type_argument(engines, &sig.return_type),
+                            .gather_from_type_argument(engines, &sig.return_type)
+                        }
                         TraitItem::Constant(decl_id) => {
                             let const_decl = engines.pe().get_constant(decl_id);
                             deps.gather_from_constant_decl(engines, &const_decl)
@@ -429,11 +431,13 @@ impl Dependencies {
                     deps.gather_from_call_path(&sup.name, false, false)
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, item| match item {
-                    TraitItem::TraitFn(sig) => deps
-                        .gather_from_iter(sig.parameters.iter(), |deps, param| {
+                    TraitItem::TraitFn(decl_id) => {
+                        let sig = engines.pe().get_trait_fn(decl_id);
+                        deps.gather_from_iter(sig.parameters.iter(), |deps, param| {
                             deps.gather_from_type_argument(engines, &param.type_argument)
                         })
-                        .gather_from_type_argument(engines, &sig.return_type),
+                        .gather_from_type_argument(engines, &sig.return_type)
+                    }
                     TraitItem::Constant(decl_id) => {
                         let const_decl = engines.pe().get_constant(decl_id);
                         deps.gather_from_constant_decl(engines, &const_decl)
@@ -665,9 +669,8 @@ impl Dependencies {
             ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
                 self.gather_from_expr(engines, expr)
             }
-            ExpressionKind::Ref(expr) | ExpressionKind::Deref(expr) => {
-                self.gather_from_expr(engines, expr)
-            }
+            ExpressionKind::Ref(RefExpression { value: expr, .. })
+            | ExpressionKind::Deref(expr) => self.gather_from_expr(engines, expr),
         }
     }
 
@@ -1006,7 +1009,7 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         TypeInfo::Slice(..) => "__slice",
         TypeInfo::Alias { .. } => "alias",
         TypeInfo::TraitType { .. } => "trait type",
-        TypeInfo::Ref(..) => "reference type",
+        TypeInfo::Ref { .. } => "reference type",
     }
     .to_string()
 }
@@ -1025,7 +1028,3 @@ fn recursively_depends_on(
                 .unwrap_or(false)
         })
 }
-
-// -------------------------------------------------------------------------------------------------
-//
-//

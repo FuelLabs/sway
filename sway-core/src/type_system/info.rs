@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, SourceId, Spanned};
+use sway_types::{integer_bits::IntegerBits, span::Span, SourceId};
 
 use std::{
     cmp::Ordering,
@@ -112,8 +112,7 @@ pub enum TypeInfo {
     ///
     /// This type would also be created in a case where the user wrote a type
     /// annotation with a wildcard type, like:
-    /// `let v: Vec<_> = iter.collect();`. However, this is not yet implemented
-    /// in Sway.
+    /// `let v: Vec<_> = iter.collect();`.
     ///
     /// The equivalent type in the Rust compiler is:
     /// https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_type_ir/sty.rs.html#208
@@ -185,7 +184,10 @@ pub enum TypeInfo {
         name: Ident,
         trait_type_id: TypeId,
     },
-    Ref(TypeArgument),
+    Ref {
+        to_mutable_value: bool,
+        referenced_type: TypeArgument,
+    },
 }
 
 impl HashWithEngines for TypeInfo {
@@ -264,7 +266,11 @@ impl HashWithEngines for TypeInfo {
                 name.hash(state);
                 trait_type_id.hash(state);
             }
-            TypeInfo::Ref(ty) => {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                to_mutable_value.hash(state);
                 ty.hash(state, engines);
             }
             TypeInfo::StringSlice
@@ -323,16 +329,22 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
                 let l_decl = engines.de().get_enum(l_decl_ref);
                 let r_decl = engines.de().get_enum(r_decl_ref);
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                assert!(
+                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
+                    "The call paths of the enum declarations must always be absolute."
+                );
+                l_decl.call_path == r_decl.call_path
                     && l_decl.variants.eq(&r_decl.variants, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
                 let l_decl = engines.de().get_struct(l_decl_ref);
                 let r_decl = engines.de().get_struct(r_decl_ref);
-                l_decl.call_path.suffix == r_decl.call_path.suffix
-                    && l_decl.call_path.suffix.span() == r_decl.call_path.suffix.span()
+                assert!(
+                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
+                    "The call paths of the struct declarations must always be absolute."
+                );
+                l_decl.call_path == r_decl.call_path
                     && l_decl.fields.eq(&r_decl.fields, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
@@ -365,7 +377,7 @@ impl PartialEqWithEngines for TypeInfo {
                         .eq(&type_engine.get(r0.type_id), engines))
                     && l1.val() == r1.val()
             }
-            (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
+            (Self::Storage { fields: l_fields }, Self::Storage { fields: r_fields }) => {
                 l_fields.eq(r_fields, engines)
             }
             (
@@ -385,11 +397,11 @@ impl PartialEqWithEngines for TypeInfo {
                             .eq(&type_engine.get(r_ty.type_id), engines))
             }
             (
-                TypeInfo::TraitType {
+                Self::TraitType {
                     name: l_name,
                     trait_type_id: l_trait_type_id,
                 },
-                TypeInfo::TraitType {
+                Self::TraitType {
                     name: r_name,
                     trait_type_id: r_trait_type_id,
                 },
@@ -400,11 +412,21 @@ impl PartialEqWithEngines for TypeInfo {
                             .get(*l_trait_type_id)
                             .eq(&type_engine.get(*r_trait_type_id), engines))
             }
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
-                (l_ty.type_id == r_ty.type_id)
-                    || type_engine
-                        .get(l_ty.type_id)
-                        .eq(&type_engine.get(r_ty.type_id), engines)
+            (
+                Self::Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Self::Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => {
+                (l_to_mut == r_to_mut)
+                    && ((l_ty.type_id == r_ty.type_id)
+                        || type_engine
+                            .get(l_ty.type_id)
+                            .eq(&type_engine.get(r_ty.type_id), engines))
             }
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),
@@ -518,10 +540,20 @@ impl OrdWithEngines for TypeInfo {
             ) => l_trait_type_id
                 .cmp(r_trait_type_id)
                 .then_with(|| l_name.cmp(r_name)),
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => type_engine
-                .get(l_ty.type_id)
-                .cmp(&type_engine.get(r_ty.type_id), engines),
-
+            (
+                Self::Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Self::Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => l_to_mut.cmp(r_to_mut).then_with(|| {
+                type_engine
+                    .get(l_ty.type_id)
+                    .cmp(&type_engine.get(r_ty.type_id), engines)
+            }),
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }
@@ -596,8 +628,15 @@ impl DisplayWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
-            Ref(ty) => {
-                format!("&{}", engines.help_out(ty))
+            Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                format!(
+                    "&{}{}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    engines.help_out(ty)
+                )
             }
         };
         write!(f, "{s}")
@@ -700,8 +739,15 @@ impl DebugWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
-            Ref(ty) => {
-                format!("&{:?}", engines.help_out(ty))
+            Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                format!(
+                    "&{}{:?}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    engines.help_out(ty)
+                )
             }
         };
         write!(f, "{s}")
@@ -774,6 +820,10 @@ impl TypeInfo {
             }
             _ => false,
         }
+    }
+
+    pub(crate) fn is_bool(&self) -> bool {
+        matches!(self, TypeInfo::Boolean)
     }
 
     /// maps a type to a name that is used when constructing function selectors
@@ -1091,7 +1141,7 @@ impl TypeInfo {
     }
 
     pub fn is_reference(&self) -> bool {
-        matches!(self, TypeInfo::Ref(_))
+        matches!(self, TypeInfo::Ref { .. })
     }
 
     pub fn is_array(&self) -> bool {
@@ -1162,7 +1212,7 @@ impl TypeInfo {
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_) => {
+            | TypeInfo::Ref { .. } => {
                 Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
             }
         }
@@ -1204,7 +1254,7 @@ impl TypeInfo {
                 "Matching on this type is currently not supported.",
                 span.clone(),
             ))),
-            TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented(
+            TypeInfo::Ref { .. } => Err(handler.emit_err(CompileError::Unimplemented(
                 // TODO-IG: Implement.
                 "Using references in match expressions is currently not supported.",
                 span.clone(),
@@ -1244,7 +1294,7 @@ impl TypeInfo {
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_)
+            | TypeInfo::Ref { .. }
             | TypeInfo::Never => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
@@ -1294,7 +1344,7 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
-            | TypeInfo::Ref(_) => true,
+            | TypeInfo::Ref { .. } => true,
         }
     }
 

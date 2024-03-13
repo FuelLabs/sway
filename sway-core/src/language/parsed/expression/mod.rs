@@ -321,8 +321,15 @@ pub enum ExpressionKind {
     /// semicolon, denoting that it is the [Expression] to be returned from that block.
     ImplicitReturn(Box<Expression>),
     Return(Box<Expression>),
-    Ref(Box<Expression>),
+    Ref(RefExpression),
     Deref(Box<Expression>),
+}
+
+#[derive(Debug, Clone)]
+pub struct RefExpression {
+    /// True if the reference is a reference to a mutable `value`.
+    pub to_mutable_value: bool,
+    pub value: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
