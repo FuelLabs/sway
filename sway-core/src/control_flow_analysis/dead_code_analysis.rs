@@ -1331,6 +1331,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 )?;
             }
 
+            let mut args_diverge = false;
             // we evaluate every one of the function arguments
             for (_name, arg) in arguments {
                 let span = arg.span.clone();
@@ -1345,6 +1346,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     span,
                     options,
                 )?;
+
+                if type_engine.get(arg.return_type).contains_never(engines) {
+                    args_diverge = true;
+                }
             }
             options.force_struct_fields_connection = force_struct_fields_connection;
 
@@ -1363,16 +1368,20 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     }
                 }
             }
-            // the exit points get connected to an exit node for the application
-            if !is_external {
-                if let Some(exit_node) = exit_node {
-                    graph.add_edge(fn_exit_point, exit_node, "".into());
-                    Ok(vec![exit_node])
-                } else {
-                    Ok(vec![fn_exit_point])
-                }
+            if args_diverge {
+                Ok(vec![])
             } else {
-                Ok(vec![fn_entrypoint])
+                // the exit points get connected to an exit node for the application
+                if !is_external {
+                    if let Some(exit_node) = exit_node {
+                        graph.add_edge(fn_exit_point, exit_node, "".into());
+                        Ok(vec![exit_node])
+                    } else {
+                        Ok(vec![fn_exit_point])
+                    }
+                } else {
+                    Ok(vec![fn_entrypoint])
+                }
             }
         }
         LazyOperator { lhs, rhs, .. } => {
@@ -1711,9 +1720,14 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             elem_type: _,
             contents,
         } => {
+            let mut element_diverge = false;
             let nodes = contents
                 .iter()
                 .map(|elem| {
+                    if !element_diverge && type_engine.get(elem.return_type).contains_never(engines)
+                    {
+                        element_diverge = true
+                    }
                     connect_expression(
                         engines,
                         &elem.expression,
@@ -1727,7 +1741,11 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(nodes.concat())
+            if element_diverge {
+                Ok(vec![])
+            } else {
+                Ok(nodes.concat())
+            }
         }
         ArrayIndex { prefix, index } => {
             let prefix_idx = connect_expression(
@@ -1843,13 +1861,15 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             let while_loop_exit = graph.add_node("while loop exit".to_string().into());
 
-            // it is possible for a whole while loop to be skipped so add edge from
-            // beginning of while loop straight to exit
-            graph.add_edge(
-                entry,
-                while_loop_exit,
-                "condition is initially false".into(),
-            );
+            if !matches!(*type_engine.get(condition.return_type), TypeInfo::Never) {
+                // it is possible for a whole while loop to be skipped so add edge from
+                // beginning of while loop straight to exit
+                graph.add_edge(
+                    entry,
+                    while_loop_exit,
+                    "condition is initially false".into(),
+                );
+            }
             let mut leaves = vec![entry];
 
             // handle the condition of the loop
@@ -2087,6 +2107,7 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
         graph.add_edge(*leaf, enum_instantiation_entry_idx, "".into());
     }
 
+    let mut is_variant_unreachable = false;
     // add edge from the entry of the enum instantiation to the body of the instantiation
     if let Some(instantiator) = contents {
         let instantiator_contents = connect_expression(
@@ -2100,13 +2121,23 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
             enum_decl.span.clone(),
             options,
         )?;
+        if engines
+            .te()
+            .get(instantiator.return_type)
+            .contains_never(engines)
+        {
+            is_variant_unreachable = true;
+        }
+
         for leaf in instantiator_contents {
             graph.add_edge(leaf, enum_instantiation_exit_idx, "".into());
         }
     }
 
     graph.add_edge(decl_ix, variant_index, "".into());
-    graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
+    if !is_variant_unreachable {
+        graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
+    }
 
     Ok(vec![enum_instantiation_exit_idx])
 }
