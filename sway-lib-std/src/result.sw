@@ -253,6 +253,7 @@ impl<T, E> Result<T, E> {
     pub fn expect<M>(self, msg: M) -> T
     where
         M: AbiEncode,
+        E: AbiEncode,
     {
         match self {
             Self::Ok(v) => v,
