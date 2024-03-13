@@ -67,9 +67,9 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(7_u8);
     ///     bytes.push(9_u8);
     ///
-    ///     assert(storage.stored_bytes.read_slice(key).is_none());
+    ///     assert(storage.stored_bytes.read_slice().is_none());
     ///     storage.stored_bytes.write_slice(bytes);
-    ///     let retrieved_bytes = storage.stored_bytes.read_slice(key).unwrap();
+    ///     let retrieved_bytes = storage.stored_bytes.read_slice().unwrap();
     ///     assert(bytes == retrieved_bytes);
     /// }
     /// ```
@@ -110,10 +110,10 @@ impl StorableSlice<Bytes> for StorageKey<StorageBytes> {
     ///     bytes.push(9_u8);
     ///     storage.stored_bytes.write_slice(bytes);
     ///
-    ///     assert(storage.stored_bytes.read_slice(key).is_some());
+    ///     assert(storage.stored_bytes.read_slice().is_some());
     ///     let cleared = storage.stored_bytes.clear();
     ///     assert(cleared);
-    ///     let retrieved_bytes = storage.stored_bytes.read_slice(key);
+    ///     let retrieved_bytes = storage.stored_bytes.read_slice();
     ///     assert(retrieved_bytes.is_none());
     /// }
     /// ```

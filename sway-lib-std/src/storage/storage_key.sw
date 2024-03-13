@@ -19,13 +19,10 @@ impl<T> StorageKey<T> {
     /// # Examples
     ///
     /// ```sway
-    /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
-    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///     };
+    /// use std::constants::ZERO_B256;
     ///
+    /// fn foo() {
+    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);s
     ///     // Reads the third word from storage slot with key 0x000...0
     ///     let x: u64 = r.read();
     /// }
@@ -51,11 +48,7 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
-    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///     };
+    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
     ///     let x: Option<u64> = r.try_read();
@@ -83,11 +76,7 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
-    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///     };
+    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);
     ///
     ///     // Writes 42 at the third word of storage slot with key 0x000...0
     ///     let x = r.write(42);
@@ -108,11 +97,7 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey {
-    ///         slot: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///         offset: 2,
-    ///         field_id: 0x0000000000000000000000000000000000000000000000000000000000000000,
-    ///     };
+    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);
     ///     r.write(42);
     ///
     ///     let cleared = r.clear();
