@@ -7,6 +7,14 @@ use crate::{
 use sway_types::{ident::Ident, span::Span};
 
 #[derive(Debug, Clone)]
+pub enum FunctionDeclarationKind {
+    Default,
+    Entry,
+    Main,
+    Test,
+}
+
+#[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub purity: Purity,
     pub attributes: transform::AttributesMap,
@@ -18,6 +26,13 @@ pub struct FunctionDeclaration {
     pub return_type: TypeArgument,
     pub type_parameters: Vec<TypeParameter>,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
+    pub kind: FunctionDeclarationKind,
+}
+
+impl DebugWithEngines for FunctionDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.name))
+    }
 }
 
 #[derive(Debug, Clone)]

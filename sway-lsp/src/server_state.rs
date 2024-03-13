@@ -107,6 +107,9 @@ impl ServerState {
         let finished_compilation = self.finished_compilation.clone();
         let rx = self.cb_rx.clone();
         let last_compilation_state = self.last_compilation_state.clone();
+        let experimental = sway_core::ExperimentalFlags {
+            new_encoding: false,
+        };
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {
                 match msg {
@@ -142,6 +145,7 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
+                            experimental,
                         ) {
                             Ok(_) => {
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);

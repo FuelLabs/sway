@@ -2,6 +2,7 @@ use lsp_types::{Position, Range};
 use std::path::PathBuf;
 use sway_ast::Intrinsic;
 use sway_core::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
@@ -49,7 +50,7 @@ pub enum AstToken {
     StructScrutineeField(StructScrutineeField),
     Supertrait(Supertrait),
     TraitConstraint(TraitConstraint),
-    TraitFn(TraitFn),
+    TraitFn(ParsedDeclId<TraitFn>),
     TypeArgument(TypeArgument),
     TypeParameter(TypeParameter),
     UseStatement(UseStatement),

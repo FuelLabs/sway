@@ -18,7 +18,16 @@
       }
     }
   ],
-  "loggedTypes": [],
+  "loggedTypes": [
+    {
+      "logId": 0,
+      "loggedType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
   "messagesTypes": [],
   "types": [
     {
