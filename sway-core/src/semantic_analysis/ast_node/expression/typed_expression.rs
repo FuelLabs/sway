@@ -22,7 +22,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyCodeBlock, TyImplItem, VariableMutability},
+        ty::{self, TyCodeBlock, TyDecl, TyImplItem, TyReassignmentTarget, VariableMutability},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -157,7 +157,6 @@ impl ty::TyExpression {
                     suffix: name.clone(),
                     is_absolute: false,
                 };
-
                 if matches!(
                     ctx.namespace()
                         .resolve_call_path_typed(
@@ -1997,12 +1996,32 @@ impl ty::TyExpression {
         let mut ctx = ctx
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
             .with_help_text("");
-        // ensure that the lhs is a supported expression kind
-        match lhs {
-            ReassignmentTarget::VariableExpression(var) => {
-                let mut expr = var;
-                let mut names_vec = Vec::new();
-                let (base_name, final_return_type) = loop {
+
+        let (lhs, expected_rhs_type) = match lhs {
+            ReassignmentTarget::Deref(dereference_exp) => {
+                let Expression { kind: ExpressionKind::Deref(reference_exp), .. } = *dereference_exp else {
+                    return Err(handler.emit_err(CompileError::Internal(
+                        "Left-hand side of the reassignment must be dereferencing.",
+                        dereference_exp.span
+                    )));
+                };
+
+                let reference_exp_span = reference_exp.span();
+                let deref_exp = Self::type_check_deref(handler, ctx.by_ref(), reference_exp, reference_exp_span)?;
+
+                // TODO-IG! Type-checking.
+
+                let expected_rhs_type = deref_exp.return_type;
+                (TyReassignmentTarget::Deref(Box::new(deref_exp)), expected_rhs_type)
+            },
+            ReassignmentTarget::ElementAccess(path) => {
+                let lhs_span = path.span.clone();
+                let mut expr = path;
+                let mut indices = Vec::new();
+                // Loop through the LHS "backwards" starting from the outermost expression
+                // (the whole LHS) and moving towards the first identifier that must
+                // be a mutable variable.
+                let (base_name, base_type) = loop {
                     match expr.kind {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
@@ -2012,20 +2031,33 @@ impl ty::TyExpression {
                                 &name,
                                 ctx.self_type(),
                             )?;
-                            let variable_decl = unknown_decl.expect_variable(handler).cloned()?;
-                            if !variable_decl.mutability.is_mutable() {
-                                return Err(handler.emit_err(
-                                    CompileError::AssignmentToNonMutable { name, span },
-                                ));
+
+                            match unknown_decl {
+                                TyDecl::VariableDecl(variable_decl) => {
+                                    if !variable_decl.mutability.is_mutable() {
+                                        return Err(handler.emit_err(
+                                            CompileError::AssignmentToNonMutableVariable {
+                                                decl_name: variable_decl.name.clone(),
+                                                lhs_span,
+                                            },
+                                        ));
+                                    }
+
+                                    break (name, variable_decl.body.return_type);
+                                }
+                                // TODO-IG!: Check other decls.
+                                TyDecl::ConstantDecl(constant_decl) => {
+                                    todo!()
+                                }
+                                _ => todo!(),
                             }
-                            break (name, variable_decl.body.return_type);
                         }
                         ExpressionKind::Subfield(SubfieldExpression {
                             prefix,
                             field_to_access,
                             ..
                         }) => {
-                            names_vec.push(ty::ProjectionKind::StructField {
+                            indices.push(ty::ProjectionKind::StructField {
                                 name: field_to_access,
                             });
                             expr = prefix;
@@ -2036,17 +2068,18 @@ impl ty::TyExpression {
                             index_span,
                             ..
                         }) => {
-                            names_vec.push(ty::ProjectionKind::TupleField { index, index_span });
+                            indices.push(ty::ProjectionKind::TupleField { index, index_span });
                             expr = prefix;
                         }
                         ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
                             let ctx = ctx.by_ref().with_help_text("");
+                            // TODO-IG!: Shouldn't we expect `u64` here for the type? Or any number? How is it when type-checking array element access?
                             let typed_index =
                                 ty::TyExpression::type_check(handler, ctx, index.as_ref().clone())
                                     .unwrap_or_else(|err| {
                                         ty::TyExpression::error(err, span.clone(), engines)
                                     });
-                            names_vec.push(ty::ProjectionKind::ArrayIndex {
+                            indices.push(ty::ProjectionKind::ArrayIndex {
                                 index: Box::new(typed_index),
                                 index_span: index.span(),
                             });
@@ -2059,7 +2092,8 @@ impl ty::TyExpression {
                         }
                     }
                 };
-                let names_vec = names_vec.into_iter().rev().collect::<Vec<_>>();
+
+                let indices = indices.into_iter().rev().collect::<Vec<_>>();
                 let (ty_of_field, _ty_of_parent) = ctx
                     .namespace()
                     .module()
@@ -2069,28 +2103,27 @@ impl ty::TyExpression {
                         ctx.engines(),
                         ctx.namespace(),
                         &base_name,
-                        &names_vec,
+                        &indices,
                     )?;
-                // type check the reassignment
-                let ctx = ctx.with_type_annotation(ty_of_field).with_help_text("");
-                let rhs_span = rhs.span();
-                let rhs = ty::TyExpression::type_check(handler, ctx, rhs)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, rhs_span, engines));
 
-                Ok(ty::TyExpression {
-                    expression: ty::TyExpressionVariant::Reassignment(Box::new(
-                        ty::TyReassignment {
-                            lhs_base_name: base_name,
-                            lhs_type: final_return_type,
-                            lhs_indices: names_vec,
-                            rhs,
-                        },
-                    )),
-                    return_type: type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), None),
-                    span,
-                })
+                (TyReassignmentTarget::ElementAccess { base_name, base_type, indices }, ty_of_field)
             }
-        }
+        };
+
+        // type check the reassignment
+        // TODO-IG!: Add help text here like the one in variable declaration.
+        let ctx = ctx.with_type_annotation(expected_rhs_type).with_help_text("");
+        let rhs_span = rhs.span();
+        let rhs = ty::TyExpression::type_check(handler, ctx, rhs)
+            .unwrap_or_else(|err| ty::TyExpression::error(err, rhs_span, engines));
+
+        Ok(ty::TyExpression {
+            expression: ty::TyExpressionVariant::Reassignment(Box::new(
+                ty::TyReassignment { lhs, rhs },
+            )),
+            return_type: type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), None),
+            span,
+        })
     }
 
     fn type_check_ref(
@@ -2182,7 +2215,7 @@ impl ty::TyExpression {
         // Otherwise, we pass a new `TypeInfo::Unknown` as the annotation, to allow the `expr`
         // to be evaluated without any expectations.
         // Since `&mut T` coerces into `&T` we always go with a lesser expectation, `&T`.
-        // Thus, `to_mutable_value` is set to false.
+        // Thus, `to_mutable_vale` is set to false.
         let type_annotation = match &*type_engine.get(ctx.type_annotation()) {
             TypeInfo::Unknown => type_engine.insert(engines, TypeInfo::Unknown, None),
             _ => type_engine.insert(
@@ -2519,7 +2552,7 @@ mod tests {
             ),
             ExperimentalFlags {
                 new_encoding: false,
-            },
+            }
         )
     }
 
@@ -2666,7 +2699,7 @@ mod tests {
             ),
             ExperimentalFlags {
                 new_encoding: false,
-            },
+            }
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

@@ -18,6 +18,7 @@ use crate::{
     type_system::*,
     types::*,
 };
+
 use indexmap::IndexMap;
 use sway_ast::intrinsics::Intrinsic;
 use sway_error::error::CompileError;
@@ -73,8 +74,8 @@ impl TerminatorValue {
     }
 }
 
-// If the provided TerminatorValue::is_terminator is true, then return from the current function
-// immediately. Otherwise extract the embedded Value.
+/// If the provided [TerminatorValue::is_terminator] is true, then return from the current function
+/// immediately. Otherwise extract the embedded [Value].
 macro_rules! return_on_termination_or_extract {
     ($value:expr) => {{
         let val = $value;
@@ -1413,8 +1414,51 @@ impl<'eng> FnCompiler<'eng> {
         ast_expr: &ty::TyExpression,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let ref_value =
-            return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
+        let (ptr, referenced_ast_type) =
+            self.compile_deref_up_to_ptr(context, md_mgr, ast_expr, span_md_idx)?;
+
+        let ptr = return_on_termination_or_extract!(ptr);
+
+        let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
+
+        let result = if referenced_type.is_copy_type() || referenced_type.is_reference() {
+            // For non aggregates, we need to return the value.
+            // This means, loading the value the `ptr` is pointing to.
+            self.current_block.append(context).load(ptr)
+        } else {
+            // For aggregates, we access them via pointer, so we just
+            // need to return the `ptr`.
+            ptr
+        };
+
+        Ok(TerminatorValue::new(result, context))
+    }
+
+    /// Compiles a [ty::TyExpression] of the variant [TyExpressionVariant::Deref]
+    /// up to the pointer to the referenced value.
+    /// The referenced value can afterwards be accessed from the returned pointer,
+    /// and either read from or written to.
+    /// Writing to is happening in reassignments.
+    ///
+    /// Returns the compiled pointer and the [TypeId] of the
+    /// type of the referenced value.
+    ///
+    /// If the returned [TerminatorValue::is_terminator] is true,
+    /// the returned [TypeId] does not represent any existing type and
+    /// is assumed to be never used by callers.
+    fn compile_deref_up_to_ptr(
+        &mut self,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        ast_expr: &ty::TyExpression,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<(TerminatorValue, TypeId), CompileError> {
+        let ref_value = self.compile_expression(context, md_mgr, ast_expr)?;
+        let ref_value = if ref_value.is_terminator {
+            return Ok((ref_value, 0usize.into()));
+        } else {
+            ref_value.value
+        };
 
         let ptr_as_int = if ref_value
             .get_type(context)
@@ -1456,19 +1500,7 @@ impl<'eng> FnCompiler<'eng> {
             .int_to_ptr(ptr_as_int, ptr_type)
             .add_metadatum(context, span_md_idx);
 
-        let referenced_type = self.engines.te().get_unaliased(referenced_ast_type);
-
-        let result = if referenced_type.is_copy_type() || referenced_type.is_reference() {
-            // For non aggregates, we need to return the value.
-            // This means, loading the value the `ptr` is pointing to.
-            self.current_block.append(context).load(ptr)
-        } else {
-            // For aggregates, we access them via pointer, so we just
-            // need to return the `ptr`.
-            ptr
-        };
-
-        Ok(TerminatorValue::new(result, context))
+        Ok((TerminatorValue::new(ptr, context), referenced_ast_type))
     }
 
     fn compile_lazy_op(
@@ -2430,114 +2462,132 @@ impl<'eng> FnCompiler<'eng> {
         ast_reassignment: &ty::TyReassignment,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let name = self
-            .lexical_map
-            .get(ast_reassignment.lhs_base_name.as_str())
-            .expect("All local symbols must be in the lexical symbol map.");
-
-        // First look for a local variable with the required name
-        let lhs_val = self
-            .function
-            .get_local_var(context, name)
-            .map(|var| {
-                self.current_block
-                    .append(context)
-                    .get_local(var)
-                    .add_metadatum(context, span_md_idx)
-            })
-            .or_else(||
-                // Now look for an argument with the required name
-                self.function
-                    .args_iter(context)
-                    .find_map(|(arg_name, arg_val)| (arg_name == name).then_some(*arg_val)))
-            .ok_or_else(|| {
-                CompileError::InternalOwned(
-                    format!("variable not found: {name}"),
-                    ast_reassignment.lhs_base_name.span(),
-                )
-            })?;
-
-        let reassign_val = return_on_termination_or_extract!(self.compile_expression_to_value(
+        let rhs = return_on_termination_or_extract!(self.compile_expression_to_value(
             context,
             md_mgr,
             &ast_reassignment.rhs
         )?);
 
-        let lhs_ptr = if ast_reassignment.lhs_indices.is_empty() {
-            // A non-aggregate; use a direct `store`.
-            lhs_val
-        } else {
-            // Create a GEP by following the chain of LHS indices.  We use a scan which is
-            // essentially a map with context, which is the parent type id for the current field.
-            let mut gep_indices = Vec::<Value>::new();
-            let mut cur_type_id = ast_reassignment.lhs_type;
-            for idx_kind in ast_reassignment.lhs_indices.iter() {
-                let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
-                let cur_type_info = &*cur_type_info_arc;
-                match (idx_kind, cur_type_info) {
-                    (
-                        ProjectionKind::StructField { name: idx_name },
-                        TypeInfo::Struct(decl_ref),
-                    ) => {
-                        let struct_decl = self.engines.de().get_struct(decl_ref);
+        let lhs_ptr = match &ast_reassignment.lhs {
+            ty::TyReassignmentTarget::ElementAccess { base_name, base_type, indices } => {
+                let name = self
+                    .lexical_map
+                    .get(base_name.as_str())
+                    .expect("All local symbols must be in the lexical symbol map.");
 
-                        match struct_decl.get_field_index_and_type(idx_name) {
-                            None => {
-                                return Err(CompileError::InternalOwned(
-                                    format!(
-                                        "Unknown field name '{idx_name}' for struct '{}' \
-                                         in reassignment.",
-                                        struct_decl.call_path.suffix.as_str(),
-                                    ),
-                                    ast_reassignment.lhs_base_name.span(),
-                                ))
-                            }
-                            Some((field_idx, field_type_id)) => {
-                                cur_type_id = field_type_id;
-                                gep_indices.push(Constant::get_uint(context, 64, field_idx));
+                // First look for a local variable with the required name
+                let lhs_val = self
+                    .function
+                    .get_local_var(context, name)
+                    .map(|var| {
+                        self.current_block
+                            .append(context)
+                            .get_local(var)
+                            .add_metadatum(context, span_md_idx)
+                    })
+                    .or_else(||
+                        // Now look for an argument with the required name
+                        self.function
+                            .args_iter(context)
+                            .find_map(|(arg_name, arg_val)| (arg_name == name).then_some(*arg_val)))
+                    .ok_or_else(|| {
+                        CompileError::InternalOwned(
+                            format!("Variable not found: {name}."),
+                            base_name.span(),
+                        )
+                    })?;
+
+                    if indices.is_empty() {
+                        // A non-aggregate; use a direct `store`.
+                        lhs_val
+                    } else {
+                        // Create a GEP by following the chain of LHS indices. We use a scan which is
+                        // essentially a map with context, which is the parent type id for the current field.
+                        let mut gep_indices = Vec::<Value>::new();
+                        let mut cur_type_id = *base_type;
+                        // TODO-IG: Add support for projections being references themselves.
+                        for idx_kind in indices.iter() {
+                            let cur_type_info_arc = self.engines.te().get_unaliased(cur_type_id);
+                            let cur_type_info = &*cur_type_info_arc;
+                            match (idx_kind, cur_type_info) {
+                                (
+                                    ProjectionKind::StructField { name: idx_name },
+                                    TypeInfo::Struct(decl_ref),
+                                ) => {
+                                    let struct_decl = self.engines.de().get_struct(decl_ref);
+
+                                    match struct_decl.get_field_index_and_type(idx_name) {
+                                        None => {
+                                            return Err(CompileError::InternalOwned(
+                                                format!(
+                                                    "Unknown field name \"{idx_name}\" for struct \"{}\" \
+                                                    in reassignment.",
+                                                    struct_decl.call_path.suffix.as_str(),
+                                                ),
+                                                idx_name.span(),
+                                            ))
+                                        }
+                                        Some((field_idx, field_type_id)) => {
+                                            cur_type_id = field_type_id;
+                                            gep_indices.push(Constant::get_uint(context, 64, field_idx));
+                                        }
+                                    }
+                                }
+                                (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
+                                    cur_type_id = field_tys[*index].type_id;
+                                    gep_indices.push(Constant::get_uint(context, 64, *index as u64));
+                                }
+                                (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
+                                    cur_type_id = elem_ty.type_id;
+                                    let val = return_on_termination_or_extract!(
+                                        self.compile_expression_to_value(context, md_mgr, index)?
+                                    );
+                                    gep_indices.push(val);
+                                }
+                                _ => {
+                                    return Err(CompileError::Internal(
+                                        "Unknown field in reassignment.",
+                                        idx_kind.span(),
+                                    ))
+                                }
                             }
                         }
-                    }
-                    (ProjectionKind::TupleField { index, .. }, TypeInfo::Tuple(field_tys)) => {
-                        cur_type_id = field_tys[*index].type_id;
-                        gep_indices.push(Constant::get_uint(context, 64, *index as u64));
-                    }
-                    (ProjectionKind::ArrayIndex { index, .. }, TypeInfo::Array(elem_ty, _)) => {
-                        cur_type_id = elem_ty.type_id;
-                        let val = return_on_termination_or_extract!(
-                            self.compile_expression_to_value(context, md_mgr, index)?
-                        );
-                        gep_indices.push(val);
-                    }
-                    _ => {
-                        return Err(CompileError::Internal(
-                            "Unknown field in reassignment.",
-                            idx_kind.span(),
-                        ))
-                    }
-                }
-            }
 
-            // Using the type of the RHS for the GEP, rather than the final inner type of the
-            // aggregate, but getting the later is a bit of a pain, though the `scan` above knew it.
-            // Realistically the program is type checked and they should be the same.
-            let field_type = reassign_val.get_type(context).ok_or_else(|| {
-                CompileError::Internal(
-                    "Failed to determine type of reassignment.",
-                    ast_reassignment.lhs_base_name.span(),
-                )
-            })?;
+                        // Using the type of the RHS for the GEP, rather than the final inner type of the
+                        // aggregate, but getting the later is a bit of a pain, though the `scan` above knew it.
+                        // Realistically the program is type checked and they should be the same.
+                        let field_type = rhs.get_type(context).ok_or_else(|| {
+                            CompileError::Internal(
+                                "Failed to determine type of reassignment.",
+                                base_name.span(),
+                            )
+                        })?;
 
-            // Create the GEP.
-            self.current_block
-                .append(context)
-                .get_elem_ptr(lhs_val, field_type, gep_indices)
-                .add_metadatum(context, span_md_idx)
+                        // Create the GEP.
+                        self.current_block
+                            .append(context)
+                            .get_elem_ptr(lhs_val, field_type, gep_indices)
+                            .add_metadatum(context, span_md_idx)
+                    }
+            },
+            ty::TyReassignmentTarget::Deref(dereference_exp) => {
+                let TyExpressionVariant::Deref(reference_exp) = &dereference_exp.expression else {
+                    return Err(CompileError::Internal(
+                        "Left-hand side of the reassignment must be dereferencing.",
+                        dereference_exp.span.clone()
+                    ));
+                };
+
+                let (ptr, _) =
+                    self.compile_deref_up_to_ptr(context, md_mgr, &reference_exp, span_md_idx)?;
+
+                return_on_termination_or_extract!(ptr)
+            },
         };
 
         self.current_block
             .append(context)
-            .store(lhs_ptr, reassign_val)
+            .store(lhs_ptr, rhs)
             .add_metadatum(context, span_md_idx);
 
         let val = Constant::get_unit(context).add_metadatum(context, span_md_idx);
@@ -2583,7 +2633,7 @@ impl<'eng> FnCompiler<'eng> {
             .iter()
             .all(|elm| matches!(elm.expression, TyExpressionVariant::Literal(..)));
 
-        // We only do the optimization for suffiently large arrays, so that
+        // We only do the optimization for sufficiently large arrays, so that
         // overhead due to the loop doesn't make it worse than the unrolled version.
         if all_consts && contents.len() > 5 {
             // We can compile all elements ahead of time without affecting register pressure.
@@ -2753,7 +2803,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
             CompileError::Internal(
-                "Array type has alread confirmed to be an array.  Getting elem type can't fail.",
+                "Array type has already confirmed to be an array. Getting element type can't fail.",
                 array_expr.span.clone(),
             )
         })?;

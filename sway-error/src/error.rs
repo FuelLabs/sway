@@ -121,8 +121,13 @@ pub enum CompileError {
         duplicate: Span,
         duplicate_is_struct_field: bool,
     },
-    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
-    AssignmentToNonMutable { name: Ident, span: Span },
+    #[error("Assignment to immutable variable. Variable {decl_name} is not declared as mutable.")]
+    AssignmentToNonMutableVariable {
+        /// Variable name pointing to the name in the variable declaration.
+        decl_name: Ident,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
     #[error(
         "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
             \"{variable_name}\" is not declared as mutable."
@@ -918,7 +923,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
-            AssignmentToNonMutable { span, .. } => span.clone(),
+            AssignmentToNonMutableVariable { lhs_span, .. } => lhs_span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
@@ -1967,6 +1972,39 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
                     "This property is called \"trait coherence\".".to_string(),
+                ],
+            },
+            AssignmentToNonMutableVariable { lhs_span, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Immutable variables cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is an immutable variable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is an immutable variable.
+                    format!("{} cannot be assigned to, because {} is an immutable variable.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just a single variable in the expression.
+                            format!("\"{}\"", decl_name.as_str())
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{}\"", decl_name.as_str())
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("\"{decl_name}\" is declared here as immutable.")
+                    ),
+                ],
+                help: vec![
+                    // TODO-IG: Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
+                    format!("Consider declaring \"{decl_name}\" as mutable."),
                 ],
             },
             Unimplemented { feature, help, span } => Diagnostic {

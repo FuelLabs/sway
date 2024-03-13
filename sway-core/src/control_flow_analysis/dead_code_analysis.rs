@@ -4,8 +4,7 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{
-            self, ConstantDecl, FunctionDecl, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent,
-            TyDecl, TyImplItem, TypeAliasDecl,
+            self, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl
         },
         CallPath, Visibility,
     },
@@ -1956,23 +1955,57 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok(vec![])
         }
         Reassignment(typed_reassignment) => {
-            if let Some(variable_entry) = graph
-                .namespace
-                .get_variable(&typed_reassignment.lhs_base_name)
-            {
-                for leaf in leaves {
-                    graph.add_edge(*leaf, variable_entry.variable_decl_ix, "".into());
-                }
-            }
+            match &typed_reassignment.lhs {
+                ty::TyReassignmentTarget::ElementAccess { base_name, indices, .. } => {
+                    if let Some(variable_entry) = graph
+                        .namespace
+                        .get_variable(&base_name)
+                    {
+                        for leaf in leaves {
+                            graph.add_edge(*leaf, variable_entry.variable_decl_ix, "variable reassignment LHS".into());
+                        }
+                    };
+
+                    for projection in indices {
+                        if let ProjectionKind::ArrayIndex { index, index_span } = projection {
+                            connect_expression(
+                                engines,
+                                &index.expression,
+                                graph,
+                                leaves,
+                                exit_node,
+                                "variable reassignment LHS array index",
+                                tree_type,
+                                index_span.clone(),
+                                options,
+                            )?;
+                        }
+                    }
+                },
+                ty::TyReassignmentTarget::Deref(exp) => {
+                    connect_expression(
+                        engines,
+                        &exp.expression,
+                        graph,
+                        leaves,
+                        exit_node,
+                        "variable reassignment LHS dereferencing",
+                        tree_type,
+                        exp.span.clone(),
+                        options,
+                    )?;
+                },
+            };
+
             connect_expression(
                 engines,
                 &typed_reassignment.rhs.expression,
                 graph,
                 leaves,
                 exit_node,
-                "variable reassignment",
+                "variable reassignment RHS",
                 tree_type,
-                typed_reassignment.rhs.clone().span,
+                typed_reassignment.rhs.span.clone(),
                 options,
             )
         }

@@ -17,7 +17,7 @@ pub enum ParseErrorKind {
     #[error("Unexpected token in statement.")]
     UnexpectedTokenInStatement,
     #[error("This expression cannot be assigned to.")]
-    UnassignableExpression,
+    UnassignableExpression, // TODO-IG!: Create diagnostic.
     #[error("Unexpected token after array index.")]
     UnexpectedTokenAfterArrayIndex,
     #[error("Invalid literal to use as a field name.")]

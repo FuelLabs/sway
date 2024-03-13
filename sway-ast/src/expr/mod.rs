@@ -1,6 +1,6 @@
 use sway_error::handler::ErrorEmitted;
 
-use crate::{priv_prelude::*, PathExprSegment};
+use crate::{assignable::ElementAccess, priv_prelude::*, PathExprSegment};
 
 pub mod asm;
 pub mod op_code;
@@ -447,13 +447,21 @@ impl Spanned for ExprStructField {
 
 impl Expr {
     pub fn try_into_assignable(self) -> Result<Assignable, Expr> {
+        if let Expr::Deref { star_token, expr } = self {
+            Ok(Assignable::Deref { star_token, expr })
+        } else {
+            Ok(Assignable::ElementAccess(self.try_into_element_access()?))
+        }
+    }
+
+    fn try_into_element_access(self) -> Result<ElementAccess, Expr> {
         match self {
             Expr::Path(path_expr) => match path_expr.try_into_ident() {
-                Ok(name) => Ok(Assignable::Var(name)),
+                Ok(name) => Ok(ElementAccess::Var(name)),
                 Err(path_expr) => Err(Expr::Path(path_expr)),
             },
-            Expr::Index { target, arg } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::Index {
+            Expr::Index { target, arg } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::Index {
                     target: Box::new(target),
                     arg,
                 }),
@@ -466,8 +474,8 @@ impl Expr {
                 target,
                 dot_token,
                 name,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::FieldProjection {
+            } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::FieldProjection {
                     target: Box::new(target),
                     dot_token,
                     name,
@@ -483,8 +491,8 @@ impl Expr {
                 dot_token,
                 field,
                 field_span,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::TupleFieldProjection {
+            } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::TupleFieldProjection {
                     target: Box::new(target),
                     dot_token,
                     field,

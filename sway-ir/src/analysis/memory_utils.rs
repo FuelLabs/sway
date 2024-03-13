@@ -45,8 +45,37 @@ impl Symbol {
     }
 }
 
-// A value may (indirectly) refer to one or more symbols.
-pub fn get_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
+/// Get [Symbol]s, both [Symbol::Local]s and [Symbol::Arg]s, reachable
+/// from the `val` via a chain of [InstOp::GetElemPtr] (GEP) instructions.
+/// A `val` can, via GEP instructions, refer indirectly to none, or one
+/// or more symbols.
+///
+/// Note that this function does not return [Symbol]s potentially reachable
+/// via referencing (`&`) and dereferencing (`*`) and is thus suitable
+/// for all IR analysis and manipulation that deals strictly with GEP.
+///
+/// To acquire all [Symbol]s reachable from the `val`, use [get_referred_symbols] instead.
+pub fn get_gep_referred_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
+    get_symbols(context, val, true)
+}
+
+/// Get [Symbol]s, both [Symbol::Local]s and [Symbol::Arg]s, reachable
+/// from the `val` via a chain of [InstOp::GetElemPtr] (GEP) instructions
+/// or via [InstOp::IntToPtr] and [InstOp::PtrToInt] instruction patterns
+/// specific to references, both referencing (`&`) and dereferencing (`*`).
+/// A `val` can, via these instructions, refer indirectly to none, or one
+/// or more symbols.
+pub fn get_referred_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
+    get_symbols(context, val, false)
+}
+
+/// Get [Symbol]s, both [Symbol::Local]s and [Symbol::Arg]s, reachable
+/// from the `val`.
+///
+/// If `gep_only` is `true` only the [Symbol]s reachable via GEP instructions
+/// are returned. Otherwise, the result also contains [Symbol]s reachable
+/// via referencing (`&`) and dereferencing (`*`).
+fn get_symbols(context: &Context, val: Value, gep_only: bool) -> FxIndexSet<Symbol> {
     let mut visited = FxHashSet::default();
     let mut symbols = IndexSet::default();
     fn get_symbols_rec(
@@ -54,6 +83,7 @@ pub fn get_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
         symbols: &mut FxIndexSet<Symbol>,
         visited: &mut FxHashSet<Value>,
         val: Value,
+        gep_only: bool,
     ) {
         if visited.contains(&val) {
             return;
@@ -69,7 +99,30 @@ pub fn get_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
             ValueDatum::Instruction(Instruction {
                 op: InstOp::GetElemPtr { base, .. },
                 ..
-            }) => get_symbols_rec(context, symbols, visited, base),
+            }) => get_symbols_rec(context, symbols, visited, base, gep_only),
+            // The below chain of instructions are specific to
+            // referencing and dereferencing and do not occur
+            // in other kinds of IR generation. E.g., `PtrToInt`
+            // occurs when `__addr_of` is taken, but do not produce
+            // such patterns. E.g., `IntToPtr` could be emitted when
+            // GTF intrinsic is compiled, but do not produce
+            // the below pattern which is specific to references.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::IntToPtr(int_value, _),
+                ..
+            }) if !gep_only => { // Ignore this path if only GEP chain is requested.
+                match context.values[int_value.0].value {
+                    ValueDatum::Instruction(Instruction {
+                        op: InstOp::Load(loaded_from),
+                        ..
+                    }) => get_symbols_rec(context, symbols, visited, loaded_from, gep_only),
+                    ValueDatum::Instruction(Instruction {
+                        op: InstOp::PtrToInt(ptr_value, _),
+                        ..
+                    }) => get_symbols_rec(context, symbols, visited, ptr_value, gep_only),
+                    _ => (),
+                }
+            }
             ValueDatum::Argument(b) => {
                 if b.block.get_label(context) == "entry" {
                     symbols.insert(Symbol::Arg(b));
@@ -77,18 +130,25 @@ pub fn get_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
                     b.block
                         .pred_iter(context)
                         .map(|pred| b.get_val_coming_from(context, pred).unwrap())
-                        .for_each(|v| get_symbols_rec(context, symbols, visited, v))
+                        .for_each(|v| get_symbols_rec(context, symbols, visited, v, gep_only))
                 }
             }
             _ => (),
         }
     }
-    get_symbols_rec(context, &mut symbols, &mut visited, val);
+    get_symbols_rec(context, &mut symbols, &mut visited, val, gep_only);
     symbols
 }
 
-pub fn get_symbol(context: &Context, val: Value) -> Option<Symbol> {
-    let syms = get_symbols(context, val);
+pub fn get_gep_symbol(context: &Context, val: Value) -> Option<Symbol> {
+    let syms = get_gep_referred_symbols(context, val);
+    (syms.len() == 1)
+        .then(|| syms.iter().next().cloned())
+        .flatten()
+}
+
+pub fn get_referred_symbol(context: &Context, val: Value) -> Option<Symbol> {
+    let syms = get_referred_symbols(context, val);
     (syms.len() == 1)
         .then(|| syms.iter().next().cloned())
         .flatten()
@@ -109,7 +169,7 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
     let mut result = FxHashSet::default();
 
     let add_from_val = |result: &mut FxHashSet<Symbol>, val: &Value| {
-        get_symbols(context, *val).iter().for_each(|s| {
+        get_referred_symbols(context, *val).iter().for_each(|s| {
             result.insert(*s);
         });
     };
@@ -218,7 +278,7 @@ pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
 pub fn get_loaded_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
     let mut res = IndexSet::default();
     for val in get_loaded_ptr_values(context, val) {
-        for sym in get_symbols(context, val) {
+        for sym in get_referred_symbols(context, val) {
             res.insert(sym);
         }
     }
@@ -274,7 +334,7 @@ pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
 pub fn get_stored_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
     let mut res = IndexSet::default();
     for val in get_stored_ptr_values(context, val) {
-        for sym in get_symbols(context, val) {
+        for sym in get_referred_symbols(context, val) {
             res.insert(sym);
         }
     }
@@ -309,7 +369,7 @@ pub fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
 /// Given a memory pointer instruction, compute the offset of indexed element,
 /// for each symbol that this may alias to.
 pub fn get_memory_offsets(context: &Context, val: Value) -> FxIndexMap<Symbol, u64> {
-    get_symbols(context, val)
+    get_gep_referred_symbols(context, val)
         .into_iter()
         .filter_map(|sym| {
             let offset = sym

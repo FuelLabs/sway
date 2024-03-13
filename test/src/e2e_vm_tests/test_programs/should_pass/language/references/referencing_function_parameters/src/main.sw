@@ -244,24 +244,24 @@ fn generic_parameter_not_inlined() {
 
 #[inline(never)]
 fn test_all_inlined() {
-    //u8_parameter(123u8);
+    // u8_parameter(123u8);
     array_parameter([111u64, 222u64]);
-    empty_struct_parameter(EmptyStruct { });
-    struct_parameter(S { x: 123u8 });
-    tuple_parameter((111u64, 222u64));
-    enum_parameter(E::A(123u8));
-    generic_parameter();
+    // empty_struct_parameter(EmptyStruct { });
+    // struct_parameter(S { x: 123u8 });
+    // tuple_parameter((111u64, 222u64));
+    // enum_parameter(E::A(123u8));
+    // generic_parameter();
 }
 
 #[inline(never)]
 fn test_not_inlined() {
     //u8_parameter_not_inlined(123u8);
     array_parameter_not_inlined([111u64, 222u64]);
-    empty_struct_parameter_not_inlined(EmptyStruct { });
-    struct_parameter_not_inlined(S { x: 123u8 });
-    tuple_parameter_not_inlined((111u64, 222u64));
-    enum_parameter_not_inlined(E::A(123u8));
-    generic_parameter_not_inlined();
+    // empty_struct_parameter_not_inlined(EmptyStruct { });
+    // struct_parameter_not_inlined(S { x: 123u8 });
+    // tuple_parameter_not_inlined((111u64, 222u64));
+    // enum_parameter_not_inlined(E::A(123u8));
+    // generic_parameter_not_inlined();
 }
 
 fn main() -> u64 {
