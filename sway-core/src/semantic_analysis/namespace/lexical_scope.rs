@@ -2,6 +2,7 @@ use crate::{
     decl_engine::*,
     engine_threading::Engines,
     language::{
+        parsed::Declaration,
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
         CallPath,
     },
@@ -27,6 +28,7 @@ pub(crate) enum GlobImport {
     No,
 }
 
+pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
 // The `Vec<Ident>` path is absolute.
 pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
@@ -55,6 +57,8 @@ pub struct LexicalScope {
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Items {
+    /// An ordered map from `Ident`s to their associated parsed declarations.
+    pub(crate) parsed_symbols: ParsedSymbolMap,
     /// An ordered map from `Ident`s to their associated typed declarations.
     pub(crate) symbols: SymbolMap,
     pub(crate) implemented_traits: TraitMap,
@@ -121,6 +125,16 @@ impl Items {
 
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
         self.symbols().keys()
+    }
+
+    pub(crate) fn insert_parsed_symbol(
+        &mut self,
+        name: Ident,
+        item: Declaration,
+    ) -> Result<(), ErrorEmitted> {
+        self.parsed_symbols.insert(name, item);
+
+        Ok(())
     }
 
     pub(crate) fn insert_symbol(
