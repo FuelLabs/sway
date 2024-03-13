@@ -9,15 +9,6 @@ abigen!(Contract(
 async fn run_external_can_proxy_call() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
-    let id = Contract::load_from(
-        "test_projects/run_external_proxy/out/release/run_external_proxy.bin",
-        LoadConfiguration::default(),
-    )
-    .unwrap()
-    .deploy(&wallet, TxPolicies::default())
-    .await
-    .unwrap();
-
     let target_id = Contract::load_from(
         "test_projects/run_external_target/out/release/run_external_target.bin",
         LoadConfiguration::default()
@@ -28,14 +19,25 @@ async fn run_external_can_proxy_call() {
     .await
     .unwrap();
 
+    let id = Contract::load_from(
+        "test_projects/run_external_proxy/out/release/run_external_proxy.bin",
+        LoadConfiguration::default().with_configurables(
+            RunExternalProxyContractConfigurables::new().with_TARGET(target_id.clone().into()),
+        ),
+    )
+    .unwrap()
+    .deploy(&wallet, TxPolicies::default())
+    .await
+    .unwrap();
+
     let instance = RunExternalProxyContract::new(id.clone(), wallet);
 
     let result = instance
         .methods()
-        .foobar(target_id.clone())
+        .double_value(42)
         .with_contract_ids(&[target_id.into()])
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 42);
+    assert_eq!(result.value, 84);
 }

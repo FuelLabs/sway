@@ -1,5 +1,5 @@
 script;
 
-fn main() -> u64 {
-    42
+fn main(foo: u64) -> u64 {
+    foo * 2
 }
