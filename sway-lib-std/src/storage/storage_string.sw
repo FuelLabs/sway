@@ -22,18 +22,14 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    /// use std::{storage::storage_string::StorageString, string::String};
     ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
     ///
     /// fn foo() {
-    ///     let mut bytes = Bytes::new();
-    ///     bytes.push(5_u8);
-    ///     bytes.push(7_u8);
-    ///     bytes.push(9_u8);
-    ///     let string = String::from(bytes);
+    ///     let string = String::from_ascii_str("Fuel is blazingly fast");
     ///
     ///     storage.stored_string.write_slice(string);
     /// }
@@ -56,22 +52,18 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    /// use std::{storage::storage_string::StorageString, string::String};
     ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
     ///
     /// fn foo() {
-    ///     let mut bytes = Bytes::new();
-    ///     bytes.push(5_u8);
-    ///     bytes.push(7_u8);
-    ///     bytes.push(9_u8);
-    ///     let string = String::from(bytes);
+    ///     let string = String::from_ascii_str("Fuel is blazingly fast");
     ///
-    ///     assert(storage.stored_string.read_slice(key).is_none());
+    ///     assert(storage.stored_string.read_slice().is_none());
     ///     storage.stored_string.write_slice(string);
-    ///     let retrieved_string = storage.stored_string.read_slice(key).unwrap();
+    ///     let retrieved_string = storage.stored_string.read_slice().unwrap();
     ///     assert(string == retrieved_string);
     /// }
     /// ```
@@ -99,25 +91,21 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    /// use std::{storage::storage_string::StorageString, string::String};
     ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
     ///
     /// fn foo() {
-    ///     let mut bytes = Bytes::new();
-    ///     bytes.push(5_u8);
-    ///     bytes.push(7_u8);
-    ///     bytes.push(9_u8);
-    ///     let string = String::from(bytes);
+    ///     let string = String::from_ascii_str("Fuel is blazingly fast");
     ///
     ///     storage.stored_string.write_slice(string);
     ///
-    ///     assert(storage.stored_string.read_slice(key).is_some());
+    ///     assert(storage.stored_string.read_slice().is_some());
     ///     let cleared = storage.stored_string.clear();
     ///     assert(cleared);
-    ///     let retrieved_string = storage.stored_string.read_slice(key);
+    ///     let retrieved_string = storage.stored_string.read_slice();
     ///     assert(retrieved_string.is_none());
     /// }
     /// ```
@@ -139,18 +127,14 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{storage::storage_string::StorageString, bytes::Bytes, string::String};
+    /// use std::{storage::storage_string::StorageString, string::String};
     ///
     /// storage {
     ///     stored_string: StorageString = StorageString {}
     /// }
     ///
     /// fn foo() {
-    ///     let mut bytes = Bytes::new();
-    ///     bytes.push(5_u8);
-    ///     bytes.push(7_u8);
-    ///     bytes.push(9_u8);
-    ///     let string = String::from(bytes);
+    ///     let string = String::from_ascii_str("Fuel is blazingly fast");
     ///
     ///     assert(storage.stored_string.len() == 0)
     ///     storage.stored_string.write_slice(string);
