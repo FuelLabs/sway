@@ -305,7 +305,7 @@ impl<T> Option<T> {
     /// let x: Option<u64> = bar(1);
     /// let value = x.expect("bar() should never return None with 1 as an argument");
     /// ```
-    pub fn expect<M>(self, msg: M) -> T 
+    pub fn expect<M>(self, msg: M) -> T
     where
         M: AbiEncode,
     {

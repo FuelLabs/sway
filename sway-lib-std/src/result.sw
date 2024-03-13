@@ -250,7 +250,7 @@ impl<T, E> Result<T, E> {
     /// let x: Result<u64, Error> = bar(1);
     /// let value = x.expect("bar() should never return Err with 1 as an argument");
     /// ```
-    pub fn expect<M>(self, msg: M) -> T 
+    pub fn expect<M>(self, msg: M) -> T
     where
         M: AbiEncode,
     {
