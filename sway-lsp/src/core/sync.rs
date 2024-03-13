@@ -313,19 +313,17 @@ fn copy_dir_contents(
             if copy_dir_contents(&path, target_dir.as_ref().join(entry.file_name()))? {
                 has_relevant_files = true;
             }
-        } else {
-            if let Some(file_name_os) = path.file_name() {
-                if let Some(file_name) = file_name_os.to_str() {
-                    if file_name.ends_with(".sw")
-                        || file_name == "Forc.toml"
-                        || file_name == "Forc.lock"
-                    {
-                        if !has_relevant_files {
-                            fs::create_dir_all(&target_dir)?;
-                            has_relevant_files = true;
-                        }
-                        fs::copy(&path, target_dir.as_ref().join(file_name))?;
+        } else if let Some(file_name_os) = path.file_name() {
+            if let Some(file_name) = file_name_os.to_str() {
+                if file_name.ends_with(".sw")
+                    || file_name == "Forc.toml"
+                    || file_name == "Forc.lock"
+                {
+                    if !has_relevant_files {
+                        fs::create_dir_all(&target_dir)?;
+                        has_relevant_files = true;
                     }
+                    fs::copy(&path, target_dir.as_ref().join(file_name))?;
                 }
             }
         }
