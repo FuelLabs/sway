@@ -296,20 +296,39 @@ pub(crate) fn edit_manifest_dependency_paths(
     }
 }
 
-/// Copy the contents of the current workspace folder into the target directory
+/// Copies only the specified files from the source directory to the target directory.
+/// This function targets files ending with `.sw`, and the specific files `Forc.toml` and `Forc.lock`.
+/// It returns `Ok(true)` if any relevant files were copied over, and `Ok(false)` if no such files were found.
 fn copy_dir_contents(
     src_dir: impl AsRef<Path>,
     target_dir: impl AsRef<Path>,
-) -> std::io::Result<()> {
-    fs::create_dir_all(&target_dir)?;
-    for entry in fs::read_dir(src_dir)? {
+) -> std::io::Result<bool> {
+    let mut has_relevant_files = false;
+    for entry in fs::read_dir(&src_dir)? {
         let entry = entry?;
+        let path = entry.path();
         let ty = entry.file_type()?;
         if ty.is_dir() {
-            copy_dir_contents(entry.path(), target_dir.as_ref().join(entry.file_name()))?;
+            // Recursively check the directory; if it has relevant files, create the target directory
+            if copy_dir_contents(&path, target_dir.as_ref().join(entry.file_name()))? {
+                has_relevant_files = true;
+            }
         } else {
-            fs::copy(entry.path(), target_dir.as_ref().join(entry.file_name()))?;
+            if let Some(file_name_os) = path.file_name() {
+                if let Some(file_name) = file_name_os.to_str() {
+                    if file_name.ends_with(".sw")
+                        || file_name == "Forc.toml"
+                        || file_name == "Forc.lock"
+                    {
+                        if !has_relevant_files {
+                            fs::create_dir_all(&target_dir)?;
+                            has_relevant_files = true;
+                        }
+                        fs::copy(&path, target_dir.as_ref().join(file_name))?;
+                    }
+                }
+            }
         }
     }
-    Ok(())
+    Ok(has_relevant_files)
 }
