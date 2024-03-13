@@ -11,6 +11,12 @@ enum Error {
     Test: (),
 }
 
+impl AbiEncode for Error {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push(self);
+    }
+}
+
 impl MyContract for Contract {
     fn option_test_should_revert() {
         let op: Option<u64> = None;
