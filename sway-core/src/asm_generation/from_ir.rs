@@ -76,10 +76,15 @@ fn compile_module_to_asm(
         BuildTarget::MidenVM => Box::new(MidenVMAsmBuilder::new(kind, context)),
     };
 
+    let mut fallback_fn = None;
+
     // Pre-create labels for all functions before we generate other code, so we can call them
     // before compiling them if needed.
     for func in module.function_iter(context) {
-        builder.func_to_labels(&func);
+        let (start, _) = builder.func_to_labels(&func);
+        if func.is_fallback(context) {
+            fallback_fn = Some(start);
+        }
     }
 
     for function in module.function_iter(context) {
@@ -126,7 +131,7 @@ fn compile_module_to_asm(
             }
 
             let allocated_program = abstract_program
-                .into_allocated_program()
+                .into_allocated_program(fallback_fn)
                 .map_err(|e| handler.emit_err(e))?;
 
             if build_config
