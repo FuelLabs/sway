@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclId, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -140,13 +140,13 @@ pub(super) fn compile_contract(
     )
     .map_err(|err| vec![err])?;
 
-    if let Some(main_function) = entry_function {
+    if let Some(entry_function) = entry_function {
         compile_entry_function(
             engines,
             context,
             &mut md_mgr,
             module,
-            main_function,
+            entry_function,
             logged_types_map,
             messages_types_map,
             None,
@@ -163,6 +163,25 @@ pub(super) fn compile_contract(
             messages_types_map,
             engines,
         )?;
+    }
+
+    // Fallback function needs to be compiled
+    for decl in declarations {
+        if let ty::TyDecl::FunctionDecl(decl) = decl {
+            let decl_id = decl.decl_id;
+            let decl = engines.de().get(&decl_id);
+            if decl.is_fallback() {
+                compile_abi_method(
+                    context,
+                    &mut md_mgr,
+                    module,
+                    &decl_id,
+                    logged_types_map,
+                    messages_types_map,
+                    engines,
+                )?;
+            }
+        }
     }
 
     compile_tests(
@@ -504,6 +523,7 @@ fn compile_fn(
         selector,
         *visibility == Visibility::Public,
         is_entry,
+        ast_fn_decl.is_fallback(),
         metadata,
     );
 
