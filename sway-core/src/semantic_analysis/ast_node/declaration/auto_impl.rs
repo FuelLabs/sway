@@ -585,7 +585,6 @@ where
             "{att}
         pub fn __entry() {{
             let method_name = decode_first_param::<str>();
-            __log(method_name);
             {code}
         }}"
         );
