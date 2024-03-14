@@ -71,7 +71,7 @@ pub enum Result<T, E> {
 
 // Type implementation
 //
-impl<T, E> Result<T, E> where E: AbiEncode {
+impl<T, E> Result<T, E> {
     // Querying the contained values
     //
     /// Returns whether a result contains a success value.
@@ -253,7 +253,7 @@ impl<T, E> Result<T, E> where E: AbiEncode {
     pub fn expect<M>(self, msg: M) -> T
     where
         M: AbiEncode,
-        
+        E: AbiEncode,
     {
         match self {
             Self::Ok(v) => v,
