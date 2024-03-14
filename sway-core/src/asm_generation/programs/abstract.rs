@@ -39,7 +39,10 @@ impl AbstractProgram {
         }
     }
 
-    pub(crate) fn into_allocated_program(mut self) -> Result<AllocatedProgram, CompileError> {
+    pub(crate) fn into_allocated_program(
+        mut self,
+        fallback_fn: Option<crate::asm_lang::Label>,
+    ) -> Result<AllocatedProgram, CompileError> {
         // Build our bytecode prologue which has a preamble and for contracts is the switch based on
         // function selector.
         let mut prologue = self.build_preamble();
@@ -49,7 +52,7 @@ impl AbstractProgram {
                 self.build_jump_to_entry(&mut prologue);
             }
             (false, ProgramKind::Contract) => {
-                self.build_contract_abi_switch(&mut prologue);
+                self.build_contract_abi_switch(&mut prologue, fallback_fn);
             }
             _ => {}
         }
@@ -172,7 +175,11 @@ impl AbstractProgram {
     /// 'selector'.
     /// See https://fuellabs.github.io/fuel-specs/master/vm#call-frames which
     /// describes the first argument to be at word offset 73.
-    fn build_contract_abi_switch(&mut self, asm_buf: &mut AllocatedAbstractInstructionSet) {
+    fn build_contract_abi_switch(
+        &mut self,
+        asm_buf: &mut AllocatedAbstractInstructionSet,
+        fallback_fn: Option<crate::asm_lang::Label>,
+    ) {
         const SELECTOR_WORD_OFFSET: u64 = 73;
         const INPUT_SELECTOR_REG: AllocatedRegister = AllocatedRegister::Allocated(0);
         const PROG_SELECTOR_REG: AllocatedRegister = AllocatedRegister::Allocated(1);
@@ -241,8 +248,14 @@ impl AbstractProgram {
             });
         }
 
-        // If none of the selectors matched, then revert.  This may change in the future, see
-        // https://github.com/FuelLabs/sway/issues/444
+        if let Some(fallback_fn) = fallback_fn {
+            asm_buf.ops.push(AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::Call(fallback_fn)),
+                comment: "call fallback function".into(),
+                owning_span: None,
+            });
+        }
+
         asm_buf.ops.push(AllocatedAbstractOp {
             opcode: Either::Left(AllocatedOpcode::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),

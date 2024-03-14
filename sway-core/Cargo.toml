@@ -21,6 +21,7 @@ etk-dasm = { package = "fuel-etk-dasm", version = "0.3.1-dev" }
 etk-ops = { package = "fuel-etk-ops", version = "0.3.1-dev" }
 fuel-abi-types = { workspace = true }
 fuel-vm = { workspace = true, features = ["serde"] }
+gimli = "0.28.1"
 graph-cycles = "0.1.0"
 hashbrown = "0.13.1"
 hex = { version = "0.4", optional = true }
@@ -29,6 +30,7 @@ indexmap = "2.0.0"
 itertools = "0.10"
 lazy_static = "1.4"
 miden-core = "0.3.0"
+object = { version = "0.32.2", features = ["write"] }
 pest = "2.1.3"
 pest_derive = "2.1"
 petgraph = "0.6"

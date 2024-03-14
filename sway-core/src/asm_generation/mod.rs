@@ -7,7 +7,7 @@ mod miden_vm;
 pub use miden_vm::*;
 pub mod from_ir;
 pub mod fuel;
-mod instruction_set;
+pub mod instruction_set;
 mod programs;
 
 mod finalized_asm;

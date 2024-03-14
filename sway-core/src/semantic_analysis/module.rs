@@ -12,7 +12,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Named};
 
 use crate::{
-    decl_engine::DeclEngineGet,
+    decl_engine::{DeclEngineGet, DeclId},
     engine_threading::DebugWithEngines,
     language::{
         parsed::*,
@@ -307,6 +307,17 @@ impl ty::TyModule {
         let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes)?;
         let submodules = submodules_res?;
 
+        let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;
+        match (&kind, &fallback_fn) {
+            (TreeType::Contract, _) | (_, None) => {}
+            (_, Some(fallback_fn)) => {
+                let fallback_fn = engines.de().get(fallback_fn);
+                return Err(handler.emit_err(CompileError::FallbackFnsAreContractOnly {
+                    span: fallback_fn.span.clone(),
+                }));
+            }
+        }
+
         if ctx.experimental.new_encoding {
             let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
@@ -348,6 +359,7 @@ impl ty::TyModule {
                             engines,
                             parsed.span.source_id().map(|x| x.module_id()),
                             &contract_fns,
+                            fallback_fn,
                         )
                         .unwrap();
                     all_nodes.push(node)
@@ -460,6 +472,53 @@ impl ty::TyModule {
         }
 
         Ok(typed_nodes)
+    }
+}
+
+fn collect_fallback_fn(
+    all_nodes: &[ty::TyAstNode],
+    engines: &Engines,
+    handler: &Handler,
+) -> Result<Option<DeclId<ty::TyFunctionDecl>>, ErrorEmitted> {
+    let mut fallback_fns = all_nodes
+        .iter()
+        .filter_map(|x| match &x.content {
+            ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
+                let d = engines.de().get(&decl.decl_id);
+                d.is_fallback().then_some(decl.decl_id)
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
+    let mut last_error = None;
+    for f in fallback_fns.iter().skip(1) {
+        let decl = engines.de().get(f);
+        last_error = Some(
+            handler.emit_err(CompileError::MultipleDefinitionsOfFallbackFunction {
+                name: decl.name.clone(),
+                span: decl.span.clone(),
+            }),
+        );
+    }
+
+    if let Some(last_error) = last_error {
+        return Err(last_error);
+    }
+
+    if let Some(fallback_fn) = fallback_fns.pop() {
+        let f = engines.de().get(&fallback_fn);
+        if !f.parameters.is_empty() {
+            Err(
+                handler.emit_err(CompileError::FallbackFnsCannotHaveParameters {
+                    span: f.span.clone(),
+                }),
+            )
+        } else {
+            Ok(Some(fallback_fn))
+        }
+    } else {
+        Ok(None)
     }
 }
 
