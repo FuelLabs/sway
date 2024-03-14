@@ -357,7 +357,7 @@ fn item_struct_to_struct_declaration(
     item_struct: ItemStruct,
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
-    // FIXME(Centril): We shoudln't be collecting into a temporary  `errors` here. Recover instead!
+    // FIXME(Centril): We shouldn't be collecting into a temporary  `errors` here. Recover instead!
     let mut errors = Vec::new();
     let span = item_struct.span();
     let fields = item_struct
