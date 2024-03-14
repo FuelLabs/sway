@@ -47,7 +47,7 @@ use sway_core::{
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, Engines, FinalizedEntry, LspConfig,
+    write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
@@ -293,7 +293,9 @@ pub struct BuildOpts {
     pub minify: MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
-    /// If set, outputs source file mapping in JSON format
+    /// If set, outputs debug info to the provided file.
+    /// If the argument provided ends with .json, a JSON is emitted,
+    /// otherwise, an ELF file containing DWARF is emitted.
     pub debug_outfile: Option<String>,
     /// Build target to use.
     pub build_target: BuildTarget,
@@ -426,11 +428,17 @@ impl BuiltPackage {
         Ok(())
     }
 
-    /// Writes debug_info (source_map) of the BuiltPackage to the given `path`.
-    pub fn write_debug_info(&self, path: &Path) -> Result<()> {
-        let source_map_json =
-            serde_json::to_vec(&self.source_map).expect("JSON serialization failed");
-        fs::write(path, source_map_json)?;
+    /// Writes debug_info (source_map) of the BuiltPackage to the given `out_file`.
+    pub fn write_debug_info(&self, out_file: &Path) -> Result<()> {
+        if matches!(out_file.extension(), Some(ext) if ext == "json") {
+            let source_map_json =
+                serde_json::to_vec(&self.source_map).expect("JSON serialization failed");
+            fs::write(out_file, source_map_json)?;
+        } else {
+            let primary_dir = self.descriptor.manifest_file.dir();
+            let primary_src = self.descriptor.manifest_file.entry_path();
+            write_dwarf(&self.source_map, primary_dir, &primary_src, out_file)?;
+        }
         Ok(())
     }
 
