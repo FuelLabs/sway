@@ -91,6 +91,26 @@ impl BufferReader {
         BufferReader { ptr, pos: 0 }
     }
 
+    pub fn from_predicate_data() -> BufferReader {
+        let predicate_index = asm(r1) {
+            gm r1 i3; // GET_VERIFYING_PREDICATE
+            r1: u64
+        };
+        match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
+            0u8 => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
+                let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
+                BufferReader { ptr, pos: 0 }
+            },
+            2u8 => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
+                let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
+                BufferReader { ptr, pos: 0 }
+            },
+            _ => __revert(0),
+        }
+    }
+
     pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
         let next_pos = self.pos + count;
 
@@ -3882,6 +3902,14 @@ where
     T: AbiDecode,
 {
     let mut buffer = BufferReader::from_script_data();
+    T::abi_decode(buffer)
+}
+
+pub fn decode_predicate_data<T>() -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_predicate_data();
     T::abi_decode(buffer)
 }
 
