@@ -440,9 +440,14 @@ impl TestContext {
             TestCategory::FailsToCompile => {
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+
                 *output = out;
 
                 if result.is_ok() {
+                    if verbose {
+                        eprintln!("[{}]", output);
+                    }
+
                     Err(anyhow::Error::msg("Test compiles but is expected to fail"))
                 } else {
                     check_file_checker(checker, &name, output)?;
