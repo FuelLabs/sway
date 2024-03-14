@@ -319,7 +319,7 @@ fn copy_dir_contents(
             }
         } else if let Some(file_name_os) = path.file_name() {
             if let Some(file_name) = file_name_os.to_str() {
-                if file_name.ends_with(format!(".{}", SWAY_EXTENSION))
+                if file_name.ends_with(&format!(".{}", SWAY_EXTENSION))
                     || file_name == MANIFEST_FILE_NAME
                     || file_name == LOCK_FILE_NAME
                 {
