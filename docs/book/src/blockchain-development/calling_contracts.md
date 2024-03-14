@@ -166,12 +166,12 @@ While the Fuel contract calling paradigm is similar to the EVM's (using an ABI, 
 
 ## Fallback
 
-When a contract is compiled, a special section called "contract selection" is also generated. This section checks if the contract call method matches any of the available ABI methods. If this fails one of two possible actions will happen:
+When a contract is compiled, a special section called "contract selection" is also generated. This section checks if the contract call method matches any of the available ABI methods. If this fails, one of two possible actions will happen:
 
-1 - if none fallback function was specified, the contract will revert;
+1 - if no fallback function was specified, the contract will revert;
 2 - otherwise, the fallback function will be called.
 
-For all intents and purposes the fallback function is considered a contract method, which means that it has all the limitations that other contract methods has. As the fallback function signature, the function cannot have arguments, but they can return anything.
+For all intents and purposes the fallback function is considered a contract method, which means that it has all the limitations that other contract methods have. As the fallback function signature, the function cannot have arguments, but they can return anything.
 
 If for some reason the fallback function needs to returns different types, the intrinsic `__contract_ret` can be used.
 

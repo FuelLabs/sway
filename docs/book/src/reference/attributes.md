@@ -62,4 +62,4 @@ It is possible to improve the warning message with `#[deprecated(note = "your me
 
 ## Fallback
 
-The `#[fallback]` attribute makes the compiler to use the marked function as the contract call fallback function, which means that, when a contract is called, and the contract selection fails, the fallback function will be called instead.
+The `#[fallback]` attribute makes the compiler use the marked function as the contract call fallback function, which means that, when a contract is called, and the contract selection fails, the fallback function will be called instead.
