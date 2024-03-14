@@ -181,8 +181,7 @@ fn did_change_stress_test_random_wait() {
             .await
             .is_err()
         {
-            assert!(
-                false,
+            panic!(
                 "did_change_stress_test_random_wait did not complete within the timeout period."
             );
         }
