@@ -177,7 +177,10 @@ fn did_change_stress_test_random_wait() {
             }
             shutdown_and_exit(&mut service).await;
         };
-        if let Err(_) = tokio::time::timeout(test_duration, test_future).await {
+        if tokio::time::timeout(test_duration, test_future)
+            .await
+            .is_err()
+        {
             eprintln!(
                 "did_change_stress_test_random_wait did not complete within the timeout period."
             );
