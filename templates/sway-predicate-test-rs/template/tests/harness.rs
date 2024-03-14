@@ -3,7 +3,7 @@ use fuels::{accounts::{predicate::Predicate}, prelude::*};
 // Load abi from json
 abigen!(Predicate(
     name = "MyPredicate",
-    abi = "out/debug/my-predicate-abi.json"
+    abi = "out/debug/{{project-name}}-abi.json"
 ));
 
 async fn get_predicate_instance() -> (WalletUnlocked, Predicate) {
@@ -23,7 +23,7 @@ async fn get_predicate_instance() -> (WalletUnlocked, Predicate) {
 
     let provider = wallet.provider().clone().unwrap();
 
-    let bin_path = "./out/debug/my-predicate.bin";
+    let bin_path = "./out/debug/{{project-name}}.bin";
 
     let instance: Predicate = Predicate::load_from(bin_path).unwrap().with_provider(provider.clone());
 

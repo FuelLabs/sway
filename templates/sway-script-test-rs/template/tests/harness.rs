@@ -3,7 +3,7 @@ use fuels::prelude::*;
 // Load abi from json
 abigen!(Script(
     name = "MyScript",
-    abi = "out/debug/my-script-abi.json"
+    abi = "out/debug/{{project-name}}-abi.json"
 ));
 
 async fn get_script_instance() -> MyScript<WalletUnlocked> {
@@ -20,7 +20,7 @@ async fn get_script_instance() -> MyScript<WalletUnlocked> {
     .await;
     let wallet = wallets.pop().unwrap();
 
-    let bin_path = "./out/debug/my-script.bin";
+    let bin_path = "./out/debug/{{project-name}}.bin";
 
     let instance = MyScript::new(wallet.clone(), bin_path);
 
