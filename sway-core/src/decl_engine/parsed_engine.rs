@@ -142,8 +142,6 @@ macro_rules! decl_engine_clear_module {
                         let span = $getter(item);
                         match span.source_id() {
                             Some(source_id) => &source_id.module_id() != module_id,
-                            // WARNING: Setting to true disables garbage collection for these cases.
-                            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
                             None => true,
                         }
                     });
