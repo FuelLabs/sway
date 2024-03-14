@@ -6,7 +6,7 @@ use std::hash::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xe2a4f86301f8b57ff2c93ce68366669fc2f0926dccd26f9f6550b049cb324a2c;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x78b2ec4ef197c4ebea87f4cb8c8cf46e1f54fa8896f387c8c3be66a7b8a74ed0;
+const CONTRACT_ID = 0xec759cace1887b3d0a7c38305cb72bef4a6799e0c503f04af587861603bb985f;
 
 fn main() -> u64 {
     let addr = abi(TestContract, CONTRACT_ID);
