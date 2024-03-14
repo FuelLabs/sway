@@ -26,10 +26,11 @@ pub struct Build {
 /// Build output file options.
 #[derive(Args, Debug, Default)]
 pub struct BuildOutput {
-    /// If set, outputs a binary file representing the script bytes.
+    /// Create a binary file representing the script bytecode at the provided path.
     #[clap(long = "output-bin", short = 'o')]
     pub bin_file: Option<String>,
-    /// If set, outputs source file mapping in JSON format
+    /// Create a file containing debug information at the provided path.
+    /// If the file extension is .json, JSON format is used. Otherwise, an ELF file containing DWARF is emitted.
     #[clap(long = "output-debug", short = 'g')]
     pub debug_file: Option<String>,
 }
