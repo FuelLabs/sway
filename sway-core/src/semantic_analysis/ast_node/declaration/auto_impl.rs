@@ -628,7 +628,7 @@ where
             let args_types = format!("({args_types},)");
             format!(
                 "pub fn __entry() -> bool {{
-                let args = decode_script_data::<{args_types}>();
+                let args = decode_predicate_data::<{args_types}>();
                 main({expanded_args})
             }}"
             )
