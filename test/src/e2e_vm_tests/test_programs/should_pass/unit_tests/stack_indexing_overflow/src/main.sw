@@ -14,7 +14,7 @@ struct M2 {
   d: M1,
 }
 
-const m1: M1 = M1 { a: 0_u256, b: 0_u256, c: 0_u256, d: 0_u256 };
+const m1: M1 = M1 { a: u256::min(), b: u256::min(), c: u256::min(), d: u256::min() };
 const m2: M2 = M2 { a: m1, b: m1, c: m1, d: m1 };
 
 const MARR : [M2; 6] =
@@ -37,7 +37,7 @@ fn main() -> [M2; 6] {
 #[test]
 fn test() -> [M2; 6] {
    let mut b = bar();
-   assert(b.0[0].a.a == 0_u256);
+   assert(b.0[0].a.a == u256::min());
    assert(b.0[0].a.b == u256::max());
    b.0
 }
