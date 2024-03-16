@@ -662,7 +662,7 @@ impl TryFrom<Create> for fuel_tx::Create {
 
         let maturity = (create.maturity.maturity != 0).then_some(create.maturity.maturity.into());
         let mut policies = Policies::default();
-        policies.set(PolicyType::GasPrice, create.gas.price);
+        policies.set(PolicyType::Tip, create.gas.price);
         policies.set(PolicyType::Maturity, maturity);
 
         let create = fuel_tx::Transaction::create(
@@ -710,7 +710,7 @@ impl TryFrom<Script> for fuel_tx::Script {
             .collect();
 
         let mut policies = Policies::default().with_maturity(script.maturity.maturity.into());
-        policies.set(PolicyType::GasPrice, script.gas.price);
+        policies.set(PolicyType::Tip, script.gas.price);
         let mut script_tx = fuel_tx::Transaction::script(
             0, // Temporary value. Will be replaced below
             script_bytecode,
@@ -749,7 +749,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                     amount,
                     asset_id,
                     tx_ptr: tx_pointer,
-                    maturity,
+                    maturity: _,
                     predicate_gas_used,
                     predicate,
                     witness_ix,
@@ -762,7 +762,6 @@ impl TryFrom<Input> for fuel_tx::Input {
                         asset_id,
                         tx_pointer,
                         witness_index,
-                        maturity.into(),
                     ),
                     (None, Some(predicate), Some(predicate_data)) => {
                         fuel_tx::Input::coin_predicate(
@@ -771,7 +770,6 @@ impl TryFrom<Input> for fuel_tx::Input {
                             amount,
                             asset_id,
                             tx_pointer,
-                            maturity.into(),
                             predicate_gas_used,
                             std::fs::read(&predicate).map_err(|err| {
                                 ConvertInputError::PredicateRead {
