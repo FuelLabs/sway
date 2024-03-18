@@ -851,6 +851,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             data_id,
         } in init_mut_vars
         {
+            if var_size.in_bytes() == 0 {
+                // Don't bother initializing zero-sized types.
+                continue;
+            }
             // Load our initialiser from the data section.
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(
