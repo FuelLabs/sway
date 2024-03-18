@@ -5,7 +5,7 @@ use crate::{
     control_flow_analysis::*,
     language::{
         ty::{self, TyImplItem},
-        CallPath,
+        SymbolPath,
     },
     type_system::*,
     Engines,
@@ -246,7 +246,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
 /// track which exact methods are dead code.
 fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: &'eng Engines,
-    trait_name: &CallPath,
+    trait_name: &SymbolPath,
     graph: &mut ControlFlowGraph<'cfg>,
     items: &[TyImplItem],
     entry_node: NodeIndex,

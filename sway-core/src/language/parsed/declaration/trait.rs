@@ -35,7 +35,7 @@ pub struct TraitDeclaration {
 
 #[derive(Debug, Clone)]
 pub struct Supertrait {
-    pub name: CallPath,
+    pub name: SymbolPath,
     pub decl_ref: Option<DeclRefTrait>,
 }
 

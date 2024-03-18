@@ -22,61 +22,61 @@ use sway_types::{span::Span, Spanned};
 use super::parsed::QualifiedPathRootTypes;
 
 #[derive(Clone, Debug)]
-pub struct CallPathTree {
-    pub qualified_call_path: QualifiedCallPath,
-    pub children: Vec<CallPathTree>,
+pub struct SymbolPathTree {
+    pub qualified_symbol_path: QualifiedSymbolPath,
+    pub children: Vec<SymbolPathTree>,
 }
 
-impl HashWithEngines for CallPathTree {
+impl HashWithEngines for SymbolPathTree {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let CallPathTree {
-            qualified_call_path,
+        let SymbolPathTree {
+            qualified_symbol_path,
             children,
         } = self;
-        qualified_call_path.hash(state, engines);
+        qualified_symbol_path.hash(state, engines);
         children.hash(state, engines);
     }
 }
 
-impl EqWithEngines for CallPathTree {}
-impl PartialEqWithEngines for CallPathTree {
+impl EqWithEngines for SymbolPathTree {}
+impl PartialEqWithEngines for SymbolPathTree {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let CallPathTree {
-            qualified_call_path,
+        let SymbolPathTree {
+            qualified_symbol_path,
             children,
         } = self;
-        qualified_call_path.eq(&other.qualified_call_path, engines)
+        qualified_symbol_path.eq(&other.qualified_symbol_path, engines)
             && children.eq(&other.children, engines)
     }
 }
 
-impl OrdWithEngines for CallPathTree {
+impl OrdWithEngines for SymbolPathTree {
     fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
-        let CallPathTree {
-            qualified_call_path: l_call_path,
+        let SymbolPathTree {
+            qualified_symbol_path: l_symbol_path,
             children: l_children,
         } = self;
-        let CallPathTree {
-            qualified_call_path: r_call_path,
+        let SymbolPathTree {
+            qualified_symbol_path: r_symbol_path,
             children: r_children,
         } = other;
-        l_call_path
-            .cmp(r_call_path, engines)
+        l_symbol_path
+            .cmp(r_symbol_path, engines)
             .then_with(|| l_children.cmp(r_children, engines))
     }
 }
 
 #[derive(Clone, Debug)]
 
-pub struct QualifiedCallPath {
-    pub call_path: CallPath,
+pub struct QualifiedSymbolPath {
+    pub symbol_path: SymbolPath,
     pub qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
 }
 
-impl std::convert::From<Ident> for QualifiedCallPath {
+impl std::convert::From<Ident> for QualifiedSymbolPath {
     fn from(other: Ident) -> Self {
-        QualifiedCallPath {
-            call_path: CallPath {
+        QualifiedSymbolPath {
+            symbol_path: SymbolPath {
                 prefixes: vec![],
                 suffix: other,
                 is_absolute: false,
@@ -86,83 +86,83 @@ impl std::convert::From<Ident> for QualifiedCallPath {
     }
 }
 
-impl std::convert::From<CallPath> for QualifiedCallPath {
-    fn from(other: CallPath) -> Self {
-        QualifiedCallPath {
-            call_path: other,
+impl std::convert::From<SymbolPath> for QualifiedSymbolPath {
+    fn from(other: SymbolPath) -> Self {
+        QualifiedSymbolPath {
+            symbol_path: other,
             qualified_path_root: None,
         }
     }
 }
 
-impl QualifiedCallPath {
-    pub fn to_call_path(self, handler: &Handler) -> Result<CallPath, ErrorEmitted> {
+impl QualifiedSymbolPath {
+    pub fn to_symbol_path(self, handler: &Handler) -> Result<SymbolPath, ErrorEmitted> {
         if let Some(qualified_path_root) = self.qualified_path_root {
             Err(handler.emit_err(CompileError::Internal(
                 "Unexpected qualified path.",
                 qualified_path_root.as_trait_span,
             )))
         } else {
-            Ok(self.call_path)
+            Ok(self.symbol_path)
         }
     }
 }
 
-impl HashWithEngines for QualifiedCallPath {
+impl HashWithEngines for QualifiedSymbolPath {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let QualifiedCallPath {
-            call_path,
+        let QualifiedSymbolPath {
+            symbol_path,
             qualified_path_root,
         } = self;
-        call_path.hash(state);
+        symbol_path.hash(state);
         qualified_path_root.hash(state, engines);
     }
 }
 
-impl EqWithEngines for QualifiedCallPath {}
-impl PartialEqWithEngines for QualifiedCallPath {
+impl EqWithEngines for QualifiedSymbolPath {}
+impl PartialEqWithEngines for QualifiedSymbolPath {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let QualifiedCallPath {
-            call_path,
+        let QualifiedSymbolPath {
+            symbol_path,
             qualified_path_root,
         } = self;
-        call_path.eq(&other.call_path)
+        symbol_path.eq(&other.symbol_path)
             && qualified_path_root.eq(&other.qualified_path_root, engines)
     }
 }
 
-impl OrdWithEngines for QualifiedCallPath {
+impl OrdWithEngines for QualifiedSymbolPath {
     fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
-        let QualifiedCallPath {
-            call_path: l_call_path,
+        let QualifiedSymbolPath {
+            symbol_path: l_symbol_path,
             qualified_path_root: l_qualified_path_root,
         } = self;
-        let QualifiedCallPath {
-            call_path: r_call_path,
+        let QualifiedSymbolPath {
+            symbol_path: r_symbol_path,
             qualified_path_root: r_qualified_path_root,
         } = other;
-        l_call_path
-            .cmp(r_call_path)
+        l_symbol_path
+            .cmp(r_symbol_path)
             .then_with(|| l_qualified_path_root.cmp(r_qualified_path_root, engines))
     }
 }
 
-impl DisplayWithEngines for QualifiedCallPath {
+impl DisplayWithEngines for QualifiedSymbolPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         if let Some(qualified_path_root) = &self.qualified_path_root {
             write!(
                 f,
                 "{}::{}",
                 engines.help_out(qualified_path_root),
-                &self.call_path
+                &self.symbol_path
             )
         } else {
-            write!(f, "{}", &self.call_path)
+            write!(f, "{}", &self.symbol_path)
         }
     }
 }
 
-impl DebugWithEngines for QualifiedCallPath {
+impl DebugWithEngines for QualifiedSymbolPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{}", engines.help_out(self))
     }
@@ -171,17 +171,17 @@ impl DebugWithEngines for QualifiedCallPath {
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
-pub struct CallPath<T = Ident> {
+pub struct SymbolPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,
-    // If `is_absolute` is true, then this call path is an absolute path from
+    // If `is_absolute` is true, then this symbol path is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
     pub is_absolute: bool,
 }
 
-impl std::convert::From<Ident> for CallPath {
+impl std::convert::From<Ident> for SymbolPath {
     fn from(other: Ident) -> Self {
-        CallPath {
+        SymbolPath {
             prefixes: vec![],
             suffix: other,
             is_absolute: false,
@@ -189,7 +189,7 @@ impl std::convert::From<Ident> for CallPath {
     }
 }
 
-impl<T> fmt::Display for CallPath<T>
+impl<T> fmt::Display for SymbolPath<T>
 where
     T: fmt::Display,
 {
@@ -201,7 +201,7 @@ where
     }
 }
 
-impl<T: DisplayWithEngines> DisplayWithEngines for CallPath<T> {
+impl<T: DisplayWithEngines> DisplayWithEngines for SymbolPath<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         for prefix in self.prefixes.iter() {
             write!(f, "{}::", prefix.as_str())?;
@@ -210,7 +210,7 @@ impl<T: DisplayWithEngines> DisplayWithEngines for CallPath<T> {
     }
 }
 
-impl<T: DisplayWithEngines> DebugWithEngines for CallPath<T> {
+impl<T: DisplayWithEngines> DebugWithEngines for SymbolPath<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         for prefix in self.prefixes.iter() {
             write!(f, "{}::", prefix.as_str())?;
@@ -219,7 +219,7 @@ impl<T: DisplayWithEngines> DebugWithEngines for CallPath<T> {
     }
 }
 
-impl<T: Spanned> Spanned for CallPath<T> {
+impl<T: Spanned> Spanned for SymbolPath<T> {
     fn span(&self) -> Span {
         if self.prefixes.is_empty() {
             self.suffix.span()
@@ -243,11 +243,11 @@ impl<T: Spanned> Spanned for CallPath<T> {
     }
 }
 
-impl CallPath {
+impl SymbolPath {
     pub fn absolute(path: &[&str]) -> Self {
         assert!(!path.is_empty());
 
-        CallPath {
+        SymbolPath {
             prefixes: path
                 .iter()
                 .take(path.len() - 1)
@@ -260,11 +260,11 @@ impl CallPath {
 
     /// Shifts the last prefix into the suffix, and removes the old suffix.
     /// Does nothing if prefixes are empty.
-    pub fn rshift(&self) -> CallPath {
+    pub fn rshift(&self) -> SymbolPath {
         if self.prefixes.is_empty() {
             self.clone()
         } else {
-            CallPath {
+            SymbolPath {
                 prefixes: self.prefixes[0..self.prefixes.len() - 1].to_vec(),
                 suffix: self.prefixes.last().unwrap().clone(),
                 is_absolute: self.is_absolute,
@@ -273,11 +273,11 @@ impl CallPath {
     }
 
     /// Removes the first prefix. Does nothing if prefixes are empty.
-    pub fn lshift(&self) -> CallPath {
+    pub fn lshift(&self) -> SymbolPath {
         if self.prefixes.is_empty() {
             self.clone()
         } else {
-            CallPath {
+            SymbolPath {
                 prefixes: self.prefixes[1..self.prefixes.len()].to_vec(),
                 suffix: self.suffix.clone(),
                 is_absolute: self.is_absolute,
@@ -293,14 +293,14 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
-    /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
+    /// Convert a given [SymbolPath] to a symbol to a full [SymbolPath] from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
-    /// is an _internal_ library of a package named `my_project`, the corresponding call path is
+    /// is an _internal_ library of a package named `my_project`, the corresponding symbol path is
     /// `my_project::pkga::SOME_CONST`.
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, namespace: &Namespace) -> CallPath {
+    pub fn to_fullpath(&self, namespace: &Namespace) -> SymbolPath {
         if self.is_absolute {
             return self.clone();
         }
@@ -343,7 +343,7 @@ impl CallPath {
 
             prefixes.extend(synonym_prefixes);
 
-            CallPath {
+            SymbolPath {
                 prefixes,
                 suffix: self.suffix.clone(),
                 is_absolute: true,
@@ -355,7 +355,7 @@ impl CallPath {
             // If the path starts with an external module (i.e. a module that is imported in
             // `Forc.toml`), then do not change it since it's a complete path already.
             if m.is_external {
-                CallPath {
+                SymbolPath {
                     prefixes: self.prefixes.clone(),
                     suffix: self.suffix.clone(),
                     is_absolute: true,
@@ -371,14 +371,14 @@ impl CallPath {
 
                 prefixes.extend(self.prefixes.clone());
 
-                CallPath {
+                SymbolPath {
                     prefixes,
                     suffix: self.suffix.clone(),
                     is_absolute: true,
                 }
             }
         } else {
-            CallPath {
+            SymbolPath {
                 prefixes: self.prefixes.clone(),
                 suffix: self.suffix.clone(),
                 is_absolute: true,
@@ -386,13 +386,13 @@ impl CallPath {
         }
     }
 
-    /// Convert a given [CallPath] into a call path suitable for a `use` statement.
+    /// Convert a given [SymbolPath] into a symbol path suitable for a `use` statement.
     ///
     /// For example, given a path `pkga::SOME_CONST` where `pkga` is an _internal_ library of a package named
-    /// `my_project`, the corresponding call path is `pkga::SOME_CONST`.
+    /// `my_project`, the corresponding symbol path is `pkga::SOME_CONST`.
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are left unchanged.
-    pub fn to_import_path(&self, namespace: &Namespace) -> CallPath {
+    pub fn to_import_path(&self, namespace: &Namespace) -> SymbolPath {
         let converted = self.to_fullpath(namespace);
 
         if let Some(first) = converted.prefixes.first() {

@@ -11,14 +11,14 @@ use crate::language::ty;
 pub(crate) fn instantiate_enum_unsafe_downcast(
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
-    call_path_decl: ty::TyDecl,
+    symbol_path_decl: ty::TyDecl,
     span: Span,
 ) -> ty::TyExpression {
     ty::TyExpression {
         expression: ty::TyExpressionVariant::UnsafeDowncast {
             exp: Box::new(exp.clone()),
             variant: variant.clone(),
-            call_path_decl,
+            symbol_path_decl,
         },
         return_type: variant.type_argument.type_id,
         span,

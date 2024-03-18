@@ -1,5 +1,5 @@
 use crate::{
-    language::{parsed::*, ty, CallPath},
+    language::{parsed::*, ty, SymbolPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
@@ -37,12 +37,12 @@ impl ty::TyStructDecl {
                 new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
             }
 
-            let mut path: CallPath = name.into();
+            let mut path: SymbolPath = name.into();
             path = path.to_fullpath(ctx.namespace());
 
             // create the struct decl
             let decl = ty::TyStructDecl {
-                call_path: path,
+                symbol_path: path,
                 type_parameters: new_type_parameters,
                 fields: new_fields,
                 visibility,

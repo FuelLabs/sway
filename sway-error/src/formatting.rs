@@ -220,7 +220,7 @@ pub(crate) fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a s
     }
 }
 
-/// Returns the suffix of the `call_path` together with any type arguments if they
+/// Returns the suffix of the `symbol_path` together with any type arguments if they
 /// exist.
 /// Convenient for subsequent showing of only the short name of a full name that was
 /// already shown.
@@ -230,9 +230,11 @@ pub(crate) fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a s
 /// SomeName<T> -> SomeName<T>
 /// std::ops::Eq -> Eq
 /// some_lib::Struct<A, B> -> Struct<A, B>
-pub(crate) fn call_path_suffix_with_args(call_path: &str) -> String {
-    match call_path.rfind(':') {
-        Some(index) if index < call_path.len() - 1 => call_path.split_at(index + 1).1.to_string(),
-        _ => call_path.to_string(),
+pub(crate) fn symbol_path_suffix_with_args(symbol_path: &str) -> String {
+    match symbol_path.rfind(':') {
+        Some(index) if index < symbol_path.len() - 1 => {
+            symbol_path.split_at(index + 1).1.to_string()
+        }
+        _ => symbol_path.to_string(),
     }
 }

@@ -17,7 +17,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyAstNodeContent, TyDecl},
-        CallPath, ModName,
+        ModName, SymbolPath,
     },
     semantic_analysis::*,
     Engines, TypeInfo,
@@ -382,12 +382,12 @@ impl ty::TyModule {
         ctx: TypeCheckContext<'_>,
         nodes: &[AstNode],
         predicate: fn(&ImplTrait) -> bool,
-    ) -> HashMap<BaseIdent, HashSet<CallPath>> {
+    ) -> HashMap<BaseIdent, HashSet<SymbolPath>> {
         let engines = ctx.engines();
         // Check which structs and enums needs to have auto impl for AbiEncode
         // We need to do this before type checking, because the impls must be right after
         // the declarations
-        let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();
+        let mut impls = HashMap::<BaseIdent, HashSet<SymbolPath>>::new();
 
         for node in nodes.iter() {
             if let AstNodeContent::Declaration(Declaration::ImplTrait(decl_id)) = &node.content {
@@ -399,9 +399,9 @@ impl ty::TyModule {
                     }
                     TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl.id()).name().clone()),
                     TypeInfo::Custom {
-                        qualified_call_path,
+                        qualified_symbol_path,
                         ..
-                    } => Some(qualified_call_path.call_path.suffix.clone()),
+                    } => Some(qualified_symbol_path.symbol_path.suffix.clone()),
                     _ => None,
                 };
 
@@ -534,7 +534,7 @@ impl ty::TySubmodule {
         for node in module.tree.root_nodes.iter() {
             match &node.content {
                 AstNodeContent::UseStatement(use_stmt) => {
-                    if let Some(use_mod_ident) = use_stmt.call_path.first() {
+                    if let Some(use_mod_ident) = use_stmt.symbol_path.first() {
                         if let Some(mod_name_node) =
                             module_dep_graph.get_node_id_for_module(use_mod_ident)
                         {

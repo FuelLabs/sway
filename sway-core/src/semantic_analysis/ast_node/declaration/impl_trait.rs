@@ -120,7 +120,7 @@ impl TyImplTrait {
 
                 let impl_trait = match ctx
                     .namespace()
-                    .resolve_call_path(handler, engines, &trait_name, ctx.self_type())
+                    .resolve_symbol_path(handler, engines, &trait_name, ctx.self_type())
                     .ok()
                 {
                     Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -300,13 +300,13 @@ impl TyImplTrait {
                 let self_type_id = self_type_param.type_id;
 
                 // create the trait name
-                let trait_name = CallPath {
+                let trait_name = SymbolPath {
                     prefixes: vec![],
                     suffix: match &&*type_engine.get(implementing_for.type_id) {
                         TypeInfo::Custom {
-                            qualified_call_path: call_path,
+                            qualified_symbol_path: symbol_path,
                             ..
-                        } => call_path.call_path.suffix.clone(),
+                        } => symbol_path.symbol_path.suffix.clone(),
                         _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
                     },
                     is_absolute: false,
@@ -616,7 +616,7 @@ fn type_check_trait_implementation(
     trait_interface_surface: &[TyTraitInterfaceItem],
     trait_items: &[TyImplItem],
     impl_items: &[ImplItem],
-    trait_name: &CallPath,
+    trait_name: &SymbolPath,
     trait_decl_span: &Span,
     block_span: &Span,
     is_contract: bool,
@@ -743,7 +743,7 @@ fn type_check_trait_implementation(
             }
             TyTraitInterfaceItem::Constant(decl_ref) => {
                 let constant = decl_engine.get_constant(decl_ref);
-                let name = constant.call_path.suffix.clone();
+                let name = constant.symbol_path.suffix.clone();
                 constant_checklist.insert(name.clone(), constant);
                 interface_item_refs.insert((name, implementing_for), item.clone());
             }
@@ -868,7 +868,7 @@ fn type_check_trait_implementation(
                 const_decl.subst(&trait_type_mapping, engines);
 
                 // Remove this constant from the checklist.
-                let name = const_decl.call_path.suffix.clone();
+                let name = const_decl.symbol_path.suffix.clone();
                 constant_checklist.remove(&name);
 
                 // Add this constant to the "impld decls".
@@ -990,7 +990,7 @@ fn type_check_impl_method(
     implementing_for: TypeId,
     impl_type_parameters: &[TypeParameter],
     impl_method: &FunctionDeclaration,
-    trait_name: &CallPath,
+    trait_name: &SymbolPath,
     is_contract: bool,
     impld_item_refs: &ItemMap,
     method_checklist: &BTreeMap<Ident, Arc<ty::TyTraitFn>>,
@@ -1215,7 +1215,7 @@ fn type_check_const_decl(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     const_decl: &ConstantDeclaration,
-    trait_name: &CallPath,
+    trait_name: &SymbolPath,
     is_contract: bool,
     impld_constant_ids: &ItemMap,
     constant_checklist: &BTreeMap<Ident, Arc<ty::TyConstantDecl>>,
@@ -1243,7 +1243,7 @@ fn type_check_const_decl(
     // type check the constant declaration
     let const_decl = ty::TyConstantDecl::type_check(handler, ctx.by_ref(), const_decl.clone())?;
 
-    let const_name = const_decl.call_path.suffix.clone();
+    let const_name = const_decl.symbol_path.suffix.clone();
 
     // Ensure that there aren't multiple definitions of this constant
     if impld_constant_ids.contains_key(&(const_name.clone(), self_type_id)) {
@@ -1300,7 +1300,7 @@ fn type_check_type_decl(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     type_decl: &TraitTypeDeclaration,
-    trait_name: &CallPath,
+    trait_name: &SymbolPath,
     self_type: TypeId,
     is_contract: bool,
     impld_type_ids: &ItemMap,
@@ -1459,7 +1459,7 @@ fn handle_supertraits(
             match ctx
                 .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-                .resolve_call_path(
+                .resolve_symbol_path(
                     &Handler::default(),
                     engines,
                     &supertrait.name,

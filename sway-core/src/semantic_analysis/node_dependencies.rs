@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 
 use crate::{
-    language::{parsed::*, CallPath},
+    language::{parsed::*, SymbolPath},
     type_system::*,
     Engines,
 };
@@ -340,7 +340,7 @@ impl Dependencies {
             Declaration::TraitDeclaration(decl_id) => {
                 let trait_decl = engines.pe().get_trait(decl_id);
                 self.gather_from_iter(trait_decl.supertraits.iter(), |deps, sup| {
-                    deps.gather_from_call_path(&sup.name, false, false)
+                    deps.gather_from_symbol_path(&sup.name, false, false)
                 })
                 .gather_from_iter(
                     trait_decl.interface_surface.iter(),
@@ -379,7 +379,7 @@ impl Dependencies {
                     items,
                     ..
                 } = &*engines.pe().get_impl_trait(decl_id);
-                self.gather_from_call_path(trait_name, false, false)
+                self.gather_from_symbol_path(trait_name, false, false)
                     .gather_from_type_argument(engines, implementing_for)
                     .gather_from_type_parameters(impl_type_parameters)
                     .gather_from_iter(items.iter(), |deps, item| match item {
@@ -428,7 +428,7 @@ impl Dependencies {
                 } = &*engines.pe().get_abi(decl_id);
 
                 self.gather_from_iter(supertraits.iter(), |deps, sup| {
-                    deps.gather_from_call_path(&sup.name, false, false)
+                    deps.gather_from_symbol_path(&sup.name, false, false)
                 })
                 .gather_from_iter(interface_surface.iter(), |deps, item| match item {
                     TraitItem::TraitFn(decl_id) => {
@@ -519,18 +519,21 @@ impl Dependencies {
             ExpressionKind::Variable(name) => {
                 // in the case of ABI variables, we actually want to check if the ABI needs to be
                 // ordered
-                self.gather_from_call_path(&(name.clone()).into(), false, false)
+                self.gather_from_symbol_path(&(name.clone()).into(), false, false)
             }
             ExpressionKind::AmbiguousVariableExpression(name) => {
-                self.gather_from_call_path(&(name.clone()).into(), false, false)
+                self.gather_from_symbol_path(&(name.clone()).into(), false, false)
             }
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
-                    call_path_binding,
+                    symbol_path_binding,
                     arguments,
                 } = &**function_application_expression;
-                self.gather_from_call_path(&call_path_binding.inner, false, true)
-                    .gather_from_type_arguments(engines, &call_path_binding.type_arguments.to_vec())
+                self.gather_from_symbol_path(&symbol_path_binding.inner, false, true)
+                    .gather_from_type_arguments(
+                        engines,
+                        &symbol_path_binding.type_arguments.to_vec(),
+                    )
                     .gather_from_iter(arguments.iter(), |deps, arg| {
                         deps.gather_from_expr(engines, arg)
                     })
@@ -567,11 +570,14 @@ impl Dependencies {
                 .gather_from_expr(engines, index),
             ExpressionKind::Struct(struct_expression) => {
                 let StructExpression {
-                    call_path_binding,
+                    symbol_path_binding,
                     fields,
                 } = &**struct_expression;
-                self.gather_from_call_path(&call_path_binding.inner, false, false)
-                    .gather_from_type_arguments(engines, &call_path_binding.type_arguments.to_vec())
+                self.gather_from_symbol_path(&symbol_path_binding.inner, false, false)
+                    .gather_from_type_arguments(
+                        engines,
+                        &symbol_path_binding.type_arguments.to_vec(),
+                    )
                     .gather_from_iter(fields.iter(), |deps, field| {
                         deps.gather_from_expr(engines, &field.value)
                     })
@@ -581,13 +587,13 @@ impl Dependencies {
             }
             ExpressionKind::AmbiguousPathExpression(e) => {
                 let AmbiguousPathExpression {
-                    call_path_binding,
+                    symbol_path_binding,
                     args,
                     qualified_path_root: _,
                 } = &**e;
                 let mut this = self;
-                if call_path_binding.inner.prefixes.is_empty() {
-                    if let Some(before) = &call_path_binding.inner.suffix.before {
+                if symbol_path_binding.inner.prefixes.is_empty() {
+                    if let Some(before) = &symbol_path_binding.inner.suffix.before {
                         // We have just `Foo::Bar`, and nothing before `Foo`,
                         // so this could be referring to `Enum::Variant`,
                         // so we want to depend on `Enum` but not `Variant`.
@@ -598,25 +604,31 @@ impl Dependencies {
                         // so this is could either an enum variant or a function application
                         // so we want to depend on it as a function
                         this.deps.insert(DependentSymbol::Fn(
-                            call_path_binding.inner.suffix.suffix.clone(),
+                            symbol_path_binding.inner.suffix.suffix.clone(),
                             None,
                         ));
                     }
                 }
-                this.gather_from_type_arguments(engines, &call_path_binding.type_arguments.to_vec())
-                    .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(engines, arg))
+                this.gather_from_type_arguments(
+                    engines,
+                    &symbol_path_binding.type_arguments.to_vec(),
+                )
+                .gather_from_iter(args.iter(), |deps, arg| deps.gather_from_expr(engines, arg))
             }
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
-                    call_path_binding,
+                    symbol_path_binding,
                     args,
                 } = &**delineated_path_expression;
                 // It's either a module path which we can ignore, or an enum variant path, in which
                 // case we're interested in the enum name and initialiser args, ignoring the
                 // variant name.
                 let args_vec = args.clone().unwrap_or_default();
-                self.gather_from_call_path(&call_path_binding.inner.call_path, true, false)
-                    .gather_from_type_arguments(engines, &call_path_binding.type_arguments.to_vec())
+                self.gather_from_symbol_path(&symbol_path_binding.inner.symbol_path, true, false)
+                    .gather_from_type_arguments(
+                        engines,
+                        &symbol_path_binding.type_arguments.to_vec(),
+                    )
                     .gather_from_iter(args_vec.iter(), |deps, arg| {
                         deps.gather_from_expr(engines, arg)
                     })
@@ -635,7 +647,7 @@ impl Dependencies {
             // we should do address someday, but due to the whole `re_parse_expression` thing
             // it isn't possible right now
             ExpressionKind::AbiCast(abi_cast_expression) => {
-                self.gather_from_call_path(&abi_cast_expression.abi_name, false, false)
+                self.gather_from_symbol_path(&abi_cast_expression.abi_name, false, false)
             }
 
             ExpressionKind::Literal(_)
@@ -710,24 +722,24 @@ impl Dependencies {
         }
     }
 
-    fn gather_from_call_path(
+    fn gather_from_symbol_path(
         mut self,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
         use_prefix: bool,
         is_fn_app: bool,
     ) -> Self {
-        if call_path.prefixes.is_empty() {
+        if symbol_path.prefixes.is_empty() {
             // We can just use the suffix.
             self.deps.insert(if is_fn_app {
-                DependentSymbol::Fn(call_path.suffix.clone(), None)
+                DependentSymbol::Fn(symbol_path.suffix.clone(), None)
             } else {
-                DependentSymbol::Symbol(call_path.suffix.clone())
+                DependentSymbol::Symbol(symbol_path.suffix.clone())
             });
-        } else if use_prefix && call_path.prefixes.len() == 1 {
+        } else if use_prefix && symbol_path.prefixes.len() == 1 {
             // Here we can use the prefix (e.g., for 'Enum::Variant' -> 'Enum') as long is it's
             // only a single element.
             self.deps
-                .insert(DependentSymbol::Symbol(call_path.prefixes[0].clone()));
+                .insert(DependentSymbol::Symbol(symbol_path.prefixes[0].clone()));
         }
         self
     }
@@ -736,7 +748,9 @@ impl Dependencies {
         self.gather_from_iter(type_parameters.iter(), |deps, type_parameter| {
             deps.gather_from_iter(
                 type_parameter.trait_constraints.iter(),
-                |deps, constraint| deps.gather_from_call_path(&constraint.trait_name, false, false),
+                |deps, constraint| {
+                    deps.gather_from_symbol_path(&constraint.trait_name, false, false)
+                },
             )
         })
     }
@@ -762,14 +776,14 @@ impl Dependencies {
             TypeInfo::ContractCaller {
                 abi_name: AbiName::Known(abi_name),
                 ..
-            } => self.gather_from_call_path(abi_name, false, false),
+            } => self.gather_from_symbol_path(abi_name, false, false),
             TypeInfo::Custom {
-                qualified_call_path: name,
+                qualified_symbol_path: name,
                 type_arguments,
                 root_type_id,
             } => {
                 self.deps
-                    .insert(DependentSymbol::Symbol(name.clone().call_path.suffix));
+                    .insert(DependentSymbol::Symbol(name.clone().symbol_path.suffix));
                 let s = match type_arguments {
                     Some(type_arguments) => {
                         self.gather_from_type_arguments(engines, type_arguments)
@@ -983,9 +997,9 @@ fn type_info_name(type_info: &TypeInfo) -> String {
         },
         TypeInfo::Boolean => "bool",
         TypeInfo::Custom {
-            qualified_call_path: name,
+            qualified_symbol_path: name,
             ..
-        } => name.call_path.suffix.as_str(),
+        } => name.symbol_path.suffix.as_str(),
         TypeInfo::Tuple(fields) if fields.is_empty() => "unit",
         TypeInfo::Tuple(..) => "tuple",
         TypeInfo::B256 => "b256",

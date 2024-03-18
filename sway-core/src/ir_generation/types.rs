@@ -104,7 +104,7 @@ pub(super) fn get_struct_name_field_index_and_type(
         (TypeInfo::Struct(decl_ref), ty::ProjectionKind::StructField { name: field_name }) => {
             let decl = decl_engine.get_struct(&decl_ref);
             Some((
-                decl.call_path.suffix.as_str().to_owned(),
+                decl.symbol_path.suffix.as_str().to_owned(),
                 decl.fields
                     .iter()
                     .enumerate()
@@ -194,7 +194,7 @@ pub(super) fn get_indices_for_struct_access(
                                     format!(
                                         "Unknown field '{}' for struct {} in reassignment.",
                                         field_kind.pretty_print(),
-                                        decl.call_path,
+                                        decl.symbol_path,
                                     ),
                                     field_kind.span(),
                                 ));

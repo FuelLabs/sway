@@ -223,7 +223,7 @@ impl ConstructorFactory {
                 let enum_decl = engines
                     .de()
                     .get_enum(&type_info.expect_enum(handler, engines, "", span)?);
-                let enum_name = &enum_decl.call_path.suffix;
+                let enum_name = &enum_decl.symbol_path.suffix;
                 let enum_variants = &enum_decl.variants;
                 let (all_variants, variant_tracker) = ConstructorFactory::resolve_enum(
                     handler,
@@ -452,7 +452,7 @@ impl ConstructorFactory {
                 let enum_decl = engines
                     .de()
                     .get_enum(&type_info.expect_enum(handler, engines, "", span)?);
-                let enum_name = &enum_decl.call_path.suffix;
+                let enum_name = &enum_decl.symbol_path.suffix;
                 let enum_variants = &enum_decl.variants;
                 let (all_variants, variant_tracker) = ConstructorFactory::resolve_enum(
                     handler,

@@ -4,7 +4,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{CallPath, Visibility},
+    language::{SymbolPath, Visibility},
     transform,
     type_system::*,
 };
@@ -12,7 +12,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TyTypeAliasDecl {
     pub name: Ident,
-    pub call_path: CallPath,
+    pub symbol_path: SymbolPath,
     pub attributes: transform::AttributesMap,
     pub ty: TypeArgument,
     pub visibility: Visibility,
@@ -42,7 +42,7 @@ impl HashWithEngines for TyTypeAliasDecl {
             visibility,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
-            call_path: _,
+            symbol_path: _,
             span: _,
             attributes: _,
         } = self;

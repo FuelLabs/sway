@@ -253,12 +253,12 @@ impl<'a> UnifyCheck<'a> {
 
             (
                 Custom {
-                    qualified_call_path: l_name,
+                    qualified_symbol_path: l_name,
                     type_arguments: l_type_args,
                     root_type_id: l_root_type_id,
                 },
                 Custom {
-                    qualified_call_path: r_name,
+                    qualified_symbol_path: r_name,
                     type_arguments: r_type_args,
                     root_type_id: r_root_type_id,
                 },
@@ -302,7 +302,7 @@ impl<'a> UnifyCheck<'a> {
                     _ => false,
                 };
 
-                return l_name.call_path.suffix == r_name.call_path.suffix
+                return l_name.symbol_path.suffix == r_name.symbol_path.suffix
                     && same_qualified_path_root
                     && self.check_multiple(&l_types, &r_types)
                     && self.check_multiple(&l_root_type_ids, &r_root_type_ids);
@@ -643,18 +643,18 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_enums(&self, left: &TyEnumDecl, right: &TyEnumDecl) -> bool {
         assert!(
-            left.call_path.is_absolute && right.call_path.is_absolute,
-            "The call paths of the enum declarations must always be absolute."
+            left.symbol_path.is_absolute && right.symbol_path.is_absolute,
+            "The symbol paths of the enum declarations must always be absolute."
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
         // and enum type parameters by short-circuiting.
 
-        if left.call_path != right.call_path {
+        if left.symbol_path != right.symbol_path {
             return false;
         }
 
-        // TODO: Is checking of variants necessary? Can we have two enums with the same `call_path`
+        // TODO: Is checking of variants necessary? Can we have two enums with the same `symbol_path`
         //       with different variants?
         //       We can have multiple declarations in a file and "already exist" errors, but those
         //       different declarations shouldn't reach the type checking phase. The last one
@@ -703,18 +703,18 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check_structs(&self, left: &TyStructDecl, right: &TyStructDecl) -> bool {
         assert!(
-            left.call_path.is_absolute && right.call_path.is_absolute,
-            "The call paths of the struct declarations must always be absolute."
+            left.symbol_path.is_absolute && right.symbol_path.is_absolute,
+            "The symbol paths of the struct declarations must always be absolute."
         );
 
         // Avoid unnecessary `collect::<Vec>>` of variant names
         // and enum type parameters by short-circuiting.
 
-        if left.call_path != right.call_path {
+        if left.symbol_path != right.symbol_path {
             return false;
         }
 
-        // TODO: Is checking of fields necessary? Can we have two structs with the same `call_path`
+        // TODO: Is checking of fields necessary? Can we have two structs with the same `symbol_path`
         //       with different fields?
         //       We can have multiple declarations in a file and "already exist" errors, but those
         //       different declarations shouldn't reach the type checking phase. The last one

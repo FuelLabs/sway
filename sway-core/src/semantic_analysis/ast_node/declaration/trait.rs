@@ -12,7 +12,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyImplItem, TyTraitDecl, TyTraitItem},
-        CallPath,
+        SymbolPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
@@ -112,7 +112,7 @@ impl TyTraitDecl {
             // to allow methods to use those functions
             ctx.insert_trait_implementation(
                 handler,
-                CallPath {
+                SymbolPath {
                     prefixes: vec![],
                     suffix: name.clone(),
                     is_absolute: false,
@@ -149,7 +149,7 @@ impl TyTraitDecl {
                         new_interface_surface
                             .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
-                        let const_name = const_decl.call_path.suffix.clone();
+                        let const_name = const_decl.symbol_path.suffix.clone();
                         ctx.insert_symbol(
                             handler,
                             const_name.clone(),
@@ -182,7 +182,7 @@ impl TyTraitDecl {
             // to allow methods to use those functions
             ctx.insert_trait_implementation(
                 handler,
-                CallPath {
+                SymbolPath {
                     prefixes: vec![],
                     suffix: name.clone(),
                     is_absolute: false,
@@ -221,7 +221,7 @@ impl TyTraitDecl {
                 supertraits,
                 visibility,
                 attributes,
-                call_path: CallPath::from(name).to_fullpath(ctx.namespace()),
+                symbol_path: SymbolPath::from(name).to_fullpath(ctx.namespace()),
                 span,
             };
             Ok(typed_trait_decl)
@@ -233,7 +233,7 @@ impl TyTraitDecl {
         &self,
         ctx: TypeCheckContext,
         type_id: TypeId,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
     ) -> (InterfaceItemMap, ItemMap) {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
         let mut impld_item_refs: ItemMap = BTreeMap::new();
@@ -262,7 +262,7 @@ impl TyTraitDecl {
 
         // Retrieve the implemented items for this type.
         for item in ctx
-            .get_items_for_type_and_trait_name(type_id, call_path)
+            .get_items_for_type_and_trait_name(type_id, symbol_path)
             .into_iter()
         {
             match &item {
@@ -287,7 +287,7 @@ impl TyTraitDecl {
         &self,
         ctx: &TypeCheckContext,
         type_id: TypeId,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
         type_arguments: &[TypeArgument],
     ) -> (InterfaceItemMap, ItemMap, ItemMap) {
         let mut interface_surface_item_refs: InterfaceItemMap = BTreeMap::new();
@@ -351,7 +351,7 @@ impl TyTraitDecl {
         for item in ctx
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,
-                call_path,
+                symbol_path,
                 type_arguments.to_vec(),
             )
             .into_iter()
@@ -373,7 +373,7 @@ impl TyTraitDecl {
                     let mut const_decl = (*decl_engine.get_constant(&decl_ref)).clone();
                     const_decl.subst(&type_mapping, engines);
                     impld_item_refs.insert(
-                        (const_decl.call_path.suffix.clone(), type_id),
+                        (const_decl.symbol_path.suffix.clone(), type_id),
                         TyTraitItem::Constant(decl_engine.insert(const_decl)),
                     );
                 }
@@ -395,7 +395,7 @@ impl TyTraitDecl {
         &self,
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        trait_name: &CallPath,
+        trait_name: &SymbolPath,
         type_arguments: &[TypeArgument],
         type_id: TypeId,
     ) {
@@ -439,7 +439,7 @@ impl TyTraitDecl {
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(decl_ref);
-                    let const_name = const_decl.call_path.suffix.clone();
+                    let const_name = const_decl.symbol_path.suffix.clone();
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
                     let const_shadowing_mode = ctx.const_shadowing_mode();
                     let generic_shadowing_mode = ctx.generic_shadowing_mode();

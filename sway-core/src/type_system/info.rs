@@ -1,7 +1,7 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
     engine_threading::*,
-    language::{ty, CallPath, QualifiedCallPath},
+    language::{ty, QualifiedSymbolPath, SymbolPath},
     type_system::priv_prelude::*,
     Ident,
 };
@@ -21,7 +21,7 @@ use std::{
 #[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
 pub enum AbiName {
     Deferred,
-    Known(CallPath),
+    Known(SymbolPath),
 }
 
 impl fmt::Display for AbiName {
@@ -141,9 +141,9 @@ pub enum TypeInfo {
     /// At parse time, there is no sense of scope, so this determination is not made
     /// until the semantic analysis stage.
     Custom {
-        qualified_call_path: QualifiedCallPath,
+        qualified_symbol_path: QualifiedSymbolPath,
         type_arguments: Option<Vec<TypeArgument>>,
-        /// When root_type_id contains some type id then the call path applies
+        /// When root_type_id contains some type id then the symbol path applies
         /// to the specified root_type_id as root.
         /// This is used by associated types which should produce a TypeInfo::Custom
         /// such as Self::T.
@@ -228,11 +228,11 @@ impl HashWithEngines for TypeInfo {
                 //trait_constraints.hash(state, engines);
             }
             TypeInfo::Custom {
-                qualified_call_path: call_path,
+                qualified_symbol_path: symbol_path,
                 type_arguments,
                 root_type_id,
             } => {
-                call_path.hash(state, engines);
+                symbol_path.hash(state, engines);
                 type_arguments.as_deref().hash(state, engines);
                 root_type_id.hash(state);
             }
@@ -306,17 +306,17 @@ impl PartialEqWithEngines for TypeInfo {
             (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
             (
                 Self::Custom {
-                    qualified_call_path: l_name,
+                    qualified_symbol_path: l_name,
                     type_arguments: l_type_args,
                     root_type_id: l_root_type_id,
                 },
                 Self::Custom {
-                    qualified_call_path: r_name,
+                    qualified_symbol_path: r_name,
                     type_arguments: r_type_args,
                     root_type_id: r_root_type_id,
                 },
             ) => {
-                l_name.call_path.suffix == r_name.call_path.suffix
+                l_name.symbol_path.suffix == r_name.symbol_path.suffix
                     && l_name
                         .qualified_path_root
                         .eq(&r_name.qualified_path_root, engines)
@@ -330,10 +330,10 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = engines.de().get_enum(l_decl_ref);
                 let r_decl = engines.de().get_enum(r_decl_ref);
                 assert!(
-                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
-                    "The call paths of the enum declarations must always be absolute."
+                    l_decl.symbol_path.is_absolute && r_decl.symbol_path.is_absolute,
+                    "The symbol paths of the enum declarations must always be absolute."
                 );
-                l_decl.call_path == r_decl.call_path
+                l_decl.symbol_path == r_decl.symbol_path
                     && l_decl.variants.eq(&r_decl.variants, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
@@ -341,10 +341,10 @@ impl PartialEqWithEngines for TypeInfo {
                 let l_decl = engines.de().get_struct(l_decl_ref);
                 let r_decl = engines.de().get_struct(r_decl_ref);
                 assert!(
-                    l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
-                    "The call paths of the struct declarations must always be absolute."
+                    l_decl.symbol_path.is_absolute && r_decl.symbol_path.is_absolute,
+                    "The symbol paths of the struct declarations must always be absolute."
                 );
-                l_decl.call_path == r_decl.call_path
+                l_decl.symbol_path == r_decl.symbol_path
                     && l_decl.fields.eq(&r_decl.fields, engines)
                     && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
             }
@@ -452,23 +452,23 @@ impl OrdWithEngines for TypeInfo {
             (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, engines),
             (
                 Self::Custom {
-                    qualified_call_path: l_call_path,
+                    qualified_symbol_path: l_symbol_path,
                     type_arguments: l_type_args,
                     root_type_id: l_root_type_id,
                 },
                 Self::Custom {
-                    qualified_call_path: r_call_path,
+                    qualified_symbol_path: r_symbol_path,
                     type_arguments: r_type_args,
                     root_type_id: r_root_type_id,
                 },
-            ) => l_call_path
-                .call_path
+            ) => l_symbol_path
+                .symbol_path
                 .suffix
-                .cmp(&r_call_path.call_path.suffix)
+                .cmp(&r_symbol_path.symbol_path.suffix)
                 .then_with(|| {
-                    l_call_path
+                    l_symbol_path
                         .qualified_path_root
-                        .cmp(&r_call_path.qualified_path_root, engines)
+                        .cmp(&r_symbol_path.qualified_path_root, engines)
                 })
                 .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), engines))
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
@@ -478,9 +478,9 @@ impl OrdWithEngines for TypeInfo {
                 let l_decl = decl_engine.get_enum(l_decl_ref);
                 let r_decl = decl_engine.get_enum(r_decl_ref);
                 l_decl
-                    .call_path
+                    .symbol_path
                     .suffix
-                    .cmp(&r_decl.call_path.suffix)
+                    .cmp(&r_decl.symbol_path.suffix)
                     .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
                     .then_with(|| l_decl.variants.cmp(&r_decl.variants, engines))
             }
@@ -488,9 +488,9 @@ impl OrdWithEngines for TypeInfo {
                 let l_decl = decl_engine.get_struct(l_decl_ref);
                 let r_decl = decl_engine.get_struct(r_decl_ref);
                 l_decl
-                    .call_path
+                    .symbol_path
                     .suffix
-                    .cmp(&r_decl.call_path.suffix)
+                    .cmp(&r_decl.symbol_path.suffix)
                     .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
                     .then_with(|| l_decl.fields.cmp(&r_decl.fields, engines))
             }
@@ -580,9 +580,9 @@ impl DisplayWithEngines for TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom {
-                qualified_call_path: call_path,
+                qualified_symbol_path: symbol_path,
                 ..
-            } => call_path.call_path.suffix.to_string(),
+            } => symbol_path.symbol_path.suffix.to_string(),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -598,7 +598,7 @@ impl DisplayWithEngines for TypeInfo {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.symbol_path.suffix.as_str().to_string(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -606,7 +606,7 @@ impl DisplayWithEngines for TypeInfo {
                 let decl = engines.de().get_struct(decl_ref);
                 print_inner_types(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.symbol_path.suffix.as_str().to_string(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -664,7 +664,7 @@ impl DebugWithEngines for TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom {
-                qualified_call_path: call_path,
+                qualified_symbol_path: symbol_path,
                 type_arguments,
                 ..
             } => {
@@ -681,7 +681,7 @@ impl DebugWithEngines for TypeInfo {
                         );
                     }
                 }
-                format!("unresolved {}{}", call_path.call_path, s)
+                format!("unresolved {}{}", symbol_path.symbol_path, s)
             }
             Tuple(fields) => {
                 let field_strs = fields
@@ -698,7 +698,7 @@ impl DebugWithEngines for TypeInfo {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types_debug(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.symbol_path.suffix.as_str().to_string(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -706,7 +706,7 @@ impl DebugWithEngines for TypeInfo {
                 let decl = engines.de().get_struct(decl_ref);
                 print_inner_types_debug(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.symbol_path.suffix.as_str().to_string(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -793,8 +793,8 @@ impl TypeInfo {
 
     pub(crate) fn new_self_type(span: Span) -> TypeInfo {
         TypeInfo::Custom {
-            qualified_call_path: QualifiedCallPath {
-                call_path: CallPath {
+            qualified_symbol_path: QualifiedSymbolPath {
+                symbol_path: SymbolPath {
                     prefixes: vec![],
                     suffix: Ident::new_with_override("Self".into(), span),
                     is_absolute: false,
@@ -812,11 +812,11 @@ impl TypeInfo {
                 name.as_str() == "Self" || name.as_str() == "self"
             }
             TypeInfo::Custom {
-                qualified_call_path,
+                qualified_symbol_path,
                 ..
             } => {
-                qualified_call_path.call_path.suffix.as_str() == "Self"
-                    || qualified_call_path.call_path.suffix.as_str() == "self"
+                qualified_symbol_path.symbol_path.suffix.as_str() == "Self"
+                    || qualified_symbol_path.symbol_path.suffix.as_str() == "self"
             }
             _ => false,
         }
@@ -1173,7 +1173,7 @@ impl TypeInfo {
                 )))
             }
             TypeInfo::Custom {
-                qualified_call_path: call_path,
+                qualified_symbol_path: symbol_path,
                 type_arguments: other_type_arguments,
                 root_type_id,
             } => {
@@ -1182,7 +1182,7 @@ impl TypeInfo {
                         .emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
                 } else {
                     let type_info = TypeInfo::Custom {
-                        qualified_call_path: call_path,
+                        qualified_symbol_path: symbol_path,
                         type_arguments: Some(type_arguments),
                         root_type_id,
                     };

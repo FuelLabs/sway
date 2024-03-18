@@ -99,9 +99,9 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
         .into(),
         Boolean => "bool".into(),
         Custom {
-            qualified_call_path: call_path,
+            qualified_symbol_path: symbol_path,
             ..
-        } => call_path.call_path.suffix.to_string(),
+        } => symbol_path.symbol_path.suffix.to_string(),
         Tuple(fields) => {
             let field_strs = fields
                 .iter()
@@ -115,11 +115,11 @@ pub fn abi_str(type_info: &TypeInfo, type_engine: &TypeEngine, decl_engine: &Dec
         ErrorRecovery(_) => "unknown due to error".into(),
         Enum(decl_ref) => {
             let decl = decl_engine.get_enum(decl_ref);
-            format!("enum {}", decl.call_path.suffix)
+            format!("enum {}", decl.symbol_path.suffix)
         }
         Struct(decl_ref) => {
             let decl = decl_engine.get_struct(decl_ref);
-            format!("struct {}", decl.call_path.suffix)
+            format!("struct {}", decl.symbol_path.suffix)
         }
         ContractCaller { abi_name, .. } => {
             format!("contract caller {abi_name}")

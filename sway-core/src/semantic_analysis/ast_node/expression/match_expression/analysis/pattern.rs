@@ -123,7 +123,7 @@ impl Pattern {
             ty::TyScrutineeVariant::StructScrutinee {
                 struct_ref,
                 fields,
-                instantiation_call_path: _,
+                instantiation_symbol_path: _,
             } => {
                 let mut new_fields = vec![];
                 for field in fields.into_iter() {
@@ -657,7 +657,7 @@ impl Pattern {
                 TypeInfo::Enum(r_enum_decl_ref),
             ) => {
                 let r_decl = decl_engine.get_enum(r_enum_decl_ref);
-                l_enum_name.as_str() == r_decl.call_path.suffix.as_str()
+                l_enum_name.as_str() == r_decl.symbol_path.suffix.as_str()
                     && r_decl
                         .variants
                         .iter()

@@ -6,7 +6,7 @@ use std::sync::Arc;
 use sway_core::{
     language::{
         ty::{TyDecl, TyTraitDecl},
-        CallPath,
+        SymbolPath,
     },
     Engines, TypeId, TypeInfo,
 };
@@ -19,7 +19,7 @@ pub struct RelatedType {
     pub name: String,
     pub uri: Url,
     pub range: Range,
-    pub callpath: CallPath,
+    pub callpath: SymbolPath,
 }
 
 #[derive(Debug, Clone)]
@@ -49,7 +49,7 @@ impl<'a> HoverLinkContents<'a> {
                 self.add_related_type(
                     decl_ref.name().to_string(),
                     &decl.span(),
-                    decl.call_path.clone(),
+                    decl.symbol_path.clone(),
                 );
                 decl.type_parameters
                     .iter()
@@ -60,7 +60,7 @@ impl<'a> HoverLinkContents<'a> {
                 self.add_related_type(
                     decl_ref.name().to_string(),
                     &decl.span(),
-                    decl.call_path.clone(),
+                    decl.symbol_path.clone(),
                 );
                 decl.type_parameters
                     .iter()
@@ -71,7 +71,7 @@ impl<'a> HoverLinkContents<'a> {
     }
 
     /// Adds a single type to the list of related types.
-    fn add_related_type(&mut self, name: String, span: &Span, callpath: CallPath) {
+    fn add_related_type(&mut self, name: String, span: &Span, callpath: SymbolPath) {
         if let Ok(mut uri) = get_url_from_span(self.engines.se(), span) {
             let converted_url = self.session.sync.temp_to_workspace_url(&uri);
             if let Ok(url) = converted_url {
@@ -90,11 +90,11 @@ impl<'a> HoverLinkContents<'a> {
     /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
         if let Some(namespace) = self.session.namespace() {
-            let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
+            let symbol_path = SymbolPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
             let impl_spans = namespace
                 .module()
                 .current_items()
-                .get_impl_spans_for_trait_name(&call_path);
+                .get_impl_spans_for_trait_name(&symbol_path);
             self.add_implementations(&trait_decl.span(), impl_spans);
         }
     }

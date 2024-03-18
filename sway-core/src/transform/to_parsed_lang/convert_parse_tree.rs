@@ -303,7 +303,7 @@ fn use_tree_to_use_statements(
                 ImportType::Item(name)
             };
             ret.push(UseStatement {
-                call_path: path.clone(),
+                symbol_path: path.clone(),
                 span: item_span,
                 import_type,
                 is_absolute,
@@ -317,7 +317,7 @@ fn use_tree_to_use_statements(
                 ImportType::Item(name)
             };
             ret.push(UseStatement {
-                call_path: path.clone(),
+                symbol_path: path.clone(),
                 span: item_span,
                 import_type,
                 is_absolute,
@@ -326,7 +326,7 @@ fn use_tree_to_use_statements(
         }
         UseTree::Glob { .. } => {
             ret.push(UseStatement {
-                call_path: path.clone(),
+                symbol_path: path.clone(),
                 span: item_span,
                 import_type: ImportType::Star,
                 is_absolute,
@@ -381,7 +381,7 @@ fn item_struct_to_struct_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if fields.iter().any(
-        |field| matches!(&&*engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_struct.name),
+        |field| matches!(&&*engines.te().get(field.type_argument.type_id), TypeInfo::Custom { qualified_symbol_path, ..} if qualified_symbol_path.symbol_path.suffix == item_struct.name),
     ) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -450,7 +450,7 @@ fn item_enum_to_enum_declaration(
         .collect::<Result<Vec<_>, _>>()?;
 
     if variants.iter().any(|variant| {
-       matches!(&&*engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_call_path, ..} if qualified_call_path.call_path.suffix == item_enum.name)
+       matches!(&&*engines.te().get(variant.type_argument.type_id), TypeInfo::Custom { qualified_symbol_path, ..} if qualified_symbol_path.symbol_path.suffix == item_enum.name)
     }) {
         errors.push(ConvertParseTreeError::RecursiveType { span: span.clone() });
     }
@@ -511,7 +511,7 @@ pub fn item_fn_to_function_declaration(
                 type_id,
                 initial_type_id: type_id,
                 span: item_fn.fn_signature.span(),
-                call_path_tree: None,
+                symbol_path_tree: None,
             }
         }
     };
@@ -750,10 +750,10 @@ pub fn item_impl_to_declaration(
     match item_impl.trait_opt {
         Some((path_type, _)) => {
             let (trait_name, trait_type_arguments) =
-                path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
+                path_type_to_symbol_path_and_type_arguments(context, handler, engines, path_type)?;
             let impl_trait = ImplTrait {
                 impl_type_parameters,
-                trait_name: trait_name.to_call_path(handler)?,
+                trait_name: trait_name.to_symbol_path(handler)?,
                 trait_type_arguments,
                 implementing_for,
                 items,
@@ -779,20 +779,20 @@ pub fn item_impl_to_declaration(
     }
 }
 
-fn path_type_to_call_path_and_type_arguments(
+fn path_type_to_symbol_path_and_type_arguments(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     path_type: PathType,
-) -> Result<(QualifiedCallPath, Vec<TypeArgument>), ErrorEmitted> {
+) -> Result<(QualifiedSymbolPath, Vec<TypeArgument>), ErrorEmitted> {
     let root_opt = path_type.root_opt.clone();
     let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type)?;
 
     let (is_absolute, qualified_path) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
 
-    let qualified_call_path = QualifiedCallPath {
-        call_path: CallPath {
+    let qualified_symbol_path = QualifiedSymbolPath {
+        symbol_path: SymbolPath {
             prefixes,
             suffix: suffix.name,
             is_absolute,
@@ -807,7 +807,7 @@ fn path_type_to_call_path_and_type_arguments(
         None => vec![],
     };
 
-    Ok((qualified_call_path, ty_args))
+    Ok((qualified_symbol_path, ty_args))
 }
 
 fn item_abi_to_abi_declaration(
@@ -1185,7 +1185,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
                 let custom_type = type_engine.insert(
                     engines,
                     TypeInfo::Custom {
-                        qualified_call_path: ident.clone().into(),
+                        qualified_symbol_path: ident.clone().into(),
                         type_arguments: None,
                         root_type_id: None,
                     },
@@ -1347,7 +1347,7 @@ fn fn_args_to_function_parameters(
                     type_id,
                     initial_type_id: type_id,
                     span: self_token.span(),
-                    call_path_tree: None,
+                    symbol_path_tree: None,
                 },
             }];
             if let Some((_comma_token, args)) = args_opt {
@@ -1466,12 +1466,12 @@ fn path_type_to_prefixes_and_suffix(
     })
 }
 
-fn ty_to_call_path_tree(
+fn ty_to_symbol_path_tree(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     ty: Ty,
-) -> Result<Option<CallPathTree>, ErrorEmitted> {
+) -> Result<Option<SymbolPathTree>, ErrorEmitted> {
     if let Ty::Path(path_type) = ty {
         let root_opt = path_type.root_opt.clone();
         let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type)?;
@@ -1481,7 +1481,7 @@ fn ty_to_call_path_tree(
                 .parameters
                 .inner
                 .into_iter()
-                .filter_map(|ty| ty_to_call_path_tree(context, handler, engines, ty).transpose())
+                .filter_map(|ty| ty_to_symbol_path_tree(context, handler, engines, ty).transpose())
                 .collect::<Result<Vec<_>, _>>()?
         } else {
             vec![]
@@ -1489,8 +1489,8 @@ fn ty_to_call_path_tree(
 
         let (is_absolute, qualified_path) =
             path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
-        let call_path = QualifiedCallPath {
-            call_path: CallPath {
+        let symbol_path = QualifiedSymbolPath {
+            symbol_path: SymbolPath {
                 prefixes,
                 suffix: suffix.name,
                 is_absolute,
@@ -1498,8 +1498,8 @@ fn ty_to_call_path_tree(
             qualified_path_root: qualified_path.map(Box::new),
         };
 
-        Ok(Some(CallPathTree {
-            qualified_call_path: call_path,
+        Ok(Some(SymbolPathTree {
+            qualified_symbol_path: symbol_path,
             children,
         }))
     } else {
@@ -1515,7 +1515,7 @@ fn ty_to_type_argument(
 ) -> Result<TypeArgument, ErrorEmitted> {
     let type_engine = engines.te();
     let span = ty.span();
-    let call_path_tree = ty_to_call_path_tree(context, handler, engines, ty.clone())?;
+    let symbol_path_tree = ty_to_symbol_path_tree(context, handler, engines, ty.clone())?;
     let initial_type_id = type_engine.insert(
         engines,
         ty_to_type_info(context, handler, engines, ty.clone())?,
@@ -1525,7 +1525,7 @@ fn ty_to_type_argument(
     let type_argument = TypeArgument {
         type_id: initial_type_id,
         initial_type_id,
-        call_path_tree,
+        symbol_path_tree,
         span,
     };
     Ok(type_argument)
@@ -1551,7 +1551,7 @@ fn fn_signature_to_trait_fn(
                 initial_type_id: type_id,
                 // TODO: Fix as part of https://github.com/FuelLabs/sway/issues/3635
                 span: fn_signature.span(),
-                call_path_tree: None,
+                symbol_path_tree: None,
             }
         }
     };
@@ -1579,7 +1579,7 @@ fn traits_to_trait_constraints(
     engines: &Engines,
     traits: Traits,
 ) -> Result<Vec<TraitConstraint>, ErrorEmitted> {
-    let mut parsed_traits = vec![path_type_to_call_path_and_type_arguments(
+    let mut parsed_traits = vec![path_type_to_symbol_path_and_type_arguments(
         context,
         handler,
         engines,
@@ -1587,13 +1587,13 @@ fn traits_to_trait_constraints(
     )?];
     for (_add_token, suffix) in traits.suffixes {
         let supertrait =
-            path_type_to_call_path_and_type_arguments(context, handler, engines, suffix)?;
+            path_type_to_symbol_path_and_type_arguments(context, handler, engines, suffix)?;
         parsed_traits.push(supertrait);
     }
     let mut trait_constraints = vec![];
     for (trait_name, type_arguments) in parsed_traits {
         trait_constraints.push(TraitConstraint {
-            trait_name: trait_name.to_call_path(handler)?,
+            trait_name: trait_name.to_symbol_path(handler)?,
             type_arguments,
         })
     }
@@ -1613,37 +1613,37 @@ fn traits_to_supertraits(
     Ok(supertraits)
 }
 
-fn path_type_to_call_path(
+fn path_type_to_symbol_path(
     context: &mut Context,
     handler: &Handler,
     path_type: PathType,
-) -> Result<CallPath, ErrorEmitted> {
+) -> Result<SymbolPath, ErrorEmitted> {
     let PathType {
         root_opt,
         prefix,
         mut suffix,
     } = path_type;
     let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
-    let call_path = match suffix.pop() {
-        Some((_double_colon_token, call_path_suffix)) => {
+    let symbol_path = match suffix.pop() {
+        Some((_double_colon_token, symbol_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
-            for (_double_colon_token, call_path_prefix) in suffix {
-                let ident = path_type_segment_to_ident(context, handler, call_path_prefix)?;
+            for (_double_colon_token, symbol_path_prefix) in suffix {
+                let ident = path_type_segment_to_ident(context, handler, symbol_path_prefix)?;
                 prefixes.push(ident);
             }
-            CallPath {
+            SymbolPath {
                 prefixes,
-                suffix: path_type_segment_to_ident(context, handler, call_path_suffix)?,
+                suffix: path_type_segment_to_ident(context, handler, symbol_path_suffix)?,
                 is_absolute,
             }
         }
-        None => CallPath {
+        None => SymbolPath {
             prefixes: Vec::new(),
             suffix: path_type_segment_to_ident(context, handler, prefix)?,
             is_absolute,
         },
     };
-    Ok(call_path)
+    Ok(symbol_path)
 }
 
 fn expr_to_ast_node(
@@ -1681,7 +1681,7 @@ fn abi_cast_args_to_abi_cast_expression(
     args: Parens<AbiCastArgs>,
 ) -> Result<Box<AbiCastExpression>, ErrorEmitted> {
     let AbiCastArgs { name, address, .. } = args.into_inner();
-    let abi_name = path_type_to_call_path(context, handler, name)?;
+    let abi_name = path_type_to_symbol_path(context, handler, name)?;
     let address = Box::new(expr_to_expression(context, handler, engines, *address)?);
     Ok(Box::new(AbiCastExpression { abi_name, address }))
 }
@@ -1693,7 +1693,7 @@ fn struct_path_and_fields_to_struct_expression(
     path: PathExpr,
     fields: Braces<Punctuated<ExprStructField, CommaToken>>,
 ) -> Result<Box<StructExpression>, ErrorEmitted> {
-    let call_path_binding = path_expr_to_call_path_binding(context, handler, engines, path)?;
+    let symbol_path_binding = path_expr_to_symbol_path_binding(context, handler, engines, path)?;
     let fields = {
         fields
             .into_inner()
@@ -1709,7 +1709,7 @@ fn struct_path_and_fields_to_struct_expression(
             .collect::<Result<_, _>>()?
     };
     Ok(Box::new(StructExpression {
-        call_path_binding,
+        symbol_path_binding,
         fields,
     }))
 }
@@ -1807,7 +1807,7 @@ fn expr_func_app_to_expression_kind(
 
     let (prefixes, last, call_seg) = match suffix.pop() {
         None => (Vec::new(), None, prefix),
-        Some((_, call_path_suffix)) => {
+        Some((_, symbol_path_suffix)) => {
             // Gather the idents of the prefix, i.e. all segments but the last one.
             let mut last = prefix;
             let mut prefix = Vec::with_capacity(suffix.len());
@@ -1815,7 +1815,7 @@ fn expr_func_app_to_expression_kind(
                 prefix.push(path_expr_segment_to_ident(context, handler, &last)?);
                 last = seg;
             }
-            (prefix, Some(last), call_path_suffix)
+            (prefix, Some(last), symbol_path_suffix)
         }
     };
 
@@ -1849,8 +1849,8 @@ fn expr_func_app_to_expression_kind(
                     arguments: vec![Expression {
                         kind: ExpressionKind::FunctionApplication(Box::new(
                             FunctionApplicationExpression {
-                                call_path_binding: TypeBinding {
-                                    inner: CallPath {
+                                symbol_path_binding: TypeBinding {
+                                    inner: SymbolPath {
                                         prefixes: vec![],
                                         suffix: Ident::new_no_span("encode".into()),
                                         is_absolute: false,
@@ -1890,24 +1890,24 @@ fn expr_func_app_to_expression_kind(
                 before: None,
                 suffix: call_seg.name,
             };
-            let call_path = CallPath {
+            let symbol_path = SymbolPath {
                 prefixes,
                 suffix,
                 is_absolute,
             };
             let span = match type_arguments_span {
-                Some(span) => Span::join(call_path.span(), span),
-                None => call_path.span(),
+                Some(span) => Span::join(symbol_path.span(), span),
+                None => symbol_path.span(),
             };
-            let call_path_binding = TypeBinding {
-                inner: call_path,
+            let symbol_path_binding = TypeBinding {
+                inner: symbol_path,
                 type_arguments: TypeArgs::Regular(type_arguments),
                 span,
             };
             return Ok(ExpressionKind::AmbiguousPathExpression(Box::new(
                 AmbiguousPathExpression {
                     args: arguments,
-                    call_path_binding,
+                    symbol_path_binding,
                     qualified_path_root,
                 },
             )));
@@ -1926,20 +1926,20 @@ fn expr_func_app_to_expression_kind(
         before,
         suffix: call_seg.name,
     };
-    let call_path = CallPath {
+    let symbol_path = SymbolPath {
         prefixes,
         suffix,
         is_absolute,
     };
-    let call_path_binding = TypeBinding {
-        span: name_args_span(call_path.span(), type_arguments_span),
-        inner: call_path,
+    let symbol_path_binding = TypeBinding {
+        span: name_args_span(symbol_path.span(), type_arguments_span),
+        inner: symbol_path,
         type_arguments: TypeArgs::Regular(type_arguments),
     };
     Ok(ExpressionKind::AmbiguousPathExpression(Box::new(
         AmbiguousPathExpression {
             args: arguments,
-            call_path_binding,
+            symbol_path_binding,
             qualified_path_root,
         },
     )))
@@ -2434,7 +2434,7 @@ fn op_call(
 ) -> Result<Expression, ErrorEmitted> {
     let method_name_binding = TypeBinding {
         inner: MethodName::FromTrait {
-            call_path: CallPath {
+            symbol_path: SymbolPath {
                 prefixes: vec![
                     Ident::new_with_override("core".into(), op_span.clone()),
                     Ident::new_with_override("ops".into(), op_span.clone()),
@@ -2648,22 +2648,22 @@ fn path_type_to_supertrait(
         mut suffix,
     } = path_type;
     let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
-    let (prefixes, call_path_suffix) = match suffix.pop() {
-        Some((_, call_path_suffix)) => {
+    let (prefixes, symbol_path_suffix) = match suffix.pop() {
+        Some((_, symbol_path_suffix)) => {
             let mut prefixes = vec![path_type_segment_to_ident(context, handler, prefix)?];
-            for (_, call_path_prefix) in suffix {
-                let ident = path_type_segment_to_ident(context, handler, call_path_prefix)?;
+            for (_, symbol_path_prefix) in suffix {
+                let ident = path_type_segment_to_ident(context, handler, symbol_path_prefix)?;
                 prefixes.push(ident);
             }
-            (prefixes, call_path_suffix)
+            (prefixes, symbol_path_suffix)
         }
         None => (Vec::new(), prefix),
     };
     let PathTypeSegment {
         name: suffix,
         generics_opt: _,
-    } = call_path_suffix;
-    let name = CallPath {
+    } = symbol_path_suffix;
+    let name = SymbolPath {
         prefixes,
         suffix,
         is_absolute,
@@ -2746,11 +2746,11 @@ fn path_expr_to_expression(
             span,
         }
     } else {
-        let call_path_binding =
-            path_expr_to_qualified_call_path_binding(context, handler, engines, path_expr)?;
+        let symbol_path_binding =
+            path_expr_to_qualified_symbol_path_binding(context, handler, engines, path_expr)?;
         Expression {
             kind: ExpressionKind::DelineatedPath(Box::new(DelineatedPathExpression {
-                call_path_binding,
+                symbol_path_binding,
                 args: None,
             })),
             span,
@@ -2901,7 +2901,7 @@ fn match_expr_to_expression(
                 type_id,
                 initial_type_id: type_id,
                 span: var_decl_name.span(),
-                call_path_tree: None,
+                symbol_path_tree: None,
             }
         },
         name: var_decl_name,
@@ -2979,7 +2979,7 @@ fn for_expr_to_expression(
                 type_id,
                 initial_type_id: type_id,
                 span: iterable_ident.clone().span(),
-                call_path_tree: None,
+                symbol_path_tree: None,
             }
         },
         name: iterable_ident,
@@ -3012,7 +3012,7 @@ fn for_expr_to_expression(
                 type_id,
                 initial_type_id: type_id,
                 span: value_opt_ident.clone().span(),
-                call_path_tree: None,
+                symbol_path_tree: None,
             }
         },
         name: value_opt_ident,
@@ -3337,15 +3337,15 @@ fn literal_to_literal(
     Ok(literal)
 }
 
-/// Like [path_expr_to_call_path], but instead can potentially return type arguments.
-/// Use this when converting a call path that could potentially include type arguments, i.e. the
+/// Like [path_expr_to_symbol_path], but instead can potentially return type arguments.
+/// Use this when converting a symbol path that could potentially include type arguments, i.e. the
 /// turbofish.
-fn path_expr_to_qualified_call_path_binding(
+fn path_expr_to_qualified_symbol_path_binding(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     path_expr: PathExpr,
-) -> Result<TypeBinding<QualifiedCallPath>, ErrorEmitted> {
+) -> Result<TypeBinding<QualifiedSymbolPath>, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
@@ -3356,7 +3356,7 @@ fn path_expr_to_qualified_call_path_binding(
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
     let (prefixes, suffix, span, regular_type_arguments, prefix_type_arguments) = match suffix.pop()
     {
-        Some((_, call_path_suffix)) => {
+        Some((_, symbol_path_suffix)) => {
             let (prefix_ident, mut prefix_type_arguments) = if suffix.is_empty() {
                 path_expr_segment_to_ident_or_type_argument(context, handler, engines, prefix)?
             } else {
@@ -3366,29 +3366,29 @@ fn path_expr_to_qualified_call_path_binding(
                 )
             };
             let mut prefixes = vec![prefix_ident];
-            for (i, (_, call_path_prefix)) in suffix.iter().enumerate() {
+            for (i, (_, symbol_path_prefix)) in suffix.iter().enumerate() {
                 let ident = if i == suffix.len() - 1 {
                     let (prefix, prefix_ty_args) = path_expr_segment_to_ident_or_type_argument(
                         context,
                         handler,
                         engines,
-                        call_path_prefix.clone(),
+                        symbol_path_prefix.clone(),
                     )?;
                     prefix_type_arguments = prefix_ty_args;
                     prefix
                 } else {
-                    path_expr_segment_to_ident(context, handler, call_path_prefix)?
+                    path_expr_segment_to_ident(context, handler, symbol_path_prefix)?
                 };
-                // note that call paths only support one set of type arguments per call path right
+                // note that symbol paths only support one set of type arguments per symbol path right
                 // now
                 prefixes.push(ident);
             }
-            let span = call_path_suffix.span();
+            let span = symbol_path_suffix.span();
             let (suffix, ty_args) = path_expr_segment_to_ident_or_type_argument(
                 context,
                 handler,
                 engines,
-                call_path_suffix,
+                symbol_path_suffix,
             )?;
             (prefixes, suffix, span, ty_args, prefix_type_arguments)
         }
@@ -3411,8 +3411,8 @@ fn path_expr_to_qualified_call_path_binding(
     };
 
     Ok(TypeBinding {
-        inner: QualifiedCallPath {
-            call_path: CallPath {
+        inner: QualifiedSymbolPath {
+            symbol_path: SymbolPath {
                 prefixes,
                 suffix,
                 is_absolute,
@@ -3424,23 +3424,24 @@ fn path_expr_to_qualified_call_path_binding(
     })
 }
 
-/// Like [path_expr_to_call_path], but instead can potentially return type arguments.
-/// Use this when converting a call path that could potentially include type arguments, i.e. the
+/// Like [path_expr_to_symbol_path], but instead can potentially return type arguments.
+/// Use this when converting a symbol path that could potentially include type arguments, i.e. the
 /// turbofish.
-fn path_expr_to_call_path_binding(
+fn path_expr_to_symbol_path_binding(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     path_expr: PathExpr,
-) -> Result<TypeBinding<CallPath>, ErrorEmitted> {
+) -> Result<TypeBinding<SymbolPath>, ErrorEmitted> {
     let TypeBinding {
-        inner: QualifiedCallPath {
-            call_path,
-            qualified_path_root,
-        },
+        inner:
+            QualifiedSymbolPath {
+                symbol_path,
+                qualified_path_root,
+            },
         type_arguments,
         span,
-    } = path_expr_to_qualified_call_path_binding(context, handler, engines, path_expr)?;
+    } = path_expr_to_qualified_symbol_path_binding(context, handler, engines, path_expr)?;
 
     if let Some(qualified_path_root) = qualified_path_root {
         let error = ConvertParseTreeError::QualifiedPathRootsNotImplemented {
@@ -3450,17 +3451,17 @@ fn path_expr_to_call_path_binding(
     }
 
     Ok(TypeBinding {
-        inner: call_path,
+        inner: symbol_path,
         type_arguments,
         span,
     })
 }
 
-fn path_expr_to_call_path(
+fn path_expr_to_symbol_path(
     context: &mut Context,
     handler: &Handler,
     path_expr: PathExpr,
-) -> Result<CallPath, ErrorEmitted> {
+) -> Result<SymbolPath, ErrorEmitted> {
     let PathExpr {
         root_opt,
         prefix,
@@ -3468,26 +3469,26 @@ fn path_expr_to_call_path(
         ..
     } = path_expr;
     let is_absolute = path_root_opt_to_bool(context, handler, root_opt)?;
-    let call_path = match suffix.pop() {
-        Some((_double_colon_token, call_path_suffix)) => {
+    let symbol_path = match suffix.pop() {
+        Some((_double_colon_token, symbol_path_suffix)) => {
             let mut prefixes = vec![path_expr_segment_to_ident(context, handler, &prefix)?];
-            for (_double_colon_token, call_path_prefix) in suffix {
-                let ident = path_expr_segment_to_ident(context, handler, &call_path_prefix)?;
+            for (_double_colon_token, symbol_path_prefix) in suffix {
+                let ident = path_expr_segment_to_ident(context, handler, &symbol_path_prefix)?;
                 prefixes.push(ident);
             }
-            CallPath {
+            SymbolPath {
                 prefixes,
-                suffix: path_expr_segment_to_ident(context, handler, &call_path_suffix)?,
+                suffix: path_expr_segment_to_ident(context, handler, &symbol_path_suffix)?,
                 is_absolute,
             }
         }
-        None => CallPath {
+        None => SymbolPath {
             prefixes: Vec::new(),
             suffix: path_expr_segment_to_ident(context, handler, &prefix)?,
             is_absolute,
         },
     };
-    Ok(call_path)
+    Ok(symbol_path)
 }
 
 fn expr_struct_field_to_struct_expression_field(
@@ -3661,7 +3662,7 @@ fn statement_let_to_ast_nodes_unfold(
                         type_id,
                         initial_type_id: type_id,
                         span: name.span(),
-                        call_path_tree: None,
+                        symbol_path_tree: None,
                     }
                 }
             };
@@ -3711,7 +3712,7 @@ fn statement_let_to_ast_nodes_unfold(
                         type_id,
                         initial_type_id: type_id,
                         span: destructured_struct_name.span(),
-                        call_path_tree: None,
+                        symbol_path_tree: None,
                     }
                 }
             };
@@ -3821,7 +3822,7 @@ fn statement_let_to_ast_nodes_unfold(
                                 TypeArgument {
                                     type_id: initial_type_id,
                                     initial_type_id,
-                                    call_path_tree: None,
+                                    symbol_path_tree: None,
                                     span: Span::dummy(),
                                 }
                             })
@@ -3833,7 +3834,7 @@ fn statement_let_to_ast_nodes_unfold(
                     type_id,
                     initial_type_id: type_id,
                     span: tuple_name.span(),
-                    call_path_tree: None,
+                    symbol_path_tree: None,
                 }
             };
 
@@ -4021,12 +4022,12 @@ fn pattern_to_scrutinee(
             span,
         },
         Pattern::Constant(path_expr) => {
-            let call_path = path_expr_to_call_path(context, handler, path_expr)?;
-            let call_path_span = call_path.span();
+            let symbol_path = path_expr_to_symbol_path(context, handler, path_expr)?;
+            let symbol_path_span = symbol_path.span();
             Scrutinee::EnumScrutinee {
-                call_path,
+                symbol_path,
                 value: Box::new(Scrutinee::CatchAll {
-                    span: call_path_span,
+                    span: symbol_path_span,
                 }),
                 span,
             }
@@ -4040,7 +4041,7 @@ fn pattern_to_scrutinee(
                 }
             };
             Scrutinee::EnumScrutinee {
-                call_path: path_expr_to_call_path(context, handler, path)?,
+                symbol_path: path_expr_to_symbol_path(context, handler, path)?,
                 value: Box::new(pattern_to_scrutinee(context, handler, value)?),
                 span,
             }
@@ -4132,7 +4133,7 @@ fn ty_to_type_parameter(
     let custom_type = type_engine.insert(
         engines,
         TypeInfo::Custom {
-            qualified_call_path: name_ident.clone().into(),
+            qualified_symbol_path: name_ident.clone().into(),
             type_arguments: None,
             root_type_id: None,
         },
@@ -4389,13 +4390,14 @@ fn path_type_to_type_info(
             }
 
             if !suffix.is_empty() {
-                let (mut call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
-                    context, handler, engines, path_type,
-                )?;
+                let (mut symbol_path, type_arguments) =
+                    path_type_to_symbol_path_and_type_arguments(
+                        context, handler, engines, path_type,
+                    )?;
 
                 let mut root_type_id = None;
                 if name.as_str() == "Self" {
-                    call_path.call_path.prefixes.remove(0);
+                    symbol_path.symbol_path.prefixes.remove(0);
                     root_type_id = Some(engines.te().insert(
                         engines,
                         type_info,
@@ -4403,7 +4405,7 @@ fn path_type_to_type_info(
                     ));
                 }
                 TypeInfo::Custom {
-                    qualified_call_path: call_path,
+                    qualified_symbol_path: symbol_path,
                     type_arguments: Some(type_arguments),
                     root_type_id,
                 }
@@ -4428,8 +4430,8 @@ fn path_type_to_type_info(
                 };
                 let abi_name = match generic_ty {
                     Ty::Path(path_type) => {
-                        let call_path = path_type_to_call_path(context, handler, path_type)?;
-                        AbiName::Known(call_path)
+                        let symbol_path = path_type_to_symbol_path(context, handler, path_type)?;
+                        AbiName::Known(symbol_path)
                     }
                     Ty::Infer { .. } => AbiName::Deferred,
                     _ => {
@@ -4443,11 +4445,11 @@ fn path_type_to_type_info(
                     address: None,
                 }
             } else {
-                let (call_path, type_arguments) = path_type_to_call_path_and_type_arguments(
+                let (symbol_path, type_arguments) = path_type_to_symbol_path_and_type_arguments(
                     context, handler, engines, path_type,
                 )?;
                 TypeInfo::Custom {
-                    qualified_call_path: call_path,
+                    qualified_symbol_path: symbol_path,
                     type_arguments: Some(type_arguments),
                     root_type_id: None,
                 }

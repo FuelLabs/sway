@@ -4,7 +4,7 @@ use crate::{
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
-        CallPath, Literal,
+        Literal, SymbolPath,
     },
     metadata::MetadataManager,
     semantic_analysis::*,
@@ -51,21 +51,21 @@ pub(crate) struct LookupEnv<'a, 'eng> {
     #[allow(clippy::type_complexity)]
     pub(crate) lookup: fn(
         &mut LookupEnv,
-        &CallPath,
+        &SymbolPath,
         &Option<TyConstantDecl>,
     ) -> Result<Option<Value>, CompileError>,
 }
 
 pub(crate) fn compile_const_decl(
     env: &mut LookupEnv,
-    call_path: &CallPath,
+    symbol_path: &SymbolPath,
     const_decl: &Option<TyConstantDecl>,
 ) -> Result<Option<Value>, CompileError> {
     // Check if it's a processed local constant.
     if let Some(fn_compiler) = env.function_compiler {
         let mut found_local = false;
         if let Some(local_var) =
-            fn_compiler.get_function_var(env.context, call_path.suffix.as_str())
+            fn_compiler.get_function_var(env.context, symbol_path.suffix.as_str())
         {
             found_local = true;
             if let Some(constant) = local_var.get_initializer(env.context) {
@@ -100,7 +100,8 @@ pub(crate) fn compile_const_decl(
             }
         }
 
-        if let Some(value) = fn_compiler.get_function_arg(env.context, call_path.suffix.as_str()) {
+        if let Some(value) = fn_compiler.get_function_arg(env.context, symbol_path.suffix.as_str())
+        {
             found_local = true;
             if value.get_constant(env.context).is_some() {
                 return Ok(Some(value));
@@ -115,16 +116,16 @@ pub(crate) fn compile_const_decl(
     // Check if it's a processed global constant.
     match (
         env.module
-            .get_global_constant(env.context, &call_path.as_vec_string()),
+            .get_global_constant(env.context, &symbol_path.as_vec_string()),
         env.module
-            .get_global_configurable(env.context, &call_path.as_vec_string()),
+            .get_global_configurable(env.context, &symbol_path.as_vec_string()),
         env.module_ns,
     ) {
         (Some(const_val), _, _) => Ok(Some(const_val)),
         (_, Some(config_val), _) => Ok(Some(config_val)),
         (None, None, Some(module_ns)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.current_items().check_symbol(&call_path.suffix);
+            let decl = module_ns.current_items().check_symbol(&symbol_path.suffix);
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
@@ -141,7 +142,7 @@ pub(crate) fn compile_const_decl(
             match const_decl {
                 Some(const_decl) => {
                     let ty::TyConstantDecl {
-                        call_path,
+                        symbol_path,
                         value,
                         is_configurable,
                         ..
@@ -157,7 +158,7 @@ pub(crate) fn compile_const_decl(
                         env.module,
                         env.module_ns,
                         env.function_compiler,
-                        &call_path,
+                        &symbol_path,
                         &value.clone().unwrap(),
                         is_configurable,
                     )?;
@@ -165,13 +166,13 @@ pub(crate) fn compile_const_decl(
                     if !is_configurable {
                         env.module.add_global_constant(
                             env.context,
-                            call_path.as_vec_string().to_vec(),
+                            symbol_path.as_vec_string().to_vec(),
                             const_val,
                         );
                     } else {
                         env.module.add_global_configurable(
                             env.context,
-                            call_path.as_vec_string().to_vec(),
+                            symbol_path.as_vec_string().to_vec(),
                             const_val,
                         );
                     }
@@ -192,7 +193,7 @@ pub(super) fn compile_constant_expression(
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
-    call_path: &CallPath,
+    symbol_path: &SymbolPath,
     const_expr: &ty::TyExpression,
     is_configurable: bool,
 ) -> Result<Value, CompileError> {
@@ -212,8 +213,8 @@ pub(super) fn compile_constant_expression(
     if !is_configurable {
         Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
     } else {
-        let config_const_name =
-            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(call_path.suffix.as_str()));
+        let config_const_name = md_mgr
+            .config_const_name_to_md(context, &std::rc::Rc::from(symbol_path.suffix.as_str()));
         let metadata = md_combine(context, &span_id_idx, &config_const_name);
         Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, metadata))
     }
@@ -243,9 +244,9 @@ pub(crate) fn compile_constant_expression_to_constant(
     let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
-        ty::TyExpressionVariant::FunctionApplication { call_path, .. } => {
+        ty::TyExpressionVariant::FunctionApplication { symbol_path, .. } => {
             Err(CompileError::NonConstantDeclValue {
-                span: call_path.span(),
+                span: symbol_path.span(),
             })
         }
         _otherwise => Err(CompileError::NonConstantDeclValue {
@@ -280,7 +281,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::FunctionApplication {
             arguments,
             fn_ref,
-            call_path,
+            symbol_path,
             ..
         } => {
             let mut actuals_const: Vec<_> = vec![];
@@ -295,7 +296,7 @@ fn const_eval_typed_expr(
                     // If all actual arguments don't evaluate a constant, bail out.
                     // TODO: Explore if we could continue here and if it'll be useful.
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: call_path.span(),
+                        span: symbol_path.span(),
                     });
                 }
             }
@@ -321,15 +322,15 @@ fn const_eval_typed_expr(
             res?
         }
         ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
-            let call_path = &const_decl.call_path;
-            let name = &call_path.suffix;
+            let symbol_path = &const_decl.symbol_path;
+            let name = &symbol_path.suffix;
 
             match known_consts.get(name) {
-                // 1. Check if name/call_path is in known_consts.
+                // 1. Check if name/symbol_path is in known_consts.
                 Some(cvs) => Some(cvs.clone()),
                 None => {
                     // 2. Check if name is a global constant.
-                    (lookup.lookup)(lookup, call_path, &Some(*const_decl.clone()))
+                    (lookup.lookup)(lookup, symbol_path, &Some(*const_decl.clone()))
                         .ok()
                         .flatten()
                         .and_then(|v| {
@@ -343,17 +344,17 @@ fn const_eval_typed_expr(
             }
         }
         ty::TyExpressionVariant::VariableExpression {
-            name, call_path, ..
+            name, symbol_path, ..
         } => match known_consts.get(name) {
-            // 1. Check if name/call_path is in known_consts.
+            // 1. Check if name/symbol_path is in known_consts.
             Some(cvs) => Some(cvs.clone()),
             None => {
-                let call_path = match call_path {
-                    Some(call_path) => call_path.clone(),
-                    None => CallPath::from(name.clone()),
+                let symbol_path = match symbol_path {
+                    Some(symbol_path) => symbol_path.clone(),
+                    None => SymbolPath::from(name.clone()),
                 };
                 // 2. Check if name is a global constant.
-                (lookup.lookup)(lookup, &call_path, &None)
+                (lookup.lookup)(lookup, &symbol_path, &None)
                     .ok()
                     .flatten()
                     .and_then(|v| v.get_constant(lookup.context).cloned())

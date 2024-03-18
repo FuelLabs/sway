@@ -3,7 +3,7 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{self, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
-        CallPath,
+        SymbolPath,
     },
     type_system::TypeInfo,
     Ident,
@@ -50,9 +50,9 @@ pub(crate) struct VariableNamespaceEntry {
 pub struct ControlFlowNamespace {
     pub(crate) function_namespace: IndexMap<(IdentUnique, TyFunctionSig), FunctionNamespaceEntry>,
     pub(crate) enum_namespace: HashMap<IdentUnique, (NodeIndex, HashMap<Ident, NodeIndex>)>,
-    pub(crate) trait_namespace: HashMap<CallPath, TraitNamespaceEntry>,
+    pub(crate) trait_namespace: HashMap<SymbolPath, TraitNamespaceEntry>,
     /// This is a mapping from trait name to method names and their node indexes
-    pub(crate) trait_method_namespace: HashMap<CallPath, HashMap<Ident, NodeIndex>>,
+    pub(crate) trait_method_namespace: HashMap<SymbolPath, HashMap<Ident, NodeIndex>>,
     /// This is a mapping from struct name to field names and their node indexes
     /// TODO this should be an Ident and not a String, switch when static spans are implemented
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
@@ -143,17 +143,17 @@ impl ControlFlowNamespace {
         Some((*enum_ix, *enum_decl.get(variant_name)?))
     }
 
-    pub(crate) fn add_trait(&mut self, trait_name: CallPath, trait_entry: TraitNamespaceEntry) {
+    pub(crate) fn add_trait(&mut self, trait_name: SymbolPath, trait_entry: TraitNamespaceEntry) {
         self.trait_namespace.insert(trait_name, trait_entry);
     }
 
-    pub(crate) fn find_trait(&self, name: &CallPath) -> Option<&TraitNamespaceEntry> {
+    pub(crate) fn find_trait(&self, name: &SymbolPath) -> Option<&TraitNamespaceEntry> {
         self.trait_namespace.get(name)
     }
 
     pub(crate) fn find_trait_method(
         &self,
-        trait_name: &CallPath,
+        trait_name: &SymbolPath,
         method_name: &Ident,
     ) -> Option<&NodeIndex> {
         self.trait_method_namespace
@@ -163,7 +163,7 @@ impl ControlFlowNamespace {
 
     pub(crate) fn insert_trait_methods(
         &mut self,
-        trait_name: CallPath,
+        trait_name: SymbolPath,
         methods: Vec<(Ident, NodeIndex)>,
     ) {
         match self.trait_method_namespace.get_mut(&trait_name) {

@@ -45,7 +45,7 @@ impl Descriptor {
                 if !document_private_items && struct_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = struct_decl.call_path.suffix.clone();
+                    let item_name = struct_decl.symbol_path.suffix.clone();
                     let attrs_opt = (!struct_decl.attributes.is_empty())
                         .then(|| struct_decl.attributes.to_html_string());
                     let context = (!struct_decl.fields.is_empty()).then_some(Context::new(
@@ -82,7 +82,7 @@ impl Descriptor {
                 if !document_private_items && enum_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = enum_decl.call_path.suffix.clone();
+                    let item_name = enum_decl.symbol_path.suffix.clone();
                     let attrs_opt = (!enum_decl.attributes.is_empty())
                         .then(|| enum_decl.attributes.to_html_string());
                     let context = (!enum_decl.variants.is_empty()).then_some(Context::new(
@@ -276,7 +276,7 @@ impl Descriptor {
                 if !document_private_items && const_decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = const_decl.call_path.suffix.clone();
+                    let item_name = const_decl.symbol_path.suffix.clone();
                     let attrs_opt = (!const_decl.attributes.is_empty())
                         .then(|| const_decl.attributes.to_html_string());
 

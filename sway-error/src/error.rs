@@ -1936,7 +1936,7 @@ impl ToDiagnostic for CompileError {
                         source_engine,
                         existing_impl_span.clone(),
                         format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
-                            call_path_suffix_with_args(trait_name)
+                            symbol_path_suffix_with_args(trait_name)
                         )
                     ),
                 ],

@@ -7,7 +7,7 @@ use crate::{
             self, ConstantDecl, FunctionDecl, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent,
             TyDecl, TyImplItem, TypeAliasDecl,
         },
-        CallPath, Visibility,
+        SymbolPath, Visibility,
     },
     transform::{self, AttributesMap},
     type_system::TypeInfo,
@@ -549,11 +549,11 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
             let const_decl = decl_engine.get_constant(decl_id);
             let ty::TyConstantDecl {
-                call_path, value, ..
+                symbol_path, value, ..
             } = &*const_decl;
             graph
                 .namespace
-                .insert_global_constant(call_path.suffix.clone(), entry_node);
+                .insert_global_constant(symbol_path.suffix.clone(), entry_node);
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -652,7 +652,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     tree_type: &TreeType,
 ) {
     let ty::TyStructDecl {
-        call_path,
+        symbol_path,
         fields,
         visibility,
         ..
@@ -687,7 +687,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
     // Now, populate the struct namespace with the location of this struct as well as the indexes
     // of the field names
     graph.namespace.insert_struct(
-        call_path.suffix.as_str().to_string(),
+        symbol_path.suffix.as_str().to_string(),
         entry_node,
         field_nodes,
     );
@@ -701,7 +701,7 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
 #[allow(clippy::too_many_arguments)]
 fn connect_impl_trait<'eng: 'cfg, 'cfg>(
     engines: &'eng Engines,
-    trait_name: &CallPath,
+    trait_name: &SymbolPath,
     graph: &mut ControlFlowGraph<'cfg>,
     items: &[TyImplItem],
     entry_node: NodeIndex,
@@ -822,7 +822,7 @@ fn connect_trait_declaration(
     tree_type: &TreeType,
 ) {
     graph.namespace.add_trait(
-        CallPath {
+        SymbolPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
             is_absolute: false,
@@ -846,7 +846,7 @@ fn connect_abi_declaration(
     let decl_engine = engines.de();
 
     graph.namespace.add_trait(
-        CallPath {
+        SymbolPath {
             prefixes: vec![],
             suffix: decl.name.clone(),
             is_absolute: false,
@@ -870,7 +870,11 @@ fn connect_abi_declaration(
                     fn_decl.return_type.type_id,
                 )? {
                     let decl = decl_engine.get_struct(&decl_ref);
-                    if let Some(ns) = graph.namespace.get_struct(&decl.call_path.suffix).cloned() {
+                    if let Some(ns) = graph
+                        .namespace
+                        .get_struct(&decl.symbol_path.suffix)
+                        .cloned()
+                    {
                         for (_, field_ix) in ns.fields.iter() {
                             graph.add_edge(ns.struct_decl_ix, *field_ix, "".into());
                         }
@@ -953,7 +957,7 @@ fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
 ) {
     graph
         .namespace
-        .insert_enum(enum_decl.call_path.suffix.clone(), entry_node);
+        .insert_enum(enum_decl.symbol_path.suffix.clone(), entry_node);
 
     // keep a mapping of each variant
     for variant in enum_decl.variants.iter() {
@@ -964,7 +968,7 @@ fn connect_enum_declaration<'eng: 'cfg, 'cfg>(
         ));
 
         graph.namespace.insert_enum_variant(
-            enum_decl.call_path.suffix.clone(),
+            enum_decl.symbol_path.suffix.clone(),
             entry_node,
             variant.name.clone(),
             variant_index,
@@ -1068,10 +1072,10 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
         match ty {
             TypeInfo::Enum(decl_ref) => {
                 let decl = engines.de().get_enum(&decl_ref);
-                let ty_index = match graph.namespace.find_enum(&decl.call_path.suffix) {
+                let ty_index = match graph.namespace.find_enum(&decl.symbol_path.suffix) {
                     Some(ix) => *ix,
                     None => graph.add_node(
-                        format!("External enum  {}", decl.call_path.suffix.as_str()).into(),
+                        format!("External enum  {}", decl.symbol_path.suffix.as_str()).into(),
                     ),
                 };
                 graph.add_edge(fn_decl_entry_node, ty_index, "".into());
@@ -1080,11 +1084,11 @@ fn connect_fn_params_struct_enums<'eng: 'cfg, 'cfg>(
                 let decl = engines.de().get_struct(&decl_ref);
                 let ty_index = match graph
                     .namespace
-                    .find_struct_decl(decl.call_path.suffix.as_str())
+                    .find_struct_decl(decl.symbol_path.suffix.as_str())
                 {
                     Some(ix) => *ix,
                     None => graph.add_node(
-                        format!("External struct  {}", decl.call_path.suffix.as_str()).into(),
+                        format!("External struct  {}", decl.symbol_path.suffix.as_str()).into(),
                     ),
                 };
                 graph.add_edge(fn_decl_entry_node, ty_index, "".into());
@@ -1135,9 +1139,10 @@ fn get_trait_fn_node_index<'a>(
             }
             ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
                 let struct_decl = decl_engine.get_struct(decl_id);
-                Ok(graph
-                    .namespace
-                    .find_trait_method(&struct_decl.call_path.suffix.clone().into(), &fn_decl.name))
+                Ok(graph.namespace.find_trait_method(
+                    &struct_decl.symbol_path.suffix.clone().into(),
+                    &fn_decl.name,
+                ))
             }
             ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
                 let impl_trait = decl_engine.get_impl_trait(decl_id);
@@ -1180,12 +1185,12 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
     let decl_engine = engines.de();
     match expr_variant {
         FunctionApplication {
-            call_path: name,
+            symbol_path: name,
             arguments,
             fn_ref,
             contract_call_params,
             selector,
-            call_path_typeid,
+            symbol_path_typeid,
             contract_caller,
             ..
         } => {
@@ -1207,13 +1212,13 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             // find the function in the namespace
             let fn_namespace_entry = graph.namespace.get_function(&fn_decl).cloned();
 
-            // connect function entry point to type in function application call path.
-            if let (Some(call_path_typeid), Some(fn_namespace_entry)) =
-                (call_path_typeid, fn_namespace_entry.clone())
+            // connect function entry point to type in function application symbol path.
+            if let (Some(symbol_path_typeid), Some(fn_namespace_entry)) =
+                (symbol_path_typeid, fn_namespace_entry.clone())
             {
                 connect_type_id(
                     engines,
-                    *call_path_typeid,
+                    *symbol_path_typeid,
                     graph,
                     fn_namespace_entry.entry_point,
                 )?;
@@ -1354,9 +1359,9 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
 
             // check for std::revert and connect to the exit node if that's the case.
-            // we are guaranteed a full call path here since the type checker calls to_fullpath.
-            if let Some(prefix) = fn_decl.call_path.prefixes.first() {
-                if prefix.as_str() == STD && fn_decl.call_path.suffix.as_str() == "revert" {
+            // we are guaranteed a full symbol path here since the type checker calls to_fullpath.
+            if let Some(prefix) = fn_decl.symbol_path.prefixes.first() {
+                if prefix.as_str() == STD && fn_decl.symbol_path.suffix.as_str() == "revert" {
                     if let Some(exit_node) = exit_node {
                         graph.add_edge(fn_exit_point, exit_node, "revert".into());
                         return Ok(vec![]);
@@ -1446,7 +1451,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             enum_ref,
             variant_name,
             contents,
-            call_path_decl,
+            symbol_path_decl,
             ..
         } => {
             let enum_decl = decl_engine.get_enum(enum_ref);
@@ -1456,7 +1461,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 &enum_decl,
                 contents,
                 variant_name,
-                call_path_decl,
+                symbol_path_decl,
                 graph,
                 leaves,
                 exit_node,
@@ -1598,7 +1603,9 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 .expect_struct(&Handler::default(), engines, field_instantiation_span)
                 .ok()
             {
-                Some(struct_decl_ref) => decl_engine.get_struct(&struct_decl_ref).call_path.clone(),
+                Some(struct_decl_ref) => {
+                    decl_engine.get_struct(&struct_decl_ref).symbol_path.clone()
+                }
                 None => {
                     return Err(CompileError::Internal(
                         "Called subfield on a non-struct",
@@ -1813,11 +1820,11 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         ),
         UnsafeDowncast {
             exp,
-            call_path_decl,
+            symbol_path_decl,
             variant: _,
         } => {
-            // Connects call path decl, useful for aliases.
-            connect_call_path_decl(engines, call_path_decl, graph, leaves)?;
+            // Connects symbol path decl, useful for aliases.
+            connect_symbol_path_decl(engines, symbol_path_decl, graph, leaves)?;
 
             connect_expression(
                 engines,
@@ -2051,22 +2058,22 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
     enum_decl: &ty::TyEnumDecl,
     contents: &Option<Box<ty::TyExpression>>,
     variant_name: &Ident,
-    call_path_decl: &ty::TyDecl,
+    symbol_path_decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
     exit_node: Option<NodeIndex>,
     tree_type: &TreeType,
     options: NodeConnectionOptions,
 ) -> Result<Vec<NodeIndex>, CompileError> {
-    let enum_call_path = enum_decl.call_path.clone();
+    let enum_symbol_path = enum_decl.symbol_path.clone();
     let (decl_ix, variant_index) = graph
         .namespace
-        .find_enum_variant_index(&enum_call_path.suffix, variant_name)
+        .find_enum_variant_index(&enum_symbol_path.suffix, variant_name)
         .unwrap_or_else(|| {
             let node_idx = graph.add_node(
                 format!(
                     "extern enum {}::{}",
-                    enum_call_path.suffix.as_str(),
+                    enum_symbol_path.suffix.as_str(),
                     variant_name.as_str()
                 )
                 .into(),
@@ -2074,8 +2081,8 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
             (node_idx, node_idx)
         });
 
-    // Connects call path decl, useful for aliases.
-    connect_call_path_decl(engines, call_path_decl, graph, leaves)?;
+    // Connects symbol path decl, useful for aliases.
+    connect_symbol_path_decl(engines, symbol_path_decl, graph, leaves)?;
 
     // insert organizational nodes for instantiation of enum
     let enum_instantiation_entry_idx = graph.add_node("enum instantiation entry".into());
@@ -2312,14 +2319,14 @@ fn connect_type_id<'eng: 'cfg, 'cfg>(
     Ok(())
 }
 
-fn connect_call_path_decl<'eng: 'cfg, 'cfg>(
+fn connect_symbol_path_decl<'eng: 'cfg, 'cfg>(
     engines: &'eng Engines,
-    call_path_decl: &ty::TyDecl,
+    symbol_path_decl: &ty::TyDecl,
     graph: &mut ControlFlowGraph<'cfg>,
     leaves: &[NodeIndex],
 ) -> Result<(), CompileError> {
     let decl_engine = engines.de();
-    if let ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) = call_path_decl {
+    if let ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) = symbol_path_decl {
         let decl = decl_engine.get_type_alias(decl_id);
         let alias_idx = graph
             .namespace

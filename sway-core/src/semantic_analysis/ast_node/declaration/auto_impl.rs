@@ -197,7 +197,7 @@ where
     }
 
     fn generate_abi_decode_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.symbol_path.suffix.as_str();
         let arms = decl.variants.iter()
             .map(|x| {
                 let name = x.name.as_str();
@@ -224,7 +224,7 @@ where
     }
 
     fn generate_abi_encode_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
-        let enum_name = decl.call_path.suffix.as_str();
+        let enum_name = decl.symbol_path.suffix.as_str();
         let arms = decl
             .variants
             .iter()
@@ -447,9 +447,9 @@ where
             .into(),
             TypeInfo::Boolean => "bool".into(),
             TypeInfo::Custom {
-                qualified_call_path: call_path,
+                qualified_symbol_path: symbol_path,
                 ..
-            } => call_path.call_path.suffix.to_string(),
+            } => symbol_path.symbol_path.suffix.to_string(),
             TypeInfo::Tuple(fields) => {
                 if fields.is_empty() {
                     return "()".into();
@@ -476,7 +476,7 @@ where
                     type_parameters
                 };
 
-                format!("{}{type_parameters}", decl.call_path.suffix.as_str())
+                format!("{}{type_parameters}", decl.symbol_path.suffix.as_str())
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = engines.de().get(decl_ref.id());
@@ -493,7 +493,7 @@ where
                     type_parameters
                 };
 
-                format!("{}{type_parameters}", decl.call_path.suffix.as_str())
+                format!("{}{type_parameters}", decl.symbol_path.suffix.as_str())
             }
             TypeInfo::Array(elem_ty, count) => {
                 format!(

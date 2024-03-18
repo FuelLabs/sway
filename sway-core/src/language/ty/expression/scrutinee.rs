@@ -23,15 +23,15 @@ pub enum TyScrutineeVariant {
     StructScrutinee {
         struct_ref: DeclRefStruct,
         fields: Vec<TyStructScrutineeField>,
-        instantiation_call_path: CallPath,
+        instantiation_symbol_path: SymbolPath,
     },
     EnumScrutinee {
         enum_ref: DeclRefEnum,
         variant: Box<TyEnumVariant>,
         /// Should contain a TyDecl to either an enum or a type alias.
-        call_path_decl: ty::TyDecl,
+        symbol_path_decl: ty::TyDecl,
         value: Box<TyScrutinee>,
-        instantiation_call_path: CallPath,
+        instantiation_symbol_path: SymbolPath,
     },
     Tuple(Vec<TyScrutinee>),
 }

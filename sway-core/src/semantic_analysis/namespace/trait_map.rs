@@ -15,7 +15,7 @@ use crate::{
     engine_threading::*,
     language::{
         ty::{self, TyImplItem, TyTraitItem},
-        CallPath,
+        SymbolPath,
     },
     type_system::{SubstTypes, TypeId},
     TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
@@ -41,14 +41,14 @@ impl OrdWithEngines for TraitSuffix {
     }
 }
 
-impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
+impl<T: PartialEqWithEngines> PartialEqWithEngines for SymbolPath<T> {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         self.prefixes == other.prefixes
             && self.suffix.eq(&other.suffix, engines)
             && self.is_absolute == other.is_absolute
     }
 }
-impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
+impl<T: OrdWithEngines> OrdWithEngines for SymbolPath<T> {
     fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
         self.prefixes
             .cmp(&other.prefixes)
@@ -82,7 +82,7 @@ impl DebugWithEngines for TraitSuffix {
     }
 }
 
-type TraitName = CallPath<TraitSuffix>;
+type TraitName = SymbolPath<TraitSuffix>;
 
 #[derive(Clone, Debug)]
 struct TraitKey {
@@ -149,7 +149,7 @@ impl TraitMap {
     pub(crate) fn insert(
         &mut self,
         handler: &Handler,
-        trait_name: CallPath,
+        trait_name: SymbolPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
         items: &[TyImplItem],
@@ -199,7 +199,7 @@ impl TraitMap {
                     },
             } in self.trait_impls.iter()
             {
-                let CallPath {
+                let SymbolPath {
                     suffix:
                         TraitSuffix {
                             name: map_trait_name_suffix,
@@ -347,7 +347,7 @@ impl TraitMap {
                     }
                 }
             }
-            let trait_name: TraitName = CallPath {
+            let trait_name: TraitName = SymbolPath {
                 prefixes: trait_name.prefixes,
                 suffix: TraitSuffix {
                     name: trait_name.suffix,
@@ -881,11 +881,11 @@ impl TraitMap {
 
     /// Find the entries in `self` with trait name `trait_name` and return the
     /// spans of the impls.
-    pub(crate) fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
+    pub(crate) fn get_impl_spans_for_trait_name(&self, trait_name: &SymbolPath) -> Vec<Span> {
         self.trait_impls
             .iter()
             .filter_map(|entry| {
-                let map_trait_name = CallPath {
+                let map_trait_name = SymbolPath {
                     prefixes: entry.key.name.prefixes.clone(),
                     suffix: entry.key.name.suffix.name.clone(),
                     is_absolute: entry.key.name.is_absolute,
@@ -912,7 +912,7 @@ impl TraitMap {
         &self,
         engines: &Engines,
         type_id: TypeId,
-        trait_name: &CallPath,
+        trait_name: &SymbolPath,
         trait_type_args: Vec<TypeArgument>,
     ) -> Vec<ty::TyTraitItem> {
         let type_engine = engines.te();
@@ -923,7 +923,7 @@ impl TraitMap {
             return items;
         }
         for e in self.trait_impls.iter() {
-            let map_trait_name = CallPath {
+            let map_trait_name = SymbolPath {
                 prefixes: e.key.name.prefixes.clone(),
                 suffix: e.key.name.suffix.name.clone(),
                 is_absolute: e.key.name.is_absolute,
@@ -947,7 +947,7 @@ impl TraitMap {
         &self,
         engines: &Engines,
         type_id: TypeId,
-    ) -> Vec<(CallPath, Vec<TypeArgument>)> {
+    ) -> Vec<(SymbolPath, Vec<TypeArgument>)> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
         let mut trait_names = vec![];
@@ -957,12 +957,12 @@ impl TraitMap {
         }
         for entry in self.trait_impls.iter() {
             if unify_check.check(type_id, entry.key.type_id) {
-                let trait_call_path = CallPath {
+                let trait_symbol_path = SymbolPath {
                     prefixes: entry.key.name.prefixes.clone(),
                     suffix: entry.key.name.suffix.name.clone(),
                     is_absolute: entry.key.name.is_absolute,
                 };
-                trait_names.push((trait_call_path, entry.key.name.suffix.args.clone()));
+                trait_names.push((trait_symbol_path, entry.key.name.suffix.args.clone()));
             }
         }
         trait_names
@@ -974,39 +974,40 @@ impl TraitMap {
         engines: &Engines,
         symbol: &Ident,
         type_id: TypeId,
-        as_trait: Option<CallPath>,
+        as_trait: Option<SymbolPath>,
     ) -> Result<TyTraitItem, ErrorEmitted> {
         let mut candidates = HashMap::<String, TyTraitItem>::new();
         for (trait_item, trait_key) in self.get_items_and_trait_key_for_type(engines, type_id) {
             match trait_item {
                 ty::TyTraitItem::Fn(fn_ref) => {
                     let decl = engines.de().get_function(&fn_ref);
-                    let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                    let trait_symbol_path_string = engines.help_out(trait_key.name).to_string();
                     if decl.name.as_str() == symbol.as_str()
                         && (as_trait.is_none()
-                            || as_trait.clone().unwrap().to_string() == trait_call_path_string)
+                            || as_trait.clone().unwrap().to_string() == trait_symbol_path_string)
                     {
-                        candidates.insert(trait_call_path_string, TyTraitItem::Fn(fn_ref));
+                        candidates.insert(trait_symbol_path_string, TyTraitItem::Fn(fn_ref));
                     }
                 }
                 ty::TyTraitItem::Constant(const_ref) => {
                     let decl = engines.de().get_constant(&const_ref);
-                    let trait_call_path_string = engines.help_out(trait_key.name).to_string();
-                    if decl.call_path.suffix.as_str() == symbol.as_str()
+                    let trait_symbol_path_string = engines.help_out(trait_key.name).to_string();
+                    if decl.symbol_path.suffix.as_str() == symbol.as_str()
                         && (as_trait.is_none()
-                            || as_trait.clone().unwrap().to_string() == trait_call_path_string)
+                            || as_trait.clone().unwrap().to_string() == trait_symbol_path_string)
                     {
-                        candidates.insert(trait_call_path_string, TyTraitItem::Constant(const_ref));
+                        candidates
+                            .insert(trait_symbol_path_string, TyTraitItem::Constant(const_ref));
                     }
                 }
                 ty::TyTraitItem::Type(type_ref) => {
                     let decl = engines.de().get_type(&type_ref);
-                    let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                    let trait_symbol_path_string = engines.help_out(trait_key.name).to_string();
                     if decl.name.as_str() == symbol.as_str()
                         && (as_trait.is_none()
-                            || as_trait.clone().unwrap().to_string() == trait_call_path_string)
+                            || as_trait.clone().unwrap().to_string() == trait_symbol_path_string)
                     {
-                        candidates.insert(trait_call_path_string, TyTraitItem::Type(type_ref));
+                        candidates.insert(trait_symbol_path_string, TyTraitItem::Type(type_ref));
                     }
                 }
             }
@@ -1096,7 +1097,7 @@ impl TraitMap {
                     let map_trait_type_id = type_engine.insert(
                         engines,
                         TypeInfo::Custom {
-                            qualified_call_path: suffix.name.clone().into(),
+                            qualified_symbol_path: suffix.name.clone().into(),
                             type_arguments: if suffix.args.is_empty() {
                                 None
                             } else {
@@ -1123,7 +1124,7 @@ impl TraitMap {
                 let constraint_type_id = type_engine.insert(
                     engines,
                     TypeInfo::Custom {
-                        qualified_call_path: constraint_trait_name.suffix.clone().into(),
+                        qualified_symbol_path: constraint_trait_name.suffix.clone().into(),
                         type_arguments: if constraint_type_arguments.is_empty() {
                             None
                         } else {
@@ -1167,7 +1168,7 @@ impl TraitMap {
                 } else {
                     let mut type_arguments_string = "".to_string();
                     if let TypeInfo::Custom {
-                        qualified_call_path: _,
+                        qualified_symbol_path: _,
                         type_arguments: Some(type_arguments),
                         root_type_id: _,
                     } = &*type_engine.get(*constraint_type_id)

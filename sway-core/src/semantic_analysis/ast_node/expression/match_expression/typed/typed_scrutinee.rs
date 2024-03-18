@@ -10,7 +10,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
-        CallPath,
+        SymbolPath,
     },
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, TypeCheckContext, TypeCheckFinalization,
@@ -82,15 +82,15 @@ impl TyScrutinee {
                 span,
             } => type_check_struct(handler, ctx, struct_name.suffix, fields, span),
             Scrutinee::EnumScrutinee {
-                call_path,
+                symbol_path,
                 value,
                 span,
-            } => type_check_enum(handler, ctx, call_path, *value, span),
+            } => type_check_enum(handler, ctx, symbol_path, *value, span),
             Scrutinee::AmbiguousSingleIdent(ident) => {
                 let maybe_enum = type_check_enum(
                     &Handler::default(),
                     ctx.by_ref(),
-                    CallPath {
+                    SymbolPath {
                         prefixes: vec![],
                         suffix: ident.clone(),
                         is_absolute: false,
@@ -309,7 +309,7 @@ fn type_check_struct(
                         if struct_field.is_private() {
                             handler.emit_err(CompileError::StructFieldIsPrivate {
                                 field_name: field_name.into(),
-                                struct_name: struct_decl.call_path.suffix.clone(),
+                                struct_name: struct_decl.symbol_path.suffix.clone(),
                                 field_decl_span: struct_field.name.span(),
                                 struct_can_be_changed,
                                 usage_context: StructFieldUsageContext::PatternMatching {
@@ -375,7 +375,7 @@ fn type_check_struct(
                         (true, true, true) => {
                             CompileError::MatchStructPatternMustIgnorePrivateFields {
                                 private_fields: missing_fields(false),
-                                struct_name: struct_decl.call_path.suffix.clone(),
+                                struct_name: struct_decl.symbol_path.suffix.clone(),
                                 struct_decl_span: struct_decl.span(),
                                 all_fields_are_private: struct_decl.has_only_private_fields(),
                                 span: span.clone(),
@@ -398,7 +398,7 @@ fn type_check_struct(
                             CompileError::MatchStructPatternMissingFields {
                                 missing_fields: missing_fields(is_public_struct_access),
                                 missing_fields_are_public: is_public_struct_access,
-                                struct_name: struct_decl.call_path.suffix.clone(),
+                                struct_name: struct_decl.symbol_path.suffix.clone(),
                                 struct_decl_span: struct_decl.span(),
                                 total_number_of_fields: struct_decl.fields.len(),
                                 span: span.clone(),
@@ -423,7 +423,7 @@ fn type_check_struct(
         variant: ty::TyScrutineeVariant::StructScrutinee {
             struct_ref,
             fields: typed_fields,
-            instantiation_call_path: CallPath {
+            instantiation_symbol_path: SymbolPath {
                 prefixes: vec![],
                 suffix: struct_name,
                 is_absolute: false,
@@ -446,7 +446,7 @@ fn type_check_struct(
                 field_name: field_name.into(),
                 available_fields: struct_decl.accessible_fields_names(is_public_struct_access),
                 is_public_struct_access,
-                struct_name: struct_decl.call_path.suffix.clone(),
+                struct_name: struct_decl.symbol_path.suffix.clone(),
                 struct_decl_span: struct_decl.span(),
                 struct_is_empty: struct_decl.is_empty(),
                 usage_context: StructFieldUsageContext::PatternMatching { has_rest_pattern },
@@ -468,7 +468,7 @@ impl TypeCheckFinalization for TyScrutinee {
 fn type_check_enum(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    call_path: CallPath<Ident>,
+    symbol_path: SymbolPath<Ident>,
     value: Scrutinee,
     span: Span,
 ) -> Result<ty::TyScrutinee, ErrorEmitted> {
@@ -476,48 +476,51 @@ fn type_check_enum(
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
-    let mut prefixes = call_path.prefixes.clone();
-    let (callsite_span, mut enum_decl, call_path_decl) = match prefixes.pop() {
+    let mut prefixes = symbol_path.prefixes.clone();
+    let (callsite_span, mut enum_decl, symbol_path_decl) = match prefixes.pop() {
         Some(enum_name) => {
-            let enum_callpath = CallPath {
+            let enum_symbol_path = SymbolPath {
                 suffix: enum_name,
                 prefixes,
-                is_absolute: call_path.is_absolute,
+                is_absolute: symbol_path.is_absolute,
             };
             // find the enum definition from the name
-            let unknown_decl = ctx.namespace().resolve_call_path(
+            let unknown_decl = ctx.namespace().resolve_symbol_path(
                 handler,
                 engines,
-                &enum_callpath,
+                &enum_symbol_path,
                 ctx.self_type(),
             )?;
             let enum_ref = unknown_decl.to_enum_ref(handler, ctx.engines())?;
             (
-                enum_callpath.span(),
+                enum_symbol_path.span(),
                 (*decl_engine.get_enum(&enum_ref)).clone(),
                 unknown_decl,
             )
         }
         None => {
             // we may have an imported variant
-            let decl =
-                ctx.namespace()
-                    .resolve_call_path(handler, engines, &call_path, ctx.self_type())?;
+            let decl = ctx.namespace().resolve_symbol_path(
+                handler,
+                engines,
+                &symbol_path,
+                ctx.self_type(),
+            )?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
                 (
-                    call_path.suffix.span(),
+                    symbol_path.suffix.span(),
                     (*decl_engine.get_enum(enum_ref.id())).clone(),
                     decl,
                 )
             } else {
                 return Err(handler.emit_err(CompileError::EnumNotFound {
-                    name: call_path.suffix.clone(),
-                    span: call_path.suffix.span(),
+                    name: symbol_path.suffix.clone(),
+                    span: symbol_path.suffix.span(),
                 }));
             }
         }
     };
-    let variant_name = call_path.suffix.clone();
+    let variant_name = symbol_path.suffix.clone();
 
     // monomorphize the enum definition
     ctx.monomorphize(
@@ -541,9 +544,9 @@ fn type_check_enum(
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             enum_ref: enum_ref.clone(),
             variant: Box::new(variant),
-            call_path_decl,
+            symbol_path_decl,
             value: Box::new(typed_value),
-            instantiation_call_path: call_path,
+            instantiation_symbol_path: symbol_path,
         },
         type_id: type_engine.insert(
             engines,
@@ -583,7 +586,7 @@ fn type_check_tuple(
                     type_id: x.type_id,
                     initial_type_id: x.type_id,
                     span: span.clone(),
-                    call_path_tree: None,
+                    symbol_path_tree: None,
                 })
                 .collect(),
         ),

@@ -9,7 +9,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
-    language::{ty::*, CallPath, Visibility},
+    language::{ty::*, SymbolPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
     type_system::*,
@@ -17,7 +17,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TyConstantDecl {
-    pub call_path: CallPath,
+    pub symbol_path: SymbolPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
     pub is_configurable: bool,
@@ -30,7 +30,7 @@ pub struct TyConstantDecl {
 
 impl DebugWithEngines for TyConstantDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
-        write!(f, "{}", self.call_path)
+        write!(f, "{}", self.symbol_path)
     }
 }
 
@@ -38,7 +38,7 @@ impl EqWithEngines for TyConstantDecl {}
 impl PartialEqWithEngines for TyConstantDecl {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
         let type_engine = engines.te();
-        self.call_path == other.call_path
+        self.symbol_path == other.symbol_path
             && self.value.eq(&other.value, engines)
             && self.visibility == other.visibility
             && self.type_ascription.eq(&other.type_ascription, engines)
@@ -57,7 +57,7 @@ impl HashWithEngines for TyConstantDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let type_engine = engines.te();
         let TyConstantDecl {
-            call_path,
+            symbol_path,
             value,
             visibility,
             return_type,
@@ -69,7 +69,7 @@ impl HashWithEngines for TyConstantDecl {
             attributes: _,
             span: _,
         } = self;
-        call_path.hash(state);
+        symbol_path.hash(state);
         value.hash(state, engines);
         visibility.hash(state);
         type_engine.get(*return_type).hash(state, engines);
@@ -83,7 +83,7 @@ impl HashWithEngines for TyConstantDecl {
 
 impl Named for TyConstantDecl {
     fn name(&self) -> &Ident {
-        &self.call_path.suffix
+        &self.symbol_path.suffix
     }
 }
 

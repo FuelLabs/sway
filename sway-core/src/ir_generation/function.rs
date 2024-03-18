@@ -432,13 +432,13 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::FunctionApplication {
-                call_path: name,
+                symbol_path: name,
                 contract_call_params,
                 arguments,
                 fn_ref,
                 selector,
                 type_binding: _,
-                call_path_typeid: _,
+                symbol_path_typeid: _,
                 deferred_monomorphization,
                 ..
             } => {
@@ -468,8 +468,8 @@ impl<'eng> FnCompiler<'eng> {
                 self.compile_const_expr(context, md_mgr, const_decl, span_md_idx)
             }
             ty::TyExpressionVariant::VariableExpression {
-                name, call_path, ..
-            } => self.compile_var_expr(context, call_path, name, span_md_idx),
+                name, symbol_path, ..
+            } => self.compile_var_expr(context, symbol_path, name, span_md_idx),
             ty::TyExpressionVariant::Array {
                 elem_type,
                 contents,
@@ -582,7 +582,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::UnsafeDowncast {
                 exp,
                 variant,
-                call_path_decl: _,
+                symbol_path_decl: _,
             } => self.compile_unsafe_downcast(context, md_mgr, exp, variant),
             ty::TyExpressionVariant::EnumTag { exp } => {
                 self.compile_enum_tag(context, md_mgr, exp.to_owned())
@@ -2166,7 +2166,7 @@ impl<'eng> FnCompiler<'eng> {
         let result = self
             .compile_var_expr(
                 context,
-                &Some(const_decl.call_path.clone()),
+                &Some(const_decl.symbol_path.clone()),
                 const_decl.name(),
                 span_md_idx,
             )
@@ -2190,13 +2190,13 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
-        call_path: &Option<CallPath>,
+        symbol_path: &Option<SymbolPath>,
         name: &Ident,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        let call_path = call_path
+        let symbol_path = symbol_path
             .clone()
-            .unwrap_or_else(|| CallPath::from(name.clone()));
+            .unwrap_or_else(|| SymbolPath::from(name.clone()));
 
         // We need to check the symbol map first, in case locals are shadowing the args, other
         // locals or even constants.
@@ -2211,12 +2211,12 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(val, context))
         } else if let Some(const_val) = self
             .module
-            .get_global_constant(context, &call_path.as_vec_string())
+            .get_global_constant(context, &symbol_path.as_vec_string())
         {
             Ok(TerminatorValue::new(const_val, context))
         } else if let Some(config_val) = self
             .module
-            .get_global_configurable(context, &call_path.as_vec_string())
+            .get_global_configurable(context, &symbol_path.as_vec_string())
         {
             Ok(TerminatorValue::new(config_val, context))
         } else {
@@ -2308,7 +2308,7 @@ impl<'eng> FnCompiler<'eng> {
         // globals like other const decls.
         // `is_configurable` should be `false` here.
         let ty::TyConstantDecl {
-            call_path,
+            symbol_path,
             value,
             is_configurable,
             ..
@@ -2326,7 +2326,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.module,
                 None,
                 Some(self),
-                call_path,
+                symbol_path,
                 value,
                 *is_configurable,
             );
@@ -2338,7 +2338,7 @@ impl<'eng> FnCompiler<'eng> {
                 // Declaration. The name needs to be added to the local environment
                 let local_name = self
                     .lexical_map
-                    .insert(call_path.suffix.as_str().to_owned());
+                    .insert(symbol_path.suffix.as_str().to_owned());
 
                 let return_type = convert_resolved_typeid(
                     self.engines.te(),
@@ -2455,7 +2455,7 @@ impl<'eng> FnCompiler<'eng> {
                                     format!(
                                         "Unknown field name '{idx_name}' for struct '{}' \
                                          in reassignment.",
-                                        struct_decl.call_path.suffix.as_str(),
+                                        struct_decl.symbol_path.suffix.as_str(),
                                     ),
                                     ast_reassignment.lhs_base_name.span(),
                                 ))
@@ -2835,7 +2835,7 @@ impl<'eng> FnCompiler<'eng> {
                 CompileError::InternalOwned(
                     format!(
                         "Unknown field name '{}' for struct '{}' in field expression.",
-                        struct_decl.call_path.suffix.as_str(),
+                        struct_decl.symbol_path.suffix.as_str(),
                         ast_field.name
                     ),
                     ast_field.span.clone(),

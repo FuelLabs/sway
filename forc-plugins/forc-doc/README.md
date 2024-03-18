@@ -141,7 +141,7 @@ impl Descriptor {
                 if !document_private_items && decl.visibility.is_private() {
                     Ok(Descriptor::NonDocumentable)
                 } else {
-                    let item_name = decl.call_path.suffix;
+                    let item_name = decl.symbol_path.suffix;
                     let attrs_opt = (!decl.attributes.is_empty())
                         .then(|| decl.attributes.to_html_string());
                     // Fill in the context of the new declaration

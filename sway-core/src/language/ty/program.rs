@@ -248,7 +248,7 @@ impl TyProgram {
             parsed::TreeType::Library => {
                 if !configurables.is_empty() {
                     handler.emit_err(CompileError::ConfigurableInLibrary {
-                        span: configurables[0].call_path.suffix.span(),
+                        span: configurables[0].symbol_path.suffix.span(),
                     });
                 }
                 TyProgramKind::Library {

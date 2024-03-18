@@ -137,7 +137,7 @@ impl CollectTypesMetadata for TyExpression {
             FunctionApplication {
                 arguments,
                 fn_ref,
-                call_path,
+                symbol_path,
                 ..
             } => {
                 for arg in arguments.iter() {
@@ -147,7 +147,7 @@ impl CollectTypesMetadata for TyExpression {
 
                 ctx.call_site_push();
                 for type_parameter in &function_decl.type_parameters {
-                    ctx.call_site_insert(type_parameter.type_id, call_path.span())
+                    ctx.call_site_insert(type_parameter.type_id, symbol_path.span())
                 }
 
                 for content in function_decl.body.contents.iter() {
@@ -241,12 +241,15 @@ impl CollectTypesMetadata for TyExpression {
             EnumInstantiation {
                 enum_ref,
                 contents,
-                call_path_binding,
+                symbol_path_binding,
                 ..
             } => {
                 let enum_decl = decl_engine.get_enum(enum_ref);
                 for type_param in enum_decl.type_parameters.iter() {
-                    ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
+                    ctx.call_site_insert(
+                        type_param.type_id,
+                        symbol_path_binding.inner.suffix.span(),
+                    )
                 }
                 if let Some(contents) = contents {
                     res.append(&mut contents.collect_types_metadata(handler, ctx)?);
@@ -275,7 +278,7 @@ impl CollectTypesMetadata for TyExpression {
             UnsafeDowncast {
                 exp,
                 variant,
-                call_path_decl: _,
+                symbol_path_decl: _,
             } => {
                 res.append(&mut exp.collect_types_metadata(handler, ctx)?);
                 res.append(
@@ -398,7 +401,9 @@ impl TyExpression {
                 );
             }
             TyExpressionVariant::FunctionApplication {
-                call_path, fn_ref, ..
+                symbol_path,
+                fn_ref,
+                ..
             } => {
                 if let Some(TyDecl::ImplTrait(t)) = &engines.de().get(fn_ref).implementing_type {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
@@ -406,7 +411,7 @@ impl TyExpression {
                         let s = engines.de().get(struct_ref.id());
                         emit_warning_if_deprecated(
                             &s.attributes,
-                            &call_path.span(),
+                            &symbol_path.span(),
                             handler,
                             "deprecated struct",
                             allow_deprecated,

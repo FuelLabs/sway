@@ -19,7 +19,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyImplItem, TyTraitItem},
-        CallPath,
+        SymbolPath,
     },
     semantic_analysis::declaration::SupertraitOf,
     semantic_analysis::{
@@ -130,7 +130,7 @@ impl ty::TyAbiDecl {
                             new_interface_surface
                                 .push(ty::TyTraitInterfaceItem::Constant(decl_ref.clone()));
 
-                            let const_name = const_decl.call_path.suffix.clone();
+                            let const_name = const_decl.symbol_path.suffix.clone();
                             ctx.insert_symbol(
                                 handler,
                                 const_name.clone(),
@@ -298,7 +298,7 @@ impl ty::TyAbiDecl {
                     }
                     ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                         let const_decl = decl_engine.get_constant(decl_ref);
-                        let const_name = const_decl.call_path.suffix.clone();
+                        let const_name = const_decl.symbol_path.suffix.clone();
                         all_items.push(TyImplItem::Constant(decl_ref.clone()));
                         let const_shadowing_mode = ctx.const_shadowing_mode();
                         let generic_shadowing_mode = ctx.generic_shadowing_mode();
@@ -383,7 +383,7 @@ impl ty::TyAbiDecl {
             // from the same ABI later, during method application typechecking.
             let _ = ctx.insert_trait_implementation(
                 &Handler::default(),
-                CallPath::from(self.name.clone()),
+                SymbolPath::from(self.name.clone()),
                 vec![],
                 type_id,
                 &all_items,

@@ -4,7 +4,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyTraitItem},
-        CallPath, Visibility,
+        SymbolPath, Visibility,
     },
     semantic_analysis::*,
     transform::to_parsed_lang,
@@ -289,56 +289,61 @@ impl Module {
 
     /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
     ///
-    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
-    pub(crate) fn resolve_call_path(
+    /// This is short-hand for concatenating the `mod_path` with the `symbol_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and symbol_path's suffix.
+    pub(crate) fn resolve_symbol_path(
         &self,
         handler: &Handler,
         engines: &Engines,
         mod_path: &Path,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let (decl, _) =
-            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
+        let (decl, _) = self.resolve_symbol_path_and_mod_path(
+            handler,
+            engines,
+            mod_path,
+            symbol_path,
+            self_type,
+        )?;
         Ok(decl)
     }
 
-    pub(crate) fn resolve_call_path_and_mod_path(
+    pub(crate) fn resolve_symbol_path_and_mod_path(
         &self,
         handler: &Handler,
         engines: &Engines,
         mod_path: &Path,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
         self_type: Option<TypeId>,
     ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
-        let symbol_path: Vec<_> = mod_path
+        let full_symbol_path: Vec<_> = mod_path
             .iter()
-            .chain(&call_path.prefixes)
+            .chain(&symbol_path.prefixes)
             .cloned()
             .collect();
         self.resolve_symbol_and_mod_path(
             handler,
             engines,
-            &symbol_path,
-            &call_path.suffix,
+            &full_symbol_path,
+            &symbol_path.suffix,
             self_type,
         )
     }
 
-    pub(crate) fn resolve_call_path_and_root_type_id(
+    pub(crate) fn resolve_symbol_path_and_root_type_id(
         &self,
         handler: &Handler,
         engines: &Engines,
         root_type_id: TypeId,
-        mut as_trait: Option<CallPath>,
-        call_path: &CallPath,
+        mut as_trait: Option<SymbolPath>,
+        symbol_path: &SymbolPath,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         // This block tries to resolve associated types
         let mut decl_opt = None;
         let mut type_id_opt = Some(root_type_id);
-        for ident in call_path.prefixes.iter() {
+        for ident in symbol_path.prefixes.iter() {
             if let Some(type_id) = type_id_opt {
                 type_id_opt = None;
                 decl_opt = Some(self.resolve_associated_type_from_type_id(
@@ -366,7 +371,7 @@ impl Module {
             let decl = self.resolve_associated_type_from_type_id(
                 handler,
                 engines,
-                &call_path.suffix,
+                &symbol_path.suffix,
                 type_id,
                 as_trait,
                 self_type,
@@ -377,14 +382,17 @@ impl Module {
             let decl = self.resolve_associated_item(
                 handler,
                 engines,
-                &call_path.suffix,
+                &symbol_path.suffix,
                 decl,
                 as_trait,
                 self_type,
             )?;
             Ok(decl)
         } else {
-            Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
+            Err(handler.emit_err(CompileError::Internal(
+                "Unexpected error",
+                symbol_path.span(),
+            )))
         }
     }
 
@@ -461,7 +469,7 @@ impl Module {
         engines: &Engines,
         symbol: &Ident,
         decl: ty::TyDecl,
-        as_trait: Option<CallPath>,
+        as_trait: Option<SymbolPath>,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
@@ -484,7 +492,7 @@ impl Module {
         engines: &Engines,
         symbol: &Ident,
         decl: ty::TyDecl,
-        as_trait: Option<CallPath>,
+        as_trait: Option<SymbolPath>,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
@@ -538,7 +546,7 @@ impl Module {
         engines: &Engines,
         symbol: &Ident,
         type_id: TypeId,
-        as_trait: Option<CallPath>,
+        as_trait: Option<SymbolPath>,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let item_decl = self.resolve_associated_item_from_type_id(
@@ -559,7 +567,7 @@ impl Module {
         engines: &Engines,
         symbol: &Ident,
         type_id: TypeId,
-        as_trait: Option<CallPath>,
+        as_trait: Option<SymbolPath>,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_id = if engines.te().get(type_id).is_self_type() {

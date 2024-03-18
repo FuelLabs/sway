@@ -8,7 +8,7 @@ use crate::{
     language::{
         parsed,
         ty::{self, FunctionDecl, TyDecl},
-        CallPath,
+        SymbolPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
@@ -187,9 +187,9 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
-                let call_path = enum_decl.call_path.clone();
+                let symbol_path = enum_decl.symbol_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(enum_decl).into();
-                ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
+                ctx.insert_symbol(handler, symbol_path.suffix, decl.clone())?;
 
                 decl
             }
@@ -230,7 +230,7 @@ impl TyDecl {
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace()
-                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
+                        .resolve_symbol_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -273,7 +273,7 @@ impl TyDecl {
                 // we insert its methods with a prefix
                 let emp_vec = vec![];
                 let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) =
-                    ctx.namespace().resolve_call_path(
+                    ctx.namespace().resolve_symbol_path(
                         &Handler::default(),
                         engines,
                         &impl_trait.trait_name,
@@ -368,11 +368,11 @@ impl TyDecl {
                             return Ok(ty::TyDecl::ErrorRecovery(span, err));
                         }
                     };
-                let call_path = decl.call_path.clone();
+                let symbol_path = decl.symbol_path.clone();
                 let decl: ty::TyDecl = decl_engine.insert(decl).into();
 
                 // insert the struct decl into namespace
-                ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
+                ctx.insert_symbol(handler, symbol_path.suffix, decl.clone())?;
 
                 decl
             }
@@ -392,7 +392,7 @@ impl TyDecl {
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace()
-                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
+                        .resolve_symbol_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -491,12 +491,12 @@ impl TyDecl {
                 // create the type alias decl using the resolved type above
                 let decl = ty::TyTypeAliasDecl {
                     name: name.clone(),
-                    call_path: CallPath::from(name.clone()).to_fullpath(ctx.namespace()),
+                    symbol_path: SymbolPath::from(name.clone()).to_fullpath(ctx.namespace()),
                     attributes: decl.attributes.clone(),
                     ty: TypeArgument {
                         initial_type_id: ty.initial_type_id,
                         type_id: new_ty,
-                        call_path_tree: ty.call_path_tree.clone(),
+                        symbol_path_tree: ty.symbol_path_tree.clone(),
                         span: ty.span.clone(),
                     },
                     visibility: decl.visibility,

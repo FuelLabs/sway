@@ -424,7 +424,7 @@ impl Renderable for DocImplTrait {
                 is_external_item,
             )?
         } else {
-            ModuleInfo::from_call_path(&trait_name).file_path_from_location(
+            ModuleInfo::from_symbol_path(&trait_name).file_path_from_location(
                 &format!("trait.{}.html", trait_name.suffix.as_str()),
                 &impl_for_module,
                 is_external_item,

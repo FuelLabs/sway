@@ -7,7 +7,7 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{self, TyDecl, TyTraitItem},
-        CallPath, Purity, QualifiedCallPath, Visibility,
+        Purity, QualifiedSymbolPath, SymbolPath, Visibility,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, Path, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
@@ -533,34 +533,34 @@ impl<'a> TypeCheckContext<'a> {
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match (*type_engine.get(type_id)).clone() {
             TypeInfo::Custom {
-                qualified_call_path,
+                qualified_symbol_path,
                 type_arguments,
                 root_type_id,
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace()
                         .module()
-                        .resolve_call_path_and_root_type_id(
+                        .resolve_symbol_path_and_root_type_id(
                             handler,
                             self.engines,
                             root_type_id,
                             None,
-                            &qualified_call_path.clone().to_call_path(handler)?,
+                            &qualified_symbol_path.clone().to_symbol_path(handler)?,
                             self.self_type(),
                         )
                         .ok()
                 } else {
-                    self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+                    self.resolve_qualified_symbol_path_with_visibility_check_and_modpath(
                         handler,
                         module_path,
-                        &qualified_call_path,
+                        &qualified_symbol_path,
                     )
                     .ok()
                 };
                 self.type_decl_opt_to_type_id(
                     handler,
                     type_decl_opt,
-                    qualified_call_path.clone(),
+                    qualified_symbol_path.clone(),
                     span,
                     enforce_type_arguments,
                     mod_path,
@@ -717,42 +717,42 @@ impl<'a> TypeCheckContext<'a> {
         )
     }
 
-    /// Short-hand for calling [Root::resolve_call_path_with_visibility_check] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path_with_visibility_check(
+    /// Short-hand for calling [Root::resolve_symbol_path_with_visibility_check] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol_path_with_visibility_check(
         &self,
         handler: &Handler,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_call_path_with_visibility_check_and_modpath(
+        self.resolve_symbol_path_with_visibility_check_and_modpath(
             handler,
             &self.namespace().mod_path,
-            call_path,
+            symbol_path,
         )
     }
 
     /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
     ///
-    /// This will concatenate the `mod_path` with the `call_path`'s prefixes and
-    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    /// This will concatenate the `mod_path` with the `symbol_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and symbol_path's suffix.
     ///
     /// The `mod_path` is significant here as we assume the resolution is done within the
-    /// context of the module pointed to by `mod_path` and will only check the call path prefixes
+    /// context of the module pointed to by `mod_path` and will only check the symbol path prefixes
     /// and the symbol's own visibility.
-    pub(crate) fn resolve_call_path_with_visibility_check_and_modpath(
+    pub(crate) fn resolve_symbol_path_with_visibility_check_and_modpath(
         &self,
         handler: &Handler,
         mod_path: &Path,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let (decl, mod_path) = self
             .namespace()
             .root
             .module
-            .resolve_call_path_and_mod_path(
+            .resolve_symbol_path_and_mod_path(
                 handler,
                 self.engines,
                 mod_path,
-                call_path,
+                symbol_path,
                 self.self_type,
             )?;
 
@@ -762,13 +762,13 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // In case there are no prefixes we don't need to check visibility
-        if call_path.prefixes.is_empty() {
+        if symbol_path.prefixes.is_empty() {
             return Ok(decl);
         }
 
-        // check the visibility of the call path elements
+        // check the visibility of the symbol path elements
         // we don't check the first prefix because direct children are always accessible
-        for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
+        for prefix in iter_prefixes(&symbol_path.prefixes).skip(1) {
             let module = self
                 .namespace()
                 .check_absolute_path_to_submodule(handler, prefix)?;
@@ -784,49 +784,49 @@ impl<'a> TypeCheckContext<'a> {
         // check the visibility of the symbol itself
         if !decl.visibility(self.engines.de()).is_public() {
             handler.emit_err(CompileError::ImportPrivateSymbol {
-                name: call_path.suffix.clone(),
-                span: call_path.suffix.span(),
+                name: symbol_path.suffix.clone(),
+                span: symbol_path.suffix.span(),
             });
         }
 
         Ok(decl)
     }
 
-    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+    pub(crate) fn resolve_qualified_symbol_path_with_visibility_check(
         &mut self,
         handler: &Handler,
-        qualified_call_path: &QualifiedCallPath,
+        qualified_symbol_path: &QualifiedSymbolPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+        self.resolve_qualified_symbol_path_with_visibility_check_and_modpath(
             handler,
             &self.namespace().mod_path.clone(),
-            qualified_call_path,
+            qualified_symbol_path,
         )
     }
 
-    pub(crate) fn resolve_qualified_call_path_with_visibility_check_and_modpath(
+    pub(crate) fn resolve_qualified_symbol_path_with_visibility_check_and_modpath(
         &mut self,
         handler: &Handler,
         mod_path: &Path,
-        qualified_call_path: &QualifiedCallPath,
+        qualified_symbol_path: &QualifiedSymbolPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let type_engine = self.engines().te();
-        if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
+        if let Some(qualified_path_root) = qualified_symbol_path.clone().qualified_path_root {
             let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
                 TypeInfo::Custom {
-                    qualified_call_path: call_path,
+                    qualified_symbol_path: symbol_path,
                     type_arguments,
                     ..
                 } => {
-                    let type_decl = self.resolve_call_path_with_visibility_check_and_modpath(
+                    let type_decl = self.resolve_symbol_path_with_visibility_check_and_modpath(
                         handler,
                         mod_path,
-                        &call_path.clone().to_call_path(handler)?,
+                        &symbol_path.clone().to_symbol_path(handler)?,
                     )?;
                     self.type_decl_opt_to_type_id(
                         handler,
                         Some(type_decl),
-                        call_path.clone(),
+                        symbol_path.clone(),
                         &qualified_path_root.ty.span(),
                         EnforceTypeArguments::No,
                         mod_path,
@@ -838,12 +838,12 @@ impl<'a> TypeCheckContext<'a> {
 
             let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
                 TypeInfo::Custom {
-                    qualified_call_path: call_path,
+                    qualified_symbol_path: symbol_path,
                     ..
                 } => Some(
-                    call_path
+                    symbol_path
                         .clone()
-                        .to_call_path(handler)?
+                        .to_symbol_path(handler)?
                         .to_fullpath(self.namespace()),
                 ),
                 _ => None,
@@ -852,19 +852,19 @@ impl<'a> TypeCheckContext<'a> {
             self.namespace()
                 .root
                 .module
-                .resolve_call_path_and_root_type_id(
+                .resolve_symbol_path_and_root_type_id(
                     handler,
                     self.engines,
                     root_type_id,
                     as_trait_opt,
-                    &qualified_call_path.call_path,
+                    &qualified_symbol_path.symbol_path,
                     self.self_type(),
                 )
         } else {
-            self.resolve_call_path_with_visibility_check_and_modpath(
+            self.resolve_symbol_path_with_visibility_check_and_modpath(
                 handler,
                 mod_path,
-                &qualified_call_path.call_path,
+                &qualified_symbol_path.symbol_path,
             )
         }
     }
@@ -874,7 +874,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         type_decl_opt: Option<TyDecl>,
-        call_path: QualifiedCallPath,
+        symbol_path: QualifiedSymbolPath,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         mod_path: &Path,
@@ -979,8 +979,8 @@ impl<'a> TypeCheckContext<'a> {
             }
             _ => {
                 let err = handler.emit_err(CompileError::UnknownTypeName {
-                    name: call_path.call_path.to_string(),
-                    span: call_path.call_path.span(),
+                    name: symbol_path.symbol_path.to_string(),
+                    span: symbol_path.symbol_path.span(),
                 });
                 type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
             }
@@ -1110,7 +1110,7 @@ impl<'a> TypeCheckContext<'a> {
             })
             .collect::<Vec<_>>();
 
-        let mut qualified_call_path = None;
+        let mut qualified_symbol_path = None;
         let matching_method_decl_ref = {
             // Case where multiple methods exist with the same name
             // This is the case of https://github.com/FuelLabs/sway/issues/3633
@@ -1133,7 +1133,7 @@ impl<'a> TypeCheckContext<'a> {
 
             if !maybe_method_decl_refs.is_empty() {
                 let mut trait_methods =
-                    HashMap::<(CallPath, Vec<WithEngines<TypeArgument>>), DeclRefFunction>::new();
+                    HashMap::<(SymbolPath, Vec<WithEngines<TypeArgument>>), DeclRefFunction>::new();
                 let mut impl_self_method = None;
                 for method_ref in maybe_method_decl_refs.clone() {
                     let method = decl_engine.get_function(&method_ref);
@@ -1144,16 +1144,16 @@ impl<'a> TypeCheckContext<'a> {
                         let mut skip_insert = false;
                         if let Some(as_trait) = as_trait {
                             if let TypeInfo::Custom {
-                                qualified_call_path: call_path,
+                                qualified_symbol_path: symbol_path,
                                 type_arguments,
                                 root_type_id: _,
                             } = &*type_engine.get(as_trait)
                             {
-                                qualified_call_path = Some(call_path.clone());
+                                qualified_symbol_path = Some(symbol_path.clone());
                                 // When `<S as Trait<T>>::method()` is used we only add methods to `trait_methods` that
                                 // originate from the qualified trait.
                                 if trait_decl.trait_name
-                                    == call_path.clone().to_call_path(handler)?
+                                    == symbol_path.clone().to_symbol_path(handler)?
                                 {
                                     let mut params_equal = true;
                                     if let Some(params) = type_arguments {
@@ -1224,7 +1224,7 @@ impl<'a> TypeCheckContext<'a> {
                         impl_self_method
                     } else {
                         fn to_string(
-                            trait_name: CallPath,
+                            trait_name: SymbolPath,
                             trait_type_args: Vec<WithEngines<TypeArgument>>,
                         ) -> String {
                             format!(
@@ -1260,7 +1260,7 @@ impl<'a> TypeCheckContext<'a> {
                             },
                         ));
                     }
-                } else if qualified_call_path.is_some() {
+                } else if qualified_symbol_path.is_some() {
                     // When we use a qualified path the expected method should be in trait_methods.
                     None
                 } else {
@@ -1303,11 +1303,11 @@ impl<'a> TypeCheckContext<'a> {
                 );
             }
 
-            let type_name = if let Some(call_path) = qualified_call_path {
+            let type_name = if let Some(symbol_path) = qualified_symbol_path {
                 format!(
                     "{} as {}",
                     self.engines.help_out(type_id),
-                    call_path.call_path
+                    symbol_path.symbol_path
                 )
             } else {
                 self.engines.help_out(type_id).to_string()
@@ -1403,7 +1403,7 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn insert_trait_implementation(
         &mut self,
         handler: &Handler,
-        trait_name: CallPath,
+        trait_name: SymbolPath,
         trait_type_args: Vec<TypeArgument>,
         type_id: TypeId,
         items: &[ty::TyImplItem],
@@ -1438,7 +1438,7 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn get_items_for_type_and_trait_name(
         &self,
         type_id: TypeId,
-        trait_name: &CallPath,
+        trait_name: &SymbolPath,
     ) -> Vec<ty::TyTraitItem> {
         self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, vec![])
     }
@@ -1446,7 +1446,7 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         &self,
         type_id: TypeId,
-        trait_name: &CallPath,
+        trait_name: &SymbolPath,
         trait_type_args: Vec<TypeArgument>,
     ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between

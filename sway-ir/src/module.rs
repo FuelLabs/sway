@@ -58,19 +58,23 @@ impl Module {
     pub fn add_global_constant(
         &self,
         context: &mut Context,
-        call_path: Vec<String>,
+        symbol_path: Vec<String>,
         const_val: Value,
     ) {
         context.modules[self.0]
             .global_constants
-            .insert(call_path, const_val);
+            .insert(symbol_path, const_val);
     }
 
     /// Get a named global constant value from this module, if found.
-    pub fn get_global_constant(&self, context: &Context, call_path: &Vec<String>) -> Option<Value> {
+    pub fn get_global_constant(
+        &self,
+        context: &Context,
+        symbol_path: &Vec<String>,
+    ) -> Option<Value> {
         context.modules[self.0]
             .global_constants
-            .get(call_path)
+            .get(symbol_path)
             .copied()
     }
 
@@ -78,23 +82,23 @@ impl Module {
     pub fn add_global_configurable(
         &self,
         context: &mut Context,
-        call_path: Vec<String>,
+        symbol_path: Vec<String>,
         config_val: Value,
     ) {
         context.modules[self.0]
             .global_configurable
-            .insert(call_path, config_val);
+            .insert(symbol_path, config_val);
     }
 
     /// Get a named global configurable value from this module, if found.
     pub fn get_global_configurable(
         &self,
         context: &Context,
-        call_path: &Vec<String>,
+        symbol_path: &Vec<String>,
     ) -> Option<Value> {
         context.modules[self.0]
             .global_configurable
-            .get(call_path)
+            .get(symbol_path)
             .copied()
     }
 

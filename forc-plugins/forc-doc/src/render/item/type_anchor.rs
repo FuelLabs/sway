@@ -57,7 +57,7 @@ pub(crate) fn render_type_anchor(
                     : decl_ref.name().clone().as_str();
                 })
             } else {
-                let module_info = ModuleInfo::from_call_path(&enum_decl.call_path);
+                let module_info = ModuleInfo::from_symbol_path(&enum_decl.symbol_path);
                 let file_name = format!("enum.{}.html", decl_ref.name().clone().as_str());
                 let href =
                     module_info.file_path_from_location(&file_name, current_module_info, false)?;
@@ -75,7 +75,7 @@ pub(crate) fn render_type_anchor(
                     : decl_ref.name().clone().as_str();
                 })
             } else {
-                let module_info = ModuleInfo::from_call_path(&struct_decl.call_path);
+                let module_info = ModuleInfo::from_symbol_path(&struct_decl.symbol_path);
                 let file_name = format!("struct.{}.html", decl_ref.name().clone().as_str());
                 let href =
                     module_info.file_path_from_location(&file_name, current_module_info, false)?;
@@ -119,10 +119,10 @@ pub(crate) fn render_type_anchor(
             }
         }
         TypeInfo::Custom {
-            qualified_call_path,
+            qualified_symbol_path,
             ..
         } => Ok(box_html! {
-            : qualified_call_path.call_path.suffix.as_str();
+            : qualified_symbol_path.symbol_path.suffix.as_str();
         }),
         TypeInfo::B256 => Ok(box_html! {
             : "b256";

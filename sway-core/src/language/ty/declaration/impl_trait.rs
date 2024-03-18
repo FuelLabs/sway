@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRefMixedInterface, engine_threading::*, language::CallPath, type_system::*,
+    decl_engine::DeclRefMixedInterface, engine_threading::*, language::SymbolPath, type_system::*,
 };
 
 use super::TyTraitItem;
@@ -14,7 +14,7 @@ pub type TyImplItem = TyTraitItem;
 #[derive(Clone, Debug)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
-    pub trait_name: CallPath,
+    pub trait_name: SymbolPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub items: Vec<TyImplItem>,
     pub trait_decl_ref: Option<DeclRefMixedInterface>,

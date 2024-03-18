@@ -55,14 +55,14 @@ impl ty::TyAstNode {
                     if let Some(submodule) = ctx
                         .namespace()
                         .module()
-                        .submodule(&[a.call_path[0].clone()])
+                        .submodule(&[a.symbol_path[0].clone()])
                     {
                         is_external = submodule.is_external;
                     }
                     let path = if is_external || a.is_absolute {
-                        a.call_path.clone()
+                        a.symbol_path.clone()
                     } else {
-                        ctx.namespace().find_module_path(&a.call_path)
+                        ctx.namespace().find_module_path(&a.symbol_path)
                     };
                     let _ = match a.import_type {
                         ImportType::Star => {
@@ -134,7 +134,7 @@ impl ty::TyAstNode {
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: a.alias,
-                            call_path: a.call_path,
+                            symbol_path: a.symbol_path,
                             span: a.span,
                             is_absolute: a.is_absolute,
                             import_type: a.import_type,

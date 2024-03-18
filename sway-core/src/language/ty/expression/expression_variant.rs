@@ -24,14 +24,14 @@ use crate::{
 pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
-        call_path: CallPath,
+        symbol_path: SymbolPath,
         arguments: Vec<(Ident, TyExpression)>,
         fn_ref: DeclRefFunction,
         selector: Option<ContractCallParams>,
         /// optional binding information for the LSP
         type_binding: Option<TypeBinding<()>>,
         /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
-        call_path_typeid: Option<TypeId>,
+        symbol_path_typeid: Option<TypeId>,
         /// This tracks whether monomorphization has been deferred between compiler stages.
         deferred_monomorphization: bool,
         contract_call_params: IndexMap<String, TyExpression>,
@@ -45,13 +45,13 @@ pub enum TyExpressionVariant {
     ConstantExpression {
         span: Span,
         const_decl: Box<TyConstantDecl>,
-        call_path: Option<CallPath>,
+        symbol_path: Option<SymbolPath>,
     },
     VariableExpression {
         name: Ident,
         span: Span,
         mutability: VariableMutability,
-        call_path: Option<CallPath>,
+        symbol_path: Option<SymbolPath>,
     },
     Tuple {
         fields: Vec<TyExpression>,
@@ -68,7 +68,7 @@ pub enum TyExpressionVariant {
         struct_ref: DeclRef<DeclId<TyStructDecl>>,
         fields: Vec<TyStructExpressionField>,
         instantiation_span: Span,
-        call_path_binding: TypeBinding<CallPath>,
+        symbol_path_binding: TypeBinding<SymbolPath>,
     },
     CodeBlock(TyCodeBlock),
     // a flag that this value will later be provided as a parameter, but is currently unknown
@@ -126,12 +126,12 @@ pub enum TyExpressionVariant {
         /// use these spans as it points to the call site and not the declaration.
         /// They are also used in the language server.
         variant_instantiation_span: Span,
-        call_path_binding: TypeBinding<CallPath>,
+        symbol_path_binding: TypeBinding<SymbolPath>,
         /// The enum type, can be a type alias.
-        call_path_decl: ty::TyDecl,
+        symbol_path_decl: ty::TyDecl,
     },
     AbiCast {
-        abi_name: CallPath,
+        abi_name: SymbolPath,
         address: Box<TyExpression>,
         #[allow(dead_code)]
         // this span may be used for errors in the future, although it is not right now.
@@ -150,7 +150,7 @@ pub enum TyExpressionVariant {
         exp: Box<TyExpression>,
         variant: TyEnumVariant,
         /// Should contain a TyDecl to either an enum or a type alias.
-        call_path_decl: ty::TyDecl,
+        symbol_path_decl: ty::TyDecl,
     },
     WhileLoop {
         condition: Box<TyExpression>,
@@ -176,13 +176,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
                 Self::FunctionApplication {
-                    call_path: l_name,
+                    symbol_path: l_name,
                     arguments: l_arguments,
                     fn_ref: l_fn_ref,
                     ..
                 },
                 Self::FunctionApplication {
-                    call_path: r_name,
+                    symbol_path: r_name,
                     arguments: r_arguments,
                     fn_ref: r_fn_ref,
                     ..
@@ -214,28 +214,28 @@ impl PartialEqWithEngines for TyExpressionVariant {
             }
             (
                 Self::ConstantExpression {
-                    call_path: l_call_path,
+                    symbol_path: l_symbol_path,
                     span: l_span,
                     const_decl: _,
                 },
                 Self::ConstantExpression {
-                    call_path: r_call_path,
+                    symbol_path: r_symbol_path,
                     span: r_span,
                     const_decl: _,
                 },
-            ) => l_call_path == r_call_path && l_span == r_span,
+            ) => l_symbol_path == r_symbol_path && l_span == r_span,
             (
                 Self::VariableExpression {
                     name: l_name,
                     span: l_span,
                     mutability: l_mutability,
-                    call_path: _,
+                    symbol_path: _,
                 },
                 Self::VariableExpression {
                     name: r_name,
                     span: r_span,
                     mutability: r_mutability,
-                    call_path: _,
+                    symbol_path: _,
                 },
             ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
@@ -266,13 +266,13 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     struct_ref: l_struct_ref,
                     fields: l_fields,
                     instantiation_span: l_span,
-                    call_path_binding: _,
+                    symbol_path_binding: _,
                 },
                 Self::StructExpression {
                     struct_ref: r_struct_ref,
                     fields: r_fields,
                     instantiation_span: r_span,
-                    call_path_binding: _,
+                    symbol_path_binding: _,
                 },
             ) => {
                 l_struct_ref.eq(r_struct_ref, engines)
@@ -402,12 +402,12 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::UnsafeDowncast {
                     exp: l_exp,
                     variant: l_variant,
-                    call_path_decl: _,
+                    symbol_path_decl: _,
                 },
                 Self::UnsafeDowncast {
                     exp: r_exp,
                     variant: r_variant,
-                    call_path_decl: _,
+                    symbol_path_decl: _,
                 },
             ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
             (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
@@ -438,7 +438,7 @@ impl HashWithEngines for TyExpressionVariant {
                 lit.hash(state);
             }
             Self::FunctionApplication {
-                call_path,
+                symbol_path,
                 arguments,
                 fn_ref,
                 // these fields are not hashed because they aren't relevant/a
@@ -446,11 +446,11 @@ impl HashWithEngines for TyExpressionVariant {
                 contract_call_params: _,
                 selector: _,
                 type_binding: _,
-                call_path_typeid: _,
+                symbol_path_typeid: _,
                 deferred_monomorphization: _,
                 ..
             } => {
-                call_path.hash(state);
+                symbol_path.hash(state);
                 fn_ref.hash(state, engines);
                 arguments.iter().for_each(|(name, arg)| {
                     name.hash(state);
@@ -465,7 +465,7 @@ impl HashWithEngines for TyExpressionVariant {
             Self::ConstantExpression {
                 const_decl,
                 span: _,
-                call_path: _,
+                symbol_path: _,
             } => {
                 const_decl.hash(state, engines);
             }
@@ -474,7 +474,7 @@ impl HashWithEngines for TyExpressionVariant {
                 mutability,
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
-                call_path: _,
+                symbol_path: _,
                 span: _,
             } => {
                 name.hash(state);
@@ -499,7 +499,7 @@ impl HashWithEngines for TyExpressionVariant {
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 instantiation_span: _,
-                call_path_binding: _,
+                symbol_path_binding: _,
             } => {
                 struct_ref.hash(state, engines);
                 fields.hash(state, engines);
@@ -574,8 +574,8 @@ impl HashWithEngines for TyExpressionVariant {
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 variant_instantiation_span: _,
-                call_path_binding: _,
-                call_path_decl: _,
+                symbol_path_binding: _,
+                symbol_path_decl: _,
             } => {
                 enum_ref.hash(state, engines);
                 variant_name.hash(state);
@@ -609,7 +609,7 @@ impl HashWithEngines for TyExpressionVariant {
             Self::UnsafeDowncast {
                 exp,
                 variant,
-                call_path_decl: _,
+                symbol_path_decl: _,
             } => {
                 exp.hash(state, engines);
                 variant.hash(state, engines);
@@ -643,7 +643,7 @@ impl SubstTypes for TyExpressionVariant {
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
-                ref mut call_path_typeid,
+                ref mut symbol_path_typeid,
                 ..
             } => {
                 arguments
@@ -653,8 +653,8 @@ impl SubstTypes for TyExpressionVariant {
                     .clone()
                     .subst_types_and_insert_new_with_parent(type_mapping, engines);
                 fn_ref.replace_id(*new_decl_ref.id());
-                if let Some(call_path_typeid) = call_path_typeid {
-                    call_path_typeid.subst(type_mapping, engines);
+                if let Some(symbol_path_typeid) = symbol_path_typeid {
+                    symbol_path_typeid.subst(type_mapping, engines);
                 }
             }
             LazyOperator { lhs, rhs, .. } => {
@@ -685,7 +685,7 @@ impl SubstTypes for TyExpressionVariant {
                 struct_ref,
                 fields,
                 instantiation_span: _,
-                call_path_binding: _,
+                symbol_path_binding: _,
             } => {
                 let new_struct_ref = struct_ref
                     .clone()
@@ -762,7 +762,7 @@ impl SubstTypes for TyExpressionVariant {
             UnsafeDowncast {
                 exp,
                 variant,
-                call_path_decl: _,
+                symbol_path_decl: _,
             } => {
                 exp.subst(type_mapping, engines);
                 variant.subst(type_mapping, engines);
@@ -911,7 +911,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     struct_ref: _,
                     fields,
                     instantiation_span: _,
-                    call_path_binding: _,
+                    symbol_path_binding: _,
                 } => {
                     let mut has_changes = false;
                     for field in fields.iter_mut() {
@@ -1415,7 +1415,7 @@ impl DebugWithEngines for TyExpressionVariant {
         let s = match self {
             TyExpressionVariant::Literal(lit) => format!("literal {lit}"),
             TyExpressionVariant::FunctionApplication {
-                call_path: name, ..
+                symbol_path: name, ..
             } => {
                 format!("\"{}\" fn entry", name.suffix.as_str())
             }
@@ -1497,12 +1497,12 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::UnsafeDowncast {
                 exp,
                 variant,
-                call_path_decl,
+                symbol_path_decl,
             } => {
                 format!(
                     "({:?} as {}::{})",
                     engines.help_out(exp.return_type),
-                    engines.help_out(call_path_decl),
+                    engines.help_out(symbol_path_decl),
                     variant.name
                 )
             }

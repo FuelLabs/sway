@@ -6,7 +6,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Span};
 
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::CallPath,
+    decl_engine::DeclEngine, engine_threading::*, language::SymbolPath,
     semantic_analysis::type_check_context::EnforceTypeArguments,
     semantic_analysis::TypeCheckContext, type_system::priv_prelude::*, types::*,
 };
@@ -141,25 +141,30 @@ impl TypeId {
         match (&*type_engine.get(self), &*type_engine.get(resolved_type_id)) {
             (
                 TypeInfo::Custom {
-                    qualified_call_path: call_path,
+                    qualified_symbol_path: symbol_path,
                     ..
                 },
                 TypeInfo::Enum(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_enum(decl_ref).call_path.suffix,
+            ) => {
+                symbol_path.symbol_path.suffix != decl_engine.get_enum(decl_ref).symbol_path.suffix
+            }
             (
                 TypeInfo::Custom {
-                    qualified_call_path: call_path,
+                    qualified_symbol_path: symbol_path,
                     ..
                 },
                 TypeInfo::Struct(decl_ref),
-            ) => call_path.call_path.suffix != decl_engine.get_struct(decl_ref).call_path.suffix,
+            ) => {
+                symbol_path.symbol_path.suffix
+                    != decl_engine.get_struct(decl_ref).symbol_path.suffix
+            }
             (
                 TypeInfo::Custom {
-                    qualified_call_path: call_path,
+                    qualified_symbol_path: symbol_path,
                     ..
                 },
                 TypeInfo::Alias { name, .. },
-            ) => call_path.call_path.suffix != name.clone(),
+            ) => symbol_path.symbol_path.suffix != name.clone(),
             (TypeInfo::Custom { .. }, _) => true,
             _ => false,
         }
@@ -308,7 +313,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Custom {
-                qualified_call_path: _,
+                qualified_symbol_path: _,
                 type_arguments,
                 root_type_id: _,
             } => {
@@ -507,7 +512,7 @@ impl TypeId {
                     trait_constraints, ..
                 } = &*structure_type_info
                 {
-                    let mut generic_trait_constraints_trait_names: Vec<CallPath<BaseIdent>> =
+                    let mut generic_trait_constraints_trait_names: Vec<SymbolPath<BaseIdent>> =
                         vec![];
                     for trait_constraint in trait_constraints.iter() {
                         generic_trait_constraints_trait_names

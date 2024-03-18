@@ -11,7 +11,7 @@ pub enum ImportType {
 /// A [UseStatement] is a statement that imports something from a module into the local namespace.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseStatement {
-    pub call_path: Vec<Ident>,
+    pub symbol_path: Vec<Ident>,
     pub span: Span,
     pub import_type: ImportType,
     // If `is_absolute` is true, then this use statement is an absolute path from

@@ -31,7 +31,7 @@ pub struct Expression {
 
 #[derive(Debug, Clone)]
 pub struct FunctionApplicationExpression {
-    pub call_path_binding: TypeBinding<CallPath>,
+    pub symbol_path_binding: TypeBinding<SymbolPath>,
     pub arguments: Vec<Expression>,
 }
 
@@ -57,7 +57,7 @@ pub struct ArrayExpression {
 
 #[derive(Debug, Clone)]
 pub struct StructExpression {
-    pub call_path_binding: TypeBinding<CallPath>,
+    pub symbol_path_binding: TypeBinding<SymbolPath>,
     pub fields: Vec<StructExpressionField>,
 }
 
@@ -191,13 +191,13 @@ impl DebugWithEngines for QualifiedPathRootTypes {
 #[derive(Debug, Clone)]
 pub struct AmbiguousPathExpression {
     pub qualified_path_root: Option<QualifiedPathRootTypes>,
-    pub call_path_binding: TypeBinding<CallPath<AmbiguousSuffix>>,
+    pub symbol_path_binding: TypeBinding<SymbolPath<AmbiguousSuffix>>,
     pub args: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
-    pub call_path_binding: TypeBinding<QualifiedCallPath>,
+    pub symbol_path_binding: TypeBinding<QualifiedSymbolPath>,
     /// When args is equal to Option::None then it means that the
     /// [DelineatedPathExpression] was initialized from an expression
     /// that does not end with parenthesis.
@@ -206,7 +206,7 @@ pub struct DelineatedPathExpression {
 
 #[derive(Debug, Clone)]
 pub struct AbiCastExpression {
-    pub abi_name: CallPath,
+    pub abi_name: SymbolPath,
     pub address: Box<Expression>,
 }
 

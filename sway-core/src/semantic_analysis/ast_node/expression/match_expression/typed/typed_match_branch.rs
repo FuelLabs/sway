@@ -606,7 +606,7 @@ fn instantiate_branch_condition_result_var_declarations_and_matched_or_variant_i
                     type_id: var_body.return_type,
                     initial_type_id: var_body.return_type,
                     span: var_body.span.clone(), // Although not needed, this span can be mapped to var declaration.
-                    call_path_tree: None,
+                    symbol_path_tree: None,
                 })
                 .collect();
             let tuple_type = type_engine.insert(

@@ -62,7 +62,7 @@ pub(crate) fn type_check_method_application(
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let (original_decl_ref, call_path_typeid) = resolve_method_name(
+    let (original_decl_ref, symbol_path_typeid) = resolve_method_name(
         handler,
         ctx.by_ref(),
         &method_name_binding,
@@ -311,37 +311,37 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    // retrieve the function call path
-    let call_path = match method_name_binding.inner.clone() {
+    // retrieve the function symbol path
+    let symbol_path = match method_name_binding.inner.clone() {
         MethodName::FromType {
-            call_path_binding,
+            symbol_path_binding,
             method_name,
         } => {
-            let mut prefixes = call_path_binding.inner.prefixes;
-            prefixes.push(match &call_path_binding.inner.suffix {
+            let mut prefixes = symbol_path_binding.inner.prefixes;
+            prefixes.push(match &symbol_path_binding.inner.suffix {
                 (
                     TypeInfo::Custom {
-                        qualified_call_path: call_path,
+                        qualified_symbol_path: symbol_path,
                         ..
                     },
                     ..,
-                ) => call_path.call_path.clone().suffix,
+                ) => symbol_path.symbol_path.clone().suffix,
                 (_, ident) => ident.clone(),
             });
 
-            CallPath {
+            SymbolPath {
                 prefixes,
                 suffix: method_name,
-                is_absolute: call_path_binding.inner.is_absolute,
+                is_absolute: symbol_path_binding.inner.is_absolute,
             }
         }
-        MethodName::FromModule { method_name } => CallPath {
+        MethodName::FromModule { method_name } => SymbolPath {
             prefixes: vec![],
             suffix: method_name,
             is_absolute: false,
         },
-        MethodName::FromTrait { call_path } => call_path,
-        MethodName::FromQualifiedPathRoot { method_name, .. } => CallPath {
+        MethodName::FromTrait { symbol_path } => symbol_path,
+        MethodName::FromQualifiedPathRoot { method_name, .. } => SymbolPath {
             prefixes: vec![],
             suffix: method_name,
             is_absolute: false,
@@ -359,7 +359,7 @@ pub(crate) fn type_check_method_application(
                 Some(address) => address,
                 None => {
                     return Err(handler.emit_err(CompileError::ContractAddressMustBeKnown {
-                        span: call_path.span(),
+                        span: symbol_path.span(),
                     }));
                 }
             },
@@ -392,7 +392,7 @@ pub(crate) fn type_check_method_application(
         handler,
         args_buf.len(),
         &method,
-        &call_path,
+        &symbol_path,
         is_method_call_syntax_used,
     )?;
 
@@ -426,7 +426,7 @@ pub(crate) fn type_check_method_application(
                             type_id,
                             initial_type_id: type_id,
                             span: Span::dummy(),
-                            call_path_tree: None,
+                            symbol_path_tree: None,
                         })
                         .collect(),
                 ),
@@ -435,8 +435,8 @@ pub(crate) fn type_check_method_application(
             Expression {
                 kind: ExpressionKind::FunctionApplication(Box::new(
                     FunctionApplicationExpression {
-                        call_path_binding: TypeBinding {
-                            inner: CallPath {
+                        symbol_path_binding: TypeBinding {
+                            inner: SymbolPath {
                                 prefixes: vec![],
                                 suffix: Ident::new_no_span("contract_call".into()),
                                 is_absolute: false,
@@ -446,13 +446,13 @@ pub(crate) fn type_check_method_application(
                                     type_id: return_type,
                                     initial_type_id: return_type,
                                     span: Span::dummy(),
-                                    call_path_tree: None,
+                                    symbol_path_tree: None,
                                 },
                                 TypeArgument {
                                     type_id: tuple_args_type_id,
                                     initial_type_id: tuple_args_type_id,
                                     span: Span::dummy(),
-                                    call_path_tree: None,
+                                    symbol_path_tree: None,
                                 },
                             ]),
                             span: Span::dummy(),
@@ -541,12 +541,12 @@ pub(crate) fn type_check_method_application(
     }
 
     let mut fn_app = ty::TyExpressionVariant::FunctionApplication {
-        call_path: call_path.clone(),
+        symbol_path: symbol_path.clone(),
         arguments,
         fn_ref: original_decl_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
-        call_path_typeid: Some(call_path_typeid),
+        symbol_path_typeid: Some(symbol_path_typeid),
         deferred_monomorphization: ctx.defer_monomorphization(),
         contract_call_params: contract_call_params_map,
         contract_caller: None,
@@ -622,11 +622,11 @@ pub(crate) fn resolve_method_name(
     // retrieve the function declaration using the components of the method name
     let (decl_ref, type_id) = match &method_name.inner {
         MethodName::FromType {
-            call_path_binding,
+            symbol_path_binding,
             method_name,
         } => {
-            // type check the call path
-            let type_id = call_path_binding
+            // type check the symbol path
+            let type_id = symbol_path_binding
                 .type_check_with_type_info(handler, &mut ctx)
                 .unwrap_or_else(|err| {
                     type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
@@ -635,7 +635,7 @@ pub(crate) fn resolve_method_name(
             // find the module that the symbol is in
             let type_info_prefix = ctx
                 .namespace()
-                .find_module_path(&call_path_binding.inner.prefixes);
+                .find_module_path(&symbol_path_binding.inner.prefixes);
             ctx.namespace()
                 .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
 
@@ -653,12 +653,12 @@ pub(crate) fn resolve_method_name(
 
             (decl_ref, type_id)
         }
-        MethodName::FromTrait { call_path } => {
+        MethodName::FromTrait { symbol_path } => {
             // find the module that the symbol is in
-            let module_path = if !call_path.is_absolute {
-                ctx.namespace().find_module_path(&call_path.prefixes)
+            let module_path = if !symbol_path.is_absolute {
+                ctx.namespace().find_module_path(&symbol_path.prefixes)
             } else {
-                let mut module_path = call_path.prefixes.clone();
+                let mut module_path = symbol_path.prefixes.clone();
                 if let (Some(root_mod), Some(root_name)) = (
                     module_path.first().cloned(),
                     ctx.namespace().root_module_name().clone(),
@@ -681,7 +681,7 @@ pub(crate) fn resolve_method_name(
                 handler,
                 type_id,
                 &module_path,
-                &call_path.suffix,
+                &symbol_path.suffix,
                 ctx.type_annotation(),
                 &arguments_types,
                 None,
@@ -719,7 +719,7 @@ pub(crate) fn resolve_method_name(
             as_trait,
             method_name,
         } => {
-            // type check the call path
+            // type check the symbol path
             let type_id = ty.type_id;
             let type_info_prefix = vec![];
 
@@ -749,10 +749,10 @@ pub(crate) fn monomorphize_method_application(
 ) -> Result<(), ErrorEmitted> {
     if let ty::TyExpressionVariant::FunctionApplication {
         ref mut fn_ref,
-        ref call_path,
+        ref symbol_path,
         ref mut arguments,
         ref mut type_binding,
-        call_path_typeid,
+        symbol_path_typeid,
         ..
     } = expr
     {
@@ -785,11 +785,12 @@ pub(crate) fn monomorphize_method_application(
                     let mut names_index = HashMap::<Ident, usize>::new();
                     for (index, t_arg) in type_arguments.iter().enumerate() {
                         if let TypeInfo::Custom {
-                            qualified_call_path,
+                            qualified_symbol_path,
                             ..
                         } = &*type_engine.get(t_arg.initial_type_id)
                         {
-                            names_index.insert(qualified_call_path.call_path.suffix.clone(), index);
+                            names_index
+                                .insert(qualified_symbol_path.symbol_path.suffix.clone(), index);
                         }
                     }
                     let implementing_type_parameters =
@@ -807,7 +808,7 @@ pub(crate) fn monomorphize_method_application(
                                                 engines,
                                                 p.type_id,
                                                 impl_type_param.type_id,
-                                                &call_path.span(),
+                                                &symbol_path.span(),
                                                 "Function type parameter does not match up with implementing type type parameter.",
                                                 None,
                                             );
@@ -833,27 +834,27 @@ pub(crate) fn monomorphize_method_application(
                 engines,
                 method.return_type.type_id,
                 ctx.type_annotation(),
-                &call_path.span(),
+                &symbol_path.span(),
                 "Function return type does not match up with local type annotation.",
                 None,
             );
             Ok(())
         })?;
 
-        // This handles the case of substituting the generic blanket type by call_path_typeid.
+        // This handles the case of substituting the generic blanket type by symbol_path_typeid.
         if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
-                qualified_call_path,
+                qualified_symbol_path,
                 type_arguments: _,
                 root_type_id: _,
             } = &*type_engine.get(t.initial_type_id)
             {
                 for p in method.type_parameters.clone() {
-                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                    if p.name_ident.as_str() == qualified_symbol_path.symbol_path.suffix.as_str() {
                         let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
                             vec![t.initial_type_id],
-                            vec![call_path_typeid.unwrap()],
+                            vec![symbol_path_typeid.unwrap()],
                         );
                         method.subst(&type_subst, engines);
                     }
@@ -869,7 +870,7 @@ pub(crate) fn monomorphize_method_application(
             ctx.by_ref(),
             &method.type_parameters,
             method.name.as_str(),
-            &call_path.span(),
+            &symbol_path.span(),
         )?;
 
         if !ctx.defer_monomorphization() {

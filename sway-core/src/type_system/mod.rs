@@ -10,7 +10,7 @@ mod unify;
 use std::ops::Deref;
 
 #[cfg(test)]
-use crate::language::CallPath;
+use crate::language::SymbolPath;
 #[cfg(test)]
 use crate::{language::ty::TyEnumDecl, transform::AttributesMap};
 pub use priv_prelude::*;
@@ -74,16 +74,16 @@ fn generic_enum_resolution() {
             type_id: placeholder_type,
             initial_type_id: placeholder_type,
             span: sp.clone(),
-            call_path_tree: None,
+            symbol_path_tree: None,
         },
         span: sp.clone(),
         attributes: transform::AttributesMap::default(),
     }];
 
-    let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
-    call_path.is_absolute = true;
+    let mut symbol_path: SymbolPath<BaseIdent> = result_name.clone().into();
+    symbol_path.is_absolute = true;
     let decl_ref_1 = engines.de().insert(TyEnumDecl {
-        call_path,
+        symbol_path,
         type_parameters: vec![placeholder_type_param],
         variants: variant_types,
         span: sp.clone(),
@@ -107,7 +107,7 @@ fn generic_enum_resolution() {
             type_id: boolean_type,
             initial_type_id: boolean_type,
             span: sp.clone(),
-            call_path_tree: None,
+            symbol_path_tree: None,
         },
         span: sp.clone(),
         attributes: transform::AttributesMap::default(),
@@ -121,10 +121,10 @@ fn generic_enum_resolution() {
         is_from_parent: false,
     };
 
-    let mut call_path: CallPath<BaseIdent> = result_name.into();
-    call_path.is_absolute = true;
+    let mut symbol_path: SymbolPath<BaseIdent> = result_name.into();
+    symbol_path.is_absolute = true;
     let decl_ref_2 = engines.de().insert(TyEnumDecl {
-        call_path,
+        symbol_path,
         type_parameters: vec![type_param],
         variants: variant_types.clone(),
         span: sp.clone(),
@@ -143,7 +143,7 @@ fn generic_enum_resolution() {
 
     if let TypeInfo::Enum(decl_ref_1) = &*engines.te().get(ty_1) {
         let decl = engines.de().get_enum(decl_ref_1);
-        assert_eq!(decl.call_path.suffix.as_str(), "Result");
+        assert_eq!(decl.symbol_path.suffix.as_str(), "Result");
         assert!(matches!(
             &*engines.te().get(variant_types[0].type_argument.type_id),
             TypeInfo::Boolean
