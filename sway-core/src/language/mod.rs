@@ -1,5 +1,5 @@
 mod asm;
-mod call_path;
+mod symbol_path;
 mod inline;
 mod lazy_op;
 pub mod lexed;
@@ -12,7 +12,7 @@ pub mod ty;
 mod visibility;
 
 pub use asm::*;
-pub use call_path::*;
+pub use symbol_path::*;
 pub use inline::*;
 pub use lazy_op::*;
 pub use literal::*;
