@@ -643,7 +643,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
                     run_config_with_new_encoding.experimental.new_encoding = true;
                     with_new_encoding.run_config = run_config_with_new_encoding;
 
-                    vec![t, with_new_encoding]
+                    vec![with_new_encoding]
                 } else {
                     vec![t]
                 }
