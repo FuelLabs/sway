@@ -3,7 +3,7 @@ use sway_types::{ident::Ident, Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TyUseStatement {
-    pub call_path: Vec<Ident>,
+    pub symbol_path: Vec<Ident>,
     pub span: Span,
     pub import_type: parsed::ImportType,
     // If `is_absolute` is true, then this use statement is an absolute path from

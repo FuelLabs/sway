@@ -17,7 +17,7 @@ pub(crate) fn instantiate_function_application(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     function_decl_ref: DeclRefFunction,
-    call_path_binding: TypeBinding<CallPath>,
+    symbol_path_binding: TypeBinding<SymbolPath>,
     arguments: Option<Vec<Expression>>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -28,8 +28,8 @@ pub(crate) fn instantiate_function_application(
     if arguments.is_none() {
         return Err(
             handler.emit_err(CompileError::MissingParenthesesForFunction {
-                method_name: call_path_binding.inner.suffix.clone(),
-                span: call_path_binding.inner.span(),
+                method_name: symbol_path_binding.inner.suffix.clone(),
+                span: symbol_path_binding.inner.span(),
             }),
         );
     }
@@ -39,7 +39,7 @@ pub(crate) fn instantiate_function_application(
     if !ctx.purity().can_call(function_decl.purity) {
         handler.emit_err(CompileError::StorageAccessMismatch {
             attrs: promote_purity(ctx.purity(), function_decl.purity).to_attribute_syntax(),
-            span: call_path_binding.span(),
+            span: symbol_path_binding.span(),
         });
     }
 
@@ -48,7 +48,7 @@ pub(crate) fn instantiate_function_application(
         handler,
         arguments.len(),
         &function_decl,
-        &call_path_binding.inner,
+        &symbol_path_binding.inner,
         false,
     )?;
 
@@ -70,7 +70,7 @@ pub(crate) fn instantiate_function_application(
         ctx.by_ref(),
         &function_decl.type_parameters,
         function_decl.name.as_str(),
-        &call_path_binding.span(),
+        &symbol_path_binding.span(),
     )?;
 
     function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
@@ -81,12 +81,12 @@ pub(crate) fn instantiate_function_application(
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
-            call_path: call_path_binding.inner.clone(),
+            symbol_path: symbol_path_binding.inner.clone(),
             arguments: typed_arguments_with_names,
             fn_ref: new_decl_ref,
             selector: None,
-            type_binding: Some(call_path_binding.strip_inner()),
-            call_path_typeid: None,
+            type_binding: Some(symbol_path_binding.strip_inner()),
+            symbol_path_typeid: None,
             deferred_monomorphization: false,
             contract_call_params: IndexMap::new(),
             contract_caller: None,
@@ -185,7 +185,7 @@ pub(crate) fn check_function_arguments_arity(
     handler: &Handler,
     arguments_len: usize,
     function_decl: &ty::TyFunctionDecl,
-    call_path: &CallPath,
+    symbol_path: &SymbolPath,
     is_method_call_syntax_used: bool,
 ) -> Result<(), ErrorEmitted> {
     // if is_method_call_syntax_used then we have the guarantee
@@ -199,7 +199,7 @@ pub(crate) fn check_function_arguments_arity(
         std::cmp::Ordering::Equal => Ok(()),
         std::cmp::Ordering::Less => {
             Err(handler.emit_err(CompileError::TooFewArgumentsForFunction {
-                span: call_path.span(),
+                span: symbol_path.span(),
                 method_name: function_decl.name.clone(),
                 dot_syntax_used: is_method_call_syntax_used,
                 expected,
@@ -208,7 +208,7 @@ pub(crate) fn check_function_arguments_arity(
         }
         std::cmp::Ordering::Greater => {
             Err(handler.emit_err(CompileError::TooManyArgumentsForFunction {
-                span: call_path.span(),
+                span: symbol_path.span(),
                 method_name: function_decl.name.clone(),
                 dot_syntax_used: is_method_call_syntax_used,
                 expected,

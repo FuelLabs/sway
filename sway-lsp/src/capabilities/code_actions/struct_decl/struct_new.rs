@@ -17,7 +17,7 @@ pub(crate) struct StructNewCodeAction<'a> {
 
 impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
     fn decl_name(&self) -> String {
-        self.decl.call_path.suffix.to_string()
+        self.decl.symbol_path.suffix.to_string()
     }
 }
 

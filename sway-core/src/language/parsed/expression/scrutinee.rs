@@ -1,5 +1,5 @@
 use crate::{
-    language::{CallPath, Literal},
+    language::{Literal, SymbolPath},
     TypeInfo,
 };
 
@@ -29,12 +29,12 @@ pub enum Scrutinee {
     },
     AmbiguousSingleIdent(Ident),
     StructScrutinee {
-        struct_name: CallPath,
+        struct_name: SymbolPath,
         fields: Vec<StructScrutineeField>,
         span: Span,
     },
     EnumScrutinee {
-        call_path: CallPath,
+        symbol_path: SymbolPath,
         value: Box<Scrutinee>,
         span: Span,
     },
@@ -87,7 +87,7 @@ impl Scrutinee {
     ///
     /// ```ignore
     /// Scrutinee::EnumScrutinee {
-    ///   call_path: CallPath {
+    ///   symbol_path: CallPath {
     ///     prefixes: ["Data"]
     ///     suffix: "A"
     ///   },
@@ -140,7 +140,7 @@ impl Scrutinee {
                 ..
             } => {
                 let name = vec![TypeInfo::Custom {
-                    qualified_call_path: struct_name.clone().into(),
+                    qualified_symbol_path: struct_name.clone().into(),
                     type_arguments: None,
                     root_type_id: None,
                 }];
@@ -157,11 +157,11 @@ impl Scrutinee {
                 [name, fields].concat()
             }
             Scrutinee::EnumScrutinee {
-                call_path, value, ..
+                symbol_path, value, ..
             } => {
-                let enum_name = call_path.prefixes.last().unwrap_or(&call_path.suffix);
+                let enum_name = symbol_path.prefixes.last().unwrap_or(&symbol_path.suffix);
                 let name = vec![TypeInfo::Custom {
-                    qualified_call_path: enum_name.clone().into(),
+                    qualified_symbol_path: enum_name.clone().into(),
                     type_arguments: None,
                     root_type_id: None,
                 }];

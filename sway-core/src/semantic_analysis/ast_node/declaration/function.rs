@@ -11,7 +11,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, TyCodeBlock, TyFunctionDecl},
-        CallPath, Visibility,
+        SymbolPath, Visibility,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
@@ -140,7 +140,7 @@ impl ty::TyFunctionDecl {
                     )
                 };
 
-                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace());
+                let symbol_path = SymbolPath::from(name.clone()).to_fullpath(ctx.namespace());
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
@@ -149,7 +149,7 @@ impl ty::TyFunctionDecl {
                     implementing_type: None,
                     implementing_for_typeid,
                     span: span.clone(),
-                    call_path,
+                    symbol_path,
                     attributes: attributes.clone(),
                     return_type,
                     type_parameters: new_type_parameters,
@@ -314,7 +314,7 @@ fn test_function_selector_behavior() {
         body: ty::TyCodeBlock::default(),
         parameters: vec![],
         span: Span::dummy(),
-        call_path: CallPath::from(Ident::dummy()),
+        symbol_path: SymbolPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],
@@ -369,12 +369,12 @@ fn test_function_selector_behavior() {
                         None,
                     ),
                     span: Span::dummy(),
-                    call_path_tree: None,
+                    symbol_path_tree: None,
                 },
             },
         ],
         span: Span::dummy(),
-        call_path: CallPath::from(Ident::dummy()),
+        symbol_path: SymbolPath::from(Ident::dummy()),
         attributes: Default::default(),
         return_type: TypeId::from(0).into(),
         type_parameters: vec![],

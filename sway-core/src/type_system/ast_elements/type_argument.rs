@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelude::*};
+use crate::{engine_threading::*, language::SymbolPathTree, type_system::priv_prelude::*};
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
@@ -7,7 +7,7 @@ pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,
     pub span: Span,
-    pub call_path_tree: Option<CallPathTree>,
+    pub symbol_path_tree: Option<SymbolPathTree>,
 }
 
 impl From<TypeId> for TypeArgument {
@@ -16,7 +16,7 @@ impl From<TypeId> for TypeArgument {
             type_id,
             initial_type_id: type_id,
             span: Span::dummy(),
-            call_path_tree: None,
+            symbol_path_tree: None,
         }
     }
 }
@@ -35,7 +35,7 @@ impl HashWithEngines for TypeArgument {
             // reliable source of obj v. obj distinction
             initial_type_id: _,
             span: _,
-            call_path_tree: _,
+            symbol_path_tree: _,
         } = self;
         let type_engine = engines.te();
         type_engine.get(*type_id).hash(state, engines);
@@ -61,7 +61,7 @@ impl OrdWithEngines for TypeArgument {
             // reliable source of obj v. obj distinction
             initial_type_id: _,
             span: _,
-            call_path_tree: _,
+            symbol_path_tree: _,
         } = self;
         let TypeArgument {
             type_id: rti,
@@ -69,7 +69,7 @@ impl OrdWithEngines for TypeArgument {
             // reliable source of obj v. obj distinction
             initial_type_id: _,
             span: _,
-            call_path_tree: _,
+            symbol_path_tree: _,
         } = other;
         if lti == rti {
             return Ordering::Equal;
@@ -100,7 +100,7 @@ impl From<&TypeParameter> for TypeArgument {
             type_id: type_param.type_id,
             initial_type_id: type_param.initial_type_id,
             span: type_param.name_ident.span(),
-            call_path_tree: None,
+            symbol_path_tree: None,
         }
     }
 }

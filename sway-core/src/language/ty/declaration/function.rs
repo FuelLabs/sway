@@ -8,7 +8,7 @@ use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
-    language::{parsed::FunctionDeclarationKind, CallPath},
+    language::{parsed::FunctionDeclarationKind, SymbolPath},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform::AttributeKind,
 };
@@ -44,7 +44,7 @@ pub struct TyFunctionDecl {
     pub implementing_type: Option<TyDecl>,
     pub implementing_for_typeid: Option<TypeId>,
     pub span: Span,
-    pub call_path: CallPath,
+    pub symbol_path: SymbolPath,
     pub attributes: transform::AttributesMap,
     pub type_parameters: Vec<TypeParameter>,
     pub return_type: TypeArgument,
@@ -174,7 +174,7 @@ impl HashWithEngines for TyFunctionDecl {
             purity,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
-            call_path: _,
+            symbol_path: _,
             span: _,
             attributes: _,
             implementing_type: _,
@@ -325,7 +325,7 @@ impl TyFunctionDecl {
             implementing_type: None,
             implementing_for_typeid: None,
             span: span.clone(),
-            call_path: CallPath::from(Ident::dummy()),
+            symbol_path: SymbolPath::from(Ident::dummy()),
             attributes: Default::default(),
             is_contract_call: false,
             parameters: Default::default(),

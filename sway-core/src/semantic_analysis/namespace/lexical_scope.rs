@@ -4,7 +4,7 @@ use crate::{
     language::{
         parsed::Declaration,
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
-        CallPath,
+        SymbolPath,
     },
     namespace::*,
     semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
@@ -320,7 +320,7 @@ impl Items {
             .get_impl_spans_for_type(engines, type_id)
     }
 
-    pub fn get_impl_spans_for_trait_name(&self, trait_name: &CallPath) -> Vec<Span> {
+    pub fn get_impl_spans_for_trait_name(&self, trait_name: &SymbolPath) -> Vec<Span> {
         self.implemented_traits
             .get_impl_spans_for_trait_name(trait_name)
     }
@@ -408,7 +408,7 @@ impl Items {
                             if is_public_struct_access && struct_field.is_private() {
                                 return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
                                     field_name: field_name.into(),
-                                    struct_name: struct_decl.call_path.suffix.clone(),
+                                    struct_name: struct_decl.symbol_path.suffix.clone(),
                                     field_decl_span: struct_field.name.span(),
                                     struct_can_be_changed,
                                     usage_context: StructFieldUsageContext::StructFieldAccess,
@@ -423,7 +423,7 @@ impl Items {
                                 available_fields: struct_decl
                                     .accessible_fields_names(is_public_struct_access),
                                 is_public_struct_access,
-                                struct_name: struct_decl.call_path.suffix.clone(),
+                                struct_name: struct_decl.symbol_path.suffix.clone(),
                                 struct_decl_span: struct_decl.span(),
                                 struct_is_empty: struct_decl.is_empty(),
                                 usage_context: StructFieldUsageContext::StructFieldAccess,

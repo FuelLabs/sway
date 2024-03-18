@@ -3,7 +3,7 @@ use crate::{
     engine_threading::*,
     language::{
         ty::{self},
-        CallPath,
+        SymbolPath,
     },
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
@@ -247,7 +247,7 @@ impl TypeParameter {
     ) -> Vec<TraitConstraint> {
         match ctx
             .namespace()
-            .resolve_call_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
+            .resolve_symbol_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -535,7 +535,7 @@ fn handle_trait(
     handler: &Handler,
     ctx: &TypeCheckContext,
     type_id: TypeId,
-    trait_name: &CallPath,
+    trait_name: &SymbolPath,
     type_arguments: &[TypeArgument],
     function_name: &str,
     access_span: Span,
@@ -551,7 +551,7 @@ fn handle_trait(
         match ctx
             .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_symbol_path(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -595,9 +595,9 @@ fn handle_trait(
                     .get_traits_by_name(&trait_name.suffix)
                     .iter()
                     .map(|trait_decl| {
-                        // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace());
-                        if import_path == trait_decl.call_path {
+                        // In the case of an internal library, always add :: to the candidate symbol path.
+                        let import_path = trait_decl.symbol_path.to_import_path(ctx.namespace());
+                        if import_path == trait_decl.symbol_path {
                             // If external library.
                             import_path.to_string()
                         } else {

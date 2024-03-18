@@ -45,7 +45,7 @@ pub fn inlay_hints(
             let token = item.value();
             token.typed.as_ref().and_then(|t| match t {
                 TypedAstToken::TypedDeclaration(TyDecl::VariableDecl(var_decl)) => {
-                    match var_decl.type_ascription.call_path_tree {
+                    match var_decl.type_ascription.symbol_path_tree {
                         Some(_) => None,
                         None => {
                             let var_range = get_range_from_span(&var_decl.name.span());

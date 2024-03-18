@@ -10,7 +10,7 @@ use crate::{
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyStructField},
-        CallPath, Visibility,
+        SymbolPath, Visibility,
     },
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
@@ -25,7 +25,7 @@ const UNIFY_STRUCT_FIELD_HELP_TEXT: &str =
 pub(crate) fn struct_instantiation(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    mut call_path_binding: TypeBinding<CallPath>,
+    mut symbol_path_binding: TypeBinding<SymbolPath>,
     fields: Vec<StructExpressionField>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -33,19 +33,19 @@ pub(crate) fn struct_instantiation(
     let decl_engine = ctx.engines.de();
     let engines = ctx.engines();
 
-    // We need the call_path_binding to have types that point to proper definitions so the LSP can
+    // We need the symbol_path_binding to have types that point to proper definitions so the LSP can
     // look for them, but its types haven't been resolved yet.
     // To that end we do a dummy type check which has the side effect of resolving the types.
     let _: Result<(DeclRefStruct, _, _), _> =
-        TypeBinding::type_check(&mut call_path_binding, &Handler::default(), ctx.by_ref());
+        TypeBinding::type_check(&mut symbol_path_binding, &Handler::default(), ctx.by_ref());
 
     let TypeBinding {
-        inner: CallPath {
+        inner: SymbolPath {
             prefixes, suffix, ..
         },
         type_arguments,
         span: inner_span,
-    } = &call_path_binding;
+    } = &symbol_path_binding;
 
     if let TypeArgs::Prefix(_) = type_arguments {
         return Err(
@@ -66,12 +66,12 @@ pub(crate) fn struct_instantiation(
             }));
         }
         (_, true) => TypeInfo::Custom {
-            qualified_call_path: suffix.clone().into(),
+            qualified_symbol_path: suffix.clone().into(),
             type_arguments: None,
             root_type_id: None,
         },
         (_, false) => TypeInfo::Custom {
-            qualified_call_path: suffix.clone().into(),
+            qualified_symbol_path: suffix.clone().into(),
             type_arguments: Some(type_arguments),
             root_type_id: None,
         },
@@ -104,7 +104,7 @@ pub(crate) fn struct_instantiation(
     let struct_can_be_instantiated = !is_public_struct_access || !struct_has_private_fields;
     let all_fields_are_private = struct_decl.has_only_private_fields();
     let struct_is_empty = struct_decl.is_empty();
-    let struct_name = struct_decl.call_path.suffix.clone();
+    let struct_name = struct_decl.symbol_path.suffix.clone();
     let struct_decl_span = struct_decl.span();
 
     // Before we do the type check, let's first check for the field related errors (privacy issues, non-existing fields, ...).
@@ -304,7 +304,7 @@ pub(crate) fn struct_instantiation(
                     struct_ref,
                     fields: typed_fields,
                     instantiation_span,
-                    call_path_binding,
+                    symbol_path_binding,
                 },
                 return_type: type_id,
                 span,

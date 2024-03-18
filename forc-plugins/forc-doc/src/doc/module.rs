@@ -3,7 +3,7 @@ use crate::render::{constant::INDEX_FILENAME, util::format::docstring::create_pr
 use anyhow::Result;
 use horrorshow::{box_html, Template};
 use std::{fmt::Write, path::PathBuf};
-use sway_core::language::CallPath;
+use sway_core::language::SymbolPath;
 
 pub(crate) type ModulePrefixes = Vec<String>;
 
@@ -81,7 +81,7 @@ impl ModuleInfo {
         }
         iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
     }
-    /// Renders the [ModuleInfo] into a [CallPath] with anchors. We return this as a `Result<Vec<String>>`
+    /// Renders the [ModuleInfo] into a [SymbolPath] with anchors. We return this as a `Result<Vec<String>>`
     /// since the `box_html!` macro returns a closure and no two closures are considered the same type.
     pub(crate) fn get_anchors(&self) -> Result<Vec<String>> {
         let mut count = self.depth();
@@ -146,7 +146,7 @@ impl ModuleInfo {
             write!(new_path, "{}/{}", self.module_prefixes.join("/"), file_name)?;
             Ok(new_path)
         } else {
-            let mut mid = 0; // the index to split the module_info from call_path at
+            let mut mid = 0; // the index to split the module_info from symbol_path at
             let mut offset = 0; // the number of directories to go back
             let mut next_location_iter = self.module_prefixes.iter().rev().enumerate().peekable();
             while let Some((index, prefix)) = next_location_iter.peek() {
@@ -208,8 +208,8 @@ impl ModuleInfo {
         }
     }
     /// Create a new [ModuleInfo] from a `CallPath`.
-    pub(crate) fn from_call_path(call_path: &CallPath) -> Self {
-        let module_prefixes = call_path
+    pub(crate) fn from_symbol_path(symbol_path: &SymbolPath) -> Self {
+        let module_prefixes = symbol_path
             .prefixes
             .iter()
             .map(|p| p.as_str().to_string())

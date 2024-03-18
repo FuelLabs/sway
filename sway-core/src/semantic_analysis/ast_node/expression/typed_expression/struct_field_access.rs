@@ -72,7 +72,7 @@ pub(crate) fn instantiate_struct_field_access(
             if is_public_struct_access && field.is_private() {
                 return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
                     field_name: (&field_to_access).into(),
-                    struct_name: decl.call_path.suffix.clone(),
+                    struct_name: decl.symbol_path.suffix.clone(),
                     field_decl_span: field.name.span(),
                     struct_can_be_changed,
                     usage_context: StructFieldUsageContext::StructFieldAccess,
@@ -86,7 +86,7 @@ pub(crate) fn instantiate_struct_field_access(
                 field_name: (&field_to_access).into(),
                 available_fields: decl.accessible_fields_names(is_public_struct_access),
                 is_public_struct_access,
-                struct_name: decl.call_path.suffix.clone(),
+                struct_name: decl.symbol_path.suffix.clone(),
                 struct_decl_span: decl.span(),
                 struct_is_empty: decl.is_empty(),
                 usage_context: StructFieldUsageContext::StructFieldAccess,

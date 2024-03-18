@@ -8,7 +8,7 @@ use crate::{
     language::{
         parsed::{self, *},
         ty::{self, TyConstantDecl},
-        CallPath,
+        SymbolPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     Engines, SubstTypes, TypeInfo,
@@ -87,12 +87,12 @@ impl ty::TyConstantDecl {
             },
         };
 
-        let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(ctx.namespace());
+        let mut symbol_path: SymbolPath = name.into();
+        symbol_path = symbol_path.to_fullpath(ctx.namespace());
 
         // create the const decl
         let decl = ty::TyConstantDecl {
-            call_path,
+            symbol_path,
             attributes,
             is_configurable,
             return_type,
@@ -116,9 +116,9 @@ impl ty::TyConstantDecl {
             type_ascription,
             ..
         } = decl;
-        let call_path: CallPath = name.into();
+        let symbol_path: SymbolPath = name.into();
         TyConstantDecl {
-            call_path,
+            symbol_path,
             span,
             attributes: Default::default(),
             return_type: type_engine.insert(engines, TypeInfo::Unknown, None),

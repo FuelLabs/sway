@@ -1,4 +1,4 @@
-use crate::language::CallPath;
+use crate::language::SymbolPath;
 use crate::type_system::TypeBinding;
 use crate::{Ident, TypeArgument, TypeId, TypeInfo};
 
@@ -8,7 +8,7 @@ pub enum MethodName {
     /// Represents a method lookup with a type somewhere in the path
     /// like `a::b::C::d()` with `C` being the type.
     FromType {
-        call_path_binding: TypeBinding<CallPath<(TypeInfo, Ident)>>,
+        symbol_path_binding: TypeBinding<SymbolPath<(TypeInfo, Ident)>>,
         method_name: Ident,
     },
     /// Represents a method lookup that does not contain any types in the path
@@ -19,7 +19,7 @@ pub enum MethodName {
     /// in this case, the path defines where the fn symbol is defined
     /// used for things like core::ops::add(a, b).
     /// in this case, the first argument determines the type to look for
-    FromTrait { call_path: CallPath },
+    FromTrait { symbol_path: SymbolPath },
     /// Represents a method lookup with a fully qualified path.
     /// like <S as Trait>::method()
     FromQualifiedPathRoot {
@@ -34,7 +34,7 @@ impl MethodName {
     pub fn easy_name(&self) -> Ident {
         match self {
             MethodName::FromType { method_name, .. } => method_name.clone(),
-            MethodName::FromTrait { call_path, .. } => call_path.suffix.clone(),
+            MethodName::FromTrait { symbol_path, .. } => symbol_path.suffix.clone(),
             MethodName::FromModule { method_name, .. } => method_name.clone(),
             MethodName::FromQualifiedPathRoot { method_name, .. } => method_name.clone(),
         }

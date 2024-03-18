@@ -1,4 +1,4 @@
-use super::auto_import::get_call_paths_for_name;
+use super::auto_import::get_symbol_paths_for_name;
 use crate::capabilities::{
     code_actions::{CodeActionContext, CODE_ACTION_QUALIFY_TITLE},
     diagnostic::DiagnosticData,
@@ -21,21 +21,21 @@ pub(crate) fn qualify_code_action(
         Some((name, range))
     })?;
 
-    // Check if there are any matching call paths to import using the name from the diagnostic data.
-    let call_paths = get_call_paths_for_name(ctx, &symbol_name)?;
+    // Check if there are any matching symbol paths to import using the name from the diagnostic data.
+    let symbol_paths = get_symbol_paths_for_name(ctx, &symbol_name)?;
 
-    // Create a list of code actions, one for each potential call path.
-    let actions = call_paths
-        .map(|call_path| {
+    // Create a list of code actions, one for each potential symbol path.
+    let actions = symbol_paths
+        .map(|symbol_path| {
             let text_edit = TextEdit {
                 range,
-                new_text: format!("{}", call_path),
+                new_text: format!("{}", symbol_path),
             };
 
             let changes = HashMap::from([(ctx.uri.clone(), vec![text_edit])]);
 
             CodeActionOrCommand::CodeAction(LspCodeAction {
-                title: format!("{} `{}`", CODE_ACTION_QUALIFY_TITLE, call_path),
+                title: format!("{} `{}`", CODE_ACTION_QUALIFY_TITLE, symbol_path),
                 kind: Some(CodeActionKind::QUICKFIX),
                 edit: Some(WorkspaceEdit {
                     changes: Some(changes),

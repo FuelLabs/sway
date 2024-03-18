@@ -26,11 +26,11 @@ impl TyIntrinsicFunctionKind {
             if matches!(self.kind, Intrinsic::Log) {
                 match &self.arguments[0].expression {
                     TyExpressionVariant::FunctionApplication {
-                        call_path,
+                        symbol_path,
                         arguments,
                         ..
                     } => {
-                        assert!(call_path.suffix.as_str() == "encode");
+                        assert!(symbol_path.suffix.as_str() == "encode");
                         Some(arguments[0].1.return_type)
                     }
                     _ => None,

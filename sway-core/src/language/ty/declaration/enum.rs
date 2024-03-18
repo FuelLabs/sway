@@ -11,7 +11,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{CallPath, Visibility},
+    language::{SymbolPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
@@ -19,7 +19,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TyEnumDecl {
-    pub call_path: CallPath,
+    pub symbol_path: SymbolPath,
     pub type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub variants: Vec<TyEnumVariant>,
@@ -29,14 +29,14 @@ pub struct TyEnumDecl {
 
 impl Named for TyEnumDecl {
     fn name(&self) -> &Ident {
-        &self.call_path.suffix
+        &self.symbol_path.suffix
     }
 }
 
 impl EqWithEngines for TyEnumDecl {}
 impl PartialEqWithEngines for TyEnumDecl {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.call_path == other.call_path
+        self.symbol_path == other.symbol_path
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.variants.eq(&other.variants, engines)
             && self.visibility == other.visibility
@@ -46,7 +46,7 @@ impl PartialEqWithEngines for TyEnumDecl {
 impl HashWithEngines for TyEnumDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyEnumDecl {
-            call_path,
+            symbol_path,
             type_parameters,
             variants,
             visibility,
@@ -55,7 +55,7 @@ impl HashWithEngines for TyEnumDecl {
             span: _,
             attributes: _,
         } = self;
-        call_path.hash(state);
+        symbol_path.hash(state);
         variants.hash(state, engines);
         type_parameters.hash(state, engines);
         visibility.hash(state);
@@ -85,7 +85,7 @@ impl MonomorphizeHelper for TyEnumDecl {
     }
 
     fn name(&self) -> &Ident {
-        &self.call_path.suffix
+        &self.symbol_path.suffix
     }
 
     fn has_self_type_param(&self) -> bool {
@@ -106,7 +106,7 @@ impl TyEnumDecl {
         {
             Some(variant) => Ok(variant),
             None => Err(handler.emit_err(CompileError::UnknownEnumVariant {
-                enum_name: self.call_path.suffix.clone(),
+                enum_name: self.symbol_path.suffix.clone(),
                 variant_name: variant_name.clone(),
                 span: variant_name.span(),
             })),

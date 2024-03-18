@@ -232,7 +232,7 @@ fn analyze_expression(
             arguments,
             fn_ref,
             selector,
-            call_path,
+            symbol_path,
             ..
         } => {
             let func = decl_engine.get_function(fn_ref);
@@ -254,7 +254,7 @@ fn analyze_expression(
                 let last_arg_span = &arguments.last().unwrap().1.span;
                 warn_after_interaction(
                     &fn_effs,
-                    &call_path.span(),
+                    &symbol_path.span(),
                     last_arg_span,
                     block_name,
                     warnings,

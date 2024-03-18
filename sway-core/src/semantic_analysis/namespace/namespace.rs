@@ -1,5 +1,5 @@
 use crate::{
-    language::{ty, ty::TyTraitItem, CallPath, Visibility},
+    language::{ty, ty::TyTraitItem, SymbolPath, Visibility},
     Engines, Ident, TypeId,
 };
 
@@ -166,7 +166,7 @@ impl Namespace {
         engines: &Engines,
         name: &Ident,
         type_id: TypeId,
-        as_trait: Option<CallPath>,
+        as_trait: Option<SymbolPath>,
     ) -> Result<TyTraitItem, ErrorEmitted> {
         self.root
             .module
@@ -201,17 +201,21 @@ impl Namespace {
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
-    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
-    pub(crate) fn resolve_call_path(
+    /// Short-hand for calling [Root::resolve_symbol_path] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol_path(
         &self,
         handler: &Handler,
         engines: &Engines,
-        call_path: &CallPath,
+        symbol_path: &SymbolPath,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        self.root
-            .module
-            .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
+        self.root.module.resolve_symbol_path(
+            handler,
+            engines,
+            &self.mod_path,
+            symbol_path,
+            self_type,
+        )
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].

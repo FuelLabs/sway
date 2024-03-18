@@ -4,7 +4,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty, CallPath, QualifiedCallPath},
+    language::{ty, QualifiedSymbolPath, SymbolPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
     Ident,
@@ -157,7 +157,7 @@ impl<T> TypeBinding<T> {
     }
 }
 
-impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
+impl TypeBinding<SymbolPath<(TypeInfo, Ident)>> {
     pub(crate) fn type_check_with_type_info(
         &self,
         handler: &Handler,
@@ -196,7 +196,7 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
     }
 }
 
-impl TypeBinding<CallPath> {
+impl TypeBinding<SymbolPath> {
     pub(crate) fn strip_prefixes(&mut self) {
         self.inner.prefixes = vec![];
     }
@@ -213,7 +213,7 @@ pub(crate) trait TypeCheckTypeBinding<T> {
     ) -> Result<(DeclRef<DeclId<T>>, Option<TypeId>, Option<ty::TyDecl>), ErrorEmitted>;
 }
 
-impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<SymbolPath> {
     fn type_check(
         &mut self,
         handler: &Handler,
@@ -230,7 +230,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx.resolve_symbol_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a fn declaration.
         let fn_ref = unknown_decl.to_fn_ref(handler)?;
         // Get a new copy from the declaration engine.
@@ -272,7 +272,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     }
 }
 
-impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<SymbolPath> {
     fn type_check(
         &mut self,
         handler: &Handler,
@@ -289,7 +289,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx.resolve_symbol_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a struct declaration.
         let struct_ref = unknown_decl.to_struct_ref(handler, engines)?;
         // Get a new copy from the declaration engine.
@@ -313,7 +313,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
     }
 }
 
-impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<SymbolPath> {
     fn type_check(
         &mut self,
         handler: &Handler,
@@ -330,7 +330,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx.resolve_symbol_path_with_visibility_check(handler, &self.inner)?;
 
         // Get a new copy from the declaration engine.
         let mut new_copy = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
@@ -364,7 +364,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
     }
 }
 
-impl TypeBinding<QualifiedCallPath> {
+impl TypeBinding<QualifiedSymbolPath> {
     pub(crate) fn type_check_qualified(
         &mut self,
         handler: &Handler,
@@ -372,7 +372,7 @@ impl TypeBinding<QualifiedCallPath> {
     ) -> Result<DeclRef<DeclId<ty::TyConstantDecl>>, ErrorEmitted> {
         // Grab the declaration.
         let unknown_decl =
-            ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
+            ctx.resolve_qualified_symbol_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
         let const_ref = unknown_decl.to_const_ref(handler)?;
@@ -381,7 +381,7 @@ impl TypeBinding<QualifiedCallPath> {
     }
 }
 
-impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
+impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<SymbolPath> {
     fn type_check(
         &mut self,
         handler: &Handler,
@@ -395,7 +395,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         ErrorEmitted,
     > {
         // Grab the declaration.
-        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        let unknown_decl = ctx.resolve_symbol_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
         let const_ref = unknown_decl.to_const_ref(handler)?;

@@ -1,0 +1,13 @@
+[[package]]
+name = "const_decl_with_symbol_path"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-B4B92065D1A6B88D"
+
+[[package]]
+name = "std"
+source = "path+from-root-B4B92065D1A6B88D"
+dependencies = ["core"]

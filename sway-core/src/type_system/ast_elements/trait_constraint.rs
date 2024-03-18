@@ -12,7 +12,7 @@ use sway_types::Spanned;
 
 use crate::{
     engine_threading::*,
-    language::{parsed::Supertrait, ty, CallPath},
+    language::{parsed::Supertrait, ty, SymbolPath},
     semantic_analysis::{
         declaration::{insert_supertraits_into_namespace, SupertraitOf},
         type_check_context::EnforceTypeArguments,
@@ -24,7 +24,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct TraitConstraint {
-    pub trait_name: CallPath,
+    pub trait_name: SymbolPath,
     pub type_arguments: Vec<TypeArgument>,
 }
 
@@ -177,7 +177,7 @@ impl TraitConstraint {
         match ctx
             .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_symbol_path(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -192,7 +192,7 @@ impl TraitConstraint {
                     type_id,
                     initial_type_id: type_id,
                     span: trait_name.span(),
-                    call_path_tree: None,
+                    symbol_path_tree: None,
                 });
 
                 // Monomorphize the trait declaration.

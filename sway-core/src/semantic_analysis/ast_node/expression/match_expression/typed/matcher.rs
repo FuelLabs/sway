@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use crate::{
     language::{
         ty::{self, TyConstantDecl},
-        CallPath, Literal,
+        Literal, SymbolPath,
     },
     semantic_analysis::{
         ast_node::expression::typed_expression::{
@@ -236,7 +236,7 @@ pub(super) fn matcher(
         } => match_struct(handler, ctx, match_value, exp, fields),
         ty::TyScrutineeVariant::EnumScrutinee {
             variant,
-            call_path_decl,
+            symbol_path_decl,
             value,
             ..
         } => match_enum(
@@ -245,7 +245,7 @@ pub(super) fn matcher(
             match_value,
             exp,
             *variant,
-            call_path_decl,
+            symbol_path_decl,
             *value,
             span,
         ),
@@ -409,7 +409,7 @@ fn match_constant(
             expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
                 const_decl: Box::new(const_decl),
-                call_path: Some(CallPath::from(name).to_fullpath(ctx.namespace())),
+                symbol_path: Some(SymbolPath::from(name).to_fullpath(ctx.namespace())),
             },
             return_type,
             span,
@@ -477,7 +477,7 @@ fn match_enum(
     match_value: &ty::TyExpression,
     exp: &ty::TyExpression,
     variant: ty::TyEnumVariant,
-    call_path_decl: ty::TyDecl,
+    symbol_path_decl: ty::TyDecl,
     enum_value_scrutinee: ty::TyScrutinee,
     span: Span,
 ) -> Result<ReqDeclTree, ErrorEmitted> {
@@ -516,7 +516,7 @@ fn match_enum(
     // If the enum variant does not have a value the `enum_value_scrutinee` will be of the
     // scrutinee variant `CatchAll` that will produce a ReqDeclTree without further requirements
     // or variable declarations.
-    let unsafe_downcast = instantiate_enum_unsafe_downcast(exp, variant, call_path_decl, span);
+    let unsafe_downcast = instantiate_enum_unsafe_downcast(exp, variant, symbol_path_decl, span);
     let req_decl_tree = matcher(
         handler,
         ctx,

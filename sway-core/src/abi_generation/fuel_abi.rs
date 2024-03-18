@@ -5,7 +5,7 @@ use crate::{
     decl_engine::DeclEngine,
     language::{
         ty::{TyConstantDecl, TyFunctionDecl, TyProgram, TyProgramKind},
-        CallPath,
+        SymbolPath,
     },
     transform::AttributesMap,
     TypeArgument, TypeEngine, TypeId, TypeInfo, TypeParameter,
@@ -231,11 +231,11 @@ fn generate_configurables(
         .iter()
         .map(
             |TyConstantDecl {
-                 call_path,
+                 symbol_path,
                  type_ascription,
                  ..
              }| program_abi::Configurable {
-                name: call_path.suffix.to_string(),
+                name: symbol_path.suffix.to_string(),
                 application: program_abi::TypeApplication {
                     name: "".to_string(),
                     type_id: type_ascription.type_id.index(),
@@ -823,9 +823,9 @@ impl TypeInfo {
             .into(),
             Boolean => "bool".into(),
             Custom {
-                qualified_call_path: call_path,
+                qualified_symbol_path: symbol_path,
                 ..
-            } => call_path.call_path.suffix.to_string(),
+            } => symbol_path.symbol_path.suffix.to_string(),
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
@@ -839,11 +839,11 @@ impl TypeInfo {
             ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
-                format!("enum {}", call_path_display(ctx, &decl.call_path))
+                format!("enum {}", symbol_path_display(ctx, &decl.symbol_path))
             }
             Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                format!("struct {}", call_path_display(ctx, &decl.call_path))
+                format!("struct {}", symbol_path_display(ctx, &decl.symbol_path))
             }
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {abi_name}")
@@ -883,14 +883,14 @@ impl TypeInfo {
     }
 }
 
-/// `call_path_display`  returns the provided `call_path` without the first prefix in case it is equal to the program name.
-/// If the program name is `my_program` and the `call_path` is `my_program::MyStruct` then this function returns only `MyStruct`.
-fn call_path_display(ctx: &mut AbiContext, call_path: &CallPath) -> String {
+/// `symbol_path_display`  returns the provided `symbol_path` without the first prefix in case it is equal to the program name.
+/// If the program name is `my_program` and the `symbol_path` is `my_program::MyStruct` then this function returns only `MyStruct`.
+fn symbol_path_display(ctx: &mut AbiContext, symbol_path: &SymbolPath) -> String {
     if !ctx.abi_with_callpaths {
-        return call_path.suffix.as_str().to_string();
+        return symbol_path.suffix.as_str().to_string();
     }
     let mut buf = String::new();
-    for (index, prefix) in call_path.prefixes.iter().enumerate() {
+    for (index, prefix) in symbol_path.prefixes.iter().enumerate() {
         let mut skip_prefix = false;
         if index == 0 {
             if let Some(root_name) = &ctx.program.root.namespace.module().name {
@@ -904,7 +904,7 @@ fn call_path_display(ctx: &mut AbiContext, call_path: &CallPath) -> String {
             buf.push_str("::");
         }
     }
-    buf.push_str(&call_path.suffix.to_string());
+    buf.push_str(&symbol_path.suffix.to_string());
 
     buf
 }

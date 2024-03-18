@@ -73,7 +73,7 @@ impl Instantiate {
                 name,
                 span: self.dummy_span(),
                 mutability: ty::VariableMutability::Immutable,
-                call_path: None,
+                symbol_path: None,
             },
             return_type: type_id,
             span: self.dummy_span(),

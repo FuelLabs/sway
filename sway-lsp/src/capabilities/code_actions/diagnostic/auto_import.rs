@@ -20,7 +20,7 @@ use sway_core::language::{
     ty::{
         TyConstantDecl, TyDecl, TyFunctionDecl, TyIncludeStatement, TyTypeAliasDecl, TyUseStatement,
     },
-    CallPath,
+    SymbolPath,
 };
 use sway_types::{Ident, Spanned};
 
@@ -32,8 +32,8 @@ pub(crate) fn import_code_action(
     // Find a diagnostic that has the attached metadata indicating we should try to suggest an auto-import.
     let symbol_name = diagnostics.find_map(|(_, diag)| diag.unknown_symbol_name)?;
 
-    // Check if there are any matching call paths to import using the name from the diagnostic data.
-    let call_paths = get_call_paths_for_name(ctx, &symbol_name)?;
+    // Check if there are any matching symbol paths to import using the name from the diagnostic data.
+    let symbol_paths = get_symbol_paths_for_name(ctx, &symbol_name)?;
 
     // Collect the tokens we need to determine where to insert the import statement.
     let mut use_statements = Vec::<TyUseStatement>::new();
@@ -53,11 +53,11 @@ pub(crate) fn import_code_action(
         }
     });
 
-    // Create a list of code actions, one for each potential call path.
-    let actions = call_paths
-        .map(|call_path| {
+    // Create a list of code actions, one for each potential symbol path.
+    let actions = symbol_paths
+        .map(|symbol_path| {
             let text_edit = get_text_edit(
-                &call_path,
+                &symbol_path,
                 &use_statements,
                 &include_statements,
                 &program_type_keyword,
@@ -65,7 +65,7 @@ pub(crate) fn import_code_action(
             let changes = HashMap::from([(ctx.uri.clone(), vec![text_edit])]);
 
             CodeActionOrCommand::CodeAction(LspCodeAction {
-                title: format!("{} `{}`", CODE_ACTION_IMPORT_TITLE, call_path),
+                title: format!("{} `{}`", CODE_ACTION_IMPORT_TITLE, symbol_path),
                 kind: Some(CodeActionKind::QUICKFIX),
                 edit: Some(WorkspaceEdit {
                     changes: Some(changes),
@@ -84,14 +84,14 @@ pub(crate) fn import_code_action(
     None
 }
 
-/// Returns an [Iterator] of [CallPath]s that match the given symbol name. The [CallPath]s are sorted
+/// Returns an [Iterator] of [SymbolPath]s that match the given symbol name. The [SymbolPath]s are sorted
 /// alphabetically.
-pub(crate) fn get_call_paths_for_name<'s>(
+pub(crate) fn get_symbol_paths_for_name<'s>(
     ctx: &'s CodeActionContext,
     symbol_name: &'s String,
-) -> Option<impl 's + Iterator<Item = CallPath>> {
+) -> Option<impl 's + Iterator<Item = SymbolPath>> {
     let namespace = ctx.namespace.to_owned()?;
-    let mut call_paths = ctx
+    let mut symbol_paths = ctx
         .tokens
         .tokens_for_name(symbol_name)
         .filter_map(move |item| {
@@ -101,44 +101,46 @@ pub(crate) fn get_call_paths_for_name<'s>(
                     return match ty_decl {
                         TyDecl::StructDecl(decl) => {
                             let struct_decl = ctx.engines.de().get_struct(&decl.decl_id);
-                            let call_path = struct_decl.call_path.to_import_path(&namespace);
-                            Some(call_path)
+                            let symbol_path = struct_decl.symbol_path.to_import_path(&namespace);
+                            Some(symbol_path)
                         }
                         TyDecl::EnumDecl(decl) => {
                             let enum_decl = ctx.engines.de().get_enum(&decl.decl_id);
-                            let call_path = enum_decl.call_path.to_import_path(&namespace);
-                            Some(call_path)
+                            let symbol_path = enum_decl.symbol_path.to_import_path(&namespace);
+                            Some(symbol_path)
                         }
                         TyDecl::TraitDecl(decl) => {
                             let trait_decl = ctx.engines.de().get_trait(&decl.decl_id);
-                            let call_path = trait_decl.call_path.to_import_path(&namespace);
-                            Some(call_path)
+                            let symbol_path = trait_decl.symbol_path.to_import_path(&namespace);
+                            Some(symbol_path)
                         }
                         _ => None,
                     };
                 }
                 Some(TypedAstToken::TypedFunctionDeclaration(TyFunctionDecl {
-                    call_path, ..
+                    symbol_path,
+                    ..
                 }))
                 | Some(TypedAstToken::TypedConstantDeclaration(TyConstantDecl {
-                    call_path, ..
+                    symbol_path,
+                    ..
                 }))
                 | Some(TypedAstToken::TypedTypeAliasDeclaration(TyTypeAliasDecl {
-                    call_path,
+                    symbol_path,
                     ..
                 })) => {
-                    let call_path = call_path.to_import_path(&namespace);
-                    Some(call_path)
+                    let symbol_path = symbol_path.to_import_path(&namespace);
+                    Some(symbol_path)
                 }
                 _ => None,
             }
         })
         .collect::<Vec<_>>();
-    call_paths.sort();
-    Some(call_paths.into_iter())
+    symbol_paths.sort();
+    Some(symbol_paths.into_iter())
 }
 
-/// Returns a [TextEdit] to insert an import statement for the given [CallPath] in the appropriate location in the file.
+/// Returns a [TextEdit] to insert an import statement for the given [SymbolPath] in the appropriate location in the file.
 ///
 /// To determine where to insert the import statement in the file, we try these options and do
 /// one of the following, based on the contents of the file.
@@ -149,31 +151,31 @@ pub(crate) fn get_call_paths_for_name<'s>(
 /// 4. Insert the import on a new line after the program type statement (e.g. `contract;`)
 /// 5. If all else fails, insert it at the beginning of the file.
 fn get_text_edit(
-    call_path: &CallPath,
+    symbol_path: &SymbolPath,
     use_statements: &[TyUseStatement],
     include_statements: &[TyIncludeStatement],
     program_type_keyword: &Option<Ident>,
 ) -> TextEdit {
-    get_text_edit_for_group(call_path, use_statements)
-        .or_else(|| get_text_edit_in_use_block(call_path, use_statements))
+    get_text_edit_for_group(symbol_path, use_statements)
+        .or_else(|| get_text_edit_in_use_block(symbol_path, use_statements))
         .unwrap_or(get_text_edit_fallback(
-            call_path,
+            symbol_path,
             include_statements,
             program_type_keyword,
         ))
 }
 
-/// Returns a [TextEdit] that inserts the call path into the existing statement if there is an
-/// existing [TyUseStatement] with the same prefix as the given [CallPath]. Otherwise, returns [None].
+/// Returns a [TextEdit] that inserts the symbol path into the existing statement if there is an
+/// existing [TyUseStatement] with the same prefix as the given [SymbolPath]. Otherwise, returns [None].
 fn get_text_edit_for_group(
-    call_path: &CallPath,
+    symbol_path: &SymbolPath,
     use_statements: &[TyUseStatement],
 ) -> Option<TextEdit> {
     let group_statements = use_statements.iter().filter(|use_stmt| {
-        call_path
+        symbol_path
             .prefixes
             .iter()
-            .zip(use_stmt.call_path.iter())
+            .zip(use_stmt.symbol_path.iter())
             .all(|(prefix, stmt_prefix)| prefix.as_str() == stmt_prefix.as_str())
     });
 
@@ -198,7 +200,7 @@ fn get_text_edit_for_group(
                 None => Some(name),
             }
         })
-        .chain(iter::once(call_path.suffix.to_string()))
+        .chain(iter::once(symbol_path.suffix.to_string()))
         .collect::<BTreeSet<_>>()
         .into_iter()
         .collect::<Vec<_>>();
@@ -207,7 +209,7 @@ fn get_text_edit_for_group(
     group_statement_span.map(|span| {
         suffixes.sort();
         let suffix_string = suffixes.join(", ");
-        let prefix_string = call_path
+        let prefix_string = symbol_path
             .prefixes
             .iter()
             .map(|ident| ident.as_str())
@@ -224,11 +226,11 @@ fn get_text_edit_for_group(
 /// If there are existing [TyUseStatement]s, returns a [TextEdit] to insert the new import statement on the
 /// line above or below an existing statement, ordered alphabetically.
 fn get_text_edit_in_use_block(
-    call_path: &CallPath,
+    symbol_path: &SymbolPath,
     use_statements: &[TyUseStatement],
 ) -> Option<TextEdit> {
     let after_statement = use_statements.iter().reduce(|acc, curr| {
-        if call_path.span().as_str().cmp(curr.span().as_str()) == Ordering::Greater
+        if symbol_path.span().as_str().cmp(curr.span().as_str()) == Ordering::Greater
             && curr.span().as_str().cmp(acc.span().as_str()) == Ordering::Greater
         {
             return curr;
@@ -237,7 +239,7 @@ fn get_text_edit_in_use_block(
     })?;
 
     let after_range = get_range_from_span(&after_statement.span());
-    let range_line = if call_path
+    let range_line = if symbol_path
         .span()
         .as_str()
         .cmp(after_statement.span().as_str())
@@ -250,14 +252,14 @@ fn get_text_edit_in_use_block(
 
     Some(TextEdit {
         range: Range::new(Position::new(range_line, 0), Position::new(range_line, 0)),
-        new_text: format!("use {};\n", call_path),
+        new_text: format!("use {};\n", symbol_path),
     })
 }
 
 /// Returns a [TextEdit] to insert an import statement either after the last mod statement, after the program
 /// type statement, or at the beginning of the file.
 fn get_text_edit_fallback(
-    call_path: &CallPath,
+    symbol_path: &SymbolPath,
     include_statements: &[TyIncludeStatement],
     program_type_keyword: &Option<Ident>,
 ) -> TextEdit {
@@ -279,7 +281,7 @@ fn get_text_edit_fallback(
         );
     TextEdit {
         range: Range::new(Position::new(range_line, 0), Position::new(range_line, 0)),
-        new_text: format!("\nuse {};\n", call_path),
+        new_text: format!("\nuse {};\n", symbol_path),
     }
 }
 
@@ -295,8 +297,8 @@ mod tests {
         assert_eq!(text_edit.new_text, expected_text);
     }
 
-    fn get_mock_call_path(prefixes: Vec<&str>, suffix: &str) -> CallPath {
-        CallPath {
+    fn get_mock_symbol_path(prefixes: Vec<&str>, suffix: &str) -> SymbolPath {
+        SymbolPath {
             prefixes: get_mock_prefixes(prefixes),
             suffix: Ident::new_no_span(suffix.to_string()),
             is_absolute: false,
@@ -335,7 +337,7 @@ mod tests {
         text: &str,
     ) -> TyUseStatement {
         TyUseStatement {
-            call_path: get_prefixes_from_src(src, prefixes),
+            symbol_path: get_prefixes_from_src(src, prefixes),
             span: get_span_from_src(src, text).unwrap(),
             import_type,
             is_absolute: false,
@@ -358,7 +360,7 @@ mod tests {
 use a:b:C;
 use b:c:*;
 "#;
-        let new_call_path = get_mock_call_path(vec!["a", "b"], "D");
+        let new_symbol_path = get_mock_symbol_path(vec!["a", "b"], "D");
         let use_statements = vec![
             get_use_stmt_from_src(
                 src,
@@ -376,7 +378,7 @@ use b:c:*;
         let expected_text = "use a::b::{C, D};".into();
 
         let text_edit = get_text_edit(
-            &new_call_path,
+            &new_symbol_path,
             &use_statements,
             &include_statements,
             &program_type_keyword,
@@ -390,7 +392,7 @@ use b:c:*;
 
 use b:c:*;
 "#;
-        let new_call_path = get_mock_call_path(vec!["a", "b"], "C");
+        let new_symbol_path = get_mock_symbol_path(vec!["a", "b"], "C");
         let use_statements = vec![get_use_stmt_from_src(
             src,
             Vec::from(["b", "c"]),
@@ -405,7 +407,7 @@ use b:c:*;
         let expected_text = "use a::b::C;\n".into();
 
         let text_edit = get_text_edit(
-            &new_call_path,
+            &new_symbol_path,
             &use_statements,
             &include_statements,
             &program_type_keyword,
@@ -419,7 +421,7 @@ use b:c:*;
 
 use b:c:{D, F};
 "#;
-        let new_call_path = get_mock_call_path(vec!["b", "c"], "E");
+        let new_symbol_path = get_mock_symbol_path(vec!["b", "c"], "E");
         let use_statements = vec![
             get_use_stmt_from_src(
                 src,
@@ -442,7 +444,7 @@ use b:c:{D, F};
         let expected_text = "use b::c::{D, E, F};".into();
 
         let text_edit = get_text_edit(
-            &new_call_path,
+            &new_symbol_path,
             &use_statements,
             &include_statements,
             &program_type_keyword,
@@ -457,7 +459,7 @@ use b:c:{D, F};
 mod my_module;
 pub mod zz_module;
 "#;
-        let new_call_path = get_mock_call_path(vec!["b", "c"], "D");
+        let new_symbol_path = get_mock_symbol_path(vec!["b", "c"], "D");
         let use_statements = vec![];
 
         let include_statements = vec![
@@ -470,7 +472,7 @@ pub mod zz_module;
         let expected_text = "\nuse b::c::D;\n".into();
 
         let text_edit = get_text_edit(
-            &new_call_path,
+            &new_symbol_path,
             &use_statements,
             &include_statements,
             &program_type_keyword,
@@ -484,7 +486,7 @@ pub mod zz_module;
 
 const HI: u8 = 0;
 "#;
-        let new_call_path = get_mock_call_path(vec!["b", "c"], "D");
+        let new_symbol_path = get_mock_symbol_path(vec!["b", "c"], "D");
         let use_statements = vec![];
 
         let include_statements = vec![];
@@ -494,7 +496,7 @@ const HI: u8 = 0;
         let expected_text = "\nuse b::c::D;\n".into();
 
         let text_edit = get_text_edit(
-            &new_call_path,
+            &new_symbol_path,
             &use_statements,
             &include_statements,
             &program_type_keyword,

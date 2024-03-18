@@ -1,5 +1,5 @@
 use crate::{
-    language::{parsed::*, ty, CallPath},
+    language::{parsed::*, ty, SymbolPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
@@ -42,12 +42,12 @@ impl ty::TyEnumDecl {
                 );
             }
 
-            let mut call_path: CallPath = name.into();
-            call_path = call_path.to_fullpath(ctx.namespace());
+            let mut symbol_path: SymbolPath = name.into();
+            symbol_path = symbol_path.to_fullpath(ctx.namespace());
 
             // create the enum decl
             let decl = ty::TyEnumDecl {
-                call_path,
+                symbol_path,
                 type_parameters: new_type_parameters,
                 variants: variants_buf,
                 span,

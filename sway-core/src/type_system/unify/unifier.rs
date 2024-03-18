@@ -5,7 +5,7 @@ use sway_types::Span;
 
 use crate::{
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{ty, SymbolPath},
     type_system::priv_prelude::*,
 };
 
@@ -129,12 +129,12 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.clone(),
+                        r_decl.symbol_path.clone(),
                         r_decl.type_parameters.clone(),
                         r_decl.fields.clone(),
                     ),
                     (
-                        e_decl.call_path.clone(),
+                        e_decl.symbol_path.clone(),
                         e_decl.type_parameters.clone(),
                         e_decl.fields.clone(),
                     ),
@@ -203,12 +203,12 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.clone(),
+                        r_decl.symbol_path.clone(),
                         r_decl.type_parameters.clone(),
                         r_decl.variants.clone(),
                     ),
                     (
-                        e_decl.call_path.clone(),
+                        e_decl.symbol_path.clone(),
                         e_decl.type_parameters.clone(),
                         e_decl.variants.clone(),
                     ),
@@ -341,8 +341,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
-        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        r: (SymbolPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        e: (SymbolPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
     ) {
         let (rn, rtps, rfs) = r;
         let (en, etps, efs) = e;
@@ -379,8 +379,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
-        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        r: (SymbolPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        e: (SymbolPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     ) {
         let (rn, rtps, rvs) = r;
         let (en, etps, evs) = e;

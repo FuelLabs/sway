@@ -1,6 +1,6 @@
 use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
 use crate::{
-    decl_engine::parsed_id::ParsedDeclId, engine_threading::DebugWithEngines, language::CallPath,
+    decl_engine::parsed_id::ParsedDeclId, engine_threading::DebugWithEngines, language::SymbolPath,
     type_system::TypeArgument, Engines, TypeParameter,
 };
 
@@ -35,7 +35,7 @@ impl DebugWithEngines for ImplItem {
 #[derive(Debug, Clone)]
 pub struct ImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
-    pub trait_name: CallPath,
+    pub trait_name: SymbolPath,
     pub trait_type_arguments: Vec<TypeArgument>,
     pub implementing_for: TypeArgument,
     pub items: Vec<ImplItem>,

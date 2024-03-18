@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::DeclRefEnum,
-    language::{parsed::*, ty, CallPath},
+    language::{parsed::*, ty, SymbolPath},
     semantic_analysis::*,
     type_system::*,
 };
@@ -23,8 +23,8 @@ pub(crate) fn instantiate_enum(
     enum_ref: DeclRefEnum,
     enum_variant_name: Ident,
     args_opt: Option<Vec<Expression>>,
-    call_path_binding: TypeBinding<CallPath>,
-    call_path_decl: ty::TyDecl,
+    symbol_path_binding: TypeBinding<SymbolPath>,
+    symbol_path_decl: ty::TyDecl,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = ctx.engines.te();
     let decl_engine = ctx.engines.de();
@@ -70,8 +70,8 @@ pub(crate) fn instantiate_enum(
                 enum_ref,
                 variant_name: enum_variant.name,
                 variant_instantiation_span: enum_variant_name.span(),
-                call_path_binding,
-                call_path_decl,
+                symbol_path_binding,
+                symbol_path_decl,
             },
             span: enum_variant_name.span(),
         }),
@@ -209,8 +209,8 @@ pub(crate) fn instantiate_enum(
                     enum_ref,
                     variant_name: enum_variant.name,
                     variant_instantiation_span: enum_variant_name.span(),
-                    call_path_binding,
-                    call_path_decl,
+                    symbol_path_binding,
+                    symbol_path_decl,
                 },
                 span: enum_variant_name.span(),
             })

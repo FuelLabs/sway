@@ -30,7 +30,7 @@ pub(crate) fn insert_supertraits_into_namespace(
     handler.scope(|handler| {
         for supertrait in supertraits.iter() {
             // Right now we don't have the ability to support defining a supertrait
-            // using a callpath directly, so we check to see if the user has done
+            // using a symbol path directly, so we check to see if the user has done
             // this and we disallow it.
             if !supertrait.name.prefixes.is_empty() {
                 handler.emit_err(CompileError::UnimplementedWithHelp(
@@ -44,7 +44,7 @@ pub(crate) fn insert_supertraits_into_namespace(
             let decl = ctx
                 .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-                .resolve_call_path(
+                .resolve_symbol_path(
                     &Handler::default(),
                     engines,
                     &supertrait.name,

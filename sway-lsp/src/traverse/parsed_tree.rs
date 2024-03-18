@@ -32,7 +32,7 @@ use sway_core::{
             TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
             UseStatement, VariableDeclaration, WhileLoopExpression,
         },
-        CallPathTree, HasSubmodules, Literal,
+        HasSubmodules, Literal, SymbolPathTree,
     },
     transform::{AttributeKind, AttributesMap},
     type_system::{TypeArgument, TypeParameter},
@@ -143,7 +143,7 @@ impl Parse for UseStatement {
                 Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Unknown),
             );
         }
-        self.call_path.par_iter().for_each(|prefix| {
+        self.symbol_path.par_iter().for_each(|prefix| {
             ctx.tokens.insert(
                 ctx.ident(prefix),
                 Token::from_parsed(AstToken::UseStatement(self.clone()), SymbolKind::Module),
@@ -405,12 +405,12 @@ impl Parse for AbiCastExpression {
 impl Parse for DelineatedPathExpression {
     fn parse(&self, ctx: &ParseContext) {
         let DelineatedPathExpression {
-            call_path_binding,
+            symbol_path_binding,
             args,
         } = self;
-        call_path_binding
+        symbol_path_binding
             .inner
-            .call_path
+            .symbol_path
             .prefixes
             .par_iter()
             .for_each(|ident| {
@@ -420,13 +420,13 @@ impl Parse for DelineatedPathExpression {
                 );
             });
         ctx.tokens.insert(
-            ctx.ident(&call_path_binding.inner.call_path.suffix),
+            ctx.ident(&symbol_path_binding.inner.symbol_path.suffix),
             Token::from_parsed(
                 AstToken::DelineatedPathExpression(self.clone()),
                 SymbolKind::Variant,
             ),
         );
-        call_path_binding
+        symbol_path_binding
             .type_arguments
             .to_vec()
             .par_iter()
@@ -438,19 +438,19 @@ impl Parse for DelineatedPathExpression {
                 exp.parse(ctx);
             });
         }
-        collect_qualified_path_root(ctx, call_path_binding.inner.qualified_path_root.clone());
+        collect_qualified_path_root(ctx, symbol_path_binding.inner.qualified_path_root.clone());
     }
 }
 
 impl Parse for AmbiguousPathExpression {
     fn parse(&self, ctx: &ParseContext) {
         let AmbiguousPathExpression {
-            call_path_binding,
+            symbol_path_binding,
             args,
             qualified_path_root,
         } = self;
-        for ident in call_path_binding.inner.prefixes.iter().chain(
-            call_path_binding
+        for ident in symbol_path_binding.inner.prefixes.iter().chain(
+            symbol_path_binding
                 .inner
                 .suffix
                 .before
@@ -463,13 +463,13 @@ impl Parse for AmbiguousPathExpression {
             );
         }
         ctx.tokens.insert(
-            ctx.ident(&call_path_binding.inner.suffix.suffix),
+            ctx.ident(&symbol_path_binding.inner.suffix.suffix),
             Token::from_parsed(
                 AstToken::AmbiguousPathExpression(self.clone()),
                 SymbolKind::Variant,
             ),
         );
-        call_path_binding
+        symbol_path_binding
             .type_arguments
             .to_vec()
             .par_iter()
@@ -485,16 +485,18 @@ impl Parse for MethodApplicationExpression {
     fn parse(&self, ctx: &ParseContext) {
         let prefixes = match &self.method_name_binding.inner {
             MethodName::FromType {
-                call_path_binding, ..
-            } => call_path_binding.inner.prefixes.clone(),
-            MethodName::FromTrait { call_path, .. } => call_path.prefixes.clone(),
+                symbol_path_binding,
+                ..
+            } => symbol_path_binding.inner.prefixes.clone(),
+            MethodName::FromTrait { symbol_path, .. } => symbol_path.prefixes.clone(),
             _ => vec![],
         };
         if let MethodName::FromType {
-            call_path_binding, ..
+            symbol_path_binding,
+            ..
         } = &self.method_name_binding.inner
         {
-            let (type_info, ident) = &call_path_binding.inner.suffix;
+            let (type_info, ident) = &symbol_path_binding.inner.suffix;
             collect_type_info_token(ctx, type_info, Some(&ident.span()));
         }
         self.method_name_binding
@@ -557,9 +559,9 @@ impl Parse for Scrutinee {
                 fields.par_iter().for_each(|field| field.parse(ctx));
             }
             Scrutinee::EnumScrutinee {
-                call_path, value, ..
+                symbol_path, value, ..
             } => {
-                call_path.prefixes.par_iter().for_each(|ident| {
+                symbol_path.prefixes.par_iter().for_each(|ident| {
                     ctx.tokens.insert(
                         ctx.ident(ident),
                         Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Enum),
@@ -567,7 +569,7 @@ impl Parse for Scrutinee {
                 });
                 let token =
                     Token::from_parsed(AstToken::Scrutinee(self.clone()), SymbolKind::Variant);
-                ctx.tokens.insert(ctx.ident(&call_path.suffix), token);
+                ctx.tokens.insert(ctx.ident(&symbol_path.suffix), token);
                 value.parse(ctx);
             }
             Scrutinee::AmbiguousSingleIdent(ident) => {
@@ -604,7 +606,7 @@ impl Parse for StructScrutineeField {
 
 impl Parse for StructExpression {
     fn parse(&self, ctx: &ParseContext) {
-        self.call_path_binding
+        self.symbol_path_binding
             .inner
             .prefixes
             .par_iter()
@@ -614,7 +616,7 @@ impl Parse for StructExpression {
                     Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Struct),
                 );
             });
-        let name = &self.call_path_binding.inner.suffix;
+        let name = &self.symbol_path_binding.inner.suffix;
         let symbol_kind = if name.as_str() == "Self" {
             SymbolKind::SelfKeyword
         } else {
@@ -624,7 +626,7 @@ impl Parse for StructExpression {
             ctx.ident(name),
             Token::from_parsed(AstToken::StructExpression(self.clone()), symbol_kind),
         );
-        let type_arguments = &self.call_path_binding.type_arguments.to_vec();
+        let type_arguments = &self.symbol_path_binding.type_arguments.to_vec();
         type_arguments.par_iter().for_each(|type_arg| {
             type_arg.parse(ctx);
         });
@@ -661,8 +663,8 @@ impl Parse for ArrayExpression {
 impl Parse for FunctionApplicationExpression {
     fn parse(&self, ctx: &ParseContext) {
         // Don't collect applications of desugared operators due to mismatched ident lengths.
-        if !desugared_op(&self.call_path_binding.inner.prefixes) {
-            self.call_path_binding
+        if !desugared_op(&self.symbol_path_binding.inner.prefixes) {
+            self.symbol_path_binding
                 .inner
                 .prefixes
                 .par_iter()
@@ -673,13 +675,13 @@ impl Parse for FunctionApplicationExpression {
                     );
                 });
             ctx.tokens.insert(
-                ctx.ident(&self.call_path_binding.inner.suffix),
+                ctx.ident(&self.symbol_path_binding.inner.suffix),
                 Token::from_parsed(
                     AstToken::FunctionApplicationExpression(self.clone()),
                     SymbolKind::Function,
                 ),
             );
-            self.call_path_binding
+            self.symbol_path_binding
                 .type_arguments
                 .to_vec()
                 .par_iter()
@@ -863,13 +865,13 @@ impl Parse for ParsedDeclId<ImplSelf> {
     fn parse(&self, ctx: &ParseContext) {
         let impl_self = ctx.engines.pe().get_impl_self(self);
         if let TypeInfo::Custom {
-            qualified_call_path,
+            qualified_symbol_path,
             type_arguments,
             root_type_id: _,
         } = &&*ctx.engines.te().get(impl_self.implementing_for.type_id)
         {
             ctx.tokens.insert(
-                ctx.ident(&qualified_call_path.call_path.suffix),
+                ctx.ident(&qualified_symbol_path.symbol_path.suffix),
                 Token::from_parsed(
                     AstToken::Declaration(Declaration::ImplSelf(*self)),
                     SymbolKind::Struct,
@@ -1089,10 +1091,10 @@ impl Parse for TypeArgument {
             }
             _ => {
                 let symbol_kind = type_info_to_symbol_kind(ctx.engines.te(), &type_info, None);
-                if let Some(tree) = &self.call_path_tree {
+                if let Some(tree) = &self.symbol_path_tree {
                     let token =
                         Token::from_parsed(AstToken::TypeArgument(self.clone()), symbol_kind);
-                    collect_call_path_tree(ctx, tree, &token, ctx.tokens);
+                    collect_symbol_path_tree(ctx, tree, &token, ctx.tokens);
                 }
             }
         }
@@ -1138,13 +1140,13 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
             });
         }
         TypeInfo::Custom {
-            qualified_call_path,
+            qualified_symbol_path,
             type_arguments,
             root_type_id: _,
         } => {
-            collect_qualified_path_root(ctx, qualified_call_path.qualified_path_root.clone());
+            collect_qualified_path_root(ctx, qualified_symbol_path.qualified_path_root.clone());
 
-            let ident = qualified_call_path.call_path.suffix.clone();
+            let ident = qualified_symbol_path.symbol_path.suffix.clone();
             let mut token = Token::from_parsed(AstToken::Ident(ident.clone()), symbol_kind);
             token.type_def = Some(TypeDefinition::Ident(ident.clone()));
             ctx.tokens.insert(ctx.ident(&ident), token);
@@ -1166,27 +1168,27 @@ fn collect_type_info_token(ctx: &ParseContext, type_info: &TypeInfo, type_span: 
     }
 }
 
-fn collect_call_path_tree(
+fn collect_symbol_path_tree(
     ctx: &ParseContext,
-    tree: &CallPathTree,
+    tree: &SymbolPathTree,
     token: &Token,
     tokens: &TokenMap,
 ) {
-    collect_qualified_path_root(ctx, tree.qualified_call_path.qualified_path_root.clone());
+    collect_qualified_path_root(ctx, tree.qualified_symbol_path.qualified_path_root.clone());
 
-    tree.qualified_call_path
-        .call_path
+    tree.qualified_symbol_path
+        .symbol_path
         .prefixes
         .par_iter()
         .for_each(|ident| {
             tokens.insert(ctx.ident(ident), token.clone());
         });
     tokens.insert(
-        ctx.ident(&tree.qualified_call_path.call_path.suffix),
+        ctx.ident(&tree.qualified_symbol_path.symbol_path.suffix),
         token.clone(),
     );
     tree.children.par_iter().for_each(|child| {
-        collect_call_path_tree(ctx, child, token, tokens);
+        collect_symbol_path_tree(ctx, child, token, tokens);
     });
 }
 

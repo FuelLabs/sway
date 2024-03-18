@@ -8,7 +8,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     error::module_can_be_changed,
-    language::{CallPath, Visibility},
+    language::{SymbolPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
@@ -17,7 +17,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TyStructDecl {
-    pub call_path: CallPath,
+    pub symbol_path: SymbolPath,
     pub fields: Vec<TyStructField>,
     pub type_parameters: Vec<TypeParameter>,
     pub visibility: Visibility,
@@ -27,14 +27,14 @@ pub struct TyStructDecl {
 
 impl Named for TyStructDecl {
     fn name(&self) -> &Ident {
-        &self.call_path.suffix
+        &self.symbol_path.suffix
     }
 }
 
 impl EqWithEngines for TyStructDecl {}
 impl PartialEqWithEngines for TyStructDecl {
     fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.call_path == other.call_path
+        self.symbol_path == other.symbol_path
             && self.fields.eq(&other.fields, engines)
             && self.type_parameters.eq(&other.type_parameters, engines)
             && self.visibility == other.visibility
@@ -44,7 +44,7 @@ impl PartialEqWithEngines for TyStructDecl {
 impl HashWithEngines for TyStructDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStructDecl {
-            call_path,
+            symbol_path,
             fields,
             type_parameters,
             visibility,
@@ -53,7 +53,7 @@ impl HashWithEngines for TyStructDecl {
             span: _,
             attributes: _,
         } = self;
-        call_path.hash(state);
+        symbol_path.hash(state);
         fields.hash(state, engines);
         type_parameters.hash(state, engines);
         visibility.hash(state);
@@ -83,7 +83,7 @@ impl MonomorphizeHelper for TyStructDecl {
     }
 
     fn name(&self) -> &Ident {
-        &self.call_path.suffix
+        &self.symbol_path.suffix
     }
 
     fn has_self_type_param(&self) -> bool {
@@ -150,14 +150,14 @@ pub struct StructAccessInfo {
 impl StructAccessInfo {
     pub fn get_info(struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
         assert!(
-            struct_decl.call_path.is_absolute,
-            "The call path of the struct declaration must always be absolute."
+            struct_decl.symbol_path.is_absolute,
+            "The symbol path of the struct declaration must always be absolute."
         );
 
         let struct_can_be_changed =
-            module_can_be_changed(namespace, &struct_decl.call_path.prefixes);
+            module_can_be_changed(namespace, &struct_decl.symbol_path.prefixes);
         let is_public_struct_access =
-            !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+            !namespace.module_is_submodule_of(&struct_decl.symbol_path.prefixes, true);
 
         Self {
             struct_can_be_changed,

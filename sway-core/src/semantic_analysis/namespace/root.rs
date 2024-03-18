@@ -216,7 +216,7 @@ impl Root {
                 {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
-                        enum_decl.call_path.suffix.clone(),
+                        enum_decl.symbol_path.suffix.clone(),
                         decl_id,
                         enum_decl.span(),
                     );
@@ -316,7 +316,7 @@ impl Root {
                 {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
-                        enum_decl.call_path.suffix.clone(),
+                        enum_decl.symbol_path.suffix.clone(),
                         decl_id,
                         enum_decl.span(),
                     );
