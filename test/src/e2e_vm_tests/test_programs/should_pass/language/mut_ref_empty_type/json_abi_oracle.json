@@ -2,14 +2,7 @@
   "configurables": [],
   "functions": [
     {
-      "attributes": [
-        {
-          "arguments": [
-            "deprecated"
-          ],
-          "name": "allow"
-        }
-      ],
+      "attributes": null,
       "inputs": [],
       "name": "main",
       "output": {
@@ -24,7 +17,7 @@
   "types": [
     {
       "components": null,
-      "type": "bool",
+      "type": "u64",
       "typeId": 0,
       "typeParameters": null
     }
