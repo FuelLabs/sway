@@ -55,8 +55,6 @@
 - [Debugging](./debugging/index.md)
   - [Debugging with CLI](./debugging/debugging_with_cli.md)
   - [Debugging with IDE](./debugging/debugging_with_ide.md)
-- [Application Frontend](./frontend/index.md)
-  - [TypeScript SDK](./frontend/typescript_sdk.md)
 - [Sway LSP](./lsp/index.md)
   - [Installation](./lsp/installation.md)
   - [Features](./lsp/features.md)
