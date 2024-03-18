@@ -219,7 +219,7 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                     let faucet_link = format!("{}/?address={first_account}", BETA_FAUCET_URL);
                     anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
                                       \n\nIf you are interacting with a testnet consider using the faucet.\
-                                      \n-> beta-4 network faucet: {faucet_link}\
+                                      \n-> beta-5 network faucet: {faucet_link}\
                                       \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
                 }
                 print_account_balances(&accounts, &account_balances);

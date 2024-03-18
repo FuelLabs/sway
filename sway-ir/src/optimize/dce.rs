@@ -218,7 +218,7 @@ pub fn func_dce(
 ) -> Result<bool, IrError> {
     let entry_fns = module
         .function_iter(context)
-        .filter(|func| func.is_entry(context))
+        .filter(|func| func.is_entry(context) || func.is_fallback(context))
         .collect::<Vec<_>>();
     // Recursively find all the functions called by an entry function.
     fn grow_called_function_set(
