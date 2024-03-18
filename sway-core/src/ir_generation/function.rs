@@ -1818,7 +1818,7 @@ impl<'eng> FnCompiler<'eng> {
         // compile the standard library to an actual module.
 
         // Get the callee from the cache if we've already compiled it.  We can't insert it with
-        // .entry() since `compile_function()` returns a Result we need t)o handle.  The key to our
+        // .entry() since `compile_function()` returns a Result we need to handle.  The key to our
         // cache, to uniquely identify a function instance, is the span and the type IDs of any
         // args and type parameters.  It's using the Sway types rather than IR types, which would
         // be more accurate but also more fiddly.
