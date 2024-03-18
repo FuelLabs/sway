@@ -71,7 +71,10 @@ impl PidFileLocking {
         if self.is_locked() {
             Err(io::Error::new(
                 std::io::ErrorKind::Other,
-                "Cannot remove a dirty lock file, it is locked by another process",
+                format!(
+                    "Cannot remove a dirty lock file, it is locked by another process (PID: {:#?})",
+                    self.get_locker_pid()
+                ),
             ))
         } else {
             self.remove_file()?;
