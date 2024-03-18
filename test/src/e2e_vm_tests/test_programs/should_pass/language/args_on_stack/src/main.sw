@@ -1,6 +1,5 @@
 script;
 
-use std::u256::U256;
 use std::string::String;
 
 struct A {
@@ -9,10 +8,10 @@ struct A {
 }
 
 #[inline(never)]
-fn foo(a: u64, b: A, c: u64, d: U256, e: b256, f: String, g: [u64; 2], h: b256, i: String, j: u64) -> u64 {
+fn foo(a: u64, b: A, c: u64, d: u256, e: b256, f: String, g: [u64; 2], h: b256, i: String, j: u64) -> u64 {
    assert(e == 0x3333333333333333333333333333333333333333333333333333333333333333);
    assert(h == 0x3333333333333333333333333333333333333333333333333333333333333332);
-   assert(d == U256::max());
+   assert(d == u256::max());
    a + b.j + c + g[0] + j + f.as_bytes().len() + i.as_bytes().len()
 }
 
@@ -21,7 +20,7 @@ fn main() -> u64 {
           11,
           A { i: 0, j: 2 },
           1,
-          U256::max(),
+          u256::max(),
           0x3333333333333333333333333333333333333333333333333333333333333333,
           String::from_ascii_str("hell"),
           [3, 2],
