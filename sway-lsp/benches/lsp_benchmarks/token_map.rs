@@ -27,7 +27,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             session
                 .token_map()
-                .tokens_at_position(engines.se(), &uri, position, None)
+                .tokens_at_position(&engines, &uri, position, None)
         })
     });
 
@@ -39,7 +39,7 @@ fn benchmarks(c: &mut Criterion) {
         b.iter(|| {
             session
                 .token_map()
-                .parent_decl_at_position(engines.se(), &uri, position)
+                .parent_decl_at_position(&engines, &uri, position)
         })
     });
 }

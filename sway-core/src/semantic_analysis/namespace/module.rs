@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::DeclRef,
-    engine_threading::Engines,
+    engine_threading::{Engines, SpannedWithEngines},
     language::{
         parsed::*,
         ty::{self, TyTraitItem},
@@ -547,7 +547,7 @@ impl Module {
         if !matches!(item_decl, ty::TyDecl::TraitTypeDecl(_)) {
             return Err(handler.emit_err(CompileError::Internal(
                 "Expecting associated type",
-                item_decl.span(),
+                item_decl.span(engines),
             )));
         }
         Ok(item_decl)

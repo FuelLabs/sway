@@ -449,6 +449,7 @@ impl TyTraitDecl {
                         .current_items_mut()
                         .insert_symbol(
                             handler,
+                            engines,
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                 name: const_name,

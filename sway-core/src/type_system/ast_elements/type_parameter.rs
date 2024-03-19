@@ -163,6 +163,7 @@ impl TypeParameter {
         handler: &Handler,
         mut ctx: TypeCheckContext,
     ) {
+        let engines = ctx.engines();
         let type_parameter_decl =
             ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                 name: self.name_ident.clone(),
@@ -178,6 +179,7 @@ impl TypeParameter {
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name_a,
                 type_parameter_decl.clone(),
                 const_shadowing_mode,
@@ -189,6 +191,7 @@ impl TypeParameter {
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name_b,
                 type_parameter_decl,
                 const_shadowing_mode,

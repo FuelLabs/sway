@@ -1,6 +1,7 @@
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
     decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
@@ -302,7 +303,7 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         Some(TyAstNode {
-            span: decl.span(),
+            span: decl.span(engines),
             content: ty::TyAstNodeContent::Declaration(decl),
         })
     }
@@ -340,7 +341,7 @@ where
             None
         } else {
             Some(TyAstNode {
-                span: decl.span(),
+                span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
         }

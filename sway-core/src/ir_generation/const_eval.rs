@@ -27,7 +27,7 @@ use sway_ir::{
     value::Value,
     InstOp, Instruction, Type, TypeContent,
 };
-use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
+use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Named, Span};
 use sway_utils::mapped_stack::MappedStack;
 
 enum ConstEvalError {
@@ -707,7 +707,7 @@ fn const_eval_codeblock(
                     Ok(None)
                 } else {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: decl.span().clone(),
+                        span: decl.span(lookup.engines).clone(),
                     })
                 }
             }

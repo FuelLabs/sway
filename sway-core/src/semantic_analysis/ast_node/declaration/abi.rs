@@ -224,6 +224,7 @@ impl ty::TyAbiDecl {
         type_id: TypeId,
         subabi_span: Option<Span>,
     ) -> Result<(), ErrorEmitted> {
+        let engines = ctx.engines();
         let decl_engine = ctx.engines.de();
 
         let ty::TyAbiDecl {
@@ -308,6 +309,7 @@ impl ty::TyAbiDecl {
                             .current_items_mut()
                             .insert_symbol(
                                 handler,
+                                engines,
                                 const_name.clone(),
                                 ty::TyDecl::ConstantDecl(ty::ConstantDecl {
                                     name: const_name,

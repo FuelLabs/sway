@@ -9,8 +9,8 @@ use dashmap::{
 };
 use lsp_types::{Position, Url};
 use std::{thread, time::Duration};
-use sway_core::{language::ty, type_system::TypeId, Engines};
-use sway_types::{Ident, SourceEngine, Spanned};
+use sway_core::{engine_threading::SpannedWithEngines, language::ty, type_system::TypeId, Engines};
+use sway_types::Ident;
 
 // Re-export the TokenMapExt trait.
 pub use crate::core::token_map_ext::TokenMapExt;
@@ -129,11 +129,11 @@ impl<'a> TokenMap {
     /// For example, if the cursor is inside a function body, this function returns the function declaration.
     pub fn parent_decl_at_position<'s>(
         &'s self,
-        source_engine: &'s SourceEngine,
+        engines: &'s Engines,
         uri: &'s Url,
         position: Position,
     ) -> Option<RefMulti<'s, TokenIdent, Token>> {
-        self.tokens_at_position(source_engine, uri, position, None)
+        self.tokens_at_position(engines, uri, position, None)
             .into_iter()
             .find_map(|entry| {
                 let (_, token) = entry.pair();
@@ -166,11 +166,12 @@ impl<'a> TokenMap {
     /// of the function declaration (the function name).
     pub fn tokens_at_position<'s>(
         &'s self,
-        source_engine: &'s SourceEngine,
+        engines: &'s Engines,
         uri: &'s Url,
         position: Position,
         functions_only: Option<bool>,
     ) -> Vec<RefMulti<'s, TokenIdent, Token>> {
+        let source_engine = engines.se();
         self.tokens_for_file(uri)
             .filter_map(move |entry| {
                 let (ident, token) = entry.pair();
@@ -181,7 +182,7 @@ impl<'a> TokenMap {
                         TokenIdent::new(&Ident::new(decl.span.clone()), source_engine)
                     }
                     Some(TypedAstToken::TypedDeclaration(decl)) => {
-                        TokenIdent::new(&Ident::new(decl.span()), source_engine)
+                        TokenIdent::new(&Ident::new(decl.span(engines)), source_engine)
                     }
                     _ => ident.clone(),
                 };

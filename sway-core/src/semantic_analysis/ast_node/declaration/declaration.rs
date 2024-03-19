@@ -287,6 +287,7 @@ impl TyDecl {
                                 .current_items_mut()
                                 .insert_symbol(
                                     handler,
+                                    engines,
                                     Ident::new_no_span(format!(
                                         "__contract_entry_{}",
                                         decl.name.clone()

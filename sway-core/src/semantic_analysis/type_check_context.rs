@@ -497,6 +497,7 @@ impl<'a> TypeCheckContext<'a> {
         name: Ident,
         item: TyDecl,
     ) -> Result<(), ErrorEmitted> {
+        let engines = self.engines();
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
         self.namespace_mut()
@@ -504,6 +505,7 @@ impl<'a> TypeCheckContext<'a> {
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name,
                 item,
                 const_shadowing_mode,

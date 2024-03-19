@@ -1641,7 +1641,7 @@ impl ty::TyExpression {
                             abi_name,
                             ctx.self_type(),
                         )?;
-                        unknown_decl.to_abi_ref(handler)?
+                        unknown_decl.to_abi_ref(handler, engines)?
                     }
                     AbiName::Deferred => {
                         return Ok(ty::TyExpression {
@@ -2003,7 +2003,9 @@ impl ty::TyExpression {
                                 &name,
                                 ctx.self_type(),
                             )?;
-                            let variable_decl = unknown_decl.expect_variable(handler).cloned()?;
+                            let variable_decl = unknown_decl
+                                .expect_variable(handler, ctx.engines())
+                                .cloned()?;
                             if !variable_decl.mutability.is_mutable() {
                                 return Err(handler.emit_err(
                                     CompileError::AssignmentToNonMutable { name, span },

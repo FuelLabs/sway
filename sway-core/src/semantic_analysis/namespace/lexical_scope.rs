@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::*,
-    engine_threading::Engines,
+    engine_threading::{Engines, SpannedWithEngines},
     language::{
         parsed::Declaration,
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
@@ -140,6 +140,7 @@ impl Items {
     pub(crate) fn insert_symbol(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
