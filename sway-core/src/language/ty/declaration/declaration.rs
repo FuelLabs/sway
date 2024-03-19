@@ -62,7 +62,6 @@ pub struct FunctionDecl {
 pub struct TraitDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyTraitDecl>,
-    pub subst_list: Template<SubstList>,
     pub decl_span: Span,
 }
 
@@ -882,7 +881,6 @@ impl From<DeclRef<DeclId<TyTraitDecl>>> for TyDecl {
         TyDecl::TraitDecl(TraitDecl {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         })
     }

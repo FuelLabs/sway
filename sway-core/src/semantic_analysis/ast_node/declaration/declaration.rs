@@ -244,7 +244,6 @@ impl TyDecl {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
                                 decl_id: supertrait_decl_id,
-                                subst_list: _,
                                 decl_span: supertrait_decl_span,
                             }) = supertrait_decl
                             {
@@ -414,7 +413,6 @@ impl TyDecl {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
                                 decl_id: supertrait_decl_id,
-                                subst_list: _,
                                 decl_span: supertrait_decl_span,
                             }) = supertrait_decl
                             {
