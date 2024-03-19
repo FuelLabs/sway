@@ -92,7 +92,6 @@ pub struct EnumVariantDecl {
 pub struct ImplTrait {
     pub name: Ident,
     pub decl_id: DeclId<TyImplTrait>,
-    pub subst_list: Template<SubstList>,
     pub decl_span: Span,
 }
 
@@ -891,7 +890,6 @@ impl From<DeclRef<DeclId<TyImplTrait>>> for TyDecl {
         TyDecl::ImplTrait(ImplTrait {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         })
     }
