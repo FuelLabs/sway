@@ -32,13 +32,29 @@ async fn run_external_can_proxy_call() {
 
     let instance = RunExternalProxyContract::new(id.clone(), wallet);
 
+    // Call "double_value"
+    // Will call run_external_proxy::double_value
+    // that will call run_external_target::double_value
+    // and return the value doubled.
     let result = instance
         .methods()
         .double_value(42)
+        .with_contract_ids(&[target_id.clone().into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(result.value, 84);
+
+    // Call "does_not_exist_in_the_target"
+    // Will call run_external_proxy::does_not_exist_in_the_target
+    // it will proxy the call to run_external_target,
+    // and endup in the fallback, fn that will triple the input value
+    let result = instance
+        .methods()
+        .does_not_exist_in_the_target(42)
         .with_contract_ids(&[target_id.into()])
         .call()
         .await
         .unwrap();
-    dbg!(result.receipts);
-    assert_eq!(result.value, 84);
+    assert_eq!(result.value, 126);
 }

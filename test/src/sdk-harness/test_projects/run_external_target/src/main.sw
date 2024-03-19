@@ -1,11 +1,18 @@
-script;
+contract;
 
-fn main(foo: u64) -> u64 {
-    let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
-    let len = __gtf::<u64>(0, 0x4); // SCRIPT_DATA_LEN
+abi RunExternalTest{
+    fn double_value(foo: u64) -> u64;
+}
 
-    __log(ptr);
-    __log(len);
-    __log(foo);
-    foo * 2
+impl RunExternalTest for Contract {
+    fn double_value(foo: u64) -> u64 {
+        foo * 2
+    }
+}
+
+#[fallback]
+fn fallback() -> u64 {
+    use std::call_frames::*;
+    let foo = second_param::<u64>();
+    foo * 3
 }
