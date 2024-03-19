@@ -2,9 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Named, Spanned};
 
 use crate::{
-    decl_engine::{
-        DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType, Template,
-    },
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
         parsed,
         ty::{self, FunctionDecl, TyDecl},
@@ -297,7 +295,6 @@ impl TyDecl {
                                     TyDecl::FunctionDecl(FunctionDecl {
                                         name: decl.name.clone(),
                                         decl_id: *f.id(),
-                                        subst_list: Template::default(),
                                         decl_span: f.span(),
                                     }),
                                     ConstShadowingMode::ItemStyle,

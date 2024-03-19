@@ -99,7 +99,6 @@ impl TyProgram {
                 TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
                     name,
                     decl_id,
-                    subst_list,
                     decl_span,
                 })) => {
                     let func = decl_engine.get_function(decl_id);
@@ -120,7 +119,6 @@ impl TyProgram {
                     declarations.push(TyDecl::FunctionDecl(FunctionDecl {
                         name: name.clone(),
                         decl_id: *decl_id,
-                        subst_list: subst_list.clone(),
                         decl_span: decl_span.clone(),
                     }));
                 }
