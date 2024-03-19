@@ -493,7 +493,7 @@ impl<'a> UnifyCheck<'a> {
     /// `left` can be coerced into `right`.
     ///
     /// `left` can be coerced into `right` if the following invariants are true:
-    /// 1. `left` and and `right` are of the same length _n_
+    /// 1. `left` and `right` are of the same length _n_
     /// 2. For every _i_ in [0, n), `left`ᵢ can be coerced into `right`ᵢ
     /// 3. The elements of `left` satisfy the trait constraints of `right`
     ///
@@ -558,7 +558,7 @@ impl<'a> UnifyCheck<'a> {
         use TypeInfo::*;
         use UnifyCheckMode::*;
 
-        // invariant 1. `left` and and `right` are of the same length _n_
+        // invariant 1. `left` and `right` are of the same length _n_
         if left.len() != right.len() {
             return false;
         }

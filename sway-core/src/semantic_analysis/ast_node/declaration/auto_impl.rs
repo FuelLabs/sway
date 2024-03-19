@@ -1,4 +1,5 @@
 use crate::{
+    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
     decl_engine::{DeclEngineGet, DeclId, DeclRef},
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
@@ -513,6 +514,7 @@ where
         engines: &Engines,
         module_id: Option<ModuleId>,
         contract_fns: &[DeclRef<DeclId<TyFunctionDecl>>],
+        fallback_fn: Option<DeclId<TyFunctionDecl>>,
     ) -> Option<TyAstNode> {
         let mut code = String::new();
 
@@ -581,15 +583,24 @@ where
         }
         .into();
 
+        let fallback = if let Some(fallback_fn) = fallback_fn {
+            let fallback_fn = engines.de().get(&fallback_fn);
+            let return_type = Self::generate_type(engines, fallback_fn.return_type.type_id);
+            let method_name = fallback_fn.name.as_str();
+
+            format!("let result: raw_slice = encode::<{return_type}>({method_name}()); __contract_ret(result.ptr(), result.len::<u8>());")
+        } else {
+            // as the old encoding does
+            format!("__revert({});", MISMATCHED_SELECTOR_REVERT_CODE)
+        };
+
         let code = format!(
-            "{att}
-        pub fn __entry() {{
+            "{att} pub fn __entry() {{
             let method_name = decode_first_param::<str>();
-            __log(method_name);
             {code}
+            {fallback}
         }}"
         );
-
         self.parse_item_fn_to_typed_ast_node(
             engines,
             module_id,

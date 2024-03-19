@@ -115,7 +115,7 @@ pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
     Ok(PidFileLocking::lsp(path)
         .lock()
-        .map_err(|_| DirectoryError::LspLocksDirFailed)?)
+        .map_err(|e| DirectoryError::LspLocksDirFailed(e.to_string()))?)
 }
 
 /// Removes the corresponding flag file for the specifed Url.

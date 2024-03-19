@@ -27,7 +27,7 @@ use sway_types::{
     Ident, Named, Spanned,
 };
 
-// Defines if this node starts the dca graph or not
+// Defines if this node is a root in the dca graph or not
 fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
     match tree_type {
         TreeType::Predicate | TreeType::Script => {
@@ -59,7 +59,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 ..
             } => {
                 let decl = decl_engine.get_function(decl_id);
-                decl.visibility == Visibility::Public || decl.is_test()
+                decl.visibility == Visibility::Public || decl.is_test() || decl.is_fallback()
             }
             TyAstNode {
                 content:
