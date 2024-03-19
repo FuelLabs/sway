@@ -231,15 +231,13 @@ impl TyDecl {
                         .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                name: supertrait_name,
                                 decl_id: supertrait_decl_id,
-                                decl_span: supertrait_decl_span,
                             }) = supertrait_decl
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
-                                    supertrait_name,
+                                    engines.de().get(&supertrait_decl_id).name.clone(),
                                     supertrait_decl_id,
-                                    supertrait_decl_span,
+                                    engines.de().get(&supertrait_decl_id).span.clone(),
                                 ));
                             }
                         });
@@ -388,15 +386,13 @@ impl TyDecl {
                         .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                name: supertrait_name,
                                 decl_id: supertrait_decl_id,
-                                decl_span: supertrait_decl_span,
                             }) = supertrait_decl
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
-                                    supertrait_name,
+                                    engines.de().get(&supertrait_decl_id).name.clone(),
                                     supertrait_decl_id,
-                                    supertrait_decl_span,
+                                    engines.de().get(&supertrait_decl_id).span.clone(),
                                 ));
                             }
                         });
