@@ -9,4 +9,3 @@ pub enum CryptographicError {
     /// The error varient used when an invalid operation was performed.
     InvalidOperation: (),
 }
-

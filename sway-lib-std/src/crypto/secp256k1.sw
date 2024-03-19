@@ -14,7 +14,7 @@ use ::vm::evm::evm_address::EvmAddress;
 /// A secp256k1 signature.
 pub struct Secp256k1 {
     /// The underlying raw `[u8; 64]` data of the signature.
-    bits: [u8; 64]
+    bits: [u8; 64],
 }
 
 impl Secp256k1 {
@@ -37,7 +37,13 @@ impl Secp256k1 {
     /// ```
     pub fn new() -> Self {
         Self {
-            bits: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+            bits: [
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            ],
         }
     }
 
@@ -156,7 +162,7 @@ impl Secp256k1 {
     ///     assert(result_address.unwrap() == address);
     /// }
     /// ```
-    pub fn address(self, message: Message) -> Result<Address, CryptographicError>  {
+    pub fn address(self, message: Message) -> Result<Address, CryptographicError> {
         let pub_key_result = Self::recover(self, message);
 
         if let Err(e) = pub_key_result {
@@ -202,7 +208,7 @@ impl Secp256k1 {
     ///     assert(result_address.unwrap() == evm_address);
     /// }
     /// ```
-    pub fn evm_address(self, message: Message) -> Result<EvmAddress, CryptographicError>  {
+    pub fn evm_address(self, message: Message) -> Result<EvmAddress, CryptographicError> {
         let pub_key_result = Self::recover(self, message);
 
         if let Err(e) = pub_key_result {
@@ -297,8 +303,7 @@ impl Secp256k1 {
         if let Err(e) = address_result {
             // propagate the error if it exists
             Err(e)
-        }
-        else if address_result.unwrap() == address {
+        } else if address_result.unwrap() == address {
             Ok(())
         } else {
             Err(CryptographicError::InvalidSignature)
@@ -334,14 +339,17 @@ impl Secp256k1 {
     ///     assert(result.is_ok());
     /// }
     /// ```
-    pub fn verify_evm_address(self, evm_address: EvmAddress, message: Message) -> Result<(), CryptographicError> {
+    pub fn verify_evm_address(
+        self,
+        evm_address: EvmAddress,
+        message: Message,
+) -> Result<(), CryptographicError> {
         let evm_address_result = Self::evm_address(self, message);
 
         if let Err(e) = evm_address_result {
             // propagate the error if it exists
             Err(e)
-        }
-        else if evm_address_result.unwrap() == evm_address {
+        } else if evm_address_result.unwrap() == evm_address {
             Ok(())
         } else {
             Err(CryptographicError::InvalidSignature)
@@ -352,15 +360,21 @@ impl Secp256k1 {
 impl From<B512> for Secp256k1 {
     fn from(bits: B512) -> Self {
         Self {
-            bits: asm (bits: bits.bits()) { bits: [u8; 64] }
+            bits: asm(bits: bits.bits()) {
+                bits: [u8; 64]
+            },
         }
     }
 }
 
 impl From<Secp256k1> for B512 {
     fn from(signature: Secp256k1) -> Self {
-        let b256_1 = asm (bits: signature.bits()) { bits: b256 };
-        let b256_2 = asm (bits: signature.bits()[32]) { bits: b256 };
+        let b256_1 = asm(bits: signature.bits()) {
+            bits: b256
+        };
+        let b256_2 = asm(bits: signature.bits()[32]) {
+            bits: b256
+        };
         B512::from((b256_1, b256_2))
     }
 }
@@ -368,25 +382,39 @@ impl From<Secp256k1> for B512 {
 impl From<(b256, b256)> for Secp256k1 {
     fn from(components: (b256, b256)) -> Self {
         Self {
-            bits: asm (components: components) { components: [u8; 64] }
+            bits: asm(components: components) {
+                components: [u8; 64]
+            },
         }
     }
 }
 
 impl From<Secp256k1> for (b256, b256) {
     fn from(signature: Secp256k1) -> (b256, b256) {
-        let b256_1 = asm (bits: signature.bits()) { bits: b256 };
-        let b256_2 = asm (bits: signature.bits()[32]) { bits: b256 };
+        let b256_1 = asm(bits: signature.bits()) {
+            bits: b256
+        };
+        let b256_2 = asm(bits: signature.bits()[32]) {
+            bits: b256
+        };
         (b256_1, b256_2)
     }
 }
 
 impl core::ops::Eq for Secp256k1 {
     fn eq(self, other: Self) -> bool {
-        let self_b256_1 = asm (bits: self.bits) { bits: b256 };
-        let self_b256_2 = asm (bits: self.bits[32]) { bits: b256 };
-        let other_b256_1 = asm (bits: other.bits) { bits: b256 };
-        let other_b256_2 = asm (bits: other.bits[32]) { bits: b256 };
+        let self_b256_1 = asm(bits: self.bits) {
+            bits: b256
+        };
+        let self_b256_2 = asm(bits: self.bits[32]) {
+            bits: b256
+        };
+        let other_b256_1 = asm(bits: other.bits) {
+            bits: b256
+        };
+        let other_b256_2 = asm(bits: other.bits[32]) {
+            bits: b256
+        };
 
         self_b256_1 == other_b256_1 && self_b256_2 == other_b256_2
     }

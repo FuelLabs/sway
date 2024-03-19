@@ -1,7 +1,14 @@
 library;
 
 use ::address::Address;
-use ::crypto::{cryptographic_error::CryptographicError, message::Message, public_key::PublicKey, ed25519::Ed25519, secp256k1::Secp256k1, secp256r1::Secp256r1};
+use ::crypto::{
+    cryptographic_error::CryptographicError,
+    ed25519::Ed25519,
+    message::Message,
+    public_key::PublicKey,
+    secp256k1::Secp256k1,
+    secp256r1::Secp256r1,
+};
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
 use ::vm::evm::evm_address::EvmAddress;
@@ -100,7 +107,7 @@ impl Signature {
     ///     assert(result_address.unwrap() == address);
     /// }
     /// ```
-    pub fn address(self, message: Message) -> Result<Address, CryptographicError>  {
+    pub fn address(self, message: Message) -> Result<Address, CryptographicError> {
         match self {
             Self::Secp256k1(sig) => {
                 sig.address(message)
@@ -147,7 +154,7 @@ impl Signature {
     ///     assert(result_address.unwrap() == evm_address);
     /// }
     /// ```
-    pub fn evm_address(self, message: Message) -> Result<EvmAddress, CryptographicError>  {
+    pub fn evm_address(self, message: Message) -> Result<EvmAddress, CryptographicError> {
         match self {
             Self::Secp256k1(sig) => {
                 sig.evm_address(message)
@@ -286,7 +293,11 @@ impl Signature {
     ///     assert(result.is_ok());
     /// }
     /// ```
-    pub fn verify_evm_address(self, evm_address: EvmAddress, message: Message) -> Result<(), CryptographicError> {
+    pub fn verify_evm_address(
+        self,
+        evm_address: EvmAddress,
+        message: Message,
+) -> Result<(), CryptographicError> {
         match self {
             Self::Secp256k1(sig) => {
                 sig.verify_evm_address(evm_address, message)
@@ -472,7 +483,6 @@ impl Signature {
     }
 }
 
-
 #[test]
 fn test_recover_signature() {
     use ::assert::assert;
@@ -486,7 +496,7 @@ fn test_recover_signature() {
     let signature: Signature = Signature::Secp256r1(Secp256r1::from((hi, lo)));
     let public_key: PublicKey = PublicKey::from((pub_hi, pub_lo));
     let message: Message = Message::from(msg_hash);
-    
+
     // A recovered public key pair.
     let result_public_key = signature.recover(message);
 
@@ -504,7 +514,7 @@ fn test_revert_recover_signature() {
     let msg_hash = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
     let signature: Signature = Signature::Secp256r1(Secp256r1::from((hi, lo)));
     let message: Message = Message::from(msg_hash);
-    
+
     let _ = signature.recover(message).unwrap();
 }
 
@@ -553,7 +563,7 @@ fn test_verify_signature() {
     let signature: Signature = Signature::Secp256r1(Secp256r1::from((hi, lo)));
     let public_key: PublicKey = PublicKey::from((pub_hi, pub_lo));
     let message: Message = Message::from(msg_hash);
-    
+
     // A recovered public key pair.
     let result = signature.verify(public_key, message);
 
@@ -576,6 +586,3 @@ fn test_verify_address_signature() {
 
     assert(result.is_ok());
 }
-
-
-

@@ -17,11 +17,7 @@ pub mod primitive_conversions;
 pub mod math;
 pub mod flags;
 pub mod u128;
-<<<<<<< Updated upstream
-=======
-pub mod u256;
 pub mod b512;
->>>>>>> Stashed changes
 pub mod alias;
 pub mod hash;
 pub mod asset_id;

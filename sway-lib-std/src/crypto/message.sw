@@ -9,7 +9,7 @@ use ::hash::*;
 /// Normalized (hashed) message authenticated by a signature
 pub struct Message {
     /// The underlying raw `[u8; 64]` data of the message.
-    bits: [u8; 32]
+    bits: [u8; 32],
 }
 
 impl Message {
@@ -32,7 +32,11 @@ impl Message {
     /// ```
     pub fn new() -> Self {
         Self {
-            bits: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+            bits: [
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8,
+            ],
         }
     }
 
@@ -60,21 +64,29 @@ impl Message {
 impl From<b256> for Message {
     fn from(bits: b256) -> Self {
         Self {
-            bits: asm (bits: bits) { bits: [u8; 32] }
+            bits: asm(bits: bits) {
+                bits: [u8; 32]
+            },
         }
     }
 }
 
 impl From<Message> for b256 {
     fn from(message: Message) -> Self {
-        asm (bits: message.bits()) { bits: b256 }
+        asm(bits: message.bits()) {
+            bits: b256
+        }
     }
 }
 
 impl core::ops::Eq for Message {
     fn eq(self, other: Self) -> bool {
-        let self_b256 = asm (bits: self.bits) { bits: b256 };
-        let other_b256 = asm (bits: other.bits) { bits: b256 };
+        let self_b256 = asm(bits: self.bits) {
+            bits: b256
+        };
+        let other_b256 = asm(bits: other.bits) {
+            bits: b256
+        };
 
         self_b256 == other_b256
     }

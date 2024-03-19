@@ -15,7 +15,7 @@ use ::hash::*;
 /// For Ed25519 signatures only the upper 32 bytes are used.
 pub struct PublicKey {
     /// The underlying raw `[u8; 64]` data of the public key.
-    bits: [u8; 64]
+    bits: [u8; 64],
 }
 
 impl PublicKey {
@@ -38,10 +38,15 @@ impl PublicKey {
     /// ```
     pub fn new() -> Self {
         Self {
-            bits: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+            bits: [
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            ],
         }
     }
-
 
     /// Returns the underlying raw `[u8; 64]` data of the public key.
     ///
@@ -67,15 +72,21 @@ impl PublicKey {
 impl From<B512> for PublicKey {
     fn from(bits: B512) -> Self {
         Self {
-            bits: asm (bits: bits.bits()) { bits: [u8; 64] }
+            bits: asm(bits: bits.bits()) {
+                bits: [u8; 64]
+            },
         }
     }
 }
 
 impl From<PublicKey> for B512 {
     fn from(public_key: PublicKey) -> Self {
-        let b256_1 = asm (bits: public_key.bits()) { bits: b256 };
-        let b256_2 = asm (bits: public_key.bits()[32]) { bits: b256 };
+        let b256_1 = asm(bits: public_key.bits()) {
+            bits: b256
+        };
+        let b256_2 = asm(bits: public_key.bits()[32]) {
+            bits: b256
+        };
         B512::from((b256_1, b256_2))
     }
 }
@@ -83,15 +94,21 @@ impl From<PublicKey> for B512 {
 impl From<(b256, b256)> for PublicKey {
     fn from(components: (b256, b256)) -> Self {
         Self {
-            bits: asm (components: components) { components: [u8; 64] }
+            bits: asm(components: components) {
+                components: [u8; 64]
+            },
         }
     }
 }
 
 impl From<PublicKey> for (b256, b256) {
     fn from(public_key: PublicKey) -> (b256, b256) {
-        let b256_1 = asm (bits: public_key.bits()) { bits: b256 };
-        let b256_2 = asm (bits: public_key.bits()[32]) { bits: b256 };
+        let b256_1 = asm(bits: public_key.bits()) {
+            bits: b256
+        };
+        let b256_2 = asm(bits: public_key.bits()[32]) {
+            bits: b256
+        };
         (b256_1, b256_2)
     }
 }
@@ -101,7 +118,9 @@ impl From<b256> for PublicKey {
     fn from(components: b256) -> Self {
         let components: (b256, b256) = (components, ZERO_B256);
         Self {
-            bits: asm (components: components) { components: [u8; 64] }
+            bits: asm(components: components) {
+                components: [u8; 64]
+            },
         }
     }
 }
@@ -109,16 +128,26 @@ impl From<b256> for PublicKey {
 // Used for Ed25519 signatures
 impl From<PublicKey> for b256 {
     fn from(public_key: PublicKey) -> b256 {
-        asm (bits: public_key.bits()) { bits: b256 }
+        asm(bits: public_key.bits()) {
+            bits: b256
+        }
     }
 }
 
 impl core::ops::Eq for PublicKey {
     fn eq(self, other: Self) -> bool {
-        let self_b256_1 = asm (bits: self.bits) { bits: b256 };
-        let self_b256_2 = asm (bits: self.bits[32]) { bits: b256 };
-        let other_b256_1 = asm (bits: other.bits) { bits: b256 };
-        let other_b256_2 = asm (bits: other.bits[32]) { bits: b256 };
+        let self_b256_1 = asm(bits: self.bits) {
+            bits: b256
+        };
+        let self_b256_2 = asm(bits: self.bits[32]) {
+            bits: b256
+        };
+        let other_b256_1 = asm(bits: other.bits) {
+            bits: b256
+        };
+        let other_b256_2 = asm(bits: other.bits[32]) {
+            bits: b256
+        };
 
         self_b256_1 == other_b256_1 && self_b256_2 == other_b256_2
     }

@@ -11,7 +11,7 @@ use ::result::Result::{self, *};
 /// An ed25519 signature.
 pub struct Ed25519 {
     /// The underlying raw `[u8; 64]` data of the signature.
-    bits: [u8; 64]
+    bits: [u8; 64],
 }
 
 impl Ed25519 {
@@ -34,7 +34,13 @@ impl Ed25519 {
     /// ```
     pub fn new() -> Self {
         Self {
-            bits: [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8],
+            bits: [
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            ],
         }
     }
 
@@ -58,7 +64,6 @@ impl Ed25519 {
         self.bits
     }
 }
-
 
 impl Ed25519 {
     /// Verifies that a 32-byte curve25519 public key derived from the private key was used to sign a message.
@@ -119,15 +124,21 @@ impl Ed25519 {
 impl From<B512> for Ed25519 {
     fn from(bits: B512) -> Self {
         Self {
-            bits: asm (bits: bits.bits()) { bits: [u8; 64] }
+            bits: asm(bits: bits.bits()) {
+                bits: [u8; 64]
+            },
         }
     }
 }
 
 impl From<Ed25519> for B512 {
     fn from(signature: Ed25519) -> Self {
-        let b256_1 = asm (bits: signature.bits()) { bits: b256 };
-        let b256_2 = asm (bits: signature.bits()[32]) { bits: b256 };
+        let b256_1 = asm(bits: signature.bits()) {
+            bits: b256
+        };
+        let b256_2 = asm(bits: signature.bits()[32]) {
+            bits: b256
+        };
         B512::from((b256_1, b256_2))
     }
 }
@@ -135,25 +146,39 @@ impl From<Ed25519> for B512 {
 impl From<(b256, b256)> for Ed25519 {
     fn from(components: (b256, b256)) -> Self {
         Self {
-            bits: asm (components: components) { components: [u8; 64] }
+            bits: asm(components: components) {
+                components: [u8; 64]
+            },
         }
     }
 }
 
 impl From<Ed25519> for (b256, b256) {
     fn from(signature: Ed25519) -> (b256, b256) {
-        let b256_1 = asm (bits: signature.bits()) { bits: b256 };
-        let b256_2 = asm (bits: signature.bits()[32]) { bits: b256 };
+        let b256_1 = asm(bits: signature.bits()) {
+            bits: b256
+        };
+        let b256_2 = asm(bits: signature.bits()[32]) {
+            bits: b256
+        };
         (b256_1, b256_2)
     }
 }
 
 impl core::ops::Eq for Ed25519 {
     fn eq(self, other: Self) -> bool {
-        let self_b256_1 = asm (bits: self.bits) { bits: b256 };
-        let self_b256_2 = asm (bits: self.bits[32]) { bits: b256 };
-        let other_b256_1 = asm (bits: other.bits) { bits: b256 };
-        let other_b256_2 = asm (bits: other.bits[32]) { bits: b256 };
+        let self_b256_1 = asm(bits: self.bits) {
+            bits: b256
+        };
+        let self_b256_2 = asm(bits: self.bits[32]) {
+            bits: b256
+        };
+        let other_b256_1 = asm(bits: other.bits) {
+            bits: b256
+        };
+        let other_b256_2 = asm(bits: other.bits[32]) {
+            bits: b256
+        };
 
         self_b256_1 == other_b256_1 && self_b256_2 == other_b256_2
     }
@@ -229,4 +254,3 @@ fn test_revert_ed_verify() {
     let verified = signature.verify(public_key, message);
     assert(verified.is_ok());
 }
-
