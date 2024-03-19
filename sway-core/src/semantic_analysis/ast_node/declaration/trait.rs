@@ -154,9 +154,7 @@ impl TyTraitDecl {
                             handler,
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: const_name.clone(),
                                 decl_id: *decl_ref.id(),
-                                decl_span: const_decl.span.clone(),
                             }),
                         )?;
 
@@ -452,9 +450,7 @@ impl TyTraitDecl {
                             engines,
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: const_name,
                                 decl_id: *decl_ref.id(),
-                                decl_span: const_decl.span.clone(),
                             }),
                             const_shadowing_mode,
                             generic_shadowing_mode,

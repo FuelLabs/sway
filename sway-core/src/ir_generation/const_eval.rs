@@ -721,12 +721,12 @@ fn const_eval_codeblock(
                     })
                     .flatten()
                 {
-                    known_consts.push(const_decl.name.clone(), constant);
-                    bindings.push(const_decl.name.clone());
+                    known_consts.push(ty_const_decl.name().clone(), constant);
+                    bindings.push(ty_const_decl.name().clone());
                     Ok(None)
                 } else {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: const_decl.decl_span.clone(),
+                        span: ty_const_decl.span.clone(),
                     })
                 }
             }

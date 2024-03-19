@@ -166,7 +166,7 @@ impl Items {
                     // variable shadowing a constant
                     (
                         constant_ident,
-                        ConstantDecl(constant_decl),
+                        ConstantDecl(_constant_decl),
                         is_imported_constant,
                         is_alias,
                         VariableDecl { .. },
@@ -178,7 +178,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                item.span(engines)
                             } else {
                                 Span::dummy()
                             },
@@ -188,7 +188,7 @@ impl Items {
                     // constant shadowing a constant sequentially
                     (
                         constant_ident,
-                        ConstantDecl(constant_decl),
+                        ConstantDecl(_constant_decl),
                         is_imported_constant,
                         is_alias,
                         ConstantDecl { .. },
@@ -200,7 +200,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                item.span(engines)
                             } else {
                                 Span::dummy()
                             },
