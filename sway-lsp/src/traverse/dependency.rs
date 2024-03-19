@@ -61,9 +61,11 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
             ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id }) => {
                 ctx.engines.de().get_trait(decl_id).name().clone()
             }
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id }) => {
+                ctx.engines.de().get_struct(decl_id).name().clone()
+            }
             ty::TyDecl::VariableDecl(variable) => variable.name.clone(),
-            ty::TyDecl::StructDecl(ty::StructDecl { name, .. })
-            | ty::TyDecl::EnumDecl(ty::EnumDecl { name, .. }) => name.clone(),
+            ty::TyDecl::EnumDecl(ty::EnumDecl { name, .. }) => name.clone(),
             _ => return,
         };
 

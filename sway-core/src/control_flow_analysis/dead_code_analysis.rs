@@ -2121,12 +2121,10 @@ fn construct_dead_code_warning_from_node(
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDecl::StructDecl(ty::StructDecl {
-                    name, ..
-                })),
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::StructDecl(ty::StructDecl { decl_id })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get(decl_id).span(),
             warning_content: Warning::DeadStructDeclaration,
         },
         ty::TyAstNode {

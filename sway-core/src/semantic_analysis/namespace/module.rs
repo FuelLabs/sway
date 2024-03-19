@@ -21,7 +21,7 @@ use sway_ast::ItemConst;
 use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, Named, Spanned};
 
 /// A single `Module` within a Sway project.
 ///
@@ -509,11 +509,14 @@ impl Module {
         decl: ty::TyDecl,
     ) -> Result<TypeInfo, ErrorEmitted> {
         Ok(match decl.clone() {
-            ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
-                struct_decl.name.clone(),
-                struct_decl.decl_id,
-                struct_decl.name.span(),
-            )),
+            ty::TyDecl::StructDecl(decl) => {
+                let struct_decl = engines.de().get_struct(&decl.decl_id);
+                TypeInfo::Struct(DeclRef::new(
+                    struct_decl.name().clone(),
+                    decl.decl_id,
+                    struct_decl.name().span(),
+                ))
+            }
             ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
                 enum_decl.name.clone(),
                 enum_decl.decl_id,
