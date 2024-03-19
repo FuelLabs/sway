@@ -39,5 +39,6 @@ async fn run_external_can_proxy_call() {
         .call()
         .await
         .unwrap();
+    dbg!(result.receipts);
     assert_eq!(result.value, 84);
 }
