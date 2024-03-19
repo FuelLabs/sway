@@ -333,62 +333,6 @@ impl SubstTypes for TyDecl {
     }
 }
 
-impl TyDecl {
-    pub fn get_enum_decl_ref(&self) -> Option<DeclRefEnum> {
-        if let TyDecl::EnumDecl(EnumDecl {
-            name,
-            decl_id,
-            decl_span,
-            ..
-        }) = self
-        {
-            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
-        } else {
-            None
-        }
-    }
-
-    pub fn get_struct_decl_ref(&self) -> Option<DeclRefStruct> {
-        if let TyDecl::StructDecl(StructDecl {
-            name,
-            decl_id,
-            decl_span,
-            ..
-        }) = self
-        {
-            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
-        } else {
-            None
-        }
-    }
-
-    pub fn get_trait_decl_ref(&self) -> Option<DeclRefTrait> {
-        if let TyDecl::TraitDecl(decl) = self {
-            Some(DeclRef::new(
-                decl.name.clone(),
-                decl.decl_id,
-                decl.decl_span.clone(),
-            ))
-        } else {
-            None
-        }
-    }
-
-    pub fn get_fun_decl_ref(&self) -> Option<DeclRefFunction> {
-        if let TyDecl::FunctionDecl(FunctionDecl {
-            name,
-            decl_id,
-            subst_list: _,
-            decl_span,
-        }) = self
-        {
-            Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
-        } else {
-            None
-        }
-    }
-}
-
 impl Spanned for TyDecl {
     fn span(&self) -> Span {
         match self {
@@ -651,10 +595,7 @@ impl TyDecl {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyFunctionDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][FunctionDecl] variant.
-    pub(crate) fn to_fn_ref(
-        &self,
-        handler: &Handler,
-    ) -> Result<DeclRef<DeclId<TyFunctionDecl>>, ErrorEmitted> {
+    pub(crate) fn to_fn_ref(&self, handler: &Handler) -> Result<DeclRefFunction, ErrorEmitted> {
         match self {
             TyDecl::FunctionDecl(FunctionDecl {
                 name,
