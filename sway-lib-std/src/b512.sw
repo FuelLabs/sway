@@ -4,6 +4,7 @@ library;
 
 use ::constants::ZERO_B256;
 use ::convert::From;
+use ::hash::*;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -30,6 +31,13 @@ impl From<(b256, b256)> for B512 {
 impl From<B512> for (b256, b256) {
     fn from(val: B512) -> (b256, b256) {
         ((val.bits)[0], (val.bits)[1])
+    }
+}
+
+impl Hash for B512 {
+    fn hash(self, ref mut state: Hasher) {
+        let B512 { bits } = self;
+        bits.hash(state);
     }
 }
 

@@ -17,6 +17,11 @@ pub mod primitive_conversions;
 pub mod math;
 pub mod flags;
 pub mod u128;
+<<<<<<< Updated upstream
+=======
+pub mod u256;
+pub mod b512;
+>>>>>>> Stashed changes
 pub mod alias;
 pub mod hash;
 pub mod asset_id;
@@ -25,13 +30,12 @@ pub mod constants;
 pub mod call_frames;
 pub mod context;
 pub mod external;
-pub mod b512;
 pub mod tx;
 pub mod outputs;
 pub mod address;
 pub mod identity;
-pub mod ecr;
 pub mod vm;
+pub mod crypto;
 pub mod string;
 pub mod r#storage;
 pub mod block;
