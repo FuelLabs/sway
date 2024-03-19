@@ -357,7 +357,7 @@ where
             return (None, None);
         }
 
-        let implementing_for_decl_ref = decl.get_struct_decl_ref().unwrap();
+        let implementing_for_decl_ref = decl.to_struct_ref(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
 
         let module_id = struct_decl.span().source_id().map(|sid| sid.module_id());
@@ -393,7 +393,7 @@ where
             return (None, None);
         }
 
-        let enum_decl_ref = decl.get_enum_decl_ref().unwrap();
+        let enum_decl_ref = decl.to_enum_ref(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(enum_decl_ref.id());
 
         let module_id = enum_decl.span().source_id().map(|sid| sid.module_id());
