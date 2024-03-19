@@ -954,11 +954,7 @@ impl<'a> TypeCheckContext<'a> {
                 type_id,
                 ..
             })) => type_id,
-            Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
-                decl_id,
-                name,
-                decl_span: _,
-            })) => {
+            Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id })) => {
                 let decl_type = decl_engine.get_type(&decl_id);
 
                 if let Some(ty) = &decl_type.ty {
@@ -967,10 +963,10 @@ impl<'a> TypeCheckContext<'a> {
                     type_engine.insert(
                         self.engines,
                         TypeInfo::TraitType {
-                            name: name.clone(),
+                            name: decl_type.name.clone(),
                             trait_type_id: implementing_type,
                         },
-                        name.span().source_id(),
+                        decl_type.name.span().source_id(),
                     )
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(

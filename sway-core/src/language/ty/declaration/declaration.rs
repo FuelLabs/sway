@@ -44,9 +44,7 @@ pub struct ConstantDecl {
 
 #[derive(Clone, Debug)]
 pub struct TraitTypeDecl {
-    pub name: Ident,
     pub decl_id: DeclId<TyTraitType>,
-    pub decl_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -340,12 +338,13 @@ impl SpannedWithEngines for TyDecl {
             TyDecl::ConstantDecl(ConstantDecl { decl_id }) => {
                 engines.de().get_constant(decl_id).span.clone()
             }
+            TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
+                engines.de().get_type(decl_id).span.clone()
             }
             TyDecl::VariableDecl(decl) => decl.name.span(),
             TyDecl::FunctionDecl(FunctionDecl { decl_span, .. })
             | TyDecl::TraitDecl(TraitDecl { decl_span, .. })
             | TyDecl::ImplTrait(ImplTrait { decl_span, .. })
-            | TyDecl::TraitTypeDecl(TraitTypeDecl { decl_span, .. })
             | TyDecl::StorageDecl(StorageDecl { decl_span, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. })
             | TyDecl::AbiDecl(AbiDecl { decl_span, .. })
@@ -506,13 +505,15 @@ impl GetDeclIdent for TyDecl {
             TyDecl::ConstantDecl(ConstantDecl { decl_id }) => {
                 Some(engines.de().get_constant(decl_id).name().clone())
             }
+            TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
+                Some(engines.de().get_type(decl_id).name().clone())
+            }
             TyDecl::VariableDecl(decl) => Some(decl.name.clone()),
             TyDecl::FunctionDecl(FunctionDecl { name, .. })
             | TyDecl::TraitDecl(TraitDecl { name, .. })
             | TyDecl::ImplTrait(ImplTrait { name, .. })
             | TyDecl::AbiDecl(AbiDecl { name, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
-            | TyDecl::TraitTypeDecl(TraitTypeDecl { name, .. })
             | TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. })
             | TyDecl::StructDecl(StructDecl { name, .. })
             | TyDecl::EnumDecl(EnumDecl { name, .. }) => Some(name.clone()),
@@ -839,9 +840,7 @@ impl TyDecl {
 impl From<DeclRef<DeclId<TyTraitType>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyTraitType>>) -> Self {
         TyDecl::TraitTypeDecl(TraitTypeDecl {
-            name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            decl_span: decl_ref.decl_span().clone(),
         })
     }
 }
