@@ -227,12 +227,7 @@ impl Root {
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),
@@ -333,12 +328,7 @@ impl Root {
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),

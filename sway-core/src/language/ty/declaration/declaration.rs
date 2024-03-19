@@ -77,7 +77,6 @@ pub struct StructDecl {
 pub struct EnumDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyEnumDecl>,
-    pub subst_list: Template<SubstList>,
     pub decl_span: Span,
 }
 
@@ -529,7 +528,6 @@ impl TyDecl {
             TyDecl::EnumDecl(EnumDecl {
                 name,
                 decl_id,
-                subst_list: _,
                 decl_span,
             }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
@@ -767,7 +765,6 @@ impl TyDecl {
             TyDecl::EnumDecl(EnumDecl {
                 name,
                 decl_id,
-                subst_list: _,
                 decl_span,
             }) => type_engine.insert(
                 engines,
@@ -859,7 +856,6 @@ impl From<DeclRef<DeclId<TyEnumDecl>>> for TyDecl {
         TyDecl::EnumDecl(EnumDecl {
             name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            subst_list: Template::new(decl_ref.subst_list().clone()),
             decl_span: decl_ref.decl_span().clone(),
         })
     }
