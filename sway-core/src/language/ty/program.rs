@@ -84,11 +84,7 @@ impl TyProgram {
 
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                    name,
-                    decl_id,
-                    decl_span,
-                })) => {
+                TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })) => {
                     let func = decl_engine.get_function(decl_id);
 
                     match func.kind {
@@ -104,11 +100,7 @@ impl TyProgram {
                         });
                     }
 
-                    declarations.push(TyDecl::FunctionDecl(FunctionDecl {
-                        name: name.clone(),
-                        decl_id: *decl_id,
-                        decl_span: decl_span.clone(),
-                    }));
+                    declarations.push(TyDecl::FunctionDecl(FunctionDecl { decl_id: *decl_id }));
                 }
                 TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
                     decl_id,

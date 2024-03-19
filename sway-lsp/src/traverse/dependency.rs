@@ -53,14 +53,15 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
 
         let ident = match declaration {
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id }) => {
-                let const_decl = ctx.engines.de().get_constant(decl_id);
-                const_decl.name().clone()
+                ctx.engines.de().get_constant(decl_id).name().clone()
+            }
+            ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id }) => {
+                ctx.engines.de().get_function(decl_id).name().clone()
             }
             ty::TyDecl::VariableDecl(variable) => variable.name.clone(),
             ty::TyDecl::StructDecl(ty::StructDecl { name, .. })
             | ty::TyDecl::EnumDecl(ty::EnumDecl { name, .. })
-            | ty::TyDecl::TraitDecl(ty::TraitDecl { name, .. })
-            | ty::TyDecl::FunctionDecl(ty::FunctionDecl { name, .. }) => name.clone(),
+            | ty::TyDecl::TraitDecl(ty::TraitDecl { name, .. }) => name.clone(),
             _ => return,
         };
 
