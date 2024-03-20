@@ -1,6 +1,6 @@
 use crate::{
     core::token::{AstToken, SymbolKind, Token},
-    traverse::{Parse, ParseContext, adaptive_iter},
+    traverse::{adaptive_iter, Parse, ParseContext},
 };
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use sway_ast::{
@@ -13,8 +13,6 @@ use sway_ast::{
 };
 use sway_core::language::{lexed::LexedProgram, HasSubmodules};
 use sway_types::{Ident, Span, Spanned};
-
-
 
 pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
     insert_module_kind(ctx, &lexed_program.root.tree.kind);

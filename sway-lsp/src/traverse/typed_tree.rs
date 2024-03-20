@@ -3,7 +3,7 @@ use crate::{
     core::token::{
         type_info_to_symbol_kind, SymbolKind, Token, TokenIdent, TypeDefinition, TypedAstToken,
     },
-    traverse::{Parse, ParseContext, adaptive_iter},
+    traverse::{adaptive_iter, Parse, ParseContext},
 };
 use dashmap::mapref::one::RefMut;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -757,20 +757,18 @@ impl Parse for ty::ImplTrait {
         adaptive_iter(trait_type_arguments, |type_arg| {
             collect_type_argument(ctx, type_arg);
         });
-        adaptive_iter(items, |item| {
-            match item {
-                ty::TyTraitItem::Fn(method_ref) => {
-                    let method = ctx.engines.de().get_function(method_ref);
-                    method.parse(ctx);
-                }
-                ty::TyTraitItem::Constant(const_ref) => {
-                    let constant = ctx.engines.de().get_constant(const_ref);
-                    collect_const_decl(ctx, &constant, None);
-                }
-                ty::TyTraitItem::Type(type_ref) => {
-                    let trait_type = ctx.engines.de().get_type(type_ref);
-                    collect_trait_type_decl(ctx, &trait_type, &type_ref.span());
-                }
+        adaptive_iter(items, |item| match item {
+            ty::TyTraitItem::Fn(method_ref) => {
+                let method = ctx.engines.de().get_function(method_ref);
+                method.parse(ctx);
+            }
+            ty::TyTraitItem::Constant(const_ref) => {
+                let constant = ctx.engines.de().get_constant(const_ref);
+                collect_const_decl(ctx, &constant, None);
+            }
+            ty::TyTraitItem::Type(type_ref) => {
+                let trait_type = ctx.engines.de().get_type(type_ref);
+                collect_trait_type_decl(ctx, &trait_type, &type_ref.span());
             }
         });
         collect_type_argument(ctx, implementing_for);

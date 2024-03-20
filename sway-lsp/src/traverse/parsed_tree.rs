@@ -7,7 +7,7 @@ use crate::{
         },
         token_map::TokenMap,
     },
-    traverse::{Parse, ParseContext, adaptive_iter},
+    traverse::{adaptive_iter, Parse, ParseContext},
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use sway_core::{
@@ -374,7 +374,9 @@ impl Parse for IntrinsicFunctionExpression {
             ),
         );
         adaptive_iter(&self.arguments, |arg| arg.parse(ctx));
-        adaptive_iter(&self.kind_binding.type_arguments.to_vec(), |type_arg| type_arg.parse(ctx));
+        adaptive_iter(&self.kind_binding.type_arguments.to_vec(), |type_arg| {
+            type_arg.parse(ctx)
+        });
     }
 }
 
@@ -413,7 +415,9 @@ impl Parse for DelineatedPathExpression {
                 SymbolKind::Variant,
             ),
         );
-        adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| type_arg.parse(ctx));
+        adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
+            type_arg.parse(ctx)
+        });
         if let Some(args_vec) = args.as_ref() {
             adaptive_iter(args_vec, |exp| exp.parse(ctx));
         }
@@ -448,7 +452,9 @@ impl Parse for AmbiguousPathExpression {
                 SymbolKind::Variant,
             ),
         );
-        adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| type_arg.parse(ctx));
+        adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
+            type_arg.parse(ctx)
+        });
         adaptive_iter(args, |exp| exp.parse(ctx));
         collect_qualified_path_root(ctx, qualified_path_root.clone().map(Box::new));
     }
@@ -470,9 +476,12 @@ impl Parse for MethodApplicationExpression {
             let (type_info, ident) = &call_path_binding.inner.suffix;
             collect_type_info_token(ctx, type_info, Some(&ident.span()));
         }
-        adaptive_iter(&self.method_name_binding.type_arguments.to_vec(), |type_arg| {
-            type_arg.parse(ctx);
-        });
+        adaptive_iter(
+            &self.method_name_binding.type_arguments.to_vec(),
+            |type_arg| {
+                type_arg.parse(ctx);
+            },
+        );
         // Don't collect applications of desugared operators due to mismatched ident lengths.
         if !desugared_op(&prefixes) {
             ctx.tokens.insert(
@@ -636,9 +645,12 @@ impl Parse for FunctionApplicationExpression {
                     SymbolKind::Function,
                 ),
             );
-            adaptive_iter(&self.call_path_binding.type_arguments.to_vec(), |type_arg| {
-                type_arg.parse(ctx);
-            });
+            adaptive_iter(
+                &self.call_path_binding.type_arguments.to_vec(),
+                |type_arg| {
+                    type_arg.parse(ctx);
+                },
+            );
         }
         adaptive_iter(&self.arguments, |exp| exp.parse(ctx));
     }
@@ -730,7 +742,9 @@ impl Parse for ParsedDeclId<StructDeclaration> {
             ),
         );
         adaptive_iter(&struct_decl.fields, |field| field.parse(ctx));
-        adaptive_iter(&struct_decl.type_parameters, |type_param| type_param.parse(ctx));
+        adaptive_iter(&struct_decl.type_parameters, |type_param| {
+            type_param.parse(ctx)
+        });
         struct_decl.attributes.parse(ctx);
     }
 }
@@ -745,7 +759,9 @@ impl Parse for ParsedDeclId<EnumDeclaration> {
                 SymbolKind::Enum,
             ),
         );
-        adaptive_iter(&enum_decl.type_parameters, |type_param| type_param.parse(ctx));
+        adaptive_iter(&enum_decl.type_parameters, |type_param| {
+            type_param.parse(ctx)
+        });
         adaptive_iter(&enum_decl.variants, |variant| variant.parse(ctx));
         enum_decl.attributes.parse(ctx);
     }
@@ -768,7 +784,9 @@ impl Parse for ParsedDeclId<ImplTrait> {
             ),
         );
         impl_trait.implementing_for.parse(ctx);
-        adaptive_iter(&impl_trait.impl_type_parameters, |type_param| type_param.parse(ctx));
+        adaptive_iter(&impl_trait.impl_type_parameters, |type_param| {
+            type_param.parse(ctx)
+        });
         adaptive_iter(&impl_trait.items, |item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
@@ -797,7 +815,9 @@ impl Parse for ParsedDeclId<ImplSelf> {
                 adaptive_iter(type_arguments, |type_arg| type_arg.parse(ctx));
             }
         }
-        adaptive_iter(&impl_self.impl_type_parameters, |type_param| type_param.parse(ctx));
+        adaptive_iter(&impl_self.impl_type_parameters, |type_param| {
+            type_param.parse(ctx)
+        });
         adaptive_iter(&impl_self.items, |item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
@@ -1074,7 +1094,9 @@ fn collect_call_path_tree(
         ctx.ident(&tree.qualified_call_path.call_path.suffix),
         token.clone(),
     );
-    adaptive_iter(&tree.children, |child| collect_call_path_tree(ctx, child, token, tokens));
+    adaptive_iter(&tree.children, |child| {
+        collect_call_path_tree(ctx, child, token, tokens)
+    });
 }
 
 fn collect_qualified_path_root(
