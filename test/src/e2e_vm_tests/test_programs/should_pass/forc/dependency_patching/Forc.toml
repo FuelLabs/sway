@@ -7,4 +7,4 @@ name = "dependency_patching"
 [dependencies]
 
 [patch.'https://github.com/fuellabs/sway']
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }
