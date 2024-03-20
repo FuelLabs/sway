@@ -32,7 +32,7 @@ pub trait Parse {
     fn parse(&self, ctx: &ParseContext);
 }
 
-const PARALLEL_THRESHOLD: usize = 10;
+const PARALLEL_THRESHOLD: usize = 8;
 
 /// Iterates over items, choosing parallel or sequential execution based on size.
 pub fn adaptive_iter<T, F>(items: &[T], action: F)
