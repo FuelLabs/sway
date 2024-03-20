@@ -2,7 +2,7 @@ use crate::{
     core::token::{AstToken, SymbolKind, Token},
     traverse::{Parse, ParseContext, adaptive_iter},
 };
-use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use sway_ast::{
     expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
     Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
