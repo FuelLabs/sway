@@ -1,9 +1,9 @@
 [[package]]
 name = "core"
-source = "path+from-root-EE00857339AC041F"
+source = "path+from-root-8011322D04562685"
 
 [[package]]
-name = "main_args_copy"
+name = "main_args_generics"
 source = "member"
 dependencies = [
     "core",
@@ -12,5 +12,5 @@ dependencies = [
 
 [[package]]
 name = "std"
-source = "path+from-root-EE00857339AC041F"
+source = "path+from-root-8011322D04562685"
 dependencies = ["core"]
