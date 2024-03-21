@@ -197,8 +197,10 @@ pub(crate) fn runs_in_vm(
             // Increase `script_gas_limit` to the maximum allowed value.
             tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
 
-            let tx = tb.finalize_checked(block_height)
-                .into_ready(gas_price, params.gas_costs(), params.fee_params()).map_err(|e| anyhow::anyhow!("{e:?}"))?;
+            let tx = tb
+                .finalize_checked(block_height)
+                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());
