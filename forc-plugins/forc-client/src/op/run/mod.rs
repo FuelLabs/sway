@@ -192,7 +192,7 @@ async fn send_tx(
             let txs = vec![tx.clone()];
             let receipts = client.dry_run(txs.as_slice()).await?;
             let receipts = receipts
-                .get(0)
+                .first()
                 .map(|tx| &tx.result)
                 .map(|res| res.receipts());
             match receipts {
