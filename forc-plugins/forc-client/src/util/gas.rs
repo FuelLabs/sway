@@ -40,7 +40,6 @@ pub(crate) async fn get_gas_used(mut tx: Script, provider: &Provider) -> Result<
             Default::default(),
             TxPointer::default(),
             0,
-            0u32.into(),
         ));
 
         // Add an empty `Witness` for the `coin_signed` we just added
@@ -49,11 +48,11 @@ pub(crate) async fn get_gas_used(mut tx: Script, provider: &Provider) -> Result<
     }
 
     // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
-    let network_info = provider.network_info().await?;
-    let consensus_params = &network_info.consensus_parameters;
+    let consensus_params = provider.consensus_parameters();
+    let max_gas_per_tx = consensus_params.tx_params().max_gas_per_tx;
     let max_gas = tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
     // Increase `script_gas_limit` to the maximum allowed value.
-    tx.set_script_gas_limit(network_info.max_gas_per_tx() - max_gas);
+    tx.set_script_gas_limit(max_gas_per_tx - max_gas);
 
     let tolerance = 0.1;
     let gas_used = provider
