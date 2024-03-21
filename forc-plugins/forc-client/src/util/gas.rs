@@ -1,22 +1,10 @@
 use anyhow::Result;
-use forc_tx::Gas;
-use fuel_core_client::client::types::NodeInfo;
 use fuel_tx::{
     field::{Inputs, Witnesses},
     Buildable, Chargeable, Input, Script, TxPointer,
 };
 use fuels_accounts::provider::Provider;
 use fuels_core::types::transaction_builders::DryRunner;
-
-/// Returns the gas to use for deployment, overriding default values if necessary.
-pub fn get_gas_price(gas: &Gas, node_info: NodeInfo) -> u64 {
-    // TODO: write unit tests for this function once https://github.com/FuelLabs/fuel-core/issues/1312 is resolved.
-    if let Some(gas_price) = gas.price {
-        gas_price
-    } else {
-        node_info.min_gas_price
-    }
-}
 
 fn no_spendable_input<'a, I: IntoIterator<Item = &'a Input>>(inputs: I) -> bool {
     !inputs.into_iter().any(|i| {
