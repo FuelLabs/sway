@@ -21,11 +21,26 @@ impl Buffer {
         }
     }
 
-    pub fn push<T>(ref mut self, val: T) {
-        let count = __size_of::<T>();
-
+    pub fn push_byte(ref mut self, val: u8) {
+        let count = 1;
         if self.cap >= self.size + count {
-            self.buffer.add::<u8>(self.size).write(val);
+            let ptr = self.buffer.add::<u8>(self.size);
+            asm(ptr: ptr, val: val) {
+                sb ptr val i0;
+            };
+            self.size += count;
+        } else {
+            __revert(123456789);
+        }
+    }
+
+    pub fn push_u64(ref mut self, val: u64) {
+        let count = 8;
+        if self.cap >= self.size + count {
+            let ptr = self.buffer.add::<u8>(self.size);
+            asm(ptr: ptr, val: val) {
+                sw ptr val i0;
+            };
             self.size += count;
         } else {
             __revert(123456789);
@@ -169,7 +184,7 @@ pub trait AbiEncode {
 
 impl AbiEncode for bool {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self);
+        buffer.push_byte(if self { 1 } else { 0 });
     }
 }
 
@@ -180,10 +195,10 @@ impl AbiEncode for b256 {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
-        buffer.push(a);
-        buffer.push(b);
-        buffer.push(c);
-        buffer.push(d);
+        buffer.push_u64(a);
+        buffer.push_u64(b);
+        buffer.push_u64(c);
+        buffer.push_u64(d);
     }
 }
 
@@ -192,16 +207,16 @@ impl AbiEncode for u256 {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
-        buffer.push(a);
-        buffer.push(b);
-        buffer.push(c);
-        buffer.push(d);
+        buffer.push_u64(a);
+        buffer.push_u64(b);
+        buffer.push_u64(c);
+        buffer.push_u64(d);
     }
 }
 
 impl AbiEncode for u64 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self);
+        buffer.push_u64(self);
     }
 }
 
@@ -235,10 +250,10 @@ impl AbiEncode for u32 {
             output: [u8; 4]
         };
 
-        buffer.push(output[3]);
-        buffer.push(output[2]);
-        buffer.push(output[1]);
-        buffer.push(output[0]);
+        buffer.push_byte(output[3]);
+        buffer.push_byte(output[2]);
+        buffer.push_byte(output[1]);
+        buffer.push_byte(output[0]);
     }
 }
 
@@ -256,14 +271,14 @@ impl AbiEncode for u16 {
             output: [u8; 2]
         };
 
-        buffer.push(output[1]);
-        buffer.push(output[0]);
+        buffer.push_byte(output[1]);
+        buffer.push_byte(output[0]);
     }
 }
 
 impl AbiEncode for u8 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self);
+        buffer.push_byte(self);
     }
 }
 
@@ -273,14 +288,14 @@ impl AbiEncode for str {
     fn abi_encode(self, ref mut buffer: Buffer) {
         use ::str::*;
         let len = self.len();
-        buffer.push(len);
+        buffer.push_u64(len);
 
         let ptr = self.as_ptr();
 
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -300,7 +315,7 @@ impl AbiEncode for str[1] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -314,7 +329,7 @@ impl AbiEncode for str[2] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -328,7 +343,7 @@ impl AbiEncode for str[3] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -342,7 +357,7 @@ impl AbiEncode for str[4] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -356,7 +371,7 @@ impl AbiEncode for str[5] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -370,7 +385,7 @@ impl AbiEncode for str[6] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -384,7 +399,7 @@ impl AbiEncode for str[7] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -398,7 +413,7 @@ impl AbiEncode for str[8] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -412,7 +427,7 @@ impl AbiEncode for str[9] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -426,7 +441,7 @@ impl AbiEncode for str[10] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -440,7 +455,7 @@ impl AbiEncode for str[11] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -454,7 +469,7 @@ impl AbiEncode for str[12] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -468,7 +483,7 @@ impl AbiEncode for str[13] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -482,7 +497,7 @@ impl AbiEncode for str[14] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -496,7 +511,7 @@ impl AbiEncode for str[15] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -510,7 +525,7 @@ impl AbiEncode for str[16] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -524,7 +539,7 @@ impl AbiEncode for str[17] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -538,7 +553,7 @@ impl AbiEncode for str[18] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -552,7 +567,7 @@ impl AbiEncode for str[19] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -566,7 +581,7 @@ impl AbiEncode for str[20] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -580,7 +595,7 @@ impl AbiEncode for str[21] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -594,7 +609,7 @@ impl AbiEncode for str[22] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -608,7 +623,7 @@ impl AbiEncode for str[23] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -622,7 +637,7 @@ impl AbiEncode for str[24] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -636,7 +651,7 @@ impl AbiEncode for str[25] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -650,7 +665,7 @@ impl AbiEncode for str[26] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -664,7 +679,7 @@ impl AbiEncode for str[27] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -678,7 +693,7 @@ impl AbiEncode for str[28] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -692,7 +707,7 @@ impl AbiEncode for str[29] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -706,7 +721,7 @@ impl AbiEncode for str[30] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -720,7 +735,7 @@ impl AbiEncode for str[31] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -734,7 +749,7 @@ impl AbiEncode for str[32] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -748,7 +763,7 @@ impl AbiEncode for str[33] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -762,7 +777,7 @@ impl AbiEncode for str[34] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -776,7 +791,7 @@ impl AbiEncode for str[35] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -790,7 +805,7 @@ impl AbiEncode for str[36] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -804,7 +819,7 @@ impl AbiEncode for str[37] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -818,7 +833,7 @@ impl AbiEncode for str[38] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -832,7 +847,7 @@ impl AbiEncode for str[39] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -846,7 +861,7 @@ impl AbiEncode for str[40] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -860,7 +875,7 @@ impl AbiEncode for str[41] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -874,7 +889,7 @@ impl AbiEncode for str[42] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -888,7 +903,7 @@ impl AbiEncode for str[43] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -902,7 +917,7 @@ impl AbiEncode for str[44] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -916,7 +931,7 @@ impl AbiEncode for str[45] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -930,7 +945,7 @@ impl AbiEncode for str[46] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -944,7 +959,7 @@ impl AbiEncode for str[47] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -958,7 +973,7 @@ impl AbiEncode for str[48] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -972,7 +987,7 @@ impl AbiEncode for str[49] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -986,7 +1001,7 @@ impl AbiEncode for str[50] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1000,7 +1015,7 @@ impl AbiEncode for str[51] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1014,7 +1029,7 @@ impl AbiEncode for str[52] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1028,7 +1043,7 @@ impl AbiEncode for str[53] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1042,7 +1057,7 @@ impl AbiEncode for str[54] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1056,7 +1071,7 @@ impl AbiEncode for str[55] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1070,7 +1085,7 @@ impl AbiEncode for str[56] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1084,7 +1099,7 @@ impl AbiEncode for str[57] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1098,7 +1113,7 @@ impl AbiEncode for str[58] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1112,7 +1127,7 @@ impl AbiEncode for str[59] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1126,7 +1141,7 @@ impl AbiEncode for str[60] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1140,7 +1155,7 @@ impl AbiEncode for str[61] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1154,7 +1169,7 @@ impl AbiEncode for str[62] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1168,7 +1183,7 @@ impl AbiEncode for str[63] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1182,7 +1197,7 @@ impl AbiEncode for str[64] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1194,14 +1209,14 @@ impl AbiEncode for str[64] {
 impl AbiEncode for raw_slice {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let len = self.number_of_bytes();
-        buffer.push(len);
+        buffer.push_u64(len);
 
         let ptr = self.ptr();
 
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }

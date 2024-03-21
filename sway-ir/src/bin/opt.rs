@@ -26,7 +26,13 @@ fn main() -> Result<(), anyhow::Error> {
     let source_engine = SourceEngine::default();
 
     // Parse it. XXX Improve this error message too.
-    let mut ir = sway_ir::parser::parse(&input_str, &source_engine, ExperimentalFlags::default())?;
+    let mut ir = sway_ir::parser::parse(
+        &input_str,
+        &source_engine,
+        ExperimentalFlags {
+            new_encoding: false,
+        },
+    )?;
 
     // Perform optimisation passes in order.
     let mut passes = PassGroup::default();

@@ -1068,7 +1068,7 @@ fn get_expected_result(key: &str, toml_content: &toml::Value) -> Result<TestResu
             (Some("result"), toml::Value::Integer(v)) => Ok(TestResult::Result(*v as Word)),
 
             // A bytes32 value.
-            (Some("return_data"), toml::Value::String(v)) => hex::decode(v)
+            (Some("return_data"), toml::Value::String(v)) => hex::decode(v.replace(' ', ""))
                 .map(TestResult::ReturnData)
                 .map_err(|e| anyhow!("Invalid hex value for 'return_data': {}", e)),
 
