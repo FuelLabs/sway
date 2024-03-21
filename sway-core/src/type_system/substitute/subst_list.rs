@@ -60,8 +60,8 @@ impl std::iter::FromIterator<TypeParameter> for SubstList {
 
 impl EqWithEngines for SubstList {}
 impl PartialEqWithEngines for SubstList {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.list.eq(&other.list, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.list.eq(&other.list, ctx)
     }
 }
 

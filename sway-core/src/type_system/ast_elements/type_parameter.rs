@@ -54,13 +54,13 @@ impl HashWithEngines for TypeParameter {
 
 impl EqWithEngines for TypeParameter {}
 impl PartialEqWithEngines for TypeParameter {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         type_engine
             .get(self.type_id)
-            .eq(&type_engine.get(other.type_id), engines)
+            .eq(&type_engine.get(other.type_id), ctx)
             && self.name_ident == other.name_ident
-            && self.trait_constraints.eq(&other.trait_constraints, engines)
+            && self.trait_constraints.eq(&other.trait_constraints, ctx)
     }
 }
 

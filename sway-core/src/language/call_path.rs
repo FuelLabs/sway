@@ -8,7 +8,7 @@ use std::{
 use crate::{
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        PartialEqWithEngines,
+        PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     Engines, Ident, Namespace,
 };
@@ -40,13 +40,12 @@ impl HashWithEngines for CallPathTree {
 
 impl EqWithEngines for CallPathTree {}
 impl PartialEqWithEngines for CallPathTree {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let CallPathTree {
             qualified_call_path,
             children,
         } = self;
-        qualified_call_path.eq(&other.qualified_call_path, engines)
-            && children.eq(&other.children, engines)
+        qualified_call_path.eq(&other.qualified_call_path, ctx) && children.eq(&other.children, ctx)
     }
 }
 
@@ -121,13 +120,12 @@ impl HashWithEngines for QualifiedCallPath {
 
 impl EqWithEngines for QualifiedCallPath {}
 impl PartialEqWithEngines for QualifiedCallPath {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let QualifiedCallPath {
             call_path,
             qualified_path_root,
         } = self;
-        call_path.eq(&other.call_path)
-            && qualified_path_root.eq(&other.qualified_path_root, engines)
+        call_path.eq(&other.call_path) && qualified_path_root.eq(&other.qualified_path_root, ctx)
     }
 }
 

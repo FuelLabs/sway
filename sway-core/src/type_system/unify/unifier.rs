@@ -165,7 +165,11 @@ impl<'a> Unifier<'a> {
                     name: en,
                     trait_constraints: etc,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(etc, self.engines) => (),
+            ) if rn.as_str() == en.as_str()
+                && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines)) =>
+            {
+                ()
+            }
 
             (_r @ UnknownGeneric { .. }, e)
                 if !self.occurs_check(received, expected)
@@ -260,7 +264,7 @@ impl<'a> Unifier<'a> {
                 )
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r.eq(e, self.engines) =>
+                if r.eq(e, &PartialEqWithEnginesContext::new(self.engines)) =>
             {
                 // if they are the same, then it's ok
             }

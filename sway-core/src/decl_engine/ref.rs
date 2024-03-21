@@ -196,8 +196,8 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + PartialEqWithEngines,
 {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let decl_engine = engines.de();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let decl_engine = ctx.engines().de();
         let DeclRef {
             name: ln,
             id: lid,
@@ -216,7 +216,7 @@ where
             // temporarily omitted
             subst_list: _,
         } = other;
-        ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines)
+        ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
     }
 }
 
@@ -243,18 +243,18 @@ where
 
 impl EqWithEngines for DeclRefMixedInterface {}
 impl PartialEqWithEngines for DeclRefMixedInterface {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let decl_engine = engines.de();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let decl_engine = ctx.engines().de();
         match (&self.id, &other.id) {
             (InterfaceDeclId::Abi(self_id), InterfaceDeclId::Abi(other_id)) => {
                 let left = decl_engine.get(self_id);
                 let right = decl_engine.get(other_id);
-                self.name == other.name && left.eq(&right, engines)
+                self.name == other.name && left.eq(&right, ctx)
             }
             (InterfaceDeclId::Trait(self_id), InterfaceDeclId::Trait(other_id)) => {
                 let left = decl_engine.get(self_id);
                 let right = decl_engine.get(other_id);
-                self.name == other.name && left.eq(&right, engines)
+                self.name == other.name && left.eq(&right, ctx)
             }
             _ => false,
         }

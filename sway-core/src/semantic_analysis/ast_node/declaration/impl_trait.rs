@@ -194,10 +194,10 @@ impl TyImplTrait {
 
                         let abi = decl_engine.get_abi(&decl_id);
 
-                        if !type_engine
-                            .get(implementing_for.type_id)
-                            .eq(&TypeInfo::Contract, engines)
-                        {
+                        if !type_engine.get(implementing_for.type_id).eq(
+                            &TypeInfo::Contract,
+                            &PartialEqWithEnginesContext::new(engines),
+                        ) {
                             handler.emit_err(CompileError::ImplAbiForNonContract {
                                 span: implementing_for.span(),
                                 ty: engines.help_out(implementing_for.type_id).to_string(),
@@ -1095,7 +1095,7 @@ fn type_check_impl_method(
 
             if !type_engine.get(impl_method_param_type_id).eq(
                 &type_engine.get(impl_method_signature_param_type_id),
-                engines,
+                &PartialEqWithEnginesContext::new(engines),
             ) {
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
@@ -1169,7 +1169,7 @@ fn type_check_impl_method(
 
         if !type_engine.get(impl_method_return_type_id).eq(
             &type_engine.get(impl_method_signature_return_type_type_id),
-            engines,
+            &PartialEqWithEnginesContext::new(engines),
         ) {
             return Err(
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
@@ -1277,10 +1277,10 @@ fn type_check_const_decl(
     const_decl_signature_type_id.subst(&ctx.type_subst(), engines);
 
     // unify the types from the constant with the constant signature
-    if !type_engine
-        .get(const_decl_type_id)
-        .eq(&type_engine.get(const_decl_signature_type_id), engines)
-    {
+    if !type_engine.get(const_decl_type_id).eq(
+        &type_engine.get(const_decl_signature_type_id),
+        &PartialEqWithEnginesContext::new(engines),
+    ) {
         return Err(
             handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),

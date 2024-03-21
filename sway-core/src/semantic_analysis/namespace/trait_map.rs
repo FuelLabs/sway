@@ -29,8 +29,8 @@ struct TraitSuffix {
     args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name && self.args.eq(&other.args, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.args.eq(&other.args, ctx)
     }
 }
 impl OrdWithEngines for TraitSuffix {
@@ -42,9 +42,9 @@ impl OrdWithEngines for TraitSuffix {
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.prefixes == other.prefixes
-            && self.suffix.eq(&other.suffix, engines)
+            && self.suffix.eq(&other.suffix, ctx)
             && self.is_absolute == other.is_absolute
     }
 }
@@ -1059,9 +1059,9 @@ impl TraitMap {
                 trait_constraints, ..
             } => {
                 let all = constraints.iter().all(|required| {
-                    trait_constraints
-                        .iter()
-                        .any(|constraint| constraint.eq(required, engines))
+                    trait_constraints.iter().any(|constraint| {
+                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
+                    })
                 });
                 if all {
                     return Ok(());
@@ -1069,9 +1069,9 @@ impl TraitMap {
             }
             TypeInfo::Placeholder(p) => {
                 let all = constraints.iter().all(|required| {
-                    p.trait_constraints
-                        .iter()
-                        .any(|constraint| constraint.eq(required, engines))
+                    p.trait_constraints.iter().any(|constraint| {
+                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
+                    })
                 });
                 if all {
                     return Ok(());

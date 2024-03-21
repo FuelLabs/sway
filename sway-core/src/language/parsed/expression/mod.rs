@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt, hash::Hasher};
 use crate::{
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        PartialEqWithEngines,
+        PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
@@ -133,18 +133,19 @@ impl HashWithEngines for QualifiedPathType {
 
 impl EqWithEngines for QualifiedPathType {}
 impl PartialEqWithEngines for QualifiedPathType {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let QualifiedPathType {
             ty,
             as_trait,
             // ignored fields
             as_trait_span: _,
         } = self;
-        ty.eq(&other.ty, engines)
-            && engines
+        ty.eq(&other.ty, ctx)
+            && ctx
+                .engines()
                 .te()
                 .get(*as_trait)
-                .eq(&engines.te().get(other.as_trait), engines)
+                .eq(&ctx.engines().te().get(other.as_trait), ctx)
     }
 }
 

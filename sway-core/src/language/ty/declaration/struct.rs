@@ -33,10 +33,10 @@ impl Named for TyStructDecl {
 
 impl EqWithEngines for TyStructDecl {}
 impl PartialEqWithEngines for TyStructDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.call_path == other.call_path
-            && self.fields.eq(&other.fields, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.fields.eq(&other.fields, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
             && self.visibility == other.visibility
     }
 }
@@ -246,8 +246,8 @@ impl HashWithEngines for TyStructField {
 
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.type_argument.eq(&other.type_argument, ctx)
     }
 }
 

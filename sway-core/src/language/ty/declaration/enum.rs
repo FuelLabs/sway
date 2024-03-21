@@ -35,10 +35,10 @@ impl Named for TyEnumDecl {
 
 impl EqWithEngines for TyEnumDecl {}
 impl PartialEqWithEngines for TyEnumDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.call_path == other.call_path
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.variants.eq(&other.variants, engines)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
+            && self.variants.eq(&other.variants, ctx)
             && self.visibility == other.visibility
     }
 }
@@ -139,9 +139,9 @@ impl HashWithEngines for TyEnumVariant {
 
 impl EqWithEngines for TyEnumVariant {}
 impl PartialEqWithEngines for TyEnumVariant {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
+            && self.type_argument.eq(&other.type_argument, ctx)
             && self.tag == other.tag
     }
 }

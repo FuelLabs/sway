@@ -53,18 +53,14 @@ impl<T> core::ops::Deref for VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> VecSet<T> {
-    pub fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.0.len() <= other.0.len()
-            && self
-                .0
-                .iter()
-                .all(|x| other.0.iter().any(|y| x.eq(y, engines)))
+    pub fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.0.len() <= other.0.len() && self.0.iter().all(|x| other.0.iter().any(|y| x.eq(y, ctx)))
     }
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.eq(other, engines) && other.eq(self, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.eq(other, ctx) && other.eq(self, ctx)
     }
 }
 
@@ -85,8 +81,8 @@ impl HashWithEngines for TypeSourceInfo {
 
 impl EqWithEngines for TypeSourceInfo {}
 impl PartialEqWithEngines for TypeSourceInfo {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.type_info.eq(&other.type_info, engines) && self.source_id == other.source_id
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.type_info.eq(&other.type_info, ctx) && self.source_id == other.source_id
     }
 }
 
@@ -289,8 +285,8 @@ impl HashWithEngines for TypeInfo {
 
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         match (self, other) {
             (
                 Self::UnknownGeneric {
@@ -301,8 +297,8 @@ impl PartialEqWithEngines for TypeInfo {
                     name: r,
                     trait_constraints: rtc,
                 },
-            ) => l == r && ltc.eq(rtc, engines),
-            (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
+            ) => l == r && ltc.eq(rtc, ctx),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, ctx),
             (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
             (
                 Self::Custom {
@@ -319,34 +315,34 @@ impl PartialEqWithEngines for TypeInfo {
                 l_name.call_path.suffix == r_name.call_path.suffix
                     && l_name
                         .qualified_path_root
-                        .eq(&r_name.qualified_path_root, engines)
-                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
+                        .eq(&r_name.qualified_path_root, ctx)
+                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), ctx)
                     && l_root_type_id.eq(r_root_type_id)
             }
             (Self::StringSlice, Self::StringSlice) => true,
             (Self::StringArray(l), Self::StringArray(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = engines.de().get_enum(l_decl_ref);
-                let r_decl = engines.de().get_enum(r_decl_ref);
+                let l_decl = ctx.engines().de().get_enum(l_decl_ref);
+                let r_decl = ctx.engines().de().get_enum(r_decl_ref);
                 assert!(
                     l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
                     "The call paths of the enum declarations must always be absolute."
                 );
                 l_decl.call_path == r_decl.call_path
-                    && l_decl.variants.eq(&r_decl.variants, engines)
-                    && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
+                    && l_decl.variants.eq(&r_decl.variants, ctx)
+                    && l_decl.type_parameters.eq(&r_decl.type_parameters, ctx)
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
-                let l_decl = engines.de().get_struct(l_decl_ref);
-                let r_decl = engines.de().get_struct(r_decl_ref);
+                let l_decl = ctx.engines().de().get_struct(l_decl_ref);
+                let r_decl = ctx.engines().de().get_struct(r_decl_ref);
                 assert!(
                     l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
                     "The call paths of the struct declarations must always be absolute."
                 );
                 l_decl.call_path == r_decl.call_path
-                    && l_decl.fields.eq(&r_decl.fields, engines)
-                    && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
+                    && l_decl.fields.eq(&r_decl.fields, ctx)
+                    && l_decl.type_parameters.eq(&r_decl.type_parameters, ctx)
             }
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
@@ -355,7 +351,7 @@ impl PartialEqWithEngines for TypeInfo {
                     (l.type_id == r.type_id)
                         || type_engine
                             .get(l.type_id)
-                            .eq(&type_engine.get(r.type_id), engines)
+                            .eq(&type_engine.get(r.type_id), ctx)
                 })
                 .all(|x| x),
             (
@@ -367,18 +363,16 @@ impl PartialEqWithEngines for TypeInfo {
                     abi_name: r_abi_name,
                     address: r_address,
                 },
-            ) => {
-                l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), engines)
-            }
+            ) => l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), ctx),
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 ((l0.type_id == r0.type_id)
                     || type_engine
                         .get(l0.type_id)
-                        .eq(&type_engine.get(r0.type_id), engines))
+                        .eq(&type_engine.get(r0.type_id), ctx))
                     && l1.val() == r1.val()
             }
             (Self::Storage { fields: l_fields }, Self::Storage { fields: r_fields }) => {
-                l_fields.eq(r_fields, engines)
+                l_fields.eq(r_fields, ctx)
             }
             (
                 Self::Alias {
@@ -394,7 +388,7 @@ impl PartialEqWithEngines for TypeInfo {
                     && ((l_ty.type_id == r_ty.type_id)
                         || type_engine
                             .get(l_ty.type_id)
-                            .eq(&type_engine.get(r_ty.type_id), engines))
+                            .eq(&type_engine.get(r_ty.type_id), ctx))
             }
             (
                 Self::TraitType {
@@ -410,7 +404,7 @@ impl PartialEqWithEngines for TypeInfo {
                     && ((*l_trait_type_id == *r_trait_type_id)
                         || type_engine
                             .get(*l_trait_type_id)
-                            .eq(&type_engine.get(*r_trait_type_id), engines))
+                            .eq(&type_engine.get(*r_trait_type_id), ctx))
             }
             (
                 Self::Ref {
@@ -426,7 +420,7 @@ impl PartialEqWithEngines for TypeInfo {
                     && ((l_ty.type_id == r_ty.type_id)
                         || type_engine
                             .get(l_ty.type_id)
-                            .eq(&type_engine.get(r_ty.type_id), engines))
+                            .eq(&type_engine.get(r_ty.type_id), ctx))
             }
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),

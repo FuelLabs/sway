@@ -107,7 +107,8 @@ impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
 
 impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
     fn eq(&self, rhs: &Self) -> bool {
-        self.thing.eq(&rhs.thing, self.engines)
+        self.thing
+            .eq(&rhs.thing, &PartialEqWithEnginesContext::new(self.engines))
     }
 }
 
@@ -246,18 +247,58 @@ impl<T: HashWithEngines> HashWithEngines for Box<T> {
 
 pub trait EqWithEngines: PartialEqWithEngines {}
 
+pub struct PartialEqWithEnginesContext<'a> {
+    engines: &'a Engines,
+    is_inside_trait_constraint: bool,
+}
+
+impl<'a> PartialEqWithEnginesContext<'a> {
+    pub(crate) fn new(engines: &'a Engines) -> Self {
+        Self {
+            engines,
+            is_inside_trait_constraint: false,
+        }
+    }
+
+    pub fn by_ref(&self) -> PartialEqWithEnginesContext<'_> {
+        PartialEqWithEnginesContext {
+            engines: self.engines,
+            is_inside_trait_constraint: self.is_inside_trait_constraint,
+        }
+    }
+
+    pub(crate) fn with_is_inside_trait_constraint(&self) -> Self {
+        Self {
+            is_inside_trait_constraint: true,
+            ..*self
+        }
+    }
+
+    pub(crate) fn engines(&self) -> &Engines {
+        self.engines
+    }
+
+    pub(crate) fn is_inside_trait_constraint(&self) -> bool {
+        self.is_inside_trait_constraint
+    }
+}
+
 pub trait PartialEqWithEngines {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool;
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool;
 }
 
 pub trait OrdWithEngines {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering;
+    fn cmp(
+        &self,
+        other: &Self,
+        engines: &Engines, /* , ctx: &mut OrdWithEnginesContext*/
+    ) -> Ordering;
 }
 
 impl<T: EqWithEngines + ?Sized> EqWithEngines for &T {}
 impl<T: PartialEqWithEngines + ?Sized> PartialEqWithEngines for &T {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        (*self).eq(*other, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        (*self).eq(*other, ctx)
     }
 }
 impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
@@ -285,10 +326,10 @@ impl<T: OrdWithEngines> OrdWithEngines for Box<T> {
 
 impl<T: EqWithEngines> EqWithEngines for Option<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (None, None) => true,
-            (Some(x), Some(y)) => x.eq(y, engines),
+            (Some(x), Some(y)) => x.eq(y, ctx),
             _ => false,
         }
     }
@@ -296,15 +337,15 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
 
 impl<T: EqWithEngines> EqWithEngines for Box<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Box<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        (**self).eq(&(**other), engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        (**self).eq(&(**other), ctx)
     }
 }
 
 impl<T: EqWithEngines> EqWithEngines for [T] {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.len() == other.len() && self.iter().zip(other.iter()).all(|(x, y)| x.eq(y, engines))
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.len() == other.len() && self.iter().zip(other.iter()).all(|(x, y)| x.eq(y, ctx))
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
