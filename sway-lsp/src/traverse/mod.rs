@@ -32,6 +32,7 @@ pub trait Parse {
     fn parse(&self, ctx: &ParseContext);
 }
 
+/// Determines the threshold a collection must meet to be processed in parallel.
 const PARALLEL_THRESHOLD: usize = 8;
 
 /// Iterates over items, choosing parallel or sequential execution based on size.
