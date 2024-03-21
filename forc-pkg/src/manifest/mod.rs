@@ -3,7 +3,7 @@ pub mod build_profile;
 use crate::pkg::{manifest_file_missing, parsing_failed, wrong_program_type};
 use anyhow::{anyhow, bail, Context, Result};
 use forc_tracing::println_warning;
-use forc_util::validate_name;
+use forc_util::{validate_name, validate_project_name};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{
@@ -550,7 +550,7 @@ impl PackageManifest {
     /// 2. The validity of the details provided. Makes sure that there are no mismatching detail
     ///    declarations (to prevent mixing details specific to certain types).
     pub fn validate(&self) -> Result<()> {
-        validate_name(&self.project.name, "package name")?;
+        validate_project_name(&self.project.name)?;
         if let Some(ref org) = self.project.organization {
             validate_name(org, "organization name")?;
         }
