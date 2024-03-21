@@ -93,7 +93,6 @@ pub struct GenericTypeForFunctionScope {
 #[derive(Clone, Debug)]
 pub struct StorageDecl {
     pub decl_id: DeclId<TyStorageDecl>,
-    pub decl_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -296,8 +295,8 @@ impl SpannedWithEngines for TyDecl {
             }
             TyDecl::AbiDecl(AbiDecl { decl_id }) => engines.de().get_abi(decl_id).span.clone(),
             TyDecl::VariableDecl(decl) => decl.name.span(),
-            TyDecl::StorageDecl(StorageDecl { decl_span, .. })
-            | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. }) => decl_span.clone(),
+            TyDecl::StorageDecl(StorageDecl { decl_id }) => engines.de().get(decl_id).span.clone(),
+            TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. }) => decl_span.clone(),
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 variant_decl_span, ..
             }) => variant_decl_span.clone(),
@@ -897,7 +896,6 @@ impl From<DeclRef<DeclId<TyStorageDecl>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyStorageDecl>>) -> Self {
         TyDecl::StorageDecl(StorageDecl {
             decl_id: *decl_ref.id(),
-            decl_span: decl_ref.decl_span().clone(),
         })
     }
 }
