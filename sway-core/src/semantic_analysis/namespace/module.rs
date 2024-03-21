@@ -517,11 +517,14 @@ impl Module {
                     struct_decl.name().span(),
                 ))
             }
-            ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
-                enum_decl.name.clone(),
-                enum_decl.decl_id,
-                enum_decl.name.span(),
-            )),
+            ty::TyDecl::EnumDecl(decl) => {
+                let enum_decl = engines.de().get_enum(&decl.decl_id);
+                TypeInfo::Enum(DeclRef::new(
+                    enum_decl.name().clone(),
+                    decl.decl_id,
+                    enum_decl.name().span(),
+                ))
+            }
             ty::TyDecl::TraitTypeDecl(type_decl) => {
                 let type_decl = engines.de().get_type(&type_decl.decl_id);
                 (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
