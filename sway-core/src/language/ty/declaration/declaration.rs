@@ -97,9 +97,7 @@ pub struct StorageDecl {
 
 #[derive(Clone, Debug)]
 pub struct TypeAliasDecl {
-    pub name: Ident,
     pub decl_id: DeclId<TyTypeAliasDecl>,
-    pub decl_span: Span,
 }
 
 impl EqWithEngines for TyDecl {}
@@ -281,7 +279,9 @@ impl SpannedWithEngines for TyDecl {
             TyDecl::AbiDecl(AbiDecl { decl_id }) => engines.de().get_abi(decl_id).span.clone(),
             TyDecl::VariableDecl(decl) => decl.name.span(),
             TyDecl::StorageDecl(StorageDecl { decl_id }) => engines.de().get(decl_id).span.clone(),
-            TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. }) => decl_span.clone(),
+            TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id }) => {
+                engines.de().get(decl_id).span.clone()
+            }
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 variant_decl_span, ..
             }) => variant_decl_span.clone(),
@@ -341,7 +341,8 @@ impl DisplayWithEngines for TyDecl {
                 TyDecl::ImplTrait(ImplTrait { decl_id }) => {
                     engines.de().get(decl_id).name().as_str().into()
                 }
-                TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. }) => name.as_str().into(),
+                TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id }) =>
+                    engines.de().get(decl_id).name().as_str().into(),
                 _ => String::new(),
             }
         )
@@ -475,8 +476,10 @@ impl GetDeclIdent for TyDecl {
             }
             TyDecl::AbiDecl(AbiDecl { decl_id }) => Some(engines.de().get(decl_id).name().clone()),
             TyDecl::VariableDecl(decl) => Some(decl.name.clone()),
-            TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
-            | TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. }) => {
+            TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id }) => {
+                Some(engines.de().get(decl_id).name().clone())
+            }
+            TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. }) => {
                 Some(name.clone())
             }
             TyDecl::EnumVariantDecl(EnumVariantDecl { variant_name, .. }) => {
@@ -900,9 +903,7 @@ impl From<DeclRef<DeclId<TyStorageDecl>>> for TyDecl {
 impl From<DeclRef<DeclId<TyTypeAliasDecl>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyTypeAliasDecl>>) -> Self {
         TyDecl::TypeAliasDecl(TypeAliasDecl {
-            name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            decl_span: decl_ref.decl_span().clone(),
         })
     }
 }
