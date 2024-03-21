@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-15BAB98A466EA65D"
+
+[[package]]
+name = "std"
+source = "path+from-root-15BAB98A466EA65D"
+dependencies = ["core"]
+
+[[package]]
+name = "where_clause_generic_tuple"
+source = "member"
+dependencies = ["std"]

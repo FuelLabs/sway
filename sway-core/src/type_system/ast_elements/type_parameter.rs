@@ -14,7 +14,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, BaseIdent, Spanned};
 
 use std::{
     cmp::Ordering,
@@ -441,17 +441,18 @@ impl TypeParameter {
             ..
         } = self;
 
-        if !is_from_parent {
-            // Insert the type parameter into the namespace as a dummy type
-            // declaration.
-            let type_parameter_decl =
-                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                    name: name_ident.clone(),
-                    type_id: *type_id,
-                });
-            ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
-                .ok();
+        // Insert the type parameter into the namespace as a dummy type
+        // declaration.
+        let type_parameter_decl =
+            ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                name: name_ident.clone(),
+                type_id: *type_id,
+            });
+        if *is_from_parent {
+            ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
         }
+        ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
+            .ok();
 
         Ok(())
     }
