@@ -9,6 +9,7 @@ use petgraph::stable_graph::NodeIndex;
 use petgraph::Graph;
 use sway_error::error::CompileError;
 use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::Named;
 
 use crate::decl_engine::{AssociatedItemDeclId, DeclId, DeclUniqueId};
 use crate::engine_threading::DebugWithEngines;
@@ -371,7 +372,8 @@ impl DebugWithEngines for TyNodeDepGraphNode {
                 format!("{:?}", str)
             }
             TyNodeDepGraphNode::ImplTrait { node } => {
-                format!("{:?}", node.name.as_str())
+                let decl = engines.de().get_impl_trait(&node.decl_id);
+                format!("{:?}", decl.name().as_str())
             }
             TyNodeDepGraphNode::Fn { node } => {
                 let fn_decl = engines.de().get_function(node);
