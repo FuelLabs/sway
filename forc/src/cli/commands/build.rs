@@ -39,6 +39,7 @@ pub struct Command {
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {
+    eprintln!("Building project...");
     forc_build::build(command)?;
     Ok(())
 }

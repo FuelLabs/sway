@@ -2129,6 +2129,7 @@ fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
 
 /// Builds a project with given BuildOptions.
 pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
+    eprintln!("build_with_options");
     let BuildOpts {
         minify,
         binary_outfile,
@@ -2148,18 +2149,23 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         .map(PathBuf::from)
         .unwrap_or_else(|| current_dir);
 
+    eprintln!("build_plan");
     let build_plan = BuildPlan::from_build_opts(&build_options)?;
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
+    eprintln!("manifest_map");
 
     // Check if manifest used to create the build plan is one of the member manifests or a
     // workspace manifest.
     let curr_manifest = manifest_map
         .values()
         .find(|&pkg_manifest| pkg_manifest.dir() == path);
+
+    eprintln!("curr_manifest");
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
     // Get the selected build profile using build options
     let build_profile = build_profile_from_opts(&build_profiles, &build_options)?;
+    eprintln!("build_profile");
     // If this is a workspace we want to have all members in the output.
     let outputs = match curr_manifest {
         Some(pkg_manifest) => std::iter::once(
@@ -2171,7 +2177,11 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
         None => build_plan.member_nodes().collect(),
     };
 
+    eprintln!("outputs 1");
+
     let outputs = member_filter.filter_outputs(&build_plan, outputs);
+
+    eprintln!("outputs 2");
 
     // Build it!
     let mut built_workspace = Vec::new();
@@ -2185,7 +2195,12 @@ pub fn build_with_options(build_options: BuildOpts) -> Result<Built> {
             new_encoding: experimental.new_encoding,
         },
     )?;
+
+    eprintln!("built_packages");
+
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+
+    eprintln!("output_dir");
 
     let finished = ansi_term::Colour::Green.bold().paint("Finished");
     info!(
@@ -2289,12 +2304,16 @@ pub fn build(
     outputs: &HashSet<NodeIx>,
     experimental: sway_core::ExperimentalFlags,
 ) -> anyhow::Result<Vec<(NodeIx, BuiltPackage)>> {
+    eprintln!("pkg::build");
+
     let mut built_packages = Vec::new();
 
     let required: HashSet<NodeIx> = outputs
         .iter()
         .flat_map(|output_node| plan.node_deps(*output_node))
         .collect();
+
+    eprintln!("required");
 
     let engines = Engines::default();
     let include_tests = profile.include_tests;

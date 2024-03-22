@@ -186,6 +186,7 @@ impl source::Pin for Source {
 
 impl source::Fetch for Pinned {
     fn fetch(&self, ctx: source::PinCtx, repo_path: &Path) -> Result<PackageManifestFile> {
+        eprintln!("Fetching...");
         // Co-ordinate access to the git checkout directory using an advisory file lock.
         let mut lock = forc_util::path_lock(repo_path)?;
         // TODO: Here we assume that if the local path already exists, that it contains the
@@ -420,6 +421,8 @@ fn with_tmp_git_repo<F, O>(fetch_id: u64, name: &str, source: &Source, f: F) -> 
 where
     F: FnOnce(git2::Repository) -> Result<O>,
 {
+    eprintln!("with_tmp_git_repo fetch_id {:?}", fetch_id);
+
     // Clear existing temporary directory if it exists.
     let repo_dir = tmp_git_repo_dir(fetch_id, name, &source.repo);
     if repo_dir.exists() {
@@ -440,6 +443,8 @@ where
     // Initialise the repository.
     let repo = git2::Repository::init(&repo_dir)
         .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
+
+    eprintln!("repo {:?}", repo);
 
     // Fetch the necessary references.
     let (refspecs, tags) = git_ref_to_refspecs(&source.reference);
@@ -466,6 +471,9 @@ where
 
     // Clean up the temporary directory.
     let _ = std::fs::remove_dir_all(&repo_dir);
+
+    eprintln!("fetch output {:?}", output);
+
     Ok(output)
 }
 
@@ -511,7 +519,12 @@ pub fn commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 /// NOTE: This function assumes that the caller has aquired an advisory lock to co-ordinate access
 /// to the git repository checkout path.
 pub fn fetch(fetch_id: u64, name: &str, pinned: &Pinned) -> Result<PathBuf> {
+    eprintln!("fetch");
+
     let path = commit_path(name, &pinned.source.repo, &pinned.commit_hash);
+
+    eprintln!("path {:?}", path);
+
     // Checkout the pinned hash to the path.
     with_tmp_git_repo(fetch_id, name, &pinned.source, |repo| {
         // Change HEAD to point to the pinned commit.
