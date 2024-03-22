@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt, hash::Hasher};
 use crate::{
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        PartialEqWithEngines, PartialEqWithEnginesContext,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
@@ -150,7 +150,7 @@ impl PartialEqWithEngines for QualifiedPathType {
 }
 
 impl OrdWithEngines for QualifiedPathType {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let QualifiedPathType {
             ty: l_ty,
             as_trait: l_as_trait,
@@ -163,11 +163,11 @@ impl OrdWithEngines for QualifiedPathType {
             // ignored fields
             as_trait_span: _,
         } = other;
-        l_ty.cmp(r_ty, engines).then_with(|| {
-            engines
+        l_ty.cmp(r_ty, ctx).then_with(|| {
+            ctx.engines()
                 .te()
                 .get(*l_as_trait)
-                .cmp(&engines.te().get(*r_as_trait), engines)
+                .cmp(&ctx.engines().te().get(*r_as_trait), ctx)
         })
     }
 }

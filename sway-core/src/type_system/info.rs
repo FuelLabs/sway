@@ -429,9 +429,9 @@ impl PartialEqWithEngines for TypeInfo {
 }
 
 impl OrdWithEngines for TypeInfo {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        let type_engine = ctx.engines().te();
+        let decl_engine = ctx.engines().de();
         match (self, other) {
             (
                 Self::UnknownGeneric {
@@ -442,8 +442,8 @@ impl OrdWithEngines for TypeInfo {
                     name: r,
                     trait_constraints: rtc,
                 },
-            ) => l.cmp(r).then_with(|| ltc.cmp(rtc, engines)),
-            (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, engines),
+            ) => l.cmp(r).then_with(|| ltc.cmp(rtc, ctx)),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, ctx),
             (
                 Self::Custom {
                     qualified_call_path: l_call_path,
@@ -462,9 +462,9 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| {
                     l_call_path
                         .qualified_path_root
-                        .cmp(&r_call_path.qualified_path_root, engines)
+                        .cmp(&r_call_path.qualified_path_root, ctx)
                 })
-                .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), engines))
+                .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), ctx))
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
@@ -475,8 +475,8 @@ impl OrdWithEngines for TypeInfo {
                     .call_path
                     .suffix
                     .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
-                    .then_with(|| l_decl.variants.cmp(&r_decl.variants, engines))
+                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, ctx))
+                    .then_with(|| l_decl.variants.cmp(&r_decl.variants, ctx))
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
                 let l_decl = decl_engine.get_struct(l_decl_ref);
@@ -485,10 +485,10 @@ impl OrdWithEngines for TypeInfo {
                     .call_path
                     .suffix
                     .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
-                    .then_with(|| l_decl.fields.cmp(&r_decl.fields, engines))
+                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, ctx))
+                    .then_with(|| l_decl.fields.cmp(&r_decl.fields, ctx))
             }
-            (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, engines),
+            (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, ctx),
             (
                 Self::ContractCaller {
                     abi_name: l_abi_name,
@@ -504,10 +504,10 @@ impl OrdWithEngines for TypeInfo {
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
                 .get(l0.type_id)
-                .cmp(&type_engine.get(r0.type_id), engines)
+                .cmp(&type_engine.get(r0.type_id), ctx)
                 .then_with(|| l1.val().cmp(&r1.val())),
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
-                l_fields.cmp(r_fields, engines)
+                l_fields.cmp(r_fields, ctx)
             }
             (
                 Self::Alias {
@@ -520,7 +520,7 @@ impl OrdWithEngines for TypeInfo {
                 },
             ) => type_engine
                 .get(l_ty.type_id)
-                .cmp(&type_engine.get(r_ty.type_id), engines)
+                .cmp(&type_engine.get(r_ty.type_id), ctx)
                 .then_with(|| l_name.cmp(r_name)),
             (
                 Self::TraitType {
@@ -546,7 +546,7 @@ impl OrdWithEngines for TypeInfo {
             ) => l_to_mut.cmp(r_to_mut).then_with(|| {
                 type_engine
                     .get(l_ty.type_id)
-                    .cmp(&type_engine.get(r_ty.type_id), engines)
+                    .cmp(&type_engine.get(r_ty.type_id), ctx)
             }),
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }

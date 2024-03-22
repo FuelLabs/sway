@@ -54,7 +54,7 @@ impl PartialEqWithEngines for TypeArgument {
 }
 
 impl OrdWithEngines for TypeArgument {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TypeArgument {
             type_id: lti,
             // these fields are not compared because they aren't relevant/a
@@ -74,7 +74,10 @@ impl OrdWithEngines for TypeArgument {
         if lti == rti {
             return Ordering::Equal;
         }
-        engines.te().get(*lti).cmp(&engines.te().get(*rti), engines)
+        ctx.engines()
+            .te()
+            .get(*lti)
+            .cmp(&ctx.engines().te().get(*rti), ctx)
     }
 }
 

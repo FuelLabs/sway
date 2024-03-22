@@ -8,7 +8,7 @@ use std::{
 use crate::{
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        PartialEqWithEngines, PartialEqWithEnginesContext,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     Engines, Ident, Namespace,
 };
@@ -50,7 +50,7 @@ impl PartialEqWithEngines for CallPathTree {
 }
 
 impl OrdWithEngines for CallPathTree {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let CallPathTree {
             qualified_call_path: l_call_path,
             children: l_children,
@@ -60,8 +60,8 @@ impl OrdWithEngines for CallPathTree {
             children: r_children,
         } = other;
         l_call_path
-            .cmp(r_call_path, engines)
-            .then_with(|| l_children.cmp(r_children, engines))
+            .cmp(r_call_path, ctx)
+            .then_with(|| l_children.cmp(r_children, ctx))
     }
 }
 
@@ -130,7 +130,7 @@ impl PartialEqWithEngines for QualifiedCallPath {
 }
 
 impl OrdWithEngines for QualifiedCallPath {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let QualifiedCallPath {
             call_path: l_call_path,
             qualified_path_root: l_qualified_path_root,
@@ -141,7 +141,7 @@ impl OrdWithEngines for QualifiedCallPath {
         } = other;
         l_call_path
             .cmp(r_call_path)
-            .then_with(|| l_qualified_path_root.cmp(r_qualified_path_root, engines))
+            .then_with(|| l_qualified_path_root.cmp(r_qualified_path_root, ctx))
     }
 }
 

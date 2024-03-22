@@ -14,7 +14,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{ident::Ident, span::Span, BaseIdent, Spanned};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 use std::{
     cmp::Ordering,
@@ -65,7 +65,7 @@ impl PartialEqWithEngines for TypeParameter {
 }
 
 impl OrdWithEngines for TypeParameter {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TypeParameter {
             type_id: lti,
             name_ident: ln,
@@ -87,8 +87,13 @@ impl OrdWithEngines for TypeParameter {
             is_from_parent: _,
         } = other;
         ln.cmp(rn)
-            .then_with(|| engines.te().get(*lti).cmp(&engines.te().get(*rti), engines))
-            .then_with(|| ltc.cmp(rtc, engines))
+            .then_with(|| {
+                ctx.engines()
+                    .te()
+                    .get(*lti)
+                    .cmp(&ctx.engines().te().get(*rti), ctx)
+            })
+            .then_with(|| ltc.cmp(rtc, ctx))
     }
 }
 
