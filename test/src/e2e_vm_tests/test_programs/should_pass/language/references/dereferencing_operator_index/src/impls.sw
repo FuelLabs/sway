@@ -1,8 +1,6 @@
 library;
 
 use core::ops::Eq;
-use std::bytes_conversions::u256::*;
-use std::bytes_conversions::b256::*;
 
 pub trait TestInstance {
     fn new() -> Self;
