@@ -2,7 +2,7 @@ library;
 
 use ::contract_id::ContractId;
 
-/// Load and run the contract with the provided `ContractId`
+/// Load and run the contract with the provided `ContractId`.
 ///
 /// Contract code will be loaded using `LDC` and jumped into.
 /// Unlike a normal contract call, the context of the contract running

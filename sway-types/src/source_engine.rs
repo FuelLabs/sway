@@ -124,7 +124,7 @@ impl SourceEngine {
         v
     }
 
-    pub fn get_source_id_from_module_id(&self, module_id: ModuleId) -> Option<BTreeSet<SourceId>> {
+    pub fn get_source_ids_from_module_id(&self, module_id: ModuleId) -> Option<BTreeSet<SourceId>> {
         let s = self.module_to_sources_map.read().unwrap();
         s.get(&module_id).cloned()
     }

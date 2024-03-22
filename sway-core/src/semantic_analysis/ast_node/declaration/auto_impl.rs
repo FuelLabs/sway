@@ -288,12 +288,11 @@ where
         };
 
         if handler.has_errors() {
-            assert!(
-                !handler.has_errors(),
+            panic!(
                 "{:?} {:?}",
                 handler,
                 module_id
-                    .and_then(|x| engines.se().get_source_id_from_module_id(x))
+                    .and_then(|x| engines.se().get_source_ids_from_module_id(x))
                     .unwrap()
                     .iter()
                     .map(|x| engines.se().get_file_name(x))
@@ -311,13 +310,12 @@ where
         .unwrap();
 
         if handler.has_errors() {
-            assert!(
-                !handler.has_errors(),
+            panic!(
                 "{:?} {} {:?}",
                 handler,
                 code,
                 module_id
-                    .and_then(|x| engines.se().get_source_id_from_module_id(x))
+                    .and_then(|x| engines.se().get_source_ids_from_module_id(x))
                     .unwrap()
                     .iter()
                     .map(|x| engines.se().get_path(x))
