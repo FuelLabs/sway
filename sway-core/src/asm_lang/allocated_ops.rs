@@ -240,7 +240,6 @@ pub(crate) enum AllocatedOpcode {
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
     DataSectionOffsetPlaceholder,
-    DataSectionRegisterLoadPlaceholder,
     LoadDataId(AllocatedRegister, DataId),
     Undefined,
 }
@@ -360,9 +359,6 @@ impl AllocatedOpcode {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![&AllocatedRegister::Constant(
-                ConstantRegister::DataSectionStart,
-            )],
             LoadDataId(r1, _i) => vec![r1],
             Undefined => vec![],
         })
@@ -491,7 +487,6 @@ impl fmt::Display for AllocatedOpcode {
                     "DATA_SECTION_OFFSET[0..32]\nDATA_SECTION_OFFSET[32..64]"
                 )
             }
-            DataSectionRegisterLoadPlaceholder => write!(fmtr, "lw   $ds $is 1"),
             LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
@@ -681,12 +676,6 @@ impl AllocatedOp {
             DataSectionOffsetPlaceholder => {
                 return Either::Right(offset_to_data_section.to_be_bytes())
             }
-            DataSectionRegisterLoadPlaceholder => op::LW::new(
-                fuel_asm::RegId::new(DATA_SECTION_REGISTER),
-                ConstantRegister::InstructionStart.to_reg_id(),
-                1.into(),
-            )
-            .into(),
             LoadDataId(a, b) => {
                 return Either::Left(realize_load(a, b, data_section, offset_to_data_section))
             }
