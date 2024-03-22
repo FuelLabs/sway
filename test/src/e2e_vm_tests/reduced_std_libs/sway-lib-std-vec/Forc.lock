@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-5863B5D56901589E"
+
+[[package]]
+name = "std"
+source = "member"
+dependencies = ["core"]
