@@ -444,7 +444,7 @@ where
     let repo = git2::Repository::init(&repo_dir)
         .map_err(|e| anyhow!("failed to init repo at \"{}\": {}", repo_dir.display(), e))?;
 
-    eprintln!("repo {:?}", repo);
+    eprintln!("repo");
 
     // Fetch the necessary references.
     let (refspecs, tags) = git_ref_to_refspecs(&source.reference);
@@ -456,6 +456,8 @@ where
     if tags {
         fetch_opts.download_tags(git2::AutotagOption::All);
     }
+    eprintln!("tags");
+
     let repo_url_string = source.repo.to_string();
     repo.remote_anonymous(&repo_url_string)?
         .fetch(&refspecs, Some(&mut fetch_opts), None)
@@ -472,7 +474,7 @@ where
     // Clean up the temporary directory.
     let _ = std::fs::remove_dir_all(&repo_dir);
 
-    eprintln!("fetch output {:?}", output);
+    eprintln!("fetch output");
 
     Ok(output)
 }
