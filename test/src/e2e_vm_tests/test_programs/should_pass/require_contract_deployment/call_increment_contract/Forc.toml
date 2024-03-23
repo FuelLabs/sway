@@ -7,4 +7,4 @@ name = "call_increment_contract"
 [dependencies]
 dynamic_contract_call = { path = "../../test_contracts/dynamic_contract_call" }
 increment_abi = { path = "../../test_abis/increment_abi" }
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

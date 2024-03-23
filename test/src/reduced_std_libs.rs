@@ -1,5 +1,6 @@
 //! This module contains functions for creating reduced versions of the `std` library.
 
+use core::result::Result::Ok as CoreOk;
 use anyhow::{bail, Context, Ok, Result};
 use std::{fs, path::{Path, PathBuf}};
 
@@ -66,11 +67,14 @@ fn get_modules_from_config(config_file: &Path) -> Result<Vec<String>> {
 }
 
 fn copy_module(from: &Path, to: &Path) -> Result<()> {
-    let from_metadata = fs::metadata(from)?;
+    let from_metadata = match fs::metadata(from) {
+        CoreOk(from_metadata) => from_metadata,
+        Err(err) => bail!("Cannot get metadata for module file {from:#?}: {}", err.to_string()),
+    };
     let to_metadata = fs::metadata(to);
 
     let should_copy = match to_metadata {
-        core::result::Result::Ok(to_metadata) => {
+        CoreOk(to_metadata) => {
             let to_modification_time = to_metadata.modified()?;
             let from_modification_time = from_metadata.modified()?;
 
@@ -81,7 +85,10 @@ fn copy_module(from: &Path, to: &Path) -> Result<()> {
 
     if should_copy {
         fs::create_dir_all(to.parent().unwrap())?;
-        fs::copy(from, to)?;
+        match fs::copy(from, to) {
+            Err(err) => bail!("Cannot copy module {from:#?}: {}", err.to_string()),
+            _ => (),
+        }
     }
 
     Ok(())

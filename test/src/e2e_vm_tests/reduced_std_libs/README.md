@@ -20,13 +20,22 @@ Contains:
  
 ### `option-result` (in `sway-lib-std-option-result`)
 Contains:
-- everything from `assert`
+- everything available in `assert`
 - `Option`
 - `Result`
  
 ### `vec` (in `sway-lib-std-vec`)
 Contains:
-- everything from `option-result`
+- everything available in `option-result`
 - `Vec`
 - `Iterator` trait
 - `From` and `Into` traits
+
+### `conversions` (in `sway-lib-std-conversions`)
+Contains:
+- everything available in `vec`
+- intrinsics
+- `Bytes`
+- bytes conversions
+- array conversions
+- primitive conversions
