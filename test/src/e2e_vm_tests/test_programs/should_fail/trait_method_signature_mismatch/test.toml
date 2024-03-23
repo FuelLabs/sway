@@ -1,8 +1,8 @@
 category = "fail"
 
-# check: $()fn set(self, val: Option<T>) {
+# check: $()fn set(self, val: Dummy<T>) {
 # check: $()expected: T
-# check: $()found:    Option<T>
+# check: $()found:    Dummy<T>
 # check: $()help:     The definition of this function must match the one in the trait "MyTrait" declaration.
 
 # check: fn foo(s: str[7]) -> str[7] {
