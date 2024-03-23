@@ -132,15 +132,6 @@ pub fn inline_in_module(
             return true;
         }
 
-        // See https://github.com/FuelLabs/sway/pull/4899
-        if func.args_iter(ctx).any(|(_name, arg_val)| {
-            arg_val.get_type(ctx).map_or(false, |ty| {
-                ty.is_ptr(ctx) || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
-            })
-        }) {
-            return true;
-        }
-
         false
     };
 
