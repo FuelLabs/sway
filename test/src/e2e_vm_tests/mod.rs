@@ -750,7 +750,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     } else {
         tracing::info!("_________________________________");
         tracing::info!(
-            "Sway tests result: {}. {} total, {} passed; {} failed; {} disabled [test duration: {:#?}]",
+            "Sway tests result: {}. {} total, {} passed; {} failed; {} disabled [test duration: {}]",
             if number_of_tests_failed == 0 {
                 "ok".green().bold()
             } else {
@@ -760,7 +760,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             number_of_tests_executed - number_of_tests_failed,
             number_of_tests_failed,
             disabled_tests.len(),
-            duration
+            util::duration_to_str(&duration)
         );
         if number_of_tests_failed > 0 {
             tracing::info!("{}", "Failing tests:".red().bold());
