@@ -1,7 +1,7 @@
 mod e2e_vm_tests;
 mod ir_generation;
-mod test_consistency;
 mod reduced_std_libs;
+mod test_consistency;
 
 use anyhow::Result;
 use clap::Parser;

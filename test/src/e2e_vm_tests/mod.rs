@@ -17,12 +17,12 @@ use std::collections::HashSet;
 use std::io::stdout;
 use std::io::Write;
 use std::str::FromStr;
+use std::time::Instant;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
 };
-use std::time::Instant;
 use sway_core::BuildTarget;
 use tokio::sync::Mutex;
 use tracing::Instrument;

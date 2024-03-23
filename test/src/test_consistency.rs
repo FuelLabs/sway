@@ -133,7 +133,8 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
                     let path = path.as_str().unwrap_or_default();
 
                     path.ends_with(&format!("../../sway-lib-{lib_name}"))
-                        || path.contains(&format!("../../{REDUCED_STD_LIBS_DIR_NAME}/sway-lib-std-"))
+                        || path
+                            .contains(&format!("../../{REDUCED_STD_LIBS_DIR_NAME}/sway-lib-std-"))
                 })
                 .unwrap_or_default();
 
@@ -202,7 +203,12 @@ fn check_test_forc_tomls(all_tests_dir: &Path) -> Result<()> {
         if path.is_dir() {
             for entry in std::fs::read_dir(path).unwrap() {
                 let entry = entry.unwrap();
-                if entry.path().to_str().unwrap().contains(REDUCED_STD_LIBS_DIR_NAME) {
+                if entry
+                    .path()
+                    .to_str()
+                    .unwrap()
+                    .contains(REDUCED_STD_LIBS_DIR_NAME)
+                {
                     continue;
                 }
                 find_test_forc_tomls(&entry.path(), forc_tomls);

@@ -1,11 +1,14 @@
 //! This module contains functions for creating reduced versions of the `std` library.
 
-use core::result::Result::Ok as CoreOk;
 use anyhow::{bail, Context, Ok, Result};
-use std::{fs, path::{Path, PathBuf}};
+use core::result::Result::Ok as CoreOk;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
-pub(crate) const REDUCED_STD_LIBS_DIR_NAME: &'static str = "reduced_std_libs";
-const REDUCED_LIB_CONFIG_FILE_NAME: &'static str = "reduced_lib.config";
+pub(crate) const REDUCED_STD_LIBS_DIR_NAME: &str = "reduced_std_libs";
+const REDUCED_LIB_CONFIG_FILE_NAME: &str = "reduced_lib.config";
 
 /// Creates the reduced versions of `std` libraries based on the list of
 /// modules defined in [REDUCED_LIB_CONFIG_FILE_NAME] file for each reduced library
@@ -42,7 +45,7 @@ fn create_reduced_std_libs(std_lib_src_dir: &str, reduced_libs_dir: &str) -> Res
 
             copy_module(&std_lib_module_path, &reduced_lib_module_path)?;
         }
-    };
+    }
 
     Ok(())
 }
@@ -62,14 +65,20 @@ fn get_reduced_libs(reduced_libs_dir: &Path) -> Result<Vec<PathBuf>> {
 
 fn get_modules_from_config(config_file: &Path) -> Result<Vec<String>> {
     let config = fs::read_to_string(config_file)?;
-    let lines = config.lines().into_iter().map(|line| line.to_string()).collect::<Vec<_>>();
+    let lines = config
+        .lines()
+        .map(|line| line.to_string())
+        .collect::<Vec<_>>();
     Ok(lines)
 }
 
 fn copy_module(from: &Path, to: &Path) -> Result<()> {
     let from_metadata = match fs::metadata(from) {
         CoreOk(from_metadata) => from_metadata,
-        Err(err) => bail!("Cannot get metadata for module file {from:#?}: {}", err.to_string()),
+        Err(err) => bail!(
+            "Cannot get metadata for module file {from:#?}: {}",
+            err.to_string()
+        ),
     };
     let to_metadata = fs::metadata(to);
 
@@ -85,10 +94,9 @@ fn copy_module(from: &Path, to: &Path) -> Result<()> {
 
     if should_copy {
         fs::create_dir_all(to.parent().unwrap())?;
-        match fs::copy(from, to) {
-            Err(err) => bail!("Cannot copy module {from:#?}: {}", err.to_string()),
-            _ => (),
-        }
+        if let Err(err) = fs::copy(from, to) {
+            bail!("Cannot copy module {from:#?}: {}", err.to_string())
+        };
     }
 
     Ok(())
