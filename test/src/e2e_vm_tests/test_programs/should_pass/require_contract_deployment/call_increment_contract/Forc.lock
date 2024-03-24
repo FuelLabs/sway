@@ -4,7 +4,7 @@ source = "member"
 dependencies = [
     "dynamic_contract_call",
     "increment_abi",
-    "std path+from-root-2711CA1D0E2938B8",
+    "std",
 ]
 
 [[package]]
@@ -14,7 +14,7 @@ source = "path+from-root-2711CA1D0E2938B8"
 [[package]]
 name = "dynamic_contract_call"
 source = "path+from-root-2711CA1D0E2938B8"
-dependencies = ["std path+from-root-2711CA1D0E2938B8"]
+dependencies = ["std"]
 
 [[package]]
 name = "increment_abi"
