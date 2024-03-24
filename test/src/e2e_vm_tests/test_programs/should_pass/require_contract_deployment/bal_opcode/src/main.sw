@@ -6,7 +6,7 @@ use balance_test_abi::BalanceTest;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x3b8cb681056f61a41e138b8884d7e3bb9332fbd7a8e38e3e0b0ada766cabfa4e;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x2d15bdaa30e59eb25bab934e9533d10ace0a971ae942e47119e49ef411978d34;
+const CONTRACT_ID = 0x86ffb8e56ecf97448e14fbf48144073f9f427aaaea6b02215801d87fd2e55109;
 
 fn main() -> bool {
     let balance_test_contract = abi(BalanceTest, CONTRACT_ID);
