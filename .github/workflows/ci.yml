@@ -534,6 +534,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
       ]
     runs-on: ubuntu-latest
@@ -619,6 +620,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
         pre-publish-check,
       ]
@@ -667,6 +669,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
       ]
     if: github.ref == 'refs/heads/master'
