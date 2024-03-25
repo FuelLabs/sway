@@ -89,10 +89,10 @@ async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
 /// }
 /// ```
 ///
-/// This was needed because directly using `#[tokio::test]` in a large test suite 
-/// with async operations can lead to issues such as test interference and resource 
-/// contention, which may result in flaky tests. By ensuring each test runs 
-/// sequentially with its own Tokio runtime, we mitigate these issues and improve 
+/// This was needed because directly using `#[tokio::test]` in a large test suite
+/// with async operations can lead to issues such as test interference and resource
+/// contention, which may result in flaky tests. By ensuring each test runs
+/// sequentially with its own Tokio runtime, we mitigate these issues and improve
 /// test reliability.
 macro_rules! run_async {
     ($async_block:block) => {{
