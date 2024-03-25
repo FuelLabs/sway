@@ -483,6 +483,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release -p forc-debug
+  cargo-test-sway-lsp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Run sway-lsp tests sequentially
+        run: cargo test --locked --release -p forc-lsp -- --test-threads=1
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -493,7 +504,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
