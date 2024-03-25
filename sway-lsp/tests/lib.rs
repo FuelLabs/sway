@@ -80,7 +80,7 @@ async fn shutdown_and_exit(service: &mut LspService<ServerState>) {
 /// resources.
 ///
 /// Usage:
-/// ```
+/// ```ignore
 /// #[test]
 /// fn my_async_test() {
 ///     run_async!({
