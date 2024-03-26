@@ -1,9 +1,8 @@
 category = "fail"
 
 # check: $()error
-# nextln: recursive_type_unification/src/main.sw:8:15
-# check: $()Some::<V>(foo::<V>(value))
+# check: $()MyOption::Some::<V>(foo::<V>(value))
 # nextln: $()Mismatched types.
 # nextln: $()expected: V
-# nextln: $()found:    Option<V>.
+# nextln: $()found:    MyOption<V>.
 # nextln: $()Implicit return must match up with block's type.
