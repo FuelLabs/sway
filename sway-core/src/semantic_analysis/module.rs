@@ -297,7 +297,6 @@ impl ty::TyModule {
             })
             .collect::<Result<Vec<_>, _>>();
 
-        // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
             handler,
             ctx.engines(),

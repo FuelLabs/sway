@@ -34,6 +34,7 @@ pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
+use semantic_analysis::node_analysis::{NodeAnalysis, NodeAnalysisContext};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -501,7 +502,7 @@ pub fn parsed_to_ast(
     let module_eval_order = modules_dep_graph.compute_order(handler)?;
 
     // Collect the program symbols.
-    let _collection_ctx = ty::TyProgram::collect(
+    let symbol_collection_ctx = ty::TyProgram::collect(
         handler,
         engines,
         parse_program,
@@ -509,10 +510,14 @@ pub fn parsed_to_ast(
         &module_eval_order,
     )?;
 
+    let mut node_analysis_ctx = NodeAnalysisContext::new(engines, &symbol_collection_ctx);
+    let _ = parse_program.analyze(handler, &mut node_analysis_ctx);
+
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
+        &symbol_collection_ctx,
         parse_program,
         initial_namespace,
         package_name,

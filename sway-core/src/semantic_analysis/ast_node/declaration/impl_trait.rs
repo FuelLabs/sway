@@ -10,7 +10,7 @@ use sway_error::{
 use sway_types::{Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::*,
+    decl_engine::{parsed_id::ParsedDeclId, *},
     engine_threading::*,
     language::{
         parsed::*,
@@ -19,8 +19,9 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
     semantic_analysis::{
-        type_check_context::EnforceTypeArguments, AbiMode, ConstShadowingMode,
-        TyNodeDepGraphNodeId, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
+        node_analysis::{NodeAnalysis, NodeAnalysisContext, ParsedNodeDepGraphNodeId},
+        type_check_context::EnforceTypeArguments,
+        AbiMode, ConstShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
     type_system::*,
@@ -277,18 +278,19 @@ impl TyImplTrait {
     pub(crate) fn type_check_impl_self(
         handler: &Handler,
         ctx: TypeCheckContext,
-        impl_self: ImplSelf,
+        decl_id: ParsedDeclId<ImplSelf>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let type_engine = ctx.engines.te();
+        let decl_engine = ctx.engines.de();
+        let engines = ctx.engines();
+
+        let impl_self = engines.pe().get_impl_self(&decl_id).as_ref().clone();
         let ImplSelf {
             impl_type_parameters,
             mut implementing_for,
             items,
             block_span,
         } = impl_self;
-
-        let type_engine = ctx.engines.te();
-        let decl_engine = ctx.engines.de();
-        let engines = ctx.engines();
 
         // create the namespace for the impl
         ctx.with_const_shadowing_mode(ConstShadowingMode::ItemStyle)
@@ -455,12 +457,29 @@ impl TyImplTrait {
                         IsExtendingExistingImpl::No,
                     )?;
 
+                    let new_items = &impl_trait.items;
+
+                    // First lets perform a node analysis pass.
+                    // This returns a vector with ordered indexes to the items in the order that they
+                    // should be processed.
+                    let ordered_node_indices_opt = ty::TyImplTrait::node_analyze_impl_self_items(
+                        handler,
+                        ctx.by_ref(),
+                        &decl_id,
+                    )?;
+
+                    // In case there was any issue processing the dependency graph, then lets just
+                    // process them in the original order.
+                    let ordered_node_indices: Vec<_> = match ordered_node_indices_opt {
+                        Some(value) => value.iter().map(|n| n.index()).collect(),
+                        None => (0..new_items.len()).collect(),
+                    };
+
                     // Now lets do a partial type check of the body of the functions (while deferring full
                     // monomorphization of function applications). We will use this tree to perform type check
                     // analysis (mainly dependency analysis), and re-type check the items ordered by dependency.
                     let mut defer_ctx = ctx.by_ref().with_defer_monomorphization();
 
-                    let new_items = &impl_trait.items;
                     for (item, new_item) in items.clone().into_iter().zip(new_items) {
                         match (item, new_item) {
                             (ImplItem::Fn(fn_decl_id), TyTraitItem::Fn(decl_ref)) => {
@@ -487,29 +506,6 @@ impl TyImplTrait {
                             _ => unreachable!(),
                         }
                     }
-
-                    let impl_trait_decl = decl_engine.insert(impl_trait.clone()).into();
-
-                    // First lets perform an analysis pass.
-                    // This returns a vector with ordered indexes to the items in the order that they
-                    // should be processed.
-                    let ordered_node_indices_opt =
-                        if let TyDecl::ImplTrait(impl_trait) = &impl_trait_decl {
-                            ty::TyImplTrait::type_check_analyze_impl_self_items(
-                                handler,
-                                ctx.by_ref(),
-                                impl_trait,
-                            )?
-                        } else {
-                            unreachable!();
-                        };
-
-                    // In case there was any issue processing the dependency graph, then lets just
-                    // process them in the original order.
-                    let ordered_node_indices: Vec<_> = match ordered_node_indices_opt {
-                        Some(value) => value.iter().map(|n| n.index()).collect(),
-                        None => (0..new_items.len()).collect(),
-                    };
 
                     // Now lets type check the body of the functions (for real this time).
                     for idx in ordered_node_indices {
@@ -575,18 +571,19 @@ impl TyImplTrait {
             })
     }
 
-    pub(crate) fn type_check_analyze_impl_self_items(
+    pub(crate) fn node_analyze_impl_self_items(
         handler: &Handler,
         ctx: TypeCheckContext,
-        impl_self: &ty::ImplTrait,
-    ) -> Result<Option<Vec<TyNodeDepGraphNodeId>>, ErrorEmitted> {
+        impl_self: &ParsedDeclId<ImplSelf>,
+    ) -> Result<Option<Vec<ParsedNodeDepGraphNodeId>>, ErrorEmitted> {
         let engines = ctx.engines;
+        let symbol_collection_ctx = ctx.symbol_collection_ctx;
         handler.scope(|handler| {
-            let mut analysis_ctx = TypeCheckAnalysisContext::new(engines);
-            let _ = impl_self.type_check_analyze(handler, &mut analysis_ctx);
+            let mut analysis_ctx = NodeAnalysisContext::new(engines, symbol_collection_ctx);
+            let _ = impl_self.analyze(handler, &mut analysis_ctx);
 
             // Build a sub graph that just contains the items for this impl trait.
-            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.decl_id.unique_id());
+            let impl_trait_node_index = analysis_ctx.nodes.get(&impl_self.unique_id());
             let sub_graph = analysis_ctx.get_sub_graph(
                 *impl_trait_node_index.expect("expected a valid impl trait node id"),
             );
