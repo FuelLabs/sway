@@ -1,13 +1,13 @@
 [[package]]
-name = 'abi_impl_methods_callable'
-source = 'member'
-dependencies = ['std']
+name = "abi_impl_methods_callable"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-214E8589AEAE48E5'
+name = "core"
+source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-214E8589AEAE48E5'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-214E8589AEAE48E5"
+dependencies = ["core"]

@@ -6,4 +6,3 @@ name = "array_of_structs_abi"
 
 [dependencies]
 core = { path = "../../../../../../../sway-lib-core" }
-std = { path = "../../../../../../../sway-lib-std" }

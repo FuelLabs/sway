@@ -1284,6 +1284,23 @@ where
     }
 }
 
+impl<T> AbiEncode for [T; 9]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        self[0].abi_encode(buffer);
+        self[1].abi_encode(buffer);
+        self[2].abi_encode(buffer);
+        self[3].abi_encode(buffer);
+        self[4].abi_encode(buffer);
+        self[5].abi_encode(buffer);
+        self[6].abi_encode(buffer);
+        self[7].abi_encode(buffer);
+        self[8].abi_encode(buffer);
+    }
+}
+
 // Encode Tuples
 
 

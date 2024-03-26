@@ -1,5 +1,6 @@
 mod e2e_vm_tests;
 mod ir_generation;
+mod reduced_std_libs;
 mod test_consistency;
 
 use anyhow::Result;
@@ -114,6 +115,9 @@ async fn main() -> Result<()> {
 
     // Check that the tests are consistent
     test_consistency::check()?;
+
+    // Create reduced versions of the `std` library.
+    reduced_std_libs::create()?;
 
     // Run E2E tests
     e2e_vm_tests::run(&filter_config, &run_config)

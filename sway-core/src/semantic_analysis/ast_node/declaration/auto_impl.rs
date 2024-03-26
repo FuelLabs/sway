@@ -287,7 +287,18 @@ where
             _ => todo!(),
         };
 
-        assert!(!handler.has_errors(), "{:?} {}", handler, code);
+        if handler.has_errors() {
+            panic!(
+                "{:?} {:?}",
+                handler,
+                module_id
+                    .and_then(|x| engines.se().get_source_ids_from_module_id(x))
+                    .unwrap()
+                    .iter()
+                    .map(|x| engines.se().get_file_name(x))
+                    .collect::<Vec<_>>()
+            );
+        }
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
@@ -298,7 +309,19 @@ where
         )
         .unwrap();
 
-        assert!(!handler.has_errors(), "{:?} {}", handler, code);
+        if handler.has_errors() {
+            panic!(
+                "{:?} {} {:?}",
+                handler,
+                code,
+                module_id
+                    .and_then(|x| engines.se().get_source_ids_from_module_id(x))
+                    .unwrap()
+                    .iter()
+                    .map(|x| engines.se().get_path(x))
+                    .collect::<Vec<_>>()
+            );
+        }
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         Some(TyAstNode {
