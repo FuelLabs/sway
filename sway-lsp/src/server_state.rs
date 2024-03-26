@@ -139,6 +139,7 @@ impl ServerState {
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
+                        eprintln!("Compiling: {}", uri.path());
                         match session::parse_project(
                             &uri,
                             &engines_clone,
@@ -150,6 +151,7 @@ impl ServerState {
                             Ok(_) => {
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);
                                 *last_compilation_state.write() = LastCompilationState::Success;
+                                eprintln!("Finished Compiling: {}", uri.path());
                             }
                             Err(_err) => {
                                 *last_compilation_state.write() = LastCompilationState::Failed;
@@ -205,7 +207,11 @@ impl ServerState {
     /// this process until `is_compiling` becomes false.
     pub async fn wait_for_parsing(&self) {
         loop {
-            if !self.is_compiling.load(Ordering::SeqCst) {
+            // Check both the is_compiling flag and the last_compilation_state.
+            // Wait if is_compiling is true (compilation in progress) or if the last_compilation_state is Uninitialized (compilation not started yet).
+            if !self.is_compiling.load(Ordering::SeqCst)
+                && *self.last_compilation_state.read() != LastCompilationState::Uninitialized
+            {
                 // compilation is finished, lets check if there are pending compilation requests.
                 if self.cb_rx.is_empty() {
                     // no pending compilation work, safe to break.
