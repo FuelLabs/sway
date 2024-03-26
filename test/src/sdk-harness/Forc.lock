@@ -1,6 +1,7 @@
 [[package]]
 name = "abi_impl_methods_callable"
 source = "member"
+dependencies = ["core"]
 
 [[package]]
 name = "asset_ops"
@@ -110,7 +111,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "core"
-source = "path+from-root-872BB25145BD9C7F"
+source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
 name = "ec_recover"
@@ -237,6 +238,16 @@ dependencies = ["std"]
 
 [[package]]
 name = "result_in_abi"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "run_external_proxy"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "run_external_target"
 source = "member"
 dependencies = ["std"]
 

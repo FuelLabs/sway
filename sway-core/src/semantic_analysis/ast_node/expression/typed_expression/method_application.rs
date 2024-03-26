@@ -767,7 +767,6 @@ pub(crate) fn monomorphize_method_application(
             type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
         )?;
         let mut method = (*decl_engine.get_function(fn_ref)).clone();
-        method.is_trait_method_dummy = false;
 
         // Unify method type parameters with implementing type type parameters.
         if let Some(implementing_for_typeid) = method.implementing_for_typeid {

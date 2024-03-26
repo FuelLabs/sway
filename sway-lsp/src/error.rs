@@ -54,8 +54,8 @@ pub enum DirectoryError {
     ManifestDirNotFound,
     #[error("Can't extract project name from {:?}", dir)]
     CantExtractProjectName { dir: String },
-    #[error("Failed to create hidden .lsp_locks directory")]
-    LspLocksDirFailed,
+    #[error("Failed to create hidden .lsp_locks directory: {0}")]
+    LspLocksDirFailed(String),
     #[error("Failed to create temp directory")]
     TempDirFailed,
     #[error("Failed to canonicalize path")]

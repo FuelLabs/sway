@@ -13,7 +13,7 @@ remove_generated_code "STRARRAY_ENCODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl AbiEncode for str[$i] { fn abi_encode(self, ref mut buffer: Buffer) { use ::str::*; let s = from_str_array(self); let len = s.len(); let ptr = s.as_ptr(); let mut i = 0; while i < len { let byte = ptr.add::<u8>(i).read::<u8>(); buffer.push(byte); i += 1; } } }"
+    CODE="impl AbiEncode for str[$i] { fn abi_encode(self, ref mut buffer: Buffer) { use ::str::*; let s = from_str_array(self); let len = s.len(); let ptr = s.as_ptr(); let mut i = 0; while i < len { let byte = ptr.add::<u8>(i).read::<u8>(); buffer.push_byte(byte); i += 1; } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 

@@ -1,7 +1,5 @@
 script;
 
-use std::constants::ZERO_B256;
-
 struct Z {
     a: u64,
     b: u64,

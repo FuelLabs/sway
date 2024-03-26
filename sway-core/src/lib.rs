@@ -91,7 +91,14 @@ pub fn parse(
     config: Option<&BuildConfig>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     match config {
-        None => parse_in_memory(handler, engines, input),
+        None => parse_in_memory(
+            handler,
+            engines,
+            input,
+            ExperimentalFlags {
+                new_encoding: false,
+            },
+        ),
         // When a `BuildConfig` is given,
         // the module source may declare `dep`s that must be parsed from other files.
         Some(config) => parse_module_tree(
@@ -190,6 +197,7 @@ fn parse_in_memory(
     handler: &Handler,
     engines: &Engines,
     src: Arc<str>,
+    experimental: ExperimentalFlags,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
     let mut hasher = DefaultHasher::new();
     src.hash(&mut hasher);
@@ -197,7 +205,7 @@ fn parse_in_memory(
     let module = sway_parse::parse_file(handler, src, None)?;
 
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
-        &mut to_parsed_lang::Context::default(),
+        &mut to_parsed_lang::Context::new(BuildTarget::EVM, experimental),
         handler,
         engines,
         module.value.clone(),
@@ -481,7 +489,11 @@ pub fn parsed_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
-    let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
+    let experimental = build_config
+        .map(|x| x.experimental)
+        .unwrap_or(ExperimentalFlags {
+            new_encoding: false,
+        });
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.

@@ -5,12 +5,4 @@ source = "path+from-root-66C7F3C6EA70992E"
 [[package]]
 name = "main_args_empty"
 source = "member"
-dependencies = [
-    "core",
-    "std",
-]
-
-[[package]]
-name = "std"
-source = "path+from-root-66C7F3C6EA70992E"
 dependencies = ["core"]

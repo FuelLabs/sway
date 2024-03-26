@@ -32,7 +32,7 @@ struct CustomAbiEncode {
 
 impl AbiEncode for CustomAbiEncode {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(77);
+        buffer.push_u64(77);
     }
 }
 

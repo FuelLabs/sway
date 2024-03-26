@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "eq_custom_type"
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-option-result" }

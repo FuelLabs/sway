@@ -205,7 +205,11 @@ impl ServerState {
     /// this process until `is_compiling` becomes false.
     pub async fn wait_for_parsing(&self) {
         loop {
-            if !self.is_compiling.load(Ordering::SeqCst) {
+            // Check both the is_compiling flag and the last_compilation_state.
+            // Wait if is_compiling is true or if the last_compilation_state is Uninitialized.
+            if !self.is_compiling.load(Ordering::SeqCst)
+                && *self.last_compilation_state.read() != LastCompilationState::Uninitialized
+            {
                 // compilation is finished, lets check if there are pending compilation requests.
                 if self.cb_rx.is_empty() {
                     // no pending compilation work, safe to break.
@@ -225,7 +229,6 @@ impl ServerState {
 
         // Set the retrigger_compilation flag to true so that the compilation exits early
         self.retrigger_compilation.store(true, Ordering::SeqCst);
-        self.wait_for_parsing().await;
 
         // Send a terminate message to the compilation thread
         self.cb_tx

@@ -1,6 +1,5 @@
 use crate::{build_config::ExperimentalFlags, language::parsed::TreeType, BuildTarget};
 
-#[derive(Default)]
 pub struct Context {
     pub experimental: ExperimentalFlags,
 
@@ -30,7 +29,11 @@ impl Context {
         Self {
             build_target,
             experimental,
-            ..Default::default()
+            module_has_configurable_block: std::default::Default::default(),
+            destructured_struct_unique_suffix: std::default::Default::default(),
+            destructured_tuple_unique_suffix: std::default::Default::default(),
+            match_expression_matched_value_unique_suffix: std::default::Default::default(),
+            program_type: std::default::Default::default(),
         }
     }
 

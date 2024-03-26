@@ -78,7 +78,10 @@ pub async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
-    document::mark_file_as_dirty(&params.text_document.uri)?;
+    if let Err(err) = document::mark_file_as_dirty(&params.text_document.uri) {
+        tracing::warn!("Failed to mark file as dirty: {}", err);
+    }
+
     let (uri, session) = state
         .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)

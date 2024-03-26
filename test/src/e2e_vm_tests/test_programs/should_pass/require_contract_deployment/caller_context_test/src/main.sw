@@ -5,9 +5,9 @@ use std::constants::BASE_ASSET_ID;
 use context_testing_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x65dae4fedb02e2d70cdb56e2b82d23a2baa69a6acdbf01cc1271c7c1a1abe2cc;
+const CONTRACT_ID = 0xe83ed45906627117f00f60e47140c6100b4b69133389a2dafd35bc3282329385;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xebeab7696d7282c3db00f88afb2562d8b2bb373a04f54eb107b0e8ed4dc77a5a;
+const CONTRACT_ID = 0x3a0ad97b880a8e5f127e19eb5a05ed1b252a29b0367e5051df8ecf57d6fd234f;
 
 fn main() -> bool {
     let gas: u64 = u64::max();

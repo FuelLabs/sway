@@ -191,3 +191,19 @@ impl ContractB for Contract {
 fn fallback() {
 }
 ```
+
+You may still access the method selector and arguments to the call in the fallback.
+For instance, let's assume a function `fn foobar(bool, u64) {}` gets called on a contract that doesn't have it with arguments `true` and `42`.
+It can execute the following fallback:
+
+```sway
+#[fallback]
+fn fallback() {
+    // the method selector is the first four bytes of sha256("foobar(bool,u64)")
+    // per https://fuellabs.github.io/fuel-specs/master/protocol/abi#function-selector-encoding
+    let method_selector = std::call_frames::first_param::<u64>();
+
+    // the arguments tuple is (true, 42)
+    let arguments = std::call_frames::second_param::<(bool, u64)>();
+}
+```

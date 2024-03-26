@@ -81,7 +81,9 @@ pub mod tests {
             "
             ),
             &source_engine,
-            ExperimentalFlags::default(),
+            ExperimentalFlags {
+                new_encoding: false,
+            },
         )
         .unwrap();
 

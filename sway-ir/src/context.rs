@@ -39,7 +39,7 @@ pub struct Context<'eng> {
     pub experimental: ExperimentalFlags,
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
 }

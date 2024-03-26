@@ -12,7 +12,7 @@ abi MyContract {
 }
 
 impl MyContract for Contract {
-    fn test_function(code_id_p: ContractId) {
+    fn test_function(code_id: ContractId) {
         asm(code_id, word, length, ssp_saved) {
             lw code_id fp i74;
             // Load the entire contract with LDC

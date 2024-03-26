@@ -6,4 +6,4 @@ name = "call_abi_with_tuples"
 
 [dependencies]
 abi_with_tuples = { path = "../../test_abis/abi_with_tuples" }
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

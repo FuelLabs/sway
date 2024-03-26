@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-8011322D04562685"
+
+[[package]]
+name = "main_args_generics"
+source = "member"
+dependencies = ["core"]

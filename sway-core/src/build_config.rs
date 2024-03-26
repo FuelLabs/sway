@@ -114,7 +114,9 @@ impl BuildConfig {
             time_phases: false,
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags::default(),
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
             lsp_mode: None,
         }
     }
@@ -203,7 +205,7 @@ impl BuildConfig {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
 }

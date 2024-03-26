@@ -6,5 +6,4 @@ license = "Apache-2.0"
 name = "issue_1512_repro"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-conversions" }

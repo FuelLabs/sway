@@ -1,8 +1,3 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-77B89972CE8D8BC6'
-
-[[package]]
-name = 'tuple_indexing'
-source = 'member'
-dependencies = ['core']
+name = "tuple_indexing"
+source = "member"

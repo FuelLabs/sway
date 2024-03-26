@@ -51,7 +51,12 @@ impl TyProgram {
         build_config: Option<&BuildConfig>,
         module_eval_order: ModuleEvaluationOrder,
     ) -> Result<Self, ErrorEmitted> {
-        let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
+        let experimental =
+            build_config
+                .map(|x| x.experimental)
+                .unwrap_or(crate::ExperimentalFlags {
+                    new_encoding: false,
+                });
 
         let mut namespace = Namespace::init_root(initial_namespace);
         let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
