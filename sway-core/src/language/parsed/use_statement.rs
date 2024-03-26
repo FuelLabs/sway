@@ -1,7 +1,7 @@
 use crate::parsed::Span;
 use sway_types::ident::Ident;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, deepsize::DeepSizeOf)]
 pub enum ImportType {
     Star,
     SelfImport(Span),

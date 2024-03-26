@@ -9,7 +9,7 @@ use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TyIntrinsicFunctionKind {
     pub kind: Intrinsic,
     pub arguments: Vec<TyExpression>,

@@ -11,7 +11,7 @@ use super::TyTraitItem;
 pub type TyImplItem = TyTraitItem;
 
 // impl <A, B, C> Trait<Arg, Arg> for Type<Arg, Arg>
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyImplTrait {
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,

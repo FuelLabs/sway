@@ -1,12 +1,12 @@
 use crate::priv_prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, deepsize::DeepSizeOf)]
 pub struct LitString {
     pub span: Span,
     pub parsed: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, deepsize::DeepSizeOf)]
 pub struct LitChar {
     pub span: Span,
     pub parsed: char,
@@ -19,7 +19,15 @@ pub struct LitInt {
     pub ty_opt: Option<(LitIntType, Span)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+impl ::deepsize::DeepSizeOf for LitInt {
+    fn deep_size_of_children(&self, context: &mut ::deepsize::Context) -> usize {
+        0 + ::deepsize::DeepSizeOf::deep_size_of_children(&self.span, context)
+            + self.parsed.iter_u64_digits().count() * std::mem::size_of::<u64>()
+            + ::deepsize::DeepSizeOf::deep_size_of_children(&self.ty_opt, context)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, deepsize::DeepSizeOf)]
 pub enum LitIntType {
     U8,
     U16,
@@ -32,13 +40,13 @@ pub enum LitIntType {
     I64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, deepsize::DeepSizeOf)]
 pub struct LitBool {
     pub span: Span,
     pub kind: LitBoolType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, deepsize::DeepSizeOf)]
 pub enum LitBoolType {
     True,
     False,
@@ -53,7 +61,7 @@ impl From<LitBoolType> for bool {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize, deepsize::DeepSizeOf)]
 pub enum Literal {
     String(LitString),
     Char(LitChar),

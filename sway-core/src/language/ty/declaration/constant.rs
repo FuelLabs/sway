@@ -15,7 +15,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyConstantDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
@@ -104,6 +104,7 @@ impl SubstTypes for TyConstantDecl {
 }
 
 impl ReplaceDecls for TyConstantDecl {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,

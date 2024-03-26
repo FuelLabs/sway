@@ -13,7 +13,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyVariableDecl {
     pub name: Ident,
     pub body: TyExpression,

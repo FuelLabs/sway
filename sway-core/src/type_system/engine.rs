@@ -20,6 +20,28 @@ use super::unify::unifier::UnifyKind;
 pub struct TypeEngine {
     slab: ConcurrentSlab<TypeSourceInfo>,
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
+    never_id: RwLock<Option<TypeId>>,
+    bool_id: RwLock<Option<TypeId>>,
+    numeric_id: RwLock<Option<TypeId>>,
+}
+
+impl ::deepsize::DeepSizeOf for TypeEngine {
+    fn deep_size_of_children(&self, context: &mut ::deepsize::Context) -> usize {
+        let id_map = self.id_map.read().unwrap();
+        let child_sizes = id_map.iter().fold(0, |sum, (key, val)| {
+            sum + key.deep_size_of_children(context) + val.deep_size_of_children(context)
+        });
+        let map_size = id_map.capacity()
+            * (std::mem::size_of::<(usize, TypeSourceInfo, TypeId)>()
+                + std::mem::size_of::<usize>());
+        let id_map_size = child_sizes + map_size;
+
+        0 + ::deepsize::DeepSizeOf::deep_size_of_children(&self.slab, context)
+            + id_map_size
+            + ::deepsize::DeepSizeOf::deep_size_of_children(&self.never_id, context)
+            + ::deepsize::DeepSizeOf::deep_size_of_children(&self.bool_id, context)
+            + ::deepsize::DeepSizeOf::deep_size_of_children(&self.numeric_id, context)
+    }
 }
 
 impl Clone for TypeEngine {
@@ -27,11 +49,39 @@ impl Clone for TypeEngine {
         TypeEngine {
             slab: self.slab.clone(),
             id_map: RwLock::new(self.id_map.read().unwrap().clone()),
+            never_id: RwLock::new(None),
+            bool_id: RwLock::new(None),
+            numeric_id: RwLock::new(None),
         }
     }
 }
 
+// Implements a function that setup and return a known type that will never change
+macro_rules! impl_get_type {
+    ($fn_name:ident, $field_name:ident) => {
+        pub fn $fn_name(&self) -> TypeId {
+            let r = self.$field_name.read().unwrap();
+            r.as_ref().unwrap().clone()
+        }
+    };
+}
+
 impl TypeEngine {
+    pub fn init(&self, engines: &Engines) {
+        let mut r = self.never_id.write().unwrap();
+        *r = Some(self.insert(engines, TypeInfo::Never, None));
+
+        let mut r = self.bool_id.write().unwrap();
+        *r = Some(self.insert(engines, TypeInfo::Boolean, None));
+
+        let mut r = self.numeric_id.write().unwrap();
+        *r = Some(self.insert(engines, TypeInfo::Numeric, None));
+    }
+
+    impl_get_type! {get_never_type, never_id}
+    impl_get_type! {get_bool_type, bool_id}
+    impl_get_type! {get_numeric_type, numeric_id}
+
     /// Inserts a [TypeInfo] into the [TypeEngine] and returns a [TypeId]
     /// referring to that [TypeInfo].
     pub(crate) fn insert(

@@ -53,7 +53,7 @@ pub type DeclRefMixedInterface = DeclRef<InterfaceDeclId>;
 /// Represents the use of / syntactic reference to a declaration. A
 /// smart-wrapper around a [DeclId], containing additional information about a
 /// declaration.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct DeclRef<I> {
     /// The name of the declaration.
     // NOTE: In the case of storage, the name is "storage".
@@ -300,6 +300,7 @@ where
 }
 
 impl ReplaceDecls for DeclRefFunction {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,

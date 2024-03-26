@@ -17,7 +17,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyReassignment {
     // either a direct variable, so length of 1, or
     // at series of struct fields/array indices (array syntax)
@@ -64,6 +64,7 @@ impl SubstTypes for TyReassignment {
 }
 
 impl ReplaceDecls for TyReassignment {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,
@@ -101,7 +102,7 @@ impl UpdateConstantExpression for TyReassignment {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub enum ProjectionKind {
     StructField {
         name: Ident,

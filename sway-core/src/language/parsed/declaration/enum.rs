@@ -1,7 +1,7 @@
 use crate::{language::Visibility, transform, type_system::*};
 use sway_types::{ident::Ident, span::Span};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct EnumDeclaration {
     pub name: Ident,
     pub attributes: transform::AttributesMap,
@@ -11,7 +11,7 @@ pub struct EnumDeclaration {
     pub visibility: Visibility,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct EnumVariant {
     pub name: Ident,
     pub attributes: transform::AttributesMap,

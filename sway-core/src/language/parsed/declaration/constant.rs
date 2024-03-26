@@ -5,7 +5,7 @@ use crate::{
 };
 use sway_types::{Ident, Span};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct ConstantDeclaration {
     pub name: Ident,
     pub attributes: transform::AttributesMap,

@@ -31,7 +31,7 @@ pub struct ParseTree {
 
 /// A single [AstNode] represents a node in the parse tree. Note that [AstNode]
 /// is a recursive type and can contain other [AstNode], thus populating the tree.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct AstNode {
     /// The content of this ast node, which could be any control flow structure or other
     /// basic organizational component.
@@ -59,6 +59,12 @@ pub enum AstNodeContent {
     /// The list of `Span`s are for consumption by the LSP and are,
     /// when joined, the same as that stored in `statement.span`.
     Error(Box<[Span]>, ErrorEmitted),
+}
+
+impl deepsize::DeepSizeOf for AstNodeContent {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
 }
 
 impl ParseTree {

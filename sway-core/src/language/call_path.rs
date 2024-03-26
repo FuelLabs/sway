@@ -21,7 +21,7 @@ use sway_types::{span::Span, Spanned};
 
 use super::parsed::QualifiedPathType;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct CallPathTree {
     pub qualified_call_path: QualifiedCallPath,
     pub children: Vec<CallPathTree>,
@@ -66,7 +66,7 @@ impl OrdWithEngines for CallPathTree {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 
 pub struct QualifiedCallPath {
     pub call_path: CallPath,
@@ -170,7 +170,7 @@ impl DebugWithEngines for QualifiedCallPath {
 
 /// In the expression `a::b::c()`, `a` and `b` are the prefixes and `c` is the suffix.
 /// `c` can be any type `T`, but in practice `c` is either an `Ident` or a `TypeInfo`.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd, deepsize::DeepSizeOf)]
 pub struct CallPath<T = Ident> {
     pub prefixes: Vec<Ident>,
     pub suffix: T,

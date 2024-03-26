@@ -1,6 +1,6 @@
 use crate::{decl_engine::*, language::ty};
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, deepsize::DeepSizeOf)]
 pub enum InterfaceDeclId {
     Abi(DeclId<ty::TyAbiDecl>),
     Trait(DeclId<ty::TyTraitDecl>),

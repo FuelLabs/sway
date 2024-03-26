@@ -5,7 +5,7 @@ use sway_types::{state::StateIndex, Ident, Span, Spanned};
 use crate::{engine_threading::*, type_system::TypeId};
 
 /// Describes the full storage access including all the subfields
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyStorageAccess {
     pub fields: Vec<TyStorageAccessDescriptor>,
     pub(crate) namespace: Option<Ident>,
@@ -55,7 +55,7 @@ impl TyStorageAccess {
 }
 
 /// Describes a single subfield access in the sequence when accessing a subfield within storage.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyStorageAccessDescriptor {
     pub name: Ident,
     pub type_id: TypeId,

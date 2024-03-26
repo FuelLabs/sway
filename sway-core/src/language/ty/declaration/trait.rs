@@ -23,7 +23,7 @@ use crate::{
 
 use super::TyDecl;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyTraitDecl {
     pub name: Ident,
     pub type_parameters: Vec<TypeParameter>,
@@ -37,7 +37,7 @@ pub struct TyTraitDecl {
     pub span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub enum TyTraitInterfaceItem {
     TraitFn(DeclRefTraitFn),
     Constant(DeclRefConstant),
@@ -73,7 +73,7 @@ impl DebugWithEngines for TyTraitInterfaceItem {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),

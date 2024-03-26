@@ -43,6 +43,12 @@ pub struct ImplTrait {
     pub(crate) block_span: Span,
 }
 
+impl deepsize::DeepSizeOf for ImplTrait {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}
+
 impl DebugWithEngines for ImplTrait {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         f.write_fmt(format_args!(
@@ -62,6 +68,12 @@ pub struct ImplSelf {
     pub items: Vec<ImplItem>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
+}
+
+impl deepsize::DeepSizeOf for ImplSelf {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
 }
 
 impl DebugWithEngines for ImplSelf {

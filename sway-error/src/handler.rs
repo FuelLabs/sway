@@ -93,7 +93,7 @@ impl Handler {
 }
 
 /// Proof that an error was emitted through a `Handler`.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, deepsize::DeepSizeOf)]
 pub struct ErrorEmitted {
     _priv: (),
 }

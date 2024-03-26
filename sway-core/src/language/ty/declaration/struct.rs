@@ -15,7 +15,7 @@ use crate::{
     Namespace,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyStructDecl {
     pub call_path: CallPath,
     pub fields: Vec<TyStructField>,
@@ -177,7 +177,7 @@ impl From<StructAccessInfo> for (bool, bool) {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TyStructField {
     pub visibility: Visibility,
     pub name: Ident,

@@ -1,6 +1,6 @@
 use crate::language::Visibility;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default, deepsize::DeepSizeOf)]
 pub enum VariableMutability {
     // mutable
     Mutable,

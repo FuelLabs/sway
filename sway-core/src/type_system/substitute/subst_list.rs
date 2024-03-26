@@ -9,7 +9,7 @@ use crate::{engine_threading::*, type_system::priv_prelude::*};
 /// A list of types that serve as the list of type params for type substitution.
 /// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an
 /// index in this list.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, deepsize::DeepSizeOf)]
 pub struct SubstList {
     list: Vec<TypeParameter>,
 }

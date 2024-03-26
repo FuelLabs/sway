@@ -366,7 +366,7 @@ impl ty::TyExpression {
             ExpressionKind::Break => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Break,
-                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
+                    return_type: type_engine.get_never_type(),
                     span,
                 };
                 Ok(expr)
@@ -374,7 +374,7 @@ impl ty::TyExpression {
             ExpressionKind::Continue => {
                 let expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Continue,
-                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
+                    return_type: type_engine.get_never_type(),
                     span,
                 };
                 Ok(expr)
@@ -410,7 +410,7 @@ impl ty::TyExpression {
                     .unwrap_or_else(|err| ty::TyExpression::error(err, expr_span, engines));
                 let typed_expr = ty::TyExpression {
                     expression: ty::TyExpressionVariant::Return(Box::new(expr)),
-                    return_type: type_engine.insert(engines, TypeInfo::Never, None),
+                    return_type: type_engine.get_never_type(),
                     span,
                 };
                 Ok(typed_expr)
@@ -648,7 +648,7 @@ impl ty::TyExpression {
             let ctx = ctx
                 .by_ref()
                 .with_help_text("The condition of an if expression must be a boolean expression.")
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, None));
+                .with_type_annotation(type_engine.get_bool_type());
             ty::TyExpression::type_check(handler, ctx, condition.clone())
                 .unwrap_or_else(|err| ty::TyExpression::error(err, condition.span(), engines))
         };
@@ -1762,7 +1762,7 @@ impl ty::TyExpression {
         let engines = ctx.engines();
 
         if contents.is_empty() {
-            let never_type = type_engine.insert(engines, TypeInfo::Never, None);
+            let never_type = type_engine.get_never_type();
             return Ok(ty::TyExpression {
                 expression: ty::TyExpressionVariant::Array {
                     elem_type: never_type,
@@ -1946,7 +1946,7 @@ impl ty::TyExpression {
         let typed_condition = {
             let ctx = ctx
                 .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Boolean, None))
+                .with_type_annotation(type_engine.get_bool_type())
                 .with_help_text("A while loop's loop condition must be a boolean expression.");
             ty::TyExpression::type_check(handler, ctx, condition)?
         };

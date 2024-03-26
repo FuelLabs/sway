@@ -2,7 +2,7 @@ use crate::language::Visibility;
 
 use sway_types::{ident::Ident, Span, Spanned};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, deepsize::DeepSizeOf)]
 pub struct TyIncludeStatement {
     pub span: Span,
     pub visibility: Visibility,

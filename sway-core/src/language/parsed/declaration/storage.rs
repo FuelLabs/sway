@@ -11,6 +11,12 @@ pub struct StorageDeclaration {
     pub storage_keyword: Ident,
 }
 
+impl deepsize::DeepSizeOf for StorageDeclaration {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}
+
 /// An individual field in a storage declaration.
 /// A type annotation _and_ initializer value must be provided. The initializer value must be a
 /// constant expression. For now, that basically means just a literal, but as constant folding

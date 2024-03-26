@@ -19,7 +19,7 @@ use std::{
 const EXTRACT_ANY_MAX_DEPTH: usize = 128;
 
 /// A identifier to uniquely refer to our type terms
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug, deepsize::DeepSizeOf)]
 pub struct TypeId(usize);
 
 impl DisplayWithEngines for TypeId {

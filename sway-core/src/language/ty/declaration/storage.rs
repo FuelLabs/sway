@@ -14,7 +14,7 @@ use crate::{
     Namespace,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyStorageDecl {
     pub fields: Vec<TyStorageField>,
     pub span: Span,
@@ -244,7 +244,7 @@ impl Spanned for TyStorageField {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyStorageField {
     pub name: Ident,
     pub type_argument: TypeArgument,

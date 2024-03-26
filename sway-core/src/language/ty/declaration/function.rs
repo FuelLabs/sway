@@ -28,7 +28,7 @@ use sway_types::{
     Ident, Named, Span, Spanned,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub enum TyFunctionDeclKind {
     Default,
     Entry,
@@ -36,7 +36,7 @@ pub enum TyFunctionDeclKind {
     Test,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyFunctionDecl {
     pub name: Ident,
     pub body: TyCodeBlock,
@@ -211,6 +211,7 @@ impl SubstTypes for TyFunctionDecl {
 }
 
 impl ReplaceDecls for TyFunctionDecl {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,
@@ -484,7 +485,7 @@ impl TyFunctionDecl {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TyFunctionParameter {
     pub name: Ident,
     pub is_reference: bool,

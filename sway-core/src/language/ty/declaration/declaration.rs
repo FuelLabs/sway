@@ -17,7 +17,7 @@ use crate::{
     types::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub enum TyDecl {
     VariableDecl(Box<TyVariableDecl>),
     ConstantDecl(ConstantDecl),
@@ -37,21 +37,21 @@ pub enum TyDecl {
     TypeAliasDecl(TypeAliasDecl),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct ConstantDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyConstantDecl>,
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TraitTypeDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyTraitType>,
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct FunctionDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyFunctionDecl>,
@@ -59,7 +59,7 @@ pub struct FunctionDecl {
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TraitDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyTraitDecl>,
@@ -67,7 +67,7 @@ pub struct TraitDecl {
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct StructDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyStructDecl>,
@@ -75,7 +75,7 @@ pub struct StructDecl {
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct EnumDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyEnumDecl>,
@@ -83,14 +83,14 @@ pub struct EnumDecl {
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct EnumVariantDecl {
     pub enum_ref: DeclRefEnum,
     pub variant_name: Ident,
     pub variant_decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct ImplTrait {
     pub name: Ident,
     pub decl_id: DeclId<TyImplTrait>,
@@ -98,26 +98,26 @@ pub struct ImplTrait {
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct AbiDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyAbiDecl>,
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct GenericTypeForFunctionScope {
     pub name: Ident,
     pub type_id: TypeId,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct StorageDecl {
     pub decl_id: DeclId<TyStorageDecl>,
     pub decl_span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TypeAliasDecl {
     pub name: Ident,
     pub decl_id: DeclId<TyTypeAliasDecl>,

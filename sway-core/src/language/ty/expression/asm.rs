@@ -4,7 +4,7 @@ use sway_types::Ident;
 
 use crate::{engine_threading::*, language::ty::*, type_system::*};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyAsmRegisterDeclaration {
     pub initializer: Option<TyExpression>,
     pub(crate) name: Ident,

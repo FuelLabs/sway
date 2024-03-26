@@ -22,7 +22,7 @@ use crate::{
     types::*,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TraitConstraint {
     pub trait_name: CallPath,
     pub type_arguments: Vec<TypeArgument>,

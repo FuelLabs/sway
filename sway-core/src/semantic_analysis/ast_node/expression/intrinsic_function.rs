@@ -297,10 +297,7 @@ fn type_check_is_reference_type(
         }],
         span,
     };
-    Ok((
-        intrinsic_function,
-        type_engine.insert(engines, TypeInfo::Boolean, None),
-    ))
+    Ok((intrinsic_function, type_engine.get_bool_type()))
 }
 
 /// Signature: `__assert_is_str_array<T>()`
@@ -469,7 +466,7 @@ fn type_check_cmp(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Boolean, None),
+        type_engine.get_bool_type(),
     ))
 }
 
@@ -655,7 +652,7 @@ fn type_check_state_clear(
         type_arguments: vec![],
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::Boolean, None);
+    let return_type = type_engine.get_bool_type();
     Ok((intrinsic_function, return_type))
 }
 
@@ -789,7 +786,7 @@ fn type_check_state_store_word(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::Boolean, None);
+    let return_type = type_engine.get_bool_type();
     Ok((intrinsic_function, return_type))
 }
 
@@ -883,7 +880,7 @@ fn type_check_state_quad(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::Boolean, None);
+    let return_type = type_engine.get_bool_type();
     Ok((intrinsic_function, return_type))
 }
 
@@ -1178,7 +1175,7 @@ fn type_check_revert(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Never, None),
+        type_engine.get_never_type(),
     ))
 }
 
@@ -1218,7 +1215,7 @@ fn type_check_jmp_mem(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Never, None),
+        type_engine.get_never_type(),
     ))
 }
 

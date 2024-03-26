@@ -15,6 +15,7 @@ smallvec = "1.7"
 sway-types = { version = "0.52.0", path = "../sway-types" }
 thiserror = "1.0"
 uwuify = { version = "^0.2", optional = true }
+deepsize = { version = "0.2.0", features = ["std", "indexmap", "hashbrown"] }
 
 [features]
 default = []

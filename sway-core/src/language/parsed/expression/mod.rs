@@ -23,7 +23,7 @@ pub use scrutinee::*;
 use sway_ast::intrinsics::Intrinsic;
 
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct Expression {
     pub kind: ExpressionKind,
     pub span: Span,
@@ -87,7 +87,7 @@ pub struct SubfieldExpression {
     pub field_to_access: Ident,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct AmbiguousSuffix {
     /// If the suffix is a pair, the ambiguous part of the suffix.
     ///
@@ -111,7 +111,7 @@ impl Spanned for AmbiguousSuffix {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct QualifiedPathType {
     pub ty: TypeArgument,
     pub as_trait: TypeId,
@@ -188,7 +188,7 @@ impl DebugWithEngines for QualifiedPathType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct AmbiguousPathExpression {
     pub qualified_path_root: Option<QualifiedPathType>,
     pub call_path_binding: TypeBinding<CallPath<AmbiguousSuffix>>,
@@ -229,18 +229,18 @@ pub struct IntrinsicFunctionExpression {
     pub arguments: Vec<Expression>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct WhileLoopExpression {
     pub condition: Box<Expression>,
     pub body: CodeBlock,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct ForLoopExpression {
     pub desugared: Box<Expression>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct ReassignmentExpression {
     pub lhs: ReassignmentTarget,
     pub rhs: Box<Expression>,
@@ -325,14 +325,20 @@ pub enum ExpressionKind {
     Deref(Box<Expression>),
 }
 
-#[derive(Debug, Clone)]
+impl deepsize::DeepSizeOf for ExpressionKind {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}
+
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct RefExpression {
     /// True if the reference is a reference to a mutable `value`.
     pub to_mutable_value: bool,
     pub value: Box<Expression>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub enum ReassignmentTarget {
     VariableExpression(Box<Expression>),
 }

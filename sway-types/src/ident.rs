@@ -12,7 +12,7 @@ pub trait Named {
     fn name(&self) -> &BaseIdent;
 }
 
-#[derive(Clone)]
+#[derive(Clone, deepsize::DeepSizeOf)]
 pub struct BaseIdent {
     name_override_opt: Option<String>,
     span: Span,

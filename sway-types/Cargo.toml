@@ -21,6 +21,7 @@ rustc-hash = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
 sway-utils = { version = "0.52.0", path = "../sway-utils" }
 thiserror = "1"
+deepsize = { version = "0.2.0", features = ["std", "indexmap", "hashbrown"] }
 
 [features]
 no-span-debug = []

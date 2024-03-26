@@ -18,7 +18,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, PartialOrd, Ord, deepsize::DeepSizeOf)]
 pub enum AbiName {
     Deferred,
     Known(CallPath),
@@ -36,7 +36,7 @@ impl fmt::Display for AbiName {
 }
 
 /// A slow set primitive using `==` to check for containment.
-#[derive(Clone)]
+#[derive(Clone, deepsize::DeepSizeOf)]
 pub struct VecSet<T>(pub Vec<T>);
 
 impl<T: fmt::Debug> fmt::Debug for VecSet<T> {
@@ -69,7 +69,7 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
 }
 
 /// Encapsulates type information and its optional source identifier.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, deepsize::DeepSizeOf)]
 pub struct TypeSourceInfo {
     pub(crate) type_info: Arc<TypeInfo>,
     /// The source id that created this type.
@@ -91,7 +91,7 @@ impl PartialEqWithEngines for TypeSourceInfo {
 }
 
 /// Type information without an associated value, used for type inferencing and definition.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, deepsize::DeepSizeOf)]
 pub enum TypeInfo {
     #[default]
     Unknown,

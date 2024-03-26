@@ -9,7 +9,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyTypeAliasDecl {
     pub name: Ident,
     pub call_path: CallPath,

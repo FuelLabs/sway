@@ -11,6 +11,12 @@ pub struct StructDeclaration {
     pub(crate) span: Span,
 }
 
+impl deepsize::DeepSizeOf for StructDeclaration {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StructField {
     pub visibility: Visibility,

@@ -9,7 +9,7 @@ use std::{
     num::{IntErrorKind, ParseIntError},
 };
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, deepsize::DeepSizeOf)]
 pub enum Literal {
     U8(u8),
     U16(u16),
