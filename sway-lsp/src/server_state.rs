@@ -229,7 +229,6 @@ impl ServerState {
 
         // Set the retrigger_compilation flag to true so that the compilation exits early
         self.retrigger_compilation.store(true, Ordering::SeqCst);
-        self.wait_for_parsing().await;
 
         // Send a terminate message to the compilation thread
         self.cb_tx
