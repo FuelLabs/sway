@@ -206,7 +206,7 @@ impl ServerState {
     pub async fn wait_for_parsing(&self) {
         loop {
             // Check both the is_compiling flag and the last_compilation_state.
-            // Wait if is_compiling is true (compilation in progress) or if the last_compilation_state is Uninitialized (compilation not started yet).
+            // Wait if is_compiling is true or if the last_compilation_state is Uninitialized.
             if !self.is_compiling.load(Ordering::SeqCst)
                 && *self.last_compilation_state.read() != LastCompilationState::Uninitialized
             {
