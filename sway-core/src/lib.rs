@@ -216,6 +216,7 @@ fn parse_in_memory(
     let root = parsed::ParseModule {
         span: span::Span::dummy(),
         module_kind_span,
+        module_eval_order: vec![],
         tree,
         submodules,
         attributes,
@@ -390,6 +391,7 @@ fn parse_module_tree(
     let parsed = parsed::ParseModule {
         span: span::Span::new(src, 0, 0, Some(source_id)).unwrap(),
         module_kind_span,
+        module_eval_order: vec![],
         tree,
         submodules: parsed_submodules,
         attributes,
@@ -478,12 +480,26 @@ fn module_path(
     }
 }
 
+pub fn build_module_dep_graph(
+    handler: &Handler,
+    parse_module: &mut parsed::ParseModule,
+) -> Result<(), ErrorEmitted> {
+    let module_dep_graph = ty::TyModule::build_dep_graph(handler, parse_module)?;
+    parse_module.module_eval_order = module_dep_graph.compute_order(handler)?;
+
+    for (_, submodule) in parse_module.submodules.iter_mut() {
+        build_module_dep_graph(handler, &mut submodule.module)?
+    }
+
+    Ok(())
+}
+
 pub struct CompiledAsm(pub FinalizedAsm);
 
 pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
-    parse_program: &parsed::ParseProgram,
+    parse_program: &mut parsed::ParseProgram,
     initial_namespace: namespace::Root,
     build_config: Option<&BuildConfig>,
     package_name: &str,
@@ -497,17 +513,11 @@ pub fn parsed_to_ast(
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
     // Build the dependency graph for the submodules.
-    let modules_dep_graph = ty::TyModule::build_dep_graph(handler, &parse_program.root)?;
-    let module_eval_order = modules_dep_graph.compute_order(handler)?;
+    build_module_dep_graph(handler, &mut parse_program.root)?;
 
     // Collect the program symbols.
-    let _collection_ctx = ty::TyProgram::collect(
-        handler,
-        engines,
-        parse_program,
-        initial_namespace.clone(),
-        &module_eval_order,
-    )?;
+    let _collection_ctx =
+        ty::TyProgram::collect(handler, engines, parse_program, initial_namespace.clone())?;
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -517,7 +527,6 @@ pub fn parsed_to_ast(
         initial_namespace,
         package_name,
         build_config,
-        module_eval_order,
     );
 
     check_should_abort(handler, retrigger_compilation.clone())?;
@@ -726,7 +735,7 @@ pub fn compile_to_ast(
         parsed_to_ast(
             handler,
             engines,
-            &parsed_program,
+            &mut parsed_program,
             initial_namespace,
             build_config,
             package_name,
