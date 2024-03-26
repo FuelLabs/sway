@@ -209,7 +209,7 @@ fn did_change_stress_test() {
 #[test]
 fn did_change_stress_test_random_wait() {
     run_async!({
-        let test_duration = tokio::time::Duration::from_secs(12 * 60); // 5 minutes timeout
+        let test_duration = tokio::time::Duration::from_secs(5 * 60); // 5 minutes timeout
         let test_future = async {
             std::env::set_var("RUST_BACKTRACE", "1");
             let default_panic = std::panic::take_hook();
