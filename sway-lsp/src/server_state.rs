@@ -139,7 +139,6 @@ impl ServerState {
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
-                        eprintln!("Compiling: {}", uri.path());
                         match session::parse_project(
                             &uri,
                             &engines_clone,
@@ -151,7 +150,6 @@ impl ServerState {
                             Ok(_) => {
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);
                                 *last_compilation_state.write() = LastCompilationState::Success;
-                                eprintln!("Finished Compiling: {}", uri.path());
                             }
                             Err(_err) => {
                                 *last_compilation_state.write() = LastCompilationState::Failed;
