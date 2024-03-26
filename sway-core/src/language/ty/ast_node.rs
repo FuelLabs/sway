@@ -23,7 +23,7 @@ pub trait GetDeclIdent {
     fn get_decl_ident(&self) -> Option<Ident>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyAstNode {
     pub content: TyAstNodeContent,
     pub span: Span,
@@ -72,6 +72,7 @@ impl SubstTypes for TyAstNode {
 }
 
 impl ReplaceDecls for TyAstNode {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,
@@ -330,7 +331,7 @@ impl TyAstNode {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub enum TyAstNodeContent {
     Declaration(TyDecl),
     Expression(TyExpression),

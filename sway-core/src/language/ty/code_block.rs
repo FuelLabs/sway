@@ -8,7 +8,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyCodeBlock {
     pub contents: Vec<TyAstNode>,
     pub(crate) whole_block_span: Span,
@@ -46,6 +46,7 @@ impl SubstTypes for TyCodeBlock {
 }
 
 impl ReplaceDecls for TyCodeBlock {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,

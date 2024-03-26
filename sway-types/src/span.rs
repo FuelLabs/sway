@@ -43,7 +43,7 @@ impl<'a> Position<'a> {
 }
 
 /// Represents a span of the source code in a specific file.
-#[derive(Clone, Ord, PartialOrd)]
+#[derive(Clone, Ord, PartialOrd, deepsize::DeepSizeOf)]
 pub struct Span {
     // The original source code.
     src: Arc<str>,

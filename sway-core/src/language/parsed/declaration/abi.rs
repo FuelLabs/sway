@@ -18,3 +18,9 @@ pub struct AbiDeclaration {
     pub(crate) span: Span,
     pub attributes: transform::AttributesMap,
 }
+
+impl deepsize::DeepSizeOf for AbiDeclaration {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}

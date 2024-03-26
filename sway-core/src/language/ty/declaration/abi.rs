@@ -7,7 +7,7 @@ use super::{TyTraitInterfaceItem, TyTraitItem};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyAbiDecl {
     /// The name of the abi trait (also known as a "contract trait")
     pub name: Ident,

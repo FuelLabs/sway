@@ -21,6 +21,12 @@ pub enum TraitItem {
     Error(Box<[Span]>, ErrorEmitted),
 }
 
+impl deepsize::DeepSizeOf for TraitItem {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: Ident,
@@ -33,7 +39,13 @@ pub struct TraitDeclaration {
     pub span: Span,
 }
 
-#[derive(Debug, Clone)]
+impl deepsize::DeepSizeOf for TraitDeclaration {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}
+
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct Supertrait {
     pub name: CallPath,
     pub decl_ref: Option<DeclRefTrait>,
@@ -68,7 +80,7 @@ impl HashWithEngines for Supertrait {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TraitFn {
     pub name: Ident,
     pub span: Span,
@@ -84,6 +96,12 @@ pub struct TraitTypeDeclaration {
     pub attributes: transform::AttributesMap,
     pub ty_opt: Option<TypeArgument>,
     pub span: Span,
+}
+
+impl deepsize::DeepSizeOf for TraitTypeDeclaration {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
 }
 
 impl DebugWithEngines for TraitTypeDeclaration {

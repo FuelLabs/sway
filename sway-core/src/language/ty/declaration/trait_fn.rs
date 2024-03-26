@@ -13,7 +13,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyTraitFn {
     pub name: Ident,
     pub(crate) span: Span,

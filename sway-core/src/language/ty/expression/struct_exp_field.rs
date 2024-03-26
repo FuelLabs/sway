@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyStructExpressionField {
     pub name: Ident,
     pub value: TyExpression,
@@ -39,6 +39,7 @@ impl SubstTypes for TyStructExpressionField {
 }
 
 impl ReplaceDecls for TyStructExpressionField {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,

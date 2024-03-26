@@ -2,7 +2,7 @@ use crate::{engine_threading::*, language::CallPathTree, type_system::priv_prelu
 use std::{cmp::Ordering, fmt, hash::Hasher};
 use sway_types::{Span, Spanned};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TypeArgument {
     pub type_id: TypeId,
     pub initial_type_id: TypeId,

@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, deepsize::DeepSizeOf)]
 pub enum Visibility {
     Private,
     Public,

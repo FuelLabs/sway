@@ -7,3 +7,9 @@ pub struct VariableDeclaration {
     pub body: Expression, // will be codeblock variant
     pub is_mutable: bool,
 }
+
+impl deepsize::DeepSizeOf for VariableDeclaration {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}

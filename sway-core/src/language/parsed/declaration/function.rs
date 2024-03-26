@@ -29,13 +29,19 @@ pub struct FunctionDeclaration {
     pub kind: FunctionDeclarationKind,
 }
 
+impl deepsize::DeepSizeOf for FunctionDeclaration {
+    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+        0
+    }
+}
+
 impl DebugWithEngines for FunctionDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.name))
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct FunctionParameter {
     pub name: Ident,
     pub is_reference: bool,

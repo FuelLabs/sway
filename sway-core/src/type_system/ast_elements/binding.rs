@@ -69,7 +69,7 @@ use crate::{
 /// - `data4` has a type ascription and has type arguments in the `TypeBinding`,
 ///     so, with the type from the value passed to `value`, all three are unified
 ///     together
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TypeBinding<T> {
     pub inner: T,
     pub type_arguments: TypeArgs,
@@ -94,7 +94,7 @@ pub struct TypeBinding<T> {
 /// ```
 /// So we can have type parameters in the `Prefix` or `Regular` variant but not
 /// in both.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub enum TypeArgs {
     /// `Regular` variant indicates the type arguments are located after the suffix.
     Regular(Vec<TypeArgument>),

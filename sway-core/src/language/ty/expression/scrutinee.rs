@@ -6,14 +6,14 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TyScrutinee {
     pub variant: TyScrutineeVariant,
     pub type_id: TypeId,
     pub span: Span,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub enum TyScrutineeVariant {
     Or(Vec<TyScrutinee>),
     CatchAll,
@@ -36,7 +36,7 @@ pub enum TyScrutineeVariant {
     Tuple(Vec<TyScrutinee>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TyStructScrutineeField {
     pub field: Ident,
     pub scrutinee: Option<TyScrutinee>,

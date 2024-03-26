@@ -1,7 +1,7 @@
 use sway_types::{span::Span, Spanned};
 
 /// Describes a fixed length for types that needs it such as arrays and strings
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Hash, deepsize::DeepSizeOf)]
 pub struct Length {
     val: usize,
     span: Span,

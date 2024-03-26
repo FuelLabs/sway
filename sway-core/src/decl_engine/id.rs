@@ -17,6 +17,7 @@ use crate::{
 pub type DeclIdIndexType = usize;
 
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
+#[derive(deepsize::DeepSizeOf)]
 pub struct DeclId<T>(DeclIdIndexType, PhantomData<T>);
 
 impl<T> fmt::Debug for DeclId<T> {

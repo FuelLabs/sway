@@ -32,7 +32,7 @@ use sway_types::{
 
 use std::{hash::Hash, sync::Arc};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, deepsize::DeepSizeOf)]
 pub struct AttributeArg {
     pub name: Ident,
     pub value: Option<Literal>,
@@ -48,7 +48,7 @@ impl Spanned for AttributeArg {
 /// An attribute has a name (i.e "doc", "storage"),
 /// a vector of possible arguments and
 /// a span from its declaration.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, deepsize::DeepSizeOf)]
 pub struct Attribute {
     pub name: Ident,
     pub args: Vec<AttributeArg>,
@@ -56,7 +56,7 @@ pub struct Attribute {
 }
 
 /// Valid kinds of attributes supported by the compiler
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, deepsize::DeepSizeOf)]
 pub enum AttributeKind {
     Doc,
     DocComment,
@@ -106,6 +106,18 @@ impl AttributeKind {
 /// Stores the attributes associated with the type.
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct AttributesMap(Arc<IndexMap<AttributeKind, Vec<Attribute>>>);
+
+impl ::deepsize::DeepSizeOf for AttributesMap {
+    fn deep_size_of_children(&self, context: &mut ::deepsize::Context) -> usize {
+        let child_sizes = self.0.iter().fold(0, |sum, (key, val)| {
+            sum + key.deep_size_of_children(context) + val.deep_size_of_children(context)
+        });
+        let map_size = self.capacity()
+            * (std::mem::size_of::<(usize, AttributeKind, Vec<Attribute>)>()
+                + std::mem::size_of::<usize>());
+        child_sizes + map_size
+    }
+}
 
 impl AttributesMap {
     /// Create a new attributes map.

@@ -7,6 +7,12 @@ use thiserror::Error;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash)]
 pub struct U256(BigUint);
 
+impl ::deepsize::DeepSizeOf for U256 {
+    fn deep_size_of_children(&self, context: &mut ::deepsize::Context) -> usize {
+        self.0.to_u64_digits().iter().count() * std::mem::size_of::<u64>()
+    }
+}
+
 impl U256 {
     pub fn from_be_bytes(bytes: &[u8; 32]) -> Self {
         let v = BigUint::from_bytes_be(bytes.as_slice());

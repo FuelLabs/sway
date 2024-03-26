@@ -4,12 +4,13 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use deepsize::DeepSizeOf;
 use itertools::Itertools;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 struct Inner<T> {
     items: Vec<Option<Arc<T>>>,
-    free_list: roaring::RoaringBitmap,
+    free_list: Vec<usize>,
 }
 
 impl<T> Default for Inner<T> {
@@ -21,7 +22,7 @@ impl<T> Default for Inner<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, deepsize::DeepSizeOf)]
 pub(crate) struct ConcurrentSlab<T> {
     inner: RwLock<Inner<T>>,
 }
@@ -75,23 +76,41 @@ where
         inner.items.iter().filter_map(|x| x.clone()).collect()
     }
 
-    pub fn insert(&self, value: T) -> usize {
+    pub fn insert(&self, value: T) -> usize
+    where
+        T: DeepSizeOf,
+    {
         self.insert_arc(Arc::new(value))
     }
 
-    pub fn insert_arc(&self, value: Arc<T>) -> usize {
+    pub fn insert_arc(&self, value: Arc<T>) -> usize
+    where
+        T: DeepSizeOf,
+    {
         let mut inner = self.inner.write().unwrap();
 
-        if let Some(free) = inner.free_list.select(0) {
+        let r = if let Some(free) = inner.free_list.pop() {
             let free = free as usize;
             assert!(inner.items[free].is_none());
-            inner.free_list.remove_smallest(1);
             inner.items[free] = Some(value);
             free
         } else {
             inner.items.push(Some(value));
             inner.items.len() - 1
+        };
+
+        if inner.items.len() % 1_000_000 == 0 {
+            let len = inner.items.len();
+            drop(inner);
+            println!(
+                "ConcurrentSlab of [{}] has [{}] items ({})",
+                std::any::type_name::<T>(),
+                human_format::Formatter::new().format(len as f64),
+                human_bytes::human_bytes(self.deep_size_of() as f64),
+            );
         }
+
+        r
     }
 
     pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
@@ -116,7 +135,7 @@ where
         for (idx, item) in items.iter_mut().enumerate() {
             if let Some(arc) = item {
                 if !predicate(&idx, arc) {
-                    free_list.insert(u32::try_from(idx).unwrap());
+                    free_list.push(idx);
                     item.take();
                 }
             }
@@ -129,5 +148,6 @@ where
         inner.items.shrink_to(0);
 
         inner.free_list.clear();
+        inner.free_list.shrink_to(0);
     }
 }
