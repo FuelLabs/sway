@@ -17,6 +17,7 @@ use std::collections::HashSet;
 use std::io::stdout;
 use std::io::Write;
 use std::str::FromStr;
+use std::time::Instant;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -659,6 +660,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     let mut number_of_tests_failed = 0;
     let mut failed_tests = vec![];
 
+    let start_time = Instant::now();
     for (i, test) in tests.into_iter().enumerate() {
         let cur_profile = if run_config.release {
             BuildProfile::RELEASE
@@ -714,6 +716,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
 
         number_of_tests_executed += 1;
     }
+    let duration = Instant::now().duration_since(start_time);
 
     if number_of_tests_executed == 0 {
         if let Some(skip_until) = &filter_config.skip_until {
@@ -747,7 +750,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     } else {
         tracing::info!("_________________________________");
         tracing::info!(
-            "Sway tests result: {}. {} total, {} passed; {} failed; {} disabled",
+            "Sway tests result: {}. {} total, {} passed; {} failed; {} disabled [test duration: {}]",
             if number_of_tests_failed == 0 {
                 "ok".green().bold()
             } else {
@@ -756,7 +759,8 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             total_number_of_tests,
             number_of_tests_executed - number_of_tests_failed,
             number_of_tests_failed,
-            disabled_tests.len()
+            disabled_tests.len(),
+            util::duration_to_str(&duration)
         );
         if number_of_tests_failed > 0 {
             tracing::info!("{}", "Failing tests:".red().bold());

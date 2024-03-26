@@ -5,12 +5,4 @@ source = "path+from-root-BD9C2392ECDF84CD"
 [[package]]
 name = "main_args_one_u64"
 source = "member"
-dependencies = [
-    "core",
-    "std",
-]
-
-[[package]]
-name = "std"
-source = "path+from-root-BD9C2392ECDF84CD"
 dependencies = ["core"]
