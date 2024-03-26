@@ -209,11 +209,10 @@ impl<'a> UnifyCheck<'a> {
             return true;
         }
 
-        let left_info = self.engines.te().get(left);
-        let right_info = self.engines.te().get(right);
-
         // override top level generics with simple equality but only at top level
         if let NonGenericConstraintSubset = self.mode {
+            let left_info = self.engines.te().get(left);
+            let right_info = self.engines.te().get(right);
             if let UnknownGeneric { .. } = &*right_info {
                 return left_info.eq(&right_info, self.engines);
             }
