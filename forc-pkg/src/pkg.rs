@@ -31,7 +31,9 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::language::ty::{TyAstNodeContent, TyExpressionVariant};
 pub use sway_core::Programs;
+use sway_core::TypeInfo;
 use sway_core::{
     abi_generation::{
         evm_abi,
@@ -51,7 +53,7 @@ use sway_core::{
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, SourceId, Span, Spanned};
 use sway_utils::{constants, time_expr, PerformanceData, PerformanceMetric};
 use tracing::{debug, info};
 
@@ -162,6 +164,7 @@ pub struct PkgTestEntry {
     pub pass_condition: TestPassCondition,
     pub span: Span,
     pub file_path: Arc<PathBuf>,
+    pub log_params: Vec<(SourceId, Arc<TypeInfo>)>,
 }
 
 /// The result of successfully compiling a workspace.
@@ -2026,16 +2029,43 @@ impl PkgTestEntry {
             bail!("Invalid test argument(s) for test: {test_name}.")
         }?;
 
+        let mut log_params = Vec::new();
+        for ast_node in test_function_decl.body.contents.iter() {
+            if let TyAstNodeContent::Expression(expr) = &ast_node.content {
+                if let TyExpressionVariant::FunctionApplication {
+                    call_path,
+                    arguments,
+                    ..
+                } = &expr.expression
+                {
+                    let suffix = call_path.suffix.to_string();
+                    if suffix == "log" {
+                        let arg_type = arguments
+                            .iter()
+                            .map(|(_, arg_expr)| arg_expr.return_type)
+                            .map(|type_id| engines.te().get(type_id))
+                            .next();
+                        if let (Some(source_id), Some(arg_type)) = (expr.span.source_id(), arg_type)
+                        {
+                            log_params.push((*source_id, arg_type));
+                        }
+                    }
+                }
+            }
+        }
+
         let file_path = Arc::new(
             engines.se().get_path(
                 span.source_id()
                     .ok_or_else(|| anyhow::anyhow!("Missing span for test function"))?,
             ),
         );
+
         Ok(Self {
             pass_condition,
             span,
             file_path,
+            log_params,
         })
     }
 }
@@ -2792,7 +2822,7 @@ mod test {
         let manifest_dir = PathBuf::from(current_dir)
             .parent()
             .unwrap()
-            .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building/");
+            .join("test/src/e2e_vm_tests/test_programs/should_pass/forc/workspace_building");
         let manifest_file = ManifestFile::from_dir(manifest_dir).unwrap();
         let member_manifests = manifest_file.member_manifests().unwrap();
         let lock_path = manifest_file.lock_path().unwrap();
@@ -2804,6 +2834,105 @@ mod test {
             Default::default(),
         )
         .unwrap()
+    }
+
+    fn get_test_entry_logs(entry_name: &str) -> Vec<Arc<TypeInfo>> {
+        let current_dir = env!("CARGO_MANIFEST_DIR");
+        let manifest_dir = format!("{current_dir}/tests/test_pkg_entry");
+        let build_opts = BuildOpts {
+            pkg: PkgOpts {
+                path: Some(manifest_dir),
+                ..Default::default()
+            },
+            build_target: BuildTarget::Fuel,
+            tests: true,
+            experimental: ExperimentalFlags { new_encoding: true },
+            ..Default::default()
+        };
+        let built_pkgs = build_with_options(build_opts).unwrap();
+        let built_pkg = built_pkgs.expect_pkg().unwrap();
+        let pkg_entry = built_pkg
+            .bytecode
+            .entries
+            .iter()
+            .filter(|pkg_entry| pkg_entry.finalized.fn_name == entry_name)
+            .find_map(|entry| {
+                if let PkgEntryKind::Test(test_entry) = &entry.kind {
+                    Some(test_entry)
+                } else {
+                    None
+                }
+            })
+            .unwrap();
+
+        pkg_entry
+            .log_params
+            .iter()
+            .map(|(_, type_info)| type_info)
+            .cloned()
+            .collect()
+    }
+
+    #[test]
+    fn collect_test_entry_log_unsigned_int() {
+        let log_types = get_test_entry_logs("log_unsigned_int");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Numeric,))
+    }
+
+    #[test]
+    fn collect_test_entry_log_bool() {
+        let log_types = get_test_entry_logs("log_bool");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Boolean))
+    }
+
+    #[test]
+    fn collect_test_entry_log_string_slice() {
+        let log_types = get_test_entry_logs("log_string_slice");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::StringSlice))
+    }
+
+    #[test]
+    fn collect_test_entry_log_array() {
+        let log_types = get_test_entry_logs("log_array");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Array(_, _)))
+    }
+
+    #[test]
+    fn collect_test_entry_log_tuple() {
+        let log_types = get_test_entry_logs("log_tuple");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Tuple(_)))
+    }
+
+    #[test]
+    fn collect_test_entry_log_struct() {
+        let log_types = get_test_entry_logs("log_struct");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Struct(_)))
+    }
+
+    #[test]
+    fn collect_test_entry_log_enum() {
+        let log_types = get_test_entry_logs("log_enum");
+        assert_eq!(log_types.len(), 1);
+        assert!(matches!(*log_types[0], TypeInfo::Enum(_)))
+    }
+
+    #[test]
+    fn collect_test_entry_multiple_log() {
+        let log_types = get_test_entry_logs("log_multiple");
+        assert_eq!(log_types.len(), 7);
+        assert!(matches!(*log_types[0], TypeInfo::Numeric));
+        assert!(matches!(*log_types[1], TypeInfo::Boolean));
+        assert!(matches!(*log_types[2], TypeInfo::StringSlice));
+        assert!(matches!(*log_types[3], TypeInfo::Array(_, _)));
+        assert!(matches!(*log_types[4], TypeInfo::Tuple(_)));
+        assert!(matches!(*log_types[5], TypeInfo::Struct(_)));
+        assert!(matches!(*log_types[6], TypeInfo::Enum(_)));
     }
 
     #[test]
