@@ -24,6 +24,7 @@ pub mod contract_id;
 pub mod execution;
 pub mod constants;
 pub mod call_frames;
+pub mod cmp;
 pub mod context;
 pub mod external;
 pub mod b512;
