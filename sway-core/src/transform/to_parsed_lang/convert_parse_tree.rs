@@ -267,7 +267,8 @@ fn item_use_to_use_statements(
             span: pub_token.span(),
         };
         return Err(handler.emit_err(error.into()));
-    }
+    };
+    
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
     let item_span = item_use.span();
@@ -279,6 +280,18 @@ fn item_use_to_use_statements(
         &mut ret,
         item_span,
     );
+
+    // Check that all use statements have a call_path
+    // This is not the case for `use foo;`, which is currently not supported
+    for use_stmt in ret.iter() {
+	if use_stmt.call_path.len() == 0 {
+	    let error = ConvertParseTreeError::ImportsWithoutItemsNotSupports{
+		span: use_stmt.span.clone(),
+	    };
+	    return Err(handler.emit_err(error.into()));
+	}
+    }
+    
     debug_assert!(prefix.is_empty());
     Ok(ret)
 }
