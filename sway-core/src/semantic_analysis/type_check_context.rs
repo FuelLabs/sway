@@ -560,7 +560,7 @@ impl<'a> TypeCheckContext<'a> {
                 self.type_decl_opt_to_type_id(
                     handler,
                     type_decl_opt,
-                    &qualified_call_path,
+                    &qualified_call_path.call_path,
                     span,
                     enforce_type_arguments,
                     mod_path,
@@ -826,7 +826,7 @@ impl<'a> TypeCheckContext<'a> {
                     self.type_decl_opt_to_type_id(
                         handler,
                         Some(type_decl),
-                        qualified_call_path,
+                        &qualified_call_path.call_path,
                         &qualified_path_root.ty.span(),
                         EnforceTypeArguments::No,
                         mod_path,
@@ -874,7 +874,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         type_decl_opt: Option<TyDecl>,
-        qualified_call_path: &QualifiedCallPath,
+        call_path: &CallPath,
         span: &Span,
         enforce_type_arguments: EnforceTypeArguments,
         mod_path: &ModulePath,
@@ -979,8 +979,8 @@ impl<'a> TypeCheckContext<'a> {
             }
             _ => {
                 let err = handler.emit_err(CompileError::UnknownTypeName {
-                    name: qualified_call_path.call_path.to_string(),
-                    span: qualified_call_path.call_path.span(),
+                    name: call_path.to_string(),
+                    span: call_path.span(),
                 });
                 type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
             }
