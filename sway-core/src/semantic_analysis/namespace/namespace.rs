@@ -53,7 +53,7 @@ impl Namespace {
         }
     }
 
-    /// A reference to the path of the module currently being type-checked.
+    /// A reference to the path of the module currently being processed.
     pub fn mod_path(&self) -> &ModulePath {
         &self.mod_path
     }
