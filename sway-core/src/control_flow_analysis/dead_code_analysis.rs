@@ -177,7 +177,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         true
                     } else {
                         // Consider variables declarations alive when count is greater than 1
-                        // This is explicilty required because the variable may be considered dead
+                        // This is explicitly required because the variable may be considered dead
                         // when it is not connected from an entry point, while it may still be used by other dead code.
                         connections_count
                             .get(n)
@@ -195,7 +195,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                         true
                     } else {
                         // Consider param alive when count is greater than 1
-                        // This is explicilty required because the param may be considered dead
+                        // This is explicitly required because the param may be considered dead
                         // when it is not connected from an entry point, while it may still be used by other dead code.
                         connections_count
                             .get(n)

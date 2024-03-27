@@ -7,7 +7,7 @@ use lsp_types::CodeActionOrCommand;
 use self::auto_import::import_code_action;
 use self::qualify::qualify_code_action;
 
-/// Returns a list of [CodeActionOrCommand] based on the relavent compiler diagnostics.
+/// Returns a list of [CodeActionOrCommand] based on the relevant compiler diagnostics.
 pub(crate) fn code_actions(ctx: &CodeActionContext) -> Option<Vec<CodeActionOrCommand>> {
     // Find diagnostics that have attached metadata.
     let diagnostics_with_data = ctx.diagnostics.iter().filter_map(|diag| {
