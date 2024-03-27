@@ -635,7 +635,7 @@ pub(crate) fn resolve_method_name(
             // find the module that the symbol is in
             let type_info_prefix = ctx
                 .namespace()
-                .find_module_path(&call_path_binding.inner.prefixes);
+                .prepend_module_path(&call_path_binding.inner.prefixes);
             ctx.namespace()
                 .lookup_submodule_from_absolute_path(handler, &type_info_prefix)?;
 
@@ -656,7 +656,7 @@ pub(crate) fn resolve_method_name(
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
             let module_path = if !call_path.is_absolute {
-                ctx.namespace().find_module_path(&call_path.prefixes)
+                ctx.namespace().prepend_module_path(&call_path.prefixes)
             } else {
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), Some(root_name)) = (
@@ -692,7 +692,7 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace().find_module_path(vec![]);
+            let module_path = ctx.namespace().prepend_module_path(vec![]);
 
             // find the type of the first argument
             let type_id = arguments_types

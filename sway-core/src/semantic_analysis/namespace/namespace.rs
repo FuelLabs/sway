@@ -58,8 +58,8 @@ impl Namespace {
         &self.mod_path
     }
 
-    /// Find the module that these prefixes point to
-    pub fn find_module_path<'a>(
+    /// Prepends the module path into the prefixes.
+    pub fn prepend_module_path<'a>(
         &'a self,
         prefixes: impl IntoIterator<Item = &'a Ident>,
     ) -> ModulePathBuf {
