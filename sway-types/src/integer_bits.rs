@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Eq, PartialEq, Hash, Debug, Clone, Copy, PartialOrd, Ord)]
+#[derive(Eq, PartialEq, Hash, Debug, Clone, Copy, PartialOrd, Ord, deepsize::DeepSizeOf)]
 pub enum IntegerBits {
     Eight,
     Sixteen,

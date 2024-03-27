@@ -4,12 +4,27 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use deepsize::DeepSizeOf;
 use itertools::Itertools;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
+struct Inner<T> {
+    items: Vec<Option<Arc<T>>>,
+    free_list: Vec<usize>,
+}
+
+impl<T> Default for Inner<T> {
+    fn default() -> Self {
+        Self {
+            items: Default::default(),
+            free_list: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug, deepsize::DeepSizeOf)]
 pub(crate) struct ConcurrentSlab<T> {
-    inner: RwLock<HashMap<usize, Arc<T>>>,
-    last_id: Arc<RwLock<usize>>,
+    inner: RwLock<Inner<T>>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -20,7 +35,6 @@ where
         let inner = self.inner.read().unwrap();
         Self {
             inner: RwLock::new(inner.clone()),
-            last_id: self.last_id.clone(),
         }
     }
 }
@@ -29,7 +43,6 @@ impl<T> Default for ConcurrentSlab<T> {
     fn default() -> Self {
         Self {
             inner: Default::default(),
-            last_id: Default::default(),
         }
     }
 }
@@ -60,44 +73,81 @@ where
 {
     pub fn values(&self) -> Vec<Arc<T>> {
         let inner = self.inner.read().unwrap();
-        inner.values().cloned().collect_vec()
+        inner.items.iter().filter_map(|x| x.clone()).collect()
     }
 
-    pub fn insert(&self, value: T) -> usize {
-        let mut inner = self.inner.write().unwrap();
-        let mut last_id = self.last_id.write().unwrap();
-        *last_id += 1;
-        inner.insert(*last_id, Arc::new(value));
-        *last_id
+    pub fn insert(&self, value: T) -> usize
+    where
+        T: DeepSizeOf,
+    {
+        self.insert_arc(Arc::new(value))
     }
 
-    pub fn insert_arc(&self, value: Arc<T>) -> usize {
+    pub fn insert_arc(&self, value: Arc<T>) -> usize
+    where
+        T: DeepSizeOf,
+    {
         let mut inner = self.inner.write().unwrap();
-        let mut last_id = self.last_id.write().unwrap();
-        *last_id += 1;
-        inner.insert(*last_id, value);
-        *last_id
+
+        let r = if let Some(free) = inner.free_list.pop() {
+            let free = free as usize;
+            assert!(inner.items[free].is_none());
+            inner.items[free] = Some(value);
+            free
+        } else {
+            inner.items.push(Some(value));
+            inner.items.len() - 1
+        };
+
+        if inner.items.len() % 1_000_000 == 0 {
+            let len = inner.items.len();
+            drop(inner);
+            println!(
+                "ConcurrentSlab of [{}] has [{}] items ({})",
+                std::any::type_name::<T>(),
+                human_format::Formatter::new().format(len as f64),
+                human_bytes::human_bytes(self.deep_size_of() as f64),
+            );
+        }
+
+        r
     }
 
     pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
         let mut inner = self.inner.write().unwrap();
-        inner.insert(index, Arc::new(new_value));
-        None
+        let item = inner.items.get_mut(index)?;
+        let old = item.replace(Arc::new(new_value))?;
+        Arc::into_inner(old)
     }
 
     pub fn get(&self, index: usize) -> Arc<T> {
         let inner = self.inner.read().unwrap();
-        inner[&index].clone()
+        inner.items[index]
+            .as_ref()
+            .expect("invalid slab index for ConcurrentSlab::get")
+            .clone()
     }
 
     pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {
         let mut inner = self.inner.write().unwrap();
-        inner.retain(predicate);
+
+        let Inner { items, free_list } = &mut *inner;
+        for (idx, item) in items.iter_mut().enumerate() {
+            if let Some(arc) = item {
+                if !predicate(&idx, arc) {
+                    free_list.push(idx);
+                    item.take();
+                }
+            }
+        }
     }
 
     pub fn clear(&self) {
         let mut inner = self.inner.write().unwrap();
-        inner.clear();
-        inner.shrink_to(0);
+        inner.items.clear();
+        inner.items.shrink_to(0);
+
+        inner.free_list.clear();
+        inner.free_list.shrink_to(0);
     }
 }

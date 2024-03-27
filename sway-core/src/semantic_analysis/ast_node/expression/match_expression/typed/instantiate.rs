@@ -28,8 +28,8 @@ impl Instantiate {
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             None,
         );
-        let boolean_type = type_engine.insert(engines, TypeInfo::Boolean, None);
-        let revert_type = type_engine.insert(engines, TypeInfo::Never, None);
+        let boolean_type = type_engine.get_bool_type();
+        let revert_type = type_engine.get_never_type();
 
         Self {
             span,

@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Eq, PartialEq, Debug, Clone, Hash)]
+#[derive(Eq, PartialEq, Debug, Clone, Hash, deepsize::DeepSizeOf)]
 pub enum Intrinsic {
     IsReferenceType,
     IsStrArray,

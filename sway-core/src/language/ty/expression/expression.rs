@@ -19,7 +19,7 @@ use crate::{
     types::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyExpression {
     pub expression: TyExpressionVariant,
     pub return_type: TypeId,
@@ -60,6 +60,7 @@ impl SubstTypes for TyExpression {
 }
 
 impl ReplaceDecls for TyExpression {
+    #[inline(never)]
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,

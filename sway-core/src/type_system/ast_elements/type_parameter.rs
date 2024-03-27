@@ -23,7 +23,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-#[derive(Clone)]
+#[derive(Clone, deepsize::DeepSizeOf)]
 pub struct TypeParameter {
     pub type_id: TypeId,
     pub(crate) initial_type_id: TypeId,

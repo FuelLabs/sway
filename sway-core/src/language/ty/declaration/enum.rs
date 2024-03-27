@@ -17,7 +17,7 @@ use crate::{
     type_system::*,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyEnumDecl {
     pub call_path: CallPath,
     pub type_parameters: Vec<TypeParameter>,
@@ -120,7 +120,7 @@ impl Spanned for TyEnumVariant {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct TyEnumVariant {
     pub name: Ident,
     pub type_argument: TypeArgument,

@@ -7,7 +7,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{engine_threading::*, transform, type_system::*};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct TyTraitType {
     pub name: Ident,
     pub attributes: transform::AttributesMap,

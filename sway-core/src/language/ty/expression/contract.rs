@@ -1,6 +1,6 @@
 use crate::language::ty::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, deepsize::DeepSizeOf)]
 pub struct ContractCallParams {
     pub(crate) func_selector: [u8; 4],
     pub(crate) contract_address: Box<TyExpression>,
