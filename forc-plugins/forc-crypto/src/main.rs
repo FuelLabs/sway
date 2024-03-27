@@ -16,7 +16,7 @@ mod keccak256;
 mod keys;
 mod sha256;
 
-const ABOUT: &str = "Forc plugin for hashing arbitrary data.";
+const ABOUT: &str = "Forc plugin for hashing arbitrary data";
 
 fn help() -> &'static str {
     Box::leak(
