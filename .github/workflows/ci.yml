@@ -302,7 +302,7 @@ jobs:
         run: cargo fmt --all -- --check
 
   cargo-run-e2e-test:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     needs: get-fuel-core-version
     services:
       fuel-core:
@@ -315,12 +315,20 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Cargo Run E2E Tests (Fuel VM)
         run: cargo run --locked --release --bin test -- --locked
 
   cargo-run-e2e-test-release:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     needs: get-fuel-core-version
     services:
       fuel-core:
@@ -333,31 +341,55 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Cargo Run E2E Tests (Fuel VM)
         run: cargo run --locked --release --bin test -- --locked --release
 
   cargo-run-e2e-test-evm:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Cargo Run E2E Tests (EVM)
         run: cargo run --locked --release --bin test -- --target evm --locked
 
   cargo-run-e2e-test-midenvm:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Cargo Run E2E Tests (EVM)
         run: cargo run --locked --release --bin test -- --target midenvm --locked
 
@@ -467,7 +499,7 @@ jobs:
               ;;
           esac
   cargo-test-forc-debug:
-    runs-on: ubuntu-latest
+    runs-on: buildjet-8vcpu-ubuntu-2204
     needs: get-fuel-core-version
     steps:
       - uses: actions/checkout@v3
@@ -480,7 +512,15 @@ jobs:
         with:
           crate: fuel-core-bin
           version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: buildjet/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Run tests
         run: cargo test --locked --release -p forc-debug
   cargo-test-sway-lsp:
