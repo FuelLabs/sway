@@ -90,12 +90,12 @@ impl Namespace {
         &mut self.root.module[&self.mod_path]
     }
 
-    pub fn check_absolute_path_to_submodule(
+    pub fn lookup_submodule_from_absolute_path(
         &self,
         handler: &Handler,
         path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
-        self.root.module.check_submodule(handler, path)
+        self.root.module.lookup_submodule(handler, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of

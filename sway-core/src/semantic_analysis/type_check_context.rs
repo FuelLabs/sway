@@ -771,7 +771,7 @@ impl<'a> TypeCheckContext<'a> {
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
             let module = self
                 .namespace()
-                .check_absolute_path_to_submodule(handler, prefix)?;
+                .lookup_submodule_from_absolute_path(handler, prefix)?;
             if module.visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -1009,7 +1009,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the local module
         let local_module = self
             .namespace()
-            .check_absolute_path_to_submodule(handler, &self.namespace().mod_path)?;
+            .lookup_submodule_from_absolute_path(handler, &self.namespace().mod_path)?;
 
         // grab the local items from the local module
         let local_items = local_module
@@ -1033,7 +1033,7 @@ impl<'a> TypeCheckContext<'a> {
         // grab the module where the type itself is declared
         let type_module = self
             .namespace()
-            .check_absolute_path_to_submodule(handler, item_prefix)?;
+            .lookup_submodule_from_absolute_path(handler, item_prefix)?;
 
         // grab the items from where the type is declared
         let mut type_items = type_module

@@ -637,7 +637,7 @@ pub(crate) fn resolve_method_name(
                 .namespace()
                 .find_module_path(&call_path_binding.inner.prefixes);
             ctx.namespace()
-                .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
+                .lookup_submodule_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(

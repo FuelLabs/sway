@@ -226,7 +226,7 @@ impl Module {
     /// Lookup the submodule at the given path.
     ///
     /// This should be used rather than `Index` when we don't yet know whether the module exists.
-    pub(crate) fn check_submodule(
+    pub(crate) fn lookup_submodule(
         &self,
         handler: &Handler,
         path: &[Ident],
@@ -448,7 +448,7 @@ impl Module {
             return Ok((decl, current_mod_path));
         }
 
-        self.check_submodule(handler, mod_path).and_then(|module| {
+        self.lookup_submodule(handler, mod_path).and_then(|module| {
             let decl =
                 self.resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
             Ok((decl, mod_path.to_vec()))
