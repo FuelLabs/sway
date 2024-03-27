@@ -5,7 +5,7 @@ use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
     language::ty::{self, TyDecl},
-    namespace::Path,
+    namespace::ModulePath,
 };
 use sway_error::{
     error::CompileError,
@@ -38,8 +38,8 @@ impl Root {
         &mut self,
         handler: &Handler,
         engines: &Engines,
-        src: &Path,
-        dst: &Path,
+        src: &ModulePath,
+        dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src)?;
 
@@ -79,8 +79,8 @@ impl Root {
         &mut self,
         handler: &Handler,
         engines: &Engines,
-        src: &Path,
-        dst: &Path,
+        src: &ModulePath,
+        dst: &ModulePath,
         alias: Option<Ident>,
     ) -> Result<(), ErrorEmitted> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
@@ -95,9 +95,9 @@ impl Root {
         &mut self,
         handler: &Handler,
         engines: &Engines,
-        src: &Path,
+        src: &ModulePath,
         item: &Ident,
-        dst: &Path,
+        dst: &ModulePath,
         alias: Option<Ident>,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src)?;
@@ -188,10 +188,10 @@ impl Root {
         &mut self,
         handler: &Handler,
         engines: &Engines,
-        src: &Path,
+        src: &ModulePath,
         enum_name: &Ident,
         variant_name: &Ident,
-        dst: &Path,
+        dst: &ModulePath,
         alias: Option<Ident>,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src)?;
@@ -290,8 +290,8 @@ impl Root {
         &mut self,
         handler: &Handler,
         engines: &Engines,
-        src: &Path,
-        dst: &Path,
+        src: &ModulePath,
+        dst: &ModulePath,
         enum_name: &Ident,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src)?;
@@ -368,14 +368,14 @@ impl Root {
         &mut self,
         handler: &Handler,
         engines: &Engines,
-        src: &Path,
-        dst: &Path,
+        src: &ModulePath,
+        dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, src)?;
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.check_submodule(handler, src)?;
+        let src_mod = self.module.lookup_submodule(handler, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let use_synonyms = src_mod.current_items().use_synonyms.clone();
@@ -433,13 +433,17 @@ impl Root {
         Ok(())
     }
 
-    fn check_module_privacy(&self, handler: &Handler, src: &Path) -> Result<(), ErrorEmitted> {
+    fn check_module_privacy(
+        &self,
+        handler: &Handler,
+        src: &ModulePath,
+    ) -> Result<(), ErrorEmitted> {
         let dst = &self.module.mod_path;
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
             // we don't check the first prefix because direct children are always accessible
             for prefix in iter_prefixes(src).skip(1) {
-                let module = self.module.check_submodule(handler, prefix)?;
+                let module = self.module.lookup_submodule(handler, prefix)?;
                 if module.visibility.is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
@@ -465,6 +469,6 @@ impl From<Namespace> for Root {
     }
 }
 
-fn is_ancestor(src: &Path, dst: &Path) -> bool {
+fn is_ancestor(src: &ModulePath, dst: &ModulePath) -> bool {
     dst.len() >= src.len() && src.iter().zip(dst).all(|(src, dst)| src == dst)
 }

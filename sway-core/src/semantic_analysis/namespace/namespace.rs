@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, Path, PathBuf,
+    module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, ModulePathBuf,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -39,7 +39,7 @@ pub struct Namespace {
     ///
     /// E.g. when type-checking the root module, this is equal to `[]`. When type-checking a
     /// submodule of the root called "foo", this would be equal to `[foo]`.
-    pub(crate) mod_path: ModulePath,
+    pub(crate) mod_path: ModulePathBuf,
 }
 
 impl Namespace {
@@ -54,7 +54,7 @@ impl Namespace {
     }
 
     /// A reference to the path of the module currently being type-checked.
-    pub fn mod_path(&self) -> &Path {
+    pub fn mod_path(&self) -> &ModulePath {
         &self.mod_path
     }
 
@@ -62,7 +62,7 @@ impl Namespace {
     pub fn find_module_path<'a>(
         &'a self,
         prefixes: impl IntoIterator<Item = &'a Ident>,
-    ) -> PathBuf {
+    ) -> ModulePathBuf {
         self.mod_path.iter().chain(prefixes).cloned().collect()
     }
 
@@ -111,7 +111,7 @@ impl Namespace {
     /// the `true_if_same` is returned.
     pub(crate) fn module_is_submodule_of(
         &self,
-        absolute_module_path: &Path,
+        absolute_module_path: &ModulePath,
         true_if_same: bool,
     ) -> bool {
         // `mod_path` does not contain the root name, so we have to separately check
@@ -149,7 +149,7 @@ impl Namespace {
 
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.
-    pub(crate) fn module_is_external(&self, absolute_module_path: &Path) -> bool {
+    pub(crate) fn module_is_external(&self, absolute_module_path: &ModulePath) -> bool {
         let root_name = match &self.root.module.name {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
@@ -179,7 +179,7 @@ impl Namespace {
         &self,
         handler: &Handler,
         engines: &Engines,
-        mod_path: &Path,
+        mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
