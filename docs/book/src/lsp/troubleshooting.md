@@ -14,6 +14,20 @@ Second, confirm that your `$PATH` resolves to the `forc-lsp` binary in `$HOME/.f
 which forc-lsp
 ```
 
+## Slow Performance
+
+If you are experiencing slow performance, you can try the following:
+
+Follow [the steps above](#troubleshooting) to ensure you are running the most recent version.
+
+Then, make sure you only have the most recent version of the LSP server running.
+
+```sh
+ps aux | grep forc-lsp
+# Identify the PID of the older LSP server running
+kill pid # Replace pid with the PID of the older LSP server
+```
+
 ## Server Logs
 
 You can you enable verbose logging of the LSP server.
