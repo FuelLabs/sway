@@ -6,6 +6,7 @@ use sway_core::language::{
     parsed::{AstNode, AstNodeContent, Declaration},
     ty,
 };
+use sway_types::Named;
 
 /// Insert Declaration tokens into the TokenMap.
 pub fn collect_parsed_declaration(node: &AstNode, ctx: &ParseContext) {
@@ -51,12 +52,22 @@ pub fn collect_typed_declaration(node: &ty::TyAstNode, ctx: &ParseContext) {
         let typed_token = TypedAstToken::TypedDeclaration(declaration.clone());
 
         let ident = match declaration {
+            ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id }) => {
+                ctx.engines.de().get_constant(decl_id).name().clone()
+            }
+            ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id }) => {
+                ctx.engines.de().get_function(decl_id).name().clone()
+            }
+            ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id }) => {
+                ctx.engines.de().get_trait(decl_id).name().clone()
+            }
+            ty::TyDecl::StructDecl(ty::StructDecl { decl_id }) => {
+                ctx.engines.de().get_struct(decl_id).name().clone()
+            }
+            ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id }) => {
+                ctx.engines.de().get_enum(decl_id).name().clone()
+            }
             ty::TyDecl::VariableDecl(variable) => variable.name.clone(),
-            ty::TyDecl::StructDecl(ty::StructDecl { name, .. })
-            | ty::TyDecl::EnumDecl(ty::EnumDecl { name, .. })
-            | ty::TyDecl::TraitDecl(ty::TraitDecl { name, .. })
-            | ty::TyDecl::FunctionDecl(ty::FunctionDecl { name, .. })
-            | ty::TyDecl::ConstantDecl(ty::ConstantDecl { name, .. }) => name.clone(),
             _ => return,
         };
 

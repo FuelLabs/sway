@@ -407,9 +407,7 @@ impl TyImplTrait {
                                     handler,
                                     decl_ref.name().clone(),
                                     ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                        name: decl_ref.name().clone(),
                                         decl_id: *decl_ref.id(),
-                                        decl_span: decl_ref.span().clone(),
                                     }),
                                 )?;
                             }

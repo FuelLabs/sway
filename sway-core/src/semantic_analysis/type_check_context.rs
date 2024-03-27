@@ -497,6 +497,7 @@ impl<'a> TypeCheckContext<'a> {
         name: Ident,
         item: TyDecl,
     ) -> Result<(), ErrorEmitted> {
+        let engines = self.engines();
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
         self.namespace_mut()
@@ -504,6 +505,7 @@ impl<'a> TypeCheckContext<'a> {
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name,
                 item,
                 const_shadowing_mode,
@@ -952,11 +954,7 @@ impl<'a> TypeCheckContext<'a> {
                 type_id,
                 ..
             })) => type_id,
-            Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
-                decl_id,
-                name,
-                decl_span: _,
-            })) => {
+            Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id })) => {
                 let decl_type = decl_engine.get_type(&decl_id);
 
                 if let Some(ty) = &decl_type.ty {
@@ -965,10 +963,10 @@ impl<'a> TypeCheckContext<'a> {
                     type_engine.insert(
                         self.engines,
                         TypeInfo::TraitType {
-                            name: name.clone(),
+                            name: decl_type.name.clone(),
                             trait_type_id: implementing_type,
                         },
-                        name.span().source_id(),
+                        decl_type.name.span().source_id(),
                     )
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(

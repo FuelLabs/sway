@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::DeclRef,
-    engine_threading::Engines,
+    engine_threading::{Engines, SpannedWithEngines},
     language::{
         parsed::*,
         ty::{self, TyTraitItem},
@@ -21,7 +21,7 @@ use sway_ast::ItemConst;
 use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
-use sway_types::{span::Span, Spanned};
+use sway_types::{span::Span, Named, Spanned};
 
 /// A single `Module` within a Sway project.
 ///
@@ -509,16 +509,22 @@ impl Module {
         decl: ty::TyDecl,
     ) -> Result<TypeInfo, ErrorEmitted> {
         Ok(match decl.clone() {
-            ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
-                struct_decl.name.clone(),
-                struct_decl.decl_id,
-                struct_decl.name.span(),
-            )),
-            ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
-                enum_decl.name.clone(),
-                enum_decl.decl_id,
-                enum_decl.name.span(),
-            )),
+            ty::TyDecl::StructDecl(decl) => {
+                let struct_decl = engines.de().get_struct(&decl.decl_id);
+                TypeInfo::Struct(DeclRef::new(
+                    struct_decl.name().clone(),
+                    decl.decl_id,
+                    struct_decl.name().span(),
+                ))
+            }
+            ty::TyDecl::EnumDecl(decl) => {
+                let enum_decl = engines.de().get_enum(&decl.decl_id);
+                TypeInfo::Enum(DeclRef::new(
+                    enum_decl.name().clone(),
+                    decl.decl_id,
+                    enum_decl.name().span(),
+                ))
+            }
             ty::TyDecl::TraitTypeDecl(type_decl) => {
                 let type_decl = engines.de().get_type(&type_decl.decl_id);
                 (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
@@ -547,7 +553,7 @@ impl Module {
         if !matches!(item_decl, ty::TyDecl::TraitTypeDecl(_)) {
             return Err(handler.emit_err(CompileError::Internal(
                 "Expecting associated type",
-                item_decl.span(),
+                item_decl.span(engines),
             )));
         }
         Ok(item_decl)

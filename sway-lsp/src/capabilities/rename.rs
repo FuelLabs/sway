@@ -191,7 +191,7 @@ fn find_all_methods_for_decl<'a>(
     // Find the parent declaration
     let t = session
         .token_map()
-        .parent_decl_at_position(engines.se(), url, position)
+        .parent_decl_at_position(engines, url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let decl_token = t.value();
 

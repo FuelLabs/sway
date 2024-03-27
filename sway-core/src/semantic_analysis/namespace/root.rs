@@ -126,7 +126,7 @@ impl Root {
                     );
                 }
                 // if this is a trait, import its implementations
-                let decl_span = decl.span();
+                let decl_span = decl.span(engines);
                 if let TyDecl::TraitDecl(_) = &decl {
                     // TODO: we only import local impls from the source namespace
                     // this is okay for now but we'll need to device some mechanism to collect all available trait impls
@@ -208,12 +208,7 @@ impl Root {
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),
@@ -308,12 +303,7 @@ impl Root {
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),

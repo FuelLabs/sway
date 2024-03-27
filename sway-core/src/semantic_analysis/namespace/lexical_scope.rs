@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::*,
-    engine_threading::Engines,
+    engine_threading::{Engines, SpannedWithEngines},
     language::{
         parsed::Declaration,
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
@@ -140,6 +140,7 @@ impl Items {
     pub(crate) fn insert_symbol(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
@@ -165,7 +166,7 @@ impl Items {
                     // variable shadowing a constant
                     (
                         constant_ident,
-                        ConstantDecl(constant_decl),
+                        ConstantDecl(_constant_decl),
                         is_imported_constant,
                         is_alias,
                         VariableDecl { .. },
@@ -177,7 +178,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                item.span(engines)
                             } else {
                                 Span::dummy()
                             },
@@ -187,7 +188,7 @@ impl Items {
                     // constant shadowing a constant sequentially
                     (
                         constant_ident,
-                        ConstantDecl(constant_decl),
+                        ConstantDecl(_constant_decl),
                         is_imported_constant,
                         is_alias,
                         ConstantDecl { .. },
@@ -199,7 +200,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                item.span(engines)
                             } else {
                                 Span::dummy()
                             },
