@@ -153,9 +153,10 @@ impl DeclMapping {
         }
 
         // At most one replacement should be found for decl_ref.
-        /* TODO uncomment this and close issue #5540
+        use sway_error::{error::CompileError};
+    
         if dest_decl_refs.len() > 1 {
-            handler.emit_err(CompileError::InternalOwned(
+            _handler.emit_err(CompileError::InternalOwned(
                 format!(
                     "Multiple replacements for decl {} implemented in {}",
                     engines.help_out(decl_ref),
@@ -163,7 +164,7 @@ impl DeclMapping {
                 ),
                 dest_decl_refs.iter().last().unwrap().span(engines),
             ));
-        }*/
+        }
         Ok(dest_decl_refs.iter().next().cloned())
     }
 }
