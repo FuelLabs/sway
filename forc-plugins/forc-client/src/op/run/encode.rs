@@ -1,6 +1,9 @@
 use crate::util::encode::{Token, Type};
 use fuel_abi_types::abi::full_program::FullProgramABI;
-use fuels_core::{codec::ABIEncoder, types::unresolved_bytes::UnresolvedBytes};
+use fuels_core::{
+    codec::{ABIEncoder, EncoderConfig},
+    types::unresolved_bytes::UnresolvedBytes,
+};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ScriptCallHandler {
@@ -53,7 +56,8 @@ impl ScriptCallHandler {
             .map(|(ty, val)| Token::from_type_and_value(ty, val).map(|token| token.0))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        Ok(ABIEncoder::encode(tokens.as_slice())?)
+        let abi_encoder = ABIEncoder::new(EncoderConfig::default());
+        Ok(abi_encoder.encode(tokens.as_slice())?)
     }
 }
 
