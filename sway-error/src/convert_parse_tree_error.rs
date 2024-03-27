@@ -127,7 +127,7 @@ impl Spanned for ConvertParseTreeError {
     fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
-	    ConvertParseTreeError::ImportsWithoutItemsNotSupports { span } => span.clone(),
+            ConvertParseTreeError::ImportsWithoutItemsNotSupports { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::MultipleGenericsNotSupported { span } => span.clone(),
