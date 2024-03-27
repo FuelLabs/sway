@@ -1159,12 +1159,12 @@ impl ty::TyExpression {
         }: TypeBinding<CallPath<AmbiguousSuffix>>,
         span: Span,
         args: Vec<Expression>,
-        qualified_path_root: Option<QualifiedPathRootTypes>,
+        qualified_path_root: Option<QualifiedPathType>,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = ctx.engines;
         let decl_engine = engines.de();
 
-        if let Some(QualifiedPathRootTypes { ty, as_trait, .. }) = qualified_path_root.clone() {
+        if let Some(QualifiedPathType { ty, as_trait, .. }) = qualified_path_root.clone() {
             let method_name_binding = if !prefixes.is_empty() || before.is_some() {
                 let mut prefixes_and_before = prefixes.clone();
                 if let Some(before) = before {

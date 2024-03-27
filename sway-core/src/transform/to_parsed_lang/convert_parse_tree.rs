@@ -3181,7 +3181,7 @@ fn path_root_opt_to_bool_and_qualified_path_root(
     handler: &Handler,
     engines: &Engines,
     root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
-) -> Result<(bool, Option<QualifiedPathRootTypes>), ErrorEmitted> {
+) -> Result<(bool, Option<QualifiedPathType>), ErrorEmitted> {
     Ok(match root_opt {
         None => (false, None),
         Some((None, _)) => (true, None),
@@ -3195,7 +3195,7 @@ fn path_root_opt_to_bool_and_qualified_path_root(
         )) => (
             false,
             if let Some((_, path_type)) = as_trait {
-                Some(QualifiedPathRootTypes {
+                Some(QualifiedPathType {
                     ty: ty_to_type_argument(context, handler, engines, *ty)?,
                     as_trait: engines.te().insert(
                         engines,
