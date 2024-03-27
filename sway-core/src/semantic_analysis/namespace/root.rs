@@ -438,7 +438,7 @@ impl Root {
         handler: &Handler,
         src: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let dst = &self.module.mod_path;
+        let dst = self.module.mod_path();
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
             // we don't check the first prefix because direct children are always accessible

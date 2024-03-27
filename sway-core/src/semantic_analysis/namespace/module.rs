@@ -59,7 +59,7 @@ pub struct Module {
     ///
     /// When this is the root module, this is equal to `[]`. When this is a
     /// submodule of the root called "foo", this would be equal to `[foo]`.
-    pub mod_path: ModulePathBuf,
+    pub(crate) mod_path: ModulePathBuf,
 }
 
 impl Default for Module {
@@ -78,6 +78,14 @@ impl Default for Module {
 }
 
 impl Module {
+    pub fn mod_path(&self) -> &ModulePath {
+        self.mod_path.as_slice()
+    }
+
+    pub fn mod_path_buf(&self) -> ModulePathBuf {
+        self.mod_path.clone()
+    }
+
     /// `contract_id_value` is injected here via forc-pkg when producing the `dependency_namespace` for a contract which has tests enabled.
     /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
     ///
