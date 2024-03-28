@@ -20,34 +20,34 @@ pub enum Enum_multivariant {
 fn in_init() -> u64 {
     let _ = return 42;
     
-    45
+    045
 }
 
 fn in_array() -> u64 {
     let _ = [return 42, return 43];
     
-    145
+    1450
 }
 
 // Arrays of length 1 are treated differently
 fn in_length_1_array() -> u64 {
     let _ = [return 42];
     
-    145
+    1451
 }
 
 // The first element of an array is treated differently
 fn in_length_2_array_first() -> u64 {
     let _ = [return 42, 0];
     
-    145
+    1452
 }
 
 // The first element of an array is treated differently
 fn in_length_2_array_second() -> u64 {
     let _ = [0, return 42];
     
-    145 // TODO: Missing unreachable warning
+    1453
 }
 
 fn in_tuple() -> u64 {
@@ -90,19 +90,19 @@ fn in_while_condition() -> u64 {
         break;
     };
     
-    745 // TODO: Missing unreachable warning
+    745
 }
 
 fn in_enum() -> u64 {
     let _ = Enum::A((return 42, return 43));
     
-    845 // TODO: Missing unreachable warning
+    845
 }
 
 fn in_enum_multivariant() -> u64 {
     let _ = Enum_multivariant::B((return 42, return 43));
     
-    945 // TODO: Missing unreachable warning
+    945
 }
 
 fn helper_fun(x : u64, y : u64) -> u64 {
@@ -112,7 +112,7 @@ fn helper_fun(x : u64, y : u64) -> u64 {
 fn in_fun_arg() -> u64 {
     let _ = helper_fun(return 42, return 43);
 
-    1045 // TODO: Missing unreachable warning
+    1045
 }
 
 fn in_lazy_and() -> u64 {
@@ -128,11 +128,11 @@ fn in_lazy_or() -> u64 {
 }
 
 fn in_match_scrutinee() -> u64 {
-    match return 42 {
+    let _ = match return 42 {
         _ => 5411,
-    }
+    };
 
-    1145
+    1345
 }
 
 
