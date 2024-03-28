@@ -129,7 +129,9 @@ fn test_u256_from_u8() {
     use ::assert::assert;
 
     let u256_value = <u256 as From<u8>>::from(255_u8);
-    assert(u256_value == 0x00000000000000000000000000000000000000000000000000000000000000ff_u256);
+    assert(
+        u256_value == 0x00000000000000000000000000000000000000000000000000000000000000ff_u256,
+    );
 }
 
 #[test]
@@ -137,7 +139,9 @@ fn test_u256_from_u16() {
     use ::assert::assert;
 
     let u256_value = <u256 as From<u16>>::from(65535_u16);
-    assert(u256_value == 0x000000000000000000000000000000000000000000000000000000000000ffff_u256);
+    assert(
+        u256_value == 0x000000000000000000000000000000000000000000000000000000000000ffff_u256,
+    );
 }
 
 #[test]
@@ -145,7 +149,9 @@ fn test_u256_from_u32() {
     use ::assert::assert;
 
     let u256_value = <u256 as From<u32>>::from(4294967295_u32);
-    assert(u256_value == 0x00000000000000000000000000000000000000000000000000000000ffffffff_u256);
+    assert(
+        u256_value == 0x00000000000000000000000000000000000000000000000000000000ffffffff_u256,
+    );
 }
 
 #[test]
@@ -153,7 +159,9 @@ fn test_u256_from_u64() {
     use ::assert::assert;
     
     let u256_value = <u256 as From<u64>>::from(18446744073709551615_u64);
-    assert(u256_value == 0x000000000000000000000000000000000000000000000000ffffffffffffffff_u256);
+    assert(
+        u256_value == 0x000000000000000000000000000000000000000000000000ffffffffffffffff_u256,
+    );
 }
 
 #[test]
@@ -162,8 +170,12 @@ fn test_u256_from_b256() {
     use ::constants::ZERO_B256;
 
     let u256_value = <u256 as From<b256>>::from(ZERO_B256);
-    assert(u256_value == 0x0000000000000000000000000000000000000000000000000000000000000000_u256);
+    assert(
+        u256_value == 0x0000000000000000000000000000000000000000000000000000000000000000_u256,
+    );
 
-    let u256_value = <u256 as From<b256>>::from(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
-    assert(u256_value == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_u256);
+    let u256_value = <u256 as From<b256>>::from(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+    assert(
+        u256_value == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_u256,
+    );
 }
