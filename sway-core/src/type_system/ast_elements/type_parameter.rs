@@ -309,7 +309,7 @@ impl TypeParameter {
             parent,
         } = &*type_engine.get(type_id)
         {
-            parent.clone()
+            *parent
         } else {
             None
         };
@@ -369,7 +369,7 @@ impl TypeParameter {
             parent,
         } = &*type_engine.get(type_parameter.type_id)
         {
-            parent.clone()
+            *parent
         } else {
             None
         };
@@ -444,7 +444,7 @@ impl TypeParameter {
                 .module()
                 .current_items()
                 .symbols
-                .get(&name_ident)
+                .get(name_ident)
                 .unwrap();
 
             match sy {

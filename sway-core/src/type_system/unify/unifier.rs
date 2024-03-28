@@ -162,30 +162,21 @@ impl<'a> Unifier<'a> {
                         .engines
                         .te()
                         .get(rp.unwrap())
-                        .eq(e, &PartialEqWithEnginesContext::new(self.engines)) =>
-            {
-                ()
-            }
+                        .eq(e, &PartialEqWithEnginesContext::new(self.engines)) => {}
             (r, UnknownGeneric { parent: ep, .. })
                 if ep.is_some()
                     && self
                         .engines
                         .te()
                         .get(ep.unwrap())
-                        .eq(r, &PartialEqWithEnginesContext::new(self.engines)) =>
-            {
-                ()
-            }
+                        .eq(r, &PartialEqWithEnginesContext::new(self.engines)) => {}
             (UnknownGeneric { parent: rp, .. }, UnknownGeneric { parent: ep, .. })
                 if rp.is_some()
                     && ep.is_some()
                     && self.engines.te().get(ep.unwrap()).eq(
                         &*self.engines.te().get(rp.unwrap()),
                         &PartialEqWithEnginesContext::new(self.engines),
-                    ) =>
-            {
-                ()
-            }
+                    ) => {}
 
             (
                 UnknownGeneric {
@@ -199,10 +190,7 @@ impl<'a> Unifier<'a> {
                     parent: _,
                 },
             ) if rn.as_str() == en.as_str()
-                && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines)) =>
-            {
-                ()
-            }
+                && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines)) => {}
 
             (_r @ UnknownGeneric { .. }, e)
                 if !self.occurs_check(received, expected)
