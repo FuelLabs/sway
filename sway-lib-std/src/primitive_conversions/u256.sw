@@ -124,6 +124,7 @@ impl From<b256> for u256 {
     }
 }
 
+// TODO: Replace <u256 as From<T>> with u256::from when https://github.com/FuelLabs/sway/issues/5798 is resolved.
 #[test]
 fn test_u256_from_u8() {
     use ::assert::assert;
@@ -167,9 +168,8 @@ fn test_u256_from_u64() {
 #[test]
 fn test_u256_from_b256() {
     use ::assert::assert;
-    use ::constants::ZERO_B256;
 
-    let u256_value = <u256 as From<b256>>::from(ZERO_B256);
+    let u256_value = <u256 as From<b256>>::from(0x0000000000000000000000000000000000000000000000000000000000000000);
     assert(
         u256_value == 0x0000000000000000000000000000000000000000000000000000000000000000_u256,
     );
