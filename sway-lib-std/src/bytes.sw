@@ -909,7 +909,7 @@ impl From<Bytes> for Vec<u8> {
 
 impl AbiEncode for Bytes {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self.len);
+        buffer.push_u64(self.len);
 
         let mut i = 0;
         while i < self.len {

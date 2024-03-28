@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::SourceId;
 
@@ -21,7 +21,7 @@ impl<'a> Position<'a> {
         input.get(pos..).map(|_| Position { input, pos })
     }
 
-    pub fn line_col(&self) -> (usize, usize) {
+    pub fn line_col(&self) -> LineCol {
         if self.pos > self.input.len() {
             panic!("position out of bounds");
         }
@@ -38,7 +38,7 @@ impl<'a> Position<'a> {
 
         // Column number should start from 1, not 0
         let col = self.pos - last_newline_pos + 1;
-        (line, col)
+        LineCol { line, col }
     }
 }
 
@@ -207,10 +207,7 @@ impl Span {
 
     /// Returns the line and column start and end.
     pub fn line_col(&self) -> (LineCol, LineCol) {
-        (
-            self.start_pos().line_col().into(),
-            self.end_pos().line_col().into(),
-        )
+        (self.start_pos().line_col(), self.end_pos().line_col())
     }
 }
 
@@ -235,17 +232,8 @@ pub trait Spanned {
     fn span(&self) -> Span;
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct LineCol {
     pub line: usize,
     pub col: usize,
-}
-
-impl From<(usize, usize)> for LineCol {
-    fn from(o: (usize, usize)) -> Self {
-        LineCol {
-            line: o.0,
-            col: o.1,
-        }
-    }
 }

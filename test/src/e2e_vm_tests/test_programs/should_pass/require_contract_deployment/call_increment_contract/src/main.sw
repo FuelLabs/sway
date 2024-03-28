@@ -1,11 +1,12 @@
 script;
 
 use increment_abi::Incrementor;
+use dynamic_contract_call::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0xa1aa9555466ef3c61914e5426973e2257cb4dcd8311ffbbe0e8850a9742f312d;
+const CONTRACT_ID = 0xb7a555aa47aaa778e0b1c351e897e83b08b34a1599114166bb5635721da0ab14;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xfc785a275345b2344f3dafe03cc910d36691de6456e4d3277d5b2b0fe85479b2;
+const CONTRACT_ID = 0x3c1b3e3ad4debae2393ff81b5d77260c62f1356daa51c67ff220a09e7838a52a;
 
 fn main() -> bool {
     let the_abi = abi(Incrementor, CONTRACT_ID);
@@ -22,6 +23,10 @@ fn main() -> bool {
     assert(result == initial + 10);
 
     log(result);
+
+    // Call the fallback fn
+    let result = dynamic_contract_call(CONTRACT_ID);
+    assert(result == 444444444);
 
     true
 }

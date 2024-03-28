@@ -584,7 +584,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     /// Read the returns the base pointer for predicate data
     fn read_args_base_from_predicate_data(&mut self, base_reg: &VirtualRegister) {
-        // Final label to jump to to continue execution, once the predicate data pointer is
+        // Final label to jump to continue execution, once the predicate data pointer is
         // successfully found
         let success_label = self.reg_seqr.get_label();
 
@@ -851,6 +851,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             data_id,
         } in init_mut_vars
         {
+            if var_size.in_bytes() == 0 {
+                // Don't bother initializing zero-sized types.
+                continue;
+            }
             // Load our initialiser from the data section.
             self.cur_bytecode.push(Op {
                 opcode: Either::Left(VirtualOp::LoadDataId(

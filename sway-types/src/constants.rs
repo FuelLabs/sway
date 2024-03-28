@@ -55,6 +55,8 @@ pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
 
 pub const NAMESPACE_ATTRIBUTE_NAME: &str = "namespace";
 
+pub const FALLBACK_ATTRIBUTE_NAME: &str = "fallback";
+
 /// The list of valid attributes.
 pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     STORAGE_PURITY_ATTRIBUTE_NAME,
@@ -67,6 +69,7 @@ pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     CFG_ATTRIBUTE_NAME,
     DEPRECATED_ATTRIBUTE_NAME,
     NAMESPACE_ATTRIBUTE_NAME,
+    FALLBACK_ATTRIBUTE_NAME,
 ];
 
 pub const CORE: &str = "core";

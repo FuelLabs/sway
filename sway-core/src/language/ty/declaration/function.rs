@@ -10,6 +10,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use crate::{
     language::{parsed::FunctionDeclarationKind, CallPath},
     semantic_analysis::type_check_context::MonomorphizeHelper,
+    transform::AttributeKind,
 };
 
 use crate::{
@@ -439,6 +440,10 @@ impl TyFunctionDecl {
             INLINE_ALWAYS_NAME => Some(Inline::Always),
             _ => None,
         }
+    }
+
+    pub fn is_fallback(&self) -> bool {
+        self.attributes.contains_key(&AttributeKind::Fallback)
     }
 
     /// Whether or not this function is a constructor for the type given by `type_id`.

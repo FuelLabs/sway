@@ -287,7 +287,7 @@ jobs:
           crate: cargo-toml-lint
           version: '0.1'
       - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
+        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/' | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     runs-on: ubuntu-latest
@@ -483,6 +483,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release -p forc-debug
+  cargo-test-sway-lsp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Run sway-lsp tests sequentially
+        run: cargo test --locked --release -p sway-lsp -- --test-threads=1
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -493,7 +504,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
@@ -523,6 +534,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
       ]
     runs-on: ubuntu-latest
@@ -608,6 +620,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
         pre-publish-check,
       ]
@@ -656,6 +669,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
       ]
     if: github.ref == 'refs/heads/master'

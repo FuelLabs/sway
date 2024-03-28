@@ -1183,7 +1183,12 @@ mod tests {
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
         let handler = Handler::default();
-        let mut context = Context::new(engines.se(), sway_ir::ExperimentalFlags::default());
+        let mut context = Context::new(
+            engines.se(),
+            sway_ir::ExperimentalFlags {
+                new_encoding: false,
+            },
+        );
         let mut md_mgr = MetadataManager::default();
         let core_lib = namespace::Root::from(namespace::Module {
             name: Some(sway_types::Ident::new_no_span(

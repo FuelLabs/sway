@@ -14,8 +14,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
 use super::{
-    collection_context::SymbolCollectionContext, module::ModuleEvaluationOrder, TypeCheckAnalysis,
-    TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
+    collection_context::SymbolCollectionContext, TypeCheckAnalysis, TypeCheckAnalysisContext,
+    TypeCheckFinalization, TypeCheckFinalizationContext,
 };
 
 impl TyProgram {
@@ -28,13 +28,12 @@ impl TyProgram {
         engines: &Engines,
         parsed: &ParseProgram,
         initial_namespace: namespace::Root,
-        module_eval_order: &ModuleEvaluationOrder,
     ) -> Result<SymbolCollectionContext, ErrorEmitted> {
         let namespace = Namespace::init_root(initial_namespace);
         let mut ctx = SymbolCollectionContext::new(namespace);
         let ParseProgram { root, kind: _ } = parsed;
 
-        ty::TyModule::collect(handler, engines, &mut ctx, root, module_eval_order)?;
+        ty::TyModule::collect(handler, engines, &mut ctx, root)?;
         Ok(ctx)
     }
 
@@ -49,9 +48,13 @@ impl TyProgram {
         initial_namespace: namespace::Root,
         package_name: &str,
         build_config: Option<&BuildConfig>,
-        module_eval_order: ModuleEvaluationOrder,
     ) -> Result<Self, ErrorEmitted> {
-        let experimental = build_config.map(|x| x.experimental).unwrap_or_default();
+        let experimental =
+            build_config
+                .map(|x| x.experimental)
+                .unwrap_or(crate::ExperimentalFlags {
+                    new_encoding: false,
+                });
 
         let mut namespace = Namespace::init_root(initial_namespace);
         let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
@@ -59,14 +62,7 @@ impl TyProgram {
 
         let ParseProgram { root, kind } = parsed;
 
-        let root = ty::TyModule::type_check(
-            handler,
-            ctx.by_ref(),
-            engines,
-            parsed.kind,
-            root,
-            module_eval_order,
-        )?;
+        let root = ty::TyModule::type_check(handler, ctx.by_ref(), engines, parsed.kind, root)?;
 
         let (kind, declarations, configurables) = Self::validate_root(
             handler,

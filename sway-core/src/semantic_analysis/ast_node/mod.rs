@@ -62,7 +62,7 @@ impl ty::TyAstNode {
                     let path = if is_external || a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        ctx.namespace().find_module_path(&a.call_path)
+                        ctx.namespace().prepend_module_path(&a.call_path)
                     };
                     let _ = match a.import_type {
                         ImportType::Star => {
