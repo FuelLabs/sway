@@ -14,7 +14,7 @@ use crate::{
 use super::{
     lexical_scope::{Items, LexicalScope, SymbolMap},
     root::Root,
-    LexicalScopeId, ModuleName, ModulePath, Path,
+    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf,
 };
 
 use sway_ast::ItemConst;
@@ -59,7 +59,7 @@ pub struct Module {
     ///
     /// When this is the root module, this is equal to `[]`. When this is a
     /// submodule of the root called "foo", this would be equal to `[foo]`.
-    pub mod_path: ModulePath,
+    pub(crate) mod_path: ModulePathBuf,
 }
 
 impl Default for Module {
@@ -78,6 +78,14 @@ impl Default for Module {
 }
 
 impl Module {
+    pub fn mod_path(&self) -> &ModulePath {
+        self.mod_path.as_slice()
+    }
+
+    pub fn mod_path_buf(&self) -> ModulePathBuf {
+        self.mod_path.clone()
+    }
+
     /// `contract_id_value` is injected here via forc-pkg when producing the `dependency_namespace` for a contract which has tests enabled.
     /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
     ///
@@ -200,7 +208,7 @@ impl Module {
     }
 
     /// Lookup the submodule at the given path.
-    pub fn submodule(&self, path: &Path) -> Option<&Module> {
+    pub fn submodule(&self, path: &ModulePath) -> Option<&Module> {
         let mut module = self;
         for ident in path.iter() {
             match module.submodules.get(ident.as_str()) {
@@ -212,7 +220,7 @@ impl Module {
     }
 
     /// Unique access to the submodule at the given path.
-    pub fn submodule_mut(&mut self, path: &Path) -> Option<&mut Module> {
+    pub fn submodule_mut(&mut self, path: &ModulePath) -> Option<&mut Module> {
         let mut module = self;
         for ident in path.iter() {
             match module.submodules.get_mut(ident.as_str()) {
@@ -226,7 +234,7 @@ impl Module {
     /// Lookup the submodule at the given path.
     ///
     /// This should be used rather than `Index` when we don't yet know whether the module exists.
-    pub(crate) fn check_submodule(
+    pub(crate) fn lookup_submodule(
         &self,
         handler: &Handler,
         path: &[Ident],
@@ -295,7 +303,7 @@ impl Module {
         &self,
         handler: &Handler,
         engines: &Engines,
-        mod_path: &Path,
+        mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
@@ -308,7 +316,7 @@ impl Module {
         &self,
         handler: &Handler,
         engines: &Engines,
-        mod_path: &Path,
+        mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
@@ -397,7 +405,7 @@ impl Module {
         &self,
         handler: &Handler,
         engines: &Engines,
-        mod_path: &Path,
+        mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
@@ -410,7 +418,7 @@ impl Module {
         &self,
         handler: &Handler,
         engines: &Engines,
-        mod_path: &Path,
+        mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
@@ -448,7 +456,7 @@ impl Module {
             return Ok((decl, current_mod_path));
         }
 
-        self.check_submodule(handler, mod_path).and_then(|module| {
+        self.lookup_submodule(handler, mod_path).and_then(|module| {
             let decl =
                 self.resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
             Ok((decl, mod_path.to_vec()))
@@ -589,7 +597,7 @@ impl Module {
         &self,
         handler: &Handler,
         engines: &Engines,
-        mod_path: &Path,
+        mod_path: &ModulePath,
         symbol: &Ident,
         module: &Module,
         self_type: Option<TypeId>,
@@ -625,16 +633,16 @@ impl Module {
     }
 }
 
-impl<'a> std::ops::Index<&'a Path> for Module {
+impl<'a> std::ops::Index<&'a ModulePath> for Module {
     type Output = Module;
-    fn index(&self, path: &'a Path) -> &Self::Output {
+    fn index(&self, path: &'a ModulePath) -> &Self::Output {
         self.submodule(path)
             .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 
-impl<'a> std::ops::IndexMut<&'a Path> for Module {
-    fn index_mut(&mut self, path: &'a Path) -> &mut Self::Output {
+impl<'a> std::ops::IndexMut<&'a ModulePath> for Module {
+    fn index_mut(&mut self, path: &'a ModulePath) -> &mut Self::Output {
         self.submodule_mut(path)
             .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }

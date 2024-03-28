@@ -17,8 +17,6 @@ pub(super) use trait_map::TraitMap;
 
 use sway_types::Ident;
 
-pub type Path = [Ident];
-pub type PathBuf = Vec<Ident>;
-
 type ModuleName = String;
-pub type ModulePath = PathBuf;
+pub type ModulePath = [Ident];
+pub type ModulePathBuf = Vec<Ident>;

@@ -22,3 +22,25 @@ impl<T> VecExt<T> for Vec<T> {
         removed
     }
 }
+
+pub(crate) fn duration_to_str(duration: &std::time::Duration) -> String {
+    let parts: [u16; 4] = [
+        (duration.as_secs() / 3600) as u16,
+        ((duration.as_secs() / 60) % 60) as u16,
+        (duration.as_secs() % 60) as u16,
+        (duration.as_millis() % 1000) as u16,
+    ];
+
+    // Hopefully we will never need to deal with hours :-)
+    let parts = if parts[0] == 0 {
+        &parts[1..]
+    } else {
+        &parts[..]
+    };
+
+    parts
+        .iter()
+        .map(|part| format!("{:#02}", part))
+        .collect::<Vec<_>>()
+        .join(":")
+}
