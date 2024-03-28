@@ -5,4 +5,4 @@ name = "struct_field_privacy_pattern_matching"
 entry = "main.sw"
 
 [dependencies]
-std = { path = "../../../../../../sway-lib-std" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }

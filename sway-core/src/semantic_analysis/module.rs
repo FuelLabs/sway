@@ -68,8 +68,6 @@ pub struct ModuleDepGraph {
     node_name_map: HashMap<String, ModuleDepGraphNodeId>,
 }
 
-pub type ModuleEvaluationOrder = Vec<ModName>;
-
 impl ModuleDepGraph {
     pub(crate) fn new() -> Self {
         Self {
@@ -226,11 +224,11 @@ impl ty::TyModule {
         engines: &Engines,
         ctx: &mut SymbolCollectionContext,
         parsed: &ParseModule,
-        module_eval_order: &ModuleEvaluationOrder,
     ) -> Result<(), ErrorEmitted> {
         let ParseModule {
             submodules,
             tree,
+            module_eval_order,
             attributes: _,
             span: _,
             hash: _,
@@ -265,13 +263,13 @@ impl ty::TyModule {
         engines: &Engines,
         kind: TreeType,
         parsed: &ParseModule,
-        module_eval_order: ModuleEvaluationOrder,
     ) -> Result<Self, ErrorEmitted> {
         let ParseModule {
             submodules,
             tree,
             attributes,
             span,
+            module_eval_order,
             ..
         } = parsed;
 
@@ -571,10 +569,8 @@ impl ty::TySubmodule {
             mod_name_span: _,
             visibility,
         } = submodule;
-        let modules_dep_graph = ty::TyModule::build_dep_graph(handler, module)?;
-        let module_eval_order = modules_dep_graph.compute_order(handler)?;
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            ty::TyModule::collect(handler, engines, submod_ctx, module, &module_eval_order)
+            ty::TyModule::collect(handler, engines, submod_ctx, module)
         })
     }
 
@@ -591,17 +587,8 @@ impl ty::TySubmodule {
             mod_name_span,
             visibility,
         } = submodule;
-        let modules_dep_graph = ty::TyModule::build_dep_graph(handler, module)?;
-        let module_eval_order = modules_dep_graph.compute_order(handler)?;
         parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            let module_res = ty::TyModule::type_check(
-                handler,
-                submod_ctx,
-                engines,
-                kind,
-                module,
-                module_eval_order,
-            );
+            let module_res = ty::TyModule::type_check(handler, submod_ctx, engines, kind, module);
             module_res.map(|module| ty::TySubmodule {
                 module,
                 mod_name_span: mod_name_span.clone(),

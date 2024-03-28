@@ -3,6 +3,8 @@
 
 library;
 
+struct Dummy<T> { }
+
 struct MyStruct<T> {
     val: T
 }
@@ -12,8 +14,8 @@ trait MyTrait<T> {
 }
 
 impl<T> MyTrait<T> for MyStruct<T> {
-    // This implementation uses an Option, but the definition does not
-    fn set(self, val: Option<T>) {
+    // This implementation uses a Dummy, but the definition does not
+    fn set(self, val: Dummy<T>) {
 
     }
 }

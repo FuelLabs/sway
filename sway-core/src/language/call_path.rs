@@ -19,7 +19,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
-use super::parsed::QualifiedPathRootTypes;
+use super::parsed::QualifiedPathType;
 
 #[derive(Clone, Debug)]
 pub struct CallPathTree {
@@ -70,7 +70,7 @@ impl OrdWithEngines for CallPathTree {
 
 pub struct QualifiedCallPath {
     pub call_path: CallPath,
-    pub qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
+    pub qualified_path_root: Option<Box<QualifiedPathType>>,
 }
 
 impl std::convert::From<Ident> for QualifiedCallPath {
