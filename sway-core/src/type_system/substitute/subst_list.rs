@@ -60,8 +60,8 @@ impl std::iter::FromIterator<TypeParameter> for SubstList {
 
 impl EqWithEngines for SubstList {}
 impl PartialEqWithEngines for SubstList {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.list.eq(&other.list, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.list.eq(&other.list, ctx)
     }
 }
 
@@ -72,10 +72,10 @@ impl HashWithEngines for SubstList {
 }
 
 impl OrdWithEngines for SubstList {
-    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
         let SubstList { list: ll } = self;
         let SubstList { list: rl } = other;
-        ll.cmp(rl, engines)
+        ll.cmp(rl, ctx)
     }
 }
 

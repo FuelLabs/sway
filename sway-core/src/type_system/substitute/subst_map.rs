@@ -509,7 +509,10 @@ fn iter_for_match(
 ) -> Option<TypeId> {
     let type_engine = engines.te();
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if type_engine.get(*source_type).eq(type_info, engines) {
+        if type_engine
+            .get(*source_type)
+            .eq(type_info, &PartialEqWithEnginesContext::new(engines))
+        {
             return Some(*dest_type);
         }
     }

@@ -631,7 +631,10 @@ fn type_check_state_clear(
         .to_typeinfo(key_exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
+    if !key_ty.eq(
+        &TypeInfo::B256,
+        &PartialEqWithEnginesContext::new(ctx.engines()),
+    ) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
@@ -687,7 +690,7 @@ fn type_check_state_load_word(
         .to_typeinfo(exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, engines) {
+    if !key_ty.eq(&TypeInfo::B256, &PartialEqWithEnginesContext::new(engines)) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
@@ -745,7 +748,10 @@ fn type_check_state_store_word(
         .to_typeinfo(key_exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
+    if !key_ty.eq(
+        &TypeInfo::B256,
+        &PartialEqWithEnginesContext::new(ctx.engines()),
+    ) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
@@ -837,7 +843,10 @@ fn type_check_state_quad(
         .to_typeinfo(key_exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
+    if !key_ty.eq(
+        &TypeInfo::B256,
+        &PartialEqWithEnginesContext::new(ctx.engines()),
+    ) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,

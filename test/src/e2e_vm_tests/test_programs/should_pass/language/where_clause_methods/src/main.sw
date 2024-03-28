@@ -139,13 +139,18 @@ impl<T> MyPoint<T> {
             y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
         }
     }
+
+    fn do_math31<M>(self, b: MyPoint<T>, c: MyPoint<M>) -> MyPoint<T> where T: MyMath, M:MyMath{
+        MyPoint {
+            x: self.x.my_double().my_mul(b.x.my_double()),
+            y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
+        }
+    }
 }
 
 impl<T> MyPoint<T> where T: MyMath {
     fn do_math4(self, b: MyPoint<T>) -> MyPoint<T> {
-        // As reported in https://github.com/FuelLabs/sway/issues/5693
-        // Remove the `::<T>` after the issue is fixed.
-        MyPoint::<T> {
+        MyPoint {
             x: self.x.my_double().my_mul(b.x.my_double()),
             y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
         }
@@ -219,6 +224,10 @@ fn main() -> u64 {
     let m = a.do_math3(b);
     assert(m.x == 12u64);
     assert(m.y == 20u64);
+
+    let m1 = a.do_math31(b, b);
+    assert(m1.x == 12u64);
+    assert(m1.y == 20u64);
 
     let n = a.do_math4(b);
     assert(n.x == 12u64);

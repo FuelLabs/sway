@@ -27,10 +27,8 @@ impl Named for TyTypeAliasDecl {
 
 impl EqWithEngines for TyTypeAliasDecl {}
 impl PartialEqWithEngines for TyTypeAliasDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name
-            && self.ty.eq(&other.ty, engines)
-            && self.visibility == other.visibility
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.ty.eq(&other.ty, ctx) && self.visibility == other.visibility
     }
 }
 

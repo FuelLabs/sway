@@ -31,8 +31,8 @@ pub struct TyAstNode {
 
 impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.content.eq(&other.content, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.content.eq(&other.content, ctx)
     }
 }
 
@@ -341,10 +341,10 @@ pub enum TyAstNodeContent {
 
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
-            (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
+            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, ctx),
+            (Self::Expression(x), Self::Expression(y)) => x.eq(y, ctx),
             (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
         }

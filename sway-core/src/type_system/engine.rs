@@ -52,9 +52,9 @@ impl TypeEngine {
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, engines)(&tsi);
 
-        let raw_entry = id_map
-            .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&tsi, engines));
+        let raw_entry = id_map.raw_entry_mut().from_hash(ty_hash, |x| {
+            x.eq(&tsi, &PartialEqWithEnginesContext::new(engines))
+        });
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {

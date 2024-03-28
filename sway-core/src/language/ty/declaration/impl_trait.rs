@@ -42,16 +42,16 @@ impl Spanned for TyImplTrait {
 
 impl EqWithEngines for TyImplTrait {}
 impl PartialEqWithEngines for TyImplTrait {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.impl_type_parameters
-            .eq(&other.impl_type_parameters, engines)
+            .eq(&other.impl_type_parameters, ctx)
             && self.trait_name == other.trait_name
             && self
                 .trait_type_arguments
-                .eq(&other.trait_type_arguments, engines)
-            && self.items.eq(&other.items, engines)
-            && self.implementing_for.eq(&other.implementing_for, engines)
-            && self.trait_decl_ref.eq(&other.trait_decl_ref, engines)
+                .eq(&other.trait_type_arguments, ctx)
+            && self.items.eq(&other.items, ctx)
+            && self.implementing_for.eq(&other.implementing_for, ctx)
+            && self.trait_decl_ref.eq(&other.trait_decl_ref, ctx)
     }
 }
 

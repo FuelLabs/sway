@@ -95,9 +95,12 @@ impl UnconstrainedTypeParameters for TypeId {
         let mut all_types: BTreeSet<TypeId> = self.extract_inner_types(engines);
         all_types.insert(*self);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types
-            .iter()
-            .any(|type_id| type_engine.get(*type_id).eq(&type_parameter_info, engines))
+        all_types.iter().any(|type_id| {
+            type_engine.get(*type_id).eq(
+                &type_parameter_info,
+                &PartialEqWithEnginesContext::new(engines),
+            )
+        })
     }
 }
 
@@ -356,6 +359,7 @@ impl TypeId {
             TypeInfo::UnknownGeneric {
                 name: _,
                 trait_constraints,
+                parent: _,
             } => {
                 found.insert(*self, trait_constraints.to_vec());
                 for trait_constraint in trait_constraints.iter() {

@@ -67,14 +67,14 @@ impl declaration::FunctionSignature for TyTraitFn {
 
 impl EqWithEngines for TyTraitFn {}
 impl PartialEqWithEngines for TyTraitFn {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         self.name == other.name
             && self.purity == other.purity
-            && self.parameters.eq(&other.parameters, engines)
+            && self.parameters.eq(&other.parameters, ctx)
             && type_engine
                 .get(self.return_type.type_id)
-                .eq(&type_engine.get(other.return_type.type_id), engines)
+                .eq(&type_engine.get(other.return_type.type_id), ctx)
             && self.attributes == other.attributes
     }
 }

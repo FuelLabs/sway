@@ -46,10 +46,10 @@ impl TyIntrinsicFunctionKind {
 
 impl EqWithEngines for TyIntrinsicFunctionKind {}
 impl PartialEqWithEngines for TyIntrinsicFunctionKind {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.kind == other.kind
-            && self.arguments.eq(&other.arguments, engines)
-            && self.type_arguments.eq(&other.type_arguments, engines)
+            && self.arguments.eq(&other.arguments, ctx)
+            && self.type_arguments.eq(&other.type_arguments, ctx)
     }
 }
 

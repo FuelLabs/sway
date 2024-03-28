@@ -28,12 +28,12 @@ pub struct TyExpression {
 
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
-        self.expression.eq(&other.expression, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
+        self.expression.eq(&other.expression, ctx)
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .eq(&type_engine.get(other.return_type), ctx)
     }
 }
 

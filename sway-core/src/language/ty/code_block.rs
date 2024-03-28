@@ -25,8 +25,8 @@ impl Default for TyCodeBlock {
 
 impl EqWithEngines for TyCodeBlock {}
 impl PartialEqWithEngines for TyCodeBlock {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.contents.eq(&other.contents, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.contents.eq(&other.contents, ctx)
     }
 }
 

@@ -156,16 +156,41 @@ impl<'a> Unifier<'a> {
             // Generics are handled similarly to the case for unknowns, except
             // we take more careful consideration for the type/purpose for the
             // unification that we are performing.
+            (UnknownGeneric { parent: rp, .. }, e)
+                if rp.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(rp.unwrap())
+                        .eq(e, &PartialEqWithEnginesContext::new(self.engines)) => {}
+            (r, UnknownGeneric { parent: ep, .. })
+                if ep.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(ep.unwrap())
+                        .eq(r, &PartialEqWithEnginesContext::new(self.engines)) => {}
+            (UnknownGeneric { parent: rp, .. }, UnknownGeneric { parent: ep, .. })
+                if rp.is_some()
+                    && ep.is_some()
+                    && self.engines.te().get(ep.unwrap()).eq(
+                        &*self.engines.te().get(rp.unwrap()),
+                        &PartialEqWithEnginesContext::new(self.engines),
+                    ) => {}
+
             (
                 UnknownGeneric {
                     name: rn,
                     trait_constraints: rtc,
+                    parent: _,
                 },
                 UnknownGeneric {
                     name: en,
                     trait_constraints: etc,
+                    parent: _,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(etc, self.engines) => (),
+            ) if rn.as_str() == en.as_str()
+                && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines)) => {}
 
             (_r @ UnknownGeneric { .. }, e)
                 if !self.occurs_check(received, expected)
@@ -260,7 +285,7 @@ impl<'a> Unifier<'a> {
                 )
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r.eq(e, self.engines) =>
+                if r.eq(e, &PartialEqWithEnginesContext::new(self.engines)) =>
             {
                 // if they are the same, then it's ok
             }

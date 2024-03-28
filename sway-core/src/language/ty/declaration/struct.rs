@@ -33,10 +33,10 @@ impl Named for TyStructDecl {
 
 impl EqWithEngines for TyStructDecl {}
 impl PartialEqWithEngines for TyStructDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.call_path == other.call_path
-            && self.fields.eq(&other.fields, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.fields.eq(&other.fields, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
             && self.visibility == other.visibility
     }
 }
@@ -246,13 +246,13 @@ impl HashWithEngines for TyStructField {
 
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.type_argument.eq(&other.type_argument, ctx)
     }
 }
 
 impl OrdWithEngines for TyStructField {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TyStructField {
             name: ln,
             type_argument: lta,
@@ -269,7 +269,7 @@ impl OrdWithEngines for TyStructField {
             attributes: _,
             visibility: _,
         } = other;
-        ln.cmp(rn).then_with(|| lta.cmp(rta, engines))
+        ln.cmp(rn).then_with(|| lta.cmp(rta, ctx))
     }
 }
 

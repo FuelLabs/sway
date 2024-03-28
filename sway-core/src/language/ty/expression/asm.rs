@@ -11,10 +11,10 @@ pub struct TyAsmRegisterDeclaration {
 }
 
 impl PartialEqWithEngines for TyAsmRegisterDeclaration {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
             && if let (Some(l), Some(r)) = (&self.initializer, &other.initializer) {
-                l.eq(r, engines)
+                l.eq(r, ctx)
             } else {
                 true
             }
