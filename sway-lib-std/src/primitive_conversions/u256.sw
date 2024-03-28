@@ -158,7 +158,7 @@ fn test_u256_from_u32() {
 #[test]
 fn test_u256_from_u64() {
     use ::assert::assert;
-    
+
     let u256_value = <u256 as From<u64>>::from(18446744073709551615_u64);
     assert(
         u256_value == 0x000000000000000000000000000000000000000000000000ffffffffffffffff_u256,
