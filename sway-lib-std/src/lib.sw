@@ -17,7 +17,6 @@ pub mod primitive_conversions;
 pub mod math;
 pub mod flags;
 pub mod u128;
-pub mod u256;
 pub mod alias;
 pub mod hash;
 pub mod asset_id;
