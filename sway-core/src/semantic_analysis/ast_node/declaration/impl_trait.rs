@@ -1094,9 +1094,9 @@ fn type_check_impl_method(
                 impl_method_signature_param.type_argument.type_id;
             impl_method_signature_param_type_id.subst(&ctx.type_subst(), engines);
 
-            if !type_engine.get(impl_method_param_type_id).eq(
-                &type_engine.get(impl_method_signature_param_type_id),
-                &PartialEqWithEnginesContext::new(engines),
+            if !UnifyCheck::non_dynamic_equality(engines).check(
+                impl_method_param_type_id,
+                impl_method_signature_param_type_id,
             ) {
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
@@ -1168,9 +1168,9 @@ fn type_check_impl_method(
             impl_method_signature.return_type.type_id;
         impl_method_signature_return_type_type_id.subst(&ctx.type_subst(), engines);
 
-        if !type_engine.get(impl_method_return_type_id).eq(
-            &type_engine.get(impl_method_signature_return_type_type_id),
-            &PartialEqWithEnginesContext::new(engines),
+        if !UnifyCheck::non_dynamic_equality(engines).check(
+            impl_method_return_type_id,
+            impl_method_signature_return_type_type_id,
         ) {
             return Err(
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
@@ -1278,10 +1278,9 @@ fn type_check_const_decl(
     const_decl_signature_type_id.subst(&ctx.type_subst(), engines);
 
     // unify the types from the constant with the constant signature
-    if !type_engine.get(const_decl_type_id).eq(
-        &type_engine.get(const_decl_signature_type_id),
-        &PartialEqWithEnginesContext::new(engines),
-    ) {
+    if !UnifyCheck::non_dynamic_equality(engines)
+        .check(const_decl_type_id, const_decl_signature_type_id)
+    {
         return Err(
             handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                 interface_name: interface_name(),
