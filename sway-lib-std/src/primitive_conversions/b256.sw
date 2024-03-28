@@ -1,7 +1,7 @@
 library;
 
 use ::bytes::Bytes;
-use ::convert::TryFrom;
+use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 
 impl TryFrom<Bytes> for b256 {
@@ -17,8 +17,28 @@ impl TryFrom<Bytes> for b256 {
     }
 }
 
+impl From<u256> for b256 {
+    /// Casts a `u256` to raw `b256` data.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The underlying raw `b256` data of the `u256`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// fn foo() {
+    ///     let b256_value = b256::from(0x0000000000000000000000000000000000000000000000000000000000000000_u256);
+    /// }
+    /// ```
+    fn from(num: u256) -> Self {
+        num.as_b256()
+    }
+}
+
 #[test]
-fn test_b256_try_from() {
+fn test_b256_try_from_bytes() {
     use ::assert::assert;
 
     let mut initial_bytes = Bytes::with_capacity(32);
@@ -46,4 +66,13 @@ fn test_b256_try_from() {
     // bytes is still available to use:
     assert(second_bytes.len() == 33);
     assert(second_bytes.capacity() == 33);
+}
+
+#[test]
+fn test_b256_from_u256() {
+    use ::assert::assert;
+
+    let val = 0x0000000000000000000000000000000000000000000000000000000000000000_u256;
+    let res = b256::from(val);
+    assert(res == 0x0000000000000000000000000000000000000000000000000000000000000000);
 }
