@@ -150,6 +150,7 @@ impl TypeParameter {
             TypeInfo::UnknownGeneric {
                 name: name.clone(),
                 trait_constraints: VecSet(vec![]),
+                parent: None,
             },
             span.source_id(),
         );
@@ -294,13 +295,24 @@ impl TypeParameter {
             trait_constraints,
             trait_constraints_span,
             is_from_parent,
-            ..
+            type_id,
         } = type_parameter;
 
         let trait_constraints_with_supertraits: Vec<TraitConstraint> = trait_constraints
             .iter()
             .flat_map(|tc| TypeParameter::expand_trait_constraints(handler, &ctx, tc))
             .collect();
+
+        let parent = if let TypeInfo::UnknownGeneric {
+            name: _,
+            trait_constraints: _,
+            parent,
+        } = &*type_engine.get(type_id)
+        {
+            parent.clone()
+        } else {
+            None
+        };
 
         // Create type id and type parameter before type checking trait constraints.
         // This order is required because a trait constraint may depend on its own type parameter.
@@ -309,6 +321,7 @@ impl TypeParameter {
             TypeInfo::UnknownGeneric {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+                parent,
             },
             name_ident.span().source_id(),
         );
@@ -350,6 +363,17 @@ impl TypeParameter {
 
         // TODO: add check here to see if the type parameter has a valid name and does not have type parameters
 
+        let parent = if let TypeInfo::UnknownGeneric {
+            name: _,
+            trait_constraints: _,
+            parent,
+        } = &*type_engine.get(type_parameter.type_id)
+        {
+            parent.clone()
+        } else {
+            None
+        };
+
         // Trait constraints mutate so we replace the previous type id associated TypeInfo.
         type_engine.replace(
             type_parameter.type_id,
@@ -357,6 +381,7 @@ impl TypeParameter {
                 type_info: TypeInfo::UnknownGeneric {
                     name: type_parameter.name_ident.clone(),
                     trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
+                    parent,
                 }
                 .into(),
                 source_id: type_parameter.name_ident.span().source_id().cloned(),
@@ -365,41 +390,6 @@ impl TypeParameter {
 
         // Insert the trait constraints into the namespace.
         type_parameter.insert_into_namespace_constraints(handler, ctx.by_ref())?;
-
-        // When type parameter is from parent then it was already inserted.
-        // Instead of inserting a type with same name we unify them.
-        if type_parameter.is_from_parent {
-            if let Some(sy) = ctx
-                .namespace()
-                .module()
-                .current_items()
-                .symbols
-                .get(&type_parameter.name_ident)
-            {
-                match sy {
-                    ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
-                        type_id: sy_type_id,
-                        ..
-                    }) => {
-                        ctx.engines().te().unify_with_generic(
-                            handler,
-                            ctx.engines(),
-                            type_parameter.type_id,
-                            *sy_type_id,
-                            &type_parameter.trait_constraints_span,
-                            "",
-                            None,
-                        );
-                    }
-                    _ => {
-                        handler.emit_err(CompileError::Internal(
-                            "Unexpected TyDeclaration for TypeParameter.",
-                            type_parameter.name_ident.span(),
-                        ));
-                    }
-                }
-            }
-        }
 
         Ok(())
     }
@@ -446,6 +436,55 @@ impl TypeParameter {
             ..
         } = self;
 
+        if *is_from_parent {
+            ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
+
+            let sy = ctx
+                .namespace()
+                .module()
+                .current_items()
+                .symbols
+                .get(&name_ident)
+                .unwrap();
+
+            match sy {
+                ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+                    type_id: parent_type_id,
+                    ..
+                }) => {
+                    if let TypeInfo::UnknownGeneric {
+                        name,
+                        trait_constraints,
+                        parent,
+                    } = &*ctx.engines().te().get(*type_id)
+                    {
+                        if parent.is_some() {
+                            return Ok(());
+                        }
+
+                        ctx.engines.te().replace(
+                            *type_id,
+                            TypeSourceInfo {
+                                type_info: TypeInfo::UnknownGeneric {
+                                    name: name.clone(),
+                                    trait_constraints: trait_constraints.clone(),
+                                    parent: Some(*parent_type_id),
+                                }
+                                .into(),
+                                source_id: name.span().source_id().cloned(),
+                            },
+                        );
+                    }
+                }
+                _ => {
+                    handler.emit_err(CompileError::Internal(
+                        "Unexpected TyDeclaration for TypeParameter.",
+                        self.name_ident.span(),
+                    ));
+                }
+            }
+        }
+
         // Insert the type parameter into the namespace as a dummy type
         // declaration.
         let type_parameter_decl =
@@ -453,9 +492,6 @@ impl TypeParameter {
                 name: name_ident.clone(),
                 type_id: *type_id,
             });
-        if *is_from_parent {
-            ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
-        }
         ctx.insert_symbol(handler, name_ident.clone(), type_parameter_decl)
             .ok();
 

@@ -801,6 +801,7 @@ fn type_check_trait_implementation(
                             // Using Span::dummy just to match the type substitution, type is not used anywhere else.
                             name: Ident::new_with_override("Self".into(), Span::dummy()),
                             trait_constraints: VecSet(vec![]),
+                            parent: None,
                         },
                         None,
                     ),

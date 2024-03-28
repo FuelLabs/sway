@@ -359,6 +359,7 @@ impl TypeId {
             TypeInfo::UnknownGeneric {
                 name: _,
                 trait_constraints,
+                parent: _,
             } => {
                 found.insert(*self, trait_constraints.to_vec());
                 for trait_constraint in trait_constraints.iter() {

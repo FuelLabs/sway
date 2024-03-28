@@ -100,6 +100,8 @@ pub enum TypeInfo {
         name: Ident,
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
+        // Methods can have type parameters with unkown generic that extend the trait constraints of a parent unkown generic.
+        parent: Option<TypeId>,
     },
     /// Represents a type that will be inferred by the Sway compiler. This type
     /// is created when the user writes code that creates a new ADT that has
@@ -216,6 +218,7 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::UnknownGeneric {
                 name,
                 trait_constraints: _,
+                parent: _,
             } => {
                 name.hash(state);
                 // Do not hash trait_constraints as those can point back to this type_info
@@ -292,10 +295,12 @@ impl PartialEqWithEngines for TypeInfo {
                 Self::UnknownGeneric {
                     name: l,
                     trait_constraints: ltc,
+                    parent: _,
                 },
                 Self::UnknownGeneric {
                     name: r,
                     trait_constraints: rtc,
+                    parent: _,
                 },
             ) => l == r && ltc.eq(rtc, ctx),
             (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, ctx),
@@ -437,10 +442,12 @@ impl OrdWithEngines for TypeInfo {
                 Self::UnknownGeneric {
                     name: l,
                     trait_constraints: ltc,
+                    parent: _,
                 },
                 Self::UnknownGeneric {
                     name: r,
                     trait_constraints: rtc,
+                    parent: _,
                 },
             ) => l.cmp(r).then_with(|| ltc.cmp(rtc, ctx)),
             (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, ctx),

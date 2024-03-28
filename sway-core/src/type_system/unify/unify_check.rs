@@ -333,6 +333,37 @@ impl<'a> UnifyCheck<'a> {
                 return (*l_to_mut || !*r_to_mut) && self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
+            (UnknownGeneric { parent: lp, .. }, r)
+                if lp.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(lp.unwrap())
+                        .eq(r, &PartialEqWithEnginesContext::new(self.engines)) =>
+            {
+                return true;
+            }
+            (l, UnknownGeneric { parent: rp, .. })
+                if rp.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(rp.unwrap())
+                        .eq(l, &PartialEqWithEnginesContext::new(self.engines)) =>
+            {
+                return true;
+            }
+            (UnknownGeneric { parent: lp, .. }, UnknownGeneric { parent: rp, .. })
+                if lp.is_some()
+                    && rp.is_some()
+                    && self.engines.te().get(lp.unwrap()).eq(
+                        &*self.engines.te().get(rp.unwrap()),
+                        &PartialEqWithEnginesContext::new(self.engines),
+                    ) =>
+            {
+                return true;
+            }
+
             _ => {}
         }
 
@@ -348,10 +379,12 @@ impl<'a> UnifyCheck<'a> {
                         UnknownGeneric {
                             name: ln,
                             trait_constraints: ltc,
+                            parent: _,
                         },
                         UnknownGeneric {
                             name: rn,
                             trait_constraints: rtc,
+                            parent: _,
                         },
                     ) => ln == rn && rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
                     // any type can be coerced into a generic,
@@ -413,10 +446,12 @@ impl<'a> UnifyCheck<'a> {
                         UnknownGeneric {
                             name: _,
                             trait_constraints: ltc,
+                            parent: _,
                         },
                         UnknownGeneric {
                             name: _,
                             trait_constraints: rtc,
+                            parent: _,
                         },
                     ) => rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
 
@@ -459,10 +494,12 @@ impl<'a> UnifyCheck<'a> {
                     TypeInfo::UnknownGeneric {
                         name: rn,
                         trait_constraints: rtc,
+                        parent: rp,
                     },
                     TypeInfo::UnknownGeneric {
                         name: en,
                         trait_constraints: etc,
+                        parent: _,
                     },
                 ) => {
                     rn.as_str() == en.as_str()
