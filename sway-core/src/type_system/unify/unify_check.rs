@@ -494,7 +494,7 @@ impl<'a> UnifyCheck<'a> {
                     TypeInfo::UnknownGeneric {
                         name: rn,
                         trait_constraints: rtc,
-                        parent: rp,
+                        parent: _,
                     },
                     TypeInfo::UnknownGeneric {
                         name: en,
