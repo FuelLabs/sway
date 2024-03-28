@@ -2,12 +2,15 @@ use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashMap},
     fmt,
+    hash::{DefaultHasher, Hash, Hasher},
 };
 
+use hashbrown::HashSet;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
+use sway_ir::DebugWithContext;
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
@@ -125,6 +128,7 @@ type TraitImpls = Vec<TraitEntry>;
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
+    satisfied: hashbrown::HashSet<u64>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -390,7 +394,10 @@ impl TraitMap {
         };
         let entry = TraitEntry { key, value };
         let trait_impls: TraitImpls = vec![entry];
-        let trait_map = TraitMap { trait_impls };
+        let trait_map = TraitMap {
+            trait_impls,
+            satisfied: HashSet::default(),
+        };
 
         self.extend(trait_map, engines);
     }
@@ -1050,7 +1057,25 @@ impl TraitMap {
         engines: &Engines,
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<(), ErrorEmitted> {
+        if constraints.is_empty() {
+            return Ok(());
+        }
+
+        let mut hasher = DefaultHasher::default();
+        type_id.hash(&mut hasher);
+        for c in constraints {
+            c.hash(&mut hasher, engines);
+        }
+        let hash = hasher.finish();
+
+        if self.satisfied.contains(&hash) {
+            return Ok(());
+        }
+
         let type_engine = engines.te();
+
+        // dbg!(engines.help_out(type_id));
+        // dbg!(constraints);
 
         // If the type is generic/placeholder, its definition needs to contains all
         // constraints
@@ -1064,6 +1089,7 @@ impl TraitMap {
                         .any(|constraint| constraint.eq(required, engines))
                 });
                 if all {
+                    self.satisfied.insert(hash);
                     return Ok(());
                 }
             }
@@ -1074,6 +1100,7 @@ impl TraitMap {
                         .any(|constraint| constraint.eq(required, engines))
                 });
                 if all {
+                    self.satisfied.insert(hash);
                     return Ok(());
                 }
             }
@@ -1106,6 +1133,8 @@ impl TraitMap {
                         },
                         suffix.name.span().source_id(),
                     );
+                    // dbg!(engines.help_out(type_id), engines.help_out(key.type_id));
+                    // dbg!(map_trait_type_id);
                     Some((suffix.name.clone(), map_trait_type_id))
                 } else {
                     None
@@ -1183,6 +1212,8 @@ impl TraitMap {
                     });
                 }
             }
+
+            self.satisfied.insert(hash);
             Ok(())
         })
     }
