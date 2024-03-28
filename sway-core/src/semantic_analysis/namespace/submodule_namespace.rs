@@ -1,4 +1,4 @@
-use super::{namespace::Namespace, PathBuf};
+use super::{namespace::Namespace, ModulePathBuf};
 
 /// A namespace session type representing the type-checking of a submodule.
 ///
@@ -9,7 +9,7 @@ use super::{namespace::Namespace, PathBuf};
 /// continue.
 pub struct SubmoduleNamespace<'a> {
     pub(crate) namespace: &'a mut Namespace,
-    pub(crate) parent_mod_path: PathBuf,
+    pub(crate) parent_mod_path: ModulePathBuf,
 }
 
 impl<'a> std::ops::Deref for SubmoduleNamespace<'a> {

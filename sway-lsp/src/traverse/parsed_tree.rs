@@ -25,7 +25,7 @@ use sway_core::{
             FunctionParameter, IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType,
             IncludeStatement, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
-            QualifiedPathRootTypes, ReassignmentExpression, ReassignmentTarget, RefExpression,
+            QualifiedPathType, ReassignmentExpression, ReassignmentTarget, RefExpression,
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
             StructDeclaration, StructExpression, StructExpressionField, StructField,
             StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
@@ -1101,7 +1101,7 @@ fn collect_call_path_tree(
 
 fn collect_qualified_path_root(
     ctx: &ParseContext,
-    qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
+    qualified_path_root: Option<Box<QualifiedPathType>>,
 ) {
     if let Some(qualified_path_root) = qualified_path_root {
         qualified_path_root.ty.parse(ctx);
