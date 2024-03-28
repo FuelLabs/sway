@@ -1159,12 +1159,12 @@ impl ty::TyExpression {
         }: TypeBinding<CallPath<AmbiguousSuffix>>,
         span: Span,
         args: Vec<Expression>,
-        qualified_path_root: Option<QualifiedPathRootTypes>,
+        qualified_path_root: Option<QualifiedPathType>,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = ctx.engines;
         let decl_engine = engines.de();
 
-        if let Some(QualifiedPathRootTypes { ty, as_trait, .. }) = qualified_path_root.clone() {
+        if let Some(QualifiedPathType { ty, as_trait, .. }) = qualified_path_root.clone() {
             let method_name_binding = if !prefixes.is_empty() || before.is_some() {
                 let mut prefixes_and_before = prefixes.clone();
                 if let Some(before) = before {
@@ -1282,7 +1282,10 @@ impl ty::TyExpression {
         path.push(before.inner.clone());
         let not_module = {
             let h = Handler::default();
-            ctx.namespace().module().check_submodule(&h, &path).is_err()
+            ctx.namespace()
+                .module()
+                .lookup_submodule(&h, &path)
+                .is_err()
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1402,7 +1405,7 @@ impl ty::TyExpression {
                 let call_path_binding = unknown_call_path_binding.clone();
                 ctx.namespace()
                     .module()
-                    .check_submodule(
+                    .lookup_submodule(
                         &module_probe_handler,
                         &[
                             call_path_binding.inner.call_path.prefixes,
