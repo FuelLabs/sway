@@ -143,9 +143,7 @@ impl<T> MyPoint<T> {
 
 impl<T> MyPoint<T> where T: MyMath {
     fn do_math4(self, b: MyPoint<T>) -> MyPoint<T> {
-        // As reported in https://github.com/FuelLabs/sway/issues/5693
-        // Remove the `::<T>` after the issue is fixed.
-        MyPoint::<T> {
+        MyPoint {
             x: self.x.my_double().my_mul(b.x.my_double()),
             y: self.y.my_pow_2().my_add(b.y.my_pow_2()),
         }
