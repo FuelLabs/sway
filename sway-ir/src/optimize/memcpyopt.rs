@@ -77,6 +77,14 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 }
             }
             Instruction {
+                op: InstOp::PtrToInt(value, _),
+                ..
+            } => {
+                if let Some(local) = get_symbol(context, *value) {
+                    escaping_uses.insert(local);
+                }
+            }
+            Instruction {
                 op: InstOp::AsmBlock(_, args),
                 ..
             } => {
