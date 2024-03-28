@@ -242,7 +242,7 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "run_external_proxy"
+name = "result_option_expect"
 source = "member"
 dependencies = ["std"]
 
