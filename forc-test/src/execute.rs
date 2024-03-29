@@ -61,7 +61,7 @@ impl TestExecutor {
         let asset_id = rng.gen();
         let tx_pointer = rng.gen();
         let block_height = (u32::MAX >> 1).into();
-        let gas_price = 1;
+        let gas_price = 0;
 
         let mut tx_builder = tx::TransactionBuilder::script(bytecode, script_input_data);
 

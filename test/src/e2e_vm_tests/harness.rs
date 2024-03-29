@@ -185,7 +185,7 @@ pub(crate) fn runs_in_vm(
                 }
             }
             // Smallest non-zero value used for gas-price
-            let gas_price = 1;
+            let gas_price = 0;
             let consensus_params = tb.get_params().clone();
 
             let params = ConsensusParameters::default();

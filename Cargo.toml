@@ -49,7 +49,7 @@ fuels-core = "0.56.0"
 fuels-accounts = "0.56.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "kayagokalp/sdk-0.56" }
+forc-wallet = "0.5.0" 
 
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = "0.4.0"

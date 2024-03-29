@@ -195,7 +195,7 @@ impl PackageWithDeploymentToTest {
     /// For contract deploys all contract dependencies and the root contract itself.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
-        let gas_price = 1;
+        let gas_price = 0;
         let params = tx::ConsensusParameters::default();
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
