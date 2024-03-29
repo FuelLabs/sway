@@ -110,7 +110,6 @@ pub async fn run_pkg(
 
     let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
     tb
-        //.gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids);
 
