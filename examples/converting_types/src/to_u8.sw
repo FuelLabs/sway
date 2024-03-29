@@ -12,13 +12,13 @@ pub fn convert_uint_to_u8() {
     let u64_1: u64 = 2;
     let u256_1: u256 = 0x0000000000000000000000000000000000000000000000000000000000000002u256;
 
-    let u8_from_u16_1: Option<u8> = u16_1.try_as_u8();
+    let u8_from_u16_1: Option<u8> = u16_1.try_into();
     let u8_from_u16_2: Option<u8> = <u8 as TryFrom<u16>>::try_from(u16_1);
 
-    let u8_from_u32_1: Option<u8> = u32_1.try_as_u8();
+    let u8_from_u32_1: Option<u8> = u32_1.try_into();
     let u8_from_u32_2: Option<u8> = <u8 as TryFrom<u32>>::try_from(u32_1);
 
-    let u8_from_u64_1: Option<u8> = u64_1.try_as_u8();
+    let u8_from_u64_1: Option<u8> = u64_1.try_into();
     let u8_from_u64_2: Option<u8> = <u8 as TryFrom<u64>>::try_from(u64_1);
 
     let u8_from_u256: Option<u8> = <u8 as TryFrom<u256>>::try_from(u256_1);

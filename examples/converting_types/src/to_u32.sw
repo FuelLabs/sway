@@ -16,7 +16,7 @@ pub fn convert_uint_to_u32() {
 
     let u32_from_u16: u32 = u16_1.as_u32();
 
-    let u32_from_u64_1: Option<u32> = u64_1.try_as_u32();
+    let u32_from_u64_1: Option<u32> = u64_1.try_into();
     let u32_from_u64_2: Option<u32> = <u32 as TryFrom<u64>>::try_from(u64_1);
 
     let u32_from_u256: Option<u32> = <u32 as TryFrom<u256>>::try_from(u256_1);

@@ -14,10 +14,10 @@ pub fn convert_uint_to_u16() {
 
     let u16_from_u8: u16 = u8_1.as_u16();
 
-    let u16_from_u32_1: Option<u16> = u32_1.try_as_u16();
+    let u16_from_u32_1: Option<u16> = u32_1.try_into();
     let u16_from_u32_2: Option<u16> = <u16 as TryFrom<u32>>::try_from(u32_1);
 
-    let u16_from_u64_1: Option<u16> = u64_1.try_as_u16();
+    let u16_from_u64_1: Option<u16> = u64_1.try_into();
     let u16_from_u64_2: Option<u16> = <u16 as TryFrom<u64>>::try_from(u64_1);
 
     let u16_from_u256: Option<u16> = <u16 as TryFrom<u256>>::try_from(u256_1);

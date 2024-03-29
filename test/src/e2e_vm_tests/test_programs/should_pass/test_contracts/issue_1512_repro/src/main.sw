@@ -96,10 +96,10 @@ impl U128 {
 // Multiply two u64 values, producing a U128
 pub fn mul64(a: u64, b: u64) -> U128 {
     // Split a and b into 32-bit lo and hi components
-    let a_lo = (a & 0x00000000ffffffff).try_as_u32().unwrap();
-    let a_hi = (a >> 32).try_as_u32().unwrap();
-    let b_lo = (b & 0x00000000ffffffff).try_as_u32().unwrap();
-    let b_hi = (b >> 32).try_as_u32().unwrap();
+    let a_lo: u32 = (a & 0x00000000ffffffff).try_into().unwrap();
+    let a_hi: u32 = (a >> 32).try_into().unwrap();
+    let b_lo: u32 = (b & 0x00000000ffffffff).try_into().unwrap();
+    let b_hi: u32 = (b >> 32).try_into().unwrap();
 
     // Calculate low, high, and mid multiplications
     let ab_hi = (a_hi * b_hi).as_u64();
@@ -110,9 +110,9 @@ pub fn mul64(a: u64, b: u64) -> U128 {
     // Calculate the carry bit
     let carry_bit = (
         (
-            ab_mid.try_as_u32().unwrap() +
-            ba_mid.try_as_u32().unwrap() +
-            (ab_lo >> 32).try_as_u32().unwrap()
+            ab_mid.try_into().unwrap() +
+            ba_mid.try_into().unwrap() +
+            (ab_lo >> 32).try_into().unwrap()
         ) >> 32
     ).as_u64();
 

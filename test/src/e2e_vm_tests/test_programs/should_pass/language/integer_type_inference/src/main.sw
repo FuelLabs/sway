@@ -79,9 +79,9 @@ fn main() {
 
     /* Make sure that the resulting types of variables are correct */
     let x1: u8 = 4u8;
-    let x2: u8 = 4u16.try_as_u8().unwrap();
-    let x3: u8 = 4u32.try_as_u8().unwrap();
-    let x4: u8 = 4u64.try_as_u8().unwrap();
+    let x2: u8 = 4u16.try_into().unwrap();
+    let x3: u8 = 4u32.try_into().unwrap();
+    let x4: u8 = 4u64.try_into().unwrap();
     let x5: u8 = 4;
     let x6: Option<u8> = Option::Some(1);
     let x7: Option<u8> = OptionAlias::Some(1);
@@ -89,15 +89,15 @@ fn main() {
 
     let y1: u16 = 4u8.as_u16();
     let y2: u16 = 4u16;
-    let y3: u16 = 4u32.try_as_u16().unwrap();
-    let y4: u16 = 4u64.try_as_u16().unwrap();
+    let y3: u16 = 4u32.try_into().unwrap();
+    let y4: u16 = 4u64.try_into().unwrap();
     let y5: u16 = 4;
     let y6: Option<u16> = Option::Some(1);
 
     let z1: u32 = 4u8.as_u32();
     let z2: u32 = 4u16.as_u32();
     let z3: u32 = 4u32;
-    let z4: u32 = 4u64.try_as_u32().unwrap();
+    let z4: u32 = 4u64.try_into().unwrap();
     let z5: u32 = 4;
     let z6: Option<u32> = Option::Some(1);
 
