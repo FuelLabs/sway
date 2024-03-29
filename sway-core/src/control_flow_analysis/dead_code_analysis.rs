@@ -1347,7 +1347,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     options,
                 )?;
 
-                if type_engine.get(arg.return_type).contains_never(engines) {
+                if type_engine
+                    .get(arg.return_type)
+                    .is_uninhabited(engines.te(), engines.de())
+                {
                     args_diverge = true;
                 }
             }
@@ -1724,7 +1727,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             let nodes = contents
                 .iter()
                 .map(|elem| {
-                    if !element_diverge && type_engine.get(elem.return_type).contains_never(engines)
+                    if !element_diverge
+                        && type_engine
+                            .get(elem.return_type)
+                            .is_uninhabited(engines.te(), engines.de())
                     {
                         element_diverge = true
                     }
@@ -2124,7 +2130,7 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
         if engines
             .te()
             .get(instantiator.return_type)
-            .contains_never(engines)
+            .is_uninhabited(engines.te(), engines.de())
         {
             is_variant_unreachable = true;
         }

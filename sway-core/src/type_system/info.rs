@@ -1013,6 +1013,7 @@ impl TypeInfo {
         let id_uninhabited = |id| type_engine.get(id).is_uninhabited(type_engine, decl_engine);
 
         match self {
+            TypeInfo::Never => true,
             TypeInfo::Enum(decl_ref) => decl_engine
                 .get_enum(decl_ref)
                 .variants
@@ -1154,43 +1155,6 @@ impl TypeInfo {
 
     pub fn is_tuple(&self) -> bool {
         matches!(self, TypeInfo::Tuple(_))
-    }
-
-    pub fn contains_never(&self, engines: &Engines) -> bool {
-        match self {
-            TypeInfo::Never => true,
-            TypeInfo::Tuple(type_arguments) => type_arguments
-                .iter()
-                .any(|t| engines.te().get(t.type_id).contains_never(engines)),
-            TypeInfo::Array(type_argument, _) => engines
-                .te()
-                .get(type_argument.type_id)
-                .contains_never(engines),
-            TypeInfo::Unknown
-            | TypeInfo::UnknownGeneric { .. }
-            | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_)
-            | TypeInfo::StringSlice
-            | TypeInfo::StringArray(_)
-            | TypeInfo::UnsignedInteger(_)
-            | TypeInfo::Enum(_)
-            | TypeInfo::Struct(_)
-            | TypeInfo::Boolean
-            | TypeInfo::ContractCaller { .. }
-            | TypeInfo::Custom { .. }
-            | TypeInfo::B256
-            | TypeInfo::Numeric
-            | TypeInfo::Contract
-            | TypeInfo::ErrorRecovery(_)
-            | TypeInfo::Storage { .. }
-            | TypeInfo::RawUntypedPtr
-            | TypeInfo::RawUntypedSlice
-            | TypeInfo::Ptr(_)
-            | TypeInfo::Slice(_)
-            | TypeInfo::Alias { .. }
-            | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref { .. } => false,
-        }
     }
 
     pub(crate) fn apply_type_arguments(
