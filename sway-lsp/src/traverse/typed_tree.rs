@@ -10,7 +10,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIter
 use sway_core::{
     decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
-        parsed::{ImportType, QualifiedPathRootTypes, Supertrait},
+        parsed::{ImportType, QualifiedPathType, Supertrait},
         ty::{self, GetDeclIdent, TyModule, TyProgram, TySubmodule},
         CallPathTree,
     },
@@ -1384,7 +1384,7 @@ fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaratio
 
 fn collect_qualified_path_root(
     ctx: &ParseContext,
-    qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
+    qualified_path_root: Option<Box<QualifiedPathType>>,
 ) {
     if let Some(qualified_path_root) = qualified_path_root {
         collect_type_argument(ctx, &qualified_path_root.ty);
