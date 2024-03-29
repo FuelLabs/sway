@@ -184,7 +184,6 @@ pub(crate) fn runs_in_vm(
                     tb.add_witness(witness.into());
                 }
             }
-            // Smallest non-zero value used for gas-price
             let gas_price = 0;
             let consensus_params = tb.get_params().clone();
 
