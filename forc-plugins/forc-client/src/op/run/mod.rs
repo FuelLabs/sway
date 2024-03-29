@@ -109,8 +109,7 @@ pub async fn run_pkg(
     };
 
     let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
-    tb
-        .maturity(command.maturity.maturity.into())
+    tb.maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids);
 
     let provider = Provider::connect(node_url.clone()).await?;

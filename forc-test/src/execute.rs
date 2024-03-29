@@ -37,13 +37,13 @@ pub enum DebugResult {
 }
 
 impl TestExecutor {
-    pub fn new(
+    pub fn build(
         bytecode: &[u8],
         test_offset: u32,
         test_setup: TestSetup,
         test_entry: &PkgTestEntry,
         name: String,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let storage = test_setup.storage().clone();
 
         // Patch the bytecode to jump to the relevant test.
@@ -103,16 +103,16 @@ impl TestExecutor {
                 consensus_params.gas_costs(),
                 consensus_params.fee_params(),
             )
-            .unwrap();
+            .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
         let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
 
-        TestExecutor {
+        Ok(TestExecutor {
             interpreter: Interpreter::with_storage(storage, interpreter_params),
             tx,
             test_entry: test_entry.clone(),
             name,
-        }
+        })
     }
 
     /// Execute the test with breakpoints enabled.

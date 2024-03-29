@@ -386,13 +386,13 @@ impl<'a> PackageTests {
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
                     let test_setup = self.setup()?;
-                    TestExecutor::new(
+                    TestExecutor::build(
                         &pkg_with_tests.bytecode.bytes,
                         offset,
                         test_setup,
                         test_entry,
                         name,
-                    )
+                    )?
                     .execute()
                 })
                 .collect::<anyhow::Result<_>>()
