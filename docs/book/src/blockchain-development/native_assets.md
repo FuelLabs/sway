@@ -4,9 +4,9 @@
 <!-- native_assets:example:start -->
 The FuelVM has built-in support for working with multiple assets.
 
-## Key Differences Between EVM and FuelFM Assets
+## Key Differences Between EVM and FuelVM Assets
 
-#### ERC-20 vs Native Asset
+### ERC-20 vs Native Asset
 
 On the EVM, Ether is the native asset. As such, sending ETH to an address or contract is an operation built into the EVM, meaning it doesn't rely on the existence of a smart contract to update balances to track ownership as with ERC-20 tokens.
 
@@ -14,7 +14,7 @@ On the FuelVM, _all_ assets are native and the process for sending _any_ native 
 
 While you would still need a smart contract to handle the minting and burning of assets, the sending and receiving of these assets can be done independently of the asset contract.
 
-#### No Token Approvals
+### No Token Approvals
 
 An advantage Native Assets bring are there is no need for token approvals just as with Ether on the EVM. With millions of dollars hacked every year due to misused token approvals, the FuelVM eliminates this attack vector.
 
@@ -22,7 +22,7 @@ An advantage Native Assets bring are there is no need for token approvals just a
 
 The `AssetId` type represents any Native Asset on Fuel. An `AssetId` is used for interacting with an asset on the network.
 
-The asset id of any Native Asset on Fuel is calculated by taking the sha256 hash digest of the originating `ContractId` that minted the asser and a `SubId` i.e. `sha256((contract_id, sub_id))`.
+The asset id of any Native Asset on Fuel is calculated by taking the sha256 hash digest of the originating `ContractId` that minted the asset and a `SubId` i.e. `sha256((contract_id, sub_id))`.
 
 ### Creating a New `AssetId`
 
@@ -30,7 +30,7 @@ There are 3 ways to instantiate a new `AssetId`:
 
 #### Default
 
-When a contract will only ever mint a single asset, it is recommended to use the `DEFAULT_ASSET_ID` sub id. This is refered to as the default asset of a contract. 
+When a contract will only ever mint a single asset, it is recommended to use the `DEFAULT_ASSET_ID` sub id. This is referred to as the default asset of a contract.
 
 To get the default asset from an internal contract call, call the `default()` function:
 
@@ -60,7 +60,7 @@ In the case where the `b256` value of an asset is already known, you may call th
 
 The SubId is used to differentiate between different assets that are created by the same contract. The `SubId` is a `b256` value.
 
-When creating an single new asset on Fuel, we recommend using the `DEFAULT_ASSET_ID`. 
+When creating an single new asset on Fuel, we recommend using the `DEFAULT_ASSET_ID`.
 
 ## The Base Asset
 
@@ -74,7 +74,7 @@ The Base Asset can be returned anytime by calling the `base()` function of the `
 
 ## Basic Native Asset Functionality
 
-#### Minting A Native Asset
+### Minting A Native Asset
 
 To mint a new asset, the `std::asset::mint()` function must be called internally within a contract. A `SubId` and amount of coins must be provided. These newly minted coins will be owned by the contract which minted them. To mint another asset from the same contract, replace the `DEFAULT_SUB_ID` with your desired `SubId`.
 
@@ -88,7 +88,7 @@ You may also mint an asset to a specific entity with the `std::asset::mint_to()`
 {{#include ../../../../examples/native_asset/src/main.sw:mint_to_asset}}
 ```
 
-#### Burning a Native Asset
+### Burning a Native Asset
 
 To burn an asset, the `std::asset::burn()` function must be called internally from the contract which minted them. The `SubId` used to mint the coins and amount must be provided. The burned coins must be owned by the contract.
 
@@ -96,7 +96,7 @@ To burn an asset, the `std::asset::burn()` function must be called internally fr
 {{#include ../../../../examples/native_asset/src/main.sw:burn_asset}}
 ```
 
-#### Transfer a Native Asset
+### Transfer a Native Asset
 
 To internally transfer a Native Asset, the `std::asset::transfer()` function must be called. A target `Identity` or user must be provided as well as the `AssetId` of the asset and an amount.
 
@@ -108,7 +108,7 @@ To internally transfer a Native Asset, the `std::asset::transfer()` function mus
 
 #### Getting The Transaction Asset
 
-To query for the Native Asset sent in a transcation, you may call the `std::call_frames::msg_asset_id()` function.
+To query for the Native Asset sent in a transaction, you may call the `std::call_frames::msg_asset_id()` function.
 
 ```sway
 {{#include ../../../../examples/native_asset/src/main.sw:msg_asset_id}}
@@ -116,7 +116,7 @@ To query for the Native Asset sent in a transcation, you may call the `std::call
 
 #### Getting The Transaction Amount
 
-To query for the amount of coins sent in a transcation, you may call the `std::context::msg_amount()` function.
+To query for the amount of coins sent in a transaction, you may call the `std::context::msg_amount()` function.
 
 ```sway
 {{#include ../../../../examples/native_asset/src/main.sw:msg_amount}}
@@ -138,11 +138,11 @@ To check the balance of an external contract, call the `std::context::balance_of
 {{#include ../../../../examples/native_asset/src/main.sw:balance_of}}
 ```
 
-> **NOTE** Due to the FuelVM's UTXO design, balances of `Address`'s cannot be return in the Sway Langauge. This must be done off-chain using the SDK.
+> **NOTE** Due to the FuelVM's UTXO design, balances of `Address`'s cannot be return in the Sway Language. This must be done off-chain using the SDK.
 
-#### Receiving Native Assets
+#### Receiving Native Assets In A Contract
 
-By default, a contract may not receive a Native Asset in a contract call. To allow transfering of assets to the contract, add the `#[payable]` attribute to the 
+By default, a contract may not receive a Native Asset in a contract call. To allow transferring of assets to the contract, add the `#[payable]` attribute to the function.
 
 ```sway
 {{#include ../../../../examples/native_asset/src/main.sw:payable}}

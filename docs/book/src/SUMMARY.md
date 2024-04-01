@@ -11,7 +11,7 @@
   - [Counter](./examples/counter.md)
   - [`FizzBuzz`](./examples/fizzbuzz.md)
   - [Wallet Smart Contract](./examples/wallet_smart_contract.md)
-  - [Liqudity Pool](./examples/liqudity_pool.md)
+  - [Liquidity Pool](./examples/liquidity_pool.md)
 - [Program Types](./sway-program-types/index.md)
   - [Contracts](./sway-program-types/smart_contracts.md)
   - [Libraries](./sway-program-types/libraries.md)
