@@ -14,7 +14,7 @@ use crate::{
 use super::{
     lexical_scope::{Items, LexicalScope, SymbolMap},
     root::Root,
-    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf,
+    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf, ResolvedTraitImplItem,
 };
 
 use sway_ast::ItemConst;
@@ -356,7 +356,7 @@ impl Module {
         mut as_trait: Option<CallPath>,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         // This block tries to resolve associated types
         let mut decl_opt = None;
         let mut type_id_opt = Some(root_type_id);
@@ -467,7 +467,7 @@ impl Module {
         if let Some(decl) = decl_opt {
             let decl =
                 self.resolve_associated_item(handler, engines, symbol, decl, None, self_type)?;
-            return Ok((ResolvedDeclaration::Typed(decl), current_mod_path));
+            return Ok((decl, current_mod_path));
         }
 
         self.lookup_submodule(handler, mod_path).and_then(|module| {
@@ -482,10 +482,10 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-        decl: ty::TyDecl,
+        decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
 
         self.resolve_associated_type_from_type_id(
@@ -505,10 +505,10 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-        decl: ty::TyDecl,
+        decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
 
         self.resolve_associated_item_from_type_id(
@@ -528,30 +528,33 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-        decl: ty::TyDecl,
+        decl: ResolvedDeclaration,
     ) -> Result<TypeInfo, ErrorEmitted> {
-        Ok(match decl.clone() {
-            ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
-                struct_decl.name.clone(),
-                struct_decl.decl_id,
-                struct_decl.name.span(),
-            )),
-            ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
-                enum_decl.name.clone(),
-                enum_decl.decl_id,
-                enum_decl.name.span(),
-            )),
-            ty::TyDecl::TraitTypeDecl(type_decl) => {
-                let type_decl = engines.de().get_type(&type_decl.decl_id);
-                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
-            }
-            _ => {
-                return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: symbol.clone(),
-                    span: symbol.span(),
-                }))
-            }
-        })
+        match decl {
+            ResolvedDeclaration::Parsed(_decl) => todo!(),
+            ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
+                ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
+                    struct_decl.name.clone(),
+                    struct_decl.decl_id,
+                    struct_decl.name.span(),
+                )),
+                ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
+                    enum_decl.name.clone(),
+                    enum_decl.decl_id,
+                    enum_decl.name.span(),
+                )),
+                ty::TyDecl::TraitTypeDecl(type_decl) => {
+                    let type_decl = engines.de().get_type(&type_decl.decl_id);
+                    (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
+                }
+                _ => {
+                    return Err(handler.emit_err(CompileError::SymbolNotFound {
+                        name: symbol.clone(),
+                        span: symbol.span(),
+                    }))
+                }
+            }),
+        }
     }
 
     fn resolve_associated_type_from_type_id(
@@ -562,16 +565,10 @@ impl Module {
         type_id: TypeId,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let item_decl = self.resolve_associated_item_from_type_id(
             handler, engines, symbol, type_id, as_trait, self_type,
         )?;
-        if !matches!(item_decl, ty::TyDecl::TraitTypeDecl(_)) {
-            return Err(handler.emit_err(CompileError::Internal(
-                "Expecting associated type",
-                item_decl.span(),
-            )));
-        }
         Ok(item_decl)
     }
 
@@ -583,7 +580,7 @@ impl Module {
         type_id: TypeId,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_id = if engines.te().get(type_id).is_self_type() {
             if let Some(self_type) = self_type {
                 self_type
@@ -601,9 +598,14 @@ impl Module {
             .implemented_traits
             .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
         match item_ref {
-            TyTraitItem::Fn(fn_ref) => Ok(fn_ref.into()),
-            TyTraitItem::Constant(const_ref) => Ok(const_ref.into()),
-            TyTraitItem::Type(type_ref) => Ok(type_ref.into()),
+            ResolvedTraitImplItem::Parsed(_item) => todo!(),
+            ResolvedTraitImplItem::Typed(item) => match item {
+                TyTraitItem::Fn(fn_ref) => Ok(ResolvedDeclaration::Typed(fn_ref.into())),
+                TyTraitItem::Constant(const_ref) => {
+                    Ok(ResolvedDeclaration::Typed(const_ref.into()))
+                }
+                TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
+            },
         }
     }
 

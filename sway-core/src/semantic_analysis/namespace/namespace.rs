@@ -1,5 +1,5 @@
 use crate::{
-    language::{ty, ty::TyTraitItem, CallPath, Visibility},
+    language::{ty, CallPath, Visibility},
     Engines, Ident, TypeId,
 };
 
@@ -7,6 +7,7 @@ use super::{
     module::{Module, ResolvedDeclaration},
     root::Root,
     submodule_namespace::SubmoduleNamespace,
+    trait_map::ResolvedTraitImplItem,
     ModulePath, ModulePathBuf,
 };
 
@@ -170,7 +171,7 @@ impl Namespace {
         name: &Ident,
         type_id: TypeId,
         as_trait: Option<CallPath>,
-    ) -> Result<TyTraitItem, ErrorEmitted> {
+    ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
         self.root
             .module
             .current_items()
