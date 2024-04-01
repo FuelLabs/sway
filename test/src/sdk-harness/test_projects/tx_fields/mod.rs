@@ -39,12 +39,12 @@ async fn get_contracts(
 
     let mut deployment_coins = setup_single_asset_coins(
         deployment_wallet.address(),
-        BASE_ASSET_ID,
+        AssetId::base(),
         120,
         DEFAULT_COIN_AMOUNT,
     );
 
-    let mut coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 100, 1000);
+    let mut coins = setup_single_asset_coins(wallet.address(), AssetId::base(), 100, 1000);
 
     coins.append(&mut deployment_coins);
 
