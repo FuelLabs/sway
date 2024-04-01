@@ -22,7 +22,7 @@ An advantage Native Assets bring are there is no need for token approvals just a
 
 ### Asset vs Coin vs Token
 
-An "Asset" is a Native Asset on Fuel and has the associated `AssetId` type. Assets are distinguishable from one another. A "Coin" represents a singular unit of an Asset. Coins of the same Asset are not distinguishable from one another. 
+An "Asset" is a Native Asset on Fuel and has the associated `AssetId` type. Assets are distinguishable from one another. A "Coin" represents a singular unit of an Asset. Coins of the same Asset are not distinguishable from one another.
 
 Fuel does not use tokens like other ecosystems such as Ethereum and uses Native Assets with a UTXO design instead.
 
