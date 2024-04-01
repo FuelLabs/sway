@@ -84,10 +84,12 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_changes = false;
+        for x in self.type_arguments.iter_mut() {
+            has_changes |= x.subst(type_mapping, engines);
+        }
+        has_changes
     }
 }
 

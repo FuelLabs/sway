@@ -93,11 +93,12 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_id.subst(type_mapping, engines);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_changes = self.type_id.subst(type_mapping, engines);
+        for x in self.trait_constraints.iter_mut() {
+            has_changes |= x.subst(type_mapping, engines);
+        }
+        has_changes
     }
 }
 

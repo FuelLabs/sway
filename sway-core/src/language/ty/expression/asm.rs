@@ -32,9 +32,11 @@ impl HashWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl SubstTypes for TyAsmRegisterDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
         if let Some(ref mut initializer) = self.initializer {
             initializer.subst(type_mapping, engines)
+        } else {
+            false
         }
     }
 }

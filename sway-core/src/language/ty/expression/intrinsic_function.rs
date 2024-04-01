@@ -70,13 +70,18 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = false;
+
         for arg in &mut self.arguments {
-            arg.subst(type_mapping, engines);
+            has_change |= arg.subst(type_mapping, engines);
         }
+
         for targ in &mut self.type_arguments {
-            targ.type_id.subst(type_mapping, engines);
+            has_change |= targ.type_id.subst(type_mapping, engines);
         }
+
+        has_change
     }
 }
 

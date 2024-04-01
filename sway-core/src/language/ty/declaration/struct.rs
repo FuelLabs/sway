@@ -61,13 +61,18 @@ impl HashWithEngines for TyStructDecl {
 }
 
 impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = false;
+
+        for x in self.fields.iter_mut() {
+            has_change |= x.subst(type_mapping, engines)
+        }
+
+        for x in self.type_parameters.iter_mut() {
+            has_change |= x.subst(type_mapping, engines)
+        }
+
+        has_change
     }
 }
 
@@ -274,7 +279,7 @@ impl OrdWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_argument.subst_inner(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        self.type_argument.subst_inner(type_mapping, engines)
     }
 }

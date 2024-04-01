@@ -18,7 +18,7 @@ use super::unify::unifier::UnifyKind;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
-    slab: ConcurrentSlab<TypeSourceInfo>,
+    pub slab: ConcurrentSlab<TypeSourceInfo>,
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
     never_id: RwLock<Option<TypeId>>,
     bool_id: RwLock<Option<TypeId>>,

@@ -2488,6 +2488,7 @@ pub fn build(
         }
     }
 
+    engines.print_stats();
     Ok(built_packages)
 }
 

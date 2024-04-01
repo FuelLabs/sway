@@ -865,50 +865,65 @@ impl HashWithEngines for TyExpressionVariant {
 }
 
 impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
         use TyExpressionVariant::*;
         match self {
-            Literal(..) => (),
+            Literal(..) => false,
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
                 ref mut call_path_typeid,
                 ..
             } => {
-                arguments
-                    .iter_mut()
-                    .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
-                let new_decl_ref = fn_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                fn_ref.replace_id(*new_decl_ref.id());
-                if let Some(call_path_typeid) = call_path_typeid {
-                    call_path_typeid.subst(type_mapping, engines);
+                let mut has_changes = false;
+                for (_, x) in arguments.iter_mut() {
+                    has_changes |= x.subst(type_mapping, engines);
                 }
+
+                if let Some(new_decl_ref) = fn_ref
+                    .clone()
+                    .subst_types_and_insert_new_with_parent(type_mapping, engines)
+                {
+                    fn_ref.replace_id(*new_decl_ref.id());
+                    has_changes = true;
+                }
+
+                if let Some(call_path_typeid) = call_path_typeid {
+                    has_changes |= call_path_typeid.subst(type_mapping, engines);
+                }
+
+                has_changes
             }
             LazyOperator { lhs, rhs, .. } => {
-                (*lhs).subst(type_mapping, engines);
-                (*rhs).subst(type_mapping, engines);
+                let mut has_changes = false;
+                has_changes |= (*lhs).subst(type_mapping, engines);
+                has_changes |= (*rhs).subst(type_mapping, engines);
+                has_changes
             }
-            ConstantExpression { const_decl, .. } => {
-                const_decl.subst(type_mapping, engines);
+            ConstantExpression { const_decl, .. } => const_decl.subst(type_mapping, engines),
+            VariableExpression { .. } => false,
+            Tuple { fields } => {
+                let mut has_changes = false;
+                for x in fields.iter_mut() {
+                    has_changes |= x.subst(type_mapping, engines);
+                }
+                has_changes
             }
-            VariableExpression { .. } => (),
-            Tuple { fields } => fields
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
             Array {
                 ref mut elem_type,
                 contents,
             } => {
-                elem_type.subst(type_mapping, engines);
-                contents
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines))
+                let mut has_changes = elem_type.subst(type_mapping, engines);
+                for x in contents.iter_mut() {
+                    has_changes |= x.subst(type_mapping, engines);
+                }
+                has_changes
             }
             ArrayIndex { prefix, index } => {
-                (*prefix).subst(type_mapping, engines);
-                (*index).subst(type_mapping, engines);
+                let mut has_changes = false;
+                has_changes |= (*prefix).subst(type_mapping, engines);
+                has_changes |= (*index).subst(type_mapping, engines);
+                has_changes
             }
             StructExpression {
                 struct_ref,
@@ -916,37 +931,45 @@ impl SubstTypes for TyExpressionVariant {
                 instantiation_span: _,
                 call_path_binding: _,
             } => {
-                let new_struct_ref = struct_ref
+                let mut has_changes = false;
+
+                if let Some(new_struct_ref) = struct_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
-                struct_ref.replace_id(*new_struct_ref.id());
-                fields
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines));
+                    .subst_types_and_insert_new(type_mapping, engines)
+                {
+                    struct_ref.replace_id(*new_struct_ref.id());
+                    has_changes = true;
+                }
+
+                for x in fields.iter_mut() {
+                    has_changes |= x.subst(type_mapping, engines);
+                }
+                has_changes
             }
-            CodeBlock(block) => {
-                block.subst(type_mapping, engines);
-            }
-            FunctionParameter => (),
+            CodeBlock(block) => block.subst(type_mapping, engines),
+            FunctionParameter => false,
             MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                condition.subst(type_mapping, engines);
-                then.subst(type_mapping, engines);
+                let mut has_changes = condition.subst(type_mapping, engines);
+                has_changes |= then.subst(type_mapping, engines);
                 if let Some(ref mut r#else) = r#else {
-                    r#else.subst(type_mapping, engines);
+                    has_changes |= r#else.subst(type_mapping, engines);
                 }
+                has_changes
             }
             AsmExpression {
                 registers, //: Vec<TyAsmRegisterDeclaration>,
                 ..
             } => {
-                registers
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines));
+                let mut has_changes = false;
+                for x in registers.iter_mut() {
+                    has_changes |= x.subst(type_mapping, engines);
+                }
+                has_changes
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
@@ -956,59 +979,65 @@ impl SubstTypes for TyExpressionVariant {
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                field_to_access.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                let mut has_changes = resolved_type_of_parent.subst(type_mapping, engines);
+                has_changes |= field_to_access.subst(type_mapping, engines);
+                has_changes |= prefix.subst(type_mapping, engines);
+                has_changes
             }
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
             } => {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                let mut has_changes = resolved_type_of_parent.subst(type_mapping, engines);
+                has_changes |= prefix.subst(type_mapping, engines);
+                has_changes
             }
             EnumInstantiation {
                 enum_ref, contents, ..
             } => {
-                let new_enum_ref = enum_ref
+                let mut has_changes = false;
+
+                if let Some(new_enum_ref) = enum_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
-                enum_ref.replace_id(*new_enum_ref.id());
+                    .subst_types_and_insert_new(type_mapping, engines)
+                {
+                    enum_ref.replace_id(*new_enum_ref.id());
+                    has_changes = true;
+                }
+
                 if let Some(ref mut contents) = contents {
-                    contents.subst(type_mapping, engines)
+                    has_changes |= contents.subst(type_mapping, engines)
                 };
+
+                has_changes
             }
             AbiCast { address, .. } => address.subst(type_mapping, engines),
             // storage is never generic and cannot be monomorphized
-            StorageAccess { .. } => (),
-            IntrinsicFunction(kind) => {
-                kind.subst(type_mapping, engines);
-            }
-            EnumTag { exp } => {
-                exp.subst(type_mapping, engines);
-            }
+            StorageAccess { .. } => false,
+            IntrinsicFunction(kind) => kind.subst(type_mapping, engines),
+            EnumTag { exp } => exp.subst(type_mapping, engines),
             UnsafeDowncast {
                 exp,
                 variant,
                 call_path_decl: _,
             } => {
-                exp.subst(type_mapping, engines);
-                variant.subst(type_mapping, engines);
+                let mut has_changes = exp.subst(type_mapping, engines);
+                has_changes |= variant.subst(type_mapping, engines);
+                has_changes
             }
-            AbiName(_) => (),
+            AbiName(_) => false,
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
-                condition.subst(type_mapping, engines);
-                body.subst(type_mapping, engines);
+                let mut has_changes = condition.subst(type_mapping, engines);
+                has_changes |= body.subst(type_mapping, engines);
+                has_changes
             }
-            ForLoop { ref mut desugared } => {
-                desugared.subst(type_mapping, engines);
-            }
-            Break => (),
-            Continue => (),
+            ForLoop { ref mut desugared } => desugared.subst(type_mapping, engines),
+            Break => false,
+            Continue => false,
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
             ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, engines),
             Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),

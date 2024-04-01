@@ -75,13 +75,18 @@ impl CollectTypesMetadata for TypeId {
 }
 
 impl SubstTypes for TypeId {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = false;
+
         let type_engine = engines.te();
         if let Some(matching_id) = type_mapping.find_match(*self, engines) {
             if !matches!(&*type_engine.get(matching_id), TypeInfo::ErrorRecovery(_)) {
                 *self = matching_id;
+                has_change = true;
             }
         }
+
+        has_change
     }
 }
 

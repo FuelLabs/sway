@@ -112,11 +112,15 @@ where
         &self,
         type_mapping: &TypeSubstMap,
         engines: &Engines,
-    ) -> Self {
+    ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.insert(decl)
+        let has_change = decl.subst(type_mapping, engines);
+        if has_change {
+            Some(decl_engine.insert(decl))
+        } else {
+            None
+        }
     }
 }
 
@@ -145,13 +149,19 @@ where
         &self,
         type_mapping: &TypeSubstMap,
         engines: &Engines,
-    ) -> Self {
+    ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
+        let has_changes = decl.subst(type_mapping, engines);
+        if has_changes {
+            Some(
+                decl_engine
+                    .insert(decl)
+                    .with_parent(decl_engine, self.id.into()),
+            )
+        } else {
+            None
+        }
     }
 }
 
@@ -177,11 +187,14 @@ where
         let mut new = (*original).clone();
         let changed = new.replace_decls(decl_mapping, handler, ctx)?;
 
-        Ok(changed.then(|| {
-            decl_engine
+        if changed {
+            let new = decl_engine
                 .insert(new)
-                .with_parent(decl_engine, self.id.into())
-        }))
+                .with_parent(decl_engine, self.id.into());
+            Ok(Some(new))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -291,11 +304,12 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
+        let has_change = decl.subst(type_mapping, engines);
         decl_engine.replace(self.id, decl);
+        has_change
     }
 }
 
@@ -319,16 +333,22 @@ impl ReplaceDecls for DeclRefFunction {
             func.implementing_for_typeid,
             ctx.self_type(),
         )? {
-            return Ok(
-                if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
-                    self.id = new_decl_ref;
-                    true
-                } else {
-                    false
-                },
-            );
+            let r = if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                self.id = new_decl_ref;
+                true
+            } else {
+                false
+            };
+            // if func.name.as_str().contains("abi_decode") {
+            //     println!("{}: result {}", func.name, r);
+            // }
+            return Ok(r);
         }
+
         let all_parents = decl_engine.find_all_parents(engines, &self.id);
+        // if func.name.as_str().contains("abi_decode") {
+        //     println!("{}: {} parents", func.name, all_parents.len());
+        // }
         for parent in all_parents.iter() {
             if let Some(new_decl_ref) = decl_mapping.find_match(
                 handler,
@@ -337,16 +357,29 @@ impl ReplaceDecls for DeclRefFunction {
                 func.implementing_for_typeid,
                 ctx.self_type(),
             )? {
-                return Ok(
-                    if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
-                        self.id = new_decl_ref;
-                        true
-                    } else {
-                        false
-                    },
-                );
+                let r = if let AssociatedItemDeclId::Function(new_decl_ref) = new_decl_ref {
+                    // if func.name.as_str().contains("abi_decode") {
+                    //     println!("old id: {:?}", engines.help_out(engines.de().get(&self.id)));
+                    //     println!(
+                    //         "new id: {:?}",
+                    //         engines.help_out(engines.de().get(&new_decl_ref))
+                    //     );
+                    // }
+                    self.id = new_decl_ref;
+                    true
+                } else {
+                    false
+                };
+                // if func.name.as_str().contains("abi_decode") {
+                //     println!("{}: result {}", func.name, r);
+                // }
+                return Ok(r);
             }
         }
+
+        // if func.name.as_str().contains("abi_decode") {
+        //     println!("{}: result {}", func.name, false);
+        // }
         Ok(false)
     }
 }

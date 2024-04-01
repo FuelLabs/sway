@@ -1,4 +1,5 @@
 use std::{
+    backtrace::Backtrace,
     collections::{HashMap, HashSet, VecDeque},
     fmt::Write,
     sync::{Arc, RwLock},
@@ -19,7 +20,7 @@ use crate::{
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub struct DeclEngine {
-    function_slab: ConcurrentSlab<TyFunctionDecl>,
+    pub function_slab: ConcurrentSlab<TyFunctionDecl>,
     trait_slab: ConcurrentSlab<TyTraitDecl>,
     trait_fn_slab: ConcurrentSlab<TyTraitFn>,
     trait_type_slab: ConcurrentSlab<TyTraitType>,
@@ -133,7 +134,35 @@ macro_rules! decl_engine_insert {
         }
     };
 }
-decl_engine_insert!(function_slab, ty::TyFunctionDecl);
+// Recursive expansion of decl_engine_insert! macro
+// =================================================
+
+impl DeclEngineInsert<ty::TyFunctionDecl> for DeclEngine {
+    fn insert(&self, decl: ty::TyFunctionDecl) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
+        // if decl.name().as_str().contains("abi_decode") {
+        //     let backtrace = Backtrace::force_capture().to_string();
+        //     println!("{backtrace}");
+        // }
+
+        let span = decl.span();
+        DeclRef::new(
+            decl.name().clone(),
+            DeclId::new(self.function_slab.insert(decl)),
+            span,
+        )
+    }
+}
+impl DeclEngineInsertArc<ty::TyFunctionDecl> for DeclEngine {
+    fn insert_arc(&self, decl: Arc<ty::TyFunctionDecl>) -> DeclRef<DeclId<ty::TyFunctionDecl>> {
+        let span = decl.span();
+        DeclRef::new(
+            decl.name().clone(),
+            DeclId::new(self.function_slab.insert_arc(decl)),
+            span,
+        )
+    }
+}
+//decl_engine_insert!(function_slab, ty::TyFunctionDecl);
 decl_engine_insert!(trait_slab, ty::TyTraitDecl);
 decl_engine_insert!(trait_fn_slab, ty::TyTraitFn);
 decl_engine_insert!(trait_type_slab, ty::TyTraitType);

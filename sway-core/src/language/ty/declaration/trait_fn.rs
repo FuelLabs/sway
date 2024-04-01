@@ -100,11 +100,13 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = false;
+        for x in self.parameters.iter_mut() {
+            has_change |= x.subst(type_mapping, engines)
+        }
+        has_change |= self.return_type.subst(type_mapping, engines);
+        has_change
     }
 }
 

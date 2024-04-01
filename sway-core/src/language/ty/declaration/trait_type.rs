@@ -55,11 +55,13 @@ impl HashWithEngines for TyTraitType {
 }
 
 impl SubstTypes for TyTraitType {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = false;
         if let Some(ref mut ty) = self.ty {
-            ty.subst(type_mapping, engines);
+            has_change |= ty.subst(type_mapping, engines);
         }
-        self.implementing_type.subst(type_mapping, engines);
+        has_change |= self.implementing_type.subst(type_mapping, engines);
+        has_change
     }
 }
 

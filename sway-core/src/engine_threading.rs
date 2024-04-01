@@ -3,6 +3,7 @@ use crate::{
     query_engine::QueryEngine,
     type_system::TypeEngine,
 };
+use deepsize::DeepSizeOf;
 use std::{
     cmp::Ordering,
     fmt,
@@ -49,6 +50,52 @@ impl Engines {
     //         source_engine,
     //     }
     // }
+
+    pub fn print_stats(&self) {
+        println!("Engine Stats");
+        println!("------------");
+
+        println!("    Type Engine");
+        println!(
+            "        Slab: {} items ({})",
+            self.type_engine.slab.len(),
+            human_format::Formatter::new().format(self.type_engine.slab.len() as f64)
+        );
+        let size = self.type_engine.slab.deep_size_of();
+        println!(
+            "        Slab Size: {} bytes ({})",
+            size,
+            human_bytes::human_bytes(size as f64)
+        );
+
+        println!("    Decl Engine");
+        println!(
+            "        Function Decl Slab: {} items ({})",
+            self.decl_engine.function_slab.len(),
+            human_format::Formatter::new().format(self.decl_engine.function_slab.len() as f64)
+        );
+        let size = self.decl_engine.function_slab.deep_size_of();
+        println!(
+            "        Function Decl Slab: {} bytes ({})",
+            size,
+            human_bytes::human_bytes(size as f64)
+        );
+
+        // Count by name
+        // let items = self.decl_engine.function_slab.inner.read().unwrap();
+        // let map = items.items.iter().filter_map(|x| x.clone()).fold(
+        //     hashbrown::HashMap::<String, usize>::new(),
+        //     |mut map, item| {
+        //         *(map.entry(item.name.as_str().to_string()).or_default()) += 1;
+        //         map
+        //     },
+        // );
+        // let mut map = map.into_iter().collect::<Vec<_>>();
+        // map.sort_by(|a, b| a.1.cmp(&b.1));
+        // for (k, v) in map {
+        //     println!("{} -> {}", k, v);
+        // }
+    }
 
     pub fn te(&self) -> &TypeEngine {
         &self.type_engine

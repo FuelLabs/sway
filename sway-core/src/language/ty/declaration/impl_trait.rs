@@ -78,13 +78,19 @@ impl HashWithEngines for TyImplTrait {
 }
 
 impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.impl_type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.implementing_for.subst_inner(type_mapping, engines);
-        self.items
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = false;
+
+        for x in self.impl_type_parameters.iter_mut() {
+            has_change |= x.subst(type_mapping, engines);
+        }
+
+        has_change |= self.implementing_for.subst_inner(type_mapping, engines);
+
+        for x in self.items.iter_mut() {
+            has_change |= x.subst(type_mapping, engines)
+        }
+
+        has_change
     }
 }

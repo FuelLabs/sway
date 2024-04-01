@@ -8,9 +8,9 @@ use deepsize::DeepSizeOf;
 use itertools::Itertools;
 
 #[derive(Debug, Clone, deepsize::DeepSizeOf)]
-struct Inner<T> {
-    items: Vec<Option<Arc<T>>>,
-    free_list: Vec<usize>,
+pub struct Inner<T> {
+    pub items: Vec<Option<Arc<T>>>,
+    pub free_list: Vec<usize>,
 }
 
 impl<T> Default for Inner<T> {
@@ -24,7 +24,7 @@ impl<T> Default for Inner<T> {
 
 #[derive(Debug, deepsize::DeepSizeOf)]
 pub(crate) struct ConcurrentSlab<T> {
-    inner: RwLock<Inner<T>>,
+    pub inner: RwLock<Inner<T>>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -71,6 +71,11 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
+    pub fn len(&self) -> usize {
+        let inner = self.inner.read().unwrap();
+        inner.items.len()
+    }
+
     pub fn values(&self) -> Vec<Arc<T>> {
         let inner = self.inner.read().unwrap();
         inner.items.iter().filter_map(|x| x.clone()).collect()
@@ -98,17 +103,6 @@ where
             inner.items.push(Some(value));
             inner.items.len() - 1
         };
-
-        if inner.items.len() % 1_000_000 == 0 {
-            let len = inner.items.len();
-            drop(inner);
-            println!(
-                "ConcurrentSlab of [{}] has [{}] items ({})",
-                std::any::type_name::<T>(),
-                human_format::Formatter::new().format(len as f64),
-                human_bytes::human_bytes(self.deep_size_of() as f64),
-            );
-        }
 
         r
     }

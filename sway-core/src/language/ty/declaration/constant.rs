@@ -94,12 +94,13 @@ impl Spanned for TyConstantDecl {
 }
 
 impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = self.return_type.subst(type_mapping, engines);
+        has_change |= self.type_ascription.subst(type_mapping, engines);
         if let Some(expr) = &mut self.value {
-            expr.subst(type_mapping, engines);
+            has_change |= expr.subst(type_mapping, engines);
         }
+        has_change
     }
 }
 

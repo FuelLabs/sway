@@ -57,9 +57,11 @@ impl HashWithEngines for TyReassignment {
 }
 
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.rhs.subst(type_mapping, engines);
-        self.lhs_type.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        let mut has_change = false;
+        has_change |= self.rhs.subst(type_mapping, engines);
+        has_change |= self.lhs_type.subst(type_mapping, engines);
+        has_change
     }
 }
 
