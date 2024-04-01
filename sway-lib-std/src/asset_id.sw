@@ -12,7 +12,7 @@ use ::hash::{Hash, Hasher};
 /// It is calculated by taking the sha256 hash of the originating ContractId and a SubId.
 /// i.e. sha256((contract_id, sub_id)).
 ///
-/// An exception is the Base Asset, which is just the ZERO_B256 AssetId.
+/// An exception is the Base Asset.
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
@@ -137,7 +137,7 @@ impl AssetId {
     ///
     /// # Additional Information
     ///
-    /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 AssetId.
+    /// On the Fuel network, the base asset is Ether.
     ///
     /// # Returns
     ///
