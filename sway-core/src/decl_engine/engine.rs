@@ -1,5 +1,4 @@
 use std::{
-    backtrace::Backtrace,
     collections::{HashMap, HashSet, VecDeque},
     fmt::Write,
     sync::{Arc, RwLock},
@@ -20,7 +19,7 @@ use crate::{
 /// Used inside of type inference to store declarations.
 #[derive(Debug, Default)]
 pub struct DeclEngine {
-    pub function_slab: ConcurrentSlab<TyFunctionDecl>,
+    function_slab: ConcurrentSlab<TyFunctionDecl>,
     trait_slab: ConcurrentSlab<TyTraitDecl>,
     trait_fn_slab: ConcurrentSlab<TyTraitFn>,
     trait_type_slab: ConcurrentSlab<TyTraitType>,

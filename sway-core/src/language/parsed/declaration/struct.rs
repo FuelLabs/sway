@@ -12,7 +12,7 @@ pub struct StructDeclaration {
 }
 
 impl deepsize::DeepSizeOf for StructDeclaration {
-    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+    fn deep_size_of_children(&self, _context: &mut deepsize::Context) -> usize {
         0
     }
 }

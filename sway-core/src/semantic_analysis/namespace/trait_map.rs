@@ -10,7 +10,6 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_ir::DebugWithContext;
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{

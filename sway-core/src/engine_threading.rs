@@ -3,7 +3,6 @@ use crate::{
     query_engine::QueryEngine,
     type_system::TypeEngine,
 };
-use deepsize::DeepSizeOf;
 use std::{
     cmp::Ordering,
     fmt,
@@ -52,34 +51,34 @@ impl Engines {
     // }
 
     pub fn print_stats(&self) {
-        println!("Engine Stats");
-        println!("------------");
+        // println!("Engine Stats");
+        // println!("------------");
 
-        println!("    Type Engine");
-        println!(
-            "        Slab: {} items ({})",
-            self.type_engine.slab.len(),
-            human_format::Formatter::new().format(self.type_engine.slab.len() as f64)
-        );
-        let size = self.type_engine.slab.deep_size_of();
-        println!(
-            "        Slab Size: {} bytes ({})",
-            size,
-            human_bytes::human_bytes(size as f64)
-        );
+        // println!("    Type Engine");
+        // println!(
+        //     "        Slab: {} items ({})",
+        //     self.type_engine.slab.len(),
+        //     human_format::Formatter::new().format(self.type_engine.slab.len() as f64)
+        // );
+        // let size = self.type_engine.slab.deep_size_of();
+        // println!(
+        //     "        Slab Size: {} bytes ({})",
+        //     size,
+        //     human_bytes::human_bytes(size as f64)
+        // );
 
-        println!("    Decl Engine");
-        println!(
-            "        Function Decl Slab: {} items ({})",
-            self.decl_engine.function_slab.len(),
-            human_format::Formatter::new().format(self.decl_engine.function_slab.len() as f64)
-        );
-        let size = self.decl_engine.function_slab.deep_size_of();
-        println!(
-            "        Function Decl Slab: {} bytes ({})",
-            size,
-            human_bytes::human_bytes(size as f64)
-        );
+        // println!("    Decl Engine");
+        // println!(
+        //     "        Function Decl Slab: {} items ({})",
+        //     self.decl_engine.function_slab.len(),
+        //     human_format::Formatter::new().format(self.decl_engine.function_slab.len() as f64)
+        // );
+        // let size = self.decl_engine.function_slab.deep_size_of();
+        // println!(
+        //     "        Function Decl Slab: {} bytes ({})",
+        //     size,
+        //     human_bytes::human_bytes(size as f64)
+        // );
 
         // Count by name
         // let items = self.decl_engine.function_slab.inner.read().unwrap();

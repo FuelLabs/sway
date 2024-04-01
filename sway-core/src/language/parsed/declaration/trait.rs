@@ -22,7 +22,7 @@ pub enum TraitItem {
 }
 
 impl deepsize::DeepSizeOf for TraitItem {
-    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+    fn deep_size_of_children(&self, _context: &mut deepsize::Context) -> usize {
         0
     }
 }
@@ -40,7 +40,7 @@ pub struct TraitDeclaration {
 }
 
 impl deepsize::DeepSizeOf for TraitDeclaration {
-    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+    fn deep_size_of_children(&self, _context: &mut deepsize::Context) -> usize {
         0
     }
 }
@@ -99,7 +99,7 @@ pub struct TraitTypeDeclaration {
 }
 
 impl deepsize::DeepSizeOf for TraitTypeDeclaration {
-    fn deep_size_of_children(&self, context: &mut deepsize::Context) -> usize {
+    fn deep_size_of_children(&self, _context: &mut deepsize::Context) -> usize {
         0
     }
 }

@@ -8,8 +8,8 @@ use thiserror::Error;
 pub struct U256(BigUint);
 
 impl ::deepsize::DeepSizeOf for U256 {
-    fn deep_size_of_children(&self, context: &mut ::deepsize::Context) -> usize {
-        self.0.to_u64_digits().iter().count() * std::mem::size_of::<u64>()
+    fn deep_size_of_children(&self, _context: &mut ::deepsize::Context) -> usize {
+        self.0.to_u64_digits().len() * std::mem::size_of::<u64>()
     }
 }
 

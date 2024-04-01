@@ -21,7 +21,7 @@ pub struct LitInt {
 
 impl ::deepsize::DeepSizeOf for LitInt {
     fn deep_size_of_children(&self, context: &mut ::deepsize::Context) -> usize {
-        0 + ::deepsize::DeepSizeOf::deep_size_of_children(&self.span, context)
+        ::deepsize::DeepSizeOf::deep_size_of_children(&self.span, context)
             + self.parsed.iter_u64_digits().count() * std::mem::size_of::<u64>()
             + ::deepsize::DeepSizeOf::deep_size_of_children(&self.ty_opt, context)
     }

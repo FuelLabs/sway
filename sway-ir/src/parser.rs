@@ -762,6 +762,7 @@ mod ir_builder {
         meta_idx: Option<MdIdxRef>,
     }
 
+    #[allow(dead_code)]
     #[derive(Debug)]
     enum IrAstConstValue {
         Undef(IrAstTy),

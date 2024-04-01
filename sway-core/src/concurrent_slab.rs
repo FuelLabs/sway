@@ -1,11 +1,9 @@
 use std::{
-    collections::HashMap,
     fmt,
     sync::{Arc, RwLock},
 };
 
 use deepsize::DeepSizeOf;
-use itertools::Itertools;
 
 #[derive(Debug, Clone, deepsize::DeepSizeOf)]
 pub struct Inner<T> {
@@ -71,6 +69,7 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         let inner = self.inner.read().unwrap();
         inner.items.len()
@@ -94,17 +93,14 @@ where
     {
         let mut inner = self.inner.write().unwrap();
 
-        let r = if let Some(free) = inner.free_list.pop() {
-            let free = free as usize;
+        if let Some(free) = inner.free_list.pop() {
             assert!(inner.items[free].is_none());
             inner.items[free] = Some(value);
             free
         } else {
             inner.items.push(Some(value));
             inner.items.len() - 1
-        };
-
-        r
+        }
     }
 
     pub fn replace(&self, index: usize, new_value: T) -> Option<T> {

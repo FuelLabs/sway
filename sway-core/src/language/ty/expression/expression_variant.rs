@@ -171,8 +171,8 @@ pub enum TyExpressionVariant {
 impl ::deepsize::DeepSizeOf for TyExpressionVariant {
     fn deep_size_of_children(&self, context: &mut ::deepsize::Context) -> usize {
         match self {
-            TyExpressionVariant::Literal(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::Literal(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
             TyExpressionVariant::FunctionApplication {
                 call_path,
@@ -193,7 +193,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                         + std::mem::size_of::<usize>());
                 let contract_call_params_size = child_sizes + map_size;
 
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(call_path, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(call_path, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(arguments, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(fn_ref, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(selector, context)
@@ -207,7 +207,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                     + ::deepsize::DeepSizeOf::deep_size_of_children(contract_caller, context)
             }
             TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(op, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(op, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(lhs, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(rhs, context)
             }
@@ -216,7 +216,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 const_decl,
                 call_path,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(span, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(span, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(const_decl, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(call_path, context)
             }
@@ -226,23 +226,23 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 mutability,
                 call_path,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(name, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(name, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(span, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(mutability, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(call_path, context)
             }
             TyExpressionVariant::Tuple { fields } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(fields, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(fields, context)
             }
             TyExpressionVariant::Array {
                 elem_type,
                 contents,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(elem_type, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(elem_type, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(contents, context)
             }
             TyExpressionVariant::ArrayIndex { prefix, index } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(prefix, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(prefix, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(index, context)
             }
             TyExpressionVariant::StructExpression {
@@ -251,20 +251,20 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 instantiation_span,
                 call_path_binding,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(struct_ref, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(struct_ref, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(fields, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(instantiation_span, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(call_path_binding, context)
             }
-            TyExpressionVariant::CodeBlock(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::CodeBlock(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
             TyExpressionVariant::FunctionParameter => 0,
             TyExpressionVariant::MatchExp {
                 desugared,
                 scrutinees,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(desugared, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(desugared, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(scrutinees, context)
             }
             TyExpressionVariant::IfExp {
@@ -272,7 +272,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 then,
                 r#else,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(condition, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(condition, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(then, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(r#else, context)
             }
@@ -282,7 +282,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 returns,
                 whole_block_span,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(registers, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(registers, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(body, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(returns, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(whole_block_span, context)
@@ -293,7 +293,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 field_instantiation_span,
                 resolved_type_of_parent,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(prefix, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(prefix, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(field_to_access, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(
                         field_instantiation_span,
@@ -310,7 +310,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 resolved_type_of_parent,
                 elem_to_access_span,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(prefix, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(prefix, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(elem_to_access_num, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(
                         resolved_type_of_parent,
@@ -327,7 +327,7 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 call_path_binding,
                 call_path_decl,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(enum_ref, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(enum_ref, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(variant_name, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(tag, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(contents, context)
@@ -343,56 +343,55 @@ impl ::deepsize::DeepSizeOf for TyExpressionVariant {
                 address,
                 span,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(abi_name, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(abi_name, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(address, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(span, context)
             }
-            TyExpressionVariant::StorageAccess(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::StorageAccess(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
-            TyExpressionVariant::IntrinsicFunction(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::IntrinsicFunction(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
-            TyExpressionVariant::AbiName(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::AbiName(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
             TyExpressionVariant::EnumTag { exp } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(exp, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(exp, context)
             }
             TyExpressionVariant::UnsafeDowncast {
                 exp,
                 variant,
                 call_path_decl,
             } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(exp, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(exp, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(variant, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(call_path_decl, context)
             }
             TyExpressionVariant::WhileLoop { condition, body } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(condition, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(condition, context)
                     + ::deepsize::DeepSizeOf::deep_size_of_children(body, context)
             }
             TyExpressionVariant::ForLoop { desugared } => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(desugared, context)
+                ::deepsize::DeepSizeOf::deep_size_of_children(desugared, context)
             }
             TyExpressionVariant::Break => 0,
             TyExpressionVariant::Continue => 0,
-            TyExpressionVariant::Reassignment(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::Reassignment(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
-            TyExpressionVariant::ImplicitReturn(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::ImplicitReturn(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
-            TyExpressionVariant::Return(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::Return(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
-            TyExpressionVariant::Ref(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::Ref(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
-            TyExpressionVariant::Deref(_0) => {
-                0 + ::deepsize::DeepSizeOf::deep_size_of_children(_0, context)
+            TyExpressionVariant::Deref(x) => {
+                ::deepsize::DeepSizeOf::deep_size_of_children(x, context)
             }
-            _ => 0,
         }
     }
 }

@@ -30,6 +30,7 @@ use sway_ir::{
 use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
 use sway_utils::mapped_stack::MappedStack;
 
+#[allow(dead_code)]
 enum ConstEvalError {
     CompileError(CompileError),
     CannotBeEvaluatedToConst {

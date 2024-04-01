@@ -18,7 +18,7 @@ use super::unify::unifier::UnifyKind;
 
 #[derive(Debug, Default)]
 pub struct TypeEngine {
-    pub slab: ConcurrentSlab<TypeSourceInfo>,
+    slab: ConcurrentSlab<TypeSourceInfo>,
     id_map: RwLock<HashMap<TypeSourceInfo, TypeId>>,
     never_id: RwLock<Option<TypeId>>,
     bool_id: RwLock<Option<TypeId>>,
@@ -36,7 +36,7 @@ impl ::deepsize::DeepSizeOf for TypeEngine {
                 + std::mem::size_of::<usize>());
         let id_map_size = child_sizes + map_size;
 
-        0 + ::deepsize::DeepSizeOf::deep_size_of_children(&self.slab, context)
+        ::deepsize::DeepSizeOf::deep_size_of_children(&self.slab, context)
             + id_map_size
             + ::deepsize::DeepSizeOf::deep_size_of_children(&self.never_id, context)
             + ::deepsize::DeepSizeOf::deep_size_of_children(&self.bool_id, context)
@@ -90,9 +90,7 @@ impl TypeEngine {
         ty: TypeInfo,
         source_id: Option<&SourceId>,
     ) -> TypeId {
-        let source_id = source_id
-            .map(Clone::clone)
-            .or_else(|| info_to_source_id(&ty));
+        let source_id = source_id.copied().or_else(|| info_to_source_id(&ty));
         let tsi = TypeSourceInfo {
             type_info: ty.clone().into(),
             source_id,

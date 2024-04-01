@@ -1190,7 +1190,6 @@ fn type_check_jmp_mem(
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
-    let engines = ctx.engines();
 
     if !arguments.is_empty() {
         return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
