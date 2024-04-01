@@ -23,6 +23,20 @@ use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
 use sway_types::{span::Span, Spanned};
 
+pub enum ResolvedDeclaration {
+    Parsed(Declaration),
+    Typed(ty::TyDecl),
+}
+
+impl ResolvedDeclaration {
+    pub fn expect_typed(self) -> ty::TyDecl {
+        match self {
+            ResolvedDeclaration::Parsed(_) => panic!(),
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+}
+
 /// A single `Module` within a Sway project.
 ///
 /// A `Module` is most commonly associated with an individual file of Sway code, e.g. a top-level
@@ -306,7 +320,7 @@ impl Module {
         mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let (decl, _) =
             self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
         Ok(decl)
@@ -319,7 +333,7 @@ impl Module {
         mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
+    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
@@ -408,7 +422,7 @@ impl Module {
         mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let (decl, _) =
             self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
         Ok(decl)
@@ -421,7 +435,7 @@ impl Module {
         mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
-    ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
+    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
         // This block tries to resolve associated types
         let mut module = self;
         let mut current_mod_path = vec![];
@@ -453,7 +467,7 @@ impl Module {
         if let Some(decl) = decl_opt {
             let decl =
                 self.resolve_associated_item(handler, engines, symbol, decl, None, self_type)?;
-            return Ok((decl, current_mod_path));
+            return Ok((ResolvedDeclaration::Typed(decl), current_mod_path));
         }
 
         self.lookup_submodule(handler, mod_path).and_then(|module| {
@@ -601,14 +615,16 @@ impl Module {
         symbol: &Ident,
         module: &Module,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let true_symbol = self[mod_path]
             .current_items()
             .use_aliases
             .get(symbol.as_str())
             .unwrap_or(symbol);
         match module.current_items().use_synonyms.get(symbol) {
-            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => Ok(decl.clone()),
+            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => {
+                Ok(ResolvedDeclaration::Typed(decl.clone()))
+            }
             Some((src_path, _, _)) if mod_path != src_path => {
                 // If the symbol is imported, before resolving to it,
                 // we need to check if there is a local symbol withing the module with
@@ -620,15 +636,14 @@ impl Module {
                 //   as an error, but still have to resolve to the local module symbol
                 //   if it exists.
                 match module.current_items().symbols.get(true_symbol) {
-                    Some(decl) => Ok(decl.clone()),
+                    Some(decl) => Ok(ResolvedDeclaration::Typed(decl.clone())),
                     None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
                 }
             }
             _ => module
                 .current_items()
                 .check_symbol(true_symbol)
-                .map_err(|e| handler.emit_err(e))
-                .cloned(),
+                .map_err(|e| handler.emit_err(e)),
         }
     }
 }

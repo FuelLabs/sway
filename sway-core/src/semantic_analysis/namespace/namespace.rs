@@ -4,7 +4,10 @@ use crate::{
 };
 
 use super::{
-    module::Module, root::Root, submodule_namespace::SubmoduleNamespace, ModulePath, ModulePathBuf,
+    module::{Module, ResolvedDeclaration},
+    root::Root,
+    submodule_namespace::SubmoduleNamespace,
+    ModulePath, ModulePathBuf,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -182,7 +185,7 @@ impl Namespace {
         mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
             .module
             .resolve_symbol(handler, engines, mod_path, symbol, self_type)
@@ -195,10 +198,34 @@ impl Namespace {
         engines: &Engines,
         symbol: &Ident,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
             .module
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
+    }
+
+    /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
+    pub(crate) fn resolve_symbol_typed(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.resolve_symbol(handler, engines, symbol, self_type)
+            .map(|resolved_decl| resolved_decl.expect_typed())
+    }
+
+    /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
+    pub(crate) fn resolve_call_path_typed(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ty::TyDecl, ErrorEmitted> {
+        self.resolve_call_path(handler, engines, call_path, self_type)
+            .map(|resolved_decl| resolved_decl.expect_typed())
     }
 
     /// Short-hand for calling [Root::resolve_call_path] on `root` with the `mod_path`.
@@ -208,7 +235,7 @@ impl Namespace {
         engines: &Engines,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
             .module
             .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)

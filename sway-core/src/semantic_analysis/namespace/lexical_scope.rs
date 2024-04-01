@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-use super::TraitMap;
+use super::{module::ResolvedDeclaration, TraitMap};
 
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -291,9 +291,10 @@ impl Items {
         Ok(())
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {
         self.symbols
             .get(name)
+            .map(|ty_decl| ResolvedDeclaration::Typed(ty_decl.clone()))
             .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),

@@ -755,6 +755,7 @@ impl<'a> TypeCheckContext<'a> {
                 call_path,
                 self.self_type,
             )?;
+        let decl = decl.expect_typed();
 
         // In case there is no mod path we don't need to check visibility
         if mod_path.is_empty() {
