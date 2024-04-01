@@ -14,9 +14,17 @@ On the FuelVM, _all_ assets are native and the process for sending _any_ native 
 
 While you would still need a smart contract to handle the minting and burning of assets, the sending and receiving of these assets can be done independently of the asset contract.
 
+> **NOTE** It is important to note that Fuel does not have tokens.
+
 ### No Token Approvals
 
 An advantage Native Assets bring are there is no need for token approvals just as with Ether on the EVM. With millions of dollars hacked every year due to misused token approvals, the FuelVM eliminates this attack vector.
+
+### Asset vs Coin vs Token
+
+An "Asset" is a Native Asset on Fuel and has the associated `AssetId` type. Assets are distinguishable from one another. A "Coin" represents a singular unit of an Asset. Coins of the same Asset are not distinguishable from one another. 
+
+Fuel does not use tokens like other ecosystems such as Ethereum and uses Native Assets with a UTXO design instead.
 
 ## The `AssetId` type
 
