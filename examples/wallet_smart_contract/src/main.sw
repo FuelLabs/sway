@@ -4,7 +4,6 @@ contract;
 use std::{
     asset::transfer_to_address,
     call_frames::msg_asset_id,
-    constants::BASE_ASSET_ID,
     context::msg_amount,
 };
 
@@ -21,8 +20,8 @@ storage {
 impl Wallet for Contract {
     #[storage(read, write), payable]
     fn receive_funds() {
-        if msg_asset_id() == BASE_ASSET_ID {
-            // If we received `BASE_ASSET_ID` then keep track of the balance.
+        if msg_asset_id() == AssetId::base() {
+            // If we received the base asset then keep track of the balance.
             // Otherwise, we're receiving other native assets and don't care
             // about our balance of coins.
             storage.balance.write(storage.balance.read() + msg_amount());
@@ -45,7 +44,7 @@ impl Wallet for Contract {
         // Note: `transfer_to_address()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_address(recipient_address, BASE_ASSET_ID, amount_to_send);
+        transfer_to_address(recipient_address, AssetId::base(), amount_to_send);
     }
 }
 // ANCHOR_END: abi_impl
