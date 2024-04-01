@@ -51,3 +51,6 @@ default = []
 test = []
 util = []
 uwu = ["uwuify"]
+
+[dev-dependencies]
+completest-pty = "0.5.0"

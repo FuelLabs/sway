@@ -16,7 +16,6 @@ forc_util::cli_examples! {
 #[derive(Debug, Parser, Default)]
 #[clap(
     name = "forc-doc",
-    about = ABOUT,
     after_help = help(),
     version
 )]
