@@ -157,7 +157,10 @@ impl AssetId {
     /// ```
     pub fn base_asset_id() -> Self {
         Self {
-            bits: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            bits: asm(r1) {
+                gm r1 i6;
+                r1: b256
+            },
         }
     }
 

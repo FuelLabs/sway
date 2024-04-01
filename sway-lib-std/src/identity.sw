@@ -8,7 +8,7 @@ use ::address::Address;
 use ::alias::SubId;
 use ::asset_id::AssetId;
 use ::call_frames::contract_id;
-use ::constants::{BASE_ASSET_ID, ZERO_B256};
+use ::constants::ZERO_B256;
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};
