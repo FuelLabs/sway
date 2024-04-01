@@ -57,11 +57,11 @@ pub fn contract_id() -> ContractId {
 /// # Examples
 ///
 /// ```sway
-/// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
+/// use std::call_frames::msg_asset_id;
 ///
 /// fn foo() {
 ///     let asset = msg_asset_id();
-///     assert(asset == BASE_ASSET_ID);
+///     assert(asset == AssetId::base());
 /// }
 /// ```
 pub fn msg_asset_id() -> AssetId {

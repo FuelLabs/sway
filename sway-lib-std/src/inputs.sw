@@ -286,13 +286,13 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 ///
 /// fn foo() {
 ///     let input_asset_id = input_asset_id(0);
-///     assert(input_asset_id.unwrap() == AssetId::base_asset_id());
+///     assert(input_asset_id.unwrap() == AssetId::base());
 /// }
 /// ```
 pub fn input_asset_id(index: u64) -> Option<AssetId> {
     match input_type(index) {
         Input::Coin => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
-        Input::Message => Some(AssetId::base_asset_id()),
+        Input::Message => Some(AssetId::base()),
         Input::Contract => None,
     }
 }

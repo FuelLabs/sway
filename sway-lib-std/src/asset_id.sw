@@ -133,7 +133,7 @@ impl AssetId {
         }
     }
 
-    /// The base_asset_id represents the base asset of a chain.
+    /// The base asset of a chain.
     ///
     /// # Additional Information
     ///
@@ -149,13 +149,13 @@ impl AssetId {
     /// use std::{constants::ZERO_B256, asset::transfer};
     ///
     /// fn foo() {
-    ///     let asset_id = AssetId::base_asset_id();
+    ///     let asset_id = AssetId::base();
     ///     let amount = 100;
     ///     let recipient = Identity::ContractId(ContractId::from(ZERO_B256));
     ///
     ///     transfer(recipient, asset_id, amount);
     /// ```
-    pub fn base_asset_id() -> Self {
+    pub fn base() -> Self {
         Self {
             bits: asm(r1) {
                 gm r1 i6;
