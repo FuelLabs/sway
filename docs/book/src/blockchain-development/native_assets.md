@@ -64,7 +64,7 @@ When creating an single new asset on Fuel, we recommend using the `DEFAULT_ASSET
 
 ## The Base Asset
 
-On the Fuel Network, the base asset is Ether. This is the only asset on the Fuel Network that does not have a `SubId`. 
+On the Fuel Network, the base asset is Ether. This is the only asset on the Fuel Network that does not have a `SubId`.
 
 The Base Asset can be returned anytime by calling the `base()` function of the `AssetId` type.
 
