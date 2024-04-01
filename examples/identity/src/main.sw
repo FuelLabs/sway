@@ -6,15 +6,7 @@ mod errors;
 use abi::IdentityExample;
 use errors::MyError;
 
-use std::{
-    asset::{
-        force_transfer_to_contract,
-        transfer_to_address,
-    },
-    constants::{
-        ZERO_B256,
-    },
-};
+use std::{asset::{force_transfer_to_contract, transfer_to_address,}, constants::{ZERO_B256,},};
 
 storage {
     owner: Identity = Identity::ContractId(ContractId::from(ZERO_B256)),

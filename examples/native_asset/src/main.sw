@@ -1,6 +1,6 @@
 contract;
 
-use std::{asset::*, constants::DEFAULT_SUB_ID, context::*, call_frames::msg_asset_id};
+use std::{asset::*, call_frames::msg_asset_id, constants::DEFAULT_SUB_ID, context::*};
 
 abi NativeAsset {
     fn mint_coins(mint_amount: u64);
@@ -64,7 +64,6 @@ impl NativeAsset for Contract {
         assert(msg_amount() > 0);
     }
     // ANCHOR_END: payable
-
     /// Mint and send this contracts native asset to a destination contract.
     fn get_msg_amount() {
         // ANCHOR: msg_amount

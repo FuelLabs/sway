@@ -1,11 +1,7 @@
 // ANCHOR: full_wallet
 contract;
 
-use std::{
-    asset::transfer_to_address,
-    call_frames::msg_asset_id,
-    context::msg_amount,
-};
+use std::{asset::transfer_to_address, call_frames::msg_asset_id, context::msg_amount,};
 
 // ANCHOR: abi_import
 use wallet_abi::Wallet;
