@@ -30,7 +30,7 @@ Fuel does not use tokens like other ecosystems such as Ethereum and uses Native 
 
 The `AssetId` type represents any Native Asset on Fuel. An `AssetId` is used for interacting with an asset on the network.
 
-The asset id of any Native Asset on Fuel is calculated by taking the SHA256 hash digest of the originating `ContractId` that minted the asset and a `SubId` i.e. `sha256((contract_id, sub_id))`.
+The `AssetId` of any Native Asset on Fuel is calculated by taking the SHA256 hash digest of the originating `ContractId` that minted the asset and a `SubId` i.e. `sha256((contract_id, sub_id))`.
 
 ### Creating a New `AssetId`
 
