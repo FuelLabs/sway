@@ -267,7 +267,7 @@ fn item_use_to_use_statements(
             span: pub_token.span(),
         };
         return Err(handler.emit_err(error.into()));
-    };
+    }
 
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
