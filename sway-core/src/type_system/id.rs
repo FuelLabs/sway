@@ -560,6 +560,7 @@ impl TypeId {
                                     );
                                 }
                                 handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                                    type_id: structure_type_id.index(),
                                     ty: structure_type_info_with_engines.to_string(),
                                     trait_name: format!(
                                         "{}{}",
