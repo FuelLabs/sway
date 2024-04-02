@@ -101,6 +101,7 @@ impl TryFrom<u256> for u32 {
     }
 }
 
+// TODO: Replace <u32 as From<T>> with u32::from when https://github.com/FuelLabs/sway/issues/5798 is resolved.
 #[test]
 fn test_u32_from_u8() {
     use ::assert::assert;
@@ -108,8 +109,8 @@ fn test_u32_from_u8() {
     let u8_1: u8 = 0u8;
     let u8_2: u8 = 255u8;
 
-    let u32_1 = u32::from(u8_1);
-    let u32_2 = u32::from(u8_2);
+    let u32_1 = u32::<u32 as From<u8>>::from(u8_1);
+    let u32_2 = u32::<u32 as From<u8>>::from(u8_2);
 
     assert(u32_1 == 0u32);
     assert(u32_2 == 255u32);
@@ -122,8 +123,8 @@ fn test_u32_from_u16() {
     let u16_1: u16 = 0u16;
     let u16_2: u16 = 65535u16;
 
-    let u32_1 = u32::from(u16_1);
-    let u32_2 = u32::from(u16_2);
+    let u32_1 = u32::<u32 as From<u16>>::from(u16_1);
+    let u32_2 = u32::<u32 as From<u16>>::from(u16_2);
 
     assert(u32_1 == 0u32);
     assert(u32_2 == 65535u32);
