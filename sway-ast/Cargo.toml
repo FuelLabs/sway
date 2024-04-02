@@ -9,13 +9,13 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+deepsize = { version = "0.2.0", features = ["std", "indexmap", "hashbrown"] }
 extension-trait = "1.0.1"
 num-bigint = { version = "0.4.3", features = ["serde"] }
 num-traits = "0.2.14"
 serde = { version = "1.0", features = ["derive"] }
 sway-error = { version = "0.52.0", path = "../sway-error" }
 sway-types = { version = "0.52.0", path = "../sway-types" }
-deepsize = { version = "0.2.0", features = ["std", "indexmap", "hashbrown"] }
 
 [lints.clippy]
 iter_over_hash_type = "deny"

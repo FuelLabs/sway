@@ -10,6 +10,7 @@ repository.workspace = true
 
 [dependencies]
 clap = { version = "3.1", features = ["derive"] }
+deepsize = { version = "0.2.0", features = ["std", "indexmap", "hashbrown"] }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.9.0"
@@ -49,10 +50,6 @@ thiserror = "1.0"
 tracing = "0.1"
 uint = "0.9"
 vec1 = "1.8.0"
-roaring = "0.10.3"
-human_format = "1.1.0"
-deepsize = { version = "0.2.0", features = ["std", "indexmap", "hashbrown"] }
-human_bytes = "0.4.3"
 
 [target.'cfg(not(target_os = "macos"))'.dependencies]
 sysinfo = "0.29.0"
