@@ -94,10 +94,22 @@ pub(crate) async fn did_change_request(
     version: i32,
     params: Option<DidChangeTextDocumentParams>,
 ) -> Request {
-    let params = params.unwrap_or_else(|| 
-        create_did_change_params(&uri, version, Position { line: 1, character: 0 }, Position { line: 1, character: 0 }, 0)
-    );
-    let params: serde_json::value::Value = serde_json::to_value(params).unwrap(); 
+    let params = params.unwrap_or_else(|| {
+        create_did_change_params(
+            &uri,
+            version,
+            Position {
+                line: 1,
+                character: 0,
+            },
+            Position {
+                line: 1,
+                character: 0,
+            },
+            0,
+        )
+    });
+    let params: serde_json::value::Value = serde_json::to_value(params).unwrap();
     let did_change = Request::build("textDocument/didChange")
         .params(params)
         .finish();
@@ -539,9 +551,9 @@ pub(crate) async fn rename_request<'a>(
 
 pub fn create_did_change_params(
     uri: &Url,
-    version: i32, 
-    start: Position, 
-    end: Position, 
+    version: i32,
+    start: Position,
+    end: Position,
     range_length: u32,
 ) -> DidChangeTextDocumentParams {
     DidChangeTextDocumentParams {
@@ -550,10 +562,7 @@ pub fn create_did_change_params(
             version,
         },
         content_changes: vec![TextDocumentContentChangeEvent {
-            range: Some(Range {
-                start,
-                end,
-            }),
+            range: Some(Range { start, end }),
             range_length: Some(range_length),
             text: "\n".into(),
         }],
