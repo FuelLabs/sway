@@ -96,7 +96,7 @@ pub(crate) async fn did_change_request(
 ) -> Request {
     let params = params.unwrap_or_else(|| {
         create_did_change_params(
-            &uri,
+            uri,
             version,
             Position {
                 line: 1,
