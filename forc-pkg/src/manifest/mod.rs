@@ -993,7 +993,7 @@ impl std::ops::Deref for WorkspaceManifestFile {
 /// Returns the path to the package on success, or `None` in the case it could not be found.
 pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
     use sway_types::constants::STD;
-    const SWAY_LIB_FOLDER: &str = "sway-lib-std";
+    const SWAY_STD_FOLDER: &str = "sway-lib-std";
     walkdir::WalkDir::new(dir)
         .into_iter()
         .filter_map(|entry| {
@@ -1009,7 +1009,7 @@ pub fn find_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
                 || (manifest.project.name == STD
                     && path
                         .components()
-                        .any(|comp| comp.as_os_str() == SWAY_LIB_FOLDER))
+                        .any(|comp| comp.as_os_str() == SWAY_STD_FOLDER))
             {
                 Some(path.to_path_buf())
             } else {
