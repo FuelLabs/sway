@@ -5,12 +5,14 @@ use lsp_types::*;
 use std::{fs, path::PathBuf};
 use sway_lsp::{
     handlers::{notification, request},
-    server_state::ServerState, utils,
+    server_state::ServerState,
+    utils,
 };
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
-    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir, random_delay, setup_panic_hook,
+    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, random_delay,
+    runnables_test_dir, self_impl_reassignment_dir, setup_panic_hook, sway_workspace_dir,
+    test_fixtures_dir,
 };
 use tower_lsp::LspService;
 
@@ -211,7 +213,7 @@ fn did_change_stress_test_random_wait() {
     run_async!({
         let test_duration = tokio::time::Duration::from_secs(5 * 60); // 5 minutes timeout
         let test_future = async {
-            setup_panic_hook(); 
+            setup_panic_hook();
             let (mut service, _) = LspService::new(ServerState::new);
             let example_dir = sway_workspace_dir()
                 .join(e2e_language_dir())
@@ -255,17 +257,43 @@ fn garbage_collection_storage() {
     run_async!({
         setup_panic_hook();
         let (mut service, _) = LspService::new(ServerState::new);
-        let p = sway_workspace_dir().join("sway-lsp/tests/fixtures/garbage_collection/storage_contract").join("src/main.sw");
+        let p = sway_workspace_dir()
+            .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+            .join("src/main.sw");
         let uri = init_and_open(&mut service, p).await;
         let times = 600;
         for version in 0..times {
             eprintln!("version: {}", version);
             let params = if rand::random::<u64>() % 3 < 1 {
                 // enter keypress at line 20
-                lsp::create_did_change_params(&uri, 1, Position { line: 20, character: 0 }, Position { line: 20, character: 0 }, 0)
+                lsp::create_did_change_params(
+                    &uri,
+                    1,
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    0,
+                )
             } else {
                 // backspace keypress at line 21
-                lsp::create_did_change_params(&uri, 1, Position { line: 20, character: 0 }, Position { line: 21, character: 0 }, 1)
+                lsp::create_did_change_params(
+                    &uri,
+                    1,
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    Position {
+                        line: 21,
+                        character: 0,
+                    },
+                    1,
+                )
             };
             let _ = lsp::did_change_request(&mut service, &uri, version + 1, Some(params)).await;
             if version == 0 {
@@ -274,7 +302,7 @@ fn garbage_collection_storage() {
             // wait for a random amount of time to simulate typing
             random_delay().await;
         }
-        shutdown_and_exit(&mut service).await; 
+        shutdown_and_exit(&mut service).await;
     });
 }
 
