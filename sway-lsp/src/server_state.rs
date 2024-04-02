@@ -1,11 +1,10 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
-    config::{Config, Warnings},
+    config::{Config, GarbageCollectionConfig, Warnings},
     core::session::{self, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
-    utils::debug,
-    utils::keyword_docs::KeywordDocs,
+    utils::{debug, keyword_docs::KeywordDocs},
 };
 use crossbeam_channel::{Receiver, Sender};
 use dashmap::DashMap;
@@ -29,7 +28,7 @@ use tower_lsp::{jsonrpc, Client};
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
     pub(crate) client: Option<Client>,
-    pub(crate) config: Arc<RwLock<Config>>,
+    pub config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
@@ -86,6 +85,7 @@ pub struct CompilationContext {
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
+    pub gc_options: GarbageCollectionConfig,
 }
 
 impl ServerState {
@@ -119,9 +119,10 @@ impl ServerState {
                         let mut engines_clone = session.engines.read().clone();
 
                         if let Some(version) = ctx.version {
-                            // Garbage collection is fairly expsensive so we only clear on every 3rd keystroke.
-                            // Waiting too long to clear can cause a stack overflow to occur.
-                            if version % 1 == 0 {
+                            // Perform garbage collection at configured intervals if enabled to manage memory usage.
+                            if ctx.gc_options.gc_enabled
+                                && version % ctx.gc_options.gc_frequency == 0
+                            {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {

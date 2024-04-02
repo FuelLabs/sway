@@ -32,6 +32,7 @@ pub async fn handle_did_open_text_document(
                 uri: Some(uri.clone()),
                 version: None,
                 optimized_build: false,
+                gc_options: state.config.read().garbage_collection.clone(),
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
@@ -71,6 +72,7 @@ fn send_new_compilation_request(
             uri: Some(uri.clone()),
             version,
             optimized_build,
+            gc_options: state.config.read().garbage_collection.clone(),
         }));
 }
 
