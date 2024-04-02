@@ -6731,6 +6731,7 @@ dependencies = [
  "assert-json-diff",
  "futures",
  "lsp-types",
+ "rand",
  "serde",
  "serde_json",
  "tokio",
