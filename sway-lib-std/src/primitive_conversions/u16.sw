@@ -16,6 +16,20 @@ impl u16 {
 }
 
 impl From<u8> for u16 {
+    /// Casts a `u8` to a `u16`.
+    ///
+    /// # Returns
+    ///
+    /// * [u16] - The `u16` representation of the `u8` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// fn foo() {
+    ///     let u16_value = u16::from(0u8);
+    /// }
+    /// ```
     fn from(u: u8) -> Self {
         asm(r1: u) {
             r1: u16
