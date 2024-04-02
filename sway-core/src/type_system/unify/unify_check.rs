@@ -411,7 +411,7 @@ impl<'a> UnifyCheck<'a> {
                     (Unknown, _) => true,
                     (_, Unknown) => true,
 
-                    (UnsignedInteger(_), UnsignedInteger(_)) => true,
+                    (UnsignedInteger(lb), UnsignedInteger(rb)) => lb == rb,
                     (Numeric, UnsignedInteger(_)) => true,
                     (UnsignedInteger(_), Numeric) => true,
 
