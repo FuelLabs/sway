@@ -1,6 +1,6 @@
 library;
 
-use ::convert::TryFrom;
+use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 
 impl u32 {
