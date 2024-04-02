@@ -260,10 +260,17 @@ fn garbage_collection_storage() {
         let p = sway_workspace_dir()
             .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
             .join("src/main.sw");
+        // set the garbage collection frequency to 1
+        service
+            .inner()
+            .config
+            .write()
+            .garbage_collection
+            .gc_frequency = 1;
         let uri = init_and_open(&mut service, p).await;
-        let times = 600;
+        let times = 60;
         for version in 0..times {
-            eprintln!("version: {}", version);
+            //eprintln!("version: {}", version);
             let params = if rand::random::<u64>() % 3 < 1 {
                 // enter keypress at line 20
                 lsp::create_did_change_params(
