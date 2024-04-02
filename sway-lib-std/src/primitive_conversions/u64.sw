@@ -115,6 +115,7 @@ impl TryFrom<u256> for u64 {
     }
 }
 
+// TODO: Replace <u64 as From<T>> with u64::from when https://github.com/FuelLabs/sway/issues/5798 is resolved.
 #[test]
 fn test_u64_from_u8() {
     use ::assert::assert;
@@ -122,8 +123,8 @@ fn test_u64_from_u8() {
     let u8_1: u8 = 0u8;
     let u8_2: u8 = 255u8;
 
-    let u64_1 = u64::from(u8_1);
-    let u64_2 = u64::from(u8_2);
+    let u64_1 = <u64 as From<u8>>::from(u8_1);
+    let u64_2 = <u64 as From<u8>>::from(u8_2);
 
     assert(u64_1 == 0u64);
     assert(u64_2 == 255u64);
@@ -136,8 +137,8 @@ fn test_u64_from_u16() {
     let u16_1: u16 = 0u16;
     let u16_2: u16 = 65535u16;
 
-    let u64_1 = u64::from(u16_1);
-    let u64_2 = u64::from(u16_2);
+    let u64_1 = <u64 as From<u16>>::from(u16_1);
+    let u64_2 = <u64 as From<u16>>::from(u16_2);
 
     assert(u64_1 == 0u64);
     assert(u64_2 == 65535u64);
@@ -150,8 +151,8 @@ fn test_u64_from_u32() {
     let u32_1: u32 = 0u32;
     let u32_2: u32 = 4294967295u32;
 
-    let u64_1 = u64::from(u32_1);
-    let u64_2 = u64::from(u32_2);
+    let u64_1 = <u64 as From<u32>>::from(u32_1);
+    let u64_2 = <u64 as From<u32>>::from(u32_2);
 
     assert(u64_1 == 0u64);
     assert(u64_2 == 4294967295u64);
