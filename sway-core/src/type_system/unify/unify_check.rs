@@ -215,7 +215,7 @@ impl<'a> UnifyCheck<'a> {
         // override top level generics with simple equality but only at top level
         if let NonGenericConstraintSubset = self.mode {
             if let UnknownGeneric { .. } = &*right_info {
-                return left_info.eq(&right_info, self.engines);
+                return left_info.eq(&right_info, &PartialEqWithEnginesContext::new(self.engines));
             }
         }
         self.check_inner(left, right)
@@ -234,6 +234,9 @@ impl<'a> UnifyCheck<'a> {
 
         // common recursion patterns
         match (&*left_info, &*right_info) {
+            (Never, Never) => {
+                return true;
+            }
             (Array(l0, l1), Array(r0, r1)) => {
                 return self.check_inner(l0.type_id, r0.type_id) && l1.val() == r1.val();
             }
@@ -333,6 +336,37 @@ impl<'a> UnifyCheck<'a> {
                 return (*l_to_mut || !*r_to_mut) && self.check_inner(l_ty.type_id, r_ty.type_id);
             }
 
+            (UnknownGeneric { parent: lp, .. }, r)
+                if lp.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(lp.unwrap())
+                        .eq(r, &PartialEqWithEnginesContext::new(self.engines)) =>
+            {
+                return true;
+            }
+            (l, UnknownGeneric { parent: rp, .. })
+                if rp.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(rp.unwrap())
+                        .eq(l, &PartialEqWithEnginesContext::new(self.engines)) =>
+            {
+                return true;
+            }
+            (UnknownGeneric { parent: lp, .. }, UnknownGeneric { parent: rp, .. })
+                if lp.is_some()
+                    && rp.is_some()
+                    && self.engines.te().get(lp.unwrap()).eq(
+                        &*self.engines.te().get(rp.unwrap()),
+                        &PartialEqWithEnginesContext::new(self.engines),
+                    ) =>
+            {
+                return true;
+            }
+
             _ => {}
         }
 
@@ -348,12 +382,14 @@ impl<'a> UnifyCheck<'a> {
                         UnknownGeneric {
                             name: ln,
                             trait_constraints: ltc,
+                            parent: _,
                         },
                         UnknownGeneric {
                             name: rn,
                             trait_constraints: rtc,
+                            parent: _,
                         },
-                    ) => ln == rn && rtc.eq(ltc, self.engines),
+                    ) => ln == rn && rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
                     (_e, _g @ UnknownGeneric { .. }) => {
@@ -394,7 +430,7 @@ impl<'a> UnifyCheck<'a> {
                             address: ref ea,
                         },
                     ) => {
-                        r.eq(e, self.engines)
+                        r.eq(e, &PartialEqWithEnginesContext::new(self.engines))
                             || (ran == ean && ra.is_none())
                             || matches!(ran, AbiName::Deferred)
                             || (ran == ean && ea.is_none())
@@ -404,7 +440,7 @@ impl<'a> UnifyCheck<'a> {
                     (ErrorRecovery(_), _) => true,
                     (_, ErrorRecovery(_)) => true,
 
-                    (a, b) => a.eq(b, self.engines),
+                    (a, b) => a.eq(b, &PartialEqWithEnginesContext::new(self.engines)),
                 }
             }
             ConstraintSubset | NonGenericConstraintSubset => {
@@ -413,12 +449,14 @@ impl<'a> UnifyCheck<'a> {
                         UnknownGeneric {
                             name: _,
                             trait_constraints: ltc,
+                            parent: _,
                         },
                         UnknownGeneric {
                             name: _,
                             trait_constraints: rtc,
+                            parent: _,
                         },
-                    ) => rtc.eq(ltc, self.engines),
+                    ) => rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
 
                     // any type can be coerced into a generic,
                     // except if the type already contains the generic
@@ -429,7 +467,7 @@ impl<'a> UnifyCheck<'a> {
                     (Alias { ty: l_ty, .. }, Alias { ty: r_ty, .. }) => {
                         self.check_inner(l_ty.type_id, r_ty.type_id)
                     }
-                    (a, b) => a.eq(b, self.engines),
+                    (a, b) => a.eq(b, &PartialEqWithEnginesContext::new(self.engines)),
                 }
             }
             NonDynamicEquality => match (&*left_info, &*right_info) {
@@ -459,12 +497,17 @@ impl<'a> UnifyCheck<'a> {
                     TypeInfo::UnknownGeneric {
                         name: rn,
                         trait_constraints: rtc,
+                        parent: _,
                     },
                     TypeInfo::UnknownGeneric {
                         name: en,
                         trait_constraints: etc,
+                        parent: _,
                     },
-                ) => rn.as_str() == en.as_str() && rtc.eq(etc, self.engines),
+                ) => {
+                    rn.as_str() == en.as_str()
+                        && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines))
+                }
                 (TypeInfo::Placeholder(_), TypeInfo::Placeholder(_)) => false,
                 (
                     TypeInfo::ContractCaller {
@@ -605,7 +648,7 @@ impl<'a> UnifyCheck<'a> {
                         {
                             continue;
                         }
-                        if a.eq(b, self.engines) {
+                        if a.eq(b, &PartialEqWithEnginesContext::new(self.engines)) {
                             // if a and b are the same type
                             constraints.push((i, j));
                         }
@@ -627,7 +670,7 @@ impl<'a> UnifyCheck<'a> {
                     {
                         continue;
                     }
-                    if !a.eq(b, self.engines) {
+                    if !a.eq(b, &PartialEqWithEnginesContext::new(self.engines)) {
                         return false;
                     }
                 }
