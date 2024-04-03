@@ -3811,6 +3811,19 @@ where
     }
 }
 
+fn to_slice<T>(array: T) -> raw_slice {
+    let len = __size_of::<T>();
+    raw_slice::from_parts::<u8>(__addr_of(array), len)
+}
+
+fn assert_eq<T>(a: T, b: T) 
+where T: Eq
+{
+    if a != b {
+        __revert(0)
+    }
+}
+
 #[test]
 fn ok_abi_encoding() {
     // bool
@@ -3891,6 +3904,13 @@ fn ok_abi_encoding() {
     assert_encoding([255u8; 3], [255u8; 3]);
     assert_encoding([255u8; 4], [255u8; 4]);
     assert_encoding([255u8; 5], [255u8; 5]);
+
+    let array = abi_decode::<[u8; 1]>(to_slice([255u8]));
+    assert_eq(array[0], 255u8);
+
+    let array = abi_decode::<[u8; 2]>(to_slice([255u8, 254u8]));
+    assert_eq(array[0], 255u8);
+    assert_eq(array[1], 254u8);
 }
 
 pub fn contract_call<T, TArgs>(

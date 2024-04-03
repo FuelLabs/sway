@@ -1,16 +1,15 @@
 use crate::{
-    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
-    decl_engine::{DeclEngineGet, DeclId, DeclRef},
-    language::{
+    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE, decl_engine::{DeclEngineGet, DeclId, DeclRef}, language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
         Purity,
-    },
-    semantic_analysis::TypeCheckContext,
-    Engines, TypeId, TypeInfo, TypeParameter,
+    }, semantic_analysis::TypeCheckContext, Engines, Length, TypeArgument, TypeId, TypeInfo, TypeParameter
 };
 use itertools::Itertools;
-use sway_error::{error::CompileError, handler::{ErrorEmitted, Handler}};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_parse::Parse;
 use sway_types::{integer_bits::IntegerBits, BaseIdent, ModuleId, Named, Span, Spanned};
 
@@ -186,14 +185,38 @@ where
     fn generate_abi_decode_struct_body(&self, engines: &Engines, decl: &TyStructDecl) -> String {
         let mut code = String::new();
         for f in decl.fields.iter() {
-            code.push_str(&format!(
-                "{field_name}: buffer.decode::<{field_type_name}>(),",
-                field_name = f.name.as_str(),
-                field_type_name = Self::generate_type(engines, f.type_argument.type_id),
-            ));
+            match &*engines.te().get(f.type_argument.type_id) {
+                TypeInfo::Array(t, len) => {
+                    code.push_str(&format!(
+                        "{field_name}: {{ {code} array }},",
+                        field_name = f.name.as_str(),
+                        code = Self::generate_decode_for_array(engines, t, len),
+                    ));
+                }
+                _ => {
+                    code.push_str(&format!(
+                        "{field_name}: buffer.decode::<{field_type_name}>(),",
+                        field_name = f.name.as_str(),
+                        field_type_name = Self::generate_type(engines, f.type_argument.type_id),
+                    ));
+                }
+            }
         }
 
         format!("Self {{ {code} }}")
+    }
+
+    fn generate_encode_for_array(_engines: &Engines, _t: &TypeArgument, len: &Length) -> String {
+        format!("let mut i = 0; while i < {} {{ array[i].abi_encode(buffer); i += 1; }}", len.val())
+    }
+
+    fn generate_decode_for_array(engines: &Engines, t: &TypeArgument, len: &Length) -> String {
+        let array_type_name = Self::generate_type(engines, t.type_id);
+        let mut code = String::new();
+        code.push_str(&format!("let first: {array_type_name} = buffer.decode::<{array_type_name}>();"));
+        code.push_str(&format!("let mut array = [first; {}];", len.val()));
+        code.push_str(&format!("let mut i = 1; while i < {} {{ array[i] = buffer.decode::<{}>(); i += 1; }}", len.val(), array_type_name));
+        code
     }
 
     fn generate_abi_decode_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
@@ -201,16 +224,26 @@ where
         let arms = decl.variants.iter()
             .map(|x| {
                 let name = x.name.as_str();
-                if engines.te().get(x.type_argument.type_id).is_unit() {
-                    format!("{} => {}::{}, \n", x.tag, enum_name, name)
-                } else {
-                    let variant_type_name = Self::generate_type(engines, x.type_argument.type_id);
-                    format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n", 
-                        tag_value = x.tag,
-                        enum_name = enum_name,
-                        variant_name = name,
-                        variant_type = variant_type_name
-                    )
+                match &*engines.te().get(x.type_argument.type_id) {
+                    // unit
+                    TypeInfo::Tuple(fiels) if fiels.is_empty() => {
+                        format!("{} => {}::{}, \n", x.tag, enum_name, name)
+                    },
+                    TypeInfo::Array(t, len) => {
+                        let mut code = String::new();
+                        code.push_str(&format!("{} => {{ \n{}\n", x.tag, Self::generate_decode_for_array(engines, t, len)));
+                        code.push_str(&format!("{}::{}(array) }},\n", enum_name, name));
+                        code
+                    }
+                    _ => {
+                        let variant_type_name = Self::generate_type(engines, x.type_argument.type_id);
+                        format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n", 
+                            tag_value = x.tag,
+                            enum_name = enum_name,
+                            variant_name = name,
+                            variant_type = variant_type_name
+                        )
+                    }
                 }
             })
         .collect::<String>();
@@ -230,25 +263,41 @@ where
             .iter()
             .map(|x| {
                 let name = x.name.as_str();
-                if engines.te().get(x.type_argument.type_id).is_unit() {
-                    format!(
-                        "{enum_name}::{variant_name} => {{
-                        {tag_value}u64.abi_encode(buffer);
-                    }}, \n",
-                        tag_value = x.tag,
-                        enum_name = enum_name,
-                        variant_name = name
-                    )
-                } else {
-                    format!(
-                        "{enum_name}::{variant_name}(value) => {{
-                        {tag_value}u64.abi_encode(buffer);
-                        value.abi_encode(buffer);
-                    }}, \n",
-                        tag_value = x.tag,
-                        enum_name = enum_name,
-                        variant_name = name,
-                    )
+                match &*engines.te().get(x.type_argument.type_id) {
+                    // Unit
+                    TypeInfo::Tuple(fields) if fields.is_empty() => {
+                        format!(
+                            "{enum_name}::{variant_name} => {{
+                            {tag_value}u64.abi_encode(buffer);
+                        }}, \n",
+                            tag_value = x.tag,
+                            enum_name = enum_name,
+                            variant_name = name
+                        )
+                    }
+                    TypeInfo::Array(t, len) => {
+                        format!(
+                            "{enum_name}::{variant_name}(array) => {{
+                            {tag_value}u64.abi_encode(buffer);
+                            {code}
+                        }}, \n",
+                            enum_name = enum_name,
+                            variant_name = name,
+                            tag_value = x.tag,
+                            code = Self::generate_encode_for_array(engines, t, len),
+                        )
+                    }
+                    _ => {
+                        format!(
+                            "{enum_name}::{variant_name}(value) => {{
+                            {tag_value}u64.abi_encode(buffer);
+                            value.abi_encode(buffer);
+                        }}, \n",
+                            tag_value = x.tag,
+                            enum_name = enum_name,
+                            variant_name = name,
+                        )
+                    }
                 }
             })
             .collect::<String>();
@@ -302,13 +351,15 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let decl = ctx.scoped(|ctx| {
-            TyDecl::type_check(
-                &handler,
-                ctx,
-                parsed::Declaration::FunctionDeclaration(decl),
-            )
-        }).unwrap();
+        let decl = ctx
+            .scoped(|ctx| {
+                TyDecl::type_check(
+                    &handler,
+                    ctx,
+                    parsed::Declaration::FunctionDeclaration(decl),
+                )
+            })
+            .unwrap();
 
         assert!(!handler.has_warnings(), "{:?}", handler);
 
@@ -349,11 +400,10 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let decl = ctx.scoped(|ctx| {
-            TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
-        }).unwrap();
+        let decl = TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl)).unwrap();
 
-        //println!("HASERROR: {code}, {}", handler.has_errors());
+        // Uncomment this to understand why a auto impl failed for a type.
+        // println!("{:#?}", handler);
 
         if handler.has_errors() {
             None
@@ -633,8 +683,10 @@ where
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
                 handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry { span: Span::dummy() }))
-            },
+                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                    span: Span::dummy(),
+                }))
+            }
         }
     }
 
@@ -686,8 +738,10 @@ where
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
                 handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry { span: Span::dummy() }))
-            },
+                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                    span: Span::dummy(),
+                }))
+            }
         }
     }
 
@@ -752,8 +806,10 @@ where
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
                 handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry { span: Span::dummy() }))
-            },
+                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                    span: Span::dummy(),
+                }))
+            }
         }
     }
 }
