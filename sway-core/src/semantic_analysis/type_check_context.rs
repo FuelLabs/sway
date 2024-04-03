@@ -232,6 +232,35 @@ impl<'a> TypeCheckContext<'a> {
         };
         with_scoped_ctx(ctx)
     }
+    
+    /// Scope the `TypeCheckContext` with a new namespace but update the original if success.
+    pub fn scoped_and_namespace<T>(
+        self,
+        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
+    ) -> Result<(T, Namespace), ErrorEmitted> {
+        let mut namespace = self.namespace.clone();
+        let ctx = TypeCheckContext {
+            namespace: &mut namespace,
+            type_annotation: self.type_annotation,
+            function_type_annotation: self.function_type_annotation,
+            unify_generic: self.unify_generic,
+            self_type: self.self_type,
+            type_subst: self.type_subst,
+            abi_mode: self.abi_mode,
+            const_shadowing_mode: self.const_shadowing_mode,
+            generic_shadowing_mode: self.generic_shadowing_mode,
+            help_text: self.help_text,
+            purity: self.purity,
+            kind: self.kind,
+            engines: self.engines,
+            disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
+            storage_declaration: self.storage_declaration,
+            experimental: self.experimental,
+        };
+        let r = with_scoped_ctx(ctx)?;
+        Ok((r, namespace))
+    }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
     /// type-checking its content.

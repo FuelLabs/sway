@@ -3,7 +3,7 @@ use crate::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
         Purity,
-    }, semantic_analysis::TypeCheckContext, Engines, Length, TypeArgument, TypeId, TypeInfo, TypeParameter
+    }, namespace, semantic_analysis::TypeCheckContext, Engines, Length, TypeArgument, TypeId, TypeInfo, TypeParameter
 };
 use itertools::Itertools;
 use sway_error::{
@@ -185,38 +185,14 @@ where
     fn generate_abi_decode_struct_body(&self, engines: &Engines, decl: &TyStructDecl) -> String {
         let mut code = String::new();
         for f in decl.fields.iter() {
-            match &*engines.te().get(f.type_argument.type_id) {
-                TypeInfo::Array(t, len) => {
-                    code.push_str(&format!(
-                        "{field_name}: {{ {code} array }},",
-                        field_name = f.name.as_str(),
-                        code = Self::generate_decode_for_array(engines, t, len),
-                    ));
-                }
-                _ => {
-                    code.push_str(&format!(
-                        "{field_name}: buffer.decode::<{field_type_name}>(),",
-                        field_name = f.name.as_str(),
-                        field_type_name = Self::generate_type(engines, f.type_argument.type_id),
-                    ));
-                }
-            }
+            code.push_str(&format!(
+                "{field_name}: buffer.decode::<{field_type_name}>(),",
+                field_name = f.name.as_str(),
+                field_type_name = Self::generate_type(engines, f.type_argument.type_id),
+            ));
         }
 
         format!("Self {{ {code} }}")
-    }
-
-    fn generate_encode_for_array(_engines: &Engines, _t: &TypeArgument, len: &Length) -> String {
-        format!("let mut i = 0; while i < {} {{ array[i].abi_encode(buffer); i += 1; }}", len.val())
-    }
-
-    fn generate_decode_for_array(engines: &Engines, t: &TypeArgument, len: &Length) -> String {
-        let array_type_name = Self::generate_type(engines, t.type_id);
-        let mut code = String::new();
-        code.push_str(&format!("let first: {array_type_name} = buffer.decode::<{array_type_name}>();"));
-        code.push_str(&format!("let mut array = [first; {}];", len.val()));
-        code.push_str(&format!("let mut i = 1; while i < {} {{ array[i] = buffer.decode::<{}>(); i += 1; }}", len.val(), array_type_name));
-        code
     }
 
     fn generate_abi_decode_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
@@ -229,12 +205,6 @@ where
                     TypeInfo::Tuple(fiels) if fiels.is_empty() => {
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
                     },
-                    TypeInfo::Array(t, len) => {
-                        let mut code = String::new();
-                        code.push_str(&format!("{} => {{ \n{}\n", x.tag, Self::generate_decode_for_array(engines, t, len)));
-                        code.push_str(&format!("{}::{}(array) }},\n", enum_name, name));
-                        code
-                    }
                     _ => {
                         let variant_type_name = Self::generate_type(engines, x.type_argument.type_id);
                         format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n", 
@@ -273,18 +243,6 @@ where
                             tag_value = x.tag,
                             enum_name = enum_name,
                             variant_name = name
-                        )
-                    }
-                    TypeInfo::Array(t, len) => {
-                        format!(
-                            "{enum_name}::{variant_name}(array) => {{
-                            {tag_value}u64.abi_encode(buffer);
-                            {code}
-                        }}, \n",
-                            enum_name = enum_name,
-                            variant_name = name,
-                            tag_value = x.tag,
-                            code = Self::generate_encode_for_array(engines, t, len),
                         )
                     }
                     _ => {
@@ -400,14 +358,20 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let decl = TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl)).unwrap();
+        let (decl, namespace) = ctx.scoped_and_namespace(|ctx| {
+             TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
+        }).unwrap();
 
-        // Uncomment this to understand why a auto impl failed for a type.
+        // Uncomment this to understand why auto impl failed for a type.
         // println!("{:#?}", handler);
 
         if handler.has_errors() {
             None
         } else {
+            if !matches!(decl, TyDecl::ErrorRecovery(_, _)) {
+                *self.ctx.namespace = namespace;
+            }
+
             Some(TyAstNode {
                 span: decl.span(),
                 content: ty::TyAstNodeContent::Declaration(decl),
@@ -467,14 +431,16 @@ where
 
         let module_id = enum_decl.span().source_id().map(|sid| sid.module_id());
 
-        let abi_decode_body = self.generate_abi_encode_enum_body(engines, &enum_decl);
-        let abi_decode_code = self.generate_abi_encode_code(
+        let abi_encode_body = self.generate_abi_encode_enum_body(engines, &enum_decl);
+        let abi_encode_code = self.generate_abi_encode_code(
             enum_decl.name(),
             &enum_decl.type_parameters,
-            abi_decode_body,
+            abi_encode_body,
         );
         let abi_encode_node =
-            self.parse_item_impl_to_typed_ast_node(engines, module_id, &abi_decode_code);
+            self.parse_item_impl_to_typed_ast_node(engines, module_id, &abi_encode_code);
+
+
 
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
