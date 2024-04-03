@@ -232,7 +232,7 @@ impl<'a> TypeCheckContext<'a> {
         };
         with_scoped_ctx(ctx)
     }
-    
+
     /// Scope the `TypeCheckContext` with a new namespace but update the original if success.
     pub fn scoped_and_namespace<T>(
         self,

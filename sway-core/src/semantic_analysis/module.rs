@@ -9,7 +9,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Named, Span};
+use sway_types::{BaseIdent, Named};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclId},
@@ -328,15 +328,21 @@ impl ty::TyModule {
                 (TreeType::Predicate, true) => {
                     let mut fn_generator =
                         auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_predicate_entry(engines, main_decl.as_ref().unwrap(), handler)?;
+                    let node = fn_generator.generate_predicate_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    )?;
                     all_nodes.push(node)
                 }
                 (TreeType::Script, true) => {
                     let mut fn_generator =
                         auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_script_entry(engines, main_decl.as_ref().unwrap(), handler)?;
+                    let node = fn_generator.generate_script_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    )?;
                     all_nodes.push(node)
                 }
                 (TreeType::Contract, _) => {
@@ -350,14 +356,13 @@ impl ty::TyModule {
 
                     let mut fn_generator =
                         auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_contract_entry(
-                            engines,
-                            parsed.span.source_id().map(|x| x.module_id()),
-                            &contract_fns,
-                            fallback_fn,
-                            handler,
-                        )?;
+                    let node = fn_generator.generate_contract_entry(
+                        engines,
+                        parsed.span.source_id().map(|x| x.module_id()),
+                        &contract_fns,
+                        fallback_fn,
+                        handler,
+                    )?;
                     all_nodes.push(node)
                 }
                 _ => {}

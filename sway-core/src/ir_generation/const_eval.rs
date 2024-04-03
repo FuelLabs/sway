@@ -31,6 +31,7 @@ use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
 use sway_utils::mapped_stack::MappedStack;
 
 enum ConstEvalError {
+    #[allow(dead_code)]
     CompileError(CompileError),
     CannotBeEvaluatedToConst {
         // This is not used at the moment because we do not give detailed description of why a

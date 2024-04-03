@@ -1,9 +1,13 @@
 use crate::{
-    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE, decl_engine::{DeclEngineGet, DeclId, DeclRef}, language::{
+    asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
+    decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
         Purity,
-    }, namespace, semantic_analysis::TypeCheckContext, Engines, Length, TypeArgument, TypeId, TypeInfo, TypeParameter
+    },
+    semantic_analysis::TypeCheckContext,
+    Engines, TypeId, TypeInfo, TypeParameter,
 };
 use itertools::Itertools;
 use sway_error::{
@@ -358,9 +362,11 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let (decl, namespace) = ctx.scoped_and_namespace(|ctx| {
-             TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
-        }).unwrap();
+        let (decl, namespace) = ctx
+            .scoped_and_namespace(|ctx| {
+                TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
+            })
+            .unwrap();
 
         // Uncomment this to understand why auto impl failed for a type.
         // println!("{:#?}", handler);
@@ -439,8 +445,6 @@ where
         );
         let abi_encode_node =
             self.parse_item_impl_to_typed_ast_node(engines, module_id, &abi_encode_code);
-
-
 
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
