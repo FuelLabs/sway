@@ -58,12 +58,12 @@ pub struct FunctionParameter {
 
 impl EqWithEngines for FunctionParameter {}
 impl PartialEqWithEngines for FunctionParameter {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
             && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
             && self.mutability_span == other.mutability_span
-            && self.type_argument.eq(&other.type_argument, engines)
+            && self.type_argument.eq(&other.type_argument, ctx)
     }
 }
 

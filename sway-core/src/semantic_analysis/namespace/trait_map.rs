@@ -30,30 +30,30 @@ struct TraitSuffix {
     args: Vec<TypeArgument>,
 }
 impl PartialEqWithEngines for TraitSuffix {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name && self.args.eq(&other.args, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.args.eq(&other.args, ctx)
     }
 }
 impl OrdWithEngines for TraitSuffix {
-    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
         self.name
             .cmp(&other.name)
-            .then_with(|| self.args.cmp(&other.args, engines))
+            .then_with(|| self.args.cmp(&other.args, ctx))
     }
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.prefixes == other.prefixes
-            && self.suffix.eq(&other.suffix, engines)
+            && self.suffix.eq(&other.suffix, ctx)
             && self.is_absolute == other.is_absolute
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         self.prefixes
             .cmp(&other.prefixes)
-            .then_with(|| self.suffix.cmp(&other.suffix, engines))
+            .then_with(|| self.suffix.cmp(&other.suffix, ctx))
             .then_with(|| self.is_absolute.cmp(&other.is_absolute))
     }
 }
@@ -93,9 +93,9 @@ struct TraitKey {
 }
 
 impl OrdWithEngines for TraitKey {
-    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
         self.name
-            .cmp(&other.name, engines)
+            .cmp(&other.name, ctx)
             .then_with(|| self.type_id.cmp(&other.type_id))
     }
 }
@@ -526,7 +526,7 @@ impl TraitMap {
         for oe in other.trait_impls.into_iter() {
             let pos = self
                 .trait_impls
-                .binary_search_by(|se| se.key.cmp(&oe.key, engines));
+                .binary_search_by(|se| se.key.cmp(&oe.key, &OrdWithEnginesContext::new(engines)));
 
             match pos {
                 Ok(pos) => self.trait_impls[pos]
@@ -1183,9 +1183,9 @@ impl TraitMap {
                 trait_constraints, ..
             } => {
                 let all = constraints.iter().all(|required| {
-                    trait_constraints
-                        .iter()
-                        .any(|constraint| constraint.eq(required, engines))
+                    trait_constraints.iter().any(|constraint| {
+                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
+                    })
                 });
                 if all {
                     return Ok(());
@@ -1193,9 +1193,9 @@ impl TraitMap {
             }
             TypeInfo::Placeholder(p) => {
                 let all = constraints.iter().all(|required| {
-                    p.trait_constraints
-                        .iter()
-                        .any(|constraint| constraint.eq(required, engines))
+                    p.trait_constraints.iter().any(|constraint| {
+                        constraint.eq(required, &PartialEqWithEnginesContext::new(engines))
+                    })
                 });
                 if all {
                     return Ok(());

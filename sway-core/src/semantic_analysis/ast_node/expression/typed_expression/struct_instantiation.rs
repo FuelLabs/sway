@@ -276,7 +276,7 @@ pub(crate) fn struct_instantiation(
         // Short-circuit if the unification fails, by checking if the scoped handler
         // has collected any errors.
         handler.scope(|handler| {
-            type_engine.unify(
+            type_engine.unify_with_generic(
                 handler,
                 engines,
                 context_expected_type_id,

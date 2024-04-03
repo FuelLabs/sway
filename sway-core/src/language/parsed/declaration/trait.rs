@@ -59,7 +59,7 @@ impl Spanned for Supertrait {
 
 impl EqWithEngines for Supertrait {}
 impl PartialEqWithEngines for Supertrait {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let Supertrait {
             name: ln,
             decl_ref: ldr,
@@ -68,7 +68,7 @@ impl PartialEqWithEngines for Supertrait {
             name: rn,
             decl_ref: rdr,
         } = other;
-        ln == rn && ldr.eq(rdr, engines)
+        ln == rn && ldr.eq(rdr, ctx)
     }
 }
 
