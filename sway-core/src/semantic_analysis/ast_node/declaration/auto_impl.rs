@@ -10,9 +10,9 @@ use crate::{
     Engines, TypeId, TypeInfo, TypeParameter,
 };
 use itertools::Itertools;
-use sway_error::handler::Handler;
+use sway_error::{error::CompileError, handler::{ErrorEmitted, Handler}};
 use sway_parse::Parse;
-use sway_types::{integer_bits::IntegerBits, BaseIdent, ModuleId, Named, Spanned};
+use sway_types::{integer_bits::IntegerBits, BaseIdent, ModuleId, Named, Span, Spanned};
 
 /// Contains all information needed to implement AbiEncode
 pub struct AutoImplAbiEncodeContext<'a, 'b>
@@ -262,7 +262,7 @@ where
         module_id: Option<ModuleId>,
         kind: FunctionDeclarationKind,
         code: &str,
-    ) -> Option<TyAstNode> {
+    ) -> Result<TyAstNode, Handler> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
             self.ctx.experimental,
@@ -302,32 +302,24 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let decl = TyDecl::type_check(
-            &handler,
-            ctx,
-            parsed::Declaration::FunctionDeclaration(decl),
-        )
-        .unwrap();
+        let decl = ctx.scoped(|ctx| {
+            TyDecl::type_check(
+                &handler,
+                ctx,
+                parsed::Declaration::FunctionDeclaration(decl),
+            )
+        }).unwrap();
 
-        if handler.has_errors() {
-            panic!(
-                "{:?} {} {:?}",
-                handler,
-                code,
-                module_id
-                    .and_then(|x| engines.se().get_source_ids_from_module_id(x))
-                    .unwrap()
-                    .iter()
-                    .map(|x| engines.se().get_path(x))
-                    .collect::<Vec<_>>()
-            );
-        }
         assert!(!handler.has_warnings(), "{:?}", handler);
 
-        Some(TyAstNode {
-            span: decl.span(),
-            content: ty::TyAstNodeContent::Declaration(decl),
-        })
+        if handler.has_errors() {
+            Err(handler)
+        } else {
+            Ok(TyAstNode {
+                span: decl.span(),
+                content: ty::TyAstNodeContent::Declaration(decl),
+            })
+        }
     }
 
     fn parse_item_impl_to_typed_ast_node(
@@ -357,7 +349,11 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let decl = TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl)).unwrap();
+        let decl = ctx.scoped(|ctx| {
+            TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
+        }).unwrap();
+
+        //println!("HASERROR: {code}, {}", handler.has_errors());
 
         if handler.has_errors() {
             None
@@ -538,7 +534,8 @@ where
         module_id: Option<ModuleId>,
         contract_fns: &[DeclRef<DeclId<TyFunctionDecl>>],
         fallback_fn: Option<DeclId<TyFunctionDecl>>,
-    ) -> Option<TyAstNode> {
+        handler: &Handler,
+    ) -> Result<TyAstNode, ErrorEmitted> {
         let mut code = String::new();
 
         let mut reads = false;
@@ -591,7 +588,7 @@ where
                 }}\n"));
             } else {
                 code.push_str(&format!("if method_name == \"{method_name}\" {{
-                    let args = decode_second_param::<{args_types}>();
+                    let args: {args_types} = decode_second_param::<{args_types}>();
                     let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
                     __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
                 }}\n"));
@@ -624,19 +621,29 @@ where
             {fallback}
         }}"
         );
-        self.parse_item_fn_to_typed_ast_node(
+
+        let entry_fn = self.parse_item_fn_to_typed_ast_node(
             engines,
             module_id,
             FunctionDeclarationKind::Entry,
             &code,
-        )
+        );
+
+        match entry_fn {
+            Ok(entry_fn) => Ok(entry_fn),
+            Err(gen_handler) => {
+                handler.append(gen_handler);
+                Err(handler.emit_err(CompileError::CouldNotGenerateEntry { span: Span::dummy() }))
+            },
+        }
     }
 
     pub(crate) fn generate_predicate_entry(
         &mut self,
         engines: &Engines,
         decl: &TyFunctionDecl,
-    ) -> Option<TyAstNode> {
+        handler: &Handler,
+    ) -> Result<TyAstNode, ErrorEmitted> {
         let module_id = decl.span.source_id().map(|sid| sid.module_id());
 
         let args_types = itertools::intersperse(
@@ -662,25 +669,34 @@ where
             let args_types = format!("({args_types},)");
             format!(
                 "pub fn __entry() -> bool {{
-                let args = decode_predicate_data::<{args_types}>();
+                let args: {args_types} = decode_predicate_data::<{args_types}>();
                 main({expanded_args})
             }}"
             )
         };
 
-        self.parse_item_fn_to_typed_ast_node(
+        let entry_fn = self.parse_item_fn_to_typed_ast_node(
             engines,
             module_id,
             FunctionDeclarationKind::Entry,
             &code,
-        )
+        );
+
+        match entry_fn {
+            Ok(entry_fn) => Ok(entry_fn),
+            Err(gen_handler) => {
+                handler.append(gen_handler);
+                Err(handler.emit_err(CompileError::CouldNotGenerateEntry { span: Span::dummy() }))
+            },
+        }
     }
 
     pub(crate) fn generate_script_entry(
         &mut self,
         engines: &Engines,
         decl: &TyFunctionDecl,
-    ) -> Option<TyAstNode> {
+        handler: &Handler,
+    ) -> Result<TyAstNode, ErrorEmitted> {
         let module_id = decl.span.source_id().map(|sid| sid.module_id());
 
         let args_types = itertools::intersperse(
@@ -718,18 +734,26 @@ where
         } else {
             format!(
                 "pub fn __entry() -> raw_slice {{
-                let args = decode_script_data::<{args_types}>();
+                let args: {args_types} = decode_script_data::<{args_types}>();
                 let result: {return_type} = main({expanded_args}); 
                 encode::<{return_type}>(result)
             }}"
             )
         };
 
-        self.parse_item_fn_to_typed_ast_node(
+        let entry_fn = self.parse_item_fn_to_typed_ast_node(
             engines,
             module_id,
             FunctionDeclarationKind::Entry,
             &code,
-        )
+        );
+
+        match entry_fn {
+            Ok(entry_fn) => Ok(entry_fn),
+            Err(gen_handler) => {
+                handler.append(gen_handler);
+                Err(handler.emit_err(CompileError::CouldNotGenerateEntry { span: Span::dummy() }))
+            },
+        }
     }
 }
