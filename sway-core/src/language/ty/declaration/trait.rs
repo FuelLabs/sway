@@ -123,12 +123,12 @@ impl Spanned for TyTraitDecl {
 
 impl EqWithEngines for TyTraitDecl {}
 impl PartialEqWithEngines for TyTraitDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.type_parameters.eq(&other.type_parameters, engines)
-            && self.interface_surface.eq(&other.interface_surface, engines)
-            && self.items.eq(&other.items, engines)
-            && self.supertraits.eq(&other.supertraits, engines)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
+            && self.interface_surface.eq(&other.interface_surface, ctx)
+            && self.items.eq(&other.items, ctx)
+            && self.supertraits.eq(&other.supertraits, ctx)
             && self.visibility == other.visibility
     }
 }
@@ -161,13 +161,13 @@ impl HashWithEngines for TyTraitDecl {
 
 impl EqWithEngines for TyTraitInterfaceItem {}
 impl PartialEqWithEngines for TyTraitInterfaceItem {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (TyTraitInterfaceItem::TraitFn(id), TyTraitInterfaceItem::TraitFn(other_id)) => {
-                id.eq(other_id, engines)
+                id.eq(other_id, ctx)
             }
             (TyTraitInterfaceItem::Constant(id), TyTraitInterfaceItem::Constant(other_id)) => {
-                id.eq(other_id, engines)
+                id.eq(other_id, ctx)
             }
             _ => false,
         }
@@ -176,12 +176,10 @@ impl PartialEqWithEngines for TyTraitInterfaceItem {
 
 impl EqWithEngines for TyTraitItem {}
 impl PartialEqWithEngines for TyTraitItem {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (TyTraitItem::Fn(id), TyTraitItem::Fn(other_id)) => id.eq(other_id, engines),
-            (TyTraitItem::Constant(id), TyTraitItem::Constant(other_id)) => {
-                id.eq(other_id, engines)
-            }
+            (TyTraitItem::Fn(id), TyTraitItem::Fn(other_id)) => id.eq(other_id, ctx),
+            (TyTraitItem::Constant(id), TyTraitItem::Constant(other_id)) => id.eq(other_id, ctx),
             _ => false,
         }
     }
