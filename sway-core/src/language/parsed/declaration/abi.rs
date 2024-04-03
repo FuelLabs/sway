@@ -2,7 +2,7 @@ use crate::{decl_engine::parsed_id::ParsedDeclId, transform};
 
 use super::{FunctionDeclaration, Supertrait, TraitItem};
 
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 /// An `abi` declaration, which declares an interface for a contract
 /// to implement or for a caller to use to call a contract.
@@ -17,4 +17,16 @@ pub struct AbiDeclaration {
     pub methods: Vec<ParsedDeclId<FunctionDeclaration>>,
     pub(crate) span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl Named for AbiDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for AbiDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
 }

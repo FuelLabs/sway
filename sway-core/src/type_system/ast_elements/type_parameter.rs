@@ -253,7 +253,7 @@ impl TypeParameter {
     ) -> Vec<TraitConstraint> {
         match ctx
             .namespace()
-            .resolve_call_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
+            .resolve_call_path_typed(handler, ctx.engines, &tc.trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -593,7 +593,7 @@ fn handle_trait(
         match ctx
             .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

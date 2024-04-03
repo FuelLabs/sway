@@ -12,6 +12,7 @@ use crate::{
         ty::{self, StructAccessInfo, TyStructField},
         CallPath, Visibility,
     },
+    namespace::ResolvedTraitImplItem,
     semantic_analysis::{
         type_check_context::EnforceTypeArguments, GenericShadowingMode, TypeCheckContext,
     },
@@ -332,8 +333,11 @@ fn collect_struct_constructors(
         .get_items_for_type(engines, struct_type_id)
         .iter()
         .filter_map(|item| match item {
-            ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
-            _ => None,
+            ResolvedTraitImplItem::Parsed(_) => unreachable!(),
+            ResolvedTraitImplItem::Typed(item) => match item {
+                ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
+                _ => None,
+            },
         })
         .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
         .filter(|fn_decl| {
