@@ -13,7 +13,7 @@ enum Error {
 
 impl AbiEncode for Error {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self);
+        buffer.push_byte(1);
     }
 }
 
