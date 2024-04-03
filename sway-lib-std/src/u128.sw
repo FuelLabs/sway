@@ -2,7 +2,8 @@
 library;
 
 use ::assert::assert;
-use ::convert::From;
+use ::convert::{From, Into};
+use ::primitive_conversions::u64::*;
 use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
 use ::result::Result::{self, *};
@@ -691,8 +692,8 @@ fn test_u128_from_u8() {
     let u8_1: u8 = 0u8;
     let u8_2: u8 = 255u8;
 
-    let u128_1 = U128::from(u8_1);
-    let u128_2 = U128::from(u8_2);
+    let u128_1 = <U128 as From<u8>>::from(u8_1);
+    let u128_2 = <U128 as From<u8>>::from(u8_2);
 
     assert(u128_1.as_u64().unwrap() == 0u64);
     assert(u128_2.as_u64().unwrap() == 255u64);
@@ -703,8 +704,8 @@ fn test_u128_from_u16() {
     let u16_1: u16 = 0u16;
     let u16_2: u16 = 65535u16;
 
-    let u128_1 = U128::from(u16_1);
-    let u128_2 = U128::from(u16_2);
+    let u128_1 = <U128 as From<u16>>::from(u16_1);
+    let u128_2 = <U128 as From<u16>>::from(u16_2);
 
     assert(u128_1.as_u64().unwrap() == 0u64);
     assert(u128_2.as_u64().unwrap() == 65535u64);
@@ -715,8 +716,8 @@ fn test_u128_from_u32() {
     let u32_1: u32 = 0u32;
     let u32_2: u32 = 4294967295u32;
 
-    let u128_1 = U128::from(u32_1);
-    let u128_2 = U128::from(u32_2);
+    let u128_1 = <U128 as From<u32>>::from(u32_1);
+    let u128_2 = <U128 as From<u32>>::from(u32_2);
 
     assert(u128_1.as_u64().unwrap() == 0u64);
     assert(u128_2.as_u64().unwrap() == 4294967295u64);
@@ -727,8 +728,8 @@ fn test_u128_from_u64() {
     let u64_1: u64 = 0u64;
     let u64_2: u64 = 18446744073709551615u64;
 
-    let u128_1 = U128::from(u64_1);
-    let u128_2 = U128::from(u64_2);
+    let u128_1 = <U128 as From<u64>>::from(u64_1);
+    let u128_2 = <U128 as From<u64>>::from(u64_2);
 
     assert(u128_1.as_u64().unwrap() == 0u64);
     assert(u128_2.as_u64().unwrap() == 18446744073709551615u64);
