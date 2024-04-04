@@ -130,9 +130,9 @@ pub(crate) fn compile_const_decl(
                 None => None,
             };
             let const_decl = match decl {
-                Ok(decl) => match decl {
+                Ok(decl) => match decl.expect_typed() {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                        Some((*env.engines.de().get_constant(decl_id)).clone())
+                        Some((*env.engines.de().get_constant(&decl_id)).clone())
                     }
                     _otherwise => const_decl.cloned(),
                 },
