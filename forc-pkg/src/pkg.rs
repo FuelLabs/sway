@@ -2684,6 +2684,7 @@ pub fn check(
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
+        dbg!("compile_to_ast");
         let programs_res = sway_core::compile_to_ast(
             &handler,
             engines,
@@ -2693,6 +2694,7 @@ pub fn check(
             &pkg.name,
             retrigger_compilation.clone(),
         );
+        dbg!();
 
         if retrigger_compilation
             .as_ref()
@@ -2703,8 +2705,12 @@ pub fn check(
         }
 
         let programs = match programs_res.as_ref() {
-            Ok(programs) => programs,
+            Ok(programs) => {
+                eprintln!("Programs ok 👌");
+                programs
+            },
             _ => {
+                eprintln!("Programs NOT ok 💀");
                 results.push((programs_res.ok(), handler));
                 return Ok(results);
             }

@@ -151,9 +151,11 @@ impl ServerState {
                             Ok(_) => {
                                 mem::swap(&mut *session.engines.write(), &mut engines_clone);
                                 *last_compilation_state.write() = LastCompilationState::Success;
+                                eprintln!("Compilation successful ✅");
                             }
                             Err(_err) => {
                                 *last_compilation_state.write() = LastCompilationState::Failed;
+                                eprintln!("Compilation failed ❌");
                             }
                         }
 
