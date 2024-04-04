@@ -30,9 +30,9 @@ impl Named for TyTraitType {
 
 impl EqWithEngines for TyTraitType {}
 impl PartialEqWithEngines for TyTraitType {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.ty.eq(&other.ty, engines)
+            && self.ty.eq(&other.ty, ctx)
             && self.implementing_type.eq(&other.implementing_type)
     }
 }

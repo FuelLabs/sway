@@ -740,6 +740,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_complete_fig"
+version = "3.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed37b4c0c1214673eba6ad8ea31666626bf72be98ffb323067d973c48b4964b9"
+dependencies = [
+ "clap 3.2.25",
+ "clap_complete 3.2.5",
+]
+
+[[package]]
 name = "clap_derive"
 version = "3.2.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -891,6 +901,23 @@ dependencies = [
  "mime_guess",
  "rand",
  "thiserror",
+]
+
+[[package]]
+name = "completest"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8229e041ca8f8130ad7f0ce1afb9cfdb3033de7fd548e6422dbb2f4f12184f41"
+
+[[package]]
+name = "completest-pty"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a6d1272e27f608f97616be67a2aed03ed8d73910b5df9a7f4a50c4ffd59d185"
+dependencies = [
+ "completest",
+ "ptyprocess",
+ "vt100",
 ]
 
 [[package]]
@@ -1995,16 +2022,18 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
  "clap 3.2.25",
  "clap_complete 3.2.5",
+ "clap_complete_fig",
+ "completest-pty",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "forc-util",
  "fs_extra",
  "fuel-asm",
@@ -2028,7 +2057,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2037,7 +2066,7 @@ dependencies = [
  "devault",
  "forc",
  "forc-pkg",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -2063,13 +2092,13 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "async-trait",
  "atty",
  "clap 3.2.25",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
@@ -2089,7 +2118,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2114,7 +2143,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "clap 4.5.4",
@@ -2139,12 +2168,12 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
  "forc-pkg",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -2156,7 +2185,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2167,12 +2196,12 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "ansi_term",
  "anyhow",
  "cid",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "forc-util",
  "fuel-abi-types",
  "futures",
@@ -2203,7 +2232,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2229,7 +2258,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -2238,7 +2267,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2253,7 +2282,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2261,7 +2290,7 @@ dependencies = [
  "clap 3.2.25",
  "dirs 3.0.2",
  "fd-lock 4.0.2",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "fuel-tx",
  "hex",
  "paste",
@@ -4082,6 +4111,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "memoffset"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
+dependencies = [
+ "autocfg",
+]
+
+[[package]]
 name = "miden"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4350,6 +4388,19 @@ dependencies = [
  "cc",
  "cfg-if 1.0.0",
  "libc",
+]
+
+[[package]]
+name = "nix"
+version = "0.26.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "598beaf3cc6fdd9a5dfb1630c2800c7acd31df7aaf0f565796fba2b53ca1af1b"
+dependencies = [
+ "bitflags 1.3.2",
+ "cfg-if 1.0.0",
+ "libc",
+ "memoffset 0.7.1",
+ "pin-utils",
 ]
 
 [[package]]
@@ -5228,6 +5279,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33cb294fe86a74cbcf50d4445b37da762029549ebeea341421c7c70370f86cac"
 
 [[package]]
+name = "ptyprocess"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e05aef7befb11a210468a2d77d978dde2c6381a0381e33beb575e91f57fe8cf"
+dependencies = [
+ "nix 0.26.4",
+]
+
+[[package]]
 name = "publicsuffix"
 version = "2.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5645,7 +5705,7 @@ checksum = "4f77412a3d1f26af0c0783c23b3555a301b1a49805cba7bf9a7827a9e9e285f0"
 dependencies = [
  "countme",
  "hashbrown 0.11.2",
- "memoffset",
+ "memoffset 0.6.5",
  "rustc-hash",
  "text-size",
 ]
@@ -6518,7 +6578,7 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "sway-ast"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -6530,7 +6590,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "clap 3.2.25",
  "derivative",
@@ -6575,7 +6635,7 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "either",
  "num-traits",
@@ -6587,7 +6647,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -6606,7 +6666,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
@@ -6616,7 +6676,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -6626,7 +6686,7 @@ dependencies = [
  "dirs 4.0.0",
  "fd-lock 4.0.2",
  "forc-pkg",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "forc-util",
  "futures",
  "indexmap 2.2.6",
@@ -6680,7 +6740,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -6698,7 +6758,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -6716,7 +6776,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "serde",
  "walkdir",
@@ -6724,11 +6784,11 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.52.0"
+version = "0.52.1"
 dependencies = [
  "anyhow",
  "difference",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "paste",
  "prettydiff 0.6.4",
  "ropey",
@@ -6987,7 +7047,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.52.0",
+ "forc-tracing 0.52.1",
  "fuel-vm",
  "futures",
  "gag",
@@ -7720,6 +7780,39 @@ name = "void"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
+
+[[package]]
+name = "vt100"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84cd863bf0db7e392ba3bd04994be3473491b31e66340672af5d11943c6274de"
+dependencies = [
+ "itoa",
+ "log",
+ "unicode-width",
+ "vte",
+]
+
+[[package]]
+name = "vte"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f5022b5fbf9407086c180e9557be968742d839e68346af7792b8592489732197"
+dependencies = [
+ "arrayvec 0.7.4",
+ "utf8parse",
+ "vte_generate_state_changes",
+]
+
+[[package]]
+name = "vte_generate_state_changes"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d257817081c7dffcdbab24b9e62d2def62e2ff7d00b1c20062551e6cccc145ff"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
 
 [[package]]
 name = "walkdir"
