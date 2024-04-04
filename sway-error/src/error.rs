@@ -6,6 +6,7 @@ use crate::parser_error::ParseError;
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::fmt::Formatter;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
@@ -66,14 +67,19 @@ pub enum CompileError {
         what_it_is: &'static str,
         span: Span,
     },
-    #[error("Unimplemented feature: {0}")]
-    Unimplemented(&'static str, Span),
-    #[error(
-        "Unimplemented feature: {0}\n\
-         help: {1}.\n\
-         "
-    )]
-    UnimplementedWithHelp(&'static str, &'static str, Span),
+    #[error("{feature} is currently not implemented.")]
+    Unimplemented {
+        /// The description of the unimplemented feature,
+        /// formulated in a way that fits into common ending
+        /// "is currently not implemented."
+        /// E.g., "Using something".
+        feature: String,
+        /// Help lines. Empty if there is no additional help.
+        /// To get an empty line between the help lines,
+        /// insert a [String] containing only a space: `" ".to_string()`.
+        help: Vec<String>,
+        span: Span,
+    },
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -651,6 +657,13 @@ pub enum CompileError {
         expected: String,
         received: String,
     },
+    #[error("This cannot be matched.")]
+    MatchedValueIsNotValid {
+        /// Common message describing which Sway types
+        /// are currently supported in match expressions.
+        supported_types_message: Vec<&'static str>,
+        span: Span,
+    },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
         adding \"#[{STORAGE_PURITY_ATTRIBUTE_NAME}({attrs})]\" to the function declaration."
@@ -856,8 +869,13 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
-    #[error("\"Self\" is not valid in the self type of an impl block")]
-    SelfIsNotValidAsImplementingFor { span: Span },
+    #[error("{invalid_type} is not a valid type in the self type of an impl block.")]
+    TypeIsNotValidAsImplementingFor {
+        invalid_type: InvalidImplementingForType,
+        /// Name of the trait if the impl implements a trait, `None` otherwise.
+        trait_name: Option<String>,
+        span: Span,
+    },
     #[error("Uninitialized register is being read before being written")]
     UninitRegisterInAsmBlockBeingRead { span: Span },
     #[error("Expression of type \"{expression_type}\" cannot be dereferenced.")]
@@ -884,8 +902,7 @@ impl Spanned for CompileError {
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
             NotAVariable { span, .. } => span.clone(),
-            Unimplemented(_, span) => span.clone(),
-            UnimplementedWithHelp(_, _, span) => span.clone(),
+            Unimplemented { span, .. } => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
@@ -1000,6 +1017,7 @@ impl Spanned for CompileError {
             MatchStructPatternMustIgnorePrivateFields { span, .. } => span.clone(),
             MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
+            MatchedValueIsNotValid { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -1064,7 +1082,7 @@ impl Spanned for CompileError {
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
-            SelfIsNotValidAsImplementingFor { span } => span.clone(),
+            TypeIsNotValidAsImplementingFor { span, .. } => span.clone(),
             UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
             ExpressionCannotBeDereferenced { span, .. } => span.clone(),
             FallbackFnsAreContractOnly { span } => span.clone(),
@@ -1948,6 +1966,100 @@ impl ToDiagnostic for CompileError {
                     "This property is called \"trait coherence\".".to_string(),
                 ],
             },
+            Unimplemented { feature, help, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Used feature is currently not implemented".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{feature} is currently not implemented.")
+                ),
+                hints: vec![],
+                help: help.clone(),
+            },
+            MatchedValueIsNotValid { supported_types_message, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Matched value is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This cannot be matched.".to_string()
+                ),
+                hints: vec![],
+                help: {
+                    let mut help = vec![];
+
+                    help.push("Matched value must be an expression whose result is of one of the types supported in pattern matching.".to_string());
+                    help.push(Diagnostic::help_empty_line());
+                    for msg in supported_types_message {
+                        help.push(msg.to_string());
+                    }
+
+                    help
+                }
+            },
+            TypeIsNotValidAsImplementingFor { invalid_type, trait_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Self type of an impl block is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{invalid_type} is not a valid type in the self type of {} impl block.",
+                        match trait_name {
+                            Some(_) => "a trait",
+                            None => "an",
+                        }
+                    )
+                ),
+                hints: vec![
+                    if matches!(invalid_type, InvalidImplementingForType::SelfType) {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("Replace {invalid_type} with the actual type that you want to implement for.")
+                        )
+                    } else {
+                        Hint::none()
+                    }
+                ],
+                help: {
+                    if matches!(invalid_type, InvalidImplementingForType::Placeholder) {
+                        vec![
+                            format!("Are you trying to implement {} for any type?",
+                                match trait_name {
+                                    Some(trait_name) => format!("trait \"{trait_name}\""),
+                                    None => "functionality".to_string(),
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "If so, use generic type parameters instead.".to_string(),
+                            "E.g., instead of:".to_string(),
+                            // The trait `trait_name` could represent an arbitrary complex trait.
+                            // E.g., `with generic arguments, etc. So we don't want to deal
+                            // with the complexity of representing it properly
+                            // but rather use a simplified but clearly instructive
+                            // sample trait name here, `SomeTrait`.
+                            // impl _
+                            //   or
+                            // impl SomeTrait for _
+                            format!("{}impl {}_",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                            "use:".to_string(),
+                            format!("{}impl<T> {}T",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1995,4 +2107,21 @@ pub enum StructFieldUsageContext {
     //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
     //       and provide specific suggestions for these two cases.
     //       (Destructing desugars to plain struct field access.)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InvalidImplementingForType {
+    SelfType,
+    Placeholder,
+    Other,
+}
+
+impl fmt::Display for InvalidImplementingForType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            InvalidImplementingForType::SelfType => f.write_str("\"Self\""),
+            InvalidImplementingForType::Placeholder => f.write_str("Placeholder `_`"),
+            InvalidImplementingForType::Other => f.write_str("This"),
+        }
+    }
 }
