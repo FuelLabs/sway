@@ -16,8 +16,6 @@ mod keccak256;
 mod keys;
 mod sha256;
 
-const ABOUT: &str = "Forc plugin for hashing arbitrary data.";
-
 fn help() -> &'static str {
     Box::leak(
         format!(
@@ -32,10 +30,10 @@ fn help() -> &'static str {
     )
 }
 
+/// Forc plugin for hashing arbitrary data
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-crypto",
-    about = ABOUT,
     after_help = help(),
     version
 )]
