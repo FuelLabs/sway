@@ -18,14 +18,14 @@ use sway_parse::Parse;
 use sway_types::{integer_bits::IntegerBits, BaseIdent, ModuleId, Named, Span, Spanned};
 
 /// Contains all information needed to implement AbiEncode
-pub struct AutoImplAbiEncodeContext<'a, 'b>
+pub struct EncodingAutoImplContext<'a, 'b>
 where
     'a: 'b,
 {
     ctx: &'b mut TypeCheckContext<'a>,
 }
 
-impl<'a, 'b> AutoImplAbiEncodeContext<'a, 'b>
+impl<'a, 'b> EncodingAutoImplContext<'a, 'b>
 where
     'a: 'b,
 {
@@ -33,7 +33,7 @@ where
         Some(Self { ctx })
     }
 
-    pub fn parse<T>(engines: &Engines, module_id: Option<ModuleId>, input: &str) -> T
+    fn parse<T>(engines: &Engines, module_id: Option<ModuleId>, input: &str) -> T
     where
         T: Parse,
     {
@@ -267,7 +267,7 @@ where
         format!("match self {{ {arms} }}")
     }
 
-    pub fn parse_item_fn_to_typed_ast_node(
+    pub fn parse_fn_to_ty_ast_node(
         &mut self,
         engines: &Engines,
         module_id: Option<ModuleId>,
@@ -313,8 +313,8 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let decl = ctx
-            .scoped(|ctx| {
+        let (decl, namespace) = ctx
+            .scoped_and_namespace(|ctx| {
                 TyDecl::type_check(
                     &handler,
                     ctx,
@@ -325,9 +325,13 @@ where
 
         assert!(!handler.has_warnings(), "{:?}", handler);
 
-        if handler.has_errors() {
+        // Uncomment this to understand why an entry function was not generated
+        // println!("{:#?}", handler);
+
+        if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
         } else {
+            *self.ctx.namespace = namespace;
             Ok(TyAstNode {
                 span: decl.span(),
                 content: ty::TyAstNodeContent::Declaration(decl),
@@ -335,12 +339,12 @@ where
         }
     }
 
-    fn parse_item_impl_to_typed_ast_node(
+    fn parse_impl_trait_to_ty_ast_node(
         &mut self,
         engines: &Engines,
         module_id: Option<ModuleId>,
         code: &str,
-    ) -> Option<TyAstNode> {
+    ) -> Result<TyAstNode, Handler> {
         let mut ctx = crate::transform::to_parsed_lang::Context::new(
             crate::BuildTarget::Fuel,
             self.ctx.experimental,
@@ -371,14 +375,11 @@ where
         // Uncomment this to understand why auto impl failed for a type.
         // println!("{:#?}", handler);
 
-        if handler.has_errors() {
-            None
+        if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
+            Err(handler)
         } else {
-            if !matches!(decl, TyDecl::ErrorRecovery(_, _)) {
-                *self.ctx.namespace = namespace;
-            }
-
-            Some(TyAstNode {
+            *self.ctx.namespace = namespace;
+            Ok(TyAstNode {
                 span: decl.span(),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
@@ -408,7 +409,7 @@ where
             abi_encode_body,
         );
         let abi_encode_node =
-            self.parse_item_impl_to_typed_ast_node(engines, module_id, &abi_encode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, module_id, &abi_encode_code);
 
         let abi_decode_body = self.generate_abi_decode_struct_body(engines, &struct_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -417,9 +418,9 @@ where
             abi_decode_body,
         );
         let abi_decode_node =
-            self.parse_item_impl_to_typed_ast_node(engines, module_id, &abi_decode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, module_id, &abi_decode_code);
 
-        (abi_encode_node, abi_decode_node)
+        (abi_encode_node.ok(), abi_decode_node.ok())
     }
 
     fn auto_impl_enum(
@@ -444,7 +445,7 @@ where
             abi_encode_body,
         );
         let abi_encode_node =
-            self.parse_item_impl_to_typed_ast_node(engines, module_id, &abi_encode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, module_id, &abi_encode_code);
 
         let abi_decode_body = self.generate_abi_decode_enum_body(engines, &enum_decl);
         let abi_decode_code = self.generate_abi_decode_code(
@@ -453,9 +454,9 @@ where
             abi_decode_body,
         );
         let abi_decode_node =
-            self.parse_item_impl_to_typed_ast_node(engines, module_id, &abi_decode_code);
+            self.parse_impl_trait_to_ty_ast_node(engines, module_id, &abi_decode_code);
 
-        (abi_encode_node, abi_decode_node)
+        (abi_encode_node.ok(), abi_decode_node.ok())
     }
 
     pub fn generate(
@@ -642,12 +643,8 @@ where
         }}"
         );
 
-        let entry_fn = self.parse_item_fn_to_typed_ast_node(
-            engines,
-            module_id,
-            FunctionDeclarationKind::Entry,
-            &code,
-        );
+        let entry_fn =
+            self.parse_fn_to_ty_ast_node(engines, module_id, FunctionDeclarationKind::Entry, &code);
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
@@ -697,12 +694,8 @@ where
             )
         };
 
-        let entry_fn = self.parse_item_fn_to_typed_ast_node(
-            engines,
-            module_id,
-            FunctionDeclarationKind::Entry,
-            &code,
-        );
+        let entry_fn =
+            self.parse_fn_to_ty_ast_node(engines, module_id, FunctionDeclarationKind::Entry, &code);
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
@@ -765,12 +758,8 @@ where
             )
         };
 
-        let entry_fn = self.parse_item_fn_to_typed_ast_node(
-            engines,
-            module_id,
-            FunctionDeclarationKind::Entry,
-            &code,
-        );
+        let entry_fn =
+            self.parse_fn_to_ty_ast_node(engines, module_id, FunctionDeclarationKind::Entry, &code);
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),

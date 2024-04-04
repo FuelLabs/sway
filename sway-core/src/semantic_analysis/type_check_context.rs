@@ -233,7 +233,7 @@ impl<'a> TypeCheckContext<'a> {
         with_scoped_ctx(ctx)
     }
 
-    /// Scope the `TypeCheckContext` with a new namespace but update the original if success.
+    /// Scope the `TypeCheckContext` with a new namespace and returns it in case of success.
     pub fn scoped_and_namespace<T>(
         self,
         with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
@@ -258,8 +258,7 @@ impl<'a> TypeCheckContext<'a> {
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
         };
-        let r = with_scoped_ctx(ctx)?;
-        Ok((r, namespace))
+        Ok((with_scoped_ctx(ctx)?, namespace))
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
