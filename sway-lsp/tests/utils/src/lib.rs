@@ -126,14 +126,14 @@ pub async fn random_delay() {
     // there is a 10% chance that a longer 100-800ms wait will be added
     if rand::thread_rng().gen_ratio(1, 10) {
         tokio::time::sleep(tokio::time::Duration::from_millis(
-            rand::thread_rng().gen_range(100..=900),
+            rand::thread_rng().gen_range(100..=1200),
         ))
         .await;
     }
     // 20% chance to introduce a longer delay of 200 to 1500 milliseconds.
     if rand::thread_rng().gen_ratio(2, 10) {
         tokio::time::sleep(tokio::time::Duration::from_millis(
-            rand::thread_rng().gen_range(200..=1500),
+            rand::thread_rng().gen_range(400..=2800),
         ))
         .await;
     }

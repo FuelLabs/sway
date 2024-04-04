@@ -266,10 +266,11 @@ fn garbage_collection_storage() {
             .write()
             .garbage_collection
             .gc_frequency = 1;
+        eprintln!("Starting test");
         let uri = init_and_open(&mut service, p).await;
-        let times = 60;
+        let times = 600;
         for version in 0..times {
-            //eprintln!("version: {}", version);
+            eprintln!("version: {}", version);
             let params = if rand::random::<u64>() % 3 < 1 {
                 // enter keypress at line 20
                 lsp::create_did_change_params(
