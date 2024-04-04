@@ -18,7 +18,7 @@ While you would still need a smart contract to handle the minting and burning of
 
 ### No Token Approvals
 
-An advantage Native Assets bring are there is no need for token approvals just as with Ether on the EVM. With millions of dollars hacked every year due to misused token approvals, the FuelVM eliminates this attack vector.
+An advantage Native Assets bring is that there is no need for token approvals; as with Ether on the EVM. With millions of dollars hacked every year due to misused token approvals, the FuelVM eliminates this attack vector.
 
 ### Asset vs Coin vs Token
 
@@ -146,7 +146,7 @@ To check the balance of an external contract, call the `std::context::balance_of
 {{#include ../../../../examples/native_asset/src/main.sw:balance_of}}
 ```
 
-> **NOTE** Due to the FuelVM's UTXO design, balances of `Address`'s cannot be return in the Sway Language. This must be done off-chain using the SDK.
+> **NOTE** Due to the FuelVM's UTXO design, balances of `Address`'s cannot be returned in the Sway Language. This must be done off-chain using the SDK.
 
 #### Receiving Native Assets In A Contract
 
