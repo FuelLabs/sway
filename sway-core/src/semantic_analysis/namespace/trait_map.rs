@@ -1181,6 +1181,8 @@ impl TraitMap {
         try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
+
+        // resolving trait constraints require a concrete type, we need to default numeric to u64
         type_engine.decay_numeric(handler, engines, type_id, access_span)?;
 
         if constraints.is_empty() {
@@ -1257,8 +1259,6 @@ impl TraitMap {
 
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
-
-        // resolving trait constraints require a concrete type, we need to default numeric to u64
 
         let all_impld_traits: BTreeSet<(Ident, TypeId)> = self
             .trait_impls
