@@ -33,6 +33,19 @@ pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 /// ```
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
 
+/// A u256 of zero value.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::constants::{ZERO_U256, ZERO_B256};
+///
+/// fn foo() {
+///     assert(ZERO_U256 == u256::from(0_u64));
+/// }
+/// ```
+pub const ZERO_U256 = 0x0000000000000000000000000000000000000000000000000000000000000000u256;
+
 /// The default Sub Id for assets.
 ///
 /// # Examples
