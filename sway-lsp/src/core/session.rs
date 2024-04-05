@@ -400,10 +400,10 @@ pub fn traverse(
         }
 
         let engines_ref = session.engines.read();
-        // Check if the cached AST was returned by the compiler for the users workspace. 
-        // If it was, then we need to use the original engines for traversal. 
+        // Check if the cached AST was returned by the compiler for the users workspace.
+        // If it was, then we need to use the original engines for traversal.
         //
-        // This is due to the garbage collector removing types from the engines_clone 
+        // This is due to the garbage collector removing types from the engines_clone
         // and they have not been re-added due to compilation being skipped.
         let engines = if i == results_len - 1 && metrics.reused_modules > 0 {
             &*engines_ref

@@ -2703,9 +2703,7 @@ pub fn check(
         }
 
         let programs = match programs_res.as_ref() {
-            Ok(programs) => {
-                programs
-            },
+            Ok(programs) => programs,
             _ => {
                 results.push((programs_res.ok(), handler));
                 return Ok(results);

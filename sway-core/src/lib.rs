@@ -451,10 +451,9 @@ fn is_parse_module_cache_up_to_date(
             // Look at the dependencies recursively to make sure they have not been
             // modified either.
             if cache_up_to_date {
-                entry
-                    .dependencies
-                    .iter()
-                    .all(|path| is_parse_module_cache_up_to_date(engines, path, input.clone(), include_tests))
+                entry.dependencies.iter().all(|path| {
+                    is_parse_module_cache_up_to_date(engines, path, input.clone(), include_tests)
+                })
             } else {
                 false
             }

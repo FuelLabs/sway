@@ -151,18 +151,22 @@ impl ServerState {
                             Ok(_) => {
                                 if let Ok(path) = uri.to_file_path() {
                                     let path = Arc::new(path);
-                                    let source_id = session.engines.read().se().get_source_id(&path);
+                                    let source_id =
+                                        session.engines.read().se().get_source_id(&path);
                                     if let Some(metrics) = session.metrics.get(&source_id) {
                                         // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                         // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                         // as the engines_clone might have cleared some types that are still in use.
                                         if metrics.reused_modules == 0 {
-                                            // The compiler did not reuse the workspace AST. 
+                                            // The compiler did not reuse the workspace AST.
                                             // We need to overwrite the old engines with the engines clone.
-                                            mem::swap(&mut *session.engines.write(), &mut engines_clone);
+                                            mem::swap(
+                                                &mut *session.engines.write(),
+                                                &mut engines_clone,
+                                            );
                                         }
                                     }
-                                } 
+                                }
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }
                             Err(_err) => {
