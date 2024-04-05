@@ -49,7 +49,6 @@ impl TyProgram {
         package_name: &str,
         build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
-        dbg!();
         let experimental =
             build_config
                 .map(|x| x.experimental)

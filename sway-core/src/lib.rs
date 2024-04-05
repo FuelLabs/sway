@@ -420,113 +420,46 @@ fn parse_module_tree(
     Ok(parsed_module_tree)
 }
 
-// fn is_parse_module_cache_up_to_date(
-//     engines: &Engines,
-//     path: &Arc<PathBuf>,
-//     include_tests: bool,
-// ) -> bool {
-//     let query_engine = engines.qe();
-//     let key = ModuleCacheKey::new(path.clone(), include_tests);
-//     let entry = query_engine.get_parse_module_cache_entry(&key);
-//     match entry {
-//         Some(entry) => {
-//             let modified_time = std::fs::metadata(path.as_path())
-//                 .ok()
-//                 .and_then(|m| m.modified().ok());
-
-//             // Let's check if we can re-use the dependency information
-//             // we got from the cache, which is only true if the file hasn't been
-//             // modified since or if its hash is the same.
-//             let cache_up_to_date = entry.modified_time == modified_time || {
-//                 let src = std::fs::read_to_string(path.as_path()).unwrap();
-
-//                 let mut hasher = DefaultHasher::new();
-//                 src.hash(&mut hasher);
-//                 let hash = hasher.finish();
-
-//                 hash == entry.hash
-//             };
-
-//             // Look at the dependencies recursively to make sure they have not been
-//             // modified either.
-//             if cache_up_to_date {
-//                 entry
-//                     .dependencies
-//                     .iter()
-//                     .all(|path| is_parse_module_cache_up_to_date(engines, path, include_tests))
-//             } else {
-//                 false
-//             }
-//         }
-//         None => false,
-//     }
-// }
-
 fn is_parse_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
-    include_tests: bool,
     input: Arc<str>,
+    include_tests: bool,
 ) -> bool {
-    // if path.ends_with("storage_contract/src/main.sw") {
-    //     return false;
-    // }
-
     let query_engine = engines.qe();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
     let entry = query_engine.get_parse_module_cache_entry(&key);
-
     match entry {
         Some(entry) => {
             let modified_time = std::fs::metadata(path.as_path())
-                .map(|m| m.modified().ok())
-                .unwrap_or_else(|e| {
-                    eprintln!("Error getting metadata for {:?}: {:?}", path, e);
-                    None
-                });
+                .ok()
+                .and_then(|m| m.modified().ok());
 
             // Let's check if we can re-use the dependency information
             // we got from the cache, which is only true if the file hasn't been
             // modified since or if its hash is the same.
             let cache_up_to_date = entry.modified_time == modified_time || {
-                // let src = std::fs::read_to_string(path.as_path()).unwrap();
-                // eprintln!("----------------------------------------------------------");
-                // eprintln!("Input: {:?}", input);
-
-                // eprintln!("Source: {:?}", src);
-                // eprintln!("----------------------------------------------------------"); 
                 let mut hasher = DefaultHasher::new();
-
                 // It's important to hash the input that triggered compilation. We don't want to
                 // load the file from disk as it may have been changed by LSP or another process since
                 // compilation started.
                 input.hash(&mut hasher);
-
-                //src.hash(&mut hasher);
                 let hash = hasher.finish();
-                let hash_match = hash == entry.hash;
-                //eprintln!("Hash match for {:?}: {}", path, hash_match);
-                hash_match
+                hash == entry.hash
             };
-
-            // eprintln!("Cache up to date for {:?}: {}", path, cache_up_to_date);
 
             // Look at the dependencies recursively to make sure they have not been
             // modified either.
             if cache_up_to_date {
-                entry.dependencies.iter().all(|dep_path| {
-                    let dep_up_to_date = is_parse_module_cache_up_to_date(engines, dep_path, include_tests, input.clone());
-                    //eprintln!("Dependency {:?} up to date: {}", dep_path, dep_up_to_date);
-                    dep_up_to_date
-                })
+                entry
+                    .dependencies
+                    .iter()
+                    .all(|path| is_parse_module_cache_up_to_date(engines, path, input.clone(), include_tests))
             } else {
                 false
             }
         }
-        None => {
-            //eprintln!("No cache entry found for {:?}", path);
-            false
-        }
+        None => false,
     }
 }
 
@@ -596,7 +529,7 @@ pub fn parsed_to_ast(
         package_name,
         build_config,
     );
-    check_should_abort(handler, retrigger_compilation.clone(), 531)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_module` as
@@ -661,7 +594,7 @@ pub fn parsed_to_ast(
             None => (None, None),
         };
 
-        check_should_abort(handler, retrigger_compilation.clone(), 596)?;
+        check_should_abort(handler, retrigger_compilation.clone())?;
 
         // Perform control flow analysis and extend with any errors.
         let _ = perform_control_flow_analysis(
@@ -747,33 +680,25 @@ pub fn compile_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
-    dbg!();
-    check_should_abort(handler, retrigger_compilation.clone(), 682)?;
-    dbg!();
+    check_should_abort(handler, retrigger_compilation.clone())?;
     let query_engine = engines.qe();
-    dbg!();
     let mut metrics = PerformanceData::default();
-    dbg!();
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;
 
         // Check if we can re-use the data in the cache.
-        dbg!("checking cache");
-        if is_parse_module_cache_up_to_date(engines, &path, include_tests, input.clone()) {
+        if is_parse_module_cache_up_to_date(engines, &path, input.clone(), include_tests) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_modules += 1;
-
-            eprintln!("entry.programs.metrics.reused_modules: {:?}", entry.programs.metrics.reused_modules);
 
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
-            dbg!("reusing cache for {:?}", path);
             return Ok(entry.programs);
         };
     }
-    dbg!("parsing");
+
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
@@ -783,7 +708,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    check_should_abort(handler, retrigger_compilation.clone(), 711)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -801,7 +726,6 @@ pub fn compile_to_ast(
         parsed_program.exclude_tests(engines);
     }
 
-    dbg!("type checking");
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
         "parse the concrete syntax tree (CST) to a typed AST",
@@ -819,7 +743,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    check_should_abort(handler, retrigger_compilation.clone(), 746)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     handler.dedup();
 
@@ -835,7 +759,7 @@ pub fn compile_to_ast(
         query_engine.insert_programs_cache_entry(cache_entry);
     }
 
-    check_should_abort(handler, retrigger_compilation.clone(), 762)?;
+    check_should_abort(handler, retrigger_compilation.clone())?;
 
     Ok(programs)
 }
@@ -1132,11 +1056,9 @@ fn module_return_path_analysis(
 fn check_should_abort(
     handler: &Handler,
     retrigger_compilation: Option<Arc<AtomicBool>>,
-    line_num: u32,
 ) -> Result<(), ErrorEmitted> {
     if let Some(ref retrigger_compilation) = retrigger_compilation {
         if retrigger_compilation.load(Ordering::SeqCst) {
-            eprintln!("🛑 Canceling compilation at line {}", line_num);
             return Err(handler.cancel());
         }
     }
