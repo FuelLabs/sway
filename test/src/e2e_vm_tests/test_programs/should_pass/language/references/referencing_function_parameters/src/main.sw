@@ -108,6 +108,10 @@ fn empty_struct_parameter_not_inlined(p: EmptyStruct) {
 
 #[inline(always)]
 fn struct_parameter(p: S) {
+
+    let r_p_1_addr_of = __addr_of(p);
+    assert(r_p_1_addr_of == __addr_of(p));
+
     let r_p_1 = &p;
     let r_p_2 = &p;
     
