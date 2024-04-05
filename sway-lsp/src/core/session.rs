@@ -373,7 +373,7 @@ type CompileResults = (Vec<CompileError>, Vec<CompileWarning>);
 
 pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
-    engines: &Engines,
+    engines_clone: &Engines,
     session: Arc<Session>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     session.token_map.clear();
@@ -395,10 +395,21 @@ pub fn traverse(
             metrics,
         } = value.unwrap();
 
+        eprintln!("Metrics: {:?}", metrics);
+
         let source_id = lexed.root.tree.span().source_id().cloned();
         if let Some(source_id) = source_id {
             session.metrics.insert(source_id, metrics.clone());
         }
+
+        let engines_ref = session.engines.read();
+        let engines = if i == results_len - 1 && metrics.reused_modules > 0 {
+            eprintln!("Using original engines");
+            &*engines_ref
+        } else {
+            eprintln!("Using cloned engines");
+            engines_clone
+        };
 
         // Get a reference to the typed program AST.
         let typed_program = typed
@@ -410,7 +421,7 @@ pub fn traverse(
         // This operation is fast because we already have the compile results.
         let ctx = ParseContext::new(
             &session.token_map,
-            engines,
+            &engines,
             typed_program.root.namespace.module(),
         );
 
@@ -471,6 +482,8 @@ pub fn parse_project(
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
+
+
     eprintln!("Traversing project...");
     let diagnostics = traverse(results, engines, session.clone())?;
     if let Some(config) = &lsp_mode {
