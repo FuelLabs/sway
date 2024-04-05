@@ -421,7 +421,7 @@ pub fn traverse(
         // This operation is fast because we already have the compile results.
         let ctx = ParseContext::new(
             &session.token_map,
-            &engines,
+            engines,
             typed_program.root.namespace.module(),
         );
 
