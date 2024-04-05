@@ -2,8 +2,10 @@ use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashMap},
     fmt,
+    hash::{DefaultHasher, Hash, Hasher},
 };
 
+use hashbrown::HashSet;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -148,6 +150,7 @@ type TraitImpls = Vec<TraitEntry>;
 #[derive(Clone, Debug, Default)]
 pub(crate) struct TraitMap {
     trait_impls: TraitImpls,
+    satisfied_cache: hashbrown::HashSet<u64>,
 }
 
 pub(crate) enum IsImplSelf {
@@ -425,7 +428,10 @@ impl TraitMap {
         };
         let entry = TraitEntry { key, value };
         let trait_impls: TraitImpls = vec![entry];
-        let trait_map = TraitMap { trait_impls };
+        let trait_map = TraitMap {
+            trait_impls,
+            satisfied_cache: HashSet::default(),
+        };
 
         self.extend(trait_map, engines);
     }
@@ -1176,6 +1182,53 @@ impl TraitMap {
     ) -> Result<(), ErrorEmitted> {
         let type_engine = engines.te();
 
+        // resolving trait constraints require a concrete type, we need to default numeric to u64
+        type_engine.decay_numeric(handler, engines, type_id, access_span)?;
+
+        if constraints.is_empty() {
+            return Ok(());
+        }
+
+        // Check we can use the cache
+        let mut hasher = DefaultHasher::default();
+        type_id.hash(&mut hasher);
+        for c in constraints {
+            c.hash(&mut hasher, engines);
+        }
+        let hash = hasher.finish();
+
+        if self.satisfied_cache.contains(&hash) {
+            return Ok(());
+        }
+
+        // Call the real implementation and cache when true
+        match self.check_if_trait_constraints_are_satisfied_for_type_inner(
+            handler,
+            type_id,
+            constraints,
+            access_span,
+            engines,
+            try_inserting_trait_impl_on_failure,
+        ) {
+            Ok(()) => {
+                self.satisfied_cache.insert(hash);
+                Ok(())
+            }
+            r => r,
+        }
+    }
+
+    fn check_if_trait_constraints_are_satisfied_for_type_inner(
+        &mut self,
+        handler: &Handler,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+        access_span: &Span,
+        engines: &Engines,
+        try_inserting_trait_impl_on_failure: TryInsertingTraitImplOnFailure,
+    ) -> Result<(), ErrorEmitted> {
+        let type_engine = engines.te();
+
         // If the type is generic/placeholder, its definition needs to contains all
         // constraints
         match &*type_engine.get(type_id) {
@@ -1206,9 +1259,6 @@ impl TraitMap {
 
         let _decl_engine = engines.de();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
-
-        // resolving trait constraints require a concrete type, we need to default numeric to u64
-        type_engine.decay_numeric(handler, engines, type_id, access_span)?;
 
         let all_impld_traits: BTreeSet<(Ident, TypeId)> = self
             .trait_impls
@@ -1307,6 +1357,7 @@ impl TraitMap {
                     });
                 }
             }
+
             Ok(())
         })
     }
