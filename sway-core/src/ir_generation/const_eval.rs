@@ -31,8 +31,7 @@ use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
 use sway_utils::mapped_stack::MappedStack;
 
 enum ConstEvalError {
-    #[allow(dead_code)]
-    CompileError(CompileError),
+    CompileError,
     CannotBeEvaluatedToConst {
         // This is not used at the moment because we do not give detailed description of why a
         // const eval failed.
@@ -641,13 +640,7 @@ fn const_eval_typed_expr(
                     if index < count {
                         Some(items[index as usize].clone())
                     } else {
-                        return Err(ConstEvalError::CompileError(
-                            CompileError::ArrayOutOfBounds {
-                                index,
-                                count,
-                                span: expr.span.clone(),
-                            },
-                        ));
+                        return Err(ConstEvalError::CompileError);
                     }
                 }
                 _ => {
@@ -658,10 +651,7 @@ fn const_eval_typed_expr(
             }
         }
         ty::TyExpressionVariant::Ref(_) | ty::TyExpressionVariant::Deref(_) => {
-            return Err(ConstEvalError::CompileError(CompileError::Unimplemented(
-                "Constant references are currently not supported.",
-                expr.span.clone(),
-            )));
+            return Err(ConstEvalError::CompileError);
         }
         ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
@@ -994,7 +984,7 @@ fn const_eval_intrinsic(
                 &targ.type_id,
                 &targ.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
@@ -1010,7 +1000,7 @@ fn const_eval_intrinsic(
                 &type_id,
                 &val.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
@@ -1025,7 +1015,7 @@ fn const_eval_intrinsic(
                 &targ.type_id,
                 &targ.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(
@@ -1042,17 +1032,13 @@ fn const_eval_intrinsic(
                 &targ.type_id,
                 &targ.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             match ir_type.get_content(lookup.context) {
                 TypeContent::StringSlice | TypeContent::StringArray(_) => Ok(Some(Constant {
                     ty: Type::get_unit(lookup.context),
                     value: ConstantValue::Unit,
                 })),
-                _ => Err(ConstEvalError::CompileError(
-                    CompileError::NonStrGenericType {
-                        span: targ.span.clone(),
-                    },
-                )),
+                _ => Err(ConstEvalError::CompileError),
             }
         }
         Intrinsic::ToStrArray => {
