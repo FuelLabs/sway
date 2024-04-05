@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-FC644A28A61C3447"
+
+[[package]]
+name = "import_imported_item_and_local_item_share_namespace"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-FC644A28A61C3447"
+dependencies = ["core"]

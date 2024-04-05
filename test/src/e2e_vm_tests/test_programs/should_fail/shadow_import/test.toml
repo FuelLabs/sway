@@ -2,3 +2,4 @@ category = "fail"
 
 # check: $()The imported symbol "Foo" shadows another symbol with the same name.
 # check: $()The imported symbol "Bar2" shadows another symbol with the same name.
+# check: $()Aborting due to 2 errors.

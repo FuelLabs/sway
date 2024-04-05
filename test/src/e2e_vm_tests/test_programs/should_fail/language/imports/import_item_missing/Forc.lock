@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-DF916CBC38148D2F"
+
+[[package]]
+name = "import_item_missing"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-DF916CBC38148D2F"
+dependencies = ["core"]
