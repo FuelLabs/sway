@@ -149,32 +149,24 @@ impl ServerState {
                             experimental,
                         ) {
                             Ok(_) => {
-                                eprintln!("TOP LEVEL Metrics: {:?}", session.metrics);
-
                                 if let Ok(path) = uri.to_file_path() {
                                     let path = Arc::new(path);
                                     let source_id = session.engines.read().se().get_source_id(&path);
                                     if let Some(metrics) = session.metrics.get(&source_id) {
-                                        if metrics.reused_modules > 0 {
-                                            eprintln!(
-                                                "WE REUSED THE WORKSPACE AST!!! Reused Modules: {}",
-                                                metrics.reused_modules
-                                            );
-                                        } else {
-                                            eprintln!("WE DID NOT REUSE THE WORKSPACE AST, we need to overwrite the old engines with the engines clone.");
+                                        // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
+                                        // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
+                                        // as the engines_clone might have cleared some types that are still in use.
+                                        if metrics.reused_modules == 0 {
+                                            // The compiler did not reuse the workspace AST. 
+                                            // We need to overwrite the old engines with the engines clone.
                                             mem::swap(&mut *session.engines.write(), &mut engines_clone);
                                         }
                                     }
-                                } else {
-                                    eprintln!("Failed to convert URI to PathBuf");
                                 } 
-
                                 *last_compilation_state.write() = LastCompilationState::Success;
-                                eprintln!("Compilation successful ✅");
                             }
                             Err(_err) => {
                                 *last_compilation_state.write() = LastCompilationState::Failed;
-                                eprintln!("Compilation failed ❌");
                             }
                         }
 

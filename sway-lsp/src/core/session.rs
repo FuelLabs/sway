@@ -124,7 +124,6 @@ impl Session {
 
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
     pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
-        eprintln!("🗑️  Garbage collecting 🗑️");
         let path = self.sync.temp_dir()?;
         let module_id = { engines.se().get_module_id(&path) };
         if let Some(module_id) = module_id {
@@ -395,19 +394,20 @@ pub fn traverse(
             metrics,
         } = value.unwrap();
 
-        eprintln!("Metrics: {:?}", metrics);
-
         let source_id = lexed.root.tree.span().source_id().cloned();
         if let Some(source_id) = source_id {
             session.metrics.insert(source_id, metrics.clone());
         }
 
         let engines_ref = session.engines.read();
+        // Check if the cached AST was returned by the compiler for the users workspace. 
+        // If it was, then we need to use the original engines for traversal. 
+        //
+        // This is due to the garbage collector removing types from the engines_clone 
+        // and they have not been re-added due to compilation being skipped.
         let engines = if i == results_len - 1 && metrics.reused_modules > 0 {
-            eprintln!("Using original engines");
             &*engines_ref
         } else {
-            eprintln!("Using cloned engines");
             engines_clone
         };
 
@@ -470,7 +470,6 @@ pub fn parse_project(
     session: Arc<Session>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
-    eprintln!("Compiling project...");
     let results = compile(
         uri,
         engines,
@@ -478,13 +477,9 @@ pub fn parse_project(
         lsp_mode.clone(),
         experimental,
     )?;
-    eprintln!("Results length: {} {} {}", results[0].0.is_some(), results[1].0.is_some(), results[2].0.is_some());
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
-
-
-    eprintln!("Traversing project...");
     let diagnostics = traverse(results, engines, session.clone())?;
     if let Some(config) = &lsp_mode {
         // Only write the diagnostics results on didSave or didOpen.

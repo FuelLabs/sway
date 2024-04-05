@@ -474,7 +474,6 @@ impl TyDecl {
                     attributes,
                     storage_keyword,
                 };
-                eprintln!("Inserting StorageDecl into decl_engine 🤝");
                 let decl_ref = decl_engine.insert(decl);
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
