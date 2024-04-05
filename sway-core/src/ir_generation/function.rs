@@ -952,7 +952,10 @@ impl<'eng> FnCompiler<'eng> {
                 // Validate that the val_exp is of the right type. We couldn't do it
                 // earlier during type checking as the type arguments may not have been resolved.
                 let val_ty = engines.te().get_unaliased(val_exp.return_type);
-                if !val_ty.eq(&TypeInfo::RawUntypedPtr, engines) {
+                if !val_ty.eq(
+                    &TypeInfo::RawUntypedPtr,
+                    &PartialEqWithEnginesContext::new(engines),
+                ) {
                     return Err(CompileError::IntrinsicUnsupportedArgType {
                         name: kind.to_string(),
                         span,

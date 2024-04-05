@@ -21,7 +21,7 @@ pub struct TyAbiDecl {
 
 impl EqWithEngines for TyAbiDecl {}
 impl PartialEqWithEngines for TyAbiDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let TyAbiDecl {
             name: ln,
             interface_surface: lis,
@@ -42,7 +42,7 @@ impl PartialEqWithEngines for TyAbiDecl {
             attributes: _,
             span: _,
         } = other;
-        ln == rn && lis.eq(ris, engines) && li.eq(ri, engines) && ls.eq(rs, engines)
+        ln == rn && lis.eq(ris, ctx) && li.eq(ri, ctx) && ls.eq(rs, ctx)
     }
 }
 

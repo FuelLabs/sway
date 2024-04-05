@@ -11,7 +11,7 @@ use clap::Parser;
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-lsp",
-    about = "Forc plugin for the Sway LSP (Language Server Protocol) implementation.",
+    about = "Forc plugin for the Sway LSP (Language Server Protocol) implementation",
     version
 )]
 struct App {}
