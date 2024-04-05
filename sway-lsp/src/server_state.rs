@@ -149,7 +149,26 @@ impl ServerState {
                             experimental,
                         ) {
                             Ok(_) => {
-                                mem::swap(&mut *session.engines.write(), &mut engines_clone);
+                                eprintln!("TOP LEVEL Metrics: {:?}", session.metrics);
+
+                                if let Ok(path) = uri.to_file_path() {
+                                    let path = Arc::new(path);
+                                    let source_id = session.engines.read().se().get_source_id(&path);
+                                    if let Some(metrics) = session.metrics.get(&source_id) {
+                                        if metrics.reused_modules > 0 {
+                                            eprintln!(
+                                                "WE REUSED THE WORKSPACE AST!!! Reused Modules: {}",
+                                                metrics.reused_modules
+                                            );
+                                        } else {
+                                            eprintln!("WE DID NOT REUSE THE WORKSPACE AST, we need to overwrite the old engines with the engines clone.");
+                                            mem::swap(&mut *session.engines.write(), &mut engines_clone);
+                                        }
+                                    }
+                                } else {
+                                    eprintln!("Failed to convert URI to PathBuf");
+                                } 
+
                                 *last_compilation_state.write() = LastCompilationState::Success;
                                 eprintln!("Compilation successful ✅");
                             }

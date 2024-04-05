@@ -471,6 +471,7 @@ fn is_parse_module_cache_up_to_date(
     // if path.ends_with("storage_contract/src/main.sw") {
     //     return false;
     // }
+
     let query_engine = engines.qe();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
     let entry = query_engine.get_parse_module_cache_entry(&key);
@@ -488,14 +489,20 @@ fn is_parse_module_cache_up_to_date(
             // we got from the cache, which is only true if the file hasn't been
             // modified since or if its hash is the same.
             let cache_up_to_date = entry.modified_time == modified_time || {
-                let src = std::fs::read_to_string(path.as_path()).unwrap();
-                eprintln!("----------------------------------------------------------");
-                eprintln!("Input: {:?}", input);
+                // let src = std::fs::read_to_string(path.as_path()).unwrap();
+                // eprintln!("----------------------------------------------------------");
+                // eprintln!("Input: {:?}", input);
 
-                eprintln!("Source: {:?}", src);
-                eprintln!("----------------------------------------------------------"); 
+                // eprintln!("Source: {:?}", src);
+                // eprintln!("----------------------------------------------------------"); 
                 let mut hasher = DefaultHasher::new();
-                src.hash(&mut hasher);
+
+                // It's important to hash the input that triggered compilation. We don't want to
+                // load the file from disk as it may have been changed by LSP or another process since
+                // compilation started.
+                input.hash(&mut hasher);
+
+                //src.hash(&mut hasher);
                 let hash = hasher.finish();
                 let hash_match = hash == entry.hash;
                 //eprintln!("Hash match for {:?}: {}", path, hash_match);
@@ -756,6 +763,8 @@ pub fn compile_to_ast(
         if is_parse_module_cache_up_to_date(engines, &path, include_tests, input.clone()) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_modules += 1;
+
+            eprintln!("entry.programs.metrics.reused_modules: {:?}", entry.programs.metrics.reused_modules);
 
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
