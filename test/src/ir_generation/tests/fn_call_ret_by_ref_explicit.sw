@@ -28,20 +28,20 @@ fn main() -> u64 {
 
 // check: $(ret_arg_0=$VAL) = get_local ptr { u64, u64, u64 }, $ret_for_call_0
 // check: $(ret_val_0=$VAL) = call $(a_func=$ID)($ID, $ID, $ID, $ret_arg_0)
-// check: $(tmp_ptr_0=$VAL) = ptr_to_int $ret_val_0 to u64
-// check: $(ret_0=$VAL) = int_to_ptr $tmp_ptr_0 to ptr { u64, u64, u64 }
+// check: $(tmp_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $ID
+// check: mem_copy_val $tmp_ptr, $ret_val_0
 
 // check: $(idx_val=$VAL) = const u64 1
-// check: $(field_val=$VAL) = get_elem_ptr $ret_0, ptr u64, $idx_val
+// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr, ptr u64, $idx_val
 // check: load $field_val
 
 // check: $(ret_arg_1=$VAL) = get_local ptr { u64, u64, u64 }, $ret_for_call_1
 // check: $(ret_val_1=$VAL) = call $a_func($ID, $ID, $ID, $ret_arg_1)
-// check: $(tmp_ptr_1=$VAL) = ptr_to_int $ret_val_1 to u64
-// check: $(ret_1=$VAL) = int_to_ptr $tmp_ptr_1 to ptr { u64, u64, u64 }
+// check: $(tmp_ptr=$VAL) = get_local ptr { u64, u64, u64 }, $ID
+// check: mem_copy_val $tmp_ptr, $ret_val_1
 
 // check: $(idx_val=$VAL) = const u64 2
-// check: $(field_val=$VAL) = get_elem_ptr $ret_1, ptr u64, $idx_val
+// check: $(field_val=$VAL) = get_elem_ptr $tmp_ptr, ptr u64, $idx_val
 // check: load $field_val
 
 // fn a()...

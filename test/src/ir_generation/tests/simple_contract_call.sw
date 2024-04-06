@@ -49,13 +49,10 @@ fn main() -> u64 {
 // check: local b256 $(arg_for_get_b256=$ID)
 
 // check: $(contract_id_0_ptr=$VAL) = get_local ptr b256, $contract_id_0_const
-// check: $(asset_id_0_ptr=$VAL) = get_local ptr b256, $asset_id_0_const
 // check: $(threes_const_ptr=$VAL) = get_local ptr b256, $threes_const
 // check: $(contract_id_1_ptr=$VAL) = get_local ptr b256, $contract_id_1_const
-// check: $(asset_id_1_ptr=$VAL) = get_local ptr b256, $asset_id_1_const
 // check: $(big_fives_ptr=$VAL) = get_local ptr b256, $big_fives_const
 // check: $(contract_id_2_ptr=$VAL) = get_local ptr b256, $contract_id_2_const
-// check: $(asset_id_2_ptr=$VAL) = get_local ptr b256, $asset_id_2_const
 
 // --- call get_u64() ---
 // check: $(oneone=$VAL) = const u64 1111
@@ -76,8 +73,7 @@ fn main() -> u64 {
 // check: $(arg_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
 // check: store $user_arg to $arg_user_ptr
 
-// check: $(temp=$VAL) = ptr_to_int $asset_id_0_ptr to u64
-// check: $(asset_id_ptr=$VAL) = int_to_ptr $temp to ptr b256
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $ID
 // check: $(coins=$VAL) = const u64 0
 // check: $(gas=$VAL) = const u64 10000
 // check: $(call_res=$VAL) = contract_call u64 get_u64 $args_ptr, $coins, $asset_id_ptr, $gas
@@ -102,8 +98,7 @@ fn main() -> u64 {
 // check: $(args_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
 // check: store $user_arg to $args_user_ptr
 
-// check: $(temp=$VAL) = ptr_to_int $asset_id_1_ptr to u64
-// check: $(asset_id_ptr=$VAL) = int_to_ptr $temp to ptr b256
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $asset_id_1_const
 // check: $(coins=$VAL) = const u64 0
 // check: $(gas=$VAL) = const u64 20000
 // check: $(call_res=$VAL) = contract_call ptr b256 get_b256 $args_ptr, $coins, $asset_id_ptr, $gas
@@ -137,8 +132,7 @@ fn main() -> u64 {
 // check: $(args_user_ptr=$VAL) = get_elem_ptr $args_ptr, ptr u64, $idx_2
 // check: store $user_arg to $args_user_ptr
 
-// check: $(temp=$VAL) = ptr_to_int $asset_id_2_ptr to u64
-// check: $(asset_id_ptr=$VAL) = int_to_ptr $temp to ptr b256
+// check: $(asset_id_ptr=$VAL) = get_local ptr b256, $asset_id_2_const
 // check: $(gas=$VAL) = read_register cgas
 // check: $(coins=$VAL) = const u64 0
 // check: $(call_res=$VAL) = contract_call ptr { u64, b256 } get_s $args_ptr, $coins, $asset_id_ptr, $gas
