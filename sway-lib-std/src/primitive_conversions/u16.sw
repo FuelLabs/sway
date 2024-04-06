@@ -1,7 +1,29 @@
 library;
 
-use ::convert::TryFrom;
+use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
+
+impl From<u8> for u16 {
+    /// Casts a `u8` to a `u16`.
+    ///
+    /// # Returns
+    ///
+    /// * [u16] - The `u16` representation of the `u8` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// fn foo() {
+    ///     let u16_value = u16::from(0u8);
+    /// }
+    /// ```
+    fn from(u: u8) -> Self {
+        asm(r1: u) {
+            r1: u16
+        }
+    }
+}
 
 impl TryFrom<u32> for u16 {
     fn try_from(u: u32) -> Option<Self> {
@@ -45,6 +67,20 @@ impl TryFrom<u256> for u16 {
             })
         }
     }
+}
+
+#[test]
+fn test_u16_from_u8() {
+    use ::assert::assert;
+
+    let u8_1: u8 = 0u8;
+    let u8_2: u8 = 255u8;
+
+    let u16_1 = u16::from(u8_1);
+    let u16_2 = u16::from(u8_2);
+
+    assert(u16_1 == 0u16);
+    assert(u16_2 == 255u16);
 }
 
 #[test]

@@ -4,7 +4,7 @@ use crate::{
     transform::{self, AttributeKind},
     type_system::*,
 };
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum FunctionDeclarationKind {
@@ -35,6 +35,18 @@ impl DebugWithEngines for FunctionDeclaration {
     }
 }
 
+impl Named for FunctionDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for FunctionDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FunctionParameter {
     pub name: Ident,
@@ -46,12 +58,12 @@ pub struct FunctionParameter {
 
 impl EqWithEngines for FunctionParameter {}
 impl PartialEqWithEngines for FunctionParameter {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
             && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
             && self.mutability_span == other.mutability_span
-            && self.type_argument.eq(&other.type_argument, engines)
+            && self.type_argument.eq(&other.type_argument, ctx)
     }
 }
 

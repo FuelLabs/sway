@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use self::commands::{
     addr2line, build, check, clean, completions, contract_id, init, new, parse_bytecode, plugins,
     predicate_root, template, test, update,
@@ -19,6 +17,7 @@ pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub(crate) use predicate_root::Command as PredicateRootCommand;
+use std::str::FromStr;
 pub use template::Command as TemplateCommand;
 pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
@@ -92,6 +91,28 @@ enum Forc {
     /// ```
     #[clap(external_subcommand)]
     Plugin(Vec<String>),
+}
+
+impl Forc {
+    #[allow(dead_code)]
+    pub fn possible_values() -> Vec<&'static str> {
+        vec![
+            "addr2line",
+            "build",
+            "check",
+            "clean",
+            "completions",
+            "init",
+            "new",
+            "parse-bytecode",
+            "plugins",
+            "test",
+            "update",
+            "template",
+            "contract-id",
+            "predicate-root",
+        ]
+    }
 }
 
 pub async fn run_cli() -> ForcResult<()> {

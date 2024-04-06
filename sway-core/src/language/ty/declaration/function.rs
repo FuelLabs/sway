@@ -149,12 +149,12 @@ impl declaration::FunctionSignature for TyFunctionDecl {
 
 impl EqWithEngines for TyFunctionDecl {}
 impl PartialEqWithEngines for TyFunctionDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.body.eq(&other.body, engines)
-            && self.parameters.eq(&other.parameters, engines)
-            && self.return_type.eq(&other.return_type, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.body.eq(&other.body, ctx)
+            && self.parameters.eq(&other.parameters, ctx)
+            && self.return_type.eq(&other.return_type, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
@@ -263,9 +263,12 @@ impl UnconstrainedTypeParameters for TyFunctionDecl {
         all_types.extend(self.return_type.type_id.extract_inner_types(engines));
         all_types.insert(self.return_type.type_id);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types
-            .iter()
-            .any(|type_id| type_engine.get(*type_id).eq(&type_parameter_info, engines))
+        all_types.iter().any(|type_id| {
+            type_engine.get(*type_id).eq(
+                &type_parameter_info,
+                &PartialEqWithEnginesContext::new(engines),
+            )
+        })
     }
 }
 
@@ -495,9 +498,9 @@ pub struct TyFunctionParameter {
 
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
+            && self.type_argument.eq(&other.type_argument, ctx)
             && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
     }

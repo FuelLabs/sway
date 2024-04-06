@@ -4,13 +4,23 @@ use crate::{
     type_system::TypeArgument, Engines, TypeParameter,
 };
 
-use sway_types::span::Span;
+use sway_types::{span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum ImplItem {
     Fn(ParsedDeclId<FunctionDeclaration>),
     Constant(ParsedDeclId<ConstantDeclaration>),
     Type(ParsedDeclId<TraitTypeDeclaration>),
+}
+
+impl ImplItem {
+    pub fn span(&self, engines: &Engines) -> Span {
+        match self {
+            ImplItem::Fn(id) => engines.pe().get_function(id).span(),
+            ImplItem::Constant(id) => engines.pe().get_constant(id).span(),
+            ImplItem::Type(id) => engines.pe().get_trait_type(id).span(),
+        }
+    }
 }
 
 impl DebugWithEngines for ImplItem {
@@ -43,6 +53,18 @@ pub struct ImplTrait {
     pub(crate) block_span: Span,
 }
 
+impl Named for ImplTrait {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.trait_name.suffix
+    }
+}
+
+impl Spanned for ImplTrait {
+    fn span(&self) -> sway_types::Span {
+        self.block_span.clone()
+    }
+}
+
 impl DebugWithEngines for ImplTrait {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
         f.write_fmt(format_args!(
@@ -62,6 +84,12 @@ pub struct ImplSelf {
     pub items: Vec<ImplItem>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
+}
+
+impl Spanned for ImplSelf {
+    fn span(&self) -> sway_types::Span {
+        self.block_span.clone()
+    }
 }
 
 impl DebugWithEngines for ImplSelf {
