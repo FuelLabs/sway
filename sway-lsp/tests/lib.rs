@@ -251,14 +251,10 @@ fn did_change_stress_test_random_wait() {
     });
 }
 
-#[test]
-fn garbage_collection_storage() {
+fn garbage_collection_runner(path: PathBuf) {
     run_async!({
         setup_panic_hook();
         let (mut service, _) = LspService::new(ServerState::new);
-        let p = sway_workspace_dir()
-            .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
-            .join("src/main.sw");
         // set the garbage collection frequency to 1
         service
             .inner()
@@ -266,7 +262,7 @@ fn garbage_collection_storage() {
             .write()
             .garbage_collection
             .gc_frequency = 1;
-        let uri = init_and_open(&mut service, p).await;
+        let uri = init_and_open(&mut service, path).await;
         let times = 60;
         for version in 0..times {
             //eprintln!("version: {}", version);
@@ -310,6 +306,20 @@ fn garbage_collection_storage() {
         }
         shutdown_and_exit(&mut service).await;
     });
+}
+
+#[test]
+fn garbage_collection_storage() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+        .join("src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
+fn garbage_collection_paths() {
+    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    garbage_collection_runner(p);
 }
 
 #[test]
