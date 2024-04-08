@@ -340,7 +340,7 @@ impl SubstTypes for TyTraitDecl {
                         false
                     }
                 }
-            });
+            } || has_changes);
         }
     }
 }

@@ -749,7 +749,10 @@ pub enum CompileError {
     #[error("{}", error)]
     Parse { error: ParseError },
     #[error("Could not evaluate initializer to a const declaration.")]
-    NonConstantDeclValue { span: Span },
+    NonConstantDeclValue {
+        span: Span,
+        inner: Option<Box<CompileError>>,
+    },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
     #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" Hint: {hint}") })]
@@ -1037,7 +1040,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),

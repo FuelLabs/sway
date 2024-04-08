@@ -34,7 +34,7 @@ impl<T: SubstTypes> SubstTypes for Option<T> {
 
 impl<T: SubstTypes> SubstTypes for Vec<T> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
-        self.iter_mut().fold(false, |mut has_change, x| {
+        self.iter_mut().fold(false, |has_change, x| {
             x.subst(type_mapping, engines) || has_change
         })
     }

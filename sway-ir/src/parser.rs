@@ -522,7 +522,7 @@ mod ir_builder {
                     (ty, cv)
                 }
                 / ty:ast_ty() "undef" _ {
-                    (ty.clone(), IrAstConst { value: IrAstConstValue::Undef(ty), meta_idx: None })
+                    (ty.clone(), IrAstConst { value: IrAstConstValue::Undef, meta_idx: None })
                 }
 
             rule ast_ty() -> IrAstTy
@@ -764,8 +764,7 @@ mod ir_builder {
 
     #[derive(Debug)]
     enum IrAstConstValue {
-        #[allow(dead_code)]
-        Undef(IrAstTy),
+        Undef,
         Unit,
         Bool(bool),
         Hex256([u8; 32]),
@@ -792,7 +791,7 @@ mod ir_builder {
     impl IrAstConstValue {
         fn as_constant_value(&self, context: &mut Context, val_ty: IrAstTy) -> ConstantValue {
             match self {
-                IrAstConstValue::Undef(_) => ConstantValue::Undef,
+                IrAstConstValue::Undef => ConstantValue::Undef,
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
@@ -834,7 +833,7 @@ mod ir_builder {
 
         fn as_value(&self, context: &mut Context, val_ty: IrAstTy) -> Value {
             match self {
-                IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
+                IrAstConstValue::Undef => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
                 IrAstConstValue::Hex256(bs) => match val_ty {

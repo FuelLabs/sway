@@ -374,8 +374,7 @@ impl TyTraitDecl {
                     let mut const_decl = (*decl_engine.get_constant(&decl_ref)).clone();
                     let name = const_decl.call_path.suffix.clone();
                     let r = if const_decl.subst(&type_mapping, engines) {
-                        let new_ref = decl_engine.insert(const_decl);
-                        new_ref
+                        decl_engine.insert(const_decl)
                     } else {
                         decl_ref.clone()
                     };
@@ -385,8 +384,7 @@ impl TyTraitDecl {
                     let mut t = (*decl_engine.get_type(&decl_ref)).clone();
                     let name = t.name.clone();
                     let r = if t.subst(&type_mapping, engines) {
-                        let new_ref = decl_engine.insert(t);
-                        new_ref
+                        decl_engine.insert(t)
                     } else {
                         decl_ref.clone()
                     };
