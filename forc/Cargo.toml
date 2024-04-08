@@ -22,6 +22,7 @@ ansi_term = "0.12"
 anyhow = "1.0.41"
 clap = { version = "3.1", features = ["cargo", "derive", "env"] }
 clap_complete = "3.1"
+clap_complete_fig = "3.1"
 forc-pkg = { version = "0.52.1", path = "../forc-pkg" }
 forc-test = { version = "0.52.1", path = "../forc-test" }
 forc-tracing = { version = "0.52.1", path = "../forc-tracing" }
@@ -50,3 +51,6 @@ default = []
 test = []
 util = []
 uwu = ["uwuify"]
+
+[dev-dependencies]
+completest-pty = "0.5.0"
