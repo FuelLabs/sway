@@ -6,11 +6,7 @@ use std::{
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    engine_threading::*,
-    language::{ty::*, Purity},
-    semantic_analysis::type_check_context::MonomorphizeHelper,
-    transform,
-    type_system::*,
+    engine_threading::*, language::{ty::*, Purity}, semantic_analysis::type_check_context::MonomorphizeHelper, subs, transform, type_system::*
 };
 
 #[derive(Clone, Debug)]
@@ -100,11 +96,16 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (parameters, return_type) = subs!{self.parameters, self.return_type} (type_mapping, engines)?;
+        Some(Self {
+            parameters,
+            return_type,
+            name: self.name.clone(),
+            span: self.span.clone(),
+            purity: self.purity.clone(),
+            attributes: self.attributes.clone(),
+        })
     }
 }
 

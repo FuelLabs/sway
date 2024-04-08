@@ -61,12 +61,23 @@ impl DebugWithEngines for TyAstNode {
 }
 
 impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        match self.content {
-            TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, engines),
-            TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, engines),
-            TyAstNodeContent::SideEffect(_) => (),
-            TyAstNodeContent::Error(_, _) => (),
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        match &self.content {
+            TyAstNodeContent::Declaration(decl) => {
+                let decl = decl.subst(type_mapping, engines)?;
+                Some(Self {
+                    content: TyAstNodeContent::Declaration(decl),
+                    span: self.span.clone(),
+                })
+            }
+            TyAstNodeContent::Expression(expr) => {
+                let expr = expr.subst(type_mapping, engines)?;
+                Some(Self {
+                    content: TyAstNodeContent::Expression(expr),
+                    span: self.span.clone(),
+                })
+            }
+            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => None,
         }
     }
 }

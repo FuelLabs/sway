@@ -98,10 +98,12 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let type_arguments = self.type_arguments.subst(type_mapping, engines)?;
+        Some(Self {
+            type_arguments,
+            ..self.clone()
+        })
     }
 }
 

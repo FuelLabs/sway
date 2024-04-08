@@ -14,6 +14,7 @@ use crate::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
+    subs,
     transform::{AllowDeprecatedState, AttributeKind, AttributesMap},
     type_system::*,
     types::*,
@@ -53,9 +54,14 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.expression.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (return_type, expression) =
+            subs! {self.return_type, self.expression}(type_mapping, engines)?;
+        Some(Self {
+            expression,
+            return_type,
+            span: self.span.clone(),
+        })
     }
 }
 

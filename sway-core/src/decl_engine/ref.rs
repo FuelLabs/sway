@@ -20,7 +20,10 @@
 //! `fn my_function() { .. }`, and to use [DeclRef] for cases like function
 //! application `my_function()`.
 
-use std::hash::{Hash, Hasher};
+use std::{
+    borrow::Cow,
+    hash::{Hash, Hasher},
+};
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
@@ -101,24 +104,236 @@ impl<T> DeclRef<DeclId<T>> {
     pub(crate) fn replace_id(&mut self, index: DeclId<T>) {
         self.id.replace_id(index);
     }
+
+    pub fn start_subs_type(&self) -> SubstTypesRefInProgress<'_, DeclRef<DeclId<T>>, T>
+    where
+        T: Clone,
+    {
+        SubstTypesRefInProgress {
+            original_ref: self,
+            new_decl: None,
+        }
+    }
 }
 
-impl<T> DeclRef<DeclId<T>>
+#[derive(Clone)]
+pub struct SubstTypesRefInProgress<'a, TRef: Clone, TDecl> {
+    pub original_ref: &'a TRef,
+    pub new_decl: Option<TDecl>,
+}
+
+impl<'a, T> SubstTypesRefInProgress<'a, DeclRef<DeclId<T>>, T> {
+    pub fn replace(self, engines: &Engines) -> DeclRef<DeclId<T>>
+    where
+        DeclEngine: DeclEngineReplace<T>,
+    {
+        match self.new_decl {
+            Some(new_decl) => {
+                engines.de().replace(*self.original_ref.id(), new_decl);
+                self.original_ref.clone()
+            }
+            None => self.original_ref.clone(),
+        }
+    }
+
+    pub fn insert_new(self, engines: &Engines) -> DeclRef<DeclId<T>>
+    where
+        T: Named + Spanned,
+        DeclEngine: DeclEngineInsert<T>,
+    {
+        match self.new_decl {
+            Some(new_decl) => engines.de().insert(new_decl),
+            None => self.original_ref.clone(),
+        }
+    }
+
+    pub fn insert_new_with_parent(self, engines: &Engines) -> DeclRef<DeclId<T>>
+    where
+        AssociatedItemDeclId: From<DeclId<T>>,
+        T: Named + Spanned,
+        DeclEngine: DeclEngineInsert<T>,
+    {
+        match self.new_decl {
+            Some(new_decl) => engines
+                .de()
+                .insert(new_decl)
+                .with_parent(engines.de(), (*self.original_ref.id()).into()),
+            None => self.original_ref.clone(),
+        }
+    }
+}
+
+impl<'a> SubstTypesRefInProgress<'a, AssociatedItemDeclId, AssociatedItemDecl> {
+    pub fn replace(self, engines: &Engines) -> AssociatedItemDeclId {
+        use AssociatedItemDecl as B;
+        use AssociatedItemDeclId as A;
+        match (self.original_ref, self.new_decl) {
+            (A::TraitFn(id), Some(B::TraitFn(new_decl))) => {
+                engines.de().replace(*id, new_decl);
+                self.original_ref.clone()
+            }
+            (A::Function(id), Some(B::Function(new_decl))) => {
+                engines.de().replace(*id, new_decl);
+                self.original_ref.clone()
+            }
+            (A::Constant(id), Some(B::Constant(new_decl))) => {
+                engines.de().replace(*id, new_decl);
+                self.original_ref.clone()
+            }
+            (A::Type(id), Some(B::Type(new_decl))) => {
+                engines.de().replace(*id, new_decl);
+                self.original_ref.clone()
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn insert_new(self, engines: &Engines) -> AssociatedItemDeclId {
+        use AssociatedItemDecl as B;
+        use AssociatedItemDeclId as A;
+        match (self.original_ref, self.new_decl) {
+            (A::TraitFn(id), Some(B::TraitFn(new_decl))) => {
+                AssociatedItemDeclId::TraitFn(engines.de().insert(new_decl).id().clone())
+            }
+            (A::Function(id), Some(B::Function(new_decl))) => {
+                AssociatedItemDeclId::Function(engines.de().insert(new_decl).id().clone())
+            }
+            (A::Constant(id), Some(B::Constant(new_decl))) => {
+                AssociatedItemDeclId::Constant(engines.de().insert(new_decl).id().clone())
+            }
+            (A::Type(id), Some(B::Type(new_decl))) => {
+                AssociatedItemDeclId::Type(engines.de().insert(new_decl).id().clone())
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn insert_new_with_parent(self, engines: &Engines) -> AssociatedItemDeclId {
+        use AssociatedItemDecl as B;
+        use AssociatedItemDeclId as A;
+        match (self.original_ref, self.new_decl) {
+            (A::TraitFn(id), Some(B::TraitFn(new_decl))) => AssociatedItemDeclId::TraitFn(
+                engines
+                    .de()
+                    .insert(new_decl)
+                    .with_parent(engines.de(), (*id).into())
+                    .id()
+                    .clone()
+                    .into(),
+            ),
+            (A::Function(id), Some(B::Function(new_decl))) => AssociatedItemDeclId::Function(
+                engines
+                    .de()
+                    .insert(new_decl)
+                    .with_parent(engines.de(), (*id).into())
+                    .id()
+                    .clone()
+                    .into(),
+            ),
+            (A::Constant(id), Some(B::Constant(new_decl))) => AssociatedItemDeclId::Constant(
+                engines
+                    .de()
+                    .insert(new_decl)
+                    .with_parent(engines.de(), (*id).into())
+                    .id()
+                    .clone()
+                    .into(),
+            ),
+            (A::Type(id), Some(B::Type(new_decl))) => AssociatedItemDeclId::Type(
+                engines
+                    .de()
+                    .insert(new_decl)
+                    .with_parent(engines.de(), (*id).into())
+                    .id()
+                    .clone()
+                    .into(),
+            ),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<'a, T> SubstTypes for SubstTypesRefInProgress<'a, DeclRef<DeclId<T>>, T>
 where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    pub(crate) fn subst_types_and_insert_new(
-        &self,
-        type_mapping: &TypeSubstMap,
-        engines: &Engines,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.insert(decl)
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let decl = engines.de().get(self.original_ref.id());
+        let new_decl = decl.subst(type_mapping, engines)?;
+        Some(Self {
+            original_ref: self.original_ref,
+            new_decl: Some(new_decl),
+        })
     }
 }
+
+#[derive(Clone)]
+pub enum AssociatedItemDecl {
+    TraitFn(TyTraitFn),
+    Function(TyFunctionDecl),
+    Constant(TyConstantDecl),
+    Type(TyTraitType),
+}
+
+impl<'a> SubstTypes for SubstTypesRefInProgress<'a, AssociatedItemDeclId, AssociatedItemDecl> {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        match self.original_ref {
+            AssociatedItemDeclId::TraitFn(id) => {
+                let decl = engines.de().get(id);
+                let decl = decl.subst(type_mapping, engines)?;
+                Some(Self {
+                    original_ref: self.original_ref,
+                    new_decl: Some(AssociatedItemDecl::TraitFn(decl)),
+                })
+            }
+            AssociatedItemDeclId::Function(id) => {
+                let decl = engines.de().get(id);
+                let decl = decl.subst(type_mapping, engines)?;
+                Some(Self {
+                    original_ref: self.original_ref,
+                    new_decl: Some(AssociatedItemDecl::Function(decl)),
+                })
+            }
+            AssociatedItemDeclId::Constant(id) => {
+                let decl = engines.de().get(id);
+                let decl = decl.subst(type_mapping, engines)?;
+                Some(Self {
+                    original_ref: self.original_ref,
+                    new_decl: Some(AssociatedItemDecl::Constant(decl)),
+                })
+            }
+            AssociatedItemDeclId::Type(id) => {
+                let decl = engines.de().get(id);
+                let decl = decl.subst(type_mapping, engines)?;
+                Some(Self {
+                    original_ref: self.original_ref,
+                    new_decl: Some(AssociatedItemDecl::Type(decl)),
+                })
+            }
+        }
+    }
+}
+
+// impl<T> DeclRef<DeclId<T>>
+// where
+//     DeclEngine: DeclEngineIndex<T>,
+//     T: Named + Spanned + SubstTypes + Clone,
+// {
+//     pub(crate) fn subst_types_and_insert_new(
+//         &self,
+//         type_mapping: &TypeSubstMap,
+//         engines: &Engines,
+//     ) -> Option<Self> {
+//         let decl_engine = engines.de();
+//         let mut decl = decl_engine.get(&self.id);
+//         if let Some(decl) = decl.subst(type_mapping, engines) {
+//             Some(decl_engine.insert(decl))
+//         } else {
+//             None
+//         }
+//     }
+// }
 
 impl<T> DeclRef<DeclId<T>>
 where
@@ -130,28 +345,8 @@ where
         parent: AssociatedItemDeclId,
     ) -> Self {
         let id: DeclId<T> = self.id;
-        decl_engine.register_parent(id.into(), parent);
+        decl_engine.register_parent(id.into(), parent.clone());
         self
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
-{
-    pub(crate) fn subst_types_and_insert_new_with_parent(
-        &self,
-        type_mapping: &TypeSubstMap,
-        engines: &Engines,
-    ) -> Self {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
     }
 }
 
@@ -283,19 +478,6 @@ impl HashWithEngines for DeclRefMixedInterface {
 impl<I> Spanned for DeclRef<I> {
     fn span(&self) -> Span {
         self.decl_span.clone()
-    }
-}
-
-impl<T> SubstTypes for DeclRef<DeclId<T>>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + SubstTypes + Clone,
-{
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(self.id, decl);
     }
 }
 

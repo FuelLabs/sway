@@ -33,8 +33,12 @@ impl HashWithEngines for TyStructExpressionField {
 }
 
 impl SubstTypes for TyStructExpressionField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.value.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let value = self.value.subst(type_mapping, engines)?;
+        Some(Self {
+            value,
+            name: self.name.clone(),
+        })
     }
 }
 

@@ -3,7 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{engine_threading::*, language::ty::*, type_system::*, types::*};
+use crate::{engine_threading::*, language::ty::*, subs, type_system::*, types::*};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -70,13 +70,15 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        for arg in &mut self.arguments {
-            arg.subst(type_mapping, engines);
-        }
-        for targ in &mut self.type_arguments {
-            targ.type_id.subst(type_mapping, engines);
-        }
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (arguments, type_arguments) =
+            subs! {self.arguments, self.type_arguments}(type_mapping, engines)?;
+        Some(Self {
+            arguments,
+            type_arguments,
+            kind: self.kind.clone(),
+            span: self.span.clone(),
+        })
     }
 }
 

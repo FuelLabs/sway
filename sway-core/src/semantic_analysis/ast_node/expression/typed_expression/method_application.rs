@@ -854,7 +854,7 @@ pub(crate) fn monomorphize_method_application(
                             vec![t.initial_type_id],
                             vec![call_path_typeid.unwrap()],
                         );
-                        method.subst(&type_subst, engines);
+                        method.subst_mut(&type_subst, engines);
                     }
                 }
             }

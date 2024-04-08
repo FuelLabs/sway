@@ -358,32 +358,36 @@ impl TyTraitDecl {
         {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = (*decl_engine.get_function(&decl_ref)).clone();
-                    method.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (method.name.clone(), type_id),
-                        TyTraitItem::Fn(
-                            decl_engine
-                                .insert(method)
-                                .with_parent(decl_engine, (*decl_ref.id()).into()),
-                        ),
-                    );
+                    let original = decl_engine.get(decl_ref.id());
+                    let new_ref = decl_ref
+                        .start_subs_type()
+                        .subst(&type_mapping, engines)
+                        .map(|x| x.insert_new_with_parent(engines))
+                        .unwrap_or_else(|| decl_ref.clone());
+                    impld_item_refs
+                        .insert((original.name.clone(), type_id), TyTraitItem::Fn(new_ref));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
-                    let mut const_decl = (*decl_engine.get_constant(&decl_ref)).clone();
-                    const_decl.subst(&type_mapping, engines);
+                    let original = decl_engine.get(decl_ref.id());
+                    let new_ref = decl_ref
+                        .start_subs_type()
+                        .subst(&type_mapping, engines)
+                        .map(|x| x.insert_new_with_parent(engines))
+                        .unwrap_or_else(|| decl_ref.clone());
                     impld_item_refs.insert(
-                        (const_decl.call_path.suffix.clone(), type_id),
-                        TyTraitItem::Constant(decl_engine.insert(const_decl)),
+                        (original.call_path.suffix.clone(), type_id),
+                        TyTraitItem::Constant(new_ref),
                     );
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
-                    let mut type_decl = (*decl_engine.get_type(&decl_ref)).clone();
-                    type_decl.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (type_decl.name.clone(), type_id),
-                        TyTraitItem::Type(decl_engine.insert(type_decl)),
-                    );
+                    let original = decl_engine.get(decl_ref.id());
+                    let new_ref = decl_ref
+                        .start_subs_type()
+                        .subst(&type_mapping, engines)
+                        .map(|x| x.insert_new_with_parent(engines))
+                        .unwrap_or_else(|| decl_ref.clone());
+                    impld_item_refs
+                        .insert((original.name.clone(), type_id), TyTraitItem::Type(new_ref));
                 }
             }
         }
@@ -428,8 +432,10 @@ impl TyTraitDecl {
         for item in interface_surface.iter() {
             match item {
                 ty::TyTraitInterfaceItem::TraitFn(decl_ref) => {
-                    let mut method = (*decl_engine.get_trait_fn(decl_ref)).clone();
-                    method.subst(&type_mapping, engines);
+                    let original = decl_engine.get_trait_fn(decl_ref);
+                    let new = original.subst(&type_mapping, engines);
+
+                    let method = new.as_ref().unwrap_or(&*original);
                     all_items.push(TyImplItem::Fn(
                         ctx.engines
                             .de()
@@ -467,24 +473,28 @@ impl TyTraitDecl {
         for item in items.iter() {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    let mut method = (*decl_engine.get_function(decl_ref)).clone();
-                    method.subst(&type_mapping, engines);
-                    all_items.push(TyImplItem::Fn(
-                        ctx.engines
-                            .de()
-                            .insert(method)
-                            .with_parent(ctx.engines.de(), (*decl_ref.id()).into()),
-                    ));
+                    let new_ref = decl_ref
+                        .start_subs_type()
+                        .subst(&type_mapping, engines)
+                        .map(|x| x.insert_new_with_parent(engines))
+                        .unwrap_or_else(|| decl_ref.clone());
+                    all_items.push(TyImplItem::Fn(new_ref));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
-                    let mut const_decl = (*decl_engine.get_constant(decl_ref)).clone();
-                    const_decl.subst(&type_mapping, engines);
-                    all_items.push(TyImplItem::Constant(ctx.engines.de().insert(const_decl)));
+                    let new_ref = decl_ref
+                        .start_subs_type()
+                        .subst(&type_mapping, engines)
+                        .map(|x| x.insert_new_with_parent(engines))
+                        .unwrap_or_else(|| decl_ref.clone());
+                    all_items.push(TyImplItem::Constant(new_ref));
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
-                    let mut type_decl = (*decl_engine.get_type(decl_ref)).clone();
-                    type_decl.subst(&type_mapping, engines);
-                    all_items.push(TyImplItem::Type(ctx.engines.de().insert(type_decl)));
+                    let new_ref = decl_ref
+                        .start_subs_type()
+                        .subst(&type_mapping, engines)
+                        .map(|x| x.insert_new_with_parent(engines))
+                        .unwrap_or_else(|| decl_ref.clone());
+                    all_items.push(TyImplItem::Type(new_ref));
                 }
             }
         }

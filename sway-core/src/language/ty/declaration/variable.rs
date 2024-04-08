@@ -4,13 +4,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
 
 use crate::{
-    engine_threading::*,
-    language::ty::*,
-    semantic_analysis::{
+    engine_threading::*, language::ty::*, semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
-    },
-    type_system::*,
+    }, subs, type_system::*
 };
 
 #[derive(Clone, Debug)]
@@ -55,10 +52,15 @@ impl HashWithEngines for TyVariableDecl {
 }
 
 impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines)
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (return_type, type_ascription, body) = subs!{self.return_type, self.type_ascription, self.body} (type_mapping, engines)?;
+        Some(Self {
+            name: self.name.clone(),
+            body,
+            mutability: self.mutability.clone(),
+            return_type,
+            type_ascription,
+        })
     }
 }
 

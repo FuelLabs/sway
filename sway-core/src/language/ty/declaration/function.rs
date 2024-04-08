@@ -10,6 +10,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use crate::{
     language::{parsed::FunctionDeclarationKind, CallPath},
     semantic_analysis::type_check_context::MonomorphizeHelper,
+    subs,
     transform::AttributeKind,
 };
 
@@ -195,18 +196,29 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines);
-        if let Some(implementing_for) = self.implementing_for_typeid.as_mut() {
-            implementing_for.subst(type_mapping, engines);
-        }
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (type_parameters, parameters, return_type, body) = subs! {self.type_parameters, self.parameters, self.return_type, self.body}(
+            type_mapping,
+            engines,
+        )?;
+        Some(Self {
+            body,
+            parameters,
+            type_parameters,
+            return_type,
+            name: self.name.clone(),
+            implementing_type: self.implementing_type.clone(),
+            implementing_for_typeid: self.implementing_for_typeid.clone(),
+            span: self.span.clone(),
+            call_path: self.call_path.clone(),
+            attributes: self.attributes.clone(),
+            visibility: self.visibility.clone(),
+            is_contract_call: self.is_contract_call.clone(),
+            purity: self.purity.clone(),
+            where_clause: self.where_clause.clone(),
+            is_trait_method_dummy: self.is_trait_method_dummy.clone(),
+            kind: self.kind.clone(),
+        })
     }
 }
 
@@ -525,8 +537,15 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_argument.type_id.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let type_argument = self.type_argument.subst(type_mapping, engines)?;
+        Some(Self {
+            type_argument,
+            name: self.name.clone(),
+            is_reference: self.is_reference.clone(),
+            is_mutable: self.is_mutable.clone(),
+            mutability_span: self.mutability_span.clone(),
+        })
     }
 }
 

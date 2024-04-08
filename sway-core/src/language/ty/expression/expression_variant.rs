@@ -17,6 +17,7 @@ use crate::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
+    subs,
     type_system::*,
 };
 
@@ -628,153 +629,249 @@ impl HashWithEngines for TyExpressionVariant {
 }
 
 impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         use TyExpressionVariant::*;
         match self {
-            Literal(..) => (),
+            Literal(..) => None,
             FunctionApplication {
                 arguments,
-                ref mut fn_ref,
-                ref mut call_path_typeid,
-                ..
+                fn_ref,
+                call_path_typeid,
+                call_path,
+                selector,
+                type_binding,
+                deferred_monomorphization,
+                contract_call_params,
+                contract_caller,
             } => {
-                arguments
-                    .iter_mut()
-                    .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
-                let new_decl_ref = fn_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                fn_ref.replace_id(*new_decl_ref.id());
-                if let Some(call_path_typeid) = call_path_typeid {
-                    call_path_typeid.subst(type_mapping, engines);
-                }
+                let (arguments, fn_ref, call_path_typeid) = subs! {arguments, fn_ref.start_subs_type(), call_path_typeid}(
+                    type_mapping,
+                    engines,
+                )?;
+                Some(Self::FunctionApplication {
+                    arguments,
+                    fn_ref: fn_ref.insert_new(engines),
+                    call_path_typeid,
+                    call_path: call_path.clone(),
+                    selector: selector.clone(),
+                    type_binding: type_binding.clone(),
+                    deferred_monomorphization: deferred_monomorphization.clone(),
+                    contract_call_params: contract_call_params.clone(),
+                    contract_caller: contract_caller.clone(),
+                })
             }
-            LazyOperator { lhs, rhs, .. } => {
-                (*lhs).subst(type_mapping, engines);
-                (*rhs).subst(type_mapping, engines);
+            LazyOperator { lhs, rhs, op } => {
+                let (lhs, rhs) = subs! {lhs, rhs}(type_mapping, engines)?;
+                Some(Self::LazyOperator {
+                    lhs,
+                    rhs,
+                    op: op.clone(),
+                })
             }
-            ConstantExpression { const_decl, .. } => {
-                const_decl.subst(type_mapping, engines);
+            ConstantExpression {
+                const_decl,
+                span,
+                call_path,
+            } => {
+                let const_decl = const_decl.subst(type_mapping, engines)?;
+                Some(Self::ConstantExpression {
+                    const_decl,
+                    span: span.clone(),
+                    call_path: call_path.clone(),
+                })
             }
-            VariableExpression { .. } => (),
-            Tuple { fields } => fields
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+            VariableExpression { .. } => None,
+            Tuple { fields } => {
+                let fields = fields.subst(type_mapping, engines)?;
+                Some(Self::Tuple { fields })
+            }
             Array {
-                ref mut elem_type,
+                elem_type,
                 contents,
             } => {
-                elem_type.subst(type_mapping, engines);
-                contents
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines))
+                let (elem_type, contents) = subs! {elem_type, contents}(type_mapping, engines)?;
+                Some(Self::Array {
+                    elem_type,
+                    contents,
+                })
             }
             ArrayIndex { prefix, index } => {
-                (*prefix).subst(type_mapping, engines);
-                (*index).subst(type_mapping, engines);
+                let (prefix, index) = subs! {prefix, index}(type_mapping, engines)?;
+                Some(Self::ArrayIndex { prefix, index })
             }
             StructExpression {
                 struct_ref,
                 fields,
-                instantiation_span: _,
-                call_path_binding: _,
+                instantiation_span,
+                call_path_binding,
             } => {
-                let new_struct_ref = struct_ref
-                    .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
-                struct_ref.replace_id(*new_struct_ref.id());
-                fields
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines));
+                let (struct_ref, fields) =
+                    subs! {struct_ref.start_subs_type(), fields}(type_mapping, engines)?;
+                Some(Self::StructExpression {
+                    fields,
+                    struct_ref: struct_ref.insert_new(engines),
+                    instantiation_span: instantiation_span.clone(),
+                    call_path_binding: call_path_binding.clone(),
+                })
             }
             CodeBlock(block) => {
-                block.subst(type_mapping, engines);
+                let block = block.subst(type_mapping, engines)?;
+                Some(Self::CodeBlock(block))
             }
-            FunctionParameter => (),
-            MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
+            FunctionParameter => None,
+            MatchExp {
+                desugared,
+                scrutinees,
+            } => {
+                let desugared = desugared.subst(type_mapping, engines)?;
+                Some(Self::MatchExp {
+                    desugared,
+                    scrutinees: scrutinees.clone(),
+                })
+            }
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                condition.subst(type_mapping, engines);
-                then.subst(type_mapping, engines);
-                if let Some(ref mut r#else) = r#else {
-                    r#else.subst(type_mapping, engines);
-                }
+                let (condition, then, r#else) =
+                    subs! {condition, then, r#else}(type_mapping, engines)?;
+                Some(Self::IfExp {
+                    condition,
+                    then,
+                    r#else,
+                })
             }
             AsmExpression {
-                registers, //: Vec<TyAsmRegisterDeclaration>,
-                ..
+                registers,
+                body,
+                returns,
+                whole_block_span,
             } => {
-                registers
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines));
+                let registers = registers.subst(type_mapping, engines)?;
+                Some(Self::AsmExpression {
+                    registers,
+                    body: body.clone(),
+                    returns: returns.clone(),
+                    whole_block_span: whole_block_span.clone(),
+                })
             }
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
             StructFieldAccess {
                 prefix,
                 field_to_access,
-                ref mut resolved_type_of_parent,
-                ..
+                resolved_type_of_parent,
+                field_instantiation_span,
             } => {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                field_to_access.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                let (resolved_type_of_parent, field_to_access, prefix) = subs! {resolved_type_of_parent, field_to_access, prefix}(
+                    type_mapping,
+                    engines,
+                )?;
+                Some(Self::StructFieldAccess {
+                    prefix,
+                    field_to_access,
+                    resolved_type_of_parent,
+                    field_instantiation_span: field_instantiation_span.clone(),
+                })
             }
             TupleElemAccess {
                 prefix,
-                ref mut resolved_type_of_parent,
-                ..
+                resolved_type_of_parent,
+                elem_to_access_num,
+                elem_to_access_span,
             } => {
-                resolved_type_of_parent.subst(type_mapping, engines);
-                prefix.subst(type_mapping, engines);
+                let (resolved_type_of_parent, prefix) =
+                    subs! {resolved_type_of_parent, prefix}(type_mapping, engines)?;
+                Some(Self::TupleElemAccess {
+                    prefix,
+                    resolved_type_of_parent,
+                    elem_to_access_num: elem_to_access_num.clone(),
+                    elem_to_access_span: elem_to_access_span.clone(),
+                })
             }
             EnumInstantiation {
-                enum_ref, contents, ..
+                enum_ref,
+                contents,
+                variant_name,
+                tag,
+                variant_instantiation_span,
+                call_path_binding,
+                call_path_decl,
             } => {
-                let new_enum_ref = enum_ref
-                    .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
-                enum_ref.replace_id(*new_enum_ref.id());
-                if let Some(ref mut contents) = contents {
-                    contents.subst(type_mapping, engines)
-                };
+                let (enum_ref, contents) =
+                    subs! {enum_ref.start_subs_type(), contents}(type_mapping, engines)?;
+                Some(Self::EnumInstantiation {
+                    enum_ref: enum_ref.insert_new(engines),
+                    contents,
+                    variant_name: variant_name.clone(),
+                    tag: tag.clone(),
+                    variant_instantiation_span: variant_instantiation_span.clone(),
+                    call_path_binding: call_path_binding.clone(),
+                    call_path_decl: call_path_decl.clone(),
+                })
             }
-            AbiCast { address, .. } => address.subst(type_mapping, engines),
+            AbiCast {
+                address,
+                abi_name,
+                span,
+            } => {
+                let address = address.subst(type_mapping, engines)?;
+                Some(Self::AbiCast {
+                    abi_name: abi_name.clone(),
+                    address,
+                    span: span.clone(),
+                })
+            }
             // storage is never generic and cannot be monomorphized
-            StorageAccess { .. } => (),
+            StorageAccess { .. } => None,
             IntrinsicFunction(kind) => {
-                kind.subst(type_mapping, engines);
+                let kind = kind.subst(type_mapping, engines)?;
+                Some(Self::IntrinsicFunction(kind))
             }
             EnumTag { exp } => {
-                exp.subst(type_mapping, engines);
+                let exp = exp.subst(type_mapping, engines)?;
+                Some(Self::EnumTag { exp })
             }
             UnsafeDowncast {
                 exp,
                 variant,
-                call_path_decl: _,
+                call_path_decl,
             } => {
-                exp.subst(type_mapping, engines);
-                variant.subst(type_mapping, engines);
+                let (exp, variant) = subs! {exp, variant}(type_mapping, engines)?;
+                Some(Self::UnsafeDowncast {
+                    exp,
+                    variant,
+                    call_path_decl: call_path_decl.clone(),
+                })
             }
-            AbiName(_) => (),
-            WhileLoop {
-                ref mut condition,
-                ref mut body,
-            } => {
-                condition.subst(type_mapping, engines);
-                body.subst(type_mapping, engines);
+            AbiName(_) => None,
+            WhileLoop { condition, body } => {
+                let (condition, body) = subs! {condition, body}(type_mapping, engines)?;
+                Some(Self::WhileLoop { condition, body })
             }
-            ForLoop { ref mut desugared } => {
-                desugared.subst(type_mapping, engines);
+            ForLoop { desugared } => {
+                let desugared = desugared.subst(type_mapping, engines)?;
+                Some(Self::ForLoop { desugared })
             }
-            Break => (),
-            Continue => (),
-            Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
-            ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, engines),
-            Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),
+            Break => None,
+            Continue => None,
+            Reassignment(reassignment) => {
+                let reassignment = reassignment.subst(type_mapping, engines)?;
+                Some(Self::Reassignment(reassignment))
+            }
+            ImplicitReturn(expr) => {
+                let expr = expr.subst(type_mapping, engines)?;
+                Some(Self::ImplicitReturn(expr))
+            }
+            Return(expr) => {
+                let expr = expr.subst(type_mapping, engines)?;
+                Some(Self::Return(expr))
+            }
+            Ref(exp) | Deref(exp) => {
+                let exp = exp.subst(type_mapping, engines)?;
+                Some(Self::Ref(exp))
+            }
         }
     }
 }

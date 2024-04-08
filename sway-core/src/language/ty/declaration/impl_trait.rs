@@ -3,7 +3,8 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRefMixedInterface, engine_threading::*, language::CallPath, type_system::*,
+    decl_engine::DeclRefMixedInterface, engine_threading::*, language::CallPath, subs,
+    type_system::*,
 };
 
 use super::TyTraitItem;
@@ -78,13 +79,20 @@ impl HashWithEngines for TyImplTrait {
 }
 
 impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.impl_type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.implementing_for.subst_inner(type_mapping, engines);
-        self.items
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (impl_type_parameters, implementing_for, items) = subs! {
+            self.impl_type_parameters,
+            self.implementing_for,
+            self.items
+        }(type_mapping, engines)?;
+        Some(Self {
+            impl_type_parameters,
+            items,
+            implementing_for,
+            trait_name: self.trait_name.clone(),
+            trait_type_arguments: self.trait_type_arguments.clone(),
+            trait_decl_ref: self.trait_decl_ref.clone(),
+            span: self.span.clone(),
+        })
     }
 }

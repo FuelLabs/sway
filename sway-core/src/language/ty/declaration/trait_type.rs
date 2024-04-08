@@ -5,7 +5,7 @@ use std::{
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, transform, type_system::*};
+use crate::{engine_threading::*, subs, transform, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyTraitType {
@@ -55,11 +55,16 @@ impl HashWithEngines for TyTraitType {
 }
 
 impl SubstTypes for TyTraitType {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        if let Some(ref mut ty) = self.ty {
-            ty.subst(type_mapping, engines);
-        }
-        self.implementing_type.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (ty, implementing_type) =
+            subs! {self.ty, self.implementing_type}(type_mapping, engines)?;
+        Some(Self {
+            ty,
+            implementing_type,
+            name: self.name.clone(),
+            attributes: self.attributes.clone(),
+            span: self.span.clone(),
+        })
     }
 }
 

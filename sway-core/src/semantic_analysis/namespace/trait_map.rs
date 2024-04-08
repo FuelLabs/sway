@@ -805,7 +805,7 @@ impl TraitMap {
                         *map_type_id,
                         *type_id,
                     );
-                    type_id.subst(&type_mapping, engines);
+                    type_id.subst_mut(&type_mapping, engines);
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
@@ -813,26 +813,30 @@ impl TraitMap {
                             ResolvedTraitImplItem::Parsed(_item) => todo!(),
                             ResolvedTraitImplItem::Typed(item) => match item {
                                 ty::TyTraitItem::Fn(decl_ref) => {
-                                    let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(&type_mapping, engines);
-                                    let new_ref = decl_engine
-                                        .insert(decl)
-                                        .with_parent(decl_engine, decl_ref.id().into());
+                                    let new_ref = decl_ref
+                                        .start_subs_type()
+                                        .subst(&type_mapping, engines)
+                                        .map(|x| x.insert_new_with_parent(engines))
+                                        .unwrap_or_else(|| decl_ref.clone());
                                     (name, ResolvedTraitImplItem::Typed(TyImplItem::Fn(new_ref)))
                                 }
                                 ty::TyTraitItem::Constant(decl_ref) => {
-                                    let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(&type_mapping, engines);
-                                    let new_ref = decl_engine.insert(decl);
+                                    let new_ref = decl_ref
+                                        .start_subs_type()
+                                        .subst(&type_mapping, engines)
+                                        .map(|x| x.insert_new_with_parent(engines))
+                                        .unwrap_or_else(|| decl_ref.clone());
                                     (
                                         name,
                                         ResolvedTraitImplItem::Typed(TyImplItem::Constant(new_ref)),
                                     )
                                 }
                                 ty::TyTraitItem::Type(decl_ref) => {
-                                    let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(&type_mapping, engines);
-                                    let new_ref = decl_engine.insert(decl);
+                                    let new_ref = decl_ref
+                                        .start_subs_type()
+                                        .subst(&type_mapping, engines)
+                                        .map(|x| x.insert_new_with_parent(engines))
+                                        .unwrap_or_else(|| decl_ref.clone());
                                     (
                                         name,
                                         ResolvedTraitImplItem::Typed(TyImplItem::Type(new_ref)),

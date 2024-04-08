@@ -44,7 +44,9 @@ impl ty::TyConstantDecl {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
-        type_ascription.type_id.subst(&ctx.type_subst(), engines);
+        type_ascription
+            .type_id
+            .subst_mut(&ctx.type_subst(), engines);
 
         let mut ctx = ctx
             .by_ref()

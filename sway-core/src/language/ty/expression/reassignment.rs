@@ -14,6 +14,7 @@ use crate::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
     },
+    subs,
     type_system::*,
 };
 
@@ -57,9 +58,14 @@ impl HashWithEngines for TyReassignment {
 }
 
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.rhs.subst(type_mapping, engines);
-        self.lhs_type.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (rhs, lhs_type) = subs! {self.rhs, self.lhs_type}(type_mapping, engines)?;
+        Some(Self {
+            lhs_type,
+            rhs,
+            lhs_base_name: self.lhs_base_name.clone(),
+            lhs_indices: self.lhs_indices.clone(),
+        })
     }
 }
 

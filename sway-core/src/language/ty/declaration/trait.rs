@@ -8,8 +8,8 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{
-        DeclEngineReplace, DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType,
-        ReplaceFunctionImplementingType,
+        AssociatedItemDeclId, DeclEngineReplace, DeclRef, DeclRefConstant, DeclRefFunction,
+        DeclRefTraitFn, DeclRefTraitType, ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     language::{parsed, CallPath, Visibility},
@@ -17,7 +17,7 @@ use crate::{
         type_check_context::MonomorphizeHelper, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
     },
-    transform,
+    subs, transform,
     type_system::*,
 };
 
@@ -73,6 +73,55 @@ impl DebugWithEngines for TyTraitInterfaceItem {
     }
 }
 
+impl SubstTypes for TyTraitInterfaceItem {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        match self {
+            TyTraitInterfaceItem::TraitFn(r) => {
+                let AssociatedItemDeclId::TraitFn(id) = AssociatedItemDeclId::TraitFn(*r.id())
+                    .start_subs_type()
+                    .subst(type_mapping, engines)?
+                    .insert_new_with_parent(engines)
+                else {
+                    unreachable!();
+                };
+                Some(Self::TraitFn(DeclRef::new(
+                    r.name().clone(),
+                    id,
+                    r.decl_span().clone(),
+                )))
+            }
+            TyTraitInterfaceItem::Constant(r) => {
+                let AssociatedItemDeclId::Constant(id) = AssociatedItemDeclId::Constant(*r.id())
+                    .start_subs_type()
+                    .subst(type_mapping, engines)?
+                    .insert_new_with_parent(engines)
+                else {
+                    unreachable!();
+                };
+                Some(Self::Constant(DeclRef::new(
+                    r.name().clone(),
+                    id,
+                    r.decl_span().clone(),
+                )))
+            }
+            TyTraitInterfaceItem::Type(r) => {
+                let AssociatedItemDeclId::Type(id) = AssociatedItemDeclId::Type(*r.id())
+                    .start_subs_type()
+                    .subst(type_mapping, engines)?
+                    .insert_new_with_parent(engines)
+                else {
+                    unreachable!();
+                };
+                Some(Self::Type(DeclRef::new(
+                    r.name().clone(),
+                    id,
+                    r.decl_span().clone(),
+                )))
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum TyTraitItem {
     Fn(DeclRefFunction),
@@ -106,6 +155,56 @@ impl DebugWithEngines for TyTraitItem {
                 ),
             }
         )
+    }
+}
+
+impl SubstTypes for TyTraitItem {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        match self {
+            Self::Fn(r) => {
+                let AssociatedItemDeclId::Function(id) = AssociatedItemDeclId::Function(*r.id())
+                    .start_subs_type()
+                    .subst(type_mapping, engines)?
+                    .insert_new_with_parent(engines)
+                else {
+                    unreachable!();
+                };
+                Some(Self::Fn(DeclRef::new(
+                    r.name().clone(),
+                    id,
+                    r.decl_span().clone(),
+                )))
+            }
+            Self::Constant(r) => {
+                let AssociatedItemDeclId::Constant(id) = AssociatedItemDeclId::Constant(*r.id())
+                    .start_subs_type()
+                    .subst(type_mapping, engines)?
+                    .insert_new_with_parent(engines)
+                else {
+                    unreachable!();
+                };
+                Some(Self::Constant(DeclRef::new(
+                    r.name().clone(),
+                    id,
+                    r.decl_span().clone(),
+                )))
+            }
+            Self::Type(r) => {
+                let AssociatedItemDeclId::Type(id) = AssociatedItemDeclId::Type(*r.id())
+                    .start_subs_type()
+                    .subst(type_mapping, engines)?
+                    .insert_new_with_parent(engines)
+                    .into()
+                else {
+                    unreachable!();
+                };
+                Some(Self::Type(DeclRef::new(
+                    r.name().clone(),
+                    id,
+                    r.decl_span().clone(),
+                )))
+            }
+        }
     }
 }
 
@@ -268,62 +367,24 @@ impl Spanned for TyTraitItem {
 }
 
 impl SubstTypes for TyTraitDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.interface_surface
-            .iter_mut()
-            .for_each(|item| match item {
-                TyTraitInterfaceItem::TraitFn(item_ref) => {
-                    let new_item_ref = item_ref
-                        .clone()
-                        .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                    item_ref.replace_id(*new_item_ref.id());
-                }
-                TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let new_decl_ref = decl_ref
-                        .clone()
-                        .subst_types_and_insert_new(type_mapping, engines);
-                    decl_ref.replace_id(*new_decl_ref.id());
-                }
-                TyTraitInterfaceItem::Type(decl_ref) => {
-                    let new_decl_ref = decl_ref
-                        .clone()
-                        .subst_types_and_insert_new(type_mapping, engines);
-                    decl_ref.replace_id(*new_decl_ref.id());
-                }
-            });
-        self.items.iter_mut().for_each(|item| match item {
-            TyTraitItem::Fn(item_ref) => {
-                let new_item_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_item_ref.id());
-            }
-            TyTraitItem::Constant(item_ref) => {
-                let new_decl_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_decl_ref.id());
-            }
-            TyTraitItem::Type(item_ref) => {
-                let new_decl_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_decl_ref.id());
-            }
-        });
-    }
-}
-
-impl SubstTypes for TyTraitItem {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        match self {
-            TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
-            TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, engines),
-            TyTraitItem::Type(type_decl) => type_decl.subst(type_mapping, engines),
-        }
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (type_parameters, interface_surface, items) = subs! {
+            self.type_parameters,
+            self.interface_surface,
+            self.items
+        }(type_mapping, engines)?;
+        Some(Self {
+            type_parameters,
+            interface_surface,
+            items,
+            name: self.name.clone(),
+            self_type: self.self_type.clone(),
+            supertraits: self.supertraits.clone(),
+            visibility: self.visibility.clone(),
+            attributes: self.attributes.clone(),
+            call_path: self.call_path.clone(),
+            span: self.span.clone(),
+        })
     }
 }
 

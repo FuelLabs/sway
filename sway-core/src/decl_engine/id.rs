@@ -97,67 +97,75 @@ impl<T> Into<usize> for DeclId<T> {
 }
 
 impl SubstTypes for DeclId<TyFunctionDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }
 impl SubstTypes for DeclId<TyTraitDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }
 impl SubstTypes for DeclId<TyTraitFn> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }
 impl SubstTypes for DeclId<TyImplTrait> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }
 impl SubstTypes for DeclId<TyStructDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }
 impl SubstTypes for DeclId<TyEnumDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }
 impl SubstTypes for DeclId<TyTypeAliasDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }
 
 impl SubstTypes for DeclId<TyTraitType> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         let decl_engine = engines.de();
-        let mut decl = (*decl_engine.get(self)).clone();
-        decl.subst(type_mapping, engines);
+        let mut decl = decl_engine.get(self);
+        let decl = decl.subst(type_mapping, engines)?;
         decl_engine.replace(*self, decl);
+        Some(self.clone())
     }
 }

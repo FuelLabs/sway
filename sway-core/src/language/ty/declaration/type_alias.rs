@@ -51,8 +51,16 @@ impl HashWithEngines for TyTypeAliasDecl {
 }
 
 impl SubstTypes for TyTypeAliasDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.ty.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let ty = self.ty.subst(type_mapping, engines)?;
+        Some(Self {
+            ty,
+            name: self.name.clone(),
+            call_path: self.call_path.clone(),
+            attributes: self.attributes.clone(),
+            visibility: self.visibility.clone(),
+            span: self.span.clone(),
+        })
     }
 }
 

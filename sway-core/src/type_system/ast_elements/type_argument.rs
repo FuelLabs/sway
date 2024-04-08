@@ -109,7 +109,13 @@ impl From<&TypeParameter> for TypeArgument {
 }
 
 impl SubstTypes for TypeArgument {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_id.subst(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let type_id = self.type_id.subst(type_mapping, engines)?;
+        Some(Self {
+            type_id,
+            initial_type_id: self.initial_type_id.clone(),
+            span: self.span.clone(),
+            call_path_tree: self.call_path_tree.clone(),
+        })
     }
 }

@@ -1,12 +1,10 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{
-        ty::{self},
-        CallPath,
-    },
+    language::{ty, CallPath},
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
+    subs,
     type_system::priv_prelude::*,
 };
 
@@ -98,11 +96,14 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_id.subst(type_mapping, engines);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (type_id, trait_constraints) =
+            subs! {self.type_id, self.trait_constraints}(type_mapping, engines)?;
+        Some(Self {
+            type_id,
+            trait_constraints,
+            ..self.clone()
+        })
     }
 }
 

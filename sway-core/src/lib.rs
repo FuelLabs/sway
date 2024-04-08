@@ -1,3 +1,5 @@
+#![deny(unused_must_use)]
+
 #[macro_use]
 pub mod error;
 

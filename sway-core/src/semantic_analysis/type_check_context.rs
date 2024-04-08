@@ -676,7 +676,7 @@ impl<'a> TypeCheckContext<'a> {
         };
 
         let mut type_id = type_id;
-        type_id.subst(&self.type_subst(), self.engines());
+        type_id.subst_mut(&self.type_subst(), self.engines());
 
         Ok(type_id)
     }
@@ -1528,7 +1528,7 @@ impl<'a> TypeCheckContext<'a> {
             call_site_span,
             mod_path,
         )?;
-        value.subst(&type_mapping, self.engines);
+        value.subst_mut(&type_mapping, self.engines);
         Ok(())
     }
 

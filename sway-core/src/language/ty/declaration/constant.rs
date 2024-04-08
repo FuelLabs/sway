@@ -11,7 +11,7 @@ use crate::{
     engine_threading::*,
     language::{ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
-    transform,
+    subs, transform,
     type_system::*,
 };
 
@@ -94,12 +94,20 @@ impl Spanned for TyConstantDecl {
 }
 
 impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        if let Some(expr) = &mut self.value {
-            expr.subst(type_mapping, engines);
-        }
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (return_type, type_ascription, value) =
+            subs! {self.return_type, self.type_ascription, self.value}(type_mapping, engines)?;
+        Some(Self {
+            value,
+            return_type,
+            type_ascription,
+            call_path: self.call_path.clone(),
+            visibility: self.visibility.clone(),
+            is_configurable: self.is_configurable.clone(),
+            attributes: self.attributes.clone(),
+            span: self.span.clone(),
+            implementing_type: self.implementing_type.clone(),
+        })
     }
 }
 

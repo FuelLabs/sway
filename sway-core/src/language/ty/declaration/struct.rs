@@ -10,7 +10,7 @@ use crate::{
     error::module_can_be_changed,
     language::{CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
-    transform,
+    subs, transform,
     type_system::*,
     Namespace,
 };
@@ -61,13 +61,17 @@ impl HashWithEngines for TyStructDecl {
 }
 
 impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let (fields, type_parameters) =
+            subs! {self.fields, self.type_parameters}(type_mapping, engines)?;
+        Some(Self {
+            fields,
+            type_parameters,
+            call_path: self.call_path.clone(),
+            visibility: self.visibility.clone(),
+            span: self.span.clone(),
+            attributes: self.attributes.clone(),
+        })
     }
 }
 
@@ -274,7 +278,14 @@ impl OrdWithEngines for TyStructField {
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_argument.subst_inner(type_mapping, engines);
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let type_argument = self.type_argument.subst_inner(type_mapping, engines)?;
+        Some(Self {
+            type_argument,
+            visibility: self.visibility.clone(),
+            name: self.name.clone(),
+            span: self.span.clone(),
+            attributes: self.attributes.clone(),
+        })
     }
 }
