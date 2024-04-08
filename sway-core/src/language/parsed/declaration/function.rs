@@ -4,7 +4,7 @@ use crate::{
     transform::{self, AttributeKind},
     type_system::*,
 };
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum FunctionDeclarationKind {
@@ -32,6 +32,18 @@ pub struct FunctionDeclaration {
 impl DebugWithEngines for FunctionDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.name))
+    }
+}
+
+impl Named for FunctionDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for FunctionDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
     }
 }
 
