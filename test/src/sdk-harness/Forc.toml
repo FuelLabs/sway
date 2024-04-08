@@ -26,6 +26,8 @@ members = [
   "test_projects/private_struct_fields_in_storage_and_abi",
   "test_projects/registers",
   "test_projects/result_in_abi",
+  "test_projects/run_external_proxy",
+  "test_projects/run_external_target",
   "test_projects/script_bytecode",
   "test_projects/script_data",
   "test_projects/storage",

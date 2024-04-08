@@ -1,8 +1,13 @@
 [[package]]
 name = "array_of_structs_abi"
 source = "path+from-root-1DC31120923A1AC6"
+dependencies = ["core"]
 
 [[package]]
 name = "array_of_structs_contract"
 source = "member"
 dependencies = ["array_of_structs_abi"]
+
+[[package]]
+name = "core"
+source = "path+from-root-1DC31120923A1AC6"

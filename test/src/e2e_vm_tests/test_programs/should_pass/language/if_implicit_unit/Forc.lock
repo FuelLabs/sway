@@ -1,8 +1,3 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-BA5855EE7F3492BE'
-
-[[package]]
-name = 'if_implicit_unit'
-source = 'member'
-dependencies = ['core']
+name = "if_implicit_unit"
+source = "member"

@@ -36,18 +36,18 @@ impl DebugWithEngines for TyConstantDecl {
 
 impl EqWithEngines for TyConstantDecl {}
 impl PartialEqWithEngines for TyConstantDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         self.call_path == other.call_path
-            && self.value.eq(&other.value, engines)
+            && self.value.eq(&other.value, ctx)
             && self.visibility == other.visibility
-            && self.type_ascription.eq(&other.type_ascription, engines)
+            && self.type_ascription.eq(&other.type_ascription, ctx)
             && self.is_configurable == other.is_configurable
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .eq(&type_engine.get(other.return_type), ctx)
             && match (&self.implementing_type, &other.implementing_type) {
-                (Some(self_), Some(other)) => self_.eq(other, engines),
+                (Some(self_), Some(other)) => self_.eq(other, ctx),
                 _ => false,
             }
     }
@@ -109,11 +109,11 @@ impl ReplaceDecls for TyConstantDecl {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         if let Some(expr) = &mut self.value {
             expr.replace_decls(decl_mapping, handler, ctx)
         } else {
-            Ok(())
+            Ok(false)
         }
     }
 }

@@ -2,6 +2,7 @@ use lsp_types::{Position, Range};
 use std::path::PathBuf;
 use sway_ast::Intrinsic;
 use sway_core::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
@@ -49,7 +50,7 @@ pub enum AstToken {
     StructScrutineeField(StructScrutineeField),
     Supertrait(Supertrait),
     TraitConstraint(TraitConstraint),
-    TraitFn(TraitFn),
+    TraitFn(ParsedDeclId<TraitFn>),
     TypeArgument(TypeArgument),
     TypeParameter(TypeParameter),
     UseStatement(UseStatement),
@@ -292,7 +293,7 @@ pub fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();
     Range {
-        start: Position::new(start.0 as u32 - 1, start.1 as u32 - 1),
-        end: Position::new(end.0 as u32 - 1, end.1 as u32 - 1),
+        start: Position::new(start.line as u32 - 1, start.col as u32 - 1),
+        end: Position::new(end.line as u32 - 1, end.col as u32 - 1),
     }
 }

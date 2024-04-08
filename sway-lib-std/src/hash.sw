@@ -1,6 +1,7 @@
 //! Utility functions for cryptographic hashing.
 library;
 
+use ::alloc::alloc_bytes;
 use ::bytes::*;
 
 pub struct Hasher {
@@ -23,8 +24,8 @@ impl Hasher {
         let mut result_buffer = b256::min();
         asm(
             hash: result_buffer,
-            ptr: self.bytes.buf.ptr,
-            bytes: self.bytes.len,
+            ptr: self.bytes.ptr(),
+            bytes: self.bytes.len(),
         ) {
             s256 hash ptr bytes;
             hash: b256
@@ -35,8 +36,8 @@ impl Hasher {
         let mut result_buffer = b256::min();
         asm(
             hash: result_buffer,
-            ptr: self.bytes.buf.ptr,
-            bytes: self.bytes.len,
+            ptr: self.bytes.ptr(),
+            bytes: self.bytes.len(),
         ) {
             k256 hash ptr bytes;
             hash: b256
@@ -50,11 +51,7 @@ impl Hasher {
         let str_size = s.len();
         let str_ptr = s.as_ptr();
 
-        let mut bytes = Bytes::with_capacity(str_size);
-        bytes.len = str_size;
-
-        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-        self.write(bytes);
+        self.write(Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)));
     }
 
     #[inline(never)]
@@ -63,12 +60,7 @@ impl Hasher {
         let str_size = __size_of_str_array::<S>();
         let str_ptr = __addr_of(s);
 
-        let mut bytes = Bytes::with_capacity(str_size);
-        bytes.len = str_size;
-
-        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-
-        self.write(bytes);
+        self.write(Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)));
     }
 }
 
@@ -86,56 +78,48 @@ impl Hash for u8 {
 
 impl Hash for u16 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(8); // one word capacity
-        bytes.len = 2;
-
-        asm(ptr: bytes.buf.ptr(), val: self, r1) {
+        let ptr = alloc_bytes(8); // one word capacity
+        asm(ptr: ptr, val: self, r1) {
             slli r1 val i48;
             sw ptr r1 i0;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 2)));
     }
 }
 
 impl Hash for u32 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(8); // one word capacity
-        bytes.len = 4;
-
-        asm(ptr: bytes.buf.ptr(), val: self, r1) {
+        let ptr = alloc_bytes(8); // one word capacity
+        asm(ptr: ptr, val: self, r1) {
             slli r1 val i32;
             sw ptr r1 i0;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 4)));
     }
 }
 
 impl Hash for u64 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(8); // one word capacity
-        bytes.len = 8;
-
-        asm(ptr: bytes.buf.ptr(), val: self) {
+        let ptr = alloc_bytes(8); // one word capacity
+        asm(ptr: ptr, val: self) {
             sw ptr val i0;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 8)));
     }
 }
 
 impl Hash for b256 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(32); // four word capacity
-        bytes.len = 32;
-
+        let ptr = alloc_bytes(32); // four word capacity
         let (word_1, word_2, word_3, word_4) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
 
         asm(
-            ptr: bytes.buf.ptr(),
+            ptr: ptr,
             val_1: word_1,
             val_2: word_2,
             val_3: word_3,
@@ -147,21 +131,19 @@ impl Hash for b256 {
             sw ptr val_4 i3;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 32)));
     }
 }
 
 impl Hash for u256 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(32); // four word capacity
-        bytes.len = 32;
-
+        let ptr = alloc_bytes(32); // four word capacity
         let (word_1, word_2, word_3, word_4) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
 
         asm(
-            ptr: bytes.buf.ptr(),
+            ptr: ptr,
             val_1: word_1,
             val_2: word_2,
             val_3: word_3,
@@ -173,7 +155,7 @@ impl Hash for u256 {
             sw ptr val_4 i3;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 32)));
     }
 }
 
@@ -442,13 +424,11 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
     let str_size = __size_of_str_array::<S>();
     let str_ptr = __addr_of(param);
 
-    let mut bytes = Bytes::with_capacity(str_size);
-    bytes.len = str_size;
-
-    str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
+    let ptr = alloc_bytes(str_size);
+    str_ptr.copy_bytes_to(ptr, str_size);
 
     let mut hasher = Hasher::new();
-    hasher.write(bytes);
+    hasher.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, str_size)));
     hasher.sha256()
 }
 

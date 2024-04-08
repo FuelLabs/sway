@@ -156,16 +156,41 @@ impl<'a> Unifier<'a> {
             // Generics are handled similarly to the case for unknowns, except
             // we take more careful consideration for the type/purpose for the
             // unification that we are performing.
+            (UnknownGeneric { parent: rp, .. }, e)
+                if rp.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(rp.unwrap())
+                        .eq(e, &PartialEqWithEnginesContext::new(self.engines)) => {}
+            (r, UnknownGeneric { parent: ep, .. })
+                if ep.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(ep.unwrap())
+                        .eq(r, &PartialEqWithEnginesContext::new(self.engines)) => {}
+            (UnknownGeneric { parent: rp, .. }, UnknownGeneric { parent: ep, .. })
+                if rp.is_some()
+                    && ep.is_some()
+                    && self.engines.te().get(ep.unwrap()).eq(
+                        &*self.engines.te().get(rp.unwrap()),
+                        &PartialEqWithEnginesContext::new(self.engines),
+                    ) => {}
+
             (
                 UnknownGeneric {
                     name: rn,
                     trait_constraints: rtc,
+                    parent: _,
                 },
                 UnknownGeneric {
                     name: en,
                     trait_constraints: etc,
+                    parent: _,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(etc, self.engines) => (),
+            ) if rn.as_str() == en.as_str()
+                && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines)) => {}
 
             (_r @ UnknownGeneric { .. }, e)
                 if !self.occurs_check(received, expected)
@@ -260,12 +285,26 @@ impl<'a> Unifier<'a> {
                 )
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r.eq(e, self.engines) =>
+                if r.eq(e, &PartialEqWithEnginesContext::new(self.engines)) =>
             {
                 // if they are the same, then it's ok
             }
-            (Ref(r), Ref(e)) => {
-                self.unify_type_arguments_in_parents(handler, received, expected, span, r, e)
+            // Unification is possible in these situations, assuming that the referenced types
+            // can unify:
+            //  - `&` -> `&`
+            //  - `&mut` -> `&`
+            //  - `&mut` -> `&mut`
+            (
+                Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+                Ref {
+                    to_mutable_value: e_to_mut,
+                    referenced_type: e_ty,
+                },
+            ) if *r_to_mut || !*e_to_mut => {
+                self.unify_type_arguments_in_parents(handler, received, expected, span, r_ty, e_ty)
             }
 
             // If no previous attempts to unify were successful, raise an error.
@@ -279,6 +318,7 @@ impl<'a> Unifier<'a> {
                         received,
                         help_text: self.help_text.clone(),
                         span: span.clone(),
+                        internal: "4".into(),
                     }
                     .into(),
                 );
@@ -307,6 +347,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "3".into(),
                 }
                 .into(),
             );
@@ -350,6 +391,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "2".into(),
                 }
                 .into(),
             );
@@ -380,6 +422,8 @@ impl<'a> Unifier<'a> {
                 self.unify(handler, rtp.type_id, etp.type_id, span);
             });
         } else {
+            dbg!(rn == en, rvs.len() == evs.len(), rtps.len() == etps.len());
+            let internal = format!("[{:?}] versus [{:?}]", received, expected);
             let (received, expected) = self.assign_args(received, expected);
             handler.emit_err(
                 TypeError::MismatchedType {
@@ -387,6 +431,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal,
                 }
                 .into(),
             );
@@ -425,6 +470,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "1".into(),
                 }
                 .into(),
             );

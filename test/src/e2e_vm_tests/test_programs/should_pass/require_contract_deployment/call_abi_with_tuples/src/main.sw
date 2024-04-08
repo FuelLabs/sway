@@ -2,8 +2,13 @@ script;
 
 use abi_with_tuples::*;
 
+#[cfg(experimental_new_encoding = false)]
+const CONTRACT_ID = 0xb351aff8258ce46d16a71be666dd2b0b09d72243105c51f4423765824e59cac9;
+#[cfg(experimental_new_encoding = true)]
+const CONTRACT_ID = 0xde6ab165b5b0f9058daf26002d22f472e6d1af1c35e0210821e743d297d55b17;
+
 fn main() -> bool {
-    let the_abi = abi(MyContract, 0x1200d031e9c10f8d9bd9dd556a98a0c88e74a4da991047556f78b1bcc1be2ab6);
+    let the_abi = abi(MyContract, CONTRACT_ID);
 
     let param1 = (
         Person {

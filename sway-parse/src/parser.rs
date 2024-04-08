@@ -19,6 +19,7 @@ pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
     full_span: Span,
     handler: &'e Handler,
+    pub check_double_underscore: bool,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
@@ -27,6 +28,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
             handler,
+            check_double_underscore: true,
         }
     }
 
@@ -96,6 +98,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match parsing_function(&mut fork) {
@@ -155,6 +158,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match fork.parse() {
@@ -188,6 +192,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
         let r = match T::parse(&mut fork) {
             Ok(result) => {
@@ -244,6 +249,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     token_trees: token_stream.token_trees(),
                     full_span: token_stream.span(),
                     handler: self.handler,
+                    check_double_underscore: self.check_double_underscore,
                 };
                 Some((parser, span.clone()))
             }
@@ -293,7 +299,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             };
 
             let current_span = current_token.span();
-            let current_span_line = current_span.start_pos().line_col().0;
+            let current_span_line = current_span.start_pos().line_col().line;
 
             if current_span_line != line {
                 break;
@@ -445,7 +451,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             self.last_consumed_token()
                 .map(|x| x.span())
                 .or_else(|| self.fork_token_trees.first().map(|x| x.span()))
-                .map(|x| x.start_pos().line_col().0)
+                .map(|x| x.start_pos().line_col().line)
         };
 
         self.start(|p| {
@@ -469,6 +475,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             token_trees: self.fork_token_trees,
             full_span: self.fork_full_span.clone(),
             handler: &self.handler,
+            check_double_underscore: self.original.borrow().check_double_underscore,
         };
         f(&mut p);
         self.finish(p)

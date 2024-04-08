@@ -130,9 +130,9 @@ pub(crate) fn compile_const_decl(
                 None => None,
             };
             let const_decl = match decl {
-                Ok(decl) => match decl {
+                Ok(decl) => match decl.expect_typed() {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                        Some((*env.engines.de().get_constant(decl_id)).clone())
+                        Some((*env.engines.de().get_constant(&decl_id)).clone())
                     }
                     _otherwise => const_decl.cloned(),
                 },
@@ -1111,7 +1111,7 @@ fn const_eval_intrinsic(
         | Intrinsic::StateStoreQuad
         | Intrinsic::Log
         | Intrinsic::Revert
-        | Intrinsic::JmpbSsp
+        | Intrinsic::JmpMem
         | Intrinsic::Smo => Err(ConstEvalError::CannotBeEvaluatedToConst {
             span: intrinsic.span.clone(),
         }),
@@ -1153,6 +1153,11 @@ fn const_eval_intrinsic(
                 }
             }
         }
+        Intrinsic::ContractCall | Intrinsic::ContractRet => {
+            Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: intrinsic.span.clone(),
+            })
+        }
     }
 }
 
@@ -1178,14 +1183,19 @@ mod tests {
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
         let handler = Handler::default();
-        let mut context = Context::new(engines.se(), sway_ir::ExperimentalFlags::default());
+        let mut context = Context::new(
+            engines.se(),
+            sway_ir::ExperimentalFlags {
+                new_encoding: false,
+            },
+        );
         let mut md_mgr = MetadataManager::default();
-        let core_lib = namespace::Module {
+        let core_lib = namespace::Root::from(namespace::Module {
             name: Some(sway_types::Ident::new_no_span(
                 "assert_is_constant_test".to_string(),
             )),
             ..Default::default()
-        };
+        });
 
         let r = crate::compile_to_ast(
             &handler,

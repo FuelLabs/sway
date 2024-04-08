@@ -9,7 +9,7 @@ use sway_types::{Ident, Span};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{parsed::TreeType, ty::*, Visibility},
+    language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
@@ -31,8 +31,8 @@ pub struct TyAstNode {
 
 impl EqWithEngines for TyAstNode {}
 impl PartialEqWithEngines for TyAstNode {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.content.eq(&other.content, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.content.eq(&other.content, ctx)
     }
 }
 
@@ -77,17 +77,17 @@ impl ReplaceDecls for TyAstNode {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         match self.content {
             TyAstNodeContent::Declaration(TyDecl::VariableDecl(ref mut decl)) => {
                 decl.body.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::Declaration(_) => Ok(()),
+            TyAstNodeContent::Declaration(_) => Ok(false),
             TyAstNodeContent::Expression(ref mut expr) => {
                 expr.replace_decls(decl_mapping, handler, ctx)
             }
-            TyAstNodeContent::SideEffect(_) => Ok(()),
-            TyAstNodeContent::Error(_, _) => Ok(()),
+            TyAstNodeContent::SideEffect(_) => Ok(false),
+            TyAstNodeContent::Error(_, _) => Ok(false),
         }
     }
 }
@@ -189,90 +189,6 @@ impl TyAstNode {
                 attributes.contains_key(&AttributeKind::Test)
             }
             _ => false,
-        }
-    }
-
-    pub(crate) fn is_entry_point(&self, decl_engine: &DeclEngine, tree_type: &TreeType) -> bool {
-        match tree_type {
-            TreeType::Predicate | TreeType::Script => {
-                // Predicates and scripts have main and test functions as entry points.
-                match self {
-                    TyAstNode {
-                        span: _,
-                        content:
-                            TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                                decl_id,
-                                ..
-                            })),
-                        ..
-                    } => {
-                        let decl = decl_engine.get_function(decl_id);
-                        decl.is_entry()
-                    }
-                    _ => false,
-                }
-            }
-            TreeType::Contract | TreeType::Library { .. } => match self {
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_function(decl_id);
-                    decl.visibility == Visibility::Public || decl.is_test()
-                }
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => decl_engine.get_trait(decl_id).visibility.is_public(),
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::StructDecl(StructDecl {
-                            decl_id, ..
-                        })),
-                    ..
-                } => {
-                    let struct_decl = decl_engine.get_struct(decl_id);
-                    struct_decl.visibility == Visibility::Public
-                }
-                TyAstNode {
-                    content: TyAstNodeContent::Declaration(TyDecl::ImplTrait { .. }),
-                    ..
-                } => true,
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
-                            decl_id,
-                            decl_span: _,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_constant(decl_id);
-                    decl.visibility.is_public()
-                }
-                TyAstNode {
-                    content:
-                        TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
-                            decl_id,
-                            ..
-                        })),
-                    ..
-                } => {
-                    let decl = decl_engine.get_type_alias(decl_id);
-                    decl.visibility.is_public()
-                }
-                _ => false,
-            },
         }
     }
 
@@ -395,6 +311,23 @@ impl TyAstNode {
             Ok(())
         })
     }
+
+    pub fn contract_fns(&self, engines: &Engines) -> Vec<DeclRefFunction> {
+        let mut fns = vec![];
+
+        if let TyAstNodeContent::Declaration(TyDecl::ImplTrait(decl)) = &self.content {
+            let decl = engines.de().get(&decl.decl_id);
+            if decl.is_impl_contract(engines.te()) {
+                for item in &decl.items {
+                    if let TyTraitItem::Fn(f) = item {
+                        fns.push(f.clone());
+                    }
+                }
+            }
+        }
+
+        fns
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -408,10 +341,10 @@ pub enum TyAstNodeContent {
 
 impl EqWithEngines for TyAstNodeContent {}
 impl PartialEqWithEngines for TyAstNodeContent {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, engines),
-            (Self::Expression(x), Self::Expression(y)) => x.eq(y, engines),
+            (Self::Declaration(x), Self::Declaration(y)) => x.eq(y, ctx),
+            (Self::Expression(x), Self::Expression(y)) => x.eq(y, ctx),
             (Self::SideEffect(_), Self::SideEffect(_)) => true,
             _ => false,
         }

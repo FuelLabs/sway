@@ -1,7 +1,8 @@
 use crate::{
-    decl_engine::*,
+    decl_engine::{parsed_id::ParsedDeclId, *},
     engine_threading::Engines,
     language::{
+        parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
         CallPath,
     },
@@ -10,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-use super::TraitMap;
+use super::{module::ResolvedDeclaration, TraitMap};
 
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -27,9 +28,24 @@ pub(crate) enum GlobImport {
     No,
 }
 
+pub enum ResolvedFunctionDecl {
+    Parsed(ParsedDeclId<FunctionDeclaration>),
+    Typed(DeclRefFunction),
+}
+
+impl ResolvedFunctionDecl {
+    pub fn expect_typed(self) -> DeclRefFunction {
+        match self {
+            ResolvedFunctionDecl::Parsed(_) => panic!(),
+            ResolvedFunctionDecl::Typed(fn_ref) => fn_ref,
+        }
+    }
+}
+
+pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
-// The final `bool` field of `UseSynonyms` is true if the `Vec<Ident>` path is absolute.
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl, bool)>;
+// The `Vec<Ident>` path is absolute.
+pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
@@ -55,6 +71,8 @@ pub struct LexicalScope {
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Items {
+    /// An ordered map from `Ident`s to their associated parsed declarations.
+    pub(crate) parsed_symbols: ParsedSymbolMap,
     /// An ordered map from `Ident`s to their associated typed declarations.
     pub(crate) symbols: SymbolMap,
     pub(crate) implemented_traits: TraitMap,
@@ -121,6 +139,16 @@ impl Items {
 
     pub fn get_all_declared_symbols(&self) -> impl Iterator<Item = &Ident> {
         self.symbols().keys()
+    }
+
+    pub(crate) fn insert_parsed_symbol(
+        &mut self,
+        name: Ident,
+        item: Declaration,
+    ) -> Result<(), ErrorEmitted> {
+        self.parsed_symbols.insert(name, item);
+
+        Ok(())
     }
 
     pub(crate) fn insert_symbol(
@@ -261,8 +289,7 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, GlobImport::No, decl, _))) = self.use_synonyms.get_key_value(&name)
-        {
+        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name) {
             append_shadowing_error(
                 ident,
                 decl,
@@ -278,16 +305,21 @@ impl Items {
         Ok(())
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {
         self.symbols
             .get(name)
+            .map(|ty_decl| ResolvedDeclaration::Typed(ty_decl.clone()))
             .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
             })
     }
 
-    pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
+    pub fn get_items_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedTraitImplItem> {
         self.implemented_traits.get_items_for_type(engines, type_id)
     }
 
@@ -312,13 +344,20 @@ impl Items {
             .get_impl_spans_for_trait_name(trait_name)
     }
 
-    pub fn get_methods_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<DeclRefFunction> {
+    pub fn get_methods_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedFunctionDecl> {
         self.get_items_for_type(engines, type_id)
             .into_iter()
             .filter_map(|item| match item {
-                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
-                ty::TyTraitItem::Constant(_decl_ref) => None,
-                ty::TyTraitItem::Type(_decl_ref) => None,
+                ResolvedTraitImplItem::Parsed(_) => todo!(),
+                ResolvedTraitImplItem::Typed(item) => match item {
+                    ty::TyTraitItem::Fn(decl_ref) => Some(ResolvedFunctionDecl::Typed(decl_ref)),
+                    ty::TyTraitItem::Constant(_decl_ref) => None,
+                    ty::TyTraitItem::Type(_decl_ref) => None,
+                },
             })
             .collect::<Vec<_>>()
     }

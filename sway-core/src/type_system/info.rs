@@ -53,18 +53,14 @@ impl<T> core::ops::Deref for VecSet<T> {
 }
 
 impl<T: PartialEqWithEngines> VecSet<T> {
-    pub fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.0.len() <= other.0.len()
-            && self
-                .0
-                .iter()
-                .all(|x| other.0.iter().any(|y| x.eq(y, engines)))
+    pub fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.0.len() <= other.0.len() && self.0.iter().all(|x| other.0.iter().any(|y| x.eq(y, ctx)))
     }
 }
 
 impl<T: PartialEqWithEngines> PartialEqWithEngines for VecSet<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.eq(other, engines) && other.eq(self, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.eq(other, ctx) && other.eq(self, ctx)
     }
 }
 
@@ -85,8 +81,8 @@ impl HashWithEngines for TypeSourceInfo {
 
 impl EqWithEngines for TypeSourceInfo {}
 impl PartialEqWithEngines for TypeSourceInfo {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.type_info.eq(&other.type_info, engines) && self.source_id == other.source_id
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.type_info.eq(&other.type_info, ctx) && self.source_id == other.source_id
     }
 }
 
@@ -104,6 +100,8 @@ pub enum TypeInfo {
         name: Ident,
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
+        // Methods can have type parameters with unkown generic that extend the trait constraints of a parent unkown generic.
+        parent: Option<TypeId>,
     },
     /// Represents a type that will be inferred by the Sway compiler. This type
     /// is created when the user writes code that creates a new ADT that has
@@ -184,7 +182,10 @@ pub enum TypeInfo {
         name: Ident,
         trait_type_id: TypeId,
     },
-    Ref(TypeArgument),
+    Ref {
+        to_mutable_value: bool,
+        referenced_type: TypeArgument,
+    },
 }
 
 impl HashWithEngines for TypeInfo {
@@ -217,6 +218,7 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::UnknownGeneric {
                 name,
                 trait_constraints: _,
+                parent: _,
             } => {
                 name.hash(state);
                 // Do not hash trait_constraints as those can point back to this type_info
@@ -263,7 +265,11 @@ impl HashWithEngines for TypeInfo {
                 name.hash(state);
                 trait_type_id.hash(state);
             }
-            TypeInfo::Ref(ty) => {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                to_mutable_value.hash(state);
                 ty.hash(state, engines);
             }
             TypeInfo::StringSlice
@@ -282,21 +288,22 @@ impl HashWithEngines for TypeInfo {
 
 impl EqWithEngines for TypeInfo {}
 impl PartialEqWithEngines for TypeInfo {
-    // TODO-IG!: Equality of call paths.
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         match (self, other) {
             (
                 Self::UnknownGeneric {
                     name: l,
                     trait_constraints: ltc,
+                    parent: _,
                 },
                 Self::UnknownGeneric {
                     name: r,
                     trait_constraints: rtc,
+                    parent: _,
                 },
-            ) => l == r && ltc.eq(rtc, engines),
-            (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, engines),
+            ) => l == r && ltc.eq(rtc, ctx),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.eq(r, ctx),
             (Self::TypeParam(l), Self::TypeParam(r)) => l == r,
             (
                 Self::Custom {
@@ -313,34 +320,34 @@ impl PartialEqWithEngines for TypeInfo {
                 l_name.call_path.suffix == r_name.call_path.suffix
                     && l_name
                         .qualified_path_root
-                        .eq(&r_name.qualified_path_root, engines)
-                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), engines)
+                        .eq(&r_name.qualified_path_root, ctx)
+                    && l_type_args.as_deref().eq(&r_type_args.as_deref(), ctx)
                     && l_root_type_id.eq(r_root_type_id)
             }
             (Self::StringSlice, Self::StringSlice) => true,
             (Self::StringArray(l), Self::StringArray(r)) => l.val() == r.val(),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l == r,
             (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = engines.de().get_enum(l_decl_ref);
-                let r_decl = engines.de().get_enum(r_decl_ref);
+                let l_decl = ctx.engines().de().get_enum(l_decl_ref);
+                let r_decl = ctx.engines().de().get_enum(r_decl_ref);
                 assert!(
                     l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
                     "The call paths of the enum declarations must always be absolute."
                 );
                 l_decl.call_path == r_decl.call_path
-                    && l_decl.variants.eq(&r_decl.variants, engines)
-                    && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
+                    && l_decl.variants.eq(&r_decl.variants, ctx)
+                    && l_decl.type_parameters.eq(&r_decl.type_parameters, ctx)
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
-                let l_decl = engines.de().get_struct(l_decl_ref);
-                let r_decl = engines.de().get_struct(r_decl_ref);
+                let l_decl = ctx.engines().de().get_struct(l_decl_ref);
+                let r_decl = ctx.engines().de().get_struct(r_decl_ref);
                 assert!(
                     l_decl.call_path.is_absolute && r_decl.call_path.is_absolute,
                     "The call paths of the struct declarations must always be absolute."
                 );
                 l_decl.call_path == r_decl.call_path
-                    && l_decl.fields.eq(&r_decl.fields, engines)
-                    && l_decl.type_parameters.eq(&r_decl.type_parameters, engines)
+                    && l_decl.fields.eq(&r_decl.fields, ctx)
+                    && l_decl.type_parameters.eq(&r_decl.type_parameters, ctx)
             }
             (Self::Tuple(l), Self::Tuple(r)) => l
                 .iter()
@@ -349,7 +356,7 @@ impl PartialEqWithEngines for TypeInfo {
                     (l.type_id == r.type_id)
                         || type_engine
                             .get(l.type_id)
-                            .eq(&type_engine.get(r.type_id), engines)
+                            .eq(&type_engine.get(r.type_id), ctx)
                 })
                 .all(|x| x),
             (
@@ -361,18 +368,16 @@ impl PartialEqWithEngines for TypeInfo {
                     abi_name: r_abi_name,
                     address: r_address,
                 },
-            ) => {
-                l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), engines)
-            }
+            ) => l_abi_name == r_abi_name && l_address.as_deref().eq(&r_address.as_deref(), ctx),
             (Self::Array(l0, l1), Self::Array(r0, r1)) => {
                 ((l0.type_id == r0.type_id)
                     || type_engine
                         .get(l0.type_id)
-                        .eq(&type_engine.get(r0.type_id), engines))
+                        .eq(&type_engine.get(r0.type_id), ctx))
                     && l1.val() == r1.val()
             }
             (Self::Storage { fields: l_fields }, Self::Storage { fields: r_fields }) => {
-                l_fields.eq(r_fields, engines)
+                l_fields.eq(r_fields, ctx)
             }
             (
                 Self::Alias {
@@ -388,7 +393,7 @@ impl PartialEqWithEngines for TypeInfo {
                     && ((l_ty.type_id == r_ty.type_id)
                         || type_engine
                             .get(l_ty.type_id)
-                            .eq(&type_engine.get(r_ty.type_id), engines))
+                            .eq(&type_engine.get(r_ty.type_id), ctx))
             }
             (
                 Self::TraitType {
@@ -404,13 +409,23 @@ impl PartialEqWithEngines for TypeInfo {
                     && ((*l_trait_type_id == *r_trait_type_id)
                         || type_engine
                             .get(*l_trait_type_id)
-                            .eq(&type_engine.get(*r_trait_type_id), engines))
+                            .eq(&type_engine.get(*r_trait_type_id), ctx))
             }
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => {
-                (l_ty.type_id == r_ty.type_id)
-                    || type_engine
-                        .get(l_ty.type_id)
-                        .eq(&type_engine.get(r_ty.type_id), engines)
+            (
+                Self::Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Self::Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => {
+                (l_to_mut == r_to_mut)
+                    && ((l_ty.type_id == r_ty.type_id)
+                        || type_engine
+                            .get(l_ty.type_id)
+                            .eq(&type_engine.get(r_ty.type_id), ctx))
             }
 
             (l, r) => l.discriminant_value() == r.discriminant_value(),
@@ -419,21 +434,23 @@ impl PartialEqWithEngines for TypeInfo {
 }
 
 impl OrdWithEngines for TypeInfo {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
-        let type_engine = engines.te();
-        let decl_engine = engines.de();
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        let type_engine = ctx.engines().te();
+        let decl_engine = ctx.engines().de();
         match (self, other) {
             (
                 Self::UnknownGeneric {
                     name: l,
                     trait_constraints: ltc,
+                    parent: _,
                 },
                 Self::UnknownGeneric {
                     name: r,
                     trait_constraints: rtc,
+                    parent: _,
                 },
-            ) => l.cmp(r).then_with(|| ltc.cmp(rtc, engines)),
-            (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, engines),
+            ) => l.cmp(r).then_with(|| ltc.cmp(rtc, ctx)),
+            (Self::Placeholder(l), Self::Placeholder(r)) => l.cmp(r, ctx),
             (
                 Self::Custom {
                     qualified_call_path: l_call_path,
@@ -452,9 +469,9 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| {
                     l_call_path
                         .qualified_path_root
-                        .cmp(&r_call_path.qualified_path_root, engines)
+                        .cmp(&r_call_path.qualified_path_root, ctx)
                 })
-                .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), engines))
+                .then_with(|| l_type_args.as_deref().cmp(&r_type_args.as_deref(), ctx))
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
@@ -465,8 +482,8 @@ impl OrdWithEngines for TypeInfo {
                     .call_path
                     .suffix
                     .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
-                    .then_with(|| l_decl.variants.cmp(&r_decl.variants, engines))
+                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, ctx))
+                    .then_with(|| l_decl.variants.cmp(&r_decl.variants, ctx))
             }
             (Self::Struct(l_decl_ref), Self::Struct(r_decl_ref)) => {
                 let l_decl = decl_engine.get_struct(l_decl_ref);
@@ -475,10 +492,10 @@ impl OrdWithEngines for TypeInfo {
                     .call_path
                     .suffix
                     .cmp(&r_decl.call_path.suffix)
-                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, engines))
-                    .then_with(|| l_decl.fields.cmp(&r_decl.fields, engines))
+                    .then_with(|| l_decl.type_parameters.cmp(&r_decl.type_parameters, ctx))
+                    .then_with(|| l_decl.fields.cmp(&r_decl.fields, ctx))
             }
-            (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, engines),
+            (Self::Tuple(l), Self::Tuple(r)) => l.cmp(r, ctx),
             (
                 Self::ContractCaller {
                     abi_name: l_abi_name,
@@ -494,10 +511,10 @@ impl OrdWithEngines for TypeInfo {
             }
             (Self::Array(l0, l1), Self::Array(r0, r1)) => type_engine
                 .get(l0.type_id)
-                .cmp(&type_engine.get(r0.type_id), engines)
+                .cmp(&type_engine.get(r0.type_id), ctx)
                 .then_with(|| l1.val().cmp(&r1.val())),
             (TypeInfo::Storage { fields: l_fields }, TypeInfo::Storage { fields: r_fields }) => {
-                l_fields.cmp(r_fields, engines)
+                l_fields.cmp(r_fields, ctx)
             }
             (
                 Self::Alias {
@@ -510,7 +527,7 @@ impl OrdWithEngines for TypeInfo {
                 },
             ) => type_engine
                 .get(l_ty.type_id)
-                .cmp(&type_engine.get(r_ty.type_id), engines)
+                .cmp(&type_engine.get(r_ty.type_id), ctx)
                 .then_with(|| l_name.cmp(r_name)),
             (
                 Self::TraitType {
@@ -524,10 +541,20 @@ impl OrdWithEngines for TypeInfo {
             ) => l_trait_type_id
                 .cmp(r_trait_type_id)
                 .then_with(|| l_name.cmp(r_name)),
-            (Self::Ref(l_ty), Self::Ref(r_ty)) => type_engine
-                .get(l_ty.type_id)
-                .cmp(&type_engine.get(r_ty.type_id), engines),
-
+            (
+                Self::Ref {
+                    to_mutable_value: l_to_mut,
+                    referenced_type: l_ty,
+                },
+                Self::Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+            ) => l_to_mut.cmp(r_to_mut).then_with(|| {
+                type_engine
+                    .get(l_ty.type_id)
+                    .cmp(&type_engine.get(r_ty.type_id), ctx)
+            }),
             (l, r) => l.discriminant_value().cmp(&r.discriminant_value()),
         }
     }
@@ -602,8 +629,15 @@ impl DisplayWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
-            Ref(ty) => {
-                format!("&{}", engines.help_out(ty))
+            Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                format!(
+                    "&{}{}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    engines.help_out(ty)
+                )
             }
         };
         write!(f, "{s}")
@@ -706,8 +740,15 @@ impl DebugWithEngines for TypeInfo {
                 name,
                 trait_type_id,
             } => format!("trait type {}::{}", engines.help_out(trait_type_id), name),
-            Ref(ty) => {
-                format!("&{:?}", engines.help_out(ty))
+            Ref {
+                to_mutable_value,
+                referenced_type: ty,
+            } => {
+                format!(
+                    "&{}{:?}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    engines.help_out(ty)
+                )
             }
         };
         write!(f, "{s}")
@@ -780,6 +821,10 @@ impl TypeInfo {
             }
             _ => false,
         }
+    }
+
+    pub(crate) fn is_bool(&self) -> bool {
+        matches!(self, TypeInfo::Boolean)
     }
 
     /// maps a type to a name that is used when constructing function selectors
@@ -1097,7 +1142,7 @@ impl TypeInfo {
     }
 
     pub fn is_reference(&self) -> bool {
-        matches!(self, TypeInfo::Ref(_))
+        matches!(self, TypeInfo::Ref { .. })
     }
 
     pub fn is_array(&self) -> bool {
@@ -1168,7 +1213,7 @@ impl TypeInfo {
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_) => {
+            | TypeInfo::Ref { .. } => {
                 Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span: span.clone() }))
             }
         }
@@ -1210,7 +1255,7 @@ impl TypeInfo {
                 "Matching on this type is currently not supported.",
                 span.clone(),
             ))),
-            TypeInfo::Ref(_) => Err(handler.emit_err(CompileError::Unimplemented(
+            TypeInfo::Ref { .. } => Err(handler.emit_err(CompileError::Unimplemented(
                 // TODO-IG: Implement.
                 "Using references in match expressions is currently not supported.",
                 span.clone(),
@@ -1250,7 +1295,7 @@ impl TypeInfo {
             | TypeInfo::Alias { .. }
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::TraitType { .. }
-            | TypeInfo::Ref(_)
+            | TypeInfo::Ref { .. }
             | TypeInfo::Never => Ok(()),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
@@ -1300,7 +1345,7 @@ impl TypeInfo {
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
             | TypeInfo::Alias { .. }
-            | TypeInfo::Ref(_) => true,
+            | TypeInfo::Ref { .. } => true,
         }
     }
 

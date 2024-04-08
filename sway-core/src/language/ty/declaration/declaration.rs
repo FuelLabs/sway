@@ -126,11 +126,11 @@ pub struct TypeAliasDecl {
 
 impl EqWithEngines for TyDecl {}
 impl PartialEqWithEngines for TyDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let decl_engine = engines.de();
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let decl_engine = ctx.engines().de();
+        let type_engine = ctx.engines().te();
         match (self, other) {
-            (TyDecl::VariableDecl(x), TyDecl::VariableDecl(y)) => x.eq(y, engines),
+            (TyDecl::VariableDecl(x), TyDecl::VariableDecl(y)) => x.eq(y, ctx),
             (
                 TyDecl::ConstantDecl(ConstantDecl {
                     name: ln,
@@ -142,7 +142,7 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::FunctionDecl(FunctionDecl {
                     name: ln,
@@ -154,7 +154,7 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::TraitDecl(TraitDecl {
                     name: ln,
@@ -166,7 +166,7 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::StructDecl(StructDecl {
                     name: ln,
@@ -178,7 +178,7 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::EnumDecl(EnumDecl {
                     name: ln,
@@ -190,7 +190,7 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::ImplTrait(ImplTrait {
                     name: ln,
@@ -202,7 +202,7 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::AbiDecl(AbiDecl {
                     name: ln,
@@ -214,15 +214,15 @@ impl PartialEqWithEngines for TyDecl {
                     decl_id: rid,
                     ..
                 }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::StorageDecl(StorageDecl { decl_id: lid, .. }),
                 TyDecl::StorageDecl(StorageDecl { decl_id: rid, .. }),
-            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id: lid, .. }),
                 TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id: rid, .. }),
-            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), engines),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope {
                     name: xn,
@@ -232,7 +232,7 @@ impl PartialEqWithEngines for TyDecl {
                     name: yn,
                     type_id: yti,
                 }),
-            ) => xn == yn && type_engine.get(*xti).eq(&type_engine.get(*yti), engines),
+            ) => xn == yn && type_engine.get(*xti).eq(&type_engine.get(*yti), ctx),
             (TyDecl::ErrorRecovery(x, _), TyDecl::ErrorRecovery(y, _)) => x == y,
             _ => false,
         }
@@ -373,6 +373,18 @@ impl TyDecl {
         }) = self
         {
             Some(DeclRef::new(name.clone(), *decl_id, decl_span.clone()))
+        } else {
+            None
+        }
+    }
+
+    pub fn get_trait_decl_ref(&self) -> Option<DeclRefTrait> {
+        if let TyDecl::TraitDecl(decl) = self {
+            Some(DeclRef::new(
+                decl.name.clone(),
+                decl.decl_id,
+                decl.decl_span.clone(),
+            ))
         } else {
             None
         }

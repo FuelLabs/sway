@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt, hash::Hasher};
 use crate::{
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        PartialEqWithEngines,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
@@ -112,15 +112,15 @@ impl Spanned for AmbiguousSuffix {
 }
 
 #[derive(Debug, Clone)]
-pub struct QualifiedPathRootTypes {
+pub struct QualifiedPathType {
     pub ty: TypeArgument,
     pub as_trait: TypeId,
     pub as_trait_span: Span,
 }
 
-impl HashWithEngines for QualifiedPathRootTypes {
+impl HashWithEngines for QualifiedPathType {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let QualifiedPathRootTypes {
+        let QualifiedPathType {
             ty,
             as_trait,
             // ignored fields
@@ -131,47 +131,48 @@ impl HashWithEngines for QualifiedPathRootTypes {
     }
 }
 
-impl EqWithEngines for QualifiedPathRootTypes {}
-impl PartialEqWithEngines for QualifiedPathRootTypes {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let QualifiedPathRootTypes {
+impl EqWithEngines for QualifiedPathType {}
+impl PartialEqWithEngines for QualifiedPathType {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let QualifiedPathType {
             ty,
             as_trait,
             // ignored fields
             as_trait_span: _,
         } = self;
-        ty.eq(&other.ty, engines)
-            && engines
+        ty.eq(&other.ty, ctx)
+            && ctx
+                .engines()
                 .te()
                 .get(*as_trait)
-                .eq(&engines.te().get(other.as_trait), engines)
+                .eq(&ctx.engines().te().get(other.as_trait), ctx)
     }
 }
 
-impl OrdWithEngines for QualifiedPathRootTypes {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
-        let QualifiedPathRootTypes {
+impl OrdWithEngines for QualifiedPathType {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        let QualifiedPathType {
             ty: l_ty,
             as_trait: l_as_trait,
             // ignored fields
             as_trait_span: _,
         } = self;
-        let QualifiedPathRootTypes {
+        let QualifiedPathType {
             ty: r_ty,
             as_trait: r_as_trait,
             // ignored fields
             as_trait_span: _,
         } = other;
-        l_ty.cmp(r_ty, engines).then_with(|| {
-            engines
+        l_ty.cmp(r_ty, ctx).then_with(|| {
+            ctx.engines()
                 .te()
                 .get(*l_as_trait)
-                .cmp(&engines.te().get(*r_as_trait), engines)
+                .cmp(&ctx.engines().te().get(*r_as_trait), ctx)
         })
     }
 }
 
-impl DisplayWithEngines for QualifiedPathRootTypes {
+impl DisplayWithEngines for QualifiedPathType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(
             f,
@@ -182,7 +183,7 @@ impl DisplayWithEngines for QualifiedPathRootTypes {
     }
 }
 
-impl DebugWithEngines for QualifiedPathRootTypes {
+impl DebugWithEngines for QualifiedPathType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         write!(f, "{}", engines.help_out(self),)
     }
@@ -190,7 +191,7 @@ impl DebugWithEngines for QualifiedPathRootTypes {
 
 #[derive(Debug, Clone)]
 pub struct AmbiguousPathExpression {
-    pub qualified_path_root: Option<QualifiedPathRootTypes>,
+    pub qualified_path_root: Option<QualifiedPathType>,
     pub call_path_binding: TypeBinding<CallPath<AmbiguousSuffix>>,
     pub args: Vec<Expression>,
 }

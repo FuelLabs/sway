@@ -8,7 +8,7 @@ use std::{
 use crate::{
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
-        PartialEqWithEngines,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     Engines, Ident, Namespace,
 };
@@ -19,7 +19,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
-use super::parsed::QualifiedPathRootTypes;
+use super::parsed::QualifiedPathType;
 
 #[derive(Clone, Debug)]
 pub struct CallPathTree {
@@ -40,18 +40,17 @@ impl HashWithEngines for CallPathTree {
 
 impl EqWithEngines for CallPathTree {}
 impl PartialEqWithEngines for CallPathTree {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let CallPathTree {
             qualified_call_path,
             children,
         } = self;
-        qualified_call_path.eq(&other.qualified_call_path, engines)
-            && children.eq(&other.children, engines)
+        qualified_call_path.eq(&other.qualified_call_path, ctx) && children.eq(&other.children, ctx)
     }
 }
 
 impl OrdWithEngines for CallPathTree {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let CallPathTree {
             qualified_call_path: l_call_path,
             children: l_children,
@@ -61,8 +60,8 @@ impl OrdWithEngines for CallPathTree {
             children: r_children,
         } = other;
         l_call_path
-            .cmp(r_call_path, engines)
-            .then_with(|| l_children.cmp(r_children, engines))
+            .cmp(r_call_path, ctx)
+            .then_with(|| l_children.cmp(r_children, ctx))
     }
 }
 
@@ -70,7 +69,7 @@ impl OrdWithEngines for CallPathTree {
 
 pub struct QualifiedCallPath {
     pub call_path: CallPath,
-    pub qualified_path_root: Option<Box<QualifiedPathRootTypes>>,
+    pub qualified_path_root: Option<Box<QualifiedPathType>>,
 }
 
 impl std::convert::From<Ident> for QualifiedCallPath {
@@ -121,18 +120,17 @@ impl HashWithEngines for QualifiedCallPath {
 
 impl EqWithEngines for QualifiedCallPath {}
 impl PartialEqWithEngines for QualifiedCallPath {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let QualifiedCallPath {
             call_path,
             qualified_path_root,
         } = self;
-        call_path.eq(&other.call_path)
-            && qualified_path_root.eq(&other.qualified_path_root, engines)
+        call_path.eq(&other.call_path) && qualified_path_root.eq(&other.qualified_path_root, ctx)
     }
 }
 
 impl OrdWithEngines for QualifiedCallPath {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let QualifiedCallPath {
             call_path: l_call_path,
             qualified_path_root: l_qualified_path_root,
@@ -143,7 +141,7 @@ impl OrdWithEngines for QualifiedCallPath {
         } = other;
         l_call_path
             .cmp(r_call_path)
-            .then_with(|| l_qualified_path_root.cmp(r_qualified_path_root, engines))
+            .then_with(|| l_qualified_path_root.cmp(r_qualified_path_root, ctx))
     }
 }
 
@@ -320,7 +318,7 @@ impl CallPath {
                 .get(&self.suffix)
             {
                 synonym_prefixes = use_synonym.0.clone();
-                is_absolute = use_synonym.3;
+                is_absolute = true;
                 let submodule = namespace.module().submodule(&[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
                     is_external = submodule.is_external;

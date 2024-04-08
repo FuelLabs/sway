@@ -5,5 +5,4 @@ license = "Apache-2.0"
 name = "largeint_sroa"
 
 [dependencies]
-core = { path = "../../../../../../../sway-lib-core" }
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

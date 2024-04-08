@@ -147,7 +147,7 @@ impl Type {
     }
 
     /// Get slice type
-    pub fn get_slice(context: &mut Context) -> Type {
+    pub fn get_slice(context: &Context) -> Type {
         Self::get_type(context, &TypeContent::Slice).expect("create_basic_types not called")
     }
 
@@ -742,9 +742,9 @@ mod tests {
         /// The first word is the pointer to the actual content, and the second the
         /// length of the slice.
         fn slice() {
-            let mut context = create_context();
+            let context = create_context();
 
-            let s_slice = Type::get_slice(&mut context).size(&context);
+            let s_slice = Type::get_slice(&context).size(&context);
 
             assert_eq!(s_slice.in_bytes(), 16);
             assert_eq!(s_slice.in_bytes(), s_slice.in_bytes_aligned());
@@ -944,7 +944,12 @@ mod tests {
         static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
 
         fn create_context() -> Context<'static> {
-            Context::new(&SOURCE_ENGINE, ExperimentalFlags::default())
+            Context::new(
+                &SOURCE_ENGINE,
+                ExperimentalFlags {
+                    new_encoding: false,
+                },
+            )
         }
 
         /// Creates sample types that are not aggregates and do not point to

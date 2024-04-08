@@ -10,12 +10,22 @@ use core::ops::Eq;
 fn reference_local_var_and_value<T>()
     where T: Eq + New
 {
-    let x = T::new();
+    let mut x = T::new();
 
     let r_x_1 = &x;
     let r_x_2 = &x;
     let r_val = &T::new();
 
+    assert_references(r_x_1, r_x_2, r_val, x);
+
+    let r_x_1 = &mut x;
+    let r_x_2 = &mut x;
+    let r_val = &mut T::new();
+
+    assert_references(r_x_1, r_x_2, r_val, x);
+}
+
+fn assert_references<T>(r_x_1: &T, r_x_2: &T, r_val: &T, x: T) where T: Eq + New {
     let r_x_1_ptr = asm(r: r_x_1) { r: raw_ptr };
     let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
     let r_val_ptr = asm(r: r_val) { r: raw_ptr };
@@ -114,35 +124,39 @@ fn reference_zero_sized_local_var_and_value<T>()
 {
     assert(__size_of::<T>() == 0);
 
-    let x = T::new();
+    let mut x = T::new();
 
     let r_x_1 = &x;
     let r_x_2 = &x;
     let r_val = &T::new();
 
-    let r_dummy = &123u64;
+    assert_references_zero_size(r_x_1, r_x_2, r_val, x);
 
+    let r_x_1 = &mut x;
+    let r_x_2 = &mut x;
+    let r_val = &mut T::new();
+
+    assert_references_zero_size(r_x_1, r_x_2, r_val, x);
+}
+
+fn assert_references_zero_size<T>(r_x_1: &T, r_x_2: &T, r_val: &T, x: T) where T: Eq + New + ZeroSize {
     let r_x_1_ptr = asm(r: r_x_1) { r: raw_ptr };
     let r_x_2_ptr = asm(r: r_x_2) { r: raw_ptr };
     let r_val_ptr = asm(r: r_val) { r: raw_ptr };
-    let r_dummy_ptr = asm(r: r_dummy) { r: raw_ptr };
 
     assert(r_x_1_ptr == r_x_2_ptr);
 
     let r_x_1_ptr_val = r_x_1_ptr.read::<T>();
     let r_x_2_ptr_val = r_x_2_ptr.read::<T>();
     let r_x_val_val = r_val_ptr.read::<T>();
-    let r_dummy_val = r_dummy_ptr.read::<u64>();
 
     assert(r_x_1_ptr_val == x);
     assert(r_x_2_ptr_val == x);
     assert(r_x_val_val == T::new());
-    assert(r_dummy_val == 123);
 
     assert(*r_x_1 == x);
     assert(*r_x_2 == x);
     assert(*r_val == T::new());
-    assert(*r_dummy == 123);
 }
 
 #[inline(never)]

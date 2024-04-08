@@ -471,9 +471,19 @@ impl TypeSubstMap {
                 type_engine.insert(engines, TypeInfo::Slice(ty.clone()), ty.span.source_id())
             }),
             TypeInfo::TraitType { .. } => iter_for_match(engines, self, &type_info),
-            TypeInfo::Ref(mut ty) => self.find_match(ty.type_id, engines).map(|type_id| {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type: mut ty,
+            } => self.find_match(ty.type_id, engines).map(|type_id| {
                 ty.type_id = type_id;
-                type_engine.insert(engines, TypeInfo::Ref(ty.clone()), ty.span.source_id())
+                type_engine.insert(
+                    engines,
+                    TypeInfo::Ref {
+                        to_mutable_value,
+                        referenced_type: ty.clone(),
+                    },
+                    ty.span.source_id(),
+                )
             }),
             TypeInfo::Unknown
             | TypeInfo::Never
@@ -499,7 +509,10 @@ fn iter_for_match(
 ) -> Option<TypeId> {
     let type_engine = engines.te();
     for (source_type, dest_type) in type_mapping.mapping.iter() {
-        if type_engine.get(*source_type).eq(type_info, engines) {
+        if type_engine
+            .get(*source_type)
+            .eq(type_info, &PartialEqWithEnginesContext::new(engines))
+        {
             return Some(*dest_type);
         }
     }

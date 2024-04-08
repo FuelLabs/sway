@@ -5,4 +5,4 @@ license = "Apache-2.0"
 name = "storage_field_access_on_non_struct"
 
 [dependencies]
-std = { path = "../../../../../../sway-lib-std" }
+std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }

@@ -11,12 +11,11 @@ pub use code_block::*;
 pub use declaration::*;
 pub use expression::*;
 pub use include_statement::IncludeStatement;
-pub use module::{ParseModule, ParseSubmodule};
+pub use module::{ModuleEvaluationOrder, ParseModule, ParseSubmodule};
 pub use program::{ParseProgram, TreeType};
 use sway_error::handler::ErrorEmitted;
-pub use use_statement::{ImportType, UseStatement};
-
 use sway_types::span::Span;
+pub use use_statement::{ImportType, UseStatement};
 
 use crate::Engines;
 

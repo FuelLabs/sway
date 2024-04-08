@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclId, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -24,7 +24,7 @@ use std::{collections::HashMap, sync::Arc};
 pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
-    main_function: &DeclId<ty::TyFunctionDecl>,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
@@ -49,7 +49,7 @@ pub(super) fn compile_script(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         logged_types_map,
         messages_types_map,
         None,
@@ -71,7 +71,7 @@ pub(super) fn compile_script(
 pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
-    main_function: &DeclId<ty::TyFunctionDecl>,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
@@ -96,7 +96,7 @@ pub(super) fn compile_predicate(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         &HashMap::new(),
         &HashMap::new(),
         None,
@@ -117,6 +117,7 @@ pub(super) fn compile_predicate(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
+    entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
@@ -138,6 +139,20 @@ pub(super) fn compile_contract(
         declarations,
     )
     .map_err(|err| vec![err])?;
+
+    if let Some(entry_function) = entry_function {
+        compile_entry_function(
+            engines,
+            context,
+            &mut md_mgr,
+            module,
+            entry_function,
+            logged_types_map,
+            messages_types_map,
+            None,
+        )?;
+    }
+
     for decl in abi_entries {
         compile_abi_method(
             context,
@@ -149,6 +164,26 @@ pub(super) fn compile_contract(
             engines,
         )?;
     }
+
+    // Fallback function needs to be compiled
+    for decl in declarations {
+        if let ty::TyDecl::FunctionDecl(decl) = decl {
+            let decl_id = decl.decl_id;
+            let decl = engines.de().get(&decl_id);
+            if decl.is_fallback() {
+                compile_abi_method(
+                    context,
+                    &mut md_mgr,
+                    module,
+                    &decl_id,
+                    logged_types_map,
+                    messages_types_map,
+                    engines,
+                )?;
+            }
+        }
+    }
+
     compile_tests(
         engines,
         context,
@@ -488,6 +523,7 @@ fn compile_fn(
         selector,
         *visibility == Visibility::Public,
         is_entry,
+        ast_fn_decl.is_fallback(),
         metadata,
     );
 
@@ -571,16 +607,14 @@ fn compile_abi_method(
         }
     };
 
-    // An ABI method is always an entry point.
-    let is_entry = true;
-
     compile_fn(
         engines,
         context,
         md_mgr,
         module,
         &ast_fn_decl,
-        is_entry,
+        // ABI are only entries when the "new encoding" is off
+        !context.experimental.new_encoding,
         Some(selector),
         logged_types_map,
         messages_types_map,

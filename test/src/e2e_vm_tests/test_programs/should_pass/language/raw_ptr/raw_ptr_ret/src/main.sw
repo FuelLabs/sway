@@ -1,9 +1,9 @@
 script;
 
-use std::vec::Vec;
+struct S {
+    x: u64,
+}
 
 fn main() -> raw_ptr {
-    let mut a : Vec<u64> = Vec::new();
-    a.push(1234);
-    a.buf.ptr
+    __addr_of(S { x: 123 })
 }

@@ -1,5 +1,6 @@
 mod e2e_vm_tests;
 mod ir_generation;
+mod reduced_std_libs;
 mod test_consistency;
 
 use anyhow::Result;
@@ -54,6 +55,10 @@ struct Cli {
     /// Experimental flag for new encoding
     #[arg(long)]
     experimental_new_encoding: bool,
+
+    /// Update all output files
+    #[arg(long)]
+    update_output_files: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +78,7 @@ pub struct RunConfig {
     pub verbose: bool,
     pub release: bool,
     pub experimental: ExperimentalFlags,
+    pub update_output_files: bool,
 }
 
 #[tokio::main]
@@ -104,10 +110,14 @@ async fn main() -> Result<()> {
         experimental: sway_core::ExperimentalFlags {
             new_encoding: cli.experimental_new_encoding,
         },
+        update_output_files: cli.update_output_files,
     };
 
     // Check that the tests are consistent
     test_consistency::check()?;
+
+    // Create reduced versions of the `std` library.
+    reduced_std_libs::create()?;
 
     // Run E2E tests
     e2e_vm_tests::run(&filter_config, &run_config)

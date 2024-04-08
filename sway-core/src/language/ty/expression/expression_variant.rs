@@ -1,4 +1,5 @@
 use std::{
+    collections::VecDeque,
     fmt::{self, Write},
     hash::{Hash, Hasher},
 };
@@ -11,6 +12,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::{ty::*, *},
+    namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{
         TyNodeDepGraphEdge, TyNodeDepGraphEdgeInfo, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -23,7 +25,6 @@ pub enum TyExpressionVariant {
     Literal(Literal),
     FunctionApplication {
         call_path: CallPath,
-        contract_call_params: IndexMap<String, TyExpression>,
         arguments: Vec<(Ident, TyExpression)>,
         fn_ref: DeclRefFunction,
         selector: Option<ContractCallParams>,
@@ -33,6 +34,8 @@ pub enum TyExpressionVariant {
         call_path_typeid: Option<TypeId>,
         /// This tracks whether monomorphization has been deferred between compiler stages.
         deferred_monomorphization: bool,
+        contract_call_params: IndexMap<String, TyExpression>,
+        contract_caller: Option<Box<TyExpression>>,
     },
     LazyOperator {
         op: LazyOp,
@@ -167,8 +170,8 @@ pub enum TyExpressionVariant {
 
 impl EqWithEngines for TyExpressionVariant {}
 impl PartialEqWithEngines for TyExpressionVariant {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         match (self, other) {
             (Self::Literal(l0), Self::Literal(r0)) => l0 == r0,
             (
@@ -190,8 +193,8 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     && l_arguments
                         .iter()
                         .zip(r_arguments.iter())
-                        .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, engines))
-                    && l_fn_ref.eq(r_fn_ref, engines)
+                        .all(|((xa, xb), (ya, yb))| xa == ya && xb.eq(yb, ctx))
+                    && l_fn_ref.eq(r_fn_ref, ctx)
             }
             (
                 Self::LazyOperator {
@@ -204,11 +207,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     lhs: r_lhs,
                     rhs: r_rhs,
                 },
-            ) => {
-                l_op == r_op
-                    && (**l_lhs).eq(&(**r_lhs), engines)
-                    && (**l_rhs).eq(&(**r_rhs), engines)
-            }
+            ) => l_op == r_op && (**l_lhs).eq(&(**r_lhs), ctx) && (**l_rhs).eq(&(**r_rhs), ctx),
             (
                 Self::ConstantExpression {
                     call_path: l_call_path,
@@ -236,7 +235,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 },
             ) => l_name == r_name && l_span == r_span && l_mutability == r_mutability,
             (Self::Tuple { fields: l_fields }, Self::Tuple { fields: r_fields }) => {
-                l_fields.eq(r_fields, engines)
+                l_fields.eq(r_fields, ctx)
             }
             (
                 Self::Array {
@@ -247,7 +246,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     contents: r_contents,
                     ..
                 },
-            ) => l_contents.eq(r_contents, engines),
+            ) => l_contents.eq(r_contents, ctx),
             (
                 Self::ArrayIndex {
                     prefix: l_prefix,
@@ -257,7 +256,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     prefix: r_prefix,
                     index: r_index,
                 },
-            ) => (**l_prefix).eq(&**r_prefix, engines) && (**l_index).eq(&**r_index, engines),
+            ) => (**l_prefix).eq(&**r_prefix, ctx) && (**l_index).eq(&**r_index, ctx),
             (
                 Self::StructExpression {
                     struct_ref: l_struct_ref,
@@ -272,11 +271,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     call_path_binding: _,
                 },
             ) => {
-                l_struct_ref.eq(r_struct_ref, engines)
-                    && l_fields.eq(r_fields, engines)
-                    && l_span == r_span
+                l_struct_ref.eq(r_struct_ref, ctx) && l_fields.eq(r_fields, ctx) && l_span == r_span
             }
-            (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, engines),
+            (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, ctx),
             (
                 Self::IfExp {
                     condition: l_condition,
@@ -289,10 +286,10 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     r#else: r_r,
                 },
             ) => {
-                (**l_condition).eq(&**r_condition, engines)
-                    && (**l_then).eq(&**r_then, engines)
+                (**l_condition).eq(&**r_condition, ctx)
+                    && (**l_then).eq(&**r_then, ctx)
                     && if let (Some(l), Some(r)) = (l_r, r_r) {
-                        (**l).eq(&**r, engines)
+                        (**l).eq(&**r, ctx)
                     } else {
                         true
                     }
@@ -311,7 +308,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                l_registers.eq(r_registers, engines)
+                l_registers.eq(r_registers, ctx)
                     && l_body.clone() == r_body.clone()
                     && l_returns == r_returns
             }
@@ -329,11 +326,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                (**l_prefix).eq(&**r_prefix, engines)
-                    && l_field_to_access.eq(r_field_to_access, engines)
+                (**l_prefix).eq(&**r_prefix, ctx)
+                    && l_field_to_access.eq(r_field_to_access, ctx)
                     && type_engine
                         .get(*l_resolved_type_of_parent)
-                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), ctx)
             }
             (
                 Self::TupleElemAccess {
@@ -349,11 +346,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                (**l_prefix).eq(&**r_prefix, engines)
+                (**l_prefix).eq(&**r_prefix, ctx)
                     && l_elem_to_access_num == r_elem_to_access_num
                     && type_engine
                         .get(*l_resolved_type_of_parent)
-                        .eq(&type_engine.get(*r_resolved_type_of_parent), engines)
+                        .eq(&type_engine.get(*r_resolved_type_of_parent), ctx)
             }
             (
                 Self::EnumInstantiation {
@@ -371,11 +368,11 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     ..
                 },
             ) => {
-                l_enum_ref.eq(r_enum_ref, engines)
+                l_enum_ref.eq(r_enum_ref, ctx)
                     && l_variant_name == r_variant_name
                     && l_tag == r_tag
                     && if let (Some(l_contents), Some(r_contents)) = (l_contents, r_contents) {
-                        (**l_contents).eq(&**r_contents, engines)
+                        (**l_contents).eq(&**r_contents, ctx)
                     } else {
                         true
                     }
@@ -391,9 +388,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     address: r_address,
                     ..
                 },
-            ) => l_abi_name == r_abi_name && (**l_address).eq(&**r_address, engines),
+            ) => l_abi_name == r_abi_name && (**l_address).eq(&**r_address, ctx),
             (Self::IntrinsicFunction(l_kind), Self::IntrinsicFunction(r_kind)) => {
-                l_kind.eq(r_kind, engines)
+                l_kind.eq(r_kind, ctx)
             }
             (
                 Self::UnsafeDowncast {
@@ -406,11 +403,9 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     variant: r_variant,
                     call_path_decl: _,
                 },
-            ) => l_exp.eq(r_exp, engines) && l_variant.eq(r_variant, engines),
-            (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => {
-                l_exp.eq(r_exp, engines)
-            }
-            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, engines),
+            ) => l_exp.eq(r_exp, ctx) && l_variant.eq(r_variant, ctx),
+            (Self::EnumTag { exp: l_exp }, Self::EnumTag { exp: r_exp }) => l_exp.eq(r_exp, ctx),
+            (Self::StorageAccess(l_exp), Self::StorageAccess(r_exp)) => l_exp.eq(r_exp, ctx),
             (
                 Self::WhileLoop {
                     body: l_body,
@@ -420,7 +415,7 @@ impl PartialEqWithEngines for TyExpressionVariant {
                     body: r_body,
                     condition: r_condition,
                 },
-            ) => l_body.eq(r_body, engines) && l_condition.eq(r_condition, engines),
+            ) => l_body.eq(r_body, ctx) && l_condition.eq(r_condition, ctx),
             (l, r) => std::mem::discriminant(l) == std::mem::discriminant(r),
         }
     }
@@ -445,6 +440,7 @@ impl HashWithEngines for TyExpressionVariant {
                 type_binding: _,
                 call_path_typeid: _,
                 deferred_monomorphization: _,
+                ..
             } => {
                 call_path.hash(state);
                 fn_ref.hash(state, engines);
@@ -789,35 +785,61 @@ impl ReplaceDecls for TyExpressionVariant {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         handler.scope(|handler| {
             use TyExpressionVariant::*;
             match self {
-                Literal(..) => (),
+                Literal(..) => Ok(false),
                 FunctionApplication {
                     ref mut fn_ref,
                     ref mut arguments,
                     ..
                 } => {
-                    fn_ref.replace_decls(decl_mapping, handler, ctx)?;
+                    let mut has_changes = false;
 
-                    let new_decl_ref = fn_ref.clone().replace_decls_and_insert_new_with_parent(
-                        decl_mapping,
-                        handler,
-                        ctx,
-                    )?;
-                    fn_ref.replace_id(*new_decl_ref.id());
+                    // TODO do we need this call?
+                    // The next call seems to make this one redundant
+                    has_changes |= fn_ref.replace_decls(decl_mapping, handler, ctx)?;
+
+                    if let Some(new_decl_ref) = fn_ref
+                        .clone()
+                        .replace_decls_and_insert_new_with_parent(decl_mapping, handler, ctx)?
+                    {
+                        fn_ref.replace_id(*new_decl_ref.id());
+                        has_changes = true;
+                    };
+
                     for (_, arg) in arguments.iter_mut() {
-                        match arg.replace_decls(decl_mapping, handler, ctx) {
-                            Ok(res) => res,
-                            Err(_) => {
-                                continue;
-                            }
-                        };
+                        if let Ok(r) = arg.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
                     }
 
                     let decl_engine = ctx.engines().de();
                     let mut method = (*decl_engine.get(fn_ref)).clone();
+
+                    // Finds method implementation for method dummy and replaces it.
+                    // This is required because dummy methods don't have type parameters from impl traits.
+                    // Thus we use the implementated method that already contains all the required type parameters,
+                    // including those from the impl trait.
+                    if method.is_trait_method_dummy {
+                        if let Some(implementing_for_typeid) = method.implementing_for_typeid {
+                            let implementing_type_method_ref = ctx.find_method_for_type(
+                                handler,
+                                implementing_for_typeid,
+                                &[],
+                                method.name(),
+                                method.return_type.type_id,
+                                &arguments
+                                    .iter()
+                                    .map(|a| a.1.return_type)
+                                    .collect::<VecDeque<_>>(),
+                                None,
+                                TryInsertingTraitImplOnFailure::Yes,
+                            )?;
+                            method = (*decl_engine.get(&implementing_type_method_ref)).clone();
+                        }
+                    }
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
@@ -829,61 +851,96 @@ impl ReplaceDecls for TyExpressionVariant {
                             method.name.as_str(),
                             &method.name.span(),
                         )?;
-                    method.replace_decls(&inner_decl_mapping, handler, ctx)?;
-                    decl_engine.replace(*new_decl_ref.id(), method);
+
+                    if method.replace_decls(&inner_decl_mapping, handler, ctx)? {
+                        decl_engine.replace(*fn_ref.id(), method);
+                        has_changes = true;
+                    }
+
+                    Ok(has_changes)
                 }
                 LazyOperator { lhs, rhs, .. } => {
-                    (*lhs).replace_decls(decl_mapping, handler, ctx)?;
-                    (*rhs).replace_decls(decl_mapping, handler, ctx)?;
+                    let mut has_changes = (*lhs).replace_decls(decl_mapping, handler, ctx)?;
+                    has_changes |= (*rhs).replace_decls(decl_mapping, handler, ctx)?;
+                    Ok(has_changes)
                 }
                 ConstantExpression { const_decl, .. } => {
-                    const_decl.replace_decls(decl_mapping, handler, ctx)?
+                    const_decl.replace_decls(decl_mapping, handler, ctx)
                 }
-                VariableExpression { .. } => (),
-                Tuple { fields } => fields.iter_mut().for_each(|x| {
-                    x.replace_decls(decl_mapping, handler, ctx).ok();
-                }),
+                VariableExpression { .. } => Ok(false),
+                Tuple { fields } => {
+                    let mut has_changes = false;
+                    for item in fields.iter_mut() {
+                        if let Ok(r) = item.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
+                }
                 Array {
                     elem_type: _,
                     contents,
-                } => contents.iter_mut().for_each(|x| {
-                    x.replace_decls(decl_mapping, handler, ctx).ok();
-                }),
+                } => {
+                    let mut has_changes = false;
+                    for expr in contents.iter_mut() {
+                        if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
+                }
                 ArrayIndex { prefix, index } => {
-                    (*prefix).replace_decls(decl_mapping, handler, ctx).ok();
-                    (*index).replace_decls(decl_mapping, handler, ctx).ok();
+                    let mut has_changes = false;
+                    if let Ok(r) = (*prefix).replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    if let Ok(r) = (*index).replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    Ok(has_changes)
                 }
                 StructExpression {
                     struct_ref: _,
                     fields,
                     instantiation_span: _,
                     call_path_binding: _,
-                } => fields.iter_mut().for_each(|x| {
-                    x.replace_decls(decl_mapping, handler, ctx).ok();
-                }),
-                CodeBlock(block) => block.replace_decls(decl_mapping, handler, ctx)?,
-                FunctionParameter => (),
-                MatchExp { desugared, .. } => {
-                    desugared.replace_decls(decl_mapping, handler, ctx)?
+                } => {
+                    let mut has_changes = false;
+                    for field in fields.iter_mut() {
+                        if let Ok(r) = field.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
                 }
+                CodeBlock(block) => block.replace_decls(decl_mapping, handler, ctx),
+                FunctionParameter => Ok(false),
+                MatchExp { desugared, .. } => desugared.replace_decls(decl_mapping, handler, ctx),
                 IfExp {
                     condition,
                     then,
                     r#else,
                 } => {
-                    condition.replace_decls(decl_mapping, handler, ctx).ok();
-                    then.replace_decls(decl_mapping, handler, ctx).ok();
-                    if let Some(ref mut r#else) = r#else {
-                        r#else.replace_decls(decl_mapping, handler, ctx).ok();
+                    let mut has_changes = false;
+                    if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
                     }
+                    if let Ok(r) = then.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    if let Some(r) = r#else
+                        .as_mut()
+                        .and_then(|expr| expr.replace_decls(decl_mapping, handler, ctx).ok())
+                    {
+                        has_changes |= r;
+                    }
+                    Ok(has_changes)
                 }
-                AsmExpression { .. } => {}
+                AsmExpression { .. } => Ok(false),
                 StructFieldAccess { prefix, .. } => {
-                    prefix.replace_decls(decl_mapping, handler, ctx)?
+                    prefix.replace_decls(decl_mapping, handler, ctx)
                 }
-                TupleElemAccess { prefix, .. } => {
-                    prefix.replace_decls(decl_mapping, handler, ctx)?
-                }
+                TupleElemAccess { prefix, .. } => prefix.replace_decls(decl_mapping, handler, ctx),
                 EnumInstantiation {
                     enum_ref: _,
                     contents,
@@ -892,41 +949,51 @@ impl ReplaceDecls for TyExpressionVariant {
                     // TODO: replace enum decl
                     //enum_decl.replace_decls(decl_mapping);
                     if let Some(ref mut contents) = contents {
-                        contents.replace_decls(decl_mapping, handler, ctx)?;
-                    };
+                        contents.replace_decls(decl_mapping, handler, ctx)
+                    } else {
+                        Ok(false)
+                    }
                 }
-                AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx)?,
-                StorageAccess { .. } => (),
+                AbiCast { address, .. } => address.replace_decls(decl_mapping, handler, ctx),
+                StorageAccess { .. } => Ok(false),
                 IntrinsicFunction(TyIntrinsicFunctionKind { arguments, .. }) => {
-                    arguments.iter_mut().for_each(|x| {
-                        x.replace_decls(decl_mapping, handler, ctx).ok();
-                    })
+                    let mut has_changes = false;
+                    for expr in arguments.iter_mut() {
+                        if let Ok(r) = expr.replace_decls(decl_mapping, handler, ctx) {
+                            has_changes |= r;
+                        }
+                    }
+                    Ok(has_changes)
                 }
-                EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx)?,
-                UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx)?,
-                AbiName(_) => (),
+                EnumTag { exp } => exp.replace_decls(decl_mapping, handler, ctx),
+                UnsafeDowncast { exp, .. } => exp.replace_decls(decl_mapping, handler, ctx),
+                AbiName(_) => Ok(false),
                 WhileLoop {
                     ref mut condition,
                     ref mut body,
                 } => {
-                    condition.replace_decls(decl_mapping, handler, ctx).ok();
-                    body.replace_decls(decl_mapping, handler, ctx)?;
+                    let mut has_changes = false;
+                    if let Ok(r) = condition.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    if let Ok(r) = body.replace_decls(decl_mapping, handler, ctx) {
+                        has_changes |= r;
+                    }
+                    Ok(has_changes)
                 }
                 ForLoop { ref mut desugared } => {
-                    desugared.replace_decls(decl_mapping, handler, ctx).ok();
+                    desugared.replace_decls(decl_mapping, handler, ctx)
                 }
-                Break => (),
-                Continue => (),
+                Break => Ok(false),
+                Continue => Ok(false),
                 Reassignment(reassignment) => {
-                    reassignment.replace_decls(decl_mapping, handler, ctx)?
+                    reassignment.replace_decls(decl_mapping, handler, ctx)
                 }
                 ImplicitReturn(expr) | Return(expr) => {
-                    expr.replace_decls(decl_mapping, handler, ctx)?
+                    expr.replace_decls(decl_mapping, handler, ctx)
                 }
-                Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
+                Ref(exp) | Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx),
             }
-
-            Ok(())
         })
     }
 }

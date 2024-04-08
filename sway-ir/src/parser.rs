@@ -78,7 +78,7 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = is_public:is_public() _ is_entry:is_entry() _ "fn" _
+                = is_public:is_public() _ is_entry:is_entry() _  is_fallback:is_fallback() _ "fn" _
                         name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
@@ -94,7 +94,8 @@ mod ir_builder {
                         locals,
                         blocks,
                         selector,
-                        is_entry
+                        is_entry,
+                        is_fallback,
                     }
                 }
 
@@ -104,6 +105,10 @@ mod ir_builder {
 
             rule is_entry() -> bool
                 = "entry" _ { true }
+                / "" _ { false }
+
+            rule is_fallback() -> bool
+                = "fallback" _ { true }
                 / "" _ { false }
 
             rule selector_id() -> [u8; 4]
@@ -203,7 +208,7 @@ mod ir_builder {
                 / op_read_register()
                 / op_ret()
                 / op_revert()
-                / op_jmpb_ssp()
+                / op_jmp_mem()
                 / op_smo()
                 / op_state_load_quad_word()
                 / op_state_load_word()
@@ -363,9 +368,9 @@ mod ir_builder {
                     IrAstOperation::Revert(vn)
                 }
 
-            rule op_jmpb_ssp() -> IrAstOperation
-                = "jmpb_ssp" _ vn:id() {
-                    IrAstOperation::JmpbSsp(vn)
+            rule op_jmp_mem() -> IrAstOperation
+                = "jmp_mem" _ {
+                    IrAstOperation::JmpMem
                 }
 
             rule op_smo() -> IrAstOperation
@@ -680,6 +685,7 @@ mod ir_builder {
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
+        is_fallback: bool,
     }
 
     #[derive(Debug)]
@@ -728,7 +734,7 @@ mod ir_builder {
         ReadRegister(String),
         Ret(IrAstTy, String),
         Revert(String),
-        JmpbSsp(String),
+        JmpMem,
         Smo(String, String, String, String),
         StateClear(String, String),
         StateLoadQuadWord(String, String, String),
@@ -982,6 +988,7 @@ mod ir_builder {
                 fn_decl.selector,
                 fn_decl.is_public,
                 fn_decl.is_entry,
+                fn_decl.is_fallback,
                 convert_md_idx(&fn_decl.metadata),
             );
 
@@ -1245,7 +1252,7 @@ mod ir_builder {
                             .append(context)
                             .contract_call(
                                 ir_ty,
-                                name,
+                                Some(name),
                                 *val_map.get(&params).unwrap(),
                                 *val_map.get(&coins).unwrap(),
                                 *val_map.get(&asset_id).unwrap(),
@@ -1351,9 +1358,9 @@ mod ir_builder {
                         .append(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
                         .add_metadatum(context, opt_metadata),
-                    IrAstOperation::JmpbSsp(offset_name) => block
+                    IrAstOperation::JmpMem => block
                         .append(context)
-                        .jmpb_ssp(*val_map.get(&offset_name).unwrap())
+                        .jmp_mem()
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::Smo(recipient, message, message_size, coins) => block
                         .append(context)

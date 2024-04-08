@@ -104,7 +104,7 @@ async fn get_contracts() -> (
 }
 
 #[tokio::test]
-async fn can_get_predicate_id() {
+async fn can_get_predicate_address() {
     // Setup Wallets
     let asset_id = AssetId::default();
     let wallets_config = WalletsConfig::new_multiple_assets(
@@ -123,7 +123,7 @@ async fn can_get_predicate_id() {
 
     // Setup Predciate
     let hex_predicate_address: &str =
-        "0x76bae6a88c3f54a9aee40ee5390696dd9edaf1b2a16d96a75adbcaac2ec6584f";
+        "0x066b2dd4e1e3731e79ab9a4c771fdbf35406600618e044a500acc4d81709de71";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
