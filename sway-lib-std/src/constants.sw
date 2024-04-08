@@ -38,7 +38,7 @@ pub const ZERO_B256 = 0x00000000000000000000000000000000000000000000000000000000
 /// # Examples
 ///
 /// ```sway
-/// use std::constants::{ZERO_U256, ZERO_B256};
+/// use std::constants::ZERO_U256;
 ///
 /// fn foo() {
 ///     assert(ZERO_U256 == u256::from(0_u64));
