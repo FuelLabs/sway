@@ -98,7 +98,7 @@ You may also mint an asset to a specific entity with the `std::asset::mint_to()`
 
 ### Burning a Native Asset
 
-To burn an asset, the `std::asset::burn()` function must be called internally from the contract which minted them. The `SubId` used to mint the coins and amount must be provided. The burned coins must be owned by the contract.
+To burn an asset, the `std::asset::burn()` function must be called internally from the contract which minted them. The `SubId` used to mint the coins and amount must be provided. The burned coins must be owned by the contract. When an asset is burned it doesn't exist anymore.
 
 ```sway
 {{#include ../../../../examples/native_asset/src/main.sw:burn_asset}}
