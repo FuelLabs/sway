@@ -358,21 +358,21 @@ impl TyTraitDecl {
         {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
-                    let original = decl_engine.get(decl_ref.id());
                     let new_ref = decl_ref
-                        .start_subs_type()
+                        .start_subst_types()
                         .subst(&type_mapping, engines)
                         .map(|x| x.insert_new_with_parent(engines))
                         .unwrap_or_else(|| decl_ref.clone());
+                    let original = decl_engine.get(decl_ref.id());
                     impld_item_refs
                         .insert((original.name.clone(), type_id), TyTraitItem::Fn(new_ref));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let original = decl_engine.get(decl_ref.id());
                     let new_ref = decl_ref
-                        .start_subs_type()
+                        .start_subst_types()
                         .subst(&type_mapping, engines)
-                        .map(|x| x.insert_new_with_parent(engines))
+                        .map(|x| x.insert_new(engines))
                         .unwrap_or_else(|| decl_ref.clone());
                     impld_item_refs.insert(
                         (original.call_path.suffix.clone(), type_id),
@@ -382,9 +382,9 @@ impl TyTraitDecl {
                 ty::TyTraitItem::Type(decl_ref) => {
                     let original = decl_engine.get(decl_ref.id());
                     let new_ref = decl_ref
-                        .start_subs_type()
+                        .start_subst_types()
                         .subst(&type_mapping, engines)
-                        .map(|x| x.insert_new_with_parent(engines))
+                        .map(|x| x.insert_new(engines))
                         .unwrap_or_else(|| decl_ref.clone());
                     impld_item_refs
                         .insert((original.name.clone(), type_id), TyTraitItem::Type(new_ref));
@@ -474,7 +474,7 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let new_ref = decl_ref
-                        .start_subs_type()
+                        .start_subst_types()
                         .subst(&type_mapping, engines)
                         .map(|x| x.insert_new_with_parent(engines))
                         .unwrap_or_else(|| decl_ref.clone());
@@ -482,17 +482,17 @@ impl TyTraitDecl {
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let new_ref = decl_ref
-                        .start_subs_type()
+                        .start_subst_types()
                         .subst(&type_mapping, engines)
-                        .map(|x| x.insert_new_with_parent(engines))
+                        .map(|x| x.insert_new(engines))
                         .unwrap_or_else(|| decl_ref.clone());
                     all_items.push(TyImplItem::Constant(new_ref));
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
                     let new_ref = decl_ref
-                        .start_subs_type()
+                        .start_subst_types()
                         .subst(&type_mapping, engines)
-                        .map(|x| x.insert_new_with_parent(engines))
+                        .map(|x| x.insert_new(engines))
                         .unwrap_or_else(|| decl_ref.clone());
                     all_items.push(TyImplItem::Type(new_ref));
                 }

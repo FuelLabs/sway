@@ -644,13 +644,13 @@ impl SubstTypes for TyExpressionVariant {
                 contract_call_params,
                 contract_caller,
             } => {
-                let (arguments, fn_ref, call_path_typeid) = subs! {arguments, fn_ref.start_subs_type(), call_path_typeid}(
+                let (arguments, fn_ref, call_path_typeid) = subs! {arguments, fn_ref.start_subst_types(), call_path_typeid}(
                     type_mapping,
                     engines,
                 )?;
                 Some(Self::FunctionApplication {
                     arguments,
-                    fn_ref: fn_ref.insert_new(engines),
+                    fn_ref: fn_ref.insert_new_with_parent(engines),
                     call_path_typeid,
                     call_path: call_path.clone(),
                     selector: selector.clone(),
@@ -706,7 +706,7 @@ impl SubstTypes for TyExpressionVariant {
                 call_path_binding,
             } => {
                 let (struct_ref, fields) =
-                    subs! {struct_ref.start_subs_type(), fields}(type_mapping, engines)?;
+                    subs! {struct_ref.start_subst_types(), fields}(type_mapping, engines)?;
                 Some(Self::StructExpression {
                     fields,
                     struct_ref: struct_ref.insert_new(engines),
@@ -800,7 +800,7 @@ impl SubstTypes for TyExpressionVariant {
                 call_path_decl,
             } => {
                 let (enum_ref, contents) =
-                    subs! {enum_ref.start_subs_type(), contents}(type_mapping, engines)?;
+                    subs! {enum_ref.start_subst_types(), contents}(type_mapping, engines)?;
                 Some(Self::EnumInstantiation {
                     enum_ref: enum_ref.insert_new(engines),
                     contents,

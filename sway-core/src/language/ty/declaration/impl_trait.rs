@@ -7,7 +7,7 @@ use crate::{
     type_system::*,
 };
 
-use super::TyTraitItem;
+use super::{InProgress, TyTraitItem, VecTyTraitItemExtensions};
 
 pub type TyImplItem = TyTraitItem;
 
@@ -83,11 +83,11 @@ impl SubstTypes for TyImplTrait {
         let (impl_type_parameters, implementing_for, items) = subs! {
             self.impl_type_parameters,
             self.implementing_for,
-            self.items
+            (&self.items).start_subst_types()
         }(type_mapping, engines)?;
         Some(Self {
             impl_type_parameters,
-            items,
+            items: items.replace(engines),
             implementing_for,
             trait_name: self.trait_name.clone(),
             trait_type_arguments: self.trait_type_arguments.clone(),

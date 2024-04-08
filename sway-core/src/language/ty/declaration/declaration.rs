@@ -363,7 +363,7 @@ impl SubstTypes for TyDecl {
                 variant_name,
                 variant_decl_span,
             }) => {
-                let enum_ref = enum_ref.start_subs_type().subst(type_mapping, engines)?;
+                let enum_ref = enum_ref.start_subst_types().subst(type_mapping, engines)?;
                 Some(Self::EnumVariantDecl(EnumVariantDecl {
                     enum_ref: enum_ref.replace(engines),
                     variant_name: variant_name.clone(),

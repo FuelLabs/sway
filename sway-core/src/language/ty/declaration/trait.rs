@@ -8,8 +8,9 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{
-        AssociatedItemDeclId, DeclEngineReplace, DeclRef, DeclRefConstant, DeclRefFunction,
-        DeclRefTraitFn, DeclRefTraitType, ReplaceFunctionImplementingType,
+        AssociatedItemDeclId, DeclEngineInsert, DeclEngineReplace, DeclId, DeclRef,
+        DeclRefConstant, DeclRefFunction, DeclRefTraitFn, DeclRefTraitType, InProgressSubstTypes,
+        ReplaceFunctionImplementingType,
     },
     engine_threading::*,
     language::{parsed, CallPath, Visibility},
@@ -21,7 +22,7 @@ use crate::{
     type_system::*,
 };
 
-use super::TyDecl;
+use super::{TyConstantDecl, TyDecl, TyFunctionDecl, TyTraitType};
 
 #[derive(Clone, Debug)]
 pub struct TyTraitDecl {
@@ -77,47 +78,39 @@ impl SubstTypes for TyTraitInterfaceItem {
     fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
         match self {
             TyTraitInterfaceItem::TraitFn(r) => {
-                let AssociatedItemDeclId::TraitFn(id) = AssociatedItemDeclId::TraitFn(*r.id())
-                    .start_subs_type()
+                let r = r
+                    .start_subst_types()
                     .subst(type_mapping, engines)?
-                    .insert_new_with_parent(engines)
-                else {
-                    unreachable!();
-                };
-                Some(Self::TraitFn(DeclRef::new(
-                    r.name().clone(),
-                    id,
-                    r.decl_span().clone(),
-                )))
+                    .insert_new_with_parent(engines);
+                Some(Self::TraitFn(r))
             }
             TyTraitInterfaceItem::Constant(r) => {
-                let AssociatedItemDeclId::Constant(id) = AssociatedItemDeclId::Constant(*r.id())
-                    .start_subs_type()
+                let r = r
+                    .start_subst_types()
                     .subst(type_mapping, engines)?
-                    .insert_new_with_parent(engines)
-                else {
-                    unreachable!();
-                };
-                Some(Self::Constant(DeclRef::new(
-                    r.name().clone(),
-                    id,
-                    r.decl_span().clone(),
-                )))
+                    .insert_new(engines);
+                Some(Self::Constant(r))
             }
             TyTraitInterfaceItem::Type(r) => {
-                let AssociatedItemDeclId::Type(id) = AssociatedItemDeclId::Type(*r.id())
-                    .start_subs_type()
+                let r = r
+                    .start_subst_types()
                     .subst(type_mapping, engines)?
-                    .insert_new_with_parent(engines)
-                else {
-                    unreachable!();
-                };
-                Some(Self::Type(DeclRef::new(
-                    r.name().clone(),
-                    id,
-                    r.decl_span().clone(),
-                )))
+                    .insert_new(engines);
+                Some(Self::Type(r))
             }
+        }
+    }
+}
+
+pub trait VecTyTraitItemExtensions<'a> {
+    fn start_subst_types(&self) -> InProgress<'a>;
+}
+
+impl<'a> VecTyTraitItemExtensions<'a> for &'a Vec<TyTraitItem> {
+    fn start_subst_types(&self) -> InProgress<'a> {
+        InProgress {
+            before: self,
+            after: None,
         }
     }
 }
@@ -127,6 +120,129 @@ pub enum TyTraitItem {
     Fn(DeclRefFunction),
     Constant(DeclRefConstant),
     Type(DeclRefTraitType),
+}
+
+#[derive(Clone)]
+pub enum InProgressTyTraitItem<'a> {
+    Fn(InProgressSubstTypes<'a, DeclRef<DeclId<TyFunctionDecl>>, TyFunctionDecl>),
+    Constant(InProgressSubstTypes<'a, DeclRef<DeclId<TyConstantDecl>>, TyConstantDecl>),
+    Type(InProgressSubstTypes<'a, DeclRef<DeclId<TyTraitType>>, TyTraitType>),
+}
+
+#[derive(Clone)]
+pub struct InProgress<'a> {
+    before: &'a Vec<TyTraitItem>,
+    after: Option<Vec<InProgressTyTraitItem<'a>>>,
+}
+
+impl<'a> InProgress<'a> {
+    pub fn replace(self, engines: &Engines) -> Vec<TyTraitItem> {
+        match self.after {
+            Some(x) => x
+                .into_iter()
+                .map(|x| match x {
+                    InProgressTyTraitItem::Fn(x) => TyTraitItem::Fn(x.replace(engines)),
+                    InProgressTyTraitItem::Constant(x) => TyTraitItem::Constant(x.replace(engines)),
+                    InProgressTyTraitItem::Type(x) => TyTraitItem::Type(x.replace(engines)),
+                })
+                .collect(),
+            None => self.before.clone(),
+        }
+    }
+
+    pub fn insert_new_with_parent(self, engines: &Engines) -> Vec<TyTraitItem> {
+        match self.after {
+            Some(x) => x
+                .into_iter()
+                .map(|x| match x {
+                    InProgressTyTraitItem::Fn(x) => {
+                        TyTraitItem::Fn(x.insert_new_with_parent(engines))
+                    }
+                    InProgressTyTraitItem::Constant(x) => {
+                        TyTraitItem::Constant(x.insert_new_with_parent(engines))
+                    }
+                    InProgressTyTraitItem::Type(x) => {
+                        TyTraitItem::Type(x.insert_new_with_parent(engines))
+                    }
+                })
+                .collect(),
+            None => self.before.clone(),
+        }
+    }
+}
+
+impl<'a> SubstTypes for InProgress<'a> {
+    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+        let mut iter = self.before.iter();
+        let mut i = -1isize;
+
+        while let Some(item) = iter.next() {
+            i += 1;
+
+            let changed = match item {
+                TyTraitItem::Fn(r) => match r.start_subst_types().subst(type_mapping, engines) {
+                    None => continue,
+                    Some(x) => InProgressTyTraitItem::Fn(x),
+                },
+                TyTraitItem::Constant(r) => {
+                    match r.start_subst_types().subst(type_mapping, engines) {
+                        None => continue,
+                        Some(x) => InProgressTyTraitItem::Constant(x),
+                    }
+                }
+                TyTraitItem::Type(r) => match r.start_subst_types().subst(type_mapping, engines) {
+                    None => continue,
+                    Some(x) => InProgressTyTraitItem::Type(x),
+                },
+            };
+
+            let mut new_vec = Vec::with_capacity(self.before.len());
+            new_vec.extend(
+                self.before
+                    .iter()
+                    .map(|x| match x {
+                        TyTraitItem::Fn(x) => InProgressTyTraitItem::Fn(x.start_subst_types()),
+                        TyTraitItem::Constant(x) => {
+                            InProgressTyTraitItem::Constant(x.start_subst_types())
+                        }
+                        TyTraitItem::Type(x) => InProgressTyTraitItem::Type(x.start_subst_types()),
+                    })
+                    .take(i as usize),
+            );
+            new_vec.push(changed);
+
+            while let Some(item) = iter.next() {
+                let new_item = match item {
+                    TyTraitItem::Fn(r) => {
+                        match r.start_subst_types().subst(type_mapping, engines) {
+                            None => InProgressTyTraitItem::Fn(r.start_subst_types()),
+                            Some(x) => InProgressTyTraitItem::Fn(x),
+                        }
+                    }
+                    TyTraitItem::Constant(r) => {
+                        match r.start_subst_types().subst(type_mapping, engines) {
+                            None => InProgressTyTraitItem::Constant(r.start_subst_types()),
+                            Some(x) => InProgressTyTraitItem::Constant(x),
+                        }
+                    }
+                    TyTraitItem::Type(r) => {
+                        match r.start_subst_types().subst(type_mapping, engines) {
+                            None => InProgressTyTraitItem::Type(r.start_subst_types()),
+                            Some(x) => InProgressTyTraitItem::Type(x),
+                        }
+                    }
+                };
+                new_vec.push(new_item);
+            }
+
+            return Some(InProgress {
+                before: &self.before,
+                after: Some(new_vec),
+            });
+        }
+
+        None
+    }
 }
 
 impl DisplayWithEngines for TyTraitItem {
@@ -158,55 +274,33 @@ impl DebugWithEngines for TyTraitItem {
     }
 }
 
-impl SubstTypes for TyTraitItem {
-    fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
-        match self {
-            Self::Fn(r) => {
-                let AssociatedItemDeclId::Function(id) = AssociatedItemDeclId::Function(*r.id())
-                    .start_subs_type()
-                    .subst(type_mapping, engines)?
-                    .insert_new_with_parent(engines)
-                else {
-                    unreachable!();
-                };
-                Some(Self::Fn(DeclRef::new(
-                    r.name().clone(),
-                    id,
-                    r.decl_span().clone(),
-                )))
-            }
-            Self::Constant(r) => {
-                let AssociatedItemDeclId::Constant(id) = AssociatedItemDeclId::Constant(*r.id())
-                    .start_subs_type()
-                    .subst(type_mapping, engines)?
-                    .insert_new_with_parent(engines)
-                else {
-                    unreachable!();
-                };
-                Some(Self::Constant(DeclRef::new(
-                    r.name().clone(),
-                    id,
-                    r.decl_span().clone(),
-                )))
-            }
-            Self::Type(r) => {
-                let AssociatedItemDeclId::Type(id) = AssociatedItemDeclId::Type(*r.id())
-                    .start_subs_type()
-                    .subst(type_mapping, engines)?
-                    .insert_new_with_parent(engines)
-                    .into()
-                else {
-                    unreachable!();
-                };
-                Some(Self::Type(DeclRef::new(
-                    r.name().clone(),
-                    id,
-                    r.decl_span().clone(),
-                )))
-            }
-        }
-    }
-}
+// impl SubstTypes for TyTraitItem {
+//     fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
+//         match self {
+//             Self::Fn(r) => {
+//                 let r = r
+//                     .start_subst_types()
+//                     .subst(type_mapping, engines)?
+//                     .insert_new_with_parent(engines);
+//                 Some(Self::Fn(r))
+//             }
+//             Self::Constant(r) => {
+//                 let r = r
+//                     .start_subst_types()
+//                     .subst(type_mapping, engines)?
+//                     .insert_new_with_parent(engines);
+//                 Some(Self::Constant(r))
+//             }
+//             Self::Type(r) => {
+//                 let r = r
+//                     .start_subst_types()
+//                     .subst(type_mapping, engines)?
+//                     .insert_new_with_parent(engines);
+//                 Some(Self::Type(r))
+//             }
+//         }
+//     }
+// }
 
 impl Named for TyTraitDecl {
     fn name(&self) -> &Ident {
@@ -371,12 +465,12 @@ impl SubstTypes for TyTraitDecl {
         let (type_parameters, interface_surface, items) = subs! {
             self.type_parameters,
             self.interface_surface,
-            self.items
+            (&self.items).start_subst_types()
         }(type_mapping, engines)?;
         Some(Self {
             type_parameters,
             interface_surface,
-            items,
+            items: items.insert_new_with_parent(engines),
             name: self.name.clone(),
             self_type: self.self_type.clone(),
             supertraits: self.supertraits.clone(),

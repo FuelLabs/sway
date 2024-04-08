@@ -814,7 +814,7 @@ impl TraitMap {
                             ResolvedTraitImplItem::Typed(item) => match item {
                                 ty::TyTraitItem::Fn(decl_ref) => {
                                     let new_ref = decl_ref
-                                        .start_subs_type()
+                                        .start_subst_types()
                                         .subst(&type_mapping, engines)
                                         .map(|x| x.insert_new_with_parent(engines))
                                         .unwrap_or_else(|| decl_ref.clone());
@@ -822,9 +822,9 @@ impl TraitMap {
                                 }
                                 ty::TyTraitItem::Constant(decl_ref) => {
                                     let new_ref = decl_ref
-                                        .start_subs_type()
+                                        .start_subst_types()
                                         .subst(&type_mapping, engines)
-                                        .map(|x| x.insert_new_with_parent(engines))
+                                        .map(|x| x.insert_new(engines))
                                         .unwrap_or_else(|| decl_ref.clone());
                                     (
                                         name,
@@ -833,9 +833,9 @@ impl TraitMap {
                                 }
                                 ty::TyTraitItem::Type(decl_ref) => {
                                     let new_ref = decl_ref
-                                        .start_subs_type()
+                                        .start_subst_types()
                                         .subst(&type_mapping, engines)
-                                        .map(|x| x.insert_new_with_parent(engines))
+                                        .map(|x| x.insert_new(engines))
                                         .unwrap_or_else(|| decl_ref.clone());
                                     (
                                         name,

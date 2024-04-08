@@ -197,7 +197,7 @@ impl HashWithEngines for TyFunctionDecl {
 
 impl SubstTypes for TyFunctionDecl {
     fn subst_inner(&self, type_mapping: &TypeSubstMap, engines: &Engines) -> Option<Self> {
-        let (type_parameters, parameters, return_type, body) = subs! {self.type_parameters, self.parameters, self.return_type, self.body}(
+        let (type_parameters, parameters, return_type, body, implementing_for_typeid) = subs! {self.type_parameters, self.parameters, self.return_type, self.body, self.implementing_for_typeid}(
             type_mapping,
             engines,
         )?;
@@ -206,9 +206,9 @@ impl SubstTypes for TyFunctionDecl {
             parameters,
             type_parameters,
             return_type,
+            implementing_for_typeid,
             name: self.name.clone(),
             implementing_type: self.implementing_type.clone(),
-            implementing_for_typeid: self.implementing_for_typeid.clone(),
             span: self.span.clone(),
             call_path: self.call_path.clone(),
             attributes: self.attributes.clone(),

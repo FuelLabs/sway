@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use sway_error::error::CompileError;
 use sway_types::{Named, Span, Spanned};
 
@@ -28,10 +26,10 @@ impl AssociatedItemDeclId {
         }
     }
 
-    pub fn start_subs_type(&self) -> SubstTypesRefInProgress<'_, Self, AssociatedItemDecl> {
-        SubstTypesRefInProgress {
-            original_ref: self,
-            new_decl: None,
+    pub fn start_subst_types(&self) -> InProgressSubstTypes<'_, Self, AssociatedItemDecl> {
+        InProgressSubstTypes {
+            before: self,
+            after: None,
         }
     }
 }
