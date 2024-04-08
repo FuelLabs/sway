@@ -1,19 +1,15 @@
 use crate::{engine_threading::*, type_system::priv_prelude::*};
 
+#[derive(Default)]
 pub enum HasChanges {
     Yes,
+    #[default]
     No,
 }
 
 impl HasChanges {
     pub fn has_changes(&self) -> bool {
         matches!(self, HasChanges::Yes)
-    }
-}
-
-impl Default for HasChanges {
-    fn default() -> Self {
-        HasChanges::No
     }
 }
 
@@ -71,7 +67,7 @@ impl<T: SubstTypes> SubstTypes for Vec<T> {
 #[macro_export]
 macro_rules! has_changes {
     ($($stmts:expr);* ;) => {{
-        let mut has_change = crate::type_system::HasChanges::No;
+        let mut has_change = $crate::type_system::HasChanges::No;
         $(
             has_change = $stmts | has_change;
         )*
