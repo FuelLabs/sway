@@ -9,6 +9,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -57,9 +58,11 @@ impl HashWithEngines for TyReassignment {
 }
 
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.rhs.subst(type_mapping, engines);
-        self.lhs_type.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        has_changes! {
+            self.rhs.subst(type_mapping, engines);
+            self.lhs_type.subst(type_mapping, engines);
+        }
     }
 }
 

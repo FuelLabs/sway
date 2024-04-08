@@ -3,7 +3,8 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRefMixedInterface, engine_threading::*, language::CallPath, type_system::*,
+    decl_engine::DeclRefMixedInterface, engine_threading::*, has_changes, language::CallPath,
+    type_system::*,
 };
 
 use super::TyTraitItem;
@@ -78,13 +79,11 @@ impl HashWithEngines for TyImplTrait {
 }
 
 impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.impl_type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.implementing_for.subst_inner(type_mapping, engines);
-        self.items
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        has_changes! {
+            self.impl_type_parameters.subst(type_mapping, engines);
+            self.implementing_for.subst_inner(type_mapping, engines);
+            self.items.subst(type_mapping, engines);
+        }
     }
 }

@@ -9,6 +9,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
+    has_changes,
     language::{ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
@@ -94,11 +95,11 @@ impl Spanned for TyConstantDecl {
 }
 
 impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        if let Some(expr) = &mut self.value {
-            expr.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        has_changes! {
+            self.return_type.subst(type_mapping, engines);
+            self.type_ascription.subst(type_mapping, engines);
+            self.value.subst(type_mapping, engines);
         }
     }
 }

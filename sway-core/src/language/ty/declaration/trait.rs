@@ -12,6 +12,7 @@ use crate::{
         ReplaceFunctionImplementingType,
     },
     engine_threading::*,
+    has_changes,
     language::{parsed, CallPath, Visibility},
     semantic_analysis::{
         type_check_context::MonomorphizeHelper, TypeCheckAnalysis, TypeCheckAnalysisContext,
@@ -268,57 +269,84 @@ impl Spanned for TyTraitItem {
 }
 
 impl SubstTypes for TyTraitDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.interface_surface
-            .iter_mut()
-            .for_each(|item| match item {
-                TyTraitInterfaceItem::TraitFn(item_ref) => {
-                    let new_item_ref = item_ref
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+        has_changes! {
+            self.type_parameters.subst(type_mapping, engines);
+            self.interface_surface
+                .iter_mut()
+                .fold(false, |has_changes, item| match item {
+                    TyTraitInterfaceItem::TraitFn(item_ref) => {
+                        if let Some(new_item_ref) = item_ref
+                            .clone()
+                            .subst_types_and_insert_new_with_parent(type_mapping, engines) {
+                            item_ref.replace_id(*new_item_ref.id());
+                            true
+                        } else{
+                            false
+                        }
+                    }
+                    TyTraitInterfaceItem::Constant(decl_ref) => {
+                        if let Some(new_decl_ref) = decl_ref
+                            .clone()
+                            .subst_types_and_insert_new(type_mapping, engines) {
+                            decl_ref.replace_id(*new_decl_ref.id());
+                            true
+                        } else{
+                            false
+                        }
+                    }
+                    TyTraitInterfaceItem::Type(decl_ref) => {
+                        if let Some(new_decl_ref) = decl_ref
+                            .clone()
+                            .subst_types_and_insert_new(type_mapping, engines) {
+                            decl_ref.replace_id(*new_decl_ref.id());
+                            true
+                        } else{
+                            false
+                        }
+                    }
+                } || has_changes);
+            self.items.iter_mut().fold(false, |has_changes, item| match item {
+                TyTraitItem::Fn(item_ref) => {
+                    if let Some(new_item_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                    item_ref.replace_id(*new_item_ref.id());
+                        .subst_types_and_insert_new_with_parent(type_mapping, engines)
+                    {
+                        item_ref.replace_id(*new_item_ref.id());
+                        true
+                    } else {
+                        false
+                    }
                 }
-                TyTraitInterfaceItem::Constant(decl_ref) => {
-                    let new_decl_ref = decl_ref
+                TyTraitItem::Constant(item_ref) => {
+                    if let Some(new_decl_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new(type_mapping, engines);
-                    decl_ref.replace_id(*new_decl_ref.id());
+                        .subst_types_and_insert_new_with_parent(type_mapping, engines)
+                    {
+                        item_ref.replace_id(*new_decl_ref.id());
+                        true
+                    } else {
+                        false
+                    }
                 }
-                TyTraitInterfaceItem::Type(decl_ref) => {
-                    let new_decl_ref = decl_ref
+                TyTraitItem::Type(item_ref) => {
+                    if let Some(new_decl_ref) = item_ref
                         .clone()
-                        .subst_types_and_insert_new(type_mapping, engines);
-                    decl_ref.replace_id(*new_decl_ref.id());
+                        .subst_types_and_insert_new_with_parent(type_mapping, engines)
+                    {
+                        item_ref.replace_id(*new_decl_ref.id());
+                        true
+                    } else {
+                        false
+                    }
                 }
             });
-        self.items.iter_mut().for_each(|item| match item {
-            TyTraitItem::Fn(item_ref) => {
-                let new_item_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_item_ref.id());
-            }
-            TyTraitItem::Constant(item_ref) => {
-                let new_decl_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_decl_ref.id());
-            }
-            TyTraitItem::Type(item_ref) => {
-                let new_decl_ref = item_ref
-                    .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                item_ref.replace_id(*new_decl_ref.id());
-            }
-        });
+        }
     }
 }
 
 impl SubstTypes for TyTraitItem {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
             TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, engines),
