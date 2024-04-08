@@ -33,7 +33,7 @@ impl HashWithEngines for TyStructExpressionField {
 }
 
 impl SubstTypes for TyStructExpressionField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         self.value.subst(type_mapping, engines)
     }
 }

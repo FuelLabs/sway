@@ -64,7 +64,7 @@ impl HashWithEngines for TyEnumDecl {
 }
 
 impl SubstTypes for TyEnumDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.variants.subst(type_mapping, engines);
             self.type_parameters.subst(type_mapping, engines);
@@ -172,7 +172,7 @@ impl OrdWithEngines for TyEnumVariant {
 }
 
 impl SubstTypes for TyEnumVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         self.type_argument.subst_inner(type_mapping, engines)
     }
 }

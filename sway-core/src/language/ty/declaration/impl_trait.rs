@@ -79,7 +79,7 @@ impl HashWithEngines for TyImplTrait {
 }
 
 impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.impl_type_parameters.subst(type_mapping, engines);
             self.implementing_for.subst_inner(type_mapping, engines);

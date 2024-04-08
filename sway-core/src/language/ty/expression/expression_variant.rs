@@ -629,10 +629,10 @@ impl HashWithEngines for TyExpressionVariant {
 }
 
 impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         use TyExpressionVariant::*;
         match self {
-            Literal(..) => false,
+            Literal(..) => HasChanges::No,
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
@@ -645,9 +645,9 @@ impl SubstTypes for TyExpressionVariant {
                     .subst_types_and_insert_new_with_parent(type_mapping, engines)
                 {
                     fn_ref.replace_id(*new_decl_ref.id());
-                    true
+                    HasChanges::Yes
                 } else {
-                    false
+                    HasChanges::No
                 };
                 call_path_typeid.subst(type_mapping, engines);
             },
@@ -656,7 +656,7 @@ impl SubstTypes for TyExpressionVariant {
                 rhs.subst(type_mapping, engines);
             },
             ConstantExpression { const_decl, .. } => const_decl.subst(type_mapping, engines),
-            VariableExpression { .. } => false,
+            VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(type_mapping, engines),
             Array {
                 ref mut elem_type,
@@ -679,14 +679,14 @@ impl SubstTypes for TyExpressionVariant {
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines) {
                     struct_ref.replace_id(*new_struct_ref.id());
-                    true
+                    HasChanges::Yes
                 } else {
-                    false
+                    HasChanges::No
                 };
                 fields.subst(type_mapping, engines);
             },
             CodeBlock(block) => block.subst(type_mapping, engines),
-            FunctionParameter => false,
+            FunctionParameter => HasChanges::No,
             MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
             IfExp {
                 condition,
@@ -729,15 +729,15 @@ impl SubstTypes for TyExpressionVariant {
                     .subst_types_and_insert_new(type_mapping, engines)
                 {
                     enum_ref.replace_id(*new_enum_ref.id());
-                    true
+                    HasChanges::Yes
                 } else {
-                    false
+                    HasChanges::No
                 };
                 contents.subst(type_mapping, engines);
             },
             AbiCast { address, .. } => address.subst(type_mapping, engines),
             // storage is never generic and cannot be monomorphized
-            StorageAccess { .. } => false,
+            StorageAccess { .. } => HasChanges::No,
             IntrinsicFunction(kind) => kind.subst(type_mapping, engines),
             EnumTag { exp } => exp.subst(type_mapping, engines),
             UnsafeDowncast {
@@ -748,7 +748,7 @@ impl SubstTypes for TyExpressionVariant {
                 exp.subst(type_mapping, engines);
                 variant.subst(type_mapping, engines);
             },
-            AbiName(_) => false,
+            AbiName(_) => HasChanges::No,
             WhileLoop {
                 ref mut condition,
                 ref mut body,
@@ -757,8 +757,8 @@ impl SubstTypes for TyExpressionVariant {
                 body.subst(type_mapping, engines)
             }
             ForLoop { ref mut desugared } => desugared.subst(type_mapping, engines),
-            Break => false,
-            Continue => false,
+            Break => HasChanges::No,
+            Continue => HasChanges::No,
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
             ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, engines),
             Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),

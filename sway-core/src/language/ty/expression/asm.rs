@@ -32,7 +32,7 @@ impl HashWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl SubstTypes for TyAsmRegisterDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         self.initializer.subst(type_mapping, engines)
     }
 }

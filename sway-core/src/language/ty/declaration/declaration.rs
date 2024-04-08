@@ -296,7 +296,7 @@ impl HashWithEngines for TyDecl {
 }
 
 impl SubstTypes for TyDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         match self {
             TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(type_mapping, engines),
             TyDecl::FunctionDecl(FunctionDecl {
@@ -328,7 +328,7 @@ impl SubstTypes for TyDecl {
             | TyDecl::ConstantDecl(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ErrorRecovery(..) => false,
+            | TyDecl::ErrorRecovery(..) => HasChanges::No,
         }
     }
 }

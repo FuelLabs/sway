@@ -101,7 +101,7 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.parameters.subst(type_mapping, engines);
             self.return_type.subst(type_mapping, engines);

@@ -96,7 +96,7 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.type_id.subst(type_mapping, engines);
             self.trait_constraints.subst(type_mapping, engines);

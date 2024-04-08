@@ -115,7 +115,7 @@ where
     ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, engines) {
+        if decl.subst(type_mapping, engines).has_changes() {
             Some(decl_engine.insert(decl))
         } else {
             None
@@ -151,7 +151,7 @@ where
     ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, engines) {
+        if decl.subst(type_mapping, engines).has_changes() {
             Some(
                 decl_engine
                     .insert(decl)
@@ -299,14 +299,14 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        if decl.subst(type_mapping, engines) {
+        if decl.subst(type_mapping, engines).has_changes() {
             decl_engine.replace(self.id, decl);
-            true
+            HasChanges::Yes
         } else {
-            false
+            HasChanges::No
         }
     }
 }

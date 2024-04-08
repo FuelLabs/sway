@@ -70,7 +70,7 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.arguments.subst(type_mapping, engines);
             self.type_arguments.subst(type_mapping, engines);

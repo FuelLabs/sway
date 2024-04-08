@@ -269,20 +269,20 @@ impl Spanned for TyTraitItem {
 }
 
 impl SubstTypes for TyTraitDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.type_parameters.subst(type_mapping, engines);
             self.interface_surface
                 .iter_mut()
-                .fold(false, |has_changes, item| match item {
+                .fold(HasChanges::No, |has_changes, item| match item {
                     TyTraitInterfaceItem::TraitFn(item_ref) => {
                         if let Some(new_item_ref) = item_ref
                             .clone()
                             .subst_types_and_insert_new_with_parent(type_mapping, engines) {
                             item_ref.replace_id(*new_item_ref.id());
-                            true
+                            HasChanges::Yes
                         } else{
-                            false
+                            HasChanges::No
                         }
                     }
                     TyTraitInterfaceItem::Constant(decl_ref) => {
@@ -290,9 +290,9 @@ impl SubstTypes for TyTraitDecl {
                             .clone()
                             .subst_types_and_insert_new(type_mapping, engines) {
                             decl_ref.replace_id(*new_decl_ref.id());
-                            true
+                            HasChanges::Yes
                         } else{
-                            false
+                            HasChanges::No
                         }
                     }
                     TyTraitInterfaceItem::Type(decl_ref) => {
@@ -300,22 +300,22 @@ impl SubstTypes for TyTraitDecl {
                             .clone()
                             .subst_types_and_insert_new(type_mapping, engines) {
                             decl_ref.replace_id(*new_decl_ref.id());
-                            true
+                            HasChanges::Yes
                         } else{
-                            false
+                            HasChanges::No
                         }
                     }
-                } || has_changes);
-            self.items.iter_mut().fold(false, |has_changes, item| match item {
+                } | has_changes);
+            self.items.iter_mut().fold(HasChanges::No, |has_changes, item| match item {
                 TyTraitItem::Fn(item_ref) => {
                     if let Some(new_item_ref) = item_ref
                         .clone()
                         .subst_types_and_insert_new_with_parent(type_mapping, engines)
                     {
                         item_ref.replace_id(*new_item_ref.id());
-                        true
+                        HasChanges::Yes
                     } else {
-                        false
+                        HasChanges::No
                     }
                 }
                 TyTraitItem::Constant(item_ref) => {
@@ -324,9 +324,9 @@ impl SubstTypes for TyTraitDecl {
                         .subst_types_and_insert_new_with_parent(type_mapping, engines)
                     {
                         item_ref.replace_id(*new_decl_ref.id());
-                        true
+                        HasChanges::Yes
                     } else {
-                        false
+                        HasChanges::No
                     }
                 }
                 TyTraitItem::Type(item_ref) => {
@@ -335,18 +335,18 @@ impl SubstTypes for TyTraitDecl {
                         .subst_types_and_insert_new_with_parent(type_mapping, engines)
                     {
                         item_ref.replace_id(*new_decl_ref.id());
-                        true
+                        HasChanges::Yes
                     } else {
-                        false
+                        HasChanges::No
                     }
                 }
-            } || has_changes);
+            } | has_changes);
         }
     }
 }
 
 impl SubstTypes for TyTraitItem {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         match self {
             TyTraitItem::Fn(fn_decl) => fn_decl.subst(type_mapping, engines),
             TyTraitItem::Constant(const_decl) => const_decl.subst(type_mapping, engines),

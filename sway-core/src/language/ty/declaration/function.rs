@@ -196,7 +196,7 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.type_parameters.subst(type_mapping, engines);
             self.parameters.subst(type_mapping, engines);
@@ -522,7 +522,7 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> bool {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         self.type_argument.type_id.subst(type_mapping, engines)
     }
 }
