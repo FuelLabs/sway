@@ -20,7 +20,7 @@ use ::asset_id::AssetId;
 /// ```
 pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 
-/// A B256 of zero value.
+/// A b256 of zero value.
 ///
 /// # Examples
 ///
@@ -28,7 +28,7 @@ pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 /// use std::{call_frames::msg_asset_id, constants::ZERO_B256};
 ///
 /// fn foo() {
-///     assert(ZERO_B256 == msg_asset_id());
+///     assert(ZERO_B256 == msg_asset_id().bits());
 /// }
 /// ```
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
