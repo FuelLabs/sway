@@ -304,18 +304,11 @@ jobs:
   cargo-run-e2e-test:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-        ports:
-          - 4000:4000
-        env:
-          IP: "0.0.0.0"
-          PORT: "4000"
-          DB_PATH: "./mnt/db/"
-        command: ["./fuel-core", "run", "--ip", "0.0.0.0", "--port", "4000", "--db-path", "./mnt/db/", "--debug"]
-
     steps:
+      - name: Install fuel-core from Cargo
+        run: cargo install fuel-core --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+      - name: Run fuel-core
+        run: fuel-core --db-type in-memory --debug 
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -328,18 +321,11 @@ jobs:
   cargo-run-e2e-test-release:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-        ports:
-          - 4000:4000
-        env:
-          IP: "0.0.0.0"
-          PORT: "4000"
-          DB_PATH: "./mnt/db/"
-        command: ["./fuel-core", "run", "--ip", "0.0.0.0", "--port", "4000", "--db-path", "./mnt/db/", "--debug"]
-
     steps:
+      - name: Install fuel-core from Cargo
+        run: cargo install fuel-core --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+      - name: Run fuel-core
+        run: fuel-core --db-type in-memory --debug 
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
