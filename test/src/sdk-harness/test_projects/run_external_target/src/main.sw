@@ -10,9 +10,11 @@ impl RunExternalTest for Contract {
     }
 }
 
+// ANCHOR: fallback
 #[fallback]
 fn fallback() -> u64 {
     use std::call_frames::*;
     let foo = second_param::<u64>();
     foo * 3
 }
+// ANCHOR_END: fallback

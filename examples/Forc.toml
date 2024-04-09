@@ -34,6 +34,8 @@ members = [
   "structs",
   "tuples",
   "type_aliases",
+  "upgradable_proxy/proxy-contract",
+  "upgradable_proxy/target-contract",
   "vec",
   "wallet_abi",
   "wallet_contract_caller_script",
