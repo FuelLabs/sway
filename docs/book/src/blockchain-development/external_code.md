@@ -12,22 +12,22 @@ Unlike a normal contract call, the context of the contract running
 
 Additionally, the ABI of the external contract is not required. The proxy contract has no knowledge of the external contract except for its `ContractId`.
 
-## Upgradable Contracts
+## Upgradeable Contracts
 
-Upgradable contracts are designed to allow the logic of a smart contract to be updated after deployment.
+Upgradeable contracts are designed to allow the logic of a smart contract to be updated after deployment.
 
 Consider this example target contract:
 
 ```sway
-{{#include ../../../../examples/upgradable_proxy/target-contract/src/main.sw:target}}
+{{#include ../../../../examples/upgradeable_proxy/target-contract/src/main.sw:target}}
 ```
 
 This contract has one function called `double_input`, which returns double of the input value.
 
-Below is what an upgradable proxy contract could look like for this:
+Below is what an upgradeable proxy contract could look like for this:
 
 ```sway
-{{#include ../../../../examples/upgradable_proxy/proxy-contract/src/main.sw:proxy}}
+{{#include ../../../../examples/upgradeable_proxy/proxy-contract/src/main.sw:proxy}}
 ```
 
 The contract has two functions:
