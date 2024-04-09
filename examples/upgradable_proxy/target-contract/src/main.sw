@@ -1,6 +1,6 @@
 contract;
 
-abi ExternalTarget{
+abi ExternalTarget {
     fn double_input(value: u64) -> u64;
 }
 

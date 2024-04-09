@@ -17,7 +17,7 @@ storage {
 
 impl Proxy for Contract {
     #[storage(write)]
-    fn set_target_contract(id: ContractId){
+    fn set_target_contract(id: ContractId) {
         storage.target_contract.write(Some(id));
     }
 
