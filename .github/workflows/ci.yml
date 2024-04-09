@@ -306,9 +306,9 @@ jobs:
     needs: get-fuel-core-version
     steps:
       - name: Install fuel-core from Cargo
-        run: cargo install fuel-core --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+        run: cargo install fuel-core-client-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - name: Run fuel-core
-        run: fuel-core --db-type in-memory --debug 
+        run: fuel-core run --db-type in-memory --debug 
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -323,9 +323,9 @@ jobs:
     needs: get-fuel-core-version
     steps:
       - name: Install fuel-core from Cargo
-        run: cargo install fuel-core --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+        run: cargo install fuel-core-client-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - name: Run fuel-core
-        run: fuel-core --db-type in-memory --debug 
+        run: fuel-core run --db-type in-memory --debug 
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
