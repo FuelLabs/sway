@@ -55,6 +55,11 @@ name = "enums"
 source = "member"
 
 [[package]]
+name = "external_target"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "fizzbuzz"
 source = "member"
 dependencies = ["std"]
@@ -111,6 +116,11 @@ dependencies = ["std"]
 
 [[package]]
 name = "ownership"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "proxy"
 source = "member"
 dependencies = ["std"]
 
