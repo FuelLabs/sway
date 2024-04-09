@@ -749,10 +749,7 @@ pub enum CompileError {
     #[error("{}", error)]
     Parse { error: ParseError },
     #[error("Could not evaluate initializer to a const declaration.")]
-    NonConstantDeclValue {
-        span: Span,
-        inner: Option<Box<CompileError>>,
-    },
+    NonConstantDeclValue { span: Span },
     #[error("Declaring storage in a {program_kind} is not allowed.")]
     StorageDeclarationInNonContract { program_kind: String, span: Span },
     #[error("Unsupported argument type to intrinsic \"{name}\".{}", if hint.is_empty() { "".to_string() } else { format!(" Hint: {hint}") })]

@@ -240,26 +240,23 @@ pub(crate) fn compile_constant_expression_to_constant(
         lookup: compile_const_decl,
     };
 
-    let err = |inner| match &const_expr.expression {
+    let err = match &const_expr.expression {
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
         ty::TyExpressionVariant::FunctionApplication { call_path, .. } => {
             Err(CompileError::NonConstantDeclValue {
                 span: call_path.span(),
-                inner,
             })
         }
         _otherwise => Err(CompileError::NonConstantDeclValue {
             span: const_expr.span.clone(),
-            inner,
         }),
     };
     let mut known_consts = MappedStack::<Ident, Constant>::new();
 
     match const_eval_typed_expr(lookup, &mut known_consts, const_expr, allow_configurables) {
         Ok(Some(constant)) => Ok(constant),
-        Err(ConstEvalError::CompileError(inner)) => err(Some(Box::new(inner))),
-        _ => err(None),
+        _ => err,
     }
 }
 
