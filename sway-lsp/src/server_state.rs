@@ -153,6 +153,7 @@ impl ServerState {
                                     let path = Arc::new(path);
                                     let source_id =
                                         session.engines.read().se().get_source_id(&path);
+                                    eprintln!("📖 Final Metrics: {:?}", session.metrics);
                                     if let Some(metrics) = session.metrics.get(&source_id) {
                                         // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                         // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
@@ -160,6 +161,7 @@ impl ServerState {
                                         if metrics.reused_modules == 0 {
                                             // The compiler did not reuse the workspace AST.
                                             // We need to overwrite the old engines with the engines clone.
+                                            eprintln!("🔄 Overwriting engines with the new engines");
                                             mem::swap(
                                                 &mut *session.engines.write(),
                                                 &mut engines_clone,
@@ -168,8 +170,10 @@ impl ServerState {
                                     }
                                 }
                                 *last_compilation_state.write() = LastCompilationState::Success;
+                                eprintln!("Compilation successful ✅");
                             }
                             Err(_err) => {
+                                eprintln!("Compilation failed ❌");
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }

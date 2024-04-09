@@ -402,6 +402,7 @@ fn parse_module_tree(
     let modified_time = std::fs::metadata(path.as_path())
         .ok()
         .and_then(|m| m.modified().ok());
+    eprintln!("⏰ Inserting cache modified time for {:?} = {:?}", path.as_ref(), modified_time);
     let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
     let parsed_module_tree = ParsedModuleTree {
         tree_type: kind,
@@ -426,6 +427,7 @@ fn is_parse_module_cache_up_to_date(
     input: Arc<str>,
     include_tests: bool,
 ) -> bool {
+    
     let query_engine = engines.qe();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
     let entry = query_engine.get_parse_module_cache_entry(&key);
@@ -435,19 +437,24 @@ fn is_parse_module_cache_up_to_date(
                 .ok()
                 .and_then(|m| m.modified().ok());
 
+            // let cache_up_to_date = entry.modified_time == modified_time || {
+            //     let mut hasher = DefaultHasher::new();
+            //     // It's important to hash the input that triggered compilation. We don't want to
+            //     // load the file from disk as it may have been changed by LSP or another process since
+            //     // compilation started.
+            //     input.hash(&mut hasher);
+            //     let hash = hasher.finish();
+            //     hash == entry.hash
+            // };
+
             // Let's check if we can re-use the dependency information
             // we got from the cache, which is only true if the file hasn't been
-            // modified since or if its hash is the same.
-            let cache_up_to_date = entry.modified_time == modified_time || {
-                let mut hasher = DefaultHasher::new();
-                // It's important to hash the input that triggered compilation. We don't want to
-                // load the file from disk as it may have been changed by LSP or another process since
-                // compilation started.
-                input.hash(&mut hasher);
-                let hash = hasher.finish();
-                hash == entry.hash
-            };
+            // modified since.
+            let cache_up_to_date = entry.modified_time == modified_time; 
 
+            if path.components().any(|c| c.as_os_str() == "paths") {
+                eprintln!("Is cache is up to date for {:?} = {:?} | entry.modified_time = {:?} & modified_time = {:?}", path.as_ref(), cache_up_to_date, entry.modified_time, modified_time);
+            }
             // Look at the dependencies recursively to make sure they have not been
             // modified either.
             if cache_up_to_date {
