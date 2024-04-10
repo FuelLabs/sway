@@ -84,7 +84,7 @@ Now we would like to inspect the program while it's running. To do this, we firs
         "script": [],
         "script_data": [],
         "policies": {
-            "bits": "GasPrice",
+            "bits": "MaxFee",
             "values": [0,0,0,0]
         },
         "inputs": [

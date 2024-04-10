@@ -305,10 +305,11 @@ jobs:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
     steps:
-      - name: Install fuel-core from Cargo
-        run: cargo install fuel-core-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-      - name: Run fuel-core
-        run: fuel-core run --db-type in-memory --debug & 
+      - name: Install fuel-core for tests
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: fuel-core-bin
+          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -316,16 +317,20 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (Fuel VM)
-        run: cargo run --locked --release --bin test -- --locked
+        run: |
+          fuel-core run --db-type in-memory --debug & 
+          sleep 5 &&
+          cargo run --locked --release --bin test -- --locked
 
   cargo-run-e2e-test-release:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
     steps:
-      - name: Install fuel-core from Cargo
-        run: cargo install fuel-core-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-      - name: Run fuel-core
-        run: fuel-core run --db-type in-memory --debug & 
+      - name: Install fuel-core for tests
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: fuel-core-bin
+          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -333,7 +338,10 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (Fuel VM)
-        run: cargo run --locked --release --bin test -- --locked --release
+        run: |
+          fuel-core run --db-type in-memory --debug & 
+          sleep 5 &&
+          cargo run --locked --release --bin test -- --locked --release
 
   cargo-run-e2e-test-evm:
     runs-on: ubuntu-latest
