@@ -263,14 +263,14 @@ fn garbage_collection_runner(path: PathBuf) {
             .garbage_collection
             .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
-        let times = 4;
-        for version in 0..times {
-            eprintln!("version: {}", version);
+        let times = 10000;
+        for version in 1..times {
+            eprintln!("⛑️ runner version: {}", version);
             let params = if rand::random::<u64>() % 3 < 1 {
                 // enter keypress at line 20
                 lsp::create_did_change_params(
                     &uri,
-                    1,
+                    version,
                     Position {
                         line: 20,
                         character: 0,
@@ -285,7 +285,7 @@ fn garbage_collection_runner(path: PathBuf) {
                 // backspace keypress at line 21
                 lsp::create_did_change_params(
                     &uri,
-                    1,
+                    version,
                     Position {
                         line: 20,
                         character: 0,
@@ -297,7 +297,7 @@ fn garbage_collection_runner(path: PathBuf) {
                     1,
                 )
             };
-            let _ = lsp::did_change_request(&mut service, &uri, version + 1, Some(params)).await;
+            let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
             if version == 0 {
                 service.inner().wait_for_parsing().await;
             }
