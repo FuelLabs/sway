@@ -296,55 +296,39 @@ impl HashWithEngines for TyDecl {
 }
 
 impl SubstTypes for TyDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         match self {
             TyDecl::VariableDecl(ref mut var_decl) => var_decl.subst(type_mapping, engines),
             TyDecl::FunctionDecl(FunctionDecl {
                 ref mut decl_id, ..
-            }) => {
-                decl_id.subst(type_mapping, engines);
-            }
+            }) => decl_id.subst(type_mapping, engines),
             TyDecl::TraitDecl(TraitDecl {
                 ref mut decl_id, ..
-            }) => {
-                decl_id.subst(type_mapping, engines);
-            }
+            }) => decl_id.subst(type_mapping, engines),
             TyDecl::StructDecl(StructDecl {
                 ref mut decl_id, ..
-            }) => {
-                decl_id.subst(type_mapping, engines);
-            }
+            }) => decl_id.subst(type_mapping, engines),
             TyDecl::EnumDecl(EnumDecl {
                 ref mut decl_id, ..
-            }) => {
-                decl_id.subst(type_mapping, engines);
-            }
+            }) => decl_id.subst(type_mapping, engines),
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 ref mut enum_ref, ..
-            }) => {
-                enum_ref.subst(type_mapping, engines);
-            }
+            }) => enum_ref.subst(type_mapping, engines),
             TyDecl::ImplTrait(ImplTrait {
                 ref mut decl_id, ..
-            }) => {
-                decl_id.subst(type_mapping, engines);
-            }
+            }) => decl_id.subst(type_mapping, engines),
             TyDecl::TypeAliasDecl(TypeAliasDecl {
                 ref mut decl_id, ..
-            }) => {
-                decl_id.subst(type_mapping, engines);
-            }
+            }) => decl_id.subst(type_mapping, engines),
             TyDecl::TraitTypeDecl(TraitTypeDecl {
                 ref mut decl_id, ..
-            }) => {
-                decl_id.subst(type_mapping, engines);
-            }
+            }) => decl_id.subst(type_mapping, engines),
             // generics in an ABI is unsupported by design
             TyDecl::AbiDecl(_)
             | TyDecl::ConstantDecl(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ErrorRecovery(..) => (),
+            | TyDecl::ErrorRecovery(..) => HasChanges::No,
         }
     }
 }

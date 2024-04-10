@@ -25,7 +25,7 @@ use crate::{
 
 use super::{
     collection_context::SymbolCollectionContext,
-    declaration::auto_impl::{self, AutoImplAbiEncodeContext},
+    declaration::auto_impl::{self, EncodingAutoImplContext},
 };
 
 #[derive(Clone, Debug)]
@@ -327,18 +327,22 @@ impl ty::TyModule {
             match (&kind, main_decl.is_some()) {
                 (TreeType::Predicate, true) => {
                     let mut fn_generator =
-                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_predicate_entry(engines, main_decl.as_ref().unwrap())
-                        .unwrap();
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    let node = fn_generator.generate_predicate_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    )?;
                     all_nodes.push(node)
                 }
                 (TreeType::Script, true) => {
                     let mut fn_generator =
-                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_script_entry(engines, main_decl.as_ref().unwrap())
-                        .unwrap();
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    let node = fn_generator.generate_script_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    )?;
                     all_nodes.push(node)
                 }
                 (TreeType::Contract, _) => {
@@ -351,15 +355,14 @@ impl ty::TyModule {
                         .collect::<Vec<_>>();
 
                     let mut fn_generator =
-                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_contract_entry(
-                            engines,
-                            parsed.span.source_id().map(|x| x.module_id()),
-                            &contract_fns,
-                            fallback_fn,
-                        )
-                        .unwrap();
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    let node = fn_generator.generate_contract_entry(
+                        engines,
+                        parsed.span.source_id().map(|x| x.module_id()),
+                        &contract_fns,
+                        fallback_fn,
+                        handler,
+                    )?;
                     all_nodes.push(node)
                 }
                 _ => {}
@@ -449,7 +452,7 @@ impl ty::TyModule {
                 let mut generated = vec![];
                 if let (true, Some(mut ctx)) = (
                     auto_impl_encoding_traits,
-                    AutoImplAbiEncodeContext::new(&mut ctx),
+                    EncodingAutoImplContext::new(&mut ctx),
                 ) {
                     match &node.content {
                         TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
