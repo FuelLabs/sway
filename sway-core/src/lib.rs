@@ -409,7 +409,7 @@ fn parse_module_tree(
         .and_then(|m| m.modified().ok());
     let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
     let version = lsp_mode
-        .and_then(|lsp| lsp.file_versions.get(path.as_ref()).map(|version| *version))
+        .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
     let cache_entry = ModuleCacheEntry {
         path,
