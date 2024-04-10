@@ -38,10 +38,8 @@ impl HashWithEngines for TyCodeBlock {
 }
 
 impl SubstTypes for TyCodeBlock {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.contents
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.contents.subst(type_mapping, engines)
     }
 }
 
