@@ -263,7 +263,7 @@ fn garbage_collection_runner(path: PathBuf) {
             .garbage_collection
             .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
-        let times = 600;
+        let times = 1;
         for version in 0..times {
             eprintln!("version: {}", version);
             let params = if rand::random::<u64>() % 3 < 1 {

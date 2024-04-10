@@ -261,11 +261,11 @@ impl Session {
                 err: err.to_string(),
             })?;
 
-        let modified_time = std::fs::metadata(uri.path())
-            .ok()
-            .and_then(|m| m.modified().ok());
-        eprintln!("⏱️ File modified time: {:?}", modified_time);
-        eprintln!("Current time: {:?}", std::time::SystemTime::now());
+        // let modified_time = std::fs::metadata(uri.path())
+        //     .ok()
+        //     .and_then(|m| m.modified().ok());
+        // eprintln!("⏱️ File modified time: {:?}", modified_time);
+        // eprintln!("Current time: {:?}", std::time::SystemTime::now());
 
         Ok(())
     }

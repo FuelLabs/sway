@@ -12,7 +12,7 @@ use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use std::process::Command;
+use std::{collections::{BTreeMap, HashMap}, process::Command};
 use std::{
     mem,
     path::PathBuf,
@@ -86,6 +86,7 @@ pub struct CompilationContext {
     pub version: Option<i32>,
     pub optimized_build: bool,
     pub gc_options: GarbageCollectionConfig,
+    pub hashed_workspace: BTreeMap<PathBuf, u64>,
 }
 
 impl ServerState {
@@ -136,6 +137,7 @@ impl ServerState {
 
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
+                            hashed_workspace: ctx.hashed_workspace,
                         });
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling

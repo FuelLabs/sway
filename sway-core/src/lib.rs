@@ -402,7 +402,6 @@ fn parse_module_tree(
     let modified_time = std::fs::metadata(path.as_path())
         .ok()
         .and_then(|m| m.modified().ok());
-    eprintln!("⏰ Inserting cache modified time for {:?} = {:?}", path.as_ref(), modified_time);
     let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
     let parsed_module_tree = ParsedModuleTree {
         tree_type: kind,
@@ -416,6 +415,7 @@ fn parse_module_tree(
         dependencies,
         include_tests,
     };
+    eprintln!("⏰ Inserting cache for {:#?}", cache_entry);
     query_engine.insert_parse_module_cache_entry(cache_entry);
 
     Ok(parsed_module_tree)
@@ -424,10 +424,9 @@ fn parse_module_tree(
 fn is_parse_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
-    input: Arc<str>,
     include_tests: bool,
+    build_config: Option<&BuildConfig>,
 ) -> bool {
-    
     let query_engine = engines.qe();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
     let entry = query_engine.get_parse_module_cache_entry(&key);
@@ -437,29 +436,61 @@ fn is_parse_module_cache_up_to_date(
                 .ok()
                 .and_then(|m| m.modified().ok());
 
-            // let cache_up_to_date = entry.modified_time == modified_time || {
-            //     let mut hasher = DefaultHasher::new();
-            //     // It's important to hash the input that triggered compilation. We don't want to
-            //     // load the file from disk as it may have been changed by LSP or another process since
-            //     // compilation started.
-            //     input.hash(&mut hasher);
-            //     let hash = hasher.finish();
-            //     hash == entry.hash
-            // };
-
             // Let's check if we can re-use the dependency information
             // we got from the cache, which is only true if the file hasn't been
-            // modified since.
-            let cache_up_to_date = entry.modified_time == modified_time; 
+            // modified since or if its hash is the same.
+            // let cache_up_to_date = entry.modified_time == modified_time || build_config.as_ref()
+            //     .and_then(|x| x.lsp_mode.as_ref())
+            //     .and_then(|lsp| {
+            //         // First try to get the hash from the workspace hash of the lsp if it exists
+            //         lsp.hashed_workspace.get(path.as_ref())
+            //     })
+            //     .map_or_else(|| {
+            //         // Otherwise, tt's safe to read the file from disk here, as the LSP has not modified it
+            //         // or is we are being triggered by an LSP event.
+            //         let src = std::fs::read_to_string(path.as_path()).unwrap();
+            //         let mut hasher = DefaultHasher::new();
+            //         src.hash(&mut hasher);
+            //         hasher.finish() == entry.hash
+            //     }, |hash| *hash == entry.hash);
+
+            let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
+            let hashed_workspace = lsp_config
+                .as_ref()
+                .map(|lsp| lsp.hashed_workspace.clone())
+                .unwrap_or_default();
 
             if path.components().any(|c| c.as_os_str() == "paths") {
-                eprintln!("Is cache is up to date for {:?} = {:?} | entry.modified_time = {:?} & modified_time = {:?}", path.as_ref(), cache_up_to_date, entry.modified_time, modified_time);
+                eprintln!("Check if cache is up to date for {:?}", path.as_ref());
+            }
+            
+            let cache_up_to_date = entry.modified_time == modified_time || hashed_workspace.get(path.as_ref()).map(|hash| {
+                let hash_res = *hash == entry.hash;
+                eprintln!("⌚ Cache, using LSP hash for {:?} = {:?} | entry.hash = {:?}", path.as_ref(), hash, entry.hash);
+                eprintln!("Is time the same? {} | hash res? {}", entry.modified_time == modified_time, hash_res);
+                hash_res
+            }).unwrap_or_else(|| {
+                eprintln!("⌚ Cache, using read hash for {:?} = {:?} | entry.hash = {:?}", path.as_ref(), entry.hash, modified_time);
+                let src = std::fs::read_to_string(path.as_path()).unwrap();
+                let mut hasher = DefaultHasher::new(); 
+                src.hash(&mut hasher);
+                let hash = hasher.finish();
+                hash == entry.hash
+            });
+            
+            if path.components().any(|c| c.as_os_str() == "paths") {
+                // eprintln!("Is cache up to date for {:?} = {:?} | entry.modified_time = {:?} & modified_time = {:?}", path.as_ref(), cache_up_to_date, entry.modified_time, modified_time);
+                if cache_up_to_date {
+                    eprintln!("Is cache up to date for {:?} = {:?} 🟩", path.as_ref(), cache_up_to_date);
+                } else {
+                    eprintln!("Is cache up to date for {:?} = {:?} 🟥", path.as_ref(), cache_up_to_date);
+                }
             }
             // Look at the dependencies recursively to make sure they have not been
             // modified either.
             if cache_up_to_date {
                 entry.dependencies.iter().all(|path| {
-                    is_parse_module_cache_up_to_date(engines, path, input.clone(), include_tests)
+                    is_parse_module_cache_up_to_date(engines, path, include_tests, build_config)
                 })
             } else {
                 false
@@ -694,7 +725,7 @@ pub fn compile_to_ast(
         let include_tests = config.include_tests;
 
         // Check if we can re-use the data in the cache.
-        if is_parse_module_cache_up_to_date(engines, &path, input.clone(), include_tests) {
+        if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_modules += 1;
 

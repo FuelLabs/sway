@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::{BTreeMap, HashMap}, path::PathBuf, sync::Arc};
 use strum::{Display, EnumString};
 
 #[derive(
@@ -217,6 +217,7 @@ pub struct LspConfig {
     //
     // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
     pub optimized_build: bool,
+    pub hashed_workspace: BTreeMap<PathBuf, u64>,
 }
 
 #[cfg(test)]

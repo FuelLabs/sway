@@ -10,7 +10,7 @@ use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, FileChangeType, Url,
 };
-use std::sync::{atomic::Ordering, Arc};
+use std::{collections::{BTreeMap, HashMap}, hash::{Hash, Hasher}, path::PathBuf, sync::{atomic::Ordering, Arc}};
 
 pub async fn handle_did_open_text_document(
     state: &ServerState,
@@ -33,6 +33,7 @@ pub async fn handle_did_open_text_document(
                 version: None,
                 optimized_build: false,
                 gc_options: state.config.read().garbage_collection.clone(),
+                hashed_workspace: BTreeMap::new(),
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
@@ -50,6 +51,7 @@ fn send_new_compilation_request(
     uri: &Url,
     version: Option<i32>,
     optimized_build: bool,
+    hashed_workspace: BTreeMap<PathBuf, u64>,
 ) {
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
@@ -73,6 +75,7 @@ fn send_new_compilation_request(
             version,
             optimized_build,
             gc_options: state.config.read().garbage_collection.clone(),
+            hashed_workspace,
         }));
 }
 
@@ -91,14 +94,34 @@ pub async fn handle_did_change_text_document(
     session
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
+
+    
+    let hashed_workspace = hash_workspace(&session);
+    eprintln!("hashed_workspace: {:#?}", hashed_workspace);
+
     send_new_compilation_request(
         state,
         session.clone(),
         &uri,
         Some(params.text_document.version),
         true,
+        hashed_workspace,
     );
     Ok(())
+}
+
+fn hash_workspace(session: &Session) -> BTreeMap<PathBuf, u64> {
+    let mut hashed_workspace: BTreeMap<PathBuf, u64> = BTreeMap::new();
+    let mut hasher = std::hash::DefaultHasher::new();
+
+    for item in session.documents.iter() {
+        let (k,v) = item.pair();
+        let src = v.get_text();
+        src.hash(&mut hasher);
+        let hash = hasher.finish();
+        hashed_workspace.insert(PathBuf::from(k), hash);
+    }
+    hashed_workspace
 }
 
 pub(crate) async fn handle_did_save_text_document(
@@ -111,7 +134,8 @@ pub(crate) async fn handle_did_save_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
-    send_new_compilation_request(state, session.clone(), &uri, None, false);
+    let hashed_workspace = hash_workspace(&session);
+    send_new_compilation_request(state, session.clone(), &uri, None, false, hashed_workspace);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)
