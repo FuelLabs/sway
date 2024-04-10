@@ -8,6 +8,7 @@ use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
+    has_changes,
     language::{parsed::FunctionDeclarationKind, CallPath},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform::AttributeKind,
@@ -195,17 +196,13 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines);
-        if let Some(implementing_for) = self.implementing_for_typeid.as_mut() {
-            implementing_for.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.type_parameters.subst(type_mapping, engines);
+            self.parameters.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, engines);
+            self.body.subst(type_mapping, engines);
+            self.implementing_for_typeid.subst(type_mapping, engines);
         }
     }
 }
@@ -525,8 +522,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_argument.type_id.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.type_argument.type_id.subst(type_mapping, engines)
     }
 }
 
