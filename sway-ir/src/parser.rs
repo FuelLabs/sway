@@ -764,6 +764,7 @@ mod ir_builder {
 
     #[derive(Debug)]
     enum IrAstConstValue {
+        #[allow(dead_code)]
         Undef(IrAstTy),
         Unit,
         Bool(bool),

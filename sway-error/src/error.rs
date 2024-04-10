@@ -866,6 +866,8 @@ pub enum CompileError {
     FallbackFnsAreContractOnly { span: Span },
     #[error("Fallback functions cannot have parameters")]
     FallbackFnsCannotHaveParameters { span: Span },
+    #[error("Could not generate the entry method because one of the arguments does not implement AbiEncode/AbiDecode")]
+    CouldNotGenerateEntry { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1067,6 +1069,7 @@ impl Spanned for CompileError {
             ExpressionCannotBeDereferenced { span, .. } => span.clone(),
             FallbackFnsAreContractOnly { span } => span.clone(),
             FallbackFnsCannotHaveParameters { span } => span.clone(),
+            CouldNotGenerateEntry { span } => span.clone(),
         }
     }
 }
