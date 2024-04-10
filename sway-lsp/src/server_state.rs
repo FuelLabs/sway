@@ -12,7 +12,7 @@ use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use std::{collections::{BTreeMap, HashMap}, process::Command};
+use std::{collections::BTreeMap, process::Command};
 use std::{
     mem,
     path::PathBuf,
@@ -86,7 +86,7 @@ pub struct CompilationContext {
     pub version: Option<i32>,
     pub optimized_build: bool,
     pub gc_options: GarbageCollectionConfig,
-    pub hashed_workspace: BTreeMap<PathBuf, (u64, Option<u64>)>,
+    pub file_versions: BTreeMap<PathBuf, Option<u64>>,
 }
 
 impl ServerState {
@@ -137,7 +137,7 @@ impl ServerState {
 
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
-                            hashed_workspace: ctx.hashed_workspace,
+                            file_versions: ctx.file_versions,
                         });
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
@@ -155,7 +155,6 @@ impl ServerState {
                                     let path = Arc::new(path);
                                     let source_id =
                                         session.engines.read().se().get_source_id(&path);
-                                    eprintln!("📖 Final Metrics: {:?}", session.metrics);
                                     if let Some(metrics) = session.metrics.get(&source_id) {
                                         // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                         // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
@@ -163,7 +162,6 @@ impl ServerState {
                                         if metrics.reused_modules == 0 {
                                             // The compiler did not reuse the workspace AST.
                                             // We need to overwrite the old engines with the engines clone.
-                                            eprintln!("🔄 Overwriting engines with the new engines");
                                             mem::swap(
                                                 &mut *session.engines.write(),
                                                 &mut engines_clone,
@@ -172,10 +170,8 @@ impl ServerState {
                                     }
                                 }
                                 *last_compilation_state.write() = LastCompilationState::Success;
-                                eprintln!("Compilation successful ✅");
                             }
                             Err(_err) => {
-                                eprintln!("Compilation failed ❌");
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }

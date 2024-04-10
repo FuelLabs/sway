@@ -263,9 +263,9 @@ fn garbage_collection_runner(path: PathBuf) {
             .garbage_collection
             .gc_frequency = 1;
         let uri = init_and_open(&mut service, path).await;
-        let times = 10000;
+        let times = 60;
         for version in 1..times {
-            eprintln!("⛑️ runner version: {}", version);
+            //eprintln!("version: {}", version);
             let params = if rand::random::<u64>() % 3 < 1 {
                 // enter keypress at line 20
                 lsp::create_did_change_params(
