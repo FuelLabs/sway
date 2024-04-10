@@ -37,14 +37,20 @@ impl HashWithEngines for TraitConstraint {
 
 impl EqWithEngines for TraitConstraint {}
 impl PartialEqWithEngines for TraitConstraint {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.trait_name == other.trait_name
-            && self.type_arguments.eq(&other.type_arguments, engines)
+            // Check if eq is already inside of a trait constraint, if it is we don't compare type arguments.
+            // This breaks the recursion when we use a where clause such as `T:MyTrait<T>`.
+            && (ctx.is_inside_trait_constraint()
+                || self.type_arguments.eq(
+                    &other.type_arguments,
+                    &(ctx.with_is_inside_trait_constraint()),
+                ))
     }
 }
 
 impl OrdWithEngines for TraitConstraint {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TraitConstraint {
             trait_name: ltn,
             type_arguments: lta,
@@ -53,7 +59,15 @@ impl OrdWithEngines for TraitConstraint {
             trait_name: rtn,
             type_arguments: rta,
         } = other;
-        ltn.cmp(rtn).then_with(|| lta.cmp(rta, engines))
+        let mut res = ltn.cmp(rtn);
+
+        // Check if cmp is already inside of a trait constraint, if it is we don't compare type arguments.
+        // This breaks the recursion when we use a where clause such as `T:MyTrait<T>`.
+        if !ctx.is_inside_trait_constraint() {
+            res = res.then_with(|| lta.cmp(rta, &ctx.with_is_inside_trait_constraint()))
+        }
+
+        res
     }
 }
 
@@ -84,10 +98,8 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.type_arguments.subst(type_mapping, engines)
     }
 }
 
@@ -177,7 +189,7 @@ impl TraitConstraint {
         match ctx
             .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

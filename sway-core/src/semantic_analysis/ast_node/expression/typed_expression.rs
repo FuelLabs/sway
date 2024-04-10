@@ -160,7 +160,7 @@ impl ty::TyExpression {
 
                 if matches!(
                     ctx.namespace()
-                        .resolve_call_path(
+                        .resolve_call_path_typed(
                             &Handler::default(),
                             engines,
                             &call_path,
@@ -496,7 +496,7 @@ impl ty::TyExpression {
 
         let exp = match ctx
             .namespace()
-            .resolve_symbol(&Handler::default(), engines, &name, ctx.self_type())
+            .resolve_symbol_typed(&Handler::default(), engines, &name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::VariableDecl(decl)) => {
@@ -1078,13 +1078,16 @@ impl ty::TyExpression {
         let storage_key_ident = Ident::new_with_override("StorageKey".into(), span.clone());
 
         // Search for the struct declaration with the call path above.
-        let storage_key_decl_opt = ctx.namespace().resolve_root_symbol(
-            handler,
-            engines,
-            &storage_key_mod_path,
-            &storage_key_ident,
-            None,
-        )?;
+        let storage_key_decl_opt = ctx
+            .namespace()
+            .resolve_root_symbol(
+                handler,
+                engines,
+                &storage_key_mod_path,
+                &storage_key_ident,
+                None,
+            )?
+            .expect_typed();
         let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
@@ -1159,12 +1162,12 @@ impl ty::TyExpression {
         }: TypeBinding<CallPath<AmbiguousSuffix>>,
         span: Span,
         args: Vec<Expression>,
-        qualified_path_root: Option<QualifiedPathRootTypes>,
+        qualified_path_root: Option<QualifiedPathType>,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = ctx.engines;
         let decl_engine = engines.de();
 
-        if let Some(QualifiedPathRootTypes { ty, as_trait, .. }) = qualified_path_root.clone() {
+        if let Some(QualifiedPathType { ty, as_trait, .. }) = qualified_path_root.clone() {
             let method_name_binding = if !prefixes.is_empty() || before.is_some() {
                 let mut prefixes_and_before = prefixes.clone();
                 if let Some(before) = before {
@@ -1235,7 +1238,7 @@ impl ty::TyExpression {
                 is_absolute,
             };
             if matches!(
-                ctx.namespace().resolve_call_path(
+                ctx.namespace().resolve_call_path_typed(
                     &Handler::default(),
                     engines,
                     &call_path,
@@ -1282,7 +1285,10 @@ impl ty::TyExpression {
         path.push(before.inner.clone());
         let not_module = {
             let h = Handler::default();
-            ctx.namespace().module().check_submodule(&h, &path).is_err()
+            ctx.namespace()
+                .module()
+                .lookup_submodule(&h, &path)
+                .is_err()
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1294,7 +1300,7 @@ impl ty::TyExpression {
                 is_absolute,
             };
             ctx.namespace()
-                .resolve_call_path(
+                .resolve_call_path_typed(
                     &Handler::default(),
                     engines,
                     &probe_call_path,
@@ -1402,7 +1408,7 @@ impl ty::TyExpression {
                 let call_path_binding = unknown_call_path_binding.clone();
                 ctx.namespace()
                     .module()
-                    .check_submodule(
+                    .lookup_submodule(
                         &module_probe_handler,
                         &[
                             call_path_binding.inner.call_path.prefixes,
@@ -1611,9 +1617,12 @@ impl ty::TyExpression {
         };
 
         // look up the call path and get the declaration it references
-        let abi =
-            ctx.namespace()
-                .resolve_call_path(handler, engines, &abi_name, ctx.self_type())?;
+        let abi = ctx.namespace().resolve_call_path_typed(
+            handler,
+            engines,
+            &abi_name,
+            ctx.self_type(),
+        )?;
         let abi_ref = match abi {
             ty::TyDecl::AbiDecl(ty::AbiDecl {
                 name,
@@ -1635,7 +1644,7 @@ impl ty::TyExpression {
                 match abi_name {
                     // look up the call path and get the declaration it references
                     AbiName::Known(abi_name) => {
-                        let unknown_decl = ctx.namespace().resolve_call_path(
+                        let unknown_decl = ctx.namespace().resolve_call_path_typed(
                             handler,
                             engines,
                             abi_name,
@@ -1997,7 +2006,7 @@ impl ty::TyExpression {
                     match expr.kind {
                         ExpressionKind::Variable(name) => {
                             // check that the reassigned name exists
-                            let unknown_decl = ctx.namespace().resolve_symbol(
+                            let unknown_decl = ctx.namespace().resolve_symbol_typed(
                                 handler,
                                 engines,
                                 &name,
@@ -2417,7 +2426,7 @@ fn check_asm_block_validity(
 
                 // Emit warning if this register shadows a variable
                 let temp_handler = Handler::default();
-                let decl = ctx.namespace().resolve_call_path(
+                let decl = ctx.namespace().resolve_call_path_typed(
                     &temp_handler,
                     ctx.engines,
                     &CallPath {

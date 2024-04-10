@@ -1,7 +1,7 @@
 use crate::cli::InitCommand;
 use crate::utils::{defaults, program_type::ProgramType};
 use anyhow::Context;
-use forc_util::{forc_result_bail, validate_name, ForcResult};
+use forc_util::{forc_result_bail, validate_project_name, ForcResult};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -78,7 +78,7 @@ pub fn init(command: InitCommand) -> ForcResult<()> {
             .into_owned(),
     };
 
-    validate_name(&project_name, "project name")?;
+    validate_project_name(&project_name)?;
 
     let init_type = match (
         command.contract,

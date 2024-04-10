@@ -32,10 +32,10 @@ use sway_types::{
     constants::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
         CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
-        DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, INLINE_ATTRIBUTE_NAME,
-        NAMESPACE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        VALID_ATTRIBUTE_NAMES,
+        DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, FALLBACK_ATTRIBUTE_NAME,
+        INLINE_ATTRIBUTE_NAME, NAMESPACE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -268,6 +268,7 @@ fn item_use_to_use_statements(
         };
         return Err(handler.emit_err(error.into()));
     }
+
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
     let item_span = item_use.span();
@@ -279,6 +280,18 @@ fn item_use_to_use_statements(
         &mut ret,
         item_span,
     );
+
+    // Check that all use statements have a call_path
+    // This is not the case for `use foo;`, which is currently not supported
+    for use_stmt in ret.iter() {
+        if use_stmt.call_path.is_empty() {
+            let error = ConvertParseTreeError::ImportsWithoutItemsNotSupports {
+                span: use_stmt.span.clone(),
+            };
+            return Err(handler.emit_err(error.into()));
+        }
+    }
+
     debug_assert!(prefix.is_empty());
     Ok(ret)
 }
@@ -357,7 +370,7 @@ fn item_struct_to_struct_declaration(
     item_struct: ItemStruct,
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
-    // FIXME(Centril): We shoudln't be collecting into a temporary  `errors` here. Recover instead!
+    // FIXME(Centril): We shouldn't be collecting into a temporary  `errors` here. Recover instead!
     let mut errors = Vec::new();
     let span = item_struct.span();
     let fields = item_struct
@@ -3181,7 +3194,7 @@ fn path_root_opt_to_bool_and_qualified_path_root(
     handler: &Handler,
     engines: &Engines,
     root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
-) -> Result<(bool, Option<QualifiedPathRootTypes>), ErrorEmitted> {
+) -> Result<(bool, Option<QualifiedPathType>), ErrorEmitted> {
     Ok(match root_opt {
         None => (false, None),
         Some((None, _)) => (true, None),
@@ -3195,7 +3208,7 @@ fn path_root_opt_to_bool_and_qualified_path_root(
         )) => (
             false,
             if let Some((_, path_type)) = as_trait {
-                Some(QualifiedPathRootTypes {
+                Some(QualifiedPathType {
                     ty: ty_to_type_argument(context, handler, engines, *ty)?,
                     as_trait: engines.te().insert(
                         engines,
@@ -4544,6 +4557,7 @@ fn item_attrs_to_map(
                 CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
                 DEPRECATED_ATTRIBUTE_NAME => Some(AttributeKind::Deprecated),
                 NAMESPACE_ATTRIBUTE_NAME => Some(AttributeKind::Namespace),
+                FALLBACK_ATTRIBUTE_NAME => Some(AttributeKind::Fallback),
                 _ => None,
             } {
                 match attrs_map.get_mut(&attr_kind) {

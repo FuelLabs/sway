@@ -653,7 +653,7 @@ where
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let len = self.len();
-        buffer.push(len);
+        buffer.push_u64(len);
 
         let mut i = 0;
         while i < len {

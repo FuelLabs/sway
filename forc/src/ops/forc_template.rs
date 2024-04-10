@@ -4,7 +4,7 @@ use forc_pkg::{
     manifest::{self, PackageManifest},
     source::{self, git::Url},
 };
-use forc_util::validate_name;
+use forc_util::validate_project_name;
 use fs_extra::dir::{copy, CopyOptions};
 use std::fs::File;
 use std::io::{Read, Write};
@@ -14,7 +14,7 @@ use sway_utils::constants;
 use tracing::info;
 
 pub fn init(command: TemplateCommand) -> Result<()> {
-    validate_name(&command.project_name, "project name")?;
+    validate_project_name(&command.project_name)?;
     // The name used for the temporary local repo directory used for fetching the template.
     let local_repo_name = command
         .template_name

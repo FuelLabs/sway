@@ -8,8 +8,10 @@ use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
+    has_changes,
     language::{parsed::FunctionDeclarationKind, CallPath},
     semantic_analysis::type_check_context::MonomorphizeHelper,
+    transform::AttributeKind,
 };
 
 use crate::{
@@ -148,12 +150,12 @@ impl declaration::FunctionSignature for TyFunctionDecl {
 
 impl EqWithEngines for TyFunctionDecl {}
 impl PartialEqWithEngines for TyFunctionDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.body.eq(&other.body, engines)
-            && self.parameters.eq(&other.parameters, engines)
-            && self.return_type.eq(&other.return_type, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.body.eq(&other.body, ctx)
+            && self.parameters.eq(&other.parameters, ctx)
+            && self.return_type.eq(&other.return_type, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
             && self.visibility == other.visibility
             && self.is_contract_call == other.is_contract_call
             && self.purity == other.purity
@@ -194,17 +196,13 @@ impl HashWithEngines for TyFunctionDecl {
 }
 
 impl SubstTypes for TyFunctionDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
-        self.body.subst(type_mapping, engines);
-        if let Some(implementing_for) = self.implementing_for_typeid.as_mut() {
-            implementing_for.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.type_parameters.subst(type_mapping, engines);
+            self.parameters.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, engines);
+            self.body.subst(type_mapping, engines);
+            self.implementing_for_typeid.subst(type_mapping, engines);
         }
     }
 }
@@ -262,9 +260,12 @@ impl UnconstrainedTypeParameters for TyFunctionDecl {
         all_types.extend(self.return_type.type_id.extract_inner_types(engines));
         all_types.insert(self.return_type.type_id);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types
-            .iter()
-            .any(|type_id| type_engine.get(*type_id).eq(&type_parameter_info, engines))
+        all_types.iter().any(|type_id| {
+            type_engine.get(*type_id).eq(
+                &type_parameter_info,
+                &PartialEqWithEnginesContext::new(engines),
+            )
+        })
     }
 }
 
@@ -441,6 +442,10 @@ impl TyFunctionDecl {
         }
     }
 
+    pub fn is_fallback(&self) -> bool {
+        self.attributes.contains_key(&AttributeKind::Fallback)
+    }
+
     /// Whether or not this function is a constructor for the type given by `type_id`.
     ///
     /// Returns `Some(true)` if the function is surely the constructor and `Some(false)` if
@@ -490,9 +495,9 @@ pub struct TyFunctionParameter {
 
 impl EqWithEngines for TyFunctionParameter {}
 impl PartialEqWithEngines for TyFunctionParameter {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
+            && self.type_argument.eq(&other.type_argument, ctx)
             && self.is_reference == other.is_reference
             && self.is_mutable == other.is_mutable
     }
@@ -517,8 +522,8 @@ impl HashWithEngines for TyFunctionParameter {
 }
 
 impl SubstTypes for TyFunctionParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_argument.type_id.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.type_argument.type_id.subst(type_mapping, engines)
     }
 }
 

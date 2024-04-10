@@ -96,6 +96,8 @@ pub enum CompileError {
     PredicateMainDoesNotReturnBool(Span),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
+    #[error("Fallback function already defined in scope.")]
+    MultipleDefinitionsOfFallbackFunction { name: Ident, span: Span },
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
@@ -860,6 +862,12 @@ pub enum CompileError {
     UninitRegisterInAsmBlockBeingRead { span: Span },
     #[error("Expression of type \"{expression_type}\" cannot be dereferenced.")]
     ExpressionCannotBeDereferenced { expression_type: String, span: Span },
+    #[error("Fallback functions can only exist in contracts")]
+    FallbackFnsAreContractOnly { span: Span },
+    #[error("Fallback functions cannot have parameters")]
+    FallbackFnsCannotHaveParameters { span: Span },
+    #[error("Could not generate the entry method because one of the arguments does not implement AbiEncode/AbiDecode")]
+    CouldNotGenerateEntry { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -890,6 +898,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
+            MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
             AssignmentToNonMutable { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
@@ -1028,7 +1037,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
@@ -1058,6 +1067,9 @@ impl Spanned for CompileError {
             SelfIsNotValidAsImplementingFor { span } => span.clone(),
             UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
             ExpressionCannotBeDereferenced { span, .. } => span.clone(),
+            FallbackFnsAreContractOnly { span } => span.clone(),
+            FallbackFnsCannotHaveParameters { span } => span.clone(),
+            CouldNotGenerateEntry { span } => span.clone(),
         }
     }
 }

@@ -21,11 +21,26 @@ impl Buffer {
         }
     }
 
-    pub fn push<T>(ref mut self, val: T) {
-        let count = __size_of::<T>();
-
+    pub fn push_byte(ref mut self, val: u8) {
+        let count = 1;
         if self.cap >= self.size + count {
-            self.buffer.add::<u8>(self.size).write(val);
+            let ptr = self.buffer.add::<u8>(self.size);
+            asm(ptr: ptr, val: val) {
+                sb ptr val i0;
+            };
+            self.size += count;
+        } else {
+            __revert(123456789);
+        }
+    }
+
+    pub fn push_u64(ref mut self, val: u64) {
+        let count = 8;
+        if self.cap >= self.size + count {
+            let ptr = self.buffer.add::<u8>(self.size);
+            asm(ptr: ptr, val: val) {
+                sw ptr val i0;
+            };
             self.size += count;
         } else {
             __revert(123456789);
@@ -91,6 +106,26 @@ impl BufferReader {
         BufferReader { ptr, pos: 0 }
     }
 
+    pub fn from_predicate_data() -> BufferReader {
+        let predicate_index = asm(r1) {
+            gm r1 i3; // GET_VERIFYING_PREDICATE
+            r1: u64
+        };
+        match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
+            0u8 => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
+                let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
+                BufferReader { ptr, pos: 0 }
+            },
+            2u8 => {
+                let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
+                let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
+                BufferReader { ptr, pos: 0 }
+            },
+            _ => __revert(0),
+        }
+    }
+
     pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
         let next_pos = self.pos + count;
 
@@ -149,7 +184,7 @@ pub trait AbiEncode {
 
 impl AbiEncode for bool {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self);
+        buffer.push_byte(if self { 1 } else { 0 });
     }
 }
 
@@ -160,10 +195,10 @@ impl AbiEncode for b256 {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
-        buffer.push(a);
-        buffer.push(b);
-        buffer.push(c);
-        buffer.push(d);
+        buffer.push_u64(a);
+        buffer.push_u64(b);
+        buffer.push_u64(c);
+        buffer.push_u64(d);
     }
 }
 
@@ -172,16 +207,16 @@ impl AbiEncode for u256 {
         let (a, b, c, d): (u64, u64, u64, u64) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
-        buffer.push(a);
-        buffer.push(b);
-        buffer.push(c);
-        buffer.push(d);
+        buffer.push_u64(a);
+        buffer.push_u64(b);
+        buffer.push_u64(c);
+        buffer.push_u64(d);
     }
 }
 
 impl AbiEncode for u64 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self);
+        buffer.push_u64(self);
     }
 }
 
@@ -215,10 +250,10 @@ impl AbiEncode for u32 {
             output: [u8; 4]
         };
 
-        buffer.push(output[3]);
-        buffer.push(output[2]);
-        buffer.push(output[1]);
-        buffer.push(output[0]);
+        buffer.push_byte(output[3]);
+        buffer.push_byte(output[2]);
+        buffer.push_byte(output[1]);
+        buffer.push_byte(output[0]);
     }
 }
 
@@ -236,14 +271,14 @@ impl AbiEncode for u16 {
             output: [u8; 2]
         };
 
-        buffer.push(output[1]);
-        buffer.push(output[0]);
+        buffer.push_byte(output[1]);
+        buffer.push_byte(output[0]);
     }
 }
 
 impl AbiEncode for u8 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push(self);
+        buffer.push_byte(self);
     }
 }
 
@@ -253,14 +288,14 @@ impl AbiEncode for str {
     fn abi_encode(self, ref mut buffer: Buffer) {
         use ::str::*;
         let len = self.len();
-        buffer.push(len);
+        buffer.push_u64(len);
 
         let ptr = self.as_ptr();
 
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -280,7 +315,7 @@ impl AbiEncode for str[1] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -294,7 +329,7 @@ impl AbiEncode for str[2] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -308,7 +343,7 @@ impl AbiEncode for str[3] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -322,7 +357,7 @@ impl AbiEncode for str[4] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -336,7 +371,7 @@ impl AbiEncode for str[5] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -350,7 +385,7 @@ impl AbiEncode for str[6] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -364,7 +399,7 @@ impl AbiEncode for str[7] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -378,7 +413,7 @@ impl AbiEncode for str[8] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -392,7 +427,7 @@ impl AbiEncode for str[9] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -406,7 +441,7 @@ impl AbiEncode for str[10] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -420,7 +455,7 @@ impl AbiEncode for str[11] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -434,7 +469,7 @@ impl AbiEncode for str[12] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -448,7 +483,7 @@ impl AbiEncode for str[13] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -462,7 +497,7 @@ impl AbiEncode for str[14] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -476,7 +511,7 @@ impl AbiEncode for str[15] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -490,7 +525,7 @@ impl AbiEncode for str[16] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -504,7 +539,7 @@ impl AbiEncode for str[17] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -518,7 +553,7 @@ impl AbiEncode for str[18] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -532,7 +567,7 @@ impl AbiEncode for str[19] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -546,7 +581,7 @@ impl AbiEncode for str[20] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -560,7 +595,7 @@ impl AbiEncode for str[21] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -574,7 +609,7 @@ impl AbiEncode for str[22] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -588,7 +623,7 @@ impl AbiEncode for str[23] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -602,7 +637,7 @@ impl AbiEncode for str[24] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -616,7 +651,7 @@ impl AbiEncode for str[25] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -630,7 +665,7 @@ impl AbiEncode for str[26] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -644,7 +679,7 @@ impl AbiEncode for str[27] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -658,7 +693,7 @@ impl AbiEncode for str[28] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -672,7 +707,7 @@ impl AbiEncode for str[29] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -686,7 +721,7 @@ impl AbiEncode for str[30] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -700,7 +735,7 @@ impl AbiEncode for str[31] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -714,7 +749,7 @@ impl AbiEncode for str[32] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -728,7 +763,7 @@ impl AbiEncode for str[33] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -742,7 +777,7 @@ impl AbiEncode for str[34] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -756,7 +791,7 @@ impl AbiEncode for str[35] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -770,7 +805,7 @@ impl AbiEncode for str[36] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -784,7 +819,7 @@ impl AbiEncode for str[37] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -798,7 +833,7 @@ impl AbiEncode for str[38] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -812,7 +847,7 @@ impl AbiEncode for str[39] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -826,7 +861,7 @@ impl AbiEncode for str[40] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -840,7 +875,7 @@ impl AbiEncode for str[41] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -854,7 +889,7 @@ impl AbiEncode for str[42] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -868,7 +903,7 @@ impl AbiEncode for str[43] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -882,7 +917,7 @@ impl AbiEncode for str[44] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -896,7 +931,7 @@ impl AbiEncode for str[45] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -910,7 +945,7 @@ impl AbiEncode for str[46] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -924,7 +959,7 @@ impl AbiEncode for str[47] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -938,7 +973,7 @@ impl AbiEncode for str[48] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -952,7 +987,7 @@ impl AbiEncode for str[49] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -966,7 +1001,7 @@ impl AbiEncode for str[50] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -980,7 +1015,7 @@ impl AbiEncode for str[51] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -994,7 +1029,7 @@ impl AbiEncode for str[52] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1008,7 +1043,7 @@ impl AbiEncode for str[53] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1022,7 +1057,7 @@ impl AbiEncode for str[54] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1036,7 +1071,7 @@ impl AbiEncode for str[55] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1050,7 +1085,7 @@ impl AbiEncode for str[56] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1064,7 +1099,7 @@ impl AbiEncode for str[57] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1078,7 +1113,7 @@ impl AbiEncode for str[58] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1092,7 +1127,7 @@ impl AbiEncode for str[59] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1106,7 +1141,7 @@ impl AbiEncode for str[60] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1120,7 +1155,7 @@ impl AbiEncode for str[61] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1134,7 +1169,7 @@ impl AbiEncode for str[62] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1148,7 +1183,7 @@ impl AbiEncode for str[63] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1162,7 +1197,7 @@ impl AbiEncode for str[64] {
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
@@ -1174,83 +1209,791 @@ impl AbiEncode for str[64] {
 impl AbiEncode for raw_slice {
     fn abi_encode(self, ref mut buffer: Buffer) {
         let len = self.number_of_bytes();
-        buffer.push(len);
+        buffer.push_u64(len);
 
         let ptr = self.ptr();
 
         let mut i = 0;
         while i < len {
             let byte = ptr.add::<u8>(i).read::<u8>();
-            buffer.push(byte);
+            buffer.push_byte(byte);
             i += 1;
         }
     }
 }
 
-impl<T> AbiEncode for [T; 0]
-where
-    T: AbiEncode,
-{
-    fn abi_encode(self, ref mut _buffer: Buffer) {}
-}
-
+// BEGIN ARRAY_ENCODE
 impl<T> AbiEncode for [T; 1]
 where
     T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        self[0].abi_encode(buffer);
+        let mut i = 0;
+        while i < 1 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
     }
 }
-
 impl<T> AbiEncode for [T; 2]
 where
     T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        self[0].abi_encode(buffer);
-        self[1].abi_encode(buffer);
+        let mut i = 0;
+        while i < 2 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
     }
 }
-
 impl<T> AbiEncode for [T; 3]
 where
     T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        self[0].abi_encode(buffer);
-        self[1].abi_encode(buffer);
-        self[2].abi_encode(buffer);
+        let mut i = 0;
+        while i < 3 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
     }
 }
-
 impl<T> AbiEncode for [T; 4]
 where
     T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        self[0].abi_encode(buffer);
-        self[1].abi_encode(buffer);
-        self[2].abi_encode(buffer);
-        self[3].abi_encode(buffer);
+        let mut i = 0;
+        while i < 4 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
     }
 }
-
 impl<T> AbiEncode for [T; 5]
 where
     T: AbiEncode,
 {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        self[0].abi_encode(buffer);
-        self[1].abi_encode(buffer);
-        self[2].abi_encode(buffer);
-        self[3].abi_encode(buffer);
-        self[4].abi_encode(buffer);
+        let mut i = 0;
+        while i < 5 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
     }
 }
+impl<T> AbiEncode for [T; 6]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 6 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 7]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 7 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 8]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 8 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 9]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 9 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 10]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 10 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 11]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 11 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 12]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 12 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 13]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 13 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 14]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 14 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 15]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 15 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 16]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 16 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 17]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 17 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 18]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 18 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 19]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 19 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 20]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 20 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 21]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 21 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 22]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 22 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 23]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 23 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 24]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 24 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 25]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 25 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 26]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 26 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 27]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 27 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 28]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 28 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 29]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 29 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 30]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 30 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 31]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 31 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 32]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 32 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 33]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 33 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 34]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 34 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 35]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 35 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 36]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 36 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 37]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 37 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 38]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 38 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 39]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 39 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 40]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 40 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 41]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 41 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 42]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 42 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 43]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 43 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 44]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 44 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 45]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 45 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 46]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 46 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 47]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 47 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 48]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 48 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 49]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 49 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 50]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 50 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 51]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 51 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 52]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 52 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 53]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 53 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 54]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 54 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 55]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 55 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 56]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 56 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 57]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 57 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 58]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 58 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 59]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 59 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 60]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 60 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 61]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 61 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 62]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 62 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 63]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 63 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+impl<T> AbiEncode for [T; 64]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        let mut i = 0;
+        while i < 64 {
+            self[i].abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+// END ARRAY_ENCODE
 
 // Encode Tuples
-
 
 impl AbiEncode for () {
     fn abi_encode(self, ref mut _buffer: Buffer) {}
@@ -2725,55 +3468,968 @@ impl AbiDecode for str[64] {
 }
 // END STRARRAY_DECODE
 
-impl<T> AbiDecode for [T; 0]
-where
-    T: AbiDecode,
-{
-    fn abi_decode(ref mut _buffer: BufferReader) -> [T; 0] {
-        []
-    }
-}
-
+// BEGIN ARRAY_DECODE
 impl<T> AbiDecode for [T; 1]
 where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 1] {
-        [T::abi_decode(buffer)]
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 1];
+        let mut i = 1;
+        while i < 1 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
     }
 }
-
 impl<T> AbiDecode for [T; 2]
 where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 2] {
-        [T::abi_decode(buffer), T::abi_decode(buffer)]
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 2];
+        let mut i = 1;
+        while i < 2 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
     }
 }
-
 impl<T> AbiDecode for [T; 3]
 where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 3] {
-        [T::abi_decode(buffer), T::abi_decode(buffer), T::abi_decode(buffer)]
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 3];
+        let mut i = 1;
+        while i < 3 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
     }
 }
-
 impl<T> AbiDecode for [T; 4]
 where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> [T; 4] {
-        [
-            T::abi_decode(buffer),
-            T::abi_decode(buffer),
-            T::abi_decode(buffer),
-            T::abi_decode(buffer),
-        ]
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 4];
+        let mut i = 1;
+        while i < 4 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
     }
 }
+impl<T> AbiDecode for [T; 5]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 5] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 5];
+        let mut i = 1;
+        while i < 5 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 6]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 6] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 6];
+        let mut i = 1;
+        while i < 6 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 7]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 7] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 7];
+        let mut i = 1;
+        while i < 7 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 8]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 8] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 8];
+        let mut i = 1;
+        while i < 8 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 9]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 9] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 9];
+        let mut i = 1;
+        while i < 9 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 10]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 10] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 10];
+        let mut i = 1;
+        while i < 10 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 11]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 11] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 11];
+        let mut i = 1;
+        while i < 11 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 12]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 12] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 12];
+        let mut i = 1;
+        while i < 12 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 13]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 13] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 13];
+        let mut i = 1;
+        while i < 13 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 14]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 14] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 14];
+        let mut i = 1;
+        while i < 14 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 15]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 15] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 15];
+        let mut i = 1;
+        while i < 15 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 16]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 16] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 16];
+        let mut i = 1;
+        while i < 16 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 17]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 17] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 17];
+        let mut i = 1;
+        while i < 17 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 18]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 18] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 18];
+        let mut i = 1;
+        while i < 18 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 19]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 19] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 19];
+        let mut i = 1;
+        while i < 19 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 20]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 20] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 20];
+        let mut i = 1;
+        while i < 20 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 21]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 21] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 21];
+        let mut i = 1;
+        while i < 21 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 22]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 22] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 22];
+        let mut i = 1;
+        while i < 22 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 23]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 23] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 23];
+        let mut i = 1;
+        while i < 23 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 24]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 24] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 24];
+        let mut i = 1;
+        while i < 24 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 25]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 25] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 25];
+        let mut i = 1;
+        while i < 25 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 26]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 26] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 26];
+        let mut i = 1;
+        while i < 26 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 27]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 27] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 27];
+        let mut i = 1;
+        while i < 27 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 28]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 28] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 28];
+        let mut i = 1;
+        while i < 28 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 29]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 29] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 29];
+        let mut i = 1;
+        while i < 29 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 30]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 30] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 30];
+        let mut i = 1;
+        while i < 30 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 31]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 31] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 31];
+        let mut i = 1;
+        while i < 31 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 32]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 32] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 32];
+        let mut i = 1;
+        while i < 32 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 33]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 33] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 33];
+        let mut i = 1;
+        while i < 33 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 34]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 34] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 34];
+        let mut i = 1;
+        while i < 34 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 35]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 35] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 35];
+        let mut i = 1;
+        while i < 35 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 36]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 36] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 36];
+        let mut i = 1;
+        while i < 36 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 37]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 37] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 37];
+        let mut i = 1;
+        while i < 37 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 38]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 38] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 38];
+        let mut i = 1;
+        while i < 38 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 39]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 39] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 39];
+        let mut i = 1;
+        while i < 39 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 40]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 40] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 40];
+        let mut i = 1;
+        while i < 40 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 41]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 41] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 41];
+        let mut i = 1;
+        while i < 41 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 42]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 42] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 42];
+        let mut i = 1;
+        while i < 42 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 43]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 43] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 43];
+        let mut i = 1;
+        while i < 43 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 44]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 44] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 44];
+        let mut i = 1;
+        while i < 44 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 45]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 45] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 45];
+        let mut i = 1;
+        while i < 45 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 46]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 46] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 46];
+        let mut i = 1;
+        while i < 46 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 47]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 47] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 47];
+        let mut i = 1;
+        while i < 47 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 48]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 48] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 48];
+        let mut i = 1;
+        while i < 48 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 49]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 49] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 49];
+        let mut i = 1;
+        while i < 49 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 50]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 50] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 50];
+        let mut i = 1;
+        while i < 50 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 51]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 51] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 51];
+        let mut i = 1;
+        while i < 51 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 52]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 52] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 52];
+        let mut i = 1;
+        while i < 52 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 53]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 53] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 53];
+        let mut i = 1;
+        while i < 53 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 54]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 54] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 54];
+        let mut i = 1;
+        while i < 54 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 55]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 55] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 55];
+        let mut i = 1;
+        while i < 55 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 56]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 56] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 56];
+        let mut i = 1;
+        while i < 56 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 57]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 57] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 57];
+        let mut i = 1;
+        while i < 57 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 58]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 58] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 58];
+        let mut i = 1;
+        while i < 58 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 59]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 59] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 59];
+        let mut i = 1;
+        while i < 59 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 60]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 60] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 60];
+        let mut i = 1;
+        while i < 60 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 61]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 61] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 61];
+        let mut i = 1;
+        while i < 61 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 62]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 62] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 62];
+        let mut i = 1;
+        while i < 62 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 63]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 63] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 63];
+        let mut i = 1;
+        while i < 63 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+impl<T> AbiDecode for [T; 64]
+where
+    T: AbiDecode,
+{
+    fn abi_decode(ref mut buffer: BufferReader) -> [T; 64] {
+        let first: T = buffer.decode::<T>();
+        let mut array = [first; 64];
+        let mut i = 1;
+        while i < 64 {
+            array[i] = buffer.decode::<T>();
+            i += 1;
+        };
+        array
+    }
+}
+// END ARRAY_DECODE
 
 impl AbiDecode for () {
     fn abi_decode(ref mut _buffer: BufferReader) -> () {
@@ -3759,6 +5415,20 @@ where
     }
 }
 
+fn to_slice<T>(array: T) -> raw_slice {
+    let len = __size_of::<T>();
+    raw_slice::from_parts::<u8>(__addr_of(array), len)
+}
+
+fn assert_eq<T>(a: T, b: T)
+where
+    T: Eq,
+{
+    if a != b {
+        __revert(0)
+    }
+}
+
 #[test]
 fn ok_abi_encoding() {
     // bool
@@ -3839,6 +5509,13 @@ fn ok_abi_encoding() {
     assert_encoding([255u8; 3], [255u8; 3]);
     assert_encoding([255u8; 4], [255u8; 4]);
     assert_encoding([255u8; 5], [255u8; 5]);
+
+    let array = abi_decode::<[u8; 1]>(to_slice([255u8]));
+    assert_eq(array[0], 255u8);
+
+    let array = abi_decode::<[u8; 2]>(to_slice([255u8, 254u8]));
+    assert_eq(array[0], 255u8);
+    assert_eq(array[1], 254u8);
 }
 
 pub fn contract_call<T, TArgs>(
@@ -3882,6 +5559,14 @@ where
     T: AbiDecode,
 {
     let mut buffer = BufferReader::from_script_data();
+    T::abi_decode(buffer)
+}
+
+pub fn decode_predicate_data<T>() -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_predicate_data();
     T::abi_decode(buffer)
 }
 

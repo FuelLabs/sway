@@ -9,6 +9,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -29,14 +30,14 @@ pub struct TyReassignment {
 
 impl EqWithEngines for TyReassignment {}
 impl PartialEqWithEngines for TyReassignment {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         self.lhs_base_name == other.lhs_base_name
             && type_engine
                 .get(self.lhs_type)
-                .eq(&type_engine.get(other.lhs_type), engines)
-            && self.lhs_indices.eq(&other.lhs_indices, engines)
-            && self.rhs.eq(&other.rhs, engines)
+                .eq(&type_engine.get(other.lhs_type), ctx)
+            && self.lhs_indices.eq(&other.lhs_indices, ctx)
+            && self.rhs.eq(&other.rhs, ctx)
     }
 }
 
@@ -57,9 +58,11 @@ impl HashWithEngines for TyReassignment {
 }
 
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.rhs.subst(type_mapping, engines);
-        self.lhs_type.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.rhs.subst(type_mapping, engines);
+            self.lhs_type.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -118,7 +121,7 @@ pub enum ProjectionKind {
 
 impl EqWithEngines for ProjectionKind {}
 impl PartialEqWithEngines for ProjectionKind {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (
                 ProjectionKind::StructField { name: l_name },
@@ -143,7 +146,7 @@ impl PartialEqWithEngines for ProjectionKind {
                     index: r_index,
                     index_span: r_index_span,
                 },
-            ) => l_index.eq(r_index, engines) && l_index_span == r_index_span,
+            ) => l_index.eq(r_index, ctx) && l_index_span == r_index_span,
             _ => false,
         }
     }

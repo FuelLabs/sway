@@ -9,11 +9,27 @@ remove_generated_code() {
     sed -i "$((START+1)),$((END-1))d" ./src/codec.sw
 }
 
+remove_generated_code "ARRAY_ENCODE"
+START=1
+END=64
+for ((i=END;i>=START;i--)); do
+    CODE="impl<T> AbiEncode for [T; $i] where T: AbiEncode { fn abi_encode(self, ref mut buffer: Buffer) { let mut i = 0; while i < $i { self[i].abi_encode(buffer); i += 1; } } }"
+    sed -i "s/\/\/ BEGIN ARRAY_ENCODE/\/\/ BEGIN ARRAY_ENCODE\n$CODE/g" ./src/codec.sw
+done
+
+remove_generated_code "ARRAY_DECODE"
+START=1
+END=64
+for ((i=END;i>=START;i--)); do
+    CODE="impl<T> AbiDecode for [T; $i] where T: AbiDecode { fn abi_decode(ref mut buffer: BufferReader) -> [T; $i] { let first: T = buffer.decode::<T>(); let mut array = [first; $i]; let mut i = 1; while i < $i { array[i] = buffer.decode::<T>(); i += 1; }; array } }"
+    sed -i "s/\/\/ BEGIN ARRAY_DECODE/\/\/ BEGIN ARRAY_DECODE\n$CODE/g" ./src/codec.sw
+done
+
 remove_generated_code "STRARRAY_ENCODE"
 START=1
 END=64
 for ((i=END;i>=START;i--)); do
-    CODE="impl AbiEncode for str[$i] { fn abi_encode(self, ref mut buffer: Buffer) { use ::str::*; let s = from_str_array(self); let len = s.len(); let ptr = s.as_ptr(); let mut i = 0; while i < len { let byte = ptr.add::<u8>(i).read::<u8>(); buffer.push(byte); i += 1; } } }"
+    CODE="impl AbiEncode for str[$i] { fn abi_encode(self, ref mut buffer: Buffer) { use ::str::*; let s = from_str_array(self); let len = s.len(); let ptr = s.as_ptr(); let mut i = 0; while i < len { let byte = ptr.add::<u8>(i).read::<u8>(); buffer.push_byte(byte); i += 1; } } }"
     sed -i "s/\/\/ BEGIN STRARRAY_ENCODE/\/\/ BEGIN STRARRAY_ENCODE\n$CODE/g" ./src/codec.sw
 done
 

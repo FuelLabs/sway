@@ -40,9 +40,7 @@ impl TypeEngine {
         ty: TypeInfo,
         source_id: Option<&SourceId>,
     ) -> TypeId {
-        let source_id = source_id
-            .map(Clone::clone)
-            .or_else(|| info_to_source_id(&ty));
+        let source_id = source_id.copied().or_else(|| info_to_source_id(&ty));
         let tsi = TypeSourceInfo {
             type_info: ty.clone().into(),
             source_id,
@@ -52,9 +50,9 @@ impl TypeEngine {
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, engines)(&tsi);
 
-        let raw_entry = id_map
-            .raw_entry_mut()
-            .from_hash(ty_hash, |x| x.eq(&tsi, engines));
+        let raw_entry = id_map.raw_entry_mut().from_hash(ty_hash, |x| {
+            x.eq(&tsi, &PartialEqWithEnginesContext::new(engines))
+        });
         match raw_entry {
             RawEntryMut::Occupied(o) => return *o.get(),
             RawEntryMut::Vacant(_) if ty.can_change(engines.de()) => {
@@ -72,8 +70,6 @@ impl TypeEngine {
     pub fn clear_module(&mut self, module_id: &ModuleId) {
         self.slab.retain(|_, tsi| match tsi.source_id {
             Some(source_id) => &source_id.module_id() != module_id,
-            // WARNING: Setting to true disables garbage collection for these cases.
-            // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
             None => true,
         });
         self.id_map
@@ -81,8 +77,6 @@ impl TypeEngine {
             .unwrap()
             .retain(|tsi, _| match tsi.source_id {
                 Some(source_id) => &source_id.module_id() != module_id,
-                // WARNING: Setting to true disables garbage collection for these cases.
-                // This should be set back to false once this issue is solved: https://github.com/FuelLabs/sway/issues/5698
                 None => true,
             });
     }

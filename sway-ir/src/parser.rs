@@ -78,7 +78,7 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = is_public:is_public() _ is_entry:is_entry() _ "fn" _
+                = is_public:is_public() _ is_entry:is_entry() _  is_fallback:is_fallback() _ "fn" _
                         name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
@@ -94,7 +94,8 @@ mod ir_builder {
                         locals,
                         blocks,
                         selector,
-                        is_entry
+                        is_entry,
+                        is_fallback,
                     }
                 }
 
@@ -104,6 +105,10 @@ mod ir_builder {
 
             rule is_entry() -> bool
                 = "entry" _ { true }
+                / "" _ { false }
+
+            rule is_fallback() -> bool
+                = "fallback" _ { true }
                 / "" _ { false }
 
             rule selector_id() -> [u8; 4]
@@ -517,7 +522,7 @@ mod ir_builder {
                     (ty, cv)
                 }
                 / ty:ast_ty() "undef" _ {
-                    (ty.clone(), IrAstConst { value: IrAstConstValue::Undef(ty), meta_idx: None })
+                    (ty.clone(), IrAstConst { value: IrAstConstValue::Undef, meta_idx: None })
                 }
 
             rule ast_ty() -> IrAstTy
@@ -680,6 +685,7 @@ mod ir_builder {
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
+        is_fallback: bool,
     }
 
     #[derive(Debug)]
@@ -758,7 +764,7 @@ mod ir_builder {
 
     #[derive(Debug)]
     enum IrAstConstValue {
-        Undef(IrAstTy),
+        Undef,
         Unit,
         Bool(bool),
         Hex256([u8; 32]),
@@ -785,7 +791,7 @@ mod ir_builder {
     impl IrAstConstValue {
         fn as_constant_value(&self, context: &mut Context, val_ty: IrAstTy) -> ConstantValue {
             match self {
-                IrAstConstValue::Undef(_) => ConstantValue::Undef,
+                IrAstConstValue::Undef => ConstantValue::Undef,
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
@@ -827,7 +833,7 @@ mod ir_builder {
 
         fn as_value(&self, context: &mut Context, val_ty: IrAstTy) -> Value {
             match self {
-                IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
+                IrAstConstValue::Undef => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
@@ -982,6 +988,7 @@ mod ir_builder {
                 fn_decl.selector,
                 fn_decl.is_public,
                 fn_decl.is_entry,
+                fn_decl.is_fallback,
                 convert_md_idx(&fn_decl.metadata),
             );
 

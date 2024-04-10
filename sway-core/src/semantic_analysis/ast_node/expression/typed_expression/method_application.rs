@@ -267,7 +267,7 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl = ctx.namespace().resolve_symbol(
+                let unknown_decl = ctx.namespace().resolve_symbol_typed(
                     &Handler::default(),
                     ctx.engines,
                     name,
@@ -635,9 +635,9 @@ pub(crate) fn resolve_method_name(
             // find the module that the symbol is in
             let type_info_prefix = ctx
                 .namespace()
-                .find_module_path(&call_path_binding.inner.prefixes);
+                .prepend_module_path(&call_path_binding.inner.prefixes);
             ctx.namespace()
-                .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
+                .lookup_submodule_from_absolute_path(handler, &type_info_prefix)?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -656,7 +656,7 @@ pub(crate) fn resolve_method_name(
         MethodName::FromTrait { call_path } => {
             // find the module that the symbol is in
             let module_path = if !call_path.is_absolute {
-                ctx.namespace().find_module_path(&call_path.prefixes)
+                ctx.namespace().prepend_module_path(&call_path.prefixes)
             } else {
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), Some(root_name)) = (
@@ -692,7 +692,7 @@ pub(crate) fn resolve_method_name(
         }
         MethodName::FromModule { method_name } => {
             // find the module that the symbol is in
-            let module_path = ctx.namespace().find_module_path(vec![]);
+            let module_path = ctx.namespace().prepend_module_path(vec![]);
 
             // find the type of the first argument
             let type_id = arguments_types
@@ -767,7 +767,6 @@ pub(crate) fn monomorphize_method_application(
             type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
         )?;
         let mut method = (*decl_engine.get_function(fn_ref)).clone();
-        method.is_trait_method_dummy = false;
 
         // Unify method type parameters with implementing type type parameters.
         if let Some(implementing_for_typeid) = method.implementing_for_typeid {

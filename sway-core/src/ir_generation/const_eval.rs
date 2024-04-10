@@ -31,7 +31,7 @@ use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
 use sway_utils::mapped_stack::MappedStack;
 
 enum ConstEvalError {
-    CompileError(CompileError),
+    CompileError,
     CannotBeEvaluatedToConst {
         // This is not used at the moment because we do not give detailed description of why a
         // const eval failed.
@@ -130,9 +130,9 @@ pub(crate) fn compile_const_decl(
                 None => None,
             };
             let const_decl = match decl {
-                Ok(decl) => match decl {
+                Ok(decl) => match decl.expect_typed() {
                     ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                        Some((*env.engines.de().get_constant(decl_id)).clone())
+                        Some((*env.engines.de().get_constant(&decl_id)).clone())
                     }
                     _otherwise => const_decl.cloned(),
                 },
@@ -640,13 +640,7 @@ fn const_eval_typed_expr(
                     if index < count {
                         Some(items[index as usize].clone())
                     } else {
-                        return Err(ConstEvalError::CompileError(
-                            CompileError::ArrayOutOfBounds {
-                                index,
-                                count,
-                                span: expr.span.clone(),
-                            },
-                        ));
+                        return Err(ConstEvalError::CompileError);
                     }
                 }
                 _ => {
@@ -657,10 +651,7 @@ fn const_eval_typed_expr(
             }
         }
         ty::TyExpressionVariant::Ref(_) | ty::TyExpressionVariant::Deref(_) => {
-            return Err(ConstEvalError::CompileError(CompileError::Unimplemented(
-                "Constant references are currently not supported.",
-                expr.span.clone(),
-            )));
+            return Err(ConstEvalError::CompileError);
         }
         ty::TyExpressionVariant::Reassignment(_)
         | ty::TyExpressionVariant::FunctionParameter
@@ -993,7 +984,7 @@ fn const_eval_intrinsic(
                 &targ.type_id,
                 &targ.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
@@ -1009,7 +1000,7 @@ fn const_eval_intrinsic(
                 &type_id,
                 &val.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(ir_type.size(lookup.context).in_bytes()),
@@ -1024,7 +1015,7 @@ fn const_eval_intrinsic(
                 &targ.type_id,
                 &targ.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             Ok(Some(Constant {
                 ty: Type::get_uint64(lookup.context),
                 value: ConstantValue::Uint(
@@ -1041,17 +1032,13 @@ fn const_eval_intrinsic(
                 &targ.type_id,
                 &targ.span,
             )
-            .map_err(ConstEvalError::CompileError)?;
+            .map_err(|_| ConstEvalError::CompileError)?;
             match ir_type.get_content(lookup.context) {
                 TypeContent::StringSlice | TypeContent::StringArray(_) => Ok(Some(Constant {
                     ty: Type::get_unit(lookup.context),
                     value: ConstantValue::Unit,
                 })),
-                _ => Err(ConstEvalError::CompileError(
-                    CompileError::NonStrGenericType {
-                        span: targ.span.clone(),
-                    },
-                )),
+                _ => Err(ConstEvalError::CompileError),
             }
         }
         Intrinsic::ToStrArray => {
@@ -1183,7 +1170,12 @@ mod tests {
     fn assert_is_constant(is_constant: bool, prefix: &str, expr: &str) {
         let engines = Engines::default();
         let handler = Handler::default();
-        let mut context = Context::new(engines.se(), sway_ir::ExperimentalFlags::default());
+        let mut context = Context::new(
+            engines.se(),
+            sway_ir::ExperimentalFlags {
+                new_encoding: false,
+            },
+        );
         let mut md_mgr = MetadataManager::default();
         let core_lib = namespace::Root::from(namespace::Module {
             name: Some(sway_types::Ident::new_no_span(
