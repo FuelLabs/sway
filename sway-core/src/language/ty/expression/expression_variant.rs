@@ -11,6 +11,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::{ty::*, *},
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::{
@@ -628,89 +629,78 @@ impl HashWithEngines for TyExpressionVariant {
 }
 
 impl SubstTypes for TyExpressionVariant {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         use TyExpressionVariant::*;
         match self {
-            Literal(..) => (),
+            Literal(..) => HasChanges::No,
             FunctionApplication {
                 arguments,
                 ref mut fn_ref,
                 ref mut call_path_typeid,
                 ..
-            } => {
-                arguments
-                    .iter_mut()
-                    .for_each(|(_ident, expr)| expr.subst(type_mapping, engines));
-                let new_decl_ref = fn_ref
+            } => has_changes! {
+                arguments.subst(type_mapping, engines);
+                if let Some(new_decl_ref) = fn_ref
                     .clone()
-                    .subst_types_and_insert_new_with_parent(type_mapping, engines);
-                fn_ref.replace_id(*new_decl_ref.id());
-                if let Some(call_path_typeid) = call_path_typeid {
-                    call_path_typeid.subst(type_mapping, engines);
-                }
-            }
-            LazyOperator { lhs, rhs, .. } => {
-                (*lhs).subst(type_mapping, engines);
-                (*rhs).subst(type_mapping, engines);
-            }
-            ConstantExpression { const_decl, .. } => {
-                const_decl.subst(type_mapping, engines);
-            }
-            VariableExpression { .. } => (),
-            Tuple { fields } => fields
-                .iter_mut()
-                .for_each(|x| x.subst(type_mapping, engines)),
+                    .subst_types_and_insert_new_with_parent(type_mapping, engines)
+                {
+                    fn_ref.replace_id(*new_decl_ref.id());
+                    HasChanges::Yes
+                } else {
+                    HasChanges::No
+                };
+                call_path_typeid.subst(type_mapping, engines);
+            },
+            LazyOperator { lhs, rhs, .. } => has_changes! {
+                lhs.subst(type_mapping, engines);
+                rhs.subst(type_mapping, engines);
+            },
+            ConstantExpression { const_decl, .. } => const_decl.subst(type_mapping, engines),
+            VariableExpression { .. } => HasChanges::No,
+            Tuple { fields } => fields.subst(type_mapping, engines),
             Array {
                 ref mut elem_type,
                 contents,
-            } => {
+            } => has_changes! {
                 elem_type.subst(type_mapping, engines);
-                contents
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines))
-            }
-            ArrayIndex { prefix, index } => {
-                (*prefix).subst(type_mapping, engines);
-                (*index).subst(type_mapping, engines);
-            }
+                contents.subst(type_mapping, engines);
+            },
+            ArrayIndex { prefix, index } => has_changes! {
+                prefix.subst(type_mapping, engines);
+                index.subst(type_mapping, engines);
+            },
             StructExpression {
                 struct_ref,
                 fields,
                 instantiation_span: _,
                 call_path_binding: _,
-            } => {
-                let new_struct_ref = struct_ref
+            } => has_changes! {
+                if let Some(new_struct_ref) = struct_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
-                struct_ref.replace_id(*new_struct_ref.id());
-                fields
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines));
-            }
-            CodeBlock(block) => {
-                block.subst(type_mapping, engines);
-            }
-            FunctionParameter => (),
+                    .subst_types_and_insert_new(type_mapping, engines) {
+                    struct_ref.replace_id(*new_struct_ref.id());
+                    HasChanges::Yes
+                } else {
+                    HasChanges::No
+                };
+                fields.subst(type_mapping, engines);
+            },
+            CodeBlock(block) => block.subst(type_mapping, engines),
+            FunctionParameter => HasChanges::No,
             MatchExp { desugared, .. } => desugared.subst(type_mapping, engines),
             IfExp {
                 condition,
                 then,
                 r#else,
-            } => {
+            } => has_changes! {
                 condition.subst(type_mapping, engines);
                 then.subst(type_mapping, engines);
-                if let Some(ref mut r#else) = r#else {
-                    r#else.subst(type_mapping, engines);
-                }
-            }
+                r#else.subst(type_mapping, engines);
+            },
             AsmExpression {
                 registers, //: Vec<TyAsmRegisterDeclaration>,
                 ..
-            } => {
-                registers
-                    .iter_mut()
-                    .for_each(|x| x.subst(type_mapping, engines));
-            }
+            } => registers.subst(type_mapping, engines),
             // like a variable expression but it has multiple parts,
             // like looking up a field in a struct
             StructFieldAccess {
@@ -718,60 +708,57 @@ impl SubstTypes for TyExpressionVariant {
                 field_to_access,
                 ref mut resolved_type_of_parent,
                 ..
-            } => {
+            } => has_changes! {
                 resolved_type_of_parent.subst(type_mapping, engines);
                 field_to_access.subst(type_mapping, engines);
                 prefix.subst(type_mapping, engines);
-            }
+            },
             TupleElemAccess {
                 prefix,
                 ref mut resolved_type_of_parent,
                 ..
-            } => {
+            } => has_changes! {
                 resolved_type_of_parent.subst(type_mapping, engines);
                 prefix.subst(type_mapping, engines);
-            }
+            },
             EnumInstantiation {
                 enum_ref, contents, ..
-            } => {
-                let new_enum_ref = enum_ref
+            } => has_changes! {
+                if let Some(new_enum_ref) = enum_ref
                     .clone()
-                    .subst_types_and_insert_new(type_mapping, engines);
-                enum_ref.replace_id(*new_enum_ref.id());
-                if let Some(ref mut contents) = contents {
-                    contents.subst(type_mapping, engines)
+                    .subst_types_and_insert_new(type_mapping, engines)
+                {
+                    enum_ref.replace_id(*new_enum_ref.id());
+                    HasChanges::Yes
+                } else {
+                    HasChanges::No
                 };
-            }
+                contents.subst(type_mapping, engines);
+            },
             AbiCast { address, .. } => address.subst(type_mapping, engines),
             // storage is never generic and cannot be monomorphized
-            StorageAccess { .. } => (),
-            IntrinsicFunction(kind) => {
-                kind.subst(type_mapping, engines);
-            }
-            EnumTag { exp } => {
-                exp.subst(type_mapping, engines);
-            }
+            StorageAccess { .. } => HasChanges::No,
+            IntrinsicFunction(kind) => kind.subst(type_mapping, engines),
+            EnumTag { exp } => exp.subst(type_mapping, engines),
             UnsafeDowncast {
                 exp,
                 variant,
                 call_path_decl: _,
-            } => {
+            } => has_changes! {
                 exp.subst(type_mapping, engines);
                 variant.subst(type_mapping, engines);
-            }
-            AbiName(_) => (),
+            },
+            AbiName(_) => HasChanges::No,
             WhileLoop {
                 ref mut condition,
                 ref mut body,
             } => {
                 condition.subst(type_mapping, engines);
-                body.subst(type_mapping, engines);
+                body.subst(type_mapping, engines)
             }
-            ForLoop { ref mut desugared } => {
-                desugared.subst(type_mapping, engines);
-            }
-            Break => (),
-            Continue => (),
+            ForLoop { ref mut desugared } => desugared.subst(type_mapping, engines),
+            Break => HasChanges::No,
+            Continue => HasChanges::No,
             Reassignment(reassignment) => reassignment.subst(type_mapping, engines),
             ImplicitReturn(expr) | Return(expr) => expr.subst(type_mapping, engines),
             Ref(exp) | Deref(exp) => exp.subst(type_mapping, engines),

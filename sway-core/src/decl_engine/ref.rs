@@ -112,11 +112,14 @@ where
         &self,
         type_mapping: &TypeSubstMap,
         engines: &Engines,
-    ) -> Self {
+    ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.insert(decl)
+        if decl.subst(type_mapping, engines).has_changes() {
+            Some(decl_engine.insert(decl))
+        } else {
+            None
+        }
     }
 }
 
@@ -145,13 +148,18 @@ where
         &self,
         type_mapping: &TypeSubstMap,
         engines: &Engines,
-    ) -> Self {
+    ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
+        if decl.subst(type_mapping, engines).has_changes() {
+            Some(
+                decl_engine
+                    .insert(decl)
+                    .with_parent(decl_engine, self.id.into()),
+            )
+        } else {
+            None
+        }
     }
 }
 
@@ -291,11 +299,15 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(self.id, decl);
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(self.id, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 

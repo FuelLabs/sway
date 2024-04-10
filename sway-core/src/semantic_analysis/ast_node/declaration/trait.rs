@@ -359,31 +359,36 @@ impl TyTraitDecl {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = (*decl_engine.get_function(&decl_ref)).clone();
-                    method.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (method.name.clone(), type_id),
-                        TyTraitItem::Fn(
-                            decl_engine
-                                .insert(method)
-                                .with_parent(decl_engine, (*decl_ref.id()).into()),
-                        ),
-                    );
+                    let name = method.name.clone();
+                    let r = if method.subst(&type_mapping, engines).has_changes() {
+                        let new_ref = decl_engine
+                            .insert(method)
+                            .with_parent(decl_engine, (*decl_ref.id()).into());
+                        new_ref
+                    } else {
+                        decl_ref.clone()
+                    };
+                    impld_item_refs.insert((name, type_id), TyTraitItem::Fn(r));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = (*decl_engine.get_constant(&decl_ref)).clone();
-                    const_decl.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (const_decl.call_path.suffix.clone(), type_id),
-                        TyTraitItem::Constant(decl_engine.insert(const_decl)),
-                    );
+                    let name = const_decl.call_path.suffix.clone();
+                    let r = if const_decl.subst(&type_mapping, engines).has_changes() {
+                        decl_engine.insert(const_decl)
+                    } else {
+                        decl_ref.clone()
+                    };
+                    impld_item_refs.insert((name, type_id), TyTraitItem::Constant(r));
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
-                    let mut type_decl = (*decl_engine.get_type(&decl_ref)).clone();
-                    type_decl.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (type_decl.name.clone(), type_id),
-                        TyTraitItem::Type(decl_engine.insert(type_decl)),
-                    );
+                    let mut t = (*decl_engine.get_type(&decl_ref)).clone();
+                    let name = t.name.clone();
+                    let r = if t.subst(&type_mapping, engines).has_changes() {
+                        decl_engine.insert(t)
+                    } else {
+                        decl_ref.clone()
+                    };
+                    impld_item_refs.insert((name, type_id), TyTraitItem::Type(r));
                 }
             }
         }

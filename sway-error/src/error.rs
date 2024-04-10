@@ -1037,7 +1037,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
