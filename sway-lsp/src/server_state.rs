@@ -86,7 +86,7 @@ pub struct CompilationContext {
     pub version: Option<i32>,
     pub optimized_build: bool,
     pub gc_options: GarbageCollectionConfig,
-    pub hashed_workspace: BTreeMap<PathBuf, u64>,
+    pub hashed_workspace: BTreeMap<PathBuf, (u64, Option<u64>)>,
 }
 
 impl ServerState {

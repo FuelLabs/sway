@@ -217,7 +217,7 @@ pub struct LspConfig {
     //
     // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
     pub optimized_build: bool,
-    pub hashed_workspace: BTreeMap<PathBuf, u64>,
+    pub hashed_workspace: BTreeMap<PathBuf, (u64, Option<u64>)>,
 }
 
 #[cfg(test)]

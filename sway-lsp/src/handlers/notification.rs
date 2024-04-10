@@ -51,7 +51,7 @@ fn send_new_compilation_request(
     uri: &Url,
     version: Option<i32>,
     optimized_build: bool,
-    hashed_workspace: BTreeMap<PathBuf, u64>,
+    hashed_workspace: BTreeMap<PathBuf, (u64, Option<u64>)>,
 ) {
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
@@ -83,6 +83,8 @@ pub async fn handle_did_change_text_document(
     state: &ServerState,
     params: DidChangeTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
+    eprintln!("did_change version: {:?}", params.text_document);
+
     if let Err(err) = document::mark_file_as_dirty(&params.text_document.uri) {
         tracing::warn!("Failed to mark file as dirty: {}", err);
     }
@@ -96,7 +98,7 @@ pub async fn handle_did_change_text_document(
         .await?;
 
     
-    let hashed_workspace = hash_workspace(&session);
+    let hashed_workspace = hash_workspace(&session, &uri, Some(params.text_document.version as u64));
     eprintln!("hashed_workspace: {:#?}", hashed_workspace);
 
     send_new_compilation_request(
@@ -110,16 +112,21 @@ pub async fn handle_did_change_text_document(
     Ok(())
 }
 
-fn hash_workspace(session: &Session) -> BTreeMap<PathBuf, u64> {
-    let mut hashed_workspace: BTreeMap<PathBuf, u64> = BTreeMap::new();
-    let mut hasher = std::hash::DefaultHasher::new();
+fn hash_workspace(session: &Session, uri: &Url, version: Option<u64>) -> BTreeMap<PathBuf, (u64, Option<u64>)> {
+    let mut hashed_workspace = BTreeMap::new();
 
     for item in session.documents.iter() {
+        let mut hasher = std::hash::DefaultHasher::new();
         let (k,v) = item.pair();
         let src = v.get_text();
         src.hash(&mut hasher);
         let hash = hasher.finish();
-        hashed_workspace.insert(PathBuf::from(k), hash);
+        let path = PathBuf::from(k);
+        if path == uri.to_file_path().unwrap() {
+            hashed_workspace.insert(path, (hash, version));
+        } else {
+            hashed_workspace.insert(path, (hash, None));
+        }
     }
     hashed_workspace
 }
@@ -134,7 +141,7 @@ pub(crate) async fn handle_did_save_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
-    let hashed_workspace = hash_workspace(&session);
+    let hashed_workspace = hash_workspace(&session, &uri, None);
     send_new_compilation_request(state, session.clone(), &uri, None, false, hashed_workspace);
     state.wait_for_parsing().await;
     state

@@ -110,6 +110,7 @@ pub fn parse(
             config.build_target,
             config.include_tests,
             config.experimental,
+            config.lsp_mode.clone(),
         )
         .map(
             |ParsedModuleTree {
@@ -254,6 +255,7 @@ fn parse_submodules(
     build_target: BuildTarget,
     include_tests: bool,
     experimental: ExperimentalFlags,
+    lsp_mode: Option<LspConfig>,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
@@ -287,6 +289,7 @@ fn parse_submodules(
             build_target,
             include_tests,
             experimental,
+            lsp_mode.clone(),
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
@@ -340,6 +343,7 @@ fn parse_module_tree(
     build_target: BuildTarget,
     include_tests: bool,
     experimental: ExperimentalFlags,
+    lsp_mode: Option<LspConfig>,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
@@ -359,6 +363,7 @@ fn parse_module_tree(
         build_target,
         include_tests,
         experimental,
+        lsp_mode.clone(),
     );
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
@@ -398,6 +403,12 @@ fn parse_module_tree(
         hash,
     };
 
+    let version = lsp_mode.and_then(|lsp| {
+        lsp.hashed_workspace
+            .get(path.as_ref())
+            .map(|hash| hash.1)
+    }).unwrap_or(None);
+
     // Let's prime the cache with the module dependency and hash data.
     let modified_time = std::fs::metadata(path.as_path())
         .ok()
@@ -414,6 +425,7 @@ fn parse_module_tree(
         hash,
         dependencies,
         include_tests,
+        version,
     };
     eprintln!("⏰ Inserting cache for {:#?}", cache_entry);
     query_engine.insert_parse_module_cache_entry(cache_entry);
@@ -463,20 +475,38 @@ fn is_parse_module_cache_up_to_date(
             if path.components().any(|c| c.as_os_str() == "paths") {
                 eprintln!("Check if cache is up to date for {:?}", path.as_ref());
             }
+
+            let cache_up_to_date = if let Some((_, version)) = hashed_workspace.get(path.as_ref()) {
+                // check if version is greater than entry.version
+                if version.map_or(false, |v| v > entry.version.unwrap_or(0)) {
+                    eprintln!("🚧 Cache, LSP version {:?} = {:?} | entry.version = {:?}", path.as_ref(), version, entry.version);
+                    false
+                } else {
+                    true
+                }   
+            } else { 
+                entry.modified_time == modified_time || {
+                    let src = std::fs::read_to_string(path.as_path()).unwrap();
+                    let mut hasher = DefaultHasher::new();
+                    src.hash(&mut hasher);
+                    let hash = hasher.finish();
+                    hash == entry.hash
+                }
+            };
             
-            let cache_up_to_date = entry.modified_time == modified_time || hashed_workspace.get(path.as_ref()).map(|hash| {
-                let hash_res = *hash == entry.hash;
-                eprintln!("⌚ Cache, using LSP hash for {:?} = {:?} | entry.hash = {:?}", path.as_ref(), hash, entry.hash);
-                eprintln!("Is time the same? {} | hash res? {}", entry.modified_time == modified_time, hash_res);
-                hash_res
-            }).unwrap_or_else(|| {
-                eprintln!("⌚ Cache, using read hash for {:?} = {:?} | entry.hash = {:?}", path.as_ref(), entry.hash, modified_time);
-                let src = std::fs::read_to_string(path.as_path()).unwrap();
-                let mut hasher = DefaultHasher::new(); 
-                src.hash(&mut hasher);
-                let hash = hasher.finish();
-                hash == entry.hash
-            });
+            // let cache_up_to_date = entry.modified_time == modified_time || hashed_workspace.get(path.as_ref()).map(|hash| {
+            //     let hash_res = hash.0 == entry.hash;
+            //     eprintln!("⌚ Cache, using LSP hash for {:?} = {:?} | entry.hash = {:?}", path.as_ref(), hash, entry.hash);
+            //     eprintln!("Is time the same? {} | hash res? {} | version {:?}", entry.modified_time == modified_time, hash_res, hash.1);
+            //     hash_res
+            // }).unwrap_or_else(|| {
+            //     eprintln!("⌚ Cache, using read hash for {:?} = {:?} | entry.hash = {:?}", path.as_ref(), entry.hash, modified_time);
+            //     let src = std::fs::read_to_string(path.as_path()).unwrap();
+            //     let mut hasher = DefaultHasher::new(); 
+            //     src.hash(&mut hasher);
+            //     let hash = hasher.finish();
+            //     hash == entry.hash
+            // });
             
             if path.components().any(|c| c.as_os_str() == "paths") {
                 // eprintln!("Is cache up to date for {:?} = {:?} | entry.modified_time = {:?} & modified_time = {:?}", path.as_ref(), cache_up_to_date, entry.modified_time, modified_time);

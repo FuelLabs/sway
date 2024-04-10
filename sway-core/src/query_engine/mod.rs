@@ -32,6 +32,7 @@ pub struct ModuleCacheEntry {
     pub hash: u64,
     pub dependencies: Vec<ModulePath>,
     pub include_tests: bool,
+    pub version: Option<u64>,
 }
 
 pub type ModuleCacheMap = HashMap<ModuleCacheKey, ModuleCacheEntry>;
