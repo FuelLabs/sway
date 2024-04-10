@@ -48,6 +48,7 @@ pub type ProgramsCacheMap = HashMap<ModulePath, ProgramsCacheEntry>;
 
 #[derive(Debug, Default)]
 pub struct QueryEngine {
+    // We want the below types wrapped in Arcs to optimize cloning from LSP.
     parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
 }
