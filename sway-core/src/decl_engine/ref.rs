@@ -163,36 +163,6 @@ where
     }
 }
 
-impl<T> DeclRef<DeclId<T>>
-where
-    AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone,
-{
-    /// Returns Ok(None), if nothing was replaced.
-    /// Ok(true), if something was replaced.
-    /// and errors when appropriated.
-    pub(crate) fn replace_decls_and_insert_new_with_parent(
-        &self,
-        decl_mapping: &DeclMapping,
-        handler: &Handler,
-        ctx: &mut TypeCheckContext,
-    ) -> Result<Option<Self>, ErrorEmitted> {
-        let decl_engine = ctx.engines().de();
-
-        let original = decl_engine.get(&self.id);
-
-        let mut new = (*original).clone();
-        let changed = new.replace_decls(decl_mapping, handler, ctx)?;
-
-        Ok(changed.then(|| {
-            decl_engine
-                .insert(new)
-                .with_parent(decl_engine, self.id.into())
-        }))
-    }
-}
-
 impl<T> EqWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,

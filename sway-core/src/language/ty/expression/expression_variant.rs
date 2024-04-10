@@ -784,17 +784,7 @@ impl ReplaceDecls for TyExpressionVariant {
                 } => {
                     let mut has_changes = false;
 
-                    // TODO do we need this call?
-                    // The next call seems to make this one redundant
                     has_changes |= fn_ref.replace_decls(decl_mapping, handler, ctx)?;
-
-                    if let Some(new_decl_ref) = fn_ref
-                        .clone()
-                        .replace_decls_and_insert_new_with_parent(decl_mapping, handler, ctx)?
-                    {
-                        fn_ref.replace_id(*new_decl_ref.id());
-                        has_changes = true;
-                    };
 
                     for (_, arg) in arguments.iter_mut() {
                         if let Ok(r) = arg.replace_decls(decl_mapping, handler, ctx) {
@@ -830,7 +820,7 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     // Handle the trait constraints. This includes checking to see if the trait
                     // constraints are satisfied and replacing old decl ids based on the
-                    let inner_decl_mapping =
+                    let mut inner_decl_mapping =
                         TypeParameter::gather_decl_mapping_from_trait_constraints(
                             handler,
                             ctx.by_ref(),
@@ -838,6 +828,8 @@ impl ReplaceDecls for TyExpressionVariant {
                             method.name.as_str(),
                             &method.name.span(),
                         )?;
+
+                    inner_decl_mapping.extend(decl_mapping);
 
                     if method.replace_decls(&inner_decl_mapping, handler, ctx)? {
                         decl_engine.replace(*fn_ref.id(), method);
