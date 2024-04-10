@@ -1526,6 +1526,243 @@ impl TypeInfo {
     pub fn is_unknown_generic(&self) -> bool {
         matches!(self, TypeInfo::UnknownGeneric { .. })
     }
+
+    pub fn new_tuple(engines: &Engines, items: impl IntoIterator<Item = TypeInfo>) -> TypeInfo {
+        let te = engines.te();
+        let items = items
+            .into_iter()
+            .map(|x| te.insert(engines, x, None))
+            .map(|type_id| TypeArgument {
+                initial_type_id: type_id,
+                type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            })
+            .collect();
+        TypeInfo::Tuple(items)
+    }
+
+    /// Calculate the needed buffer for "abi encoding" the self type. If "inside" this
+    /// type there is a custom AbiEncode impl, we cannot calculate the buffer buffer.
+    pub fn abi_encode_size_hint(&self, engines: &Engines) -> AbiEncodeSizeHint {
+        // TODO we need to check if this type has a custom AbiEncode impl or not.
+        // if has_custom_abi_encode_impl {
+        //     AbiEncodeSizeHint::CustomImpl
+        // }
+
+        match self {
+            TypeInfo::Boolean => AbiEncodeSizeHint::Exact(1),
+            TypeInfo::UnsignedInteger(IntegerBits::Eight) => AbiEncodeSizeHint::Exact(1),
+            TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => AbiEncodeSizeHint::Exact(2),
+            TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => AbiEncodeSizeHint::Exact(4),
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => AbiEncodeSizeHint::Exact(8),
+            // TODO: This is problematic
+            TypeInfo::Numeric => AbiEncodeSizeHint::Exact(8),
+            TypeInfo::UnsignedInteger(IntegerBits::V256) => AbiEncodeSizeHint::Exact(32),
+            TypeInfo::B256 => AbiEncodeSizeHint::Exact(32),
+
+            TypeInfo::Slice(_) => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::RawUntypedSlice => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::StringSlice => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::RawUntypedPtr => AbiEncodeSizeHint::PotentiallyInfinite,
+            TypeInfo::Ptr(_) => AbiEncodeSizeHint::PotentiallyInfinite,
+
+            TypeInfo::Alias { ty, .. } => {
+                let elem_type = engines.te().get(ty.type_id);
+                elem_type.abi_encode_size_hint(engines)
+            }
+
+            TypeInfo::Array(elem, len) => {
+                let elem_type = engines.te().get(elem.type_id);
+                let size_hint = elem_type.abi_encode_size_hint(engines);
+                size_hint * len.val()
+            }
+
+            TypeInfo::StringArray(len) => AbiEncodeSizeHint::Exact(len.val()),
+
+            TypeInfo::Tuple(items) => {
+                items
+                    .iter()
+                    .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, t| {
+                        let field_type = engines.te().get(t.type_id);
+                        let field_size_hint = field_type.abi_encode_size_hint(engines);
+                        old_size_hint + field_size_hint
+                    })
+            }
+
+            TypeInfo::Struct(s) => {
+                let decl = engines.de().get(s.id());
+                decl.fields
+                    .iter()
+                    .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, f| {
+                        let field_type = engines.te().get(f.type_argument.type_id);
+                        let field_size_hint = field_type.abi_encode_size_hint(engines);
+                        old_size_hint + field_size_hint
+                    })
+            }
+            TypeInfo::Enum(e) => {
+                let decl = engines.de().get(e.id());
+
+                let min = decl
+                    .variants
+                    .iter()
+                    .fold(None, |old_size_hint: Option<AbiEncodeSizeHint>, v| {
+                        let variant_type = engines.te().get(v.type_argument.type_id);
+                        let current_size_hint = variant_type.abi_encode_size_hint(engines);
+                        match old_size_hint {
+                            Some(old_size_hint) => Some(old_size_hint.min(current_size_hint)),
+                            None => Some(current_size_hint),
+                        }
+                    })
+                    .unwrap_or(AbiEncodeSizeHint::Exact(0));
+
+                let max =
+                    decl.variants
+                        .iter()
+                        .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, v| {
+                            let variant_type = engines.te().get(v.type_argument.type_id);
+                            let current_size_hint = variant_type.abi_encode_size_hint(engines);
+                            old_size_hint.max(current_size_hint)
+                        });
+
+                AbiEncodeSizeHint::range_from_min_max(min, max) + 8
+            }
+
+            x => unimplemented!("abi_encode_size_hint for [{}]", engines.help_out(x)),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum AbiEncodeSizeHint {
+    CustomImpl,
+    PotentiallyInfinite,
+    Exact(usize),
+    Range(usize, usize),
+}
+
+impl AbiEncodeSizeHint {
+    fn range_from_min_max(a: AbiEncodeSizeHint, b: AbiEncodeSizeHint) -> AbiEncodeSizeHint {
+        match (a, b) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                let min = l.min(r);
+                let max = l.max(r);
+                AbiEncodeSizeHint::Range(min, max)
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                let min = l.min(rmin);
+                let max = l.max(rmax);
+                AbiEncodeSizeHint::Range(min, max)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Exact(r)) => {
+                let min = r.min(lmin);
+                let max = r.max(lmax);
+                AbiEncodeSizeHint::Range(min, max)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                let min = lmin.min(rmin);
+                let max = lmax.max(rmax);
+                AbiEncodeSizeHint::Range(min, max)
+            }
+        }
+    }
+
+    fn min(&self, other: AbiEncodeSizeHint) -> AbiEncodeSizeHint {
+        match (self, &other) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*l.min(r))
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, _)) => {
+                AbiEncodeSizeHint::Exact(*l.min(rmin))
+            }
+            (AbiEncodeSizeHint::Range(lmin, _), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*r.min(lmin))
+            }
+            (AbiEncodeSizeHint::Range(lmin, _), AbiEncodeSizeHint::Range(rmin, _)) => {
+                AbiEncodeSizeHint::Exact(*lmin.min(rmin))
+            }
+        }
+    }
+
+    fn max(&self, other: AbiEncodeSizeHint) -> AbiEncodeSizeHint {
+        match (self, &other) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*l.max(r))
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(_, rmax)) => {
+                AbiEncodeSizeHint::Exact(*l.max(rmax))
+            }
+            (AbiEncodeSizeHint::Range(_, lmax), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(*r.max(lmax))
+            }
+            (AbiEncodeSizeHint::Range(_, lmax), AbiEncodeSizeHint::Range(_, rmax)) => {
+                AbiEncodeSizeHint::Exact(*lmax.max(rmax))
+            }
+        }
+    }
+}
+
+impl std::ops::Add<usize> for AbiEncodeSizeHint {
+    type Output = AbiEncodeSizeHint;
+
+    fn add(self, rhs: usize) -> Self::Output {
+        match self {
+            AbiEncodeSizeHint::CustomImpl => AbiEncodeSizeHint::CustomImpl,
+            AbiEncodeSizeHint::PotentiallyInfinite => AbiEncodeSizeHint::PotentiallyInfinite,
+            AbiEncodeSizeHint::Exact(current) => AbiEncodeSizeHint::Exact(current + rhs),
+            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::Range(min + rhs, max + rhs),
+        }
+    }
+}
+
+impl std::ops::Add<AbiEncodeSizeHint> for AbiEncodeSizeHint {
+    type Output = AbiEncodeSizeHint;
+
+    fn add(self, rhs: AbiEncodeSizeHint) -> Self::Output {
+        match (self, &rhs) {
+            (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
+            (_, AbiEncodeSizeHint::CustomImpl) => AbiEncodeSizeHint::CustomImpl,
+            (AbiEncodeSizeHint::PotentiallyInfinite, _) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (_, AbiEncodeSizeHint::PotentiallyInfinite) => AbiEncodeSizeHint::PotentiallyInfinite,
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Exact(l + r)
+            }
+            (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                AbiEncodeSizeHint::Range(rmin + l, rmax + l)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Exact(r)) => {
+                AbiEncodeSizeHint::Range(lmin + r, lmax + r)
+            }
+            (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Range(rmin, rmax)) => {
+                AbiEncodeSizeHint::Range(lmin + rmin, lmax + rmax)
+            }
+        }
+    }
+}
+
+impl std::ops::Mul<usize> for AbiEncodeSizeHint {
+    type Output = AbiEncodeSizeHint;
+
+    fn mul(self, rhs: usize) -> Self::Output {
+        match self {
+            AbiEncodeSizeHint::CustomImpl => AbiEncodeSizeHint::CustomImpl,
+            AbiEncodeSizeHint::PotentiallyInfinite => AbiEncodeSizeHint::PotentiallyInfinite,
+            AbiEncodeSizeHint::Exact(current) => AbiEncodeSizeHint::Exact(current * rhs),
+            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::Range(min * rhs, max * rhs),
+        }
+    }
 }
 
 fn print_inner_types(

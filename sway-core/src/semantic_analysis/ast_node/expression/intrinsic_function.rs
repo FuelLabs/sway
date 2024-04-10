@@ -92,8 +92,115 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::ContractRet => {
                 type_check_contract_ret(handler, ctx, kind, arguments, type_arguments, span)
             }
+            Intrinsic::EncodeBufferEmpty => {
+                type_check_encode_buffer_empty(ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::EncodeBufferAppend => {
+                type_check_encode_append(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::EncodeBufferAsRawSlice => {
+                type_check_encode_as_raw_slice(handler, ctx, kind, arguments, type_arguments, span)
+            }
         }
     }
+}
+
+fn type_check_encode_as_raw_slice(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    _type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let buffer_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?
+    };
+
+    let return_type = type_engine.insert(engines, TypeInfo::RawUntypedSlice, None);
+
+    let kind = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![buffer_expr],
+        type_arguments: vec![],
+        span,
+    };
+    Ok((kind, return_type))
+}
+
+fn type_check_encode_buffer_empty(
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    _type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    assert!(arguments.is_empty());
+
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let return_type = TypeInfo::new_tuple(
+        engines,
+        [
+            TypeInfo::RawUntypedPtr,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        ],
+    );
+    let return_type = type_engine.insert(engines, return_type, None);
+
+    let kind = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![],
+        type_arguments: vec![],
+        span,
+    };
+    Ok((kind, return_type))
+}
+
+fn type_check_encode_append(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    _type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let buffer_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?
+    };
+    let return_type = buffer_expr.return_type;
+
+    let item_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        ty::TyExpression::type_check(handler, ctx, arguments[1].clone())?
+    };
+
+    let kind = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments: vec![buffer_expr, item_expr],
+        type_arguments: vec![],
+        span,
+    };
+    Ok((kind, return_type))
 }
 
 /// Signature: `__not(val: u64) -> u64`

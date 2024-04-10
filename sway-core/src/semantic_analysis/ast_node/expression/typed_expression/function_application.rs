@@ -169,6 +169,7 @@ fn unify_arguments_and_parameters(
             let param_mutability =
                 ty::VariableMutability::new_from_ref_mut(param.is_reference, param.is_mutable);
             if arg.gather_mutability().is_immutable() && param_mutability.is_mutable() {
+                dbg!(&arg.gather_mutability(), param);
                 handler.emit_err(CompileError::ImmutableArgumentToMutableParameter {
                     span: arg.span.clone(),
                 });

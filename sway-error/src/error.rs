@@ -561,6 +561,10 @@ pub enum CompileError {
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
     CannotBeEvaluatedToConst { span: Span },
+    #[error(
+        "This code cannot be evaluated to a configurable because its size is not always limited."
+    )]
+    CannotBeEvaluatedToConfigurableSizeUnknown { span: Span },
     #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
         if *dot_syntax_used { "Method" } else { "Function" },
         if *expected == 1usize { "argument" } else {"arguments"},
@@ -1167,6 +1171,7 @@ impl Spanned for CompileError {
             CouldNotGenerateEntry { span } => span.clone(),
             CouldNotGenerateEntryMissingCore { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
+            CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
         }
     }
 }

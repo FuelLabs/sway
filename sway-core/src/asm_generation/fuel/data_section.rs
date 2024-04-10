@@ -22,6 +22,7 @@ pub enum Datum {
     Byte(u8),
     Word(u64),
     ByteArray(Vec<u8>),
+    Slice(Vec<u8>),
     Collection(Vec<Entry>),
 }
 
@@ -50,6 +51,19 @@ impl Entry {
         Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::ByteArray(bytes),
+            name,
+        }
+    }
+
+    pub(crate) fn new_slice(
+        bytes: Vec<u8>,
+        name: Option<String>,
+        padding: Option<Padding>,
+    ) -> Entry {
+        dbg!(&name, &bytes);
+        Entry {
+            padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
+            value: Datum::Slice(bytes),
             name,
         }
     }
@@ -124,9 +138,10 @@ impl Entry {
                 name,
                 padding,
             ),
+            ConstantValue::RawUntypedSlice(bytes) => Entry::new_slice(bytes.clone(), name, padding),
             ConstantValue::Reference(_) => {
                 todo!("Constant references are currently not supported.")
-            } // TODO-IG: Implement.
+            }
         }
     }
 
@@ -138,6 +153,13 @@ impl Entry {
             Datum::Word(w) => w.to_be_bytes().to_vec(),
             Datum::ByteArray(bs) if bs.len() % 8 == 0 => bs.clone(),
             Datum::ByteArray(bs) => bs
+                .iter()
+                .chain([0; 8].iter())
+                .copied()
+                .take((bs.len() + 7) & 0xfffffff8_usize)
+                .collect(),
+            Datum::Slice(bs) if bs.len() % 8 == 0 => bs.clone(),
+            Datum::Slice(bs) => bs
                 .iter()
                 .chain([0; 8].iter())
                 .copied()
@@ -308,6 +330,19 @@ impl fmt::Display for DataSection {
                         });
                     }
                     format!(".bytes[{}] {hex_str} {chr_str}", bs.len())
+                }
+                Datum::Slice(bs) => {
+                    let mut hex_str = String::new();
+                    let mut chr_str = String::new();
+                    for b in bs {
+                        hex_str.push_str(format!("{b:02x} ").as_str());
+                        chr_str.push(if *b == b' ' || b.is_ascii_graphic() {
+                            *b as char
+                        } else {
+                            '.'
+                        });
+                    }
+                    format!(".slice[{}] {hex_str} {chr_str}", bs.len())
                 }
                 Datum::Collection(els) => format!(
                     ".collection {{ {} }}",

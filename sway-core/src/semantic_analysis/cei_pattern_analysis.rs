@@ -608,11 +608,38 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
         ContractCall => HashSet::from([Effect::Interaction]),
-        Revert | JmpMem | IsReferenceType | IsStrArray | SizeOfType | SizeOfVal | SizeOfStr
-        | ContractRet | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf | AddrOf | Log | Add
-        | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => {
-            HashSet::new()
-        }
+        Revert
+        | JmpMem
+        | IsReferenceType
+        | IsStrArray
+        | SizeOfType
+        | SizeOfVal
+        | SizeOfStr
+        | ContractRet
+        | AssertIsStrArray
+        | ToStrArray
+        | Eq
+        | Gt
+        | Lt
+        | Gtf
+        | AddrOf
+        | Log
+        | Add
+        | Sub
+        | Mul
+        | Div
+        | And
+        | Or
+        | Xor
+        | Mod
+        | Rsh
+        | Lsh
+        | PtrAdd
+        | PtrSub
+        | Not
+        | EncodeBufferEmpty
+        | EncodeBufferAppend
+        | EncodeBufferAsRawSlice => HashSet::new(),
     }
 }
 

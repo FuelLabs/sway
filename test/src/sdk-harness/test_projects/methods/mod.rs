@@ -13,14 +13,14 @@ async fn run_methods_test() {
     let result = instance
         .methods()
         .test_function()
-        .with_tx_policies(TxPolicies::default().with_script_gas_limit(1346))
+        .with_tx_policies(TxPolicies::default().with_script_gas_limit(1353))
         .call()
         .await
         .unwrap();
 
-    // Increase the limit above and uncomment to see how many gas is being used
+    // Increase the limit above and uncomment the line below to see how many gas is being used
     // run with --nocapture
-    //dbg!(&result);
+    // dbg!(&result);
 
     assert!(result.value);
 }

@@ -209,8 +209,9 @@ impl TestInstance for raw_ptr {
 }
 
 impl AbiEncode for raw_ptr {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push_u64(asm(p: self) { p: u64 });
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let v = asm(p: self) { p: u64 };
+        v.abi_encode(buffer)
     }
 }
 

@@ -1,6 +1,8 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
+    asm_generation::abi,
+    decl_engine::DeclEngineGet,
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
@@ -8,7 +10,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::*,
-    TypeInfo, UnifyCheck,
+    AbiEncodeSizeHint, TypeInfo, UnifyCheck,
 };
 
 use super::{
@@ -30,6 +32,7 @@ use sway_ir::{
 use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Named, Span};
 use sway_utils::mapped_stack::MappedStack;
 
+#[derive(Debug)]
 enum ConstEvalError {
     CompileError,
     CannotBeEvaluatedToConst {
@@ -146,9 +149,10 @@ pub(crate) fn compile_const_decl(
                         is_configurable,
                         ..
                     } = const_decl;
-                    if value.is_none() {
+
+                    let Some(value) = value else {
                         return Ok(None);
-                    }
+                    };
 
                     let const_val = compile_constant_expression(
                         env.engines,
@@ -158,7 +162,7 @@ pub(crate) fn compile_const_decl(
                         env.module_ns,
                         env.function_compiler,
                         &call_path,
-                        &value.clone().unwrap(),
+                        &value,
                         is_configurable,
                     )?;
 
@@ -169,6 +173,72 @@ pub(crate) fn compile_const_decl(
                             const_val,
                         );
                     } else {
+                        let const_val = if env.context.experimental.new_encoding {
+                            // This expression must be `encode(something)`.
+                            // We want the someting here
+                            let value_type = match &value.expression {
+                                ty::TyExpressionVariant::FunctionApplication {
+                                    arguments, ..
+                                } => arguments[0].1.return_type,
+                                _ => unreachable!("non encoded configurable inside encoding v1"),
+                            };
+
+                            let abi_encode_size_hint = env
+                                .engines
+                                .te()
+                                .get(value_type)
+                                .abi_encode_size_hint(env.engines);
+
+                            let buffer_size = match abi_encode_size_hint {
+                                AbiEncodeSizeHint::CustomImpl
+                                | AbiEncodeSizeHint::PotentiallyInfinite => {
+                                    return Err(
+                                        CompileError::CannotBeEvaluatedToConfigurableSizeUnknown {
+                                            span: value.span.clone(),
+                                        },
+                                    );
+                                }
+                                AbiEncodeSizeHint::Exact(len) => len,
+                                AbiEncodeSizeHint::Range(_, max) => max,
+                            };
+
+                            let mut bytes =
+                                match &const_val.get_configurable(env.context).unwrap().value {
+                                    ConstantValue::RawUntypedSlice(bytes) => Some(bytes.clone()),
+                                    _ => {
+                                        return Err(CompileError::NonConstantDeclValue {
+                                            span: call_path.span(),
+                                        });
+                                    }
+                                }
+                                .unwrap();
+
+                            // Pad the encoded buffer if needed
+                            assert!(
+                                buffer_size >= bytes.len(),
+                                "assert {} >= {}",
+                                buffer_size,
+                                bytes.len()
+                            );
+                            let padding_size = buffer_size.saturating_sub(bytes.len());
+                            bytes.extend((0..padding_size).map(|_| 0));
+
+                            let elements = bytes
+                                .iter()
+                                .map(|x| Constant::new_uint(env.context, 8, *x as u64))
+                                .collect();
+                            let array = Constant::new_array(
+                                env.context,
+                                Type::get_uint8(env.context),
+                                elements,
+                            );
+                            let md_idx = const_val.get_metadata(env.context);
+                            Value::new_configurable(env.context, array)
+                                .add_metadatum(env.context, md_idx)
+                        } else {
+                            const_val
+                        };
+
                         env.module.add_global_configurable(
                             env.context,
                             call_path.as_vec_string().to_vec(),
@@ -260,7 +330,8 @@ pub(crate) fn compile_constant_expression_to_constant(
 
     match const_eval_typed_expr(lookup, &mut known_consts, const_expr, allow_configurables) {
         Ok(Some(constant)) => Ok(constant),
-        _ => err,
+        Ok(None) => err,
+        Err(_) => err,
     }
 }
 
@@ -457,7 +528,6 @@ fn const_eval_typed_expr(
             assert!(element_vals.len() == contents.len());
 
             let te = lookup.engines.te();
-
             assert!({
                 let unify_check = UnifyCheck::coercion(lookup.engines);
                 element_typs
@@ -465,7 +535,7 @@ fn const_eval_typed_expr(
                     .all(|tid| unify_check.check(*tid, *elem_type))
             });
 
-            create_array_aggregate(
+            let arr = create_array_aggregate(
                 te,
                 lookup.engines.de(),
                 lookup.context,
@@ -478,7 +548,9 @@ fn const_eval_typed_expr(
                     array_ty.get_array_elem_type(lookup.context).unwrap(),
                     element_vals,
                 ))
-            })
+            });
+
+            arr
         }
         ty::TyExpressionVariant::EnumInstantiation {
             enum_ref,
@@ -511,7 +583,7 @@ fn const_eval_typed_expr(
                         None => {
                             return Err(ConstEvalError::CannotBeEvaluatedToConst {
                                 span: variant_instantiation_span.clone(),
-                            })
+                            });
                         }
                     },
                 }
@@ -551,7 +623,7 @@ fn const_eval_typed_expr(
             _ => {
                 return Err(ConstEvalError::CannotBeEvaluatedToConst {
                     span: expr.span.clone(),
-                })
+                });
             }
         },
         ty::TyExpressionVariant::TupleElemAccess {
@@ -566,7 +638,7 @@ fn const_eval_typed_expr(
             _ => {
                 return Err(ConstEvalError::CannotBeEvaluatedToConst {
                     span: expr.span.clone(),
-                })
+                });
             }
         },
         ty::TyExpressionVariant::ImplicitReturn(e) => {
@@ -587,7 +659,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::Return(exp) => {
             return Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: exp.span.clone(),
-            })
+            });
         }
         ty::TyExpressionVariant::MatchExp { desugared, .. } => {
             const_eval_typed_expr(lookup, known_consts, desugared, allow_configurables)?
@@ -619,7 +691,7 @@ fn const_eval_typed_expr(
                 _ => {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
-                    })
+                    });
                 }
             }
         }
@@ -650,29 +722,83 @@ fn const_eval_typed_expr(
                 _ => {
                     return Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: expr.span.clone(),
-                    })
+                    });
                 }
             }
         }
         ty::TyExpressionVariant::Ref(_) | ty::TyExpressionVariant::Deref(_) => {
             return Err(ConstEvalError::CompileError);
         }
-        ty::TyExpressionVariant::Reassignment(_)
-        | ty::TyExpressionVariant::FunctionParameter
+        ty::TyExpressionVariant::EnumTag { exp } => {
+            match const_eval_typed_expr(lookup, known_consts, exp, allow_configurables)? {
+                Some(v) => match v.value {
+                    ConstantValue::Struct(fields) => Some(fields[0].clone()),
+                    _ => todo!(),
+                },
+                None => todo!(),
+            }
+        }
+        ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
+            match const_eval_typed_expr(lookup, known_consts, exp, allow_configurables)? {
+                Some(v) => match v.value {
+                    ConstantValue::Struct(fields) => Some(fields[1].clone()),
+                    _ => todo!(),
+                },
+                None => todo!(),
+            }
+        }
+        ty::TyExpressionVariant::WhileLoop {
+            condition, body, ..
+        } => loop {
+            let condition =
+                const_eval_typed_expr(lookup, known_consts, condition, allow_configurables)?;
+            match condition.map(|x| x.value) {
+                Some(ConstantValue::Bool(true)) => {
+                    let _ = const_eval_codeblock(lookup, known_consts, body, allow_configurables)?;
+                }
+                _ => break None,
+            }
+        },
+        ty::TyExpressionVariant::Reassignment(r) => {
+            let rhs =
+                const_eval_typed_expr(lookup, known_consts, &r.rhs, allow_configurables)?.unwrap();
+            match &r.lhs {
+                ty::TyReassignmentTarget::ElementAccess {
+                    base_name, indices, ..
+                } => {
+                    if !indices.is_empty() {
+                        return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: expr.span.clone(),
+                        });
+                    }
+                    if let Some(lhs) = known_consts.get_mut(base_name) {
+                        *lhs = rhs;
+                        return Ok(None);
+                    } else {
+                        return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                            span: expr.span.clone(),
+                        });
+                    }
+                }
+                ty::TyReassignmentTarget::Deref(_) => {
+                    return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                        span: expr.span.clone(),
+                    });
+                }
+            }
+        }
+        ty::TyExpressionVariant::FunctionParameter
         | ty::TyExpressionVariant::AsmExpression { .. }
         | ty::TyExpressionVariant::LazyOperator { .. }
         | ty::TyExpressionVariant::AbiCast { .. }
         | ty::TyExpressionVariant::StorageAccess(_)
         | ty::TyExpressionVariant::AbiName(_)
-        | ty::TyExpressionVariant::EnumTag { .. }
-        | ty::TyExpressionVariant::UnsafeDowncast { .. }
         | ty::TyExpressionVariant::Break
         | ty::TyExpressionVariant::Continue
-        | ty::TyExpressionVariant::WhileLoop { .. }
         | ty::TyExpressionVariant::ForLoop { .. } => {
             return Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: expr.span.clone(),
-            })
+            });
         }
     })
 }
@@ -768,6 +894,45 @@ fn const_eval_codeblock(
     }
 
     result
+}
+
+fn as_encode_buffer(buffer: &Constant) -> Option<(&Vec<u8>, u64)> {
+    match &buffer.value {
+        ConstantValue::Struct(fields) => {
+            let slice = match &fields[0].value {
+                ConstantValue::RawUntypedSlice(bytes) => bytes,
+                _ => todo!(),
+            };
+            let len = match fields[1].value {
+                ConstantValue::Uint(v) => v,
+                _ => todo!(),
+            };
+            Some((slice, len))
+        }
+        _ => todo!(),
+    }
+}
+
+fn to_encode_buffer(lookup: &mut LookupEnv, bytes: Vec<u8>, len: u64) -> Constant {
+    Constant {
+        ty: Type::new_struct(
+            lookup.context,
+            vec![
+                Type::get_slice(lookup.context),
+                Type::get_uint64(lookup.context),
+            ],
+        ),
+        value: ConstantValue::Struct(vec![
+            Constant {
+                ty: Type::get_slice(lookup.context),
+                value: ConstantValue::RawUntypedSlice(bytes),
+            },
+            Constant {
+                ty: Type::get_uint64(lookup.context),
+                value: ConstantValue::Uint(len),
+            },
+        ]),
+    }
 }
 
 fn const_eval_intrinsic(
@@ -1148,6 +1313,76 @@ fn const_eval_intrinsic(
             Err(ConstEvalError::CannotBeEvaluatedToConst {
                 span: intrinsic.span.clone(),
             })
+        }
+        // Buffer starts ((ptr, 1024), 0)
+        Intrinsic::EncodeBufferEmpty => Ok(Some(to_encode_buffer(lookup, vec![], 0))),
+        Intrinsic::EncodeBufferAppend => {
+            assert!(args.len() == 2);
+
+            let (slice, mut len) = as_encode_buffer(&args[0]).unwrap();
+            let mut bytes = slice.clone();
+
+            use ConstantValue::*;
+            match &args[1].value {
+                Uint(v) => {
+                    match &*lookup.engines.te().get(intrinsic.arguments[1].return_type) {
+                        TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
+                            bytes.extend((*v as u8).to_be_bytes());
+                            len += 1;
+                        }
+                        TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                            bytes.extend((*v as u16).to_be_bytes());
+                            len += 2;
+                        }
+                        TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                            bytes.extend((*v as u32).to_be_bytes());
+                            len += 4;
+                        }
+                        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
+                            bytes.extend(v.to_be_bytes());
+                            len += 8;
+                        }
+                        _ => todo!(),
+                    };
+                    Ok(Some(to_encode_buffer(lookup, bytes, len)))
+                }
+                U256(v) => {
+                    bytes.extend(v.to_be_bytes());
+                    len += 32;
+                    Ok(Some(to_encode_buffer(lookup, bytes, len)))
+                }
+                B256(v) => {
+                    bytes.extend(v.to_be_bytes());
+                    len += 32;
+                    Ok(Some(to_encode_buffer(lookup, bytes, len)))
+                }
+                String(v) => {
+                    if let TypeInfo::StringSlice =
+                        &*lookup.engines.te().get(intrinsic.arguments[1].return_type)
+                    {
+                        let l = v.len() as u64;
+                        bytes.extend(l.to_be_bytes());
+                        len += 8;
+                    }
+
+                    bytes.extend(v);
+                    len += v.len() as u64;
+
+                    Ok(Some(to_encode_buffer(lookup, bytes, len)))
+                }
+                x => todo!("{x:?}"),
+            }
+        }
+        Intrinsic::EncodeBufferAsRawSlice => {
+            assert!(args.len() == 1);
+
+            let (slice, len) = as_encode_buffer(&args[0]).unwrap();
+            let bytes = slice.clone();
+
+            Ok(Some(Constant {
+                ty: Type::get_slice(lookup.context),
+                value: ConstantValue::RawUntypedSlice(bytes[0..(len as usize)].to_vec()),
+            }))
         }
     }
 }

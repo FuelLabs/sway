@@ -3,74 +3,65 @@
     {
       "configurableType": {
         "name": "",
-        "type": 4,
+        "type": 5,
         "typeArguments": null
       },
       "name": "C0",
-      "offset": 4776
+      "offset": 13324
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 12,
+        "typeArguments": null
+      },
+      "name": "C1",
+      "offset": 13348
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 4,
+        "typeArguments": null
+      },
+      "name": "C2",
+      "offset": 13364
     },
     {
       "configurableType": {
         "name": "",
         "type": 8,
-        "typeArguments": null
-      },
-      "name": "C1",
-      "offset": 4792
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      },
-      "name": "C2",
-      "offset": 4808
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 7,
         "typeArguments": []
       },
       "name": "C3",
-      "offset": 4840
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 5,
-        "typeArguments": []
-      },
-      "name": "C4",
-      "offset": 4856
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 5,
-        "typeArguments": []
-      },
-      "name": "C5",
-      "offset": 4872
+      "offset": 13396
     },
     {
       "configurableType": {
         "name": "",
         "type": 6,
-        "typeArguments": null
+        "typeArguments": []
       },
-      "name": "C6",
-      "offset": 4888
+      "name": "C4",
+      "offset": 13412
     },
     {
       "configurableType": {
         "name": "",
-        "type": 1,
+        "type": 6,
+        "typeArguments": []
+      },
+      "name": "C5",
+      "offset": 13428
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 7,
         "typeArguments": null
       },
-      "name": "C7",
-      "offset": 4904
+      "name": "C6",
+      "offset": 13444
     },
     {
       "configurableType": {
@@ -78,17 +69,98 @@
         "type": 2,
         "typeArguments": null
       },
-      "name": "C7_2",
-      "offset": 4976
+      "name": "C7",
+      "offset": 13460
     },
     {
       "configurableType": {
         "name": "",
-        "type": 8,
+        "type": 12,
         "typeArguments": null
       },
       "name": "C9",
-      "offset": 4952
+      "offset": 13508
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 5,
+        "typeArguments": null
+      },
+      "name": "BOOL",
+      "offset": 13604
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 13,
+        "typeArguments": null
+      },
+      "name": "U8",
+      "offset": 13612
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 13,
+        "typeArguments": null
+      },
+      "name": "ANOTHERU8",
+      "offset": 13628
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 9,
+        "typeArguments": null
+      },
+      "name": "U16",
+      "offset": 13636
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 11,
+        "typeArguments": null
+      },
+      "name": "U32",
+      "offset": 13644
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 12,
+        "typeArguments": null
+      },
+      "name": "U64",
+      "offset": 13660
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 10,
+        "typeArguments": null
+      },
+      "name": "U256",
+      "offset": 13676
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      },
+      "name": "ARRAY_U8",
+      "offset": 13524
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "name": "ARRAY_U32",
+      "offset": 13556
     }
   ],
   "encoding": "1",
@@ -104,7 +176,16 @@
       }
     }
   ],
-  "loggedTypes": [],
+  "loggedTypes": [
+    {
+      "logId": 0,
+      "loggedType": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
   "messagesTypes": [],
   "types": [
     {
@@ -117,11 +198,11 @@
       "components": [
         {
           "name": "__array_element",
-          "type": 8,
+          "type": 11,
           "typeArguments": null
         }
       ],
-      "type": "[_; 4]",
+      "type": "[_; 3]",
       "typeId": 1,
       "typeParameters": null
     },
@@ -129,7 +210,7 @@
       "components": [
         {
           "name": "__array_element",
-          "type": 9,
+          "type": 12,
           "typeArguments": null
         }
       ],
@@ -138,67 +219,97 @@
       "typeParameters": null
     },
     {
-      "components": null,
-      "type": "b256",
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 13,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 4]",
       "typeId": 3,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "bool",
+      "type": "b256",
       "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 5,
       "typeParameters": null
     },
     {
       "components": [
         {
           "name": "A",
-          "type": 8,
+          "type": 12,
           "typeArguments": null
         },
         {
           "name": "B",
-          "type": 4,
+          "type": 5,
           "typeArguments": null
         }
       ],
       "type": "enum MyEnum",
-      "typeId": 5,
+      "typeId": 6,
       "typeParameters": null
     },
     {
       "components": null,
       "type": "str[4]",
-      "typeId": 6,
+      "typeId": 7,
       "typeParameters": null
     },
     {
       "components": [
         {
           "name": "x",
-          "type": 8,
+          "type": 12,
           "typeArguments": null
         },
         {
           "name": "y",
-          "type": 4,
+          "type": 5,
           "typeArguments": null
         }
       ],
       "type": "struct MyStruct",
-      "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
       "typeId": 8,
       "typeParameters": null
     },
     {
       "components": null,
-      "type": "u8",
+      "type": "u16",
       "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u256",
+      "typeId": 10,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 11,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 12,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 13,
       "typeParameters": null
     }
   ]

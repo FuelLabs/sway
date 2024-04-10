@@ -58,6 +58,14 @@ fn is_removable_store(
         InstOp::MemCopyBytes { dst_val_ptr, .. }
         | InstOp::MemCopyVal { dst_val_ptr, .. }
         | InstOp::Store { dst_val_ptr, .. } => {
+            // TODO check this is still needed
+            // // if the pointer comes from unknown sources, it is unsafe to delete the store
+            // if let Some(InstOp::IntToPtr(_, _)) =
+            //     dst_val_ptr.get_instruction(context).map(|x| &x.op)
+            // {
+            //     return false;
+            // }
+
             let syms = get_referred_symbols(context, dst_val_ptr);
             match syms {
                 ReferredSymbols::Complete(syms) => syms.iter().all(|sym| {

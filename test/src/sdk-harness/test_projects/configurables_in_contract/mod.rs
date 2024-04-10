@@ -1,6 +1,8 @@
 use fuels::{prelude::*, types::SizedAsciiString};
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
 #[tokio::test]
+#[ignore]
 async fn contract_uses_default_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
@@ -45,7 +47,9 @@ async fn contract_uses_default_configurables() -> Result<()> {
     Ok(())
 }
 
+// TODO Remove ignore when SDK supports encoding V1 for configurables
 #[tokio::test]
+#[ignore]
 async fn contract_configurables() -> Result<()> {
     abigen!(Contract(
         name = "MyContract",
