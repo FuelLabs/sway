@@ -52,14 +52,14 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             writeln!(s, "Transaction Submitted at {:?}", submitted_at.0)?;
         }
         TransactionStatus::Success {
-            block_id,
+            block_height,
             time,
             program_state,
             ..
         } => {
             let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Succeeded")?;
-            writeln!(s, "  Block ID:      {block_id}")?;
+            writeln!(s, "  Block ID:      {block_height}")?;
             writeln!(s, "  Time:          {utc}",)?;
             writeln!(s, "  Program State: {program_state:?}")?;
         }
@@ -67,7 +67,7 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             writeln!(s, "Transaction Squeezed Out: {reason}")?;
         }
         TransactionStatus::Failure {
-            block_id,
+            block_height,
             time,
             reason,
             program_state,
@@ -76,7 +76,7 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Failed")?;
             writeln!(s, "  Reason: {reason}")?;
-            writeln!(s, "  Block ID:      {block_id}")?;
+            writeln!(s, "  Block ID:      {block_height}")?;
             writeln!(s, "  Time:          {utc}")?;
             writeln!(s, "  Program State: {program_state:?}")?;
         }

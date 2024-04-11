@@ -81,7 +81,7 @@
         ],
         "script_data": [],
         "policies": {
-            "bits": "GasPrice",
+            "bits": "MaxFee",
             "values": [
                 0,
                 0,

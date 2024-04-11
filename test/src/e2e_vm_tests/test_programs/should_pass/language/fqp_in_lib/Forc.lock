@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-4CB0CAB2B0E9CCD6"
+
+[[package]]
+name = "fqp_in_lib"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-4CB0CAB2B0E9CCD6"
+dependencies = ["core"]

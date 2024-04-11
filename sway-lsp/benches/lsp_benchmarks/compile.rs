@@ -15,6 +15,7 @@ fn benchmarks(c: &mut Criterion) {
     let uri = Url::from_file_path(super::benchmark_dir().join("src/main.sw")).unwrap();
     let mut lsp_mode = Some(sway_core::LspConfig {
         optimized_build: false,
+        file_versions: Default::default(),
     });
     c.bench_function("compile", |b| {
         b.iter(|| {

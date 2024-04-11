@@ -304,12 +304,12 @@ jobs:
   cargo-run-e2e-test:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-        ports:
-          - 4000:4000
     steps:
+      - name: Install fuel-core for tests
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: fuel-core-bin
+          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -317,17 +317,20 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (Fuel VM)
-        run: cargo run --locked --release --bin test -- --locked
+        run: |
+          fuel-core run --db-type in-memory --debug & 
+          sleep 5 &&
+          cargo run --locked --release --bin test -- --locked
 
   cargo-run-e2e-test-release:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-        ports:
-          - 4000:4000
     steps:
+      - name: Install fuel-core for tests
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: fuel-core-bin
+          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
@@ -335,7 +338,10 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (Fuel VM)
-        run: cargo run --locked --release --bin test -- --locked --release
+        run: |
+          fuel-core run --db-type in-memory --debug & 
+          sleep 5 &&
+          cargo run --locked --release --bin test -- --locked --release
 
   cargo-run-e2e-test-evm:
     runs-on: ubuntu-latest
@@ -493,7 +499,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run sway-lsp tests sequentially
-        run: cargo test --locked --release -p sway-lsp -- --test-threads=1
+        run: cargo test --locked --release -p sway-lsp -- --nocapture --test-threads=1
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
