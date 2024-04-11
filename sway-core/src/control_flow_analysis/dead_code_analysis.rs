@@ -1219,7 +1219,21 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 )?;
             }
 
-            let mut leaves = leaves.to_vec();
+            let mut args_diverge = false;
+            for (_name, arg) in arguments {
+                if type_engine
+                    .get(arg.return_type)
+                    .is_uninhabited(engines.te(), engines.de())
+                {
+                    args_diverge = true;
+                }
+            }
+
+            let mut leaves = if args_diverge {
+                vec![]
+            } else {
+                leaves.to_vec()
+            };
 
             // if the parent node exists in this module, then add the monomorphized version
             // to the graph.
@@ -1331,7 +1345,6 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 )?;
             }
 
-            let mut args_diverge = false;
             // we evaluate every one of the function arguments
             for (_name, arg) in arguments {
                 let span = arg.span.clone();
@@ -1346,13 +1359,6 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     span,
                     options,
                 )?;
-
-                if type_engine
-                    .get(arg.return_type)
-                    .is_uninhabited(engines.te(), engines.de())
-                {
-                    args_diverge = true;
-                }
             }
             options.force_struct_fields_connection = force_struct_fields_connection;
 
