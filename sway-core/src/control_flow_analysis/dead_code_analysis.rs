@@ -1236,6 +1236,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 }
             }
 
+            let mut param_leaves = leaves.to_vec();
             let mut leaves = if args_diverge {
                 vec![]
             } else {
@@ -1359,13 +1360,20 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     engines,
                     &arg.expression,
                     graph,
-                    &current_leaf,
+                    &param_leaves,
                     exit_node,
                     "arg eval",
                     tree_type,
                     span,
                     options,
                 )?;
+
+                if type_engine
+                    .get(arg.return_type)
+                    .is_uninhabited(engines.te(), engines.de())
+                {
+                    param_leaves = vec![];
+                }
             }
             options.force_struct_fields_connection = force_struct_fields_connection;
 
