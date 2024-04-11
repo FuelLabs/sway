@@ -84,6 +84,10 @@ impl DeclMapping {
         self.mapping.is_empty()
     }
 
+    pub(crate) fn extend(&mut self, other: &DeclMapping) {
+        self.mapping.extend(other.mapping.clone());
+    }
+
     pub(crate) fn from_interface_and_item_and_impld_decl_refs(
         interface_decl_refs: InterfaceItemMap,
         item_decl_refs: ItemMap,
