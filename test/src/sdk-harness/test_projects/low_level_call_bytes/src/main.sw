@@ -2,7 +2,7 @@ script;
 
 use std::bytes::Bytes;
 use std::constants::BASE_ASSET_ID;
-use std::low_level_call::{call_with_function_selector, call_with_function_selector_vec, CallParams};
+use std::low_level_call::{call_with_function_selector, CallParams};
 
 fn main(
     target: ContractId,

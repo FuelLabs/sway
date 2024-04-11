@@ -203,10 +203,10 @@ fn create_payload(
     // let mut payload = Bytes::new().append(contract_id_to_bytes(target)).append(function_selector);
     let mut payload = Bytes::new();
     payload.append(contract_id_to_bytes(target));
-    payload.append(function_selector);
+    payload.append(function_selector.clone());
 
     if (single_value_type_arg) {
-        payload.append(calldata); // When calldata is copy type, just pass calldata
+        payload.append(calldata.clone()); // When calldata is copy type, just pass calldata
     } else {
         payload.append(ptr_as_bytes(calldata.ptr())); // When calldata is reference type, need to get pointer as bytes
     };
