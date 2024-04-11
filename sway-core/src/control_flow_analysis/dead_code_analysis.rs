@@ -519,8 +519,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 type_ascription,
                 ..
             } = &**var_decl;
-            // Connect variable declaration node to its type ascription.
-            connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+
             // Connect variable declaration node to body expression.
             let result = connect_expression(
                 engines,
@@ -533,6 +532,14 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 body.clone().span,
                 options,
             );
+
+            if let Ok(ref vec) = result {
+                if !vec.is_empty() {
+                    // Connect variable declaration node to its type ascription.
+                    connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+                }
+            }
+
             // Insert variable only after connecting body.expressions
             // This enables:
             //   let ptr = alloc::<u64>(0);
@@ -2110,8 +2117,25 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
             (node_idx, node_idx)
         });
 
+    let mut is_variant_unreachable = false;
+    if let Some(instantiator) = contents {
+        if engines
+            .te()
+            .get(instantiator.return_type)
+            .is_uninhabited(engines.te(), engines.de())
+        {
+            is_variant_unreachable = true;
+        }
+    }
+
+    let leaves = if is_variant_unreachable {
+        vec![]
+    } else {
+        leaves.to_vec()
+    };
+
     // Connects call path decl, useful for aliases.
-    connect_call_path_decl(engines, call_path_decl, graph, leaves)?;
+    connect_call_path_decl(engines, call_path_decl, graph, &leaves)?;
 
     // insert organizational nodes for instantiation of enum
     let enum_instantiation_entry_idx = graph.add_node("enum instantiation entry".into());
@@ -2120,10 +2144,9 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
     // connect to declaration node itself to show that the declaration is used
     graph.add_edge(enum_instantiation_entry_idx, decl_ix, "".into());
     for leaf in leaves {
-        graph.add_edge(*leaf, enum_instantiation_entry_idx, "".into());
+        graph.add_edge(leaf, enum_instantiation_entry_idx, "".into());
     }
 
-    let mut is_variant_unreachable = false;
     // add edge from the entry of the enum instantiation to the body of the instantiation
     if let Some(instantiator) = contents {
         let instantiator_contents = connect_expression(
@@ -2137,13 +2160,6 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
             enum_decl.span.clone(),
             options,
         )?;
-        if engines
-            .te()
-            .get(instantiator.return_type)
-            .is_uninhabited(engines.te(), engines.de())
-        {
-            is_variant_unreachable = true;
-        }
 
         for leaf in instantiator_contents {
             graph.add_edge(leaf, enum_instantiation_exit_idx, "".into());
@@ -2153,9 +2169,10 @@ fn connect_enum_instantiation<'eng: 'cfg, 'cfg>(
     graph.add_edge(decl_ix, variant_index, "".into());
     if !is_variant_unreachable {
         graph.add_edge(variant_index, enum_instantiation_exit_idx, "".into());
+        Ok(vec![enum_instantiation_exit_idx])
+    } else {
+        Ok(vec![])
     }
-
-    Ok(vec![enum_instantiation_exit_idx])
 }
 
 /// Given a [ty::TyAstNode] that we know is not reached in the graph, construct a warning
