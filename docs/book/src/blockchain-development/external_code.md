@@ -33,7 +33,7 @@ In this case, the function will return a `u64`.
 
 If the function name doesn't exist in the target contract but a `fallback` function does, the `fallback` function will be triggered.
 
-> If there is no fallback function, the tranasction will revert.
+> If there is no fallback function, the transaction will revert.
 
 You can access function parameters for fallback functions using the `call_frames` module in the `std-lib`.
 For example, to access the `_foo` input parameter in the proxy function below, you can use the `second_param` method in the `fallback` function:
