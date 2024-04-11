@@ -303,6 +303,7 @@ impl ty::TyModule {
         )?;
 
         let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes)?;
+
         let submodules = submodules_res?;
 
         let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;

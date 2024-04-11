@@ -499,7 +499,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run sway-lsp tests sequentially
-        run: cargo test --locked --release -p sway-lsp -- --test-threads=1
+        run: cargo test --locked --release -p sway-lsp -- --nocapture --test-threads=1
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
