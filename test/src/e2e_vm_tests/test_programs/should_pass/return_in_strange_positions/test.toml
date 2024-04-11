@@ -1,7 +1,7 @@
 category = "run"
 expected_result = { action = "return", value = 8193 }
 validate_abi = true
-expected_warnings = 22
+expected_warnings = 23
 
 #check: $()045
 #nextln: $()This code is unreachable.
@@ -38,6 +38,10 @@ expected_warnings = 22
 
 #check: $()645
 #nextln: $()This code is unreachable.
+
+# check: $()while return 42
+# nextln: $()break;
+# nextln: $()This code is unreachable.
 
 # check: $()745
 # nextln: $()This code is unreachable.

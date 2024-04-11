@@ -1867,6 +1867,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             let while_loop_exit = graph.add_node("while loop exit".to_string().into());
 
+            let mut leaves = vec![entry];
+
             if !matches!(*type_engine.get(condition.return_type), TypeInfo::Never) {
                 // it is possible for a whole while loop to be skipped so add edge from
                 // beginning of while loop straight to exit
@@ -1875,8 +1877,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     while_loop_exit,
                     "condition is initially false".into(),
                 );
+            } else {
+                // As condition return type is NeverType we should not connect the remaining nodes to entry.
+                leaves = vec![];
             }
-            let mut leaves = vec![entry];
 
             // handle the condition of the loop
             connect_expression(
