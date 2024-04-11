@@ -46,3 +46,4 @@ mod superabi_supertrait;
 mod tx_fields;
 mod type_aliases;
 mod vec_in_abi;
+mod result_option_expect;

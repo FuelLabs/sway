@@ -176,7 +176,6 @@ pub(crate) fn runs_in_vm(
                     1,
                     Default::default(),
                     rng.gen(),
-                    0u32.into(),
                 )
                 .maturity(maturity);
 
@@ -185,8 +184,10 @@ pub(crate) fn runs_in_vm(
                     tb.add_witness(witness.into());
                 }
             }
+            let gas_price = 0;
             let consensus_params = tb.get_params().clone();
 
+            let params = ConsensusParameters::default();
             // Temporarily finalize to calculate `script_gas_limit`
             let tmp_tx = tb.clone().finalize();
             // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
@@ -195,7 +196,10 @@ pub(crate) fn runs_in_vm(
             // Increase `script_gas_limit` to the maximum allowed value.
             tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
 
-            let tx = tb.finalize_checked(block_height);
+            let tx = tb
+                .finalize_checked(block_height)
+                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
             let mut i: Interpreter<_, _, NotSupportedEcal> =
                 Interpreter::with_storage(storage, Default::default());

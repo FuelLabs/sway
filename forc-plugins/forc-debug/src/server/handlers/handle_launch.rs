@@ -30,13 +30,14 @@ impl DapServer {
                     return None;
                 }
 
-                Some(TestExecutor::new(
+                TestExecutor::build(
                     &pkg_to_debug.bytecode.bytes,
                     offset,
                     test_setup.clone(),
                     test_entry,
                     name.clone(),
-                ))
+                )
+                .ok()
             })
             .collect();
         self.state.init_executors(executors);
