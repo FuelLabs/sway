@@ -1,0 +1,33 @@
+[[package]]
+name = "core"
+source = "path+from-root-E5A2054A2C560E31"
+
+[[package]]
+name = "spark_perps_account_balance_abi"
+source = "path+from-root-E5A2054A2C560E31"
+dependencies = ["std"]
+
+[[package]]
+name = "spark_perps_proxy_abi"
+source = "path+from-root-E5A2054A2C560E31"
+dependencies = ["std"]
+
+[[package]]
+name = "spark_perps_vault"
+source = "member"
+dependencies = [
+    "spark_perps_account_balance_abi",
+    "spark_perps_proxy_abi",
+    "spark_perps_vault_abi",
+    "std",
+]
+
+[[package]]
+name = "spark_perps_vault_abi"
+source = "path+from-root-E5A2054A2C560E31"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-E5A2054A2C560E31"
+dependencies = ["core"]

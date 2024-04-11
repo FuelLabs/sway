@@ -1,0 +1,5 @@
+category = "run_on_node"
+expected_result = { action = "result", value = 2063986620 }
+expected_result_new_encoding = { action = "return_data", value = "0000002063986620" }
+contracts = ["should_pass/test_contracts/spark_perps_proxy", "should_pass/test_contracts/spark_perps_vault", "should_pass/test_contracts/spark_perps_account_balance"]
+unsupported_profiles = ["debug"]

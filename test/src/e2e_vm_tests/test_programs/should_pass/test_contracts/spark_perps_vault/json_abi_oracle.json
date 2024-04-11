@@ -1,0 +1,41 @@
+{
+  "configurables": [],
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_collateral_balance",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "get_free_collateral_by_token",
+      "output": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}

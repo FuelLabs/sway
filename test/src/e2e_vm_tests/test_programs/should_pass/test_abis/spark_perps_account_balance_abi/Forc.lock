@@ -1,0 +1,21 @@
+[[package]]
+name = "account_balance_abi"
+source = "member"
+dependencies = [
+    "i64",
+    "std",
+]
+
+[[package]]
+name = "core"
+source = "path+from-root-AD80769CAE44474A"
+
+[[package]]
+name = "i64"
+source = "path+from-root-1AE68BA93B534E1F"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "git+https://github.com/fuellabs/sway?tag=v0.46.0#e75f14b03636bc96751a6760304a1a6d3eb5937d"
+dependencies = ["core"]

@@ -1,0 +1,17 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "spark_perps_test"
+
+[dependencies.std]
+path = "../../../../../../../sway-lib-std"
+
+[dependencies.spark_perps_vault_abi]
+path = "../../test_abis/spark_perps_vault_abi"
+
+[dependencies.spark_perps_account_balance_abi]
+path = "../../test_abis/spark_perps_account_balance_abi"
+
+[dependencies.spark_perps_proxy_abi]
+path = "../../test_abis/spark_perps_proxy_abi"
