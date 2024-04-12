@@ -710,3 +710,19 @@ fn test_vec_with_len_1() {
     let _ = ve.remove(0);
     assert(ve.len == 0);
 }
+
+#[test()]
+fn encode_and_decode_vec() {
+    let mut v1: Vec<u64> = Vec::new();
+    v1.push(1);
+    v1.push(2);
+    v1.push(3);
+
+    let v2 = abi_decode::<Vec<u64>>(encode(v1));
+
+    assert(v2.len() == 3);
+    assert(v2.capacity() == 3);
+    assert(v2.get(0) == Some(1));
+    assert(v2.get(1) == Some(2));
+    assert(v2.get(2) == Some(3));
+}
