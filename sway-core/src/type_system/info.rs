@@ -1014,6 +1014,7 @@ impl TypeInfo {
         let id_uninhabited = |id| type_engine.get(id).is_uninhabited(type_engine, decl_engine);
 
         match self {
+            TypeInfo::Never => true,
             TypeInfo::Enum(decl_ref) => decl_engine
                 .get_enum(decl_ref)
                 .variants
@@ -1028,6 +1029,13 @@ impl TypeInfo {
                 .iter()
                 .any(|field_type| id_uninhabited(field_type.type_id)),
             TypeInfo::Array(elem_ty, length) => length.val() > 0 && id_uninhabited(elem_ty.type_id),
+            TypeInfo::Ptr(ty) => id_uninhabited(ty.type_id),
+            TypeInfo::Alias { name: _, ty } => id_uninhabited(ty.type_id),
+            TypeInfo::Slice(ty) => id_uninhabited(ty.type_id),
+            TypeInfo::Ref {
+                to_mutable_value: _,
+                referenced_type,
+            } => id_uninhabited(referenced_type.type_id),
             _ => false,
         }
     }
