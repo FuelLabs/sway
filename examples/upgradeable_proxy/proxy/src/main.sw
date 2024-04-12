@@ -24,7 +24,7 @@ impl Proxy for Contract {
     }
 
     #[storage(read, write)]
-    fn double_input(_value: u64) -> u64{
+    fn double_input(_value: u64) -> u64 {
         let target = storage.target_contract.read().unwrap();
         run_external(target)
     }
