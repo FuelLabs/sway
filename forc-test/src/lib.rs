@@ -15,11 +15,11 @@ use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
-use tx::consensus_parameters::ConsensusParametersV1;
-use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
+use tx::consensus_parameters::ConsensusParametersV1;
+use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
 use vm::interpreter::InterpreterParams;
 use vm::prelude::SecretKey;
 
@@ -198,7 +198,7 @@ impl PackageWithDeploymentToTest {
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
         let gas_price = 0;
-        let params = maxed_consensus_params(); 
+        let params = maxed_consensus_params();
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
@@ -596,21 +596,21 @@ pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
 }
 
 /// Returns a `ConsensusParameters` which has maximum length/size allowance for scripts, contracts,
-/// and transactions. 
+/// and transactions.
 pub(crate) fn maxed_consensus_params() -> ConsensusParameters {
-        let script_params = ScriptParameters::DEFAULT
-            .with_max_script_length(u64::MAX)
-            .with_max_script_data_length(u64::MAX);
-        let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
-        let contract_params = ContractParameters::DEFAULT
-            .with_contract_max_size(u64::MAX)
-            .with_max_storage_slots(u64::MAX);
-        ConsensusParameters::V1(ConsensusParametersV1 {
-            script_params,
-            tx_params,
-            contract_params,
-            ..Default::default()
-        })
+    let script_params = ScriptParameters::DEFAULT
+        .with_max_script_length(u64::MAX)
+        .with_max_script_data_length(u64::MAX);
+    let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
+    let contract_params = ContractParameters::DEFAULT
+        .with_contract_max_size(u64::MAX)
+        .with_max_storage_slots(u64::MAX);
+    ConsensusParameters::V1(ConsensusParametersV1 {
+        script_params,
+        tx_params,
+        contract_params,
+        ..Default::default()
+    })
 }
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
