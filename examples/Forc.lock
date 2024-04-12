@@ -59,11 +59,6 @@ name = "enums"
 source = "member"
 
 [[package]]
-name = "external_target"
-source = "member"
-dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.52.1#c1ea517f0522c780ca41120247cde2f450605a3c"]
-
-[[package]]
 name = "fizzbuzz"
 source = "member"
 dependencies = ["std path+from-root-70EE78029FACCEF1"]
@@ -77,6 +72,11 @@ dependencies = ["std path+from-root-70EE78029FACCEF1"]
 name = "identity"
 source = "member"
 dependencies = ["std path+from-root-70EE78029FACCEF1"]
+
+[[package]]
+name = "implementation"
+source = "member"
+dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.52.1#c1ea517f0522c780ca41120247cde2f450605a3c"]
 
 [[package]]
 name = "liquidity_pool"
