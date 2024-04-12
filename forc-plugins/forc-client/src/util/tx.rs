@@ -91,7 +91,7 @@ pub trait TransactionBuilderExt<Tx> {
         &mut self,
         address: Address,
         provider: Provider,
-        signature_witness_index: u8,
+        signature_witness_index: u16,
     ) -> Result<&mut Self>;
     async fn finalize_signed(
         &mut self,
@@ -141,7 +141,7 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         &mut self,
         address: Address,
         provider: Provider,
-        signature_witness_index: u8,
+        signature_witness_index: u16,
     ) -> Result<&mut Self> {
         let wallet = Wallet::from_address(Bech32Address::from(address), Some(provider));
 
@@ -180,7 +180,10 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                 if !wallet_path.exists() {
                     let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
                     let accepted = ask_user_yes_no_question(&question)?;
-                    let new_options = New { force: false };
+                    let new_options = New {
+                        force: false,
+                        cache_accounts: None,
+                    };
                     if accepted {
                         new_wallet_cli(&wallet_path, new_options)?;
                         println!("Wallet created successfully.");
@@ -311,15 +314,15 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         let mut tx = self.finalize_without_signature_inner();
 
         let signature = if let Some(signing_key) = signing_key {
-            let message = Message::from_bytes(*tx.id(&params.chain_id));
+            let message = Message::from_bytes(*tx.id(&params.chain_id()));
             Signature::sign(&signing_key, &message)
         } else {
-            prompt_signature(tx.id(&params.chain_id))?
+            prompt_signature(tx.id(&params.chain_id()))?
         };
 
         let witness = Witness::from(signature.as_ref());
         tx.replace_witness(signature_witness_index, witness);
-        tx.precompute(&params.chain_id)
+        tx.precompute(&params.chain_id())
             .map_err(anyhow::Error::msg)?;
 
         Ok(tx)
@@ -327,11 +330,11 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
 }
 
 pub trait TransactionExt {
-    fn replace_witness(&mut self, witness_index: u8, witness: Witness) -> &mut Self;
+    fn replace_witness(&mut self, witness_index: u16, witness: Witness) -> &mut Self;
 }
 
 impl<T: field::Witnesses> TransactionExt for T {
-    fn replace_witness(&mut self, index: u8, witness: Witness) -> &mut Self {
+    fn replace_witness(&mut self, index: u16, witness: Witness) -> &mut Self {
         self.witnesses_mut()[index as usize] = witness;
         self
     }

@@ -12,8 +12,8 @@ repository.workspace = true
 anyhow = "1"
 forc-pkg = { version = "0.53.0", path = "../forc-pkg" }
 fuel-abi-types = { workspace = true }
-fuel-tx = { workspace = true, features = ["builder"] }
-fuel-vm = { workspace = true, features = ["random"] }
+fuel-tx = { workspace = true, features = ["test-helpers"] }
+fuel-vm = { workspace = true, features = ["random", "test-helpers"] }
 rand = "0.8"
 rayon = "1.7.0"
 sway-core = { version = "0.53.0", path = "../sway-core" }
