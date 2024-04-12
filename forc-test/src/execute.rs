@@ -57,7 +57,7 @@ impl TestExecutor {
         let script_input_data = vec![];
         let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
-        // Default transaction size 
+        // Default transaction size
         // Prepare the transaction metadata.
         let secret_key = SecretKey::random(rng);
         let utxo_id = rng.gen();
@@ -67,7 +67,6 @@ impl TestExecutor {
         let tx_pointer = rng.gen();
         let block_height = (u32::MAX >> 1).into();
         let gas_price = 0;
-
 
         // We need to increase the tx size limit as the default is 110 * 1024 and for big tests
         // such as std and core this is not enough.
@@ -117,12 +116,11 @@ impl TestExecutor {
         // Increase `script_gas_limit` to the maximum allowed value.
         tx_builder.script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
 
-
         // We need to increase the tx size limit as the default is 110 * 1024 and for big tests
         // such as std and core this is not enough.
         // and for big tests such as std, and core this is not enough.
-        let mut tx_params = *consensus_params.tx_params(); 
-        let script_params = *consensus_params.script_params(); 
+        let mut tx_params = *consensus_params.tx_params();
+        let script_params = *consensus_params.script_params();
         let script_params = script_params
             .with_max_script_length(u64::MAX)
             .with_max_script_data_length(u64::MAX);
