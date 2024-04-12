@@ -1,6 +1,7 @@
 use assert_json_diff::assert_json_include;
 use futures::StreamExt;
 use lsp_types::Url;
+use rand::Rng;
 use serde_json::Value;
 use std::{
     env, fs,
@@ -112,4 +113,44 @@ pub async fn assert_server_requests(
             );
         }
     })
+}
+
+/// Introduces a random delay between 1 to 30 milliseconds with a chance of additional longer delays based on predefined probabilities.
+pub async fn random_delay() {
+    // wait for a random amount of time between 1-30ms
+    tokio::time::sleep(tokio::time::Duration::from_millis(
+        rand::thread_rng().gen_range(1..=30),
+    ))
+    .await;
+
+    // there is a 10% chance that a longer 100-800ms wait will be added
+    if rand::thread_rng().gen_ratio(1, 10) {
+        tokio::time::sleep(tokio::time::Duration::from_millis(
+            rand::thread_rng().gen_range(100..=1200),
+        ))
+        .await;
+    }
+    // 20% chance to introduce a longer delay of 200 to 1500 milliseconds.
+    if rand::thread_rng().gen_ratio(2, 10) {
+        tokio::time::sleep(tokio::time::Duration::from_millis(
+            rand::thread_rng().gen_range(400..=2800),
+        ))
+        .await;
+    }
+}
+
+/// Sets up the environment and a custom panic hook to print panic information and exit the program.
+pub fn setup_panic_hook() {
+    // Enable backtrace to get more information about panic
+    std::env::set_var("RUST_BACKTRACE", "1");
+
+    // Take the default panic hook
+    let default_panic = std::panic::take_hook();
+
+    // Set a custom panic hook
+    std::panic::set_hook(Box::new(move |panic_info| {
+        // Invoke the default panic hook to print the panic message
+        default_panic(panic_info);
+        std::process::exit(1);
+    }));
 }

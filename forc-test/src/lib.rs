@@ -18,6 +18,7 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
+use vm::interpreter::InterpreterParams;
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -194,21 +195,26 @@ impl PackageWithDeploymentToTest {
     /// For contract deploys all contract dependencies and the root contract itself.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
+        let gas_price = 0;
         let params = tx::ConsensusParameters::default();
         let storage = vm::storage::MemoryStorage::default();
+        let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-            vm::interpreter::Interpreter::with_storage(storage, params.clone().into());
+            vm::interpreter::Interpreter::with_storage(storage, interpreter_params);
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
-        let contract_dependency_setups = self.contract_dependencies().map(|built_pkg| {
-            deployment_transaction(built_pkg, &built_pkg.bytecode, params.clone())
-        });
+        let contract_dependency_setups = self
+            .contract_dependencies()
+            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, &params));
 
         // Deploy contract dependencies of the root contract and collect their ids.
         let contract_dependency_ids = contract_dependency_setups
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
+                let tx = tx
+                    .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                    .unwrap();
                 interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
             })
@@ -221,8 +227,11 @@ impl PackageWithDeploymentToTest {
             let (root_contract_id, root_contract_tx) = deployment_transaction(
                 &contract_to_test.pkg,
                 &contract_to_test.without_tests_bytecode,
-                params,
+                &params,
             );
+            let root_contract_tx = root_contract_tx
+                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .unwrap();
             // Deploy the root contract.
             interpreter
                 .transact(root_contract_tx)
@@ -377,13 +386,13 @@ impl<'a> PackageTests {
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
                     let test_setup = self.setup()?;
-                    TestExecutor::new(
+                    TestExecutor::build(
                         &pkg_with_tests.bytecode.bytes,
                         offset,
                         test_setup,
                         test_entry,
                         name,
-                    )
+                    )?
                     .execute()
                 })
                 .collect::<anyhow::Result<_>>()
@@ -589,7 +598,7 @@ pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
 fn deployment_transaction(
     built_pkg: &pkg::BuiltPackage,
     without_tests_bytecode: &pkg::BuiltPackageBytecode,
-    params: tx::ConsensusParameters,
+    params: &tx::ConsensusParameters,
 ) -> ContractDeploymentSetup {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots.clone();
@@ -614,8 +623,8 @@ fn deployment_transaction(
     let block_height = (u32::MAX >> 1).into();
 
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
-        .with_params(params)
-        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
+        .with_params(params.clone())
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
         .finalize_checked(block_height);
