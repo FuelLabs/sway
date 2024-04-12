@@ -1,3 +1,4 @@
+use crate::maxed_consensus_params;
 use crate::setup::TestSetup;
 use crate::TestResult;
 use crate::TEST_METADATA_SEED;
@@ -12,12 +13,13 @@ use fuel_vm::{
     storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
-use tx::consensus_parameters::ConsensusParametersV1;
-use tx::ConsensusParameters;
+
+
+
 use tx::Receipt;
 
-use tx::ScriptParameters;
-use tx::TxParameters;
+
+
 use vm::interpreter::InterpreterParams;
 use vm::state::DebugEval;
 use vm::state::ProgramState;
@@ -68,20 +70,10 @@ impl TestExecutor {
         let block_height = (u32::MAX >> 1).into();
         let gas_price = 0;
 
-        // We need to increase the tx size limit as the default is 110 * 1024 and for big tests
-        // such as std and core this is not enough.
-        // and for big tests such as std, and core this is not enough.
-        let script_params = ScriptParameters::DEFAULT
-            .with_max_script_length(u64::MAX)
-            .with_max_script_data_length(u64::MAX);
-        let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
-        let params = ConsensusParameters::V1(ConsensusParametersV1 {
-            script_params,
-            tx_params,
-            ..Default::default()
-        });
 
         let mut tx_builder = tx::TransactionBuilder::script(bytecode, script_input_data);
+
+        let params = maxed_consensus_params();
 
         tx_builder
             .with_params(params)
