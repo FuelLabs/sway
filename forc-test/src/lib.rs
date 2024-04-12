@@ -642,13 +642,8 @@ fn deployment_transaction(
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
-    let mut params = params.clone();
-    let contract_params = ContractParameters::DEFAULT
-        .with_contract_max_size(u64::MAX)
-        .with_max_storage_slots(u64::MAX);
-    params.set_contract_params(contract_params);
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
-        .with_params(params)
+        .with_params(params.clone())
         .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
