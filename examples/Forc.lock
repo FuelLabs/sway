@@ -47,7 +47,7 @@ source = "path+from-root-70EE78029FACCEF1"
 
 [[package]]
 name = "core"
-source = "path+from-root-CFD092C323CFF97D"
+source = "path+from-root-9889F771D40C5D34"
 
 [[package]]
 name = "counter"
@@ -76,7 +76,7 @@ dependencies = ["std path+from-root-70EE78029FACCEF1"]
 [[package]]
 name = "implementation"
 source = "member"
-dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.52.1#c1ea517f0522c780ca41120247cde2f450605a3c"]
+dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.53.0#b30f0e83d3f3d336007e3dfce45a48a87e731345"]
 
 [[package]]
 name = "liquidity_pool"
@@ -126,7 +126,7 @@ dependencies = ["std path+from-root-70EE78029FACCEF1"]
 [[package]]
 name = "proxy"
 source = "member"
-dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.52.1#c1ea517f0522c780ca41120247cde2f450605a3c"]
+dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.53.0#b30f0e83d3f3d336007e3dfce45a48a87e731345"]
 
 [[package]]
 name = "result"
@@ -140,8 +140,8 @@ dependencies = ["std path+from-root-70EE78029FACCEF1"]
 
 [[package]]
 name = "std"
-source = "git+https://github.com/fuellabs/sway?tag=v0.52.1#c1ea517f0522c780ca41120247cde2f450605a3c"
-dependencies = ["core path+from-root-CFD092C323CFF97D"]
+source = "git+https://github.com/fuellabs/sway?tag=v0.53.0#b30f0e83d3f3d336007e3dfce45a48a87e731345"
+dependencies = ["core path+from-root-9889F771D40C5D34"]
 
 [[package]]
 name = "std"
