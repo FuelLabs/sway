@@ -75,7 +75,7 @@ We can recognize the `while` loop by the conditional jumps `JNZI`. The condition
 We can start up the debug infrastructure. On a new terminal session run `fuel-core run --db-type in-memory --debug`; we need to have that running because it actually executes the program. Now we can fire up the debugger itself: `forc-debug`. Now
 if everything is set up correctly, you should see the debugger prompt (`>>`). You can use `help` command to list available commands.
 
-Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. `fuel-core`. To do so, we need a *transaction specification*, `tx.json`. It looks something like this:
+Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. `fuel-core`. To do so, we need a *transaction specification*, `tx.json`. It looks something like the following (this is a simplified example and to see a valid tx json please see [example-tx.json](https://github.com/FuelLabs/sway/blob/master/forc-plugins/forc-debug/examples/example_tx.json)):
 
 ```json
 {
@@ -88,12 +88,7 @@ Now we would like to inspect the program while it's running. To do this, we firs
     },
     "policies": {
       "bits": "MaxFee",
-      "values": [
-        0,
-        0,
-        0,
-        0
-      ]
+      "values": [...]
     },
     "inputs": [
       {
@@ -120,72 +115,7 @@ Now we would like to inspect the program while it's running. To do this, we firs
     "outputs": [],
     "witnesses": [
       {
-        "data": [
-          156,
-          254,
-          34,
-          102,
-          65,
-          96,
-          133,
-          170,
-          254,
-          105,
-          147,
-          35,
-          196,
-          199,
-          179,
-          133,
-          132,
-          240,
-          208,
-          149,
-          11,
-          46,
-          30,
-          96,
-          44,
-          91,
-          121,
-          195,
-          145,
-          184,
-          159,
-          235,
-          117,
-          82,
-          135,
-          41,
-          84,
-          154,
-          102,
-          61,
-          61,
-          16,
-          99,
-          123,
-          58,
-          173,
-          75,
-          226,
-          219,
-          139,
-          62,
-          33,
-          41,
-          176,
-          16,
-          18,
-          132,
-          178,
-          8,
-          125,
-          130,
-          169,
-          32,
-          108
-        ]
+        "data": [...]
       }
     ]
   }

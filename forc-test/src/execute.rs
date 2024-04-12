@@ -55,7 +55,6 @@ impl TestExecutor {
         let script_input_data = vec![];
         let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
-        // Default transaction size
         // Prepare the transaction metadata.
         let secret_key = SecretKey::random(rng);
         let utxo_id = rng.gen();
@@ -94,7 +93,7 @@ impl TestExecutor {
             output_index += 1;
         }
 
-        let mut consensus_params = tx_builder.get_params().clone();
+        let consensus_params = tx_builder.get_params().clone();
         // Temporarily finalize to calculate `script_gas_limit`
         let tmp_tx = tx_builder.clone().finalize();
         // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
@@ -105,15 +104,6 @@ impl TestExecutor {
 
         // We need to increase the tx size limit as the default is 110 * 1024 and for big tests
         // such as std and core this is not enough.
-        // and for big tests such as std, and core this is not enough.
-        let mut tx_params = *consensus_params.tx_params();
-        let script_params = *consensus_params.script_params();
-        let script_params = script_params
-            .with_max_script_length(u64::MAX)
-            .with_max_script_data_length(u64::MAX);
-        tx_params.set_max_size(u64::MAX);
-        consensus_params.set_tx_params(tx_params);
-        consensus_params.set_script_params(script_params);
 
         let tx = tx_builder
             .finalize_checked(block_height)
