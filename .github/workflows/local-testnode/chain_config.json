@@ -1,5 +1,5 @@
 {
-  "chain_name": "Local Testing Testnet",
+  "chain_name": "Local Node Test Network",
   "consensus_parameters": {
     "V1": {
       "tx_params": {
