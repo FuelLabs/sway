@@ -1224,7 +1224,7 @@ impl AbiEncode for raw_slice {
 
 impl AbiEncode for raw_ptr {
     fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push_u64(self);
+        buffer.push_u64(self.read::<u64>());
     }
 }
 
