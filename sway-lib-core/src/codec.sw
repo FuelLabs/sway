@@ -1222,6 +1222,12 @@ impl AbiEncode for raw_slice {
     }
 }
 
+impl AbiEncode for pointer {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push_u64(self);
+    }
+}
+
 // BEGIN ARRAY_ENCODE
 impl<T> AbiEncode for [T; 1]
 where
