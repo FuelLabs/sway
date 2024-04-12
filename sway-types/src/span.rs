@@ -209,6 +209,10 @@ impl Span {
     pub fn line_col(&self) -> (LineCol, LineCol) {
         (self.start_pos().line_col(), self.end_pos().line_col())
     }
+
+    pub fn is_dummy(&self) -> bool {
+        self.eq(&DUMMY_SPAN)
+    }
 }
 
 impl fmt::Debug for Span {

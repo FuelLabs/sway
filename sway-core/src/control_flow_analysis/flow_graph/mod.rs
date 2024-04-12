@@ -201,7 +201,11 @@ impl<'cfg> ControlFlowGraph<'cfg> {
 
     pub(crate) fn get_node_from_decl(&self, cfg_node: &ControlFlowGraphNode) -> Option<NodeIndex> {
         if let Some(ident) = cfg_node.get_decl_ident() {
-            self.decls.get(&ident.into()).cloned()
+            if !ident.span().is_dummy() {
+                self.decls.get(&ident.into()).cloned()
+            } else {
+                None
+            }
         } else {
             None
         }
