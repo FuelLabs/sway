@@ -669,9 +669,9 @@ where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
-        let mut v = Vec::new();
-
         let len = u64::abi_decode(buffer);
+
+        let mut v = Vec::with_capacity(len);
 
         let mut i = 0;
         while i < len {
