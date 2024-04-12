@@ -35,7 +35,7 @@ There are a couple of major differences between calling a contract directly and 
 
 First, to use `run_external`, the ABI of the external contract is not required. The proxy contract has no knowledge of the external contract except for its `ContractId`.
 
-### Upgradable Contract Storage
+### Upgradeable Contract Storage
 
 Second, the storage context of the proxy contract is retained for the loaded code.
 This means that in the examples above, if someone calls the `double_input` function on the proxy contract, the `value` variable will be updated in the proxy contract's storage.
@@ -71,4 +71,4 @@ In this case, the `does_not_exist_in_the_target` function will return `_foo * 3`
 Some limitations of `run_external` function are:
 
 - It can only be used with other contracts. Scripts, predicates, and library code cannot be run externally.
-- You cannot run an external function that accesses a storage varibale that only exists in the external implementation.
+- You cannot run an external function that accesses a storage variable that only exists in the external implementation.
