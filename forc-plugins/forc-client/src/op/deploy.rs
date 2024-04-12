@@ -249,7 +249,7 @@ pub async fn deploy_pkg(
         .await?;
 
     let tx = Transaction::from(tx);
-    let chain_id = client.chain_info().await?.consensus_parameters.chain_id;
+    let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {

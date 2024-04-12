@@ -37,7 +37,7 @@ pub(crate) async fn get_gas_used(mut tx: Script, provider: &Provider) -> Result<
 
     // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
     let consensus_params = provider.consensus_parameters();
-    let max_gas_per_tx = consensus_params.tx_params().max_gas_per_tx;
+    let max_gas_per_tx = consensus_params.tx_params().max_gas_per_tx();
     let max_gas = tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
     // Increase `script_gas_limit` to the maximum allowed value.
     tx.set_script_gas_limit(max_gas_per_tx - max_gas);
