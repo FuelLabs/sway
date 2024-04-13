@@ -9,7 +9,10 @@ use crate::{
         ty::{self, TyDecl, TyTraitItem},
         CallPath, Purity, QualifiedCallPath, Visibility,
     },
-    namespace::{IsExtendingExistingImpl, IsImplSelf, ModulePath, TryInsertingTraitImplOnFailure},
+    namespace::{
+        IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedTraitImplItem,
+        TryInsertingTraitImplOnFailure,
+    },
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
         Namespace,
@@ -228,6 +231,34 @@ impl<'a> TypeCheckContext<'a> {
             experimental: self.experimental,
         };
         with_scoped_ctx(ctx)
+    }
+
+    /// Scope the `TypeCheckContext` with a new namespace and returns it in case of success.
+    pub fn scoped_and_namespace<T>(
+        self,
+        with_scoped_ctx: impl FnOnce(TypeCheckContext) -> Result<T, ErrorEmitted>,
+    ) -> Result<(T, Namespace), ErrorEmitted> {
+        let mut namespace = self.namespace.clone();
+        let ctx = TypeCheckContext {
+            namespace: &mut namespace,
+            type_annotation: self.type_annotation,
+            function_type_annotation: self.function_type_annotation,
+            unify_generic: self.unify_generic,
+            self_type: self.self_type,
+            type_subst: self.type_subst,
+            abi_mode: self.abi_mode,
+            const_shadowing_mode: self.const_shadowing_mode,
+            generic_shadowing_mode: self.generic_shadowing_mode,
+            help_text: self.help_text,
+            purity: self.purity,
+            kind: self.kind,
+            engines: self.engines,
+            disallow_functions: self.disallow_functions,
+            defer_monomorphization: self.defer_monomorphization,
+            storage_declaration: self.storage_declaration,
+            experimental: self.experimental,
+        };
+        Ok((with_scoped_ctx(ctx)?, namespace))
     }
 
     /// Enter the submodule with the given name and produce a type-check context ready for
@@ -548,6 +579,7 @@ impl<'a> TypeCheckContext<'a> {
                             &qualified_call_path.clone().to_call_path(handler)?,
                             self.self_type(),
                         )
+                        .map(|decl| decl.expect_typed())
                         .ok()
                 } else {
                     self.resolve_qualified_call_path_with_visibility_check_and_modpath(
@@ -626,7 +658,7 @@ impl<'a> TypeCheckContext<'a> {
                     trait_type_id,
                     None,
                 )?;
-                if let TyTraitItem::Type(type_ref) = item_ref {
+                if let ResolvedTraitImplItem::Typed(TyTraitItem::Type(type_ref)) = item_ref {
                     let type_decl = self.engines.de().get_type(type_ref.id());
                     if let Some(ty) = &type_decl.ty {
                         ty.type_id
@@ -636,7 +668,7 @@ impl<'a> TypeCheckContext<'a> {
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(
                         "Expecting associated type",
-                        item_ref.span(),
+                        item_ref.span(self.engines),
                     )));
                 }
             }
@@ -755,6 +787,7 @@ impl<'a> TypeCheckContext<'a> {
                 call_path,
                 self.self_type,
             )?;
+        let decl = decl.expect_typed();
 
         // In case there is no mod path we don't need to check visibility
         if mod_path.is_empty() {
@@ -860,6 +893,7 @@ impl<'a> TypeCheckContext<'a> {
                     &qualified_call_path.call_path,
                     self.self_type(),
                 )
+                .map(|decl| decl.expect_typed())
         } else {
             self.resolve_call_path_with_visibility_check_and_modpath(
                 handler,
@@ -1047,21 +1081,24 @@ impl<'a> TypeCheckContext<'a> {
 
         for item in items.into_iter() {
             match &item {
-                ty::TyTraitItem::Fn(decl_ref) => {
-                    if decl_ref.name() == item_name {
-                        matching_item_decl_refs.push(item.clone());
+                ResolvedTraitImplItem::Parsed(_) => todo!(),
+                ResolvedTraitImplItem::Typed(item) => match item {
+                    ty::TyTraitItem::Fn(decl_ref) => {
+                        if decl_ref.name() == item_name {
+                            matching_item_decl_refs.push(item.clone());
+                        }
                     }
-                }
-                ty::TyTraitItem::Constant(decl_ref) => {
-                    if decl_ref.name() == item_name {
-                        matching_item_decl_refs.push(item.clone());
+                    ty::TyTraitItem::Constant(decl_ref) => {
+                        if decl_ref.name() == item_name {
+                            matching_item_decl_refs.push(item.clone());
+                        }
                     }
-                }
-                ty::TyTraitItem::Type(decl_ref) => {
-                    if decl_ref.name() == item_name {
-                        matching_item_decl_refs.push(item.clone());
+                    ty::TyTraitItem::Type(decl_ref) => {
+                        if decl_ref.name() == item_name {
+                            matching_item_decl_refs.push(item.clone());
+                        }
                     }
-                }
+                },
             }
         }
 
@@ -1416,7 +1453,10 @@ impl<'a> TypeCheckContext<'a> {
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
         let full_trait_name = trait_name.to_fullpath(self.namespace());
         let engines = self.engines;
-
+        let items = items
+            .iter()
+            .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
+            .collect::<Vec<_>>();
         self.namespace_mut()
             .module_mut()
             .current_items_mut()
@@ -1426,7 +1466,7 @@ impl<'a> TypeCheckContext<'a> {
                 full_trait_name,
                 trait_type_args,
                 type_id,
-                items,
+                &items,
                 impl_span,
                 trait_decl_span,
                 is_impl_self,
@@ -1457,7 +1497,7 @@ impl<'a> TypeCheckContext<'a> {
             .module()
             .current_items()
             .implemented_traits
-            .get_items_for_type_and_trait_name_and_trait_type_arguments(
+            .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
                 self.engines,
                 type_id,
                 &trait_name,

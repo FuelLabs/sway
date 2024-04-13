@@ -1,10 +1,8 @@
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{
-        ty::{self},
-        CallPath,
-    },
+    has_changes,
+    language::{ty, CallPath},
     namespace::TryInsertingTraitImplOnFailure,
     semantic_analysis::*,
     type_system::priv_prelude::*,
@@ -98,11 +96,11 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_id.subst(type_mapping, engines);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.type_id.subst(type_mapping, engines);
+            self.trait_constraints.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -253,7 +251,7 @@ impl TypeParameter {
     ) -> Vec<TraitConstraint> {
         match ctx
             .namespace()
-            .resolve_call_path(handler, ctx.engines, &tc.trait_name, ctx.self_type())
+            .resolve_call_path_typed(handler, ctx.engines, &tc.trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -593,7 +591,7 @@ fn handle_trait(
         match ctx
             .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

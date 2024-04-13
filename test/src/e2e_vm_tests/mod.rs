@@ -299,6 +299,8 @@ impl TestContext {
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
 
+                check_file_checker(checker, &name, output)?;
+
                 let compiled = result?;
 
                 let compiled = match compiled {

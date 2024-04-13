@@ -10,7 +10,7 @@ use crate::{
     type_system::*,
 };
 use sway_error::handler::ErrorEmitted;
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum TraitItem {
@@ -31,6 +31,18 @@ pub struct TraitDeclaration {
     pub supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
     pub span: Span,
+}
+
+impl Named for TraitDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for TraitDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +96,18 @@ pub struct TraitTypeDeclaration {
     pub attributes: transform::AttributesMap,
     pub ty_opt: Option<TypeArgument>,
     pub span: Span,
+}
+
+impl Named for TraitTypeDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for TraitTypeDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
 }
 
 impl DebugWithEngines for TraitTypeDeclaration {

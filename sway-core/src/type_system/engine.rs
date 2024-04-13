@@ -40,9 +40,7 @@ impl TypeEngine {
         ty: TypeInfo,
         source_id: Option<&SourceId>,
     ) -> TypeId {
-        let source_id = source_id
-            .map(Clone::clone)
-            .or_else(|| info_to_source_id(&ty));
+        let source_id = source_id.copied().or_else(|| info_to_source_id(&ty));
         let tsi = TypeSourceInfo {
             type_info: ty.clone().into(),
             source_id,

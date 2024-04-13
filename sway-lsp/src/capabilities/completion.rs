@@ -47,6 +47,7 @@ fn completion_items_for_type_id(
     }
 
     for method in namespace.get_methods_for_type(engines, type_id) {
+        let method = method.expect_typed();
         let fn_decl = engines.de().get_function(&method.id().clone());
         let params = &fn_decl.parameters;
 
@@ -151,13 +152,14 @@ fn type_id_of_raw_ident(
             let method_name = parts[i].split_at(parts[i].find('(').unwrap_or(0)).0;
             curr_type_id = namespace
                 .get_methods_for_type(engines, curr_type_id?)
-                .iter()
-                .find_map(|decl_ref| {
-                    if decl_ref.name().clone().as_str() == method_name {
+                .into_iter()
+                .find_map(|method| {
+                    let method = method.expect_typed();
+                    if method.name().clone().as_str() == method_name {
                         return Some(
                             engines
                                 .de()
-                                .get_function(&decl_ref.id().clone())
+                                .get_function(&method.id().clone())
                                 .return_type
                                 .type_id,
                         );

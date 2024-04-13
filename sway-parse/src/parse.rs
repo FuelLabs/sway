@@ -125,7 +125,7 @@ where
 
 impl Peek for Ident {
     fn peek(peeker: Peeker<'_>) -> Option<Ident> {
-        peeker.peek_ident().ok().map(Ident::clone)
+        peeker.peek_ident().ok().cloned()
     }
 }
 

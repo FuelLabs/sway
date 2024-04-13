@@ -98,10 +98,8 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.type_arguments.subst(type_mapping, engines)
     }
 }
 
@@ -191,7 +189,7 @@ impl TraitConstraint {
         match ctx
             .namespace()
             // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-            .resolve_call_path(&Handler::default(), engines, trait_name, ctx.self_type())
+            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {

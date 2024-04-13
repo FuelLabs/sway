@@ -14,7 +14,7 @@ use crate::{
 use super::{
     lexical_scope::{Items, LexicalScope, SymbolMap},
     root::Root,
-    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf,
+    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf, ResolvedTraitImplItem,
 };
 
 use sway_ast::ItemConst;
@@ -22,6 +22,20 @@ use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_parse::{lex, Parser};
 use sway_types::{span::Span, Spanned};
+
+pub enum ResolvedDeclaration {
+    Parsed(Declaration),
+    Typed(ty::TyDecl),
+}
+
+impl ResolvedDeclaration {
+    pub fn expect_typed(self) -> ty::TyDecl {
+        match self {
+            ResolvedDeclaration::Parsed(_) => panic!(),
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+}
 
 /// A single `Module` within a Sway project.
 ///
@@ -306,7 +320,7 @@ impl Module {
         mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let (decl, _) =
             self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
         Ok(decl)
@@ -319,7 +333,7 @@ impl Module {
         mod_path: &ModulePath,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
+    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
         let symbol_path: Vec<_> = mod_path
             .iter()
             .chain(&call_path.prefixes)
@@ -342,7 +356,7 @@ impl Module {
         mut as_trait: Option<CallPath>,
         call_path: &CallPath,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         // This block tries to resolve associated types
         let mut decl_opt = None;
         let mut type_id_opt = Some(root_type_id);
@@ -408,7 +422,7 @@ impl Module {
         mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let (decl, _) =
             self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
         Ok(decl)
@@ -421,7 +435,7 @@ impl Module {
         mod_path: &ModulePath,
         symbol: &Ident,
         self_type: Option<TypeId>,
-    ) -> Result<(ty::TyDecl, Vec<Ident>), ErrorEmitted> {
+    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
         // This block tries to resolve associated types
         let mut module = self;
         let mut current_mod_path = vec![];
@@ -468,10 +482,10 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-        decl: ty::TyDecl,
+        decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
 
         self.resolve_associated_type_from_type_id(
@@ -491,10 +505,10 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-        decl: ty::TyDecl,
+        decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
 
         self.resolve_associated_item_from_type_id(
@@ -514,30 +528,33 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         symbol: &Ident,
-        decl: ty::TyDecl,
+        decl: ResolvedDeclaration,
     ) -> Result<TypeInfo, ErrorEmitted> {
-        Ok(match decl.clone() {
-            ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
-                struct_decl.name.clone(),
-                struct_decl.decl_id,
-                struct_decl.name.span(),
-            )),
-            ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
-                enum_decl.name.clone(),
-                enum_decl.decl_id,
-                enum_decl.name.span(),
-            )),
-            ty::TyDecl::TraitTypeDecl(type_decl) => {
-                let type_decl = engines.de().get_type(&type_decl.decl_id);
-                (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
-            }
-            _ => {
-                return Err(handler.emit_err(CompileError::SymbolNotFound {
-                    name: symbol.clone(),
-                    span: symbol.span(),
-                }))
-            }
-        })
+        match decl {
+            ResolvedDeclaration::Parsed(_decl) => todo!(),
+            ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
+                ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
+                    struct_decl.name.clone(),
+                    struct_decl.decl_id,
+                    struct_decl.name.span(),
+                )),
+                ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
+                    enum_decl.name.clone(),
+                    enum_decl.decl_id,
+                    enum_decl.name.span(),
+                )),
+                ty::TyDecl::TraitTypeDecl(type_decl) => {
+                    let type_decl = engines.de().get_type(&type_decl.decl_id);
+                    (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
+                }
+                _ => {
+                    return Err(handler.emit_err(CompileError::SymbolNotFound {
+                        name: symbol.clone(),
+                        span: symbol.span(),
+                    }))
+                }
+            }),
+        }
     }
 
     fn resolve_associated_type_from_type_id(
@@ -548,16 +565,10 @@ impl Module {
         type_id: TypeId,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let item_decl = self.resolve_associated_item_from_type_id(
             handler, engines, symbol, type_id, as_trait, self_type,
         )?;
-        if !matches!(item_decl, ty::TyDecl::TraitTypeDecl(_)) {
-            return Err(handler.emit_err(CompileError::Internal(
-                "Expecting associated type",
-                item_decl.span(),
-            )));
-        }
         Ok(item_decl)
     }
 
@@ -569,7 +580,7 @@ impl Module {
         type_id: TypeId,
         as_trait: Option<CallPath>,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_id = if engines.te().get(type_id).is_self_type() {
             if let Some(self_type) = self_type {
                 self_type
@@ -587,9 +598,14 @@ impl Module {
             .implemented_traits
             .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
         match item_ref {
-            TyTraitItem::Fn(fn_ref) => Ok(fn_ref.into()),
-            TyTraitItem::Constant(const_ref) => Ok(const_ref.into()),
-            TyTraitItem::Type(type_ref) => Ok(type_ref.into()),
+            ResolvedTraitImplItem::Parsed(_item) => todo!(),
+            ResolvedTraitImplItem::Typed(item) => match item {
+                TyTraitItem::Fn(fn_ref) => Ok(ResolvedDeclaration::Typed(fn_ref.into())),
+                TyTraitItem::Constant(const_ref) => {
+                    Ok(ResolvedDeclaration::Typed(const_ref.into()))
+                }
+                TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
+            },
         }
     }
 
@@ -601,14 +617,16 @@ impl Module {
         symbol: &Ident,
         module: &Module,
         self_type: Option<TypeId>,
-    ) -> Result<ty::TyDecl, ErrorEmitted> {
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let true_symbol = self[mod_path]
             .current_items()
             .use_aliases
             .get(symbol.as_str())
             .unwrap_or(symbol);
         match module.current_items().use_synonyms.get(symbol) {
-            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => Ok(decl.clone()),
+            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => {
+                Ok(ResolvedDeclaration::Typed(decl.clone()))
+            }
             Some((src_path, _, _)) if mod_path != src_path => {
                 // If the symbol is imported, before resolving to it,
                 // we need to check if there is a local symbol withing the module with
@@ -620,15 +638,14 @@ impl Module {
                 //   as an error, but still have to resolve to the local module symbol
                 //   if it exists.
                 match module.current_items().symbols.get(true_symbol) {
-                    Some(decl) => Ok(decl.clone()),
+                    Some(decl) => Ok(ResolvedDeclaration::Typed(decl.clone())),
                     None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
                 }
             }
             _ => module
                 .current_items()
                 .check_symbol(true_symbol)
-                .map_err(|e| handler.emit_err(e))
-                .cloned(),
+                .map_err(|e| handler.emit_err(e)),
         }
     }
 }

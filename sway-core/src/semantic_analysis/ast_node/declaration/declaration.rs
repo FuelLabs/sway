@@ -230,7 +230,12 @@ impl TyDecl {
                 for supertrait in trait_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace()
-                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
+                        .resolve_call_path_typed(
+                            handler,
+                            engines,
+                            &supertrait.name,
+                            ctx.self_type(),
+                        )
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,
@@ -273,7 +278,7 @@ impl TyDecl {
                 // we insert its methods with a prefix
                 let emp_vec = vec![];
                 let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) =
-                    ctx.namespace().resolve_call_path(
+                    ctx.namespace().resolve_call_path_typed(
                         &Handler::default(),
                         engines,
                         &impl_trait.trait_name,
@@ -392,7 +397,12 @@ impl TyDecl {
                 for supertrait in abi_decl.supertraits.iter_mut() {
                     let _ = ctx
                         .namespace()
-                        .resolve_call_path(handler, engines, &supertrait.name, ctx.self_type())
+                        .resolve_call_path_typed(
+                            handler,
+                            engines,
+                            &supertrait.name,
+                            ctx.self_type(),
+                        )
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
                                 name: supertrait_name,

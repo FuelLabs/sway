@@ -1,7 +1,6 @@
 use crate::{
     cmd,
     util::{
-        gas::get_gas_price,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -43,7 +42,7 @@ pub struct DeploymentArtifact {
     chain_id: ChainId,
     contract_id: String,
     deployment_size: usize,
-    deployed_block_id: String,
+    deployed_block_height: u32,
 }
 
 impl DeploymentArtifact {
@@ -239,7 +238,6 @@ pub async fn deploy_pkg(
     };
 
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
-        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
@@ -251,20 +249,20 @@ pub async fn deploy_pkg(
         .await?;
 
     let tx = Transaction::from(tx);
-    let chain_id = client.chain_info().await?.consensus_parameters.chain_id;
+    let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
             TransactionStatus::Submitted { .. } => {
                 bail!("contract {} deployment timed out", &contract_id);
             }
-            TransactionStatus::Success { block_id, .. } => {
+            TransactionStatus::Success { block_height, .. } => {
                 let pkg_name = manifest.project_name();
                 info!("\n\nContract {pkg_name} Deployed!");
 
                 info!("\nNetwork: {node_url}");
                 info!("Contract ID: 0x{contract_id}");
-                info!("Deployed in block {}", &block_id);
+                info!("Deployed in block {}", &block_height);
 
                 // Create a deployment artifact.
                 let deployment_size = bytecode.len();
@@ -275,7 +273,7 @@ pub async fn deploy_pkg(
                     chain_id,
                     contract_id: format!("0x{}", contract_id),
                     deployment_size,
-                    deployed_block_id: block_id,
+                    deployed_block_height: *block_height,
                 };
 
                 let output_dir = command
