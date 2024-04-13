@@ -318,7 +318,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
-          fuel-core run --db-type in-memory --debug & 
+          fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
           sleep 5 &&
           cargo run --locked --release --bin test -- --locked
 
@@ -339,7 +339,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
-          fuel-core run --db-type in-memory --debug & 
+          fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
           sleep 5 &&
           cargo run --locked --release --bin test -- --locked --release
 
