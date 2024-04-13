@@ -461,6 +461,8 @@ pub enum CompileError {
     UnnecessaryImmediate { span: Span },
     #[error("This reference is ambiguous, and could refer to a module, enum, or function of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span },
+    #[error("This is a module path, and not an expression.")]
+    ModulePathIsNotAnExpression { module_path: String, span: Span },
     #[error("Unknown type name.")]
     UnknownType { span: Span },
     #[error("Unknown type name \"{name}\".")]
@@ -972,7 +974,8 @@ impl Spanned for CompileError {
             Immediate24TooLarge { span, .. } => span.clone(),
             IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
             UnnecessaryImmediate { span, .. } => span.clone(),
-            AmbiguousPath { span, .. } => span.clone(),
+            AmbiguousPath { span } => span.clone(),
+            ModulePathIsNotAnExpression { span, .. } => span.clone(),
             UnknownType { span, .. } => span.clone(),
             UnknownTypeName { span, .. } => span.clone(),
             FileCouldNotBeRead { span, .. } => span.clone(),
@@ -2059,6 +2062,25 @@ impl ToDiagnostic for CompileError {
                         vec![]
                     }
                 }
+            },
+            ModulePathIsNotAnExpression { module_path, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Module path is not an expression".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This is a module path, and not an expression.".to_string()
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "An expression is expected at this location, but a module path is found.".to_string()
+                    ),
+                ],
+                help: vec![
+                    "In expressions, module paths can only be used to fully qualify names with a path.".to_string(),
+                    format!("E.g., `{module_path}::SOME_CONSTANT` or `{module_path}::some_function()`."),
+                ]
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

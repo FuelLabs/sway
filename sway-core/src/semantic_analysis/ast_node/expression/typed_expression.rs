@@ -1506,9 +1506,8 @@ impl ty::TyExpression {
             }
             (true, None, None, None) => {
                 handler.append(module_probe_handler);
-                return Err(handler.emit_err(CompileError::Unimplemented {
-                    feature: "This case".to_string(),
-                    help: vec![],
+                return Err(handler.emit_err(CompileError::ModulePathIsNotAnExpression {
+                    module_path: unknown_call_path_binding.inner.call_path.to_string(),
                     span,
                 }));
             }
