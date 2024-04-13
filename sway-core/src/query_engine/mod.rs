@@ -32,6 +32,7 @@ pub struct ModuleCacheEntry {
     pub hash: u64,
     pub dependencies: Vec<ModulePath>,
     pub include_tests: bool,
+    pub version: Option<u64>,
 }
 
 pub type ModuleCacheMap = HashMap<ModuleCacheKey, ModuleCacheEntry>;
@@ -45,19 +46,11 @@ pub struct ProgramsCacheEntry {
 
 pub type ProgramsCacheMap = HashMap<ModulePath, ProgramsCacheEntry>;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct QueryEngine {
-    parse_module_cache: RwLock<ModuleCacheMap>,
-    programs_cache: RwLock<ProgramsCacheMap>,
-}
-
-impl Clone for QueryEngine {
-    fn clone(&self) -> Self {
-        Self {
-            parse_module_cache: RwLock::new(self.parse_module_cache.read().unwrap().clone()),
-            programs_cache: RwLock::new(self.programs_cache.read().unwrap().clone()),
-        }
-    }
+    // We want the below types wrapped in Arcs to optimize cloning from LSP.
+    parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
+    programs_cache: Arc<RwLock<ProgramsCacheMap>>,
 }
 
 impl QueryEngine {

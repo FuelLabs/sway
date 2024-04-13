@@ -80,9 +80,7 @@ impl OrdWithEngines for SubstList {
 }
 
 impl SubstTypes for SubstList {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.list
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.list.subst(type_mapping, engines)
     }
 }

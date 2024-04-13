@@ -1,11 +1,10 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
-    config::{Config, Warnings},
+    config::{Config, GarbageCollectionConfig, Warnings},
     core::session::{self, Session},
     error::{DirectoryError, DocumentError, LanguageServerError},
-    utils::debug,
-    utils::keyword_docs::KeywordDocs,
+    utils::{debug, keyword_docs::KeywordDocs},
 };
 use crossbeam_channel::{Receiver, Sender};
 use dashmap::DashMap;
@@ -13,7 +12,7 @@ use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
-use std::process::Command;
+use std::{collections::BTreeMap, process::Command};
 use std::{
     mem,
     path::PathBuf,
@@ -29,7 +28,7 @@ use tower_lsp::{jsonrpc, Client};
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
     pub(crate) client: Option<Client>,
-    pub(crate) config: Arc<RwLock<Config>>,
+    pub config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
     pub(crate) sessions: Arc<Sessions>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
@@ -86,6 +85,8 @@ pub struct CompilationContext {
     pub uri: Option<Url>,
     pub version: Option<i32>,
     pub optimized_build: bool,
+    pub gc_options: GarbageCollectionConfig,
+    pub file_versions: BTreeMap<PathBuf, Option<u64>>,
 }
 
 impl ServerState {
@@ -119,9 +120,10 @@ impl ServerState {
                         let mut engines_clone = session.engines.read().clone();
 
                         if let Some(version) = ctx.version {
-                            // Garbage collection is fairly expsensive so we only clear on every 3rd keystroke.
-                            // Waiting too long to clear can cause a stack overflow to occur.
-                            if version % 3 == 0 {
+                            // Perform garbage collection at configured intervals if enabled to manage memory usage.
+                            if ctx.gc_options.gc_enabled
+                                && version % ctx.gc_options.gc_frequency == 0
+                            {
                                 // Call this on the engines clone so we don't clear types that are still in use
                                 // and might be needed in the case cancel compilation was triggered.
                                 if let Err(err) = session.garbage_collect(&mut engines_clone) {
@@ -135,6 +137,7 @@ impl ServerState {
 
                         let lsp_mode = Some(LspConfig {
                             optimized_build: ctx.optimized_build,
+                            file_versions: ctx.file_versions,
                         });
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
@@ -148,7 +151,26 @@ impl ServerState {
                             experimental,
                         ) {
                             Ok(_) => {
-                                mem::swap(&mut *session.engines.write(), &mut engines_clone);
+                                if let Ok(path) = uri.to_file_path() {
+                                    let path = Arc::new(path);
+                                    let source_id =
+                                        session.engines.read().se().get_source_id(&path);
+                                    let metrics = session
+                                        .metrics
+                                        .get(&source_id)
+                                        .expect("metrics not found for source_id");
+                                    // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
+                                    // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
+                                    // as the engines_clone might have cleared some types that are still in use.
+                                    if metrics.reused_modules == 0 {
+                                        // The compiler did not reuse the workspace AST.
+                                        // We need to overwrite the old engines with the engines clone.
+                                        mem::swap(
+                                            &mut *session.engines.write(),
+                                            &mut engines_clone,
+                                        );
+                                    }
+                                }
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }
                             Err(_err) => {

@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-D058815A63A83254"
+
+[[package]]
+name = "result_option_expect"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-D058815A63A83254"
+dependencies = ["core"]
