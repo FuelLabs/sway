@@ -1,9 +1,8 @@
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    tx::Bytes32,
     types::AssetId,
-    types::{Bits256, Identity},
+    types::{Bits256, Bytes32, Identity},
 };
 use sha2::{Digest, Sha256};
 use std::str::FromStr;

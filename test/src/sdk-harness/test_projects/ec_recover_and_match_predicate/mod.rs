@@ -1,5 +1,6 @@
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
+    crypto::Message,
     prelude::*,
     types::B512,
 };
@@ -52,26 +53,14 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
             wallet.set_provider(provider.clone());
         });
 
-    let data_to_sign = [0; 32];
-    let signature1: B512 = wallet
-        .sign_message(data_to_sign)
-        .await?
-        .as_ref()
-        .try_into()?;
-    let signature2: B512 = wallet2
-        .sign_message(data_to_sign)
-        .await?
-        .as_ref()
-        .try_into()?;
-    let signature3: B512 = wallet3
-        .sign_message(data_to_sign)
-        .await?
-        .as_ref()
-        .try_into()?;
+    let data_to_sign = Message::new([0; 32]);
+    let signature1: B512 = wallet.sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature2: B512 = wallet2.sign(data_to_sign).await?.as_ref().try_into()?;
+    let signature3: B512 = wallet3.sign(data_to_sign).await?.as_ref().try_into()?;
 
     let signatures = [signature1, signature2, signature3];
 
-    let predicate_data = TestPredicateEncoder::encode_data(signatures);
+    let predicate_data = TestPredicateEncoder::default().encode_data(signatures)?;
     let code_path =
         "test_projects/ec_recover_and_match_predicate/out/release/ec_recover_and_match_predicate.bin";
 
