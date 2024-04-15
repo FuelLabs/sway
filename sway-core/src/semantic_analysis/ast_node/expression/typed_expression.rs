@@ -2045,9 +2045,15 @@ impl ty::TyExpression {
 
                                     break (name, variable_decl.body.return_type);
                                 }
-                                // TODO-IG!: Check other decls.
                                 TyDecl::ConstantDecl(constant_decl) => {
-                                    todo!()
+                                    let constant_decl = engines.de().get_constant(&constant_decl.decl_id);
+                                    return Err(handler.emit_err(
+                                        CompileError::AssignmentToConstantOrConfigurable {
+                                            decl_name: constant_decl.name().clone(),
+                                            is_configurable: constant_decl.is_configurable,
+                                            lhs_span,
+                                        },
+                                    ));
                                 }
                                 _ => todo!(),
                             }

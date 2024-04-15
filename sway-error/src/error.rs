@@ -121,10 +121,30 @@ pub enum CompileError {
         duplicate: Span,
         duplicate_is_struct_field: bool,
     },
-    #[error("Assignment to immutable variable. Variable {decl_name} is not declared as mutable.")]
+    #[error("Assignment to an immutable variable. Variable \"{decl_name} is not declared as mutable.")]
     AssignmentToNonMutableVariable {
         /// Variable name pointing to the name in the variable declaration.
         decl_name: Ident,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
+        "Assignment to a {}. {} cannot be assigned to.",
+        if *is_configurable {
+            "configurable"
+        } else {
+            "constant"
+        },
+        if *is_configurable {
+            "Configurables"
+        } else {
+            "Constants"
+        }
+    )]
+    AssignmentToConstantOrConfigurable {
+        /// Constant or configurable name pointing to the name in the constant declaration.
+        decl_name: Ident,
+        is_configurable: bool,
         /// The complete left-hand side of the assignment.
         lhs_span: Span,
     },
@@ -924,6 +944,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
             MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
             AssignmentToNonMutableVariable { lhs_span, .. } => lhs_span.clone(),
+            AssignmentToConstantOrConfigurable { lhs_span, .. } => lhs_span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
@@ -1942,7 +1963,7 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         decl_name.span(),
-                        format!("\"{decl_name}\" is declared here as immutable.")
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
                     ),
                 ],
                 help: vec![
@@ -1999,13 +2020,60 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         decl_name.span(),
-                        format!("\"{decl_name}\" is declared here as immutable.")
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
                     ),
                 ],
                 help: vec![
                     // TODO-IG: Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
                     format!("Consider declaring \"{decl_name}\" as mutable."),
                 ],
+            },
+            AssignmentToConstantOrConfigurable { lhs_span, is_configurable, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("{} cannot be assigned to",
+                    if *is_configurable {
+                        "Configurables"
+                    } else {
+                        "Constants"
+                    }
+                ))),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a constant/configurable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is a constant/configurable.
+                    format!("{} cannot be assigned to, because {} is a {}.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just the constant in the expression.
+                            format!("\"{}\"", decl_name.as_str())
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{}\"", decl_name.as_str())
+                        },
+                        if *is_configurable {
+                            "configurable"
+                        } else {
+                            "constant"
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("{} \"{decl_name}\" is declared here.",
+                            if *is_configurable {
+                                "Configurable"
+                            } else {
+                                "Constant"
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
             },
             Unimplemented { feature, help, span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Used feature is currently not implemented".to_string())),
