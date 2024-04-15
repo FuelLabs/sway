@@ -7,6 +7,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
+    has_changes,
     language::{ty::*, Purity},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
@@ -67,14 +68,14 @@ impl declaration::FunctionSignature for TyTraitFn {
 
 impl EqWithEngines for TyTraitFn {}
 impl PartialEqWithEngines for TyTraitFn {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         self.name == other.name
             && self.purity == other.purity
-            && self.parameters.eq(&other.parameters, engines)
+            && self.parameters.eq(&other.parameters, ctx)
             && type_engine
                 .get(self.return_type.type_id)
-                .eq(&type_engine.get(other.return_type.type_id), engines)
+                .eq(&type_engine.get(other.return_type.type_id), ctx)
             && self.attributes == other.attributes
     }
 }
@@ -100,11 +101,11 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.parameters.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, engines);
+        }
     }
 }
 

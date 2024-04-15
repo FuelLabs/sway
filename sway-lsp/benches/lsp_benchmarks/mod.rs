@@ -14,6 +14,7 @@ pub async fn compile_test_project() -> (Url, Arc<Session>) {
     let session = Arc::new(Session::new());
     let lsp_mode = Some(sway_core::LspConfig {
         optimized_build: false,
+        file_versions: Default::default(),
     });
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();

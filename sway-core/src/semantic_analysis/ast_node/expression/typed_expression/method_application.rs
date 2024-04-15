@@ -267,7 +267,7 @@ pub(crate) fn type_check_method_application(
     ) -> Result<(), ErrorEmitted> {
         match exp {
             ty::TyExpressionVariant::VariableExpression { name, .. } => {
-                let unknown_decl = ctx.namespace().resolve_symbol(
+                let unknown_decl = ctx.namespace().resolve_symbol_typed(
                     &Handler::default(),
                     ctx.engines,
                     name,
@@ -721,13 +721,15 @@ pub(crate) fn resolve_method_name(
         } => {
             // type check the call path
             let type_id = ty.type_id;
-            let type_info_prefix = vec![];
+
+            // find the module that the symbol is in
+            let module_path = ctx.namespace().prepend_module_path(vec![]);
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
-                &type_info_prefix,
+                &module_path,
                 method_name,
                 ctx.type_annotation(),
                 &arguments_types,

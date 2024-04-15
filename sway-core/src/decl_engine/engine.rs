@@ -261,11 +261,17 @@ impl DeclEngine {
                         (
                             AssociatedItemDeclId::TraitFn(x_id),
                             AssociatedItemDeclId::TraitFn(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        ) => self.get(x_id).eq(
+                            &self.get(curr_parent_id),
+                            &PartialEqWithEnginesContext::new(engines),
+                        ),
                         (
                             AssociatedItemDeclId::Function(x_id),
                             AssociatedItemDeclId::Function(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        ) => self.get(x_id).eq(
+                            &self.get(curr_parent_id),
+                            &PartialEqWithEnginesContext::new(engines),
+                        ),
                         _ => false,
                     }) {
                         left_to_check.push_back(curr_parent.clone());

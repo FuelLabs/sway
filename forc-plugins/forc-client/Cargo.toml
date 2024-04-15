@@ -1,6 +1,6 @@
 [package]
 name = "forc-client"
-version = "0.52.0"
+version = "0.54.0"
 description = "A `forc` plugin for interacting with a Fuel node."
 authors.workspace = true
 edition.workspace = true
@@ -14,16 +14,16 @@ async-trait = "0.1.58"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 clap = { version = "3", features = ["derive", "env"] }
 devault = "0.1"
-forc = { version = "0.52.0", path = "../../forc" }
-forc-pkg = { version = "0.52.0", path = "../../forc-pkg" }
-forc-tracing = { version = "0.52.0", path = "../../forc-tracing" }
-forc-tx = { version = "0.52.0", path = "../forc-tx" }
-forc-util = { version = "0.52.0", path = "../../forc-util" }
+forc = { version = "0.54.0", path = "../../forc" }
+forc-pkg = { version = "0.54.0", path = "../../forc-pkg" }
+forc-tracing = { version = "0.54.0", path = "../../forc-tracing" }
+forc-tx = { version = "0.54.0", path = "../forc-tx" }
+forc-util = { version = "0.54.0", path = "../../forc-util" }
 forc-wallet = { workspace = true }
 fuel-abi-types = { workspace = true }
 fuel-core-client = { workspace = true, features = ["subscriptions"] }
 fuel-crypto = { workspace = true }
-fuel-tx = { workspace = true, features = ["builder"] }
+fuel-tx = { workspace = true, features = ["test-helpers"] }
 fuel-vm = { workspace = true }
 fuels-accounts = { workspace = true }
 fuels-core = { workspace = true }
@@ -33,9 +33,9 @@ rand = "0.8"
 rpassword = "7.2"
 serde = "1.0"
 serde_json = "1"
-sway-core = { version = "0.52.0", path = "../../sway-core" }
-sway-types = { version = "0.52.0", path = "../../sway-types" }
-sway-utils = { version = "0.52.0", path = "../../sway-utils" }
+sway-core = { version = "0.54.0", path = "../../sway-core" }
+sway-types = { version = "0.54.0", path = "../../sway-types" }
+sway-utils = { version = "0.54.0", path = "../../sway-utils" }
 tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
 tracing = "0.1"
 

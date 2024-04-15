@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use strum::{Display, EnumString};
 
 #[derive(
@@ -217,6 +217,9 @@ pub struct LspConfig {
     //
     // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
     pub optimized_build: bool,
+    // The value of the `version` field in the `DidChangeTextDocumentParams` struct.
+    // This is used to determine if the file has been modified since the last compilation.
+    pub file_versions: BTreeMap<PathBuf, Option<u64>>,
 }
 
 #[cfg(test)]
