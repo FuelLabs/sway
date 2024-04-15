@@ -1,10 +1,9 @@
 use fuel_core::types::fuel_tx::ContractIdExt;
 use fuel_vm::consts::VM_MAX_RAM;
-use fuels::tx::Bytes32;
 use fuels::{
     accounts::wallet::WalletUnlocked,
     prelude::*,
-    types::{Bits256, ContractId},
+    types::{Bits256, Bytes32, ContractId},
 };
 
 abigen!(
