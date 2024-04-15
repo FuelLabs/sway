@@ -40,7 +40,7 @@ First, to use `run_external`, the ABI of the external contract is not required. 
 Second, the storage context of the proxy contract is retained for the loaded code.
 This means that in the examples above, if someone calls the `double_input` function on the proxy contract, the `value` variable will be updated in the proxy contract's storage.
 
-If the proxy contract where to use a normal contract call to call `double_input`, then the `value` variable in the implementation contract would updated, and would not change in the proxy contract.
+If the proxy contract were to use a normal contract call to call `double_input`, then the `value` variable in the implementation contract would updated, and would not change in the proxy contract.
 
 Notice in the `Proxy` example above, there are a couple of unique things happening in the storage block in order for this to work:
 
