@@ -1,7 +1,11 @@
 category = "fail"
 
+# check: $()Used feature is currently not implemented
 # check: $()fn add_points<T>(a: MyPoint<T>, b: MyPoint<T>) -> MyPoint<T> where T: my_add::MyAdd {
-# check: $()Unimplemented feature: Using module paths to define trait constraints is not supported yet.
+# nextln: $()Using module paths to define trait constraints is currently not implemented.
+# check: $()Import the supertrait by using: `use my_add::MyAdd;`.
 
+# check: $()Used feature is currently not implemented
 # check: $()trait B: my_a::A {
-# nextln: $()Unimplemented feature: Using module paths to define supertraits is not supported yet.
+# nextln: $()Using module paths to define supertraits is currently not implemented.
+# check: $()Import the supertrait by using: `use my_a::A;`.
