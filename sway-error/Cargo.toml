@@ -10,6 +10,7 @@ repository.workspace = true
 
 [dependencies]
 either = "1.9.0"
+in_definite = "1.0.0"
 num-traits = "0.2.14"
 smallvec = "1.7"
 sway-types = { version = "0.55.0", path = "../sway-types" }

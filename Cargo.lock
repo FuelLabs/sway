@@ -3574,6 +3574,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "in_definite"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5bd47a3c8188d842aa7ff4dd65a9732f740fcbe04689ecfbfef43c465b381de"
+
+[[package]]
 name = "include_dir"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6643,6 +6649,7 @@ name = "sway-error"
 version = "0.55.0"
 dependencies = [
  "either",
+ "in_definite",
  "num-traits",
  "smallvec",
  "sway-types",

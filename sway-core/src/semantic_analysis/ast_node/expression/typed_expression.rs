@@ -22,7 +22,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, TyCodeBlock, TyDecl, TyImplItem, TyReassignmentTarget, VariableMutability},
+        ty::{self, GetDeclIdent, TyCodeBlock, TyDecl, TyImplItem, TyReassignmentTarget, VariableMutability},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -2055,7 +2055,15 @@ impl ty::TyExpression {
                                         },
                                     ));
                                 }
-                                _ => todo!(),
+                                decl => {
+                                    return Err(handler.emit_err(
+                                        CompileError::DeclAssignmentTargetCannotBeAssignedTo {
+                                            decl_name: decl.get_decl_ident(),
+                                            decl_friendly_type_name: decl.friendly_type_name(),
+                                            lhs_span
+                                        }
+                                    ));
+                                },
                             }
                         }
                         ExpressionKind::Subfield(SubfieldExpression {

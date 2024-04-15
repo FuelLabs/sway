@@ -729,7 +729,7 @@ impl TyDecl {
         }
     }
 
-    /// friendly name string used for error reporting,
+    /// Friendly name string used for error reporting,
     /// which consists of the identifier for the declaration.
     pub fn friendly_name(&self, engines: &Engines) -> String {
         let decl_engine = engines.de();
@@ -752,7 +752,7 @@ impl TyDecl {
         }
     }
 
-    /// friendly type name string used for error reporting,
+    /// Friendly type name string used for error reporting,
     /// which consists of the type name of the declaration AST node.
     pub fn friendly_type_name(&self) -> &'static str {
         use TyDecl::*;
@@ -766,7 +766,7 @@ impl TyDecl {
             EnumDecl(_) => "enum",
             EnumVariantDecl(_) => "enum variant",
             ImplTrait(_) => "impl trait",
-            AbiDecl(_) => "abi",
+            AbiDecl(_) => "ABI",
             GenericTypeForFunctionScope(_) => "generic type parameter",
             ErrorRecovery(_, _) => "error",
             StorageDecl(_) => "contract storage",
@@ -774,7 +774,7 @@ impl TyDecl {
         }
     }
 
-    /// name string used in `forc doc` file path generation that mirrors `cargo doc`.
+    /// Name string used in `forc doc` file path generation that mirrors `cargo doc`.
     pub fn doc_name(&self) -> &'static str {
         use TyDecl::*;
         match self {

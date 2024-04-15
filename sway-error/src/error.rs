@@ -149,6 +149,23 @@ pub enum CompileError {
         lhs_span: Span,
     },
     #[error(
+        "This assignment target cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+        if let Some(decl_name) = decl_name {
+            format!("\"{decl_name}\"")
+        } else {
+            "this".to_string()
+        },
+        a_or_an(decl_friendly_type_name)
+    )]
+    DeclAssignmentTargetCannotBeAssignedTo {
+        /// Name of the declared variant, pointing to the name in the declaration.
+        decl_name: Option<Ident>,
+        /// Friendly name of the type of the declaration. E.g., "function", or "struct".
+        decl_friendly_type_name: &'static str,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
         "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
             \"{variable_name}\" is not declared as mutable."
     )]
@@ -945,6 +962,7 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
             AssignmentToNonMutableVariable { lhs_span, .. } => lhs_span.clone(),
             AssignmentToConstantOrConfigurable { lhs_span, .. } => lhs_span.clone(),
+            DeclAssignmentTargetCannotBeAssignedTo { lhs_span, .. } => lhs_span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
@@ -2005,14 +2023,14 @@ impl ToDiagnostic for CompileError {
                     // This expression cannot be assigned to, because "x" is an immutable variable.
                     format!("{} cannot be assigned to, because {} is an immutable variable.",
                         if decl_name.as_str() == lhs_span.as_str() { // We have just a single variable in the expression.
-                            format!("\"{}\"", decl_name.as_str())
+                            format!("\"{decl_name}\"")
                         } else {
                             "This expression".to_string()
                         },
                         if decl_name.as_str() == lhs_span.as_str() {
                             "it".to_string()
                         } else {
-                            format!("\"{}\"", decl_name.as_str())
+                            format!("\"{decl_name}\"")
                         }
                     )
                 ),
@@ -2044,14 +2062,14 @@ impl ToDiagnostic for CompileError {
                     // This expression cannot be assigned to, because "x" is a constant/configurable.
                     format!("{} cannot be assigned to, because {} is a {}.",
                         if decl_name.as_str() == lhs_span.as_str() { // We have just the constant in the expression.
-                            format!("\"{}\"", decl_name.as_str())
+                            format!("\"{decl_name}\"")
                         } else {
                             "This expression".to_string()
                         },
                         if decl_name.as_str() == lhs_span.as_str() {
                             "it".to_string()
                         } else {
-                            format!("\"{}\"", decl_name.as_str())
+                            format!("\"{decl_name}\"")
                         },
                         if *is_configurable {
                             "configurable"
@@ -2072,6 +2090,41 @@ impl ToDiagnostic for CompileError {
                             }
                         )
                     ),
+                ],
+                help: vec![],
+            },
+            DeclAssignmentTargetCannotBeAssignedTo { decl_name, decl_friendly_type_name, lhs_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Assignment target cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a trait/function/ etc and not a mutable variable.
+                    //  or
+                    // This cannot be assigned to, because "x" is a trait/function/ etc and not a mutable variable.
+                    format!("{} cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() => // We have just the decl name in the expression.
+                                format!("\"{decl_name}\""),
+                            _ => "This".to_string(),
+                        },
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() =>
+                                "it".to_string(),
+                            Some(decl_name) => format!("\"{}\"", decl_name.as_str()),
+                            _ => "it".to_string(),
+                        },
+                        a_or_an(decl_friendly_type_name)
+                    )
+                ),
+                hints: vec![
+                    match decl_name {
+                        Some(decl_name) => Hint::info(
+                            source_engine,
+                            decl_name.span(),
+                            format!("{} \"{decl_name}\" is declared here.", ascii_sentence_case(&decl_friendly_type_name.to_string()))
+                        ),
+                        _ => Hint::none(),
+                    }
                 ],
                 help: vec![],
             },
