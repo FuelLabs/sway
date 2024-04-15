@@ -92,18 +92,15 @@ pub(crate) fn type_check_method_application(
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
 
     // unify method return type with current ctx.type_annotation().
-    handler.scope(|handler| {
-        type_engine.unify_with_generic(
-            handler,
-            engines,
-            method.return_type.type_id,
-            ctx.type_annotation(),
-            &method_name_binding.span(),
-            "Function return type does not match up with local type annotation.",
-            None,
-        );
-        Ok(())
-    })?;
+    type_engine.unify_with_generic(
+        handler,
+        engines,
+        method.return_type.type_id,
+        ctx.type_annotation(),
+        &method_name_binding.span(),
+        "Function return type does not match up with local type annotation.",
+        None,
+    );
 
     // type check the function arguments (2nd pass)
     let mut args_buf = VecDeque::new();
