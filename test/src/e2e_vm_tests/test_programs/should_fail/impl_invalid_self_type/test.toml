@@ -1,0 +1,21 @@
+category = "fail"
+
+#check: $()Self type of an impl block is not valid
+#check: $()impl Trait for Self { }
+#nextln: $()"Self" is not a valid type in the self type of a trait impl block.
+
+#check: $()Self type of an impl block is not valid
+#check: $()impl Trait for _ { }
+#nextln: $()Placeholder `_` is not a valid type in the self type of a trait impl block.
+#check: $()Are you trying to implement trait "Trait" for any type?
+#check: $()impl<T> SomeTrait for T
+
+#check: $()Self type of an impl block is not valid
+#check: $()impl Self { }
+#nextln: $()"Self" is not a valid type in the self type of an impl block.
+
+#check: $()Self type of an impl block is not valid
+#check: $()impl _ { }
+#nextln: $()Placeholder `_` is not a valid type in the self type of an impl block.
+#check: $()Are you trying to implement functionality for any type?
+#check: $()impl<T> T

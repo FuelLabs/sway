@@ -720,7 +720,7 @@ impl ty::TyExpression {
         // check to make sure that the type of the value is something that can be matched upon
         type_engine
             .get(type_id)
-            .expect_is_supported_in_match_expressions(handler, &typed_value.span)?;
+            .expect_is_supported_in_match_expressions(handler, engines, &typed_value.span)?;
 
         // type check the match expression and create a ty::TyMatchExpression object
         let (typed_match_expression, typed_scrutinees) = ty::TyMatchExpression::type_check(
@@ -1506,10 +1506,10 @@ impl ty::TyExpression {
             }
             (true, None, None, None) => {
                 handler.append(module_probe_handler);
-                return Err(handler.emit_err(CompileError::Unimplemented(
-                    "this case is not yet implemented",
+                return Err(handler.emit_err(CompileError::ModulePathIsNotAnExpression {
+                    module_path: unknown_call_path_binding.inner.call_path.to_string(),
                     span,
-                )));
+                }));
             }
             (false, None, None, Some((const_ref, call_path_binding))) => {
                 handler.append(const_probe_handler);

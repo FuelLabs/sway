@@ -14,5 +14,11 @@ fn main(
         gas: 10_000_000,
     };
 
-    call_with_function_selector_vec(target, function_selector, calldata, single_value_type_arg, call_params);
+    call_with_function_selector_vec(
+        target,
+        function_selector,
+        calldata,
+        single_value_type_arg,
+        call_params,
+    );
 }

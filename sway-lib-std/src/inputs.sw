@@ -29,19 +29,12 @@ const GTF_INPUT_TYPE = 0x200;
 pub const GTF_INPUT_COIN_OWNER = 0x203;
 pub const GTF_INPUT_COIN_AMOUNT = 0x204;
 pub const GTF_INPUT_COIN_ASSET_ID = 0x205;
-// pub const GTF_INPUT_COIN_TX_POINTER = 0x206;
 pub const GTF_INPUT_COIN_WITNESS_INDEX = 0x207;
-pub const GTF_INPUT_COIN_MATURITY = 0x208;
 pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x209;
 pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
 pub const GTF_INPUT_COIN_PREDICATE = 0x20B;
 pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x20C;
 
-// pub const GTF_INPUT_CONTRACT_TX_ID = 0x220;
-// pub const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x221;
-// pub const GTF_INPUT_CONTRACT_BALANCE_ROOT = 0x222;
-// pub const GTF_INPUT_CONTRACT_STATE_ROOT = 0x223;
-// pub const GTF_INPUT_CONTRACT_TX_POINTER = 0x224;
 // pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x225;
 pub const GTF_INPUT_MESSAGE_SENDER = 0x240;
 pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x241;
@@ -450,38 +443,6 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
 }
 
 // Coin Inputs
-
-/// Gets the maturity from the input at `index`.
-///
-/// # Additional Information
-///
-/// The maturity of an input refers to the number of blocks that must pass before the input can be spent.
-///
-/// # Arguments
-///
-/// * `index`: [u64] - The index of the input to check.
-///
-/// # Returns
-///
-/// * [Option<u32>] - The maturity of the input at `index`, if the input's type is `Input::Coin`, else `None`.
-///
-///
-/// # Examples
-///
-/// ```sway
-/// use std::inputs::input_maturity;
-///
-/// fn foo() {
-///     let input_maturity = input_maturity(0);
-///     assert(input_maturity.unwrap() == 0_u32);
-/// }
-/// ```
-pub fn input_maturity(index: u64) -> Option<u32> {
-    match input_type(index) {
-        Input::Coin => Some(__gtf::<u32>(index, GTF_INPUT_COIN_MATURITY)),
-        _ => None,
-    }
-}
 
 /// Gets the sender of the input message at `index`.
 ///
