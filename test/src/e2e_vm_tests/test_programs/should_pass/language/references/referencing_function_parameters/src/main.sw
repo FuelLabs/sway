@@ -127,6 +127,9 @@ fn struct_parameter(p: S) {
     assert(*r_p_1 == *r_p_2);
     
     assert(r_p_1.x == r_p_2.x);
+
+    let q = S::new();
+    assert(r_p_1_addr_of != __addr_of(q));
 }
 
 #[inline(never)]

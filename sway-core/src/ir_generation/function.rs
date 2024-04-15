@@ -303,13 +303,7 @@ impl<'eng> FnCompiler<'eng> {
             _ => return Ok(TerminatorValue::new(val, context)),
         };
 
-        let is_argument = if let ty::TyExpressionVariant::VariableExpression { name, .. } =
-            &ast_expr.expression
-        {
-            self.function.get_arg(context, name.as_str()).is_some()
-        } else {
-            false
-        };
+        let is_argument = val.get_argument(context).is_some();
 
         let ptr_val = if is_argument {
             // The `ptr_to_int` instructions gets the address of a variable into an integer.
