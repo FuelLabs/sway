@@ -6,7 +6,7 @@ abigen!(Contract(
 ));
 
 #[tokio::test]
-async fn can_mint() {
+async fn can_get_base_asset_id() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let (fuelcontract_instance, _fuelcontract_id) = get_instance(wallet.clone()).await;
 
