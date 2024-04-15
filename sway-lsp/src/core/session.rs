@@ -33,13 +33,11 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 use sway_core::{
-    decl_engine::DeclEngine,
-    language::{
+    decl_engine::DeclEngine, language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
         ty, HasSubmodules,
-    },
-    BuildTarget, Engines, LspConfig, Namespace, Programs,
+    }, query_engine::QueryEngine, BuildTarget, Engines, LspConfig, Namespace, Programs
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
@@ -82,6 +80,8 @@ impl Default for Session {
 
 impl Session {
     pub fn new() -> Self {
+        // let mut engines = Engines::default();
+        // engines.query_engine = query_engine;
         Session {
             token_map: TokenMap::new(),
             documents: DashMap::new(),
@@ -89,6 +89,7 @@ impl Session {
             metrics: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             engines: <_>::default(),
+            //engines: RwLock::new(engines),
             sync: SyncWorkspace::new(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
         }

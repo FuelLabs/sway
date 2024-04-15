@@ -21,7 +21,7 @@ use std::{
         Arc,
     },
 };
-use sway_core::LspConfig;
+use sway_core::{query_engine::QueryEngine, LspConfig};
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
@@ -30,7 +30,9 @@ pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
-    pub(crate) sessions: Arc<Sessions>,
+    pub(crate) query_engine: Arc<QueryEngine>,
+    /// A collection of [Session]s, each of which represents a project that has been opened in the users workspace
+    pub(crate) sessions: Arc<DashMap<PathBuf, Arc<Session>>>,
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
     pub is_compiling: Arc<AtomicBool>,
     pub(crate) cb_tx: Sender<TaskMessage>,
@@ -46,7 +48,8 @@ impl Default for ServerState {
             client: None,
             config: Arc::new(RwLock::new(Default::default())),
             keyword_docs: Arc::new(KeywordDocs::new()),
-            sessions: Arc::new(Sessions(DashMap::new())),
+            query_engine: Arc::new(QueryEngine::default()),
+            sessions: Arc::new(DashMap::new()),
             retrigger_compilation: Arc::new(AtomicBool::new(false)),
             is_compiling: Arc::new(AtomicBool::new(false)),
             cb_tx,
@@ -158,7 +161,7 @@ impl ServerState {
                                     let metrics = session
                                         .metrics
                                         .get(&source_id)
-                                        .expect("metrics not found for source_id");
+                                        .expect(&format!("metrics not found for source_id. path {:?} | source_id {:?}", path, source_id));
                                     // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                     // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                     // as the engines_clone might have cleared some types that are still in use.
@@ -310,19 +313,6 @@ impl ServerState {
         }
         diagnostics_to_publish
     }
-}
-
-/// `Sessions` is a collection of [Session]s, each of which represents a project
-/// that has been opened in the users workspace.
-pub(crate) struct Sessions(DashMap<PathBuf, Arc<Session>>);
-
-impl Sessions {
-    async fn init(&self, uri: &Url) -> Result<(), LanguageServerError> {
-        let session = Arc::new(Session::new());
-        let project_name = session.init(uri).await?;
-        self.insert(project_name, session);
-        Ok(())
-    }
 
     /// Constructs and returns a tuple of `(Url, Arc<Session>)` from a given workspace URI.
     /// The returned URL represents the temp directory workspace.
@@ -350,12 +340,12 @@ impl Sessions {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = match self.try_get(&manifest_dir).try_unwrap() {
+        let session = match self.sessions.try_get(&manifest_dir).try_unwrap() {
             Some(item) => item.value().clone(),
             None => {
                 // If no session can be found, then we need to call init and inserst a new session into the map
-                self.init(uri).await?;
-                self.try_get(&manifest_dir)
+                self.init_session(uri).await?;
+                self.sessions.try_get(&manifest_dir)
                     .try_unwrap()
                     .map(|item| item.value().clone())
                     .expect("no session found even though it was just inserted into the map")
@@ -363,11 +353,11 @@ impl Sessions {
         };
         Ok(session)
     }
-}
 
-impl std::ops::Deref for Sessions {
-    type Target = DashMap<PathBuf, Arc<Session>>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    async fn init_session(&self, uri: &Url) -> Result<(), LanguageServerError> {
+        let session = Arc::new(Session::new());
+        let project_name = session.init(uri).await?;
+        self.sessions.insert(project_name, session);
+        Ok(())
     }
 }

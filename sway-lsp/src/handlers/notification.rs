@@ -21,7 +21,6 @@ pub async fn handle_did_open_text_document(
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     let (uri, session) = state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.handle_open_file(&uri).await;
@@ -92,7 +91,6 @@ pub async fn handle_did_change_text_document(
     }
 
     let (uri, session) = state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session
@@ -134,7 +132,6 @@ pub(crate) async fn handle_did_save_text_document(
 ) -> Result<(), LanguageServerError> {
     document::remove_dirty_flag(&params.text_document.uri)?;
     let (uri, session) = state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
@@ -153,7 +150,6 @@ pub(crate) async fn handle_did_change_watched_files(
 ) -> Result<(), LanguageServerError> {
     for event in params.changes {
         let (uri, session) = state
-            .sessions
             .uri_and_session_from_workspace(&event.uri)
             .await?;
         if let FileChangeType::DELETED = event.typ {
