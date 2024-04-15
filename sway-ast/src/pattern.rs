@@ -15,7 +15,7 @@ pub enum Pattern {
     /// A pattern made of a single ident, which could either be a variable or an enum variant
     AmbiguousSingleIdent(Ident),
     Var {
-        reference: Option<RefToken>, // TODO-IG: Remove this and replace with proper support for references in patterns.
+        reference: Option<RefToken>, // TODO-IG: Implement `ref`, `mut`, and `ref mut` when implementing matching of references.
         mutable: Option<MutToken>,
         name: Ident,
     },
