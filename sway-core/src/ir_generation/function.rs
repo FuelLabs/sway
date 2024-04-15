@@ -303,7 +303,9 @@ impl<'eng> FnCompiler<'eng> {
             _ => return Ok(TerminatorValue::new(val, context)),
         };
 
-        let is_argument = val.get_argument(context).is_some();
+        let is_argument = val.get_argument(context).is_some_and(|arg| {
+            arg.block.get_function(context).get_entry_block(context) == arg.block
+        });
 
         let ptr_val = if is_argument {
             // The `ptr_to_int` instructions gets the address of a variable into an integer.
