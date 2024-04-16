@@ -287,9 +287,21 @@ fn ptr_to_int_demotion(context: &mut Context, function: Function) -> Result<bool
         return Ok(false);
     }
 
-    // Take the ptr_to_int value, store it in a temporary local, and replace it with its pointer in
-    // the ptr_to_int instruction.
     for (block, ptr_to_int_instr_val, ptr_val, ptr_ty) in candidates {
+        // If the ptr_val is a load from a memory location, we can just refer to that.
+        if let Some(instr) = ptr_val.get_instruction(context) {
+            if let Some(loaded_val) = match instr.op {
+                InstOp::Load(loaded_val) => Some(loaded_val),
+                _ => None,
+            } {
+                ptr_to_int_instr_val.replace_instruction_value(context, ptr_val, loaded_val);
+                continue;
+            }
+        }
+
+        // Take the ptr_to_int value, store it in a temporary local, and replace it with its pointer in
+        // the ptr_to_int instruction.
+
         // Create a variable for the arg, a get_local for it and a store.
         let loc_var = function.new_unique_local_var(
             context,
