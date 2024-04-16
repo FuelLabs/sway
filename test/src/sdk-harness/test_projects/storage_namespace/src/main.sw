@@ -288,11 +288,15 @@ fn non_inlined_function(arg: u32) -> bool {
     // By storing and reading from a large complex data structure we're ensuring that this function
     // is too large to be inlined.  The stored value type must be a reference type too, to ensure
     // the use of memory (not a register) to read it back.
-    write(S_15, 0, LargeStruct {
-        x: arg,
-        y: 0x9999999999999999999999999999999999999999999999999999999999999999,
-        z: arg,
-    });
+    write(
+        S_15,
+        0,
+        LargeStruct {
+            x: arg,
+            y: 0x9999999999999999999999999999999999999999999999999999999999999999,
+            z: arg,
+        },
+    );
 
     let ls = read::<LargeStruct>(S_15, 0).unwrap();
     ls.x == arg

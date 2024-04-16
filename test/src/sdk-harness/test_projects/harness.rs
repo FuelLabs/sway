@@ -29,6 +29,7 @@ mod predicate_data_struct;
 mod private_struct_fields_in_storage_and_abi;
 mod registers;
 mod result_in_abi;
+mod result_option_expect;
 mod run_external_proxy;
 mod script_data;
 mod storage;
