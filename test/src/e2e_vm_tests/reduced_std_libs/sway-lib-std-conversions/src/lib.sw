@@ -15,6 +15,7 @@ pub mod bytes;
 pub mod primitive_conversions;
 pub mod array_conversions;
 pub mod bytes_conversions;
+pub mod clone;
 
 pub mod prelude;
 
