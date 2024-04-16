@@ -143,6 +143,12 @@ struct EditText<'text> {
 
 pub struct Documents(DashMap<String, TextDocument>);
 
+impl Default for Documents {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Documents {
     pub fn new() -> Self {
         Documents(DashMap::new())
