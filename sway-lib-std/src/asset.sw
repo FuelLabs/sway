@@ -4,7 +4,6 @@ library;
 use ::address::Address;
 use ::alias::SubId;
 use ::asset_id::AssetId;
-use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
@@ -41,7 +40,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// ```
 pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
-    transfer(to, AssetId::new(contract_id(), sub_id), amount);
+    transfer(to, AssetId::new(ContractId::this(), sub_id), amount);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them
@@ -71,7 +70,7 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 /// ```
 pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
-    force_transfer_to_contract(to, AssetId::new(contract_id(), sub_id), amount);
+    force_transfer_to_contract(to, AssetId::new(ContractId::this(), sub_id), amount);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them to
@@ -95,7 +94,7 @@ pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
 /// ```
 pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
-    transfer_to_address(to, AssetId::new(contract_id(), sub_id), amount);
+    transfer_to_address(to, AssetId::new(ContractId::this(), sub_id), amount);
 }
 
 /// Mint `amount` coins of the current contract's `sub_id`. The newly minted assets are owned by the current contract.
