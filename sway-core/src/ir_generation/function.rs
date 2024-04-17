@@ -295,8 +295,7 @@ impl<'eng> FnCompiler<'eng> {
         md_mgr: &mut MetadataManager,
         ast_expr: &ty::TyExpression,
     ) -> Result<TerminatorValue, CompileError> {
-        // Compile expression which *may* be a pointer.  We can't return a value so create a
-        // temporary here, store the value and return its pointer.
+        // Compile expression which *may* be a pointer.
         let val =
             return_on_termination_or_extract!(self.compile_expression(context, md_mgr, ast_expr)?);
         let ty = match val.get_type(context) {
@@ -304,16 +303,36 @@ impl<'eng> FnCompiler<'eng> {
             _ => return Ok(TerminatorValue::new(val, context)),
         };
 
-        // Create a temporary.
-        let temp_name = self.lexical_map.insert_anon();
-        let tmp_var = self
-            .function
-            .new_local_var(context, temp_name, ty, None, false)
-            .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
-        let tmp_val = self.current_block.append(context).get_local(tmp_var);
-        self.current_block.append(context).store(tmp_val, val);
+        let is_argument = val.get_argument(context).is_some_and(|arg| {
+            arg.block.get_function(context).get_entry_block(context) == arg.block
+        });
 
-        Ok(TerminatorValue::new(tmp_val, context))
+        let ptr_val = if is_argument {
+            // The `ptr_to_int` instructions gets the address of a variable into an integer.
+            // We then cast it back to a pointer.
+            let ptr_ty = Type::new_ptr(context, ty);
+            let int_ty = Type::get_uint64(context);
+            let ptr_to_int = self.current_block.append(context).ptr_to_int(val, int_ty);
+            let int_to_ptr = self
+                .current_block
+                .append(context)
+                .int_to_ptr(ptr_to_int, ptr_ty);
+            int_to_ptr
+        } else {
+            // We can't return a value so create a temporary here, store the value and return its pointer.
+            let temp_name = self.lexical_map.insert_anon();
+            let tmp_var = self
+                .function
+                .new_local_var(context, temp_name, ty, None, false)
+                .map_err(|ir_error| {
+                    CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                })?;
+            let tmp_val = self.current_block.append(context).get_local(tmp_var);
+            self.current_block.append(context).store(tmp_val, val);
+            tmp_val
+        };
+
+        Ok(TerminatorValue::new(ptr_val, context))
     }
 
     fn compile_string_slice(

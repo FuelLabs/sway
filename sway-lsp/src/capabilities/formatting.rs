@@ -1,7 +1,21 @@
-use crate::error::LanguageServerError;
-use lsp_types::{Position, Range, TextEdit};
+use crate::{
+    core::document::Documents,
+    error::{DocumentError, LanguageServerError},
+};
+use lsp_types::{Position, Range, TextEdit, Url};
 use std::sync::Arc;
 use swayfmt::Formatter;
+
+pub fn format_text(documents: &Documents, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
+    let document = documents.try_get(url.path()).try_unwrap().ok_or_else(|| {
+        DocumentError::DocumentNotFound {
+            path: url.path().to_string(),
+        }
+    })?;
+
+    get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
+        .map(|page_text_edit| vec![page_text_edit])
+}
 
 pub fn get_page_text_edit(
     text: Arc<str>,
