@@ -1,4 +1,5 @@
 use crate::{
+    decl_engine::module_engine::ModuleId,
     language::{ty, CallPath, Visibility},
     Engines, Ident, TypeId,
 };
@@ -32,7 +33,7 @@ pub struct Namespace {
     ///
     /// This is passed through type-checking in order to initialise the namespace of each submodule
     /// within the project.
-    init: Module,
+    init: ModuleId,
     /// The `root` of the project namespace.
     ///
     /// From the root, the entirety of the project's namespace can always be accessed.
@@ -51,7 +52,7 @@ impl Namespace {
     pub fn init_root(root: Root) -> Self {
         let mod_path = vec![];
         Self {
-            init: root.module.clone(),
+            init: root.module_id,
             root,
             mod_path,
         }
@@ -75,31 +76,32 @@ impl Namespace {
         &self.root
     }
 
-    pub fn root_module(&self) -> &Module {
-        &self.root.module
+    pub fn root_module(&self) -> &ModuleId {
+        &self.root.module_id
     }
 
     /// The name of the root module
-    pub fn root_module_name(&self) -> &Option<Ident> {
-        &self.root.module.name
+    pub fn root_module_name(&self, engines: &Engines) -> Option<Ident> {
+        self.root.module_id.read(engines, |m| m.name.clone())
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module(&self) -> &Module {
-        &self.root.module[&self.mod_path]
-    }
-
-    /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module_mut(&mut self) -> &mut Module {
-        &mut self.root.module[&self.mod_path]
+    pub fn module_id(&self, engines: &Engines) -> ModuleId {
+        self.root.module_id.read(engines, |m| {
+            m.submodule(engines, &self.mod_path)
+                .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
+        })
     }
 
     pub fn lookup_submodule_from_absolute_path(
         &self,
         handler: &Handler,
+        engines: &Engines,
         path: &[Ident],
-    ) -> Result<&Module, ErrorEmitted> {
-        self.root.module.lookup_submodule(handler, path)
+    ) -> Result<ModuleId, ErrorEmitted> {
+        self.root
+            .module_id
+            .read(engines, |m| m.lookup_submodule(handler, engines, path))
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
@@ -115,19 +117,20 @@ impl Namespace {
     /// the `true_if_same` is returned.
     pub(crate) fn module_is_submodule_of(
         &self,
+        engines: &Engines,
         absolute_module_path: &ModulePath,
         true_if_same: bool,
     ) -> bool {
         // `mod_path` does not contain the root name, so we have to separately check
         // that the root name is equal to the module package name.
-        let root_name = match &self.root.module.name {
+        let root_name = match self.root.module_id.read(engines, |m| m.name.clone()) {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
 
         let (package_name, modules) = absolute_module_path.split_first().expect("Absolute module path must have at least one element, because it always contains the package name.");
 
-        if root_name != package_name {
+        if root_name != *package_name {
             return false;
         }
 
@@ -153,15 +156,19 @@ impl Namespace {
 
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.
-    pub(crate) fn module_is_external(&self, absolute_module_path: &ModulePath) -> bool {
-        let root_name = match &self.root.module.name {
+    pub(crate) fn module_is_external(
+        &self,
+        engines: &Engines,
+        absolute_module_path: &ModulePath,
+    ) -> bool {
+        let root_name = match self.root.module_id.read(engines, |m| m.name.clone()) {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
 
         assert!(!absolute_module_path.is_empty(), "Absolute module path must have at least one element, because it always contains the package name.");
 
-        root_name != &absolute_module_path[0]
+        root_name != absolute_module_path[0]
     }
 
     pub fn get_root_trait_item_for_type(
@@ -172,11 +179,11 @@ impl Namespace {
         type_id: TypeId,
         as_trait: Option<CallPath>,
     ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
-        self.root
-            .module
-            .current_items()
-            .implemented_traits
-            .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
+        self.root.module_id.read(engines, |m| {
+            m.current_items()
+                .implemented_traits
+                .get_trait_item_for_type(handler, engines, name, type_id, as_trait.clone())
+        })
     }
 
     pub fn resolve_root_symbol(
@@ -187,9 +194,9 @@ impl Namespace {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .module
-            .resolve_symbol(handler, engines, mod_path, symbol, self_type)
+        self.root.module_id.read(engines, |m| {
+            m.resolve_symbol(handler, engines, mod_path, symbol, self_type)
+        })
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
@@ -200,9 +207,9 @@ impl Namespace {
         symbol: &Ident,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .module
-            .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
+        self.root.module_id.read(engines, |m| {
+            m.resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
+        })
     }
 
     /// Short-hand for calling [Root::resolve_symbol] on `root` with the `mod_path`.
@@ -237,9 +244,9 @@ impl Namespace {
         call_path: &CallPath,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        self.root
-            .module
-            .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
+        self.root.module_id.read(engines, |m| {
+            m.resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
+        })
     }
 
     /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
@@ -250,15 +257,16 @@ impl Namespace {
     /// finishing with the dependency.
     pub(crate) fn enter_submodule(
         &mut self,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
     ) -> SubmoduleNamespace {
-        let init = self.init.clone();
-        self.module_mut()
-            .submodules
-            .entry(mod_name.to_string())
-            .or_insert(init);
+        self.module_id(engines).write(engines, |m| {
+            m.submodules
+                .entry(mod_name.to_string())
+                .or_insert(self.init);
+        });
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
@@ -267,11 +275,12 @@ impl Namespace {
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
         // self.module() now refers to a different module, so refetch
-        let new_module = self.module_mut();
-        new_module.name = Some(mod_name);
-        new_module.span = Some(module_span);
-        new_module.visibility = visibility;
-        new_module.is_external = false;
+        self.module_id(engines).write(engines, |m| {
+            m.name = Some(mod_name.clone());
+            m.span = Some(module_span.clone());
+            m.visibility = visibility;
+            m.is_external = false;
+        });
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
@@ -281,6 +290,7 @@ impl Namespace {
     /// Pushes a new submodule to the namespace's module hierarchy.
     pub fn push_new_submodule(
         &mut self,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
@@ -291,10 +301,12 @@ impl Namespace {
             span: Some(module_span),
             ..Default::default()
         };
-        self.module_mut()
-            .submodules
-            .entry(mod_name.to_string())
-            .or_insert(module);
+        let module_id = engines.me().insert(module);
+        self.module_id(engines).write(engines, |m| {
+            m.submodules
+                .entry(mod_name.to_string())
+                .or_insert(module_id);
+        });
         self.mod_path.push(mod_name);
     }
 

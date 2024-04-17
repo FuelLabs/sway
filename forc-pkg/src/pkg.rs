@@ -31,6 +31,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::decl_engine::module_engine::ModuleId;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -182,7 +183,7 @@ pub struct CompiledPackage {
     pub program_abi: ProgramABI,
     pub storage_slots: Vec<StorageSlot>,
     pub bytecode: BuiltPackageBytecode,
-    pub root_module: namespace::Module,
+    pub root_module: ModuleId,
     pub warnings: Vec<CompileWarning>,
     pub metrics: PerformanceData,
 }
@@ -1596,7 +1597,7 @@ pub const CONTRACT_ID_CONSTANT_NAME: &str = "CONTRACT_ID";
 /// `contract_id_value` should only be Some when producing the `dependency_namespace` for a contract with tests enabled.
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
 pub fn dependency_namespace(
-    lib_namespace_map: &HashMap<NodeIx, namespace::Module>,
+    lib_namespace_map: &HashMap<NodeIx, ModuleId>,
     compiled_contract_deps: &CompiledContractDeps,
     graph: &Graph,
     node: NodeIx,
@@ -1607,20 +1608,25 @@ pub fn dependency_namespace(
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
-    let mut root_module = if let Some(contract_id_value) = contract_id_value {
+    let root_module_id = if let Some(contract_id_value) = contract_id_value {
         namespace::Module::default_with_contract_id(
             engines,
             name.clone(),
             contract_id_value,
             experimental,
         )?
+        .id()
+        .unwrap()
     } else {
-        namespace::Module::default()
+        let module = namespace::Module::default();
+        engines.me().insert(module)
     };
 
-    root_module.is_external = true;
-    root_module.name = name;
-    root_module.visibility = Visibility::Public;
+    root_module_id.write(engines, |root_module| {
+        root_module.is_external = true;
+        root_module.name = name.clone();
+        root_module.visibility = Visibility::Public;
+    });
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1632,7 +1638,8 @@ pub fn dependency_namespace(
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no namespace module"),
+                .expect("no namespace module")
+                .read(engines, |m| m.clone()),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1643,19 +1650,22 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut ns = namespace::Module::default_with_contract_id(
+                let mut module = namespace::Module::default_with_contract_id(
                     engines,
                     name.clone(),
                     contract_id_value,
                     experimental,
                 )?;
-                ns.is_external = true;
-                ns.name = name;
-                ns.visibility = Visibility::Public;
-                ns
+                module.is_external = true;
+                module.name = name;
+                module.visibility = Visibility::Public;
+                module
             }
         };
-        root_module.insert_submodule(dep_name, dep_namespace);
+        let dep_namespace_id = engines.me().insert(dep_namespace);
+        root_module_id.write(engines, |root_module| {
+            root_module.insert_submodule(dep_name.clone(), dep_namespace_id);
+        });
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1666,11 +1676,13 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
+            root_module_id.write(engines, |root_module| {
+                root_module.insert_submodule(CORE.to_string(), *core_namespace);
+            });
         }
     }
 
-    let mut root = namespace::Root::from(root_module);
+    let mut root = namespace::Root::from(root_module_id);
 
     let _ = root.star_import_with_reexports(
         &Handler::default(),
@@ -1947,7 +1959,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: namespace.root_module().clone(),
+        root_module: *namespace.root_module(),
         warnings,
         metrics,
     };
@@ -2460,9 +2472,10 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            let mut root_module = compiled.root_module;
-            root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
-            lib_namespace_map.insert(node, root_module);
+            compiled.root_module.write(&engines, |root_module| {
+                root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
+                lib_namespace_map.insert(node, root_module.id().unwrap());
+            });
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2712,7 +2725,11 @@ pub fn check(
         match programs.typed.as_ref() {
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
-                    let mut module = typed_program.root.namespace.module().clone();
+                    let mut module = typed_program
+                        .root
+                        .namespace
+                        .module_id(engines)
+                        .read(engines, |m| m.clone());
                     module.name = Some(Ident::new_no_span(pkg.name.clone()));
                     module.span = Some(
                         Span::new(
@@ -2723,7 +2740,8 @@ pub fn check(
                         )
                         .unwrap(),
                     );
-                    lib_namespace_map.insert(node, module);
+                    let module_id = engines.me().insert(module);
+                    lib_namespace_map.insert(node, module_id);
                 }
 
                 source_map.insert_dependency(manifest.dir());

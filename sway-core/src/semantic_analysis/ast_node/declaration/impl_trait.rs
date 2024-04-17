@@ -636,21 +636,21 @@ fn type_check_trait_implementation(
 
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
-    ctx.namespace_mut()
-        .module_mut()
-        .current_items_mut()
-        .implemented_traits
-        .check_if_trait_constraints_are_satisfied_for_type(
-            handler,
-            implementing_for,
-            &trait_supertraits
-                .iter()
-                .map(|x| x.into())
-                .collect::<Vec<_>>(),
-            block_span,
-            engines,
-            TryInsertingTraitImplOnFailure::Yes,
-        )?;
+    ctx.namespace_mut().module_id(engines).write(engines, |m| {
+        m.current_items_mut()
+            .implemented_traits
+            .check_if_trait_constraints_are_satisfied_for_type(
+                handler,
+                implementing_for,
+                &trait_supertraits
+                    .iter()
+                    .map(|x| x.into())
+                    .collect::<Vec<_>>(),
+                block_span,
+                engines,
+                TryInsertingTraitImplOnFailure::Yes,
+            )
+    })?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
         type_arg.type_id.check_type_parameter_bounds(

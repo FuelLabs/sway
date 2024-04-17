@@ -1,8 +1,7 @@
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
+    decl_engine::{module_engine::ModuleId, DeclEngineGet, DeclId, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
-    semantic_analysis::namespace,
     type_system::TypeId,
     types::{LogId, MessageId},
     Engines,
@@ -25,7 +24,7 @@ pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    module_ns_id: &ModuleId,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -34,13 +33,14 @@ pub(super) fn compile_script(
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_constants(engines, context, &mut md_mgr, module, module_ns_id)
+        .map_err(|err| vec![err])?;
     compile_declarations(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        module_ns_id,
         declarations,
     )
     .map_err(|err| vec![err])?;
@@ -72,7 +72,7 @@ pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
-    namespace: &namespace::Module,
+    module_ns_id: &ModuleId,
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
@@ -81,13 +81,14 @@ pub(super) fn compile_predicate(
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_constants(engines, context, &mut md_mgr, module, module_ns_id)
+        .map_err(|err| vec![err])?;
     compile_declarations(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        module_ns_id,
         declarations,
     )
     .map_err(|err| vec![err])?;
@@ -119,7 +120,7 @@ pub(super) fn compile_contract(
     context: &mut Context,
     entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
     abi_entries: &[DeclId<ty::TyFunctionDecl>],
-    namespace: &namespace::Module,
+    module_ns_id: &ModuleId,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -129,13 +130,14 @@ pub(super) fn compile_contract(
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_constants(engines, context, &mut md_mgr, module, module_ns_id)
+        .map_err(|err| vec![err])?;
     compile_declarations(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        module_ns_id,
         declarations,
     )
     .map_err(|err| vec![err])?;
@@ -201,7 +203,7 @@ pub(super) fn compile_contract(
 pub(super) fn compile_library(
     engines: &Engines,
     context: &mut Context,
-    namespace: &namespace::Module,
+    module_ns_id: &ModuleId,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -210,13 +212,14 @@ pub(super) fn compile_library(
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
 
-    compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_constants(engines, context, &mut md_mgr, module, module_ns_id)
+        .map_err(|err| vec![err])?;
     compile_declarations(
         engines,
         context,
         &mut md_mgr,
         module,
-        namespace,
+        module_ns_id,
         declarations,
     )
     .map_err(|err| vec![err])?;
@@ -238,35 +241,37 @@ pub(crate) fn compile_constants(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    module_ns: &namespace::Module,
+    module_ns_id: &ModuleId,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.current_items().get_all_declared_symbols() {
-        if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
-            module_ns.current_items().symbols.get(decl_name)
-        {
-            let const_decl = engines.de().get_constant(decl_id);
-            let call_path = const_decl.call_path.clone();
-            compile_const_decl(
-                &mut LookupEnv {
-                    engines,
-                    context,
-                    md_mgr,
-                    module,
-                    module_ns: Some(module_ns),
-                    function_compiler: None,
-                    lookup: compile_const_decl,
-                },
-                &call_path,
-                &Some((*const_decl).clone()),
-            )?;
+    module_ns_id.read(engines, |module_ns| {
+        for decl_name in module_ns.current_items().get_all_declared_symbols() {
+            if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
+                module_ns.current_items().symbols.get(decl_name)
+            {
+                let const_decl = engines.de().get_constant(decl_id);
+                let call_path = const_decl.call_path.clone();
+                compile_const_decl(
+                    &mut LookupEnv {
+                        engines,
+                        context,
+                        md_mgr,
+                        module,
+                        module_ns_id: Some(module_ns_id),
+                        function_compiler: None,
+                        lookup: compile_const_decl,
+                    },
+                    &call_path,
+                    &Some((*const_decl).clone()),
+                )?;
+            }
         }
-    }
 
-    for submodule_ns in module_ns.submodules().values() {
-        compile_constants(engines, context, md_mgr, module, submodule_ns)?;
-    }
+        for submodule_ns in module_ns.submodules().values() {
+            compile_constants(engines, context, md_mgr, module, submodule_ns)?;
+        }
 
-    Ok(())
+        Ok(())
+    })
 }
 
 // We don't really need to compile these declarations other than `const`s since:
@@ -283,7 +288,7 @@ fn compile_declarations(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    namespace: &namespace::Module,
+    module_ns_id: &ModuleId,
     declarations: &[ty::TyDecl],
 ) -> Result<(), CompileError> {
     for declaration in declarations {
@@ -297,7 +302,7 @@ fn compile_declarations(
                         context,
                         md_mgr,
                         module,
-                        module_ns: Some(namespace),
+                        module_ns_id: Some(module_ns_id),
                         function_compiler: None,
                         lookup: compile_const_decl,
                     },

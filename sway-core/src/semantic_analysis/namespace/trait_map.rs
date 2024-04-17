@@ -153,11 +153,12 @@ pub(crate) struct TraitMap {
     satisfied_cache: hashbrown::HashSet<u64>,
 }
 
+#[derive(Clone)]
 pub(crate) enum IsImplSelf {
     Yes,
     No,
 }
-
+#[derive(Clone)]
 pub(crate) enum IsExtendingExistingImpl {
     Yes,
     No,

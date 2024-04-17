@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{module_engine::ModuleId, DeclRef},
     engine_threading::Engines,
     language::{
         parsed::*,
@@ -54,7 +54,7 @@ pub struct Module {
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
-    pub(crate) submodules: im::OrdMap<ModuleName, Module>,
+    pub(crate) submodules: im::OrdMap<ModuleName, ModuleId>,
     /// Keeps all lexical scopes associated with this module.
     pub lexical_scopes: Vec<LexicalScope>,
     /// Current lexical scope id in the lexical scope hierarchy stack.
@@ -74,6 +74,8 @@ pub struct Module {
     /// When this is the root module, this is equal to `[]`. When this is a
     /// submodule of the root called "foo", this would be equal to `[foo]`.
     pub(crate) mod_path: ModulePathBuf,
+
+    pub(crate) id: Option<ModuleId>,
 }
 
 impl Default for Module {
@@ -87,11 +89,16 @@ impl Default for Module {
             span: Default::default(),
             is_external: Default::default(),
             mod_path: Default::default(),
+            id: None,
         }
     }
 }
 
 impl Module {
+    pub fn id(&self) -> Option<ModuleId> {
+        self.id
+    }
+
     pub fn mod_path(&self) -> &ModulePath {
         self.mod_path.as_slice()
     }
@@ -182,12 +189,15 @@ impl Module {
             content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
             span: const_item_span.clone(),
         };
-        let root = Root::from(Module::default());
+        let module_id = engines.me().insert(Module::default());
+        let root = Root::from(module_id);
         let mut ns = Namespace::init_root(root);
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
-        ns.root.module.name = ns_name;
-        ns.root.module.is_external = true;
-        ns.root.module.visibility = Visibility::Public;
+        ns.root.module_id.write(engines, |m| {
+            m.name = ns_name.clone();
+            m.is_external = true;
+            m.visibility = Visibility::Public;
+        });
         let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
         let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
         // get the decl out of the typed node:
@@ -212,37 +222,24 @@ impl Module {
     }
 
     /// Immutable access to this module's submodules.
-    pub fn submodules(&self) -> &im::OrdMap<ModuleName, Module> {
+    pub fn submodules(&self) -> &im::OrdMap<ModuleName, ModuleId> {
         &self.submodules
     }
 
     /// Insert a submodule into this `Module`.
-    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
+    pub fn insert_submodule(&mut self, name: String, submodule: ModuleId) {
         self.submodules.insert(name, submodule);
     }
 
     /// Lookup the submodule at the given path.
-    pub fn submodule(&self, path: &ModulePath) -> Option<&Module> {
-        let mut module = self;
+    pub fn submodule(&self, engines: &Engines, path: &ModulePath) -> Option<ModuleId> {
+        let mut module_opt = self.id();
         for ident in path.iter() {
-            match module.submodules.get(ident.as_str()) {
-                Some(ns) => module = ns,
-                None => return None,
+            if let Some(module) = module_opt {
+                module_opt = module.read(engines, |m| m.submodules.get(ident.as_str()).cloned());
             }
         }
-        Some(module)
-    }
-
-    /// Unique access to the submodule at the given path.
-    pub fn submodule_mut(&mut self, path: &ModulePath) -> Option<&mut Module> {
-        let mut module = self;
-        for ident in path.iter() {
-            match module.submodules.get_mut(ident.as_str()) {
-                Some(ns) => module = ns,
-                None => return None,
-            }
-        }
-        Some(module)
+        module_opt
     }
 
     /// Lookup the submodule at the given path.
@@ -251,9 +248,10 @@ impl Module {
     pub(crate) fn lookup_submodule(
         &self,
         handler: &Handler,
+        engines: &Engines,
         path: &[Ident],
-    ) -> Result<&Module, ErrorEmitted> {
-        match self.submodule(path) {
+    ) -> Result<ModuleId, ErrorEmitted> {
+        match self.submodule(engines, path) {
             None => Err(handler.emit_err(module_not_found(path))),
             Some(module) => Ok(module),
         }
@@ -437,18 +435,19 @@ impl Module {
         self_type: Option<TypeId>,
     ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
         // This block tries to resolve associated types
-        let mut module = self;
+        let module_id_opt = &self.id();
         let mut current_mod_path = vec![];
         let mut decl_opt = None;
+        let mut module_id = module_id_opt.unwrap_or_else(|| panic!("Expected module id."));
         for ident in mod_path.iter() {
             if let Some(decl) = decl_opt {
                 decl_opt = Some(
                     self.resolve_associated_type(handler, engines, ident, decl, None, self_type)?,
                 );
             } else {
-                match module.submodules.get(ident.as_str()) {
+                match module_id.read(engines, |m| m.submodules.get(ident.as_str()).cloned()) {
                     Some(ns) => {
-                        module = ns;
+                        module_id = ns;
                         current_mod_path.push(ident.clone());
                     }
                     None => {
@@ -457,7 +456,7 @@ impl Module {
                             engines,
                             &current_mod_path,
                             ident,
-                            module,
+                            &module_id,
                             self_type,
                         )?);
                     }
@@ -470,11 +469,13 @@ impl Module {
             return Ok((decl, current_mod_path));
         }
 
-        self.lookup_submodule(handler, mod_path).and_then(|module| {
-            let decl =
-                self.resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
-            Ok((decl, mod_path.to_vec()))
-        })
+        self.lookup_submodule(handler, engines, mod_path)
+            .and_then(|module_id| {
+                let decl = self.resolve_symbol_helper(
+                    handler, engines, mod_path, symbol, &module_id, self_type,
+                )?;
+                Ok((decl, mod_path.to_vec()))
+            })
     }
 
     fn resolve_associated_type(
@@ -615,15 +616,21 @@ impl Module {
         engines: &Engines,
         mod_path: &ModulePath,
         symbol: &Ident,
-        module: &Module,
+        module_id: &ModuleId,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let true_symbol = self[mod_path]
-            .current_items()
-            .use_aliases
-            .get(symbol.as_str())
-            .unwrap_or(symbol);
-        match module.current_items().use_synonyms.get(symbol) {
+        let true_symbol = self
+            .lookup_submodule(handler, engines, mod_path)?
+            .read(engines, |m| {
+                m.current_items()
+                    .use_aliases
+                    .get(symbol.as_str())
+                    .unwrap_or(symbol)
+                    .clone()
+            });
+        match module_id.read(engines, |m| {
+            m.current_items().use_synonyms.get(symbol).cloned()
+        }) {
             Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => {
                 Ok(ResolvedDeclaration::Typed(decl.clone()))
             }
@@ -637,37 +644,21 @@ impl Module {
                 // - non-glob import, in which case we will already have a name clash reported
                 //   as an error, but still have to resolve to the local module symbol
                 //   if it exists.
-                match module.current_items().symbols.get(true_symbol) {
+                match module_id.read(engines, |m| {
+                    m.current_items().symbols.get(&true_symbol).cloned()
+                }) {
                     Some(decl) => Ok(ResolvedDeclaration::Typed(decl.clone())),
-                    None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
+                    None => {
+                        self.resolve_symbol(handler, engines, &src_path, &true_symbol, self_type)
+                    }
                 }
             }
-            _ => module
-                .current_items()
-                .check_symbol(true_symbol)
-                .map_err(|e| handler.emit_err(e)),
+            _ => module_id.read(engines, |m| {
+                m.current_items()
+                    .check_symbol(&true_symbol)
+                    .map_err(|e| handler.emit_err(e))
+            }),
         }
-    }
-}
-
-impl<'a> std::ops::Index<&'a ModulePath> for Module {
-    type Output = Module;
-    fn index(&self, path: &'a ModulePath) -> &Self::Output {
-        self.submodule(path)
-            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
-    }
-}
-
-impl<'a> std::ops::IndexMut<&'a ModulePath> for Module {
-    fn index_mut(&mut self, path: &'a ModulePath) -> &mut Self::Output {
-        self.submodule_mut(path)
-            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
-    }
-}
-
-impl From<Root> for Module {
-    fn from(root: Root) -> Self {
-        root.module
     }
 }
 

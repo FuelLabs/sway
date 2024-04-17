@@ -721,7 +721,7 @@ impl TypeInfo {
 
 /// `call_path_display`  returns the provided `call_path` without the first prefix in case it is equal to the program name.
 /// If the program name is `my_program` and the `call_path` is `my_program::MyStruct` then this function returns only `MyStruct`.
-fn call_path_display(ctx: &mut AbiContext, _engines: &Engines, call_path: &CallPath) -> String {
+fn call_path_display(ctx: &mut AbiContext, engines: &Engines, call_path: &CallPath) -> String {
     if !ctx.abi_with_callpaths {
         return call_path.suffix.as_str().to_string();
     }
@@ -729,7 +729,13 @@ fn call_path_display(ctx: &mut AbiContext, _engines: &Engines, call_path: &CallP
     for (index, prefix) in call_path.prefixes.iter().enumerate() {
         let mut skip_prefix = false;
         if index == 0 {
-            if let Some(root_name) = &ctx.program.root.namespace.module().name {
+            if let Some(root_name) = &ctx
+                .program
+                .root
+                .namespace
+                .module_id(engines)
+                .read(engines, |m| m.name.clone())
+            {
                 if prefix.as_str() == root_name.as_str() {
                     skip_prefix = true;
                 }

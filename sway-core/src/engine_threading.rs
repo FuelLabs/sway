@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{parsed_engine::ParsedDeclEngine, DeclEngine},
+    decl_engine::{module_engine::ModuleEngine, parsed_engine::ParsedDeclEngine, DeclEngine},
     query_engine::QueryEngine,
     type_system::TypeEngine,
 };
@@ -17,6 +17,7 @@ pub struct Engines {
     parsed_decl_engine: ParsedDeclEngine,
     query_engine: QueryEngine,
     source_engine: SourceEngine,
+    module_engine: ModuleEngine,
 }
 
 impl Engines {
@@ -38,6 +39,10 @@ impl Engines {
 
     pub fn se(&self) -> &SourceEngine {
         &self.source_engine
+    }
+
+    pub fn me(&self) -> &ModuleEngine {
+        &self.module_engine
     }
 
     /// Removes all data associated with `module_id` from the declaration and type engines.

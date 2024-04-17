@@ -30,47 +30,53 @@ impl TyDecl {
         match &decl {
             parsed::Declaration::VariableDeclaration(decl_id) => {
                 let var_decl = engines.pe().get_variable(decl_id);
-                ctx.insert_parsed_symbol(handler, var_decl.name.clone(), decl)?;
+                ctx.insert_parsed_symbol(handler, engines, var_decl.name.clone(), decl)?;
             }
             parsed::Declaration::ConstantDeclaration(decl_id) => {
                 let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, const_decl.name.clone(), decl)?;
+                ctx.insert_parsed_symbol(handler, engines, const_decl.name.clone(), decl)?;
             }
             parsed::Declaration::TraitTypeDeclaration(decl_id) => {
                 let trait_type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, trait_type_decl.name.clone(), decl)?;
+                ctx.insert_parsed_symbol(handler, engines, trait_type_decl.name.clone(), decl)?;
             }
             parsed::Declaration::EnumDeclaration(decl_id) => {
                 let enum_decl = engines.pe().get_enum(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, enum_decl.name.clone(), decl)?;
+                ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl)?;
             }
             parsed::Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(decl_id);
-                let _ = ctx.insert_parsed_symbol(handler, fn_decl.name.clone(), decl);
+                let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl);
             }
             parsed::Declaration::TraitDeclaration(decl_id) => {
                 let trait_decl = engines.pe().get_trait(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, trait_decl.name.clone(), decl)?;
+                ctx.insert_parsed_symbol(handler, engines, trait_decl.name.clone(), decl)?;
             }
             parsed::Declaration::ImplTrait(decl_id) => {
                 let impl_trait = engines.pe().get_impl_trait(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, impl_trait.trait_name.suffix.clone(), decl)?;
+                ctx.insert_parsed_symbol(
+                    handler,
+                    engines,
+                    impl_trait.trait_name.suffix.clone(),
+                    decl,
+                )?;
             }
             parsed::Declaration::ImplSelf(decl_id) => {
                 let impl_self = engines.pe().get_impl_self(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(
                     handler,
+                    engines,
                     BaseIdent::new(impl_self.implementing_for.span),
                     decl,
                 )?;
             }
             parsed::Declaration::StructDeclaration(decl_id) => {
                 let struct_decl = engines.pe().get_struct(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, struct_decl.name.clone(), decl)?;
+                ctx.insert_parsed_symbol(handler, engines, struct_decl.name.clone(), decl)?;
             }
             parsed::Declaration::AbiDeclaration(decl_id) => {
                 let abi_decl = engines.pe().get_abi(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, abi_decl.name.clone(), decl)?;
+                ctx.insert_parsed_symbol(handler, engines, abi_decl.name.clone(), decl)?;
             }
             parsed::Declaration::StorageDeclaration(decl_id) => {
                 let _storage_decl = engines.pe().get_storage(decl_id).as_ref().clone();
@@ -78,7 +84,7 @@ impl TyDecl {
             }
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
                 let type_alias_decl = engines.pe().get_type_alias(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, type_alias_decl.name, decl.clone())?;
+                ctx.insert_parsed_symbol(handler, engines, type_alias_decl.name, decl.clone())?;
             }
         };
 
@@ -289,11 +295,8 @@ impl TyDecl {
                     for i in &impl_trait.items {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
-                            let _ = ctx
-                                .namespace
-                                .module_mut()
-                                .current_items_mut()
-                                .insert_symbol(
+                            let _ = ctx.namespace.module_id(ctx.engines()).write(engines, |m| {
+                                m.current_items_mut().insert_symbol(
                                     handler,
                                     Ident::new_no_span(format!(
                                         "__contract_entry_{}",
@@ -307,7 +310,8 @@ impl TyDecl {
                                     }),
                                     ConstShadowingMode::ItemStyle,
                                     GenericShadowingMode::Allow,
-                                );
+                                )
+                            });
                         }
                     }
 
@@ -479,10 +483,10 @@ impl TyDecl {
                 // if there already was one, return an error that duplicate storage
 
                 // declarations are not allowed
-                ctx.namespace_mut()
-                    .module_mut()
-                    .current_items_mut()
-                    .set_storage_declaration(handler, decl_ref.clone())?;
+                ctx.namespace_mut().module_id(engines).write(engines, |m| {
+                    m.current_items_mut()
+                        .set_storage_declaration(handler, decl_ref.clone())
+                })?;
                 decl_ref.into()
             }
             parsed::Declaration::TypeAliasDeclaration(decl_id) => {
@@ -501,7 +505,7 @@ impl TyDecl {
                 // create the type alias decl using the resolved type above
                 let decl = ty::TyTypeAliasDecl {
                     name: name.clone(),
-                    call_path: CallPath::from(name.clone()).to_fullpath(ctx.namespace()),
+                    call_path: CallPath::from(name.clone()).to_fullpath(engines, ctx.namespace()),
                     attributes: decl.attributes.clone(),
                     ty: TypeArgument {
                         initial_type_id: ty.initial_type_id,

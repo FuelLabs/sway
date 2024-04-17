@@ -1,13 +1,13 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
+    decl_engine::module_engine::ModuleId,
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
         CallPath, Literal,
     },
     metadata::MetadataManager,
-    semantic_analysis::*,
     TypeInfo, UnifyCheck,
 };
 
@@ -46,7 +46,7 @@ pub(crate) struct LookupEnv<'a, 'eng> {
     pub(crate) context: &'a mut Context<'eng>,
     pub(crate) md_mgr: &'a mut MetadataManager,
     pub(crate) module: Module,
-    pub(crate) module_ns: Option<&'a namespace::Module>,
+    pub(crate) module_ns_id: Option<&'a ModuleId>,
     pub(crate) function_compiler: Option<&'a FnCompiler<'a>>,
     #[allow(clippy::type_complexity)]
     pub(crate) lookup: fn(
@@ -118,13 +118,15 @@ pub(crate) fn compile_const_decl(
             .get_global_constant(env.context, &call_path.as_vec_string()),
         env.module
             .get_global_configurable(env.context, &call_path.as_vec_string()),
-        env.module_ns,
+        env.module_ns_id,
     ) {
         (Some(const_val), _, _) => Ok(Some(const_val)),
         (_, Some(config_val), _) => Ok(Some(config_val)),
-        (None, None, Some(module_ns)) => {
+        (None, None, Some(module_ns_id)) => {
             // See if we it's a global const and whether we can compile it *now*.
-            let decl = module_ns.current_items().check_symbol(&call_path.suffix);
+            let decl = module_ns_id.read(env.engines, |module_ns| {
+                module_ns.current_items().check_symbol(&call_path.suffix)
+            });
             let const_decl = match const_decl {
                 Some(decl) => Some(decl),
                 None => None,
@@ -155,7 +157,7 @@ pub(crate) fn compile_const_decl(
                         env.context,
                         env.md_mgr,
                         env.module,
-                        env.module_ns,
+                        env.module_ns_id,
                         env.function_compiler,
                         &call_path,
                         &value.clone().unwrap(),
@@ -190,7 +192,7 @@ pub(super) fn compile_constant_expression(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    module_ns: Option<&namespace::Module>,
+    module_ns_id: Option<&ModuleId>,
     function_compiler: Option<&FnCompiler>,
     call_path: &CallPath,
     const_expr: &ty::TyExpression,
@@ -203,7 +205,7 @@ pub(super) fn compile_constant_expression(
         context,
         md_mgr,
         module,
-        module_ns,
+        module_ns_id,
         function_compiler,
         const_expr,
         is_configurable,
@@ -225,7 +227,7 @@ pub(crate) fn compile_constant_expression_to_constant(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    module_ns: Option<&namespace::Module>,
+    module_ns_id: Option<&ModuleId>,
     function_compiler: Option<&FnCompiler>,
     const_expr: &ty::TyExpression,
     allow_configurables: bool,
@@ -235,7 +237,7 @@ pub(crate) fn compile_constant_expression_to_constant(
         context,
         md_mgr,
         module,
-        module_ns,
+        module_ns_id,
         function_compiler,
         lookup: compile_const_decl,
     };

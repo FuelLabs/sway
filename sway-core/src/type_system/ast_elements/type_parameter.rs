@@ -167,6 +167,7 @@ impl TypeParameter {
         handler: &Handler,
         mut ctx: TypeCheckContext,
     ) {
+        let engines = ctx.engines();
         let type_parameter_decl =
             ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                 name: self.name_ident.clone(),
@@ -176,28 +177,24 @@ impl TypeParameter {
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx
-            .namespace_mut()
-            .module_mut()
-            .current_items_mut()
-            .insert_symbol(
+        let _ = ctx.namespace_mut().module_id(engines).write(engines, |m| {
+            m.current_items_mut().insert_symbol(
                 handler,
-                name_a,
+                name_a.clone(),
                 type_parameter_decl.clone(),
                 const_shadowing_mode,
                 generic_shadowing_mode,
-            );
-        let _ = ctx
-            .namespace_mut()
-            .module_mut()
-            .current_items_mut()
-            .insert_symbol(
+            )
+        });
+        let _ = ctx.namespace_mut().module_id(engines).write(engines, |m| {
+            m.current_items_mut().insert_symbol(
                 handler,
-                name_b,
-                type_parameter_decl,
+                name_b.clone(),
+                type_parameter_decl.clone(),
                 const_shadowing_mode,
                 generic_shadowing_mode,
-            );
+            )
+        });
     }
 
     /// Type check a list of [TypeParameter] and return a new list of
@@ -439,11 +436,10 @@ impl TypeParameter {
 
             let sy = ctx
                 .namespace()
-                .module()
-                .current_items()
-                .symbols
-                .get(name_ident)
-                .unwrap();
+                .module_id(ctx.engines())
+                .read(ctx.engines(), |m| {
+                    m.current_items().symbols.get(name_ident).unwrap().clone()
+                });
 
             match sy {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
@@ -466,7 +462,7 @@ impl TypeParameter {
                                 type_info: TypeInfo::UnknownGeneric {
                                     name: name.clone(),
                                     trait_constraints: trait_constraints.clone(),
-                                    parent: Some(*parent_type_id),
+                                    parent: Some(parent_type_id),
                                 }
                                 .into(),
                                 source_id: name.span().source_id().cloned(),
@@ -519,19 +515,18 @@ impl TypeParameter {
                 } = type_param;
 
                 // Check to see if the trait constraints are satisfied.
-                match ctx
-                    .namespace_mut()
-                    .module_mut()
-                    .current_items_mut()
-                    .implemented_traits
-                    .check_if_trait_constraints_are_satisfied_for_type(
-                        handler,
-                        *type_id,
-                        trait_constraints,
-                        access_span,
-                        engines,
-                        TryInsertingTraitImplOnFailure::Yes,
-                    ) {
+                match ctx.namespace_mut().module_id(engines).write(engines, |m| {
+                    m.current_items_mut()
+                        .implemented_traits
+                        .check_if_trait_constraints_are_satisfied_for_type(
+                            handler,
+                            *type_id,
+                            trait_constraints,
+                            access_span,
+                            engines,
+                            TryInsertingTraitImplOnFailure::Yes,
+                        )
+                }) {
                     Ok(res) => res,
                     Err(_) => continue,
                 }
@@ -636,7 +631,9 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace());
+                        let import_path = trait_decl
+                            .call_path
+                            .to_import_path(engines, ctx.namespace());
                         if import_path == trait_decl.call_path {
                             // If external library.
                             import_path.to_string()

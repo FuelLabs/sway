@@ -1,6 +1,7 @@
 use crate::{
     language::{parsed::Declaration, Visibility},
     semantic_analysis::Namespace,
+    Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
@@ -20,12 +21,17 @@ impl SymbolCollectionContext {
 
     /// Scope the `CollectionContext` with a new lexical scope.
     pub fn scoped<T>(
-        mut self,
+        self,
+        engines: &Engines,
         with_scoped_ctx: impl FnOnce(SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
-        self.namespace.module_mut().push_new_lexical_scope();
+        self.namespace
+            .module_id(engines)
+            .write(engines, |m| m.push_new_lexical_scope());
         let ret = with_scoped_ctx(self.clone());
-        self.namespace.module_mut().pop_lexical_scope();
+        self.namespace
+            .module_id(engines)
+            .write(engines, |m| m.pop_lexical_scope());
         ret
     }
 
@@ -35,13 +41,14 @@ impl SymbolCollectionContext {
     /// Returns the result of the given `with_submod_ctx` function.
     pub fn enter_submodule<T>(
         &mut self,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
         with_submod_ctx: impl FnOnce(&mut SymbolCollectionContext) -> T,
     ) -> T {
         self.namespace
-            .push_new_submodule(mod_name, visibility, module_span);
+            .push_new_submodule(engines, mod_name, visibility, module_span);
         //let Self { namespace, .. } = self;
         //let mut submod_ns = namespace.enter_submodule(mod_name, visibility, module_span);
         let ret = with_submod_ctx(self);
@@ -53,12 +60,13 @@ impl SymbolCollectionContext {
     pub(crate) fn insert_parsed_symbol(
         &mut self,
         _handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: Declaration,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace
-            .module_mut()
-            .current_items_mut()
-            .insert_parsed_symbol(name, item)
+        self.namespace.module_id(engines).write(engines, |m| {
+            m.current_items_mut()
+                .insert_parsed_symbol(name.clone(), item.clone())
+        })
     }
 }

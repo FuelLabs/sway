@@ -392,7 +392,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> (Option<TyAstNode>, Option<TyAstNode>) {
-        if matches!(self.ctx.namespace.root().module.name.as_ref(), Some(x) if x.as_str() == "core")
+        if matches!(self.ctx.namespace.root().module_id.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
         {
             return (None, None);
         }
@@ -428,7 +428,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> (Option<TyAstNode>, Option<TyAstNode>) {
-        if matches!(self.ctx.namespace.root().module.name.as_ref(), Some(x) if x.as_str() == "core")
+        if matches!(self.ctx.namespace.root().module_id.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
         {
             return (None, None);
         }

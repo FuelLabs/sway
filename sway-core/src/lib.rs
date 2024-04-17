@@ -10,6 +10,7 @@ mod asm_lang;
 mod build_config;
 pub mod compiler_generated;
 mod concurrent_slab;
+mod concurrent_slab_mut;
 mod control_flow_analysis;
 mod debug_generation;
 pub mod decl_engine;
@@ -644,7 +645,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        typed_program.root.namespace.module(),
+        &typed_program.root.namespace.module_id(engines),
     ) {
         handler.emit_err(e);
     }
