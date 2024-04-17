@@ -44,7 +44,7 @@ use sway_core::{
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,
-    BuildTarget, Engines, FinalizedEntry,
+    BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
@@ -2597,6 +2597,7 @@ pub fn check(
     build_target: BuildTarget,
     terse_mode: bool,
     include_tests: bool,
+    lsp_mode: Option<LspConfig>,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> anyhow::Result<Vec<(Option<Programs>, Handler)>> {
@@ -2643,7 +2644,8 @@ pub fn check(
             build_target,
             &profile,
         )?
-        .with_include_tests(include_tests);
+        .with_include_tests(include_tests)
+        .with_lsp_mode(lsp_mode.clone());
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();

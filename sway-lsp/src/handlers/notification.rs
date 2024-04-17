@@ -10,7 +10,7 @@ use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
     DidSaveTextDocumentParams, FileChangeType, Url,
 };
-use std::sync::{atomic::Ordering, Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::{atomic::Ordering, Arc}};
 
 pub async fn handle_did_open_text_document(
     state: &ServerState,
@@ -31,6 +31,8 @@ pub async fn handle_did_open_text_document(
                 session: Some(session.clone()),
                 uri: Some(uri.clone()),
                 version: None,
+                gc_options: state.config.read().garbage_collection.clone(),
+                file_versions: BTreeMap::new(),
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
@@ -47,6 +49,7 @@ fn send_new_compilation_request(
     session: Arc<Session>,
     uri: &Url,
     version: Option<i32>,
+    file_versions: BTreeMap<PathBuf, Option<u64>>,
 ) {
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
@@ -68,6 +71,8 @@ fn send_new_compilation_request(
             session: Some(session.clone()),
             uri: Some(uri.clone()),
             version,
+            gc_options: state.config.read().garbage_collection.clone(),
+            file_versions,
         }));
 }
 
@@ -83,13 +88,32 @@ pub async fn handle_did_change_text_document(
     session
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
+    let file_versions = file_versions(&session, &uri, Some(params.text_document.version as u64));
     send_new_compilation_request(
         state,
         session.clone(),
         &uri,
         Some(params.text_document.version),
+        file_versions,
     );
     Ok(())
+}
+
+fn file_versions(
+    session: &Session,
+    uri: &Url,
+    version: Option<u64>,
+) -> BTreeMap<PathBuf, Option<u64>> {
+    let mut file_versions = BTreeMap::new();
+    for item in session.documents.iter() {
+        let path = PathBuf::from(item.key());
+        if path == uri.to_file_path().unwrap() {
+            file_versions.insert(path, version);
+        } else {
+            file_versions.insert(path, None);
+        }
+    }
+    file_versions
 }
 
 pub(crate) async fn handle_did_save_text_document(
@@ -102,7 +126,8 @@ pub(crate) async fn handle_did_save_text_document(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
-    send_new_compilation_request(state, session.clone(), &uri, None);
+    let file_versions = file_versions(&session, &uri, None);
+    send_new_compilation_request(state, session.clone(), &uri, None, file_versions);
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)

@@ -1,5 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
-
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use serde::{Deserialize, Serialize};
 use strum::EnumString;
 
@@ -49,6 +48,7 @@ pub struct BuildConfig {
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
     pub experimental: ExperimentalFlags,
+    pub lsp_mode: Option<LspConfig>,
 }
 
 impl BuildConfig {
@@ -94,6 +94,7 @@ impl BuildConfig {
             time_phases: false,
             metrics_outfile: None,
             experimental: ExperimentalFlags::default(),
+            lsp_mode: None,
         }
     }
 
@@ -165,6 +166,10 @@ impl BuildConfig {
         }
     }
 
+    pub fn with_lsp_mode(self, lsp_mode: Option<LspConfig>) -> Self {
+        Self { lsp_mode, ..self }
+    }
+
     pub fn canonical_root_module(&self) -> Arc<PathBuf> {
         self.canonical_root_module.clone()
     }
@@ -173,6 +178,13 @@ impl BuildConfig {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct LspConfig {
+    // The value of the `version` field in the `DidChangeTextDocumentParams` struct.
+    // This is used to determine if the file has been modified since the last compilation.
+    pub file_versions: BTreeMap<PathBuf, Option<u64>>,
 }
 
 #[cfg(test)]

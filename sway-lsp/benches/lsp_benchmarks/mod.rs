@@ -8,12 +8,16 @@ use sway_lsp::core::session::{self, ParseResult, Session};
 
 pub async fn compile_test_project() -> (Url, Arc<Session>) {
     let session = Session::new();
+    let engines_clone = session.engines.read().clone();
+    let lsp_mode = Some(sway_core::LspConfig {
+        file_versions: Default::default(),
+    });
     // Load the test project
     let uri = Url::from_file_path(benchmark_dir().join("src/main.sw")).unwrap();
     session.handle_open_file(&uri).await;
     // Compile the project and write the parse result to the session
     let mut parse_result = ParseResult::default();
-    session::parse_project(&uri, &session.engines.read(), None, &mut parse_result).unwrap();
+    session::parse_project(&uri, &session.engines.read(), &engines_clone, None, &mut parse_result, lsp_mode).unwrap();
     session.write_parse_result(&mut parse_result);
     (uri, Arc::new(session))
 }

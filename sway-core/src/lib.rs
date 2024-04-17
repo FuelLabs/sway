@@ -65,7 +65,7 @@ pub mod fuel_prelude {
     pub use fuel_vm::{self, fuel_asm, fuel_crypto, fuel_tx, fuel_types};
 }
 
-pub use build_config::ExperimentalFlags;
+pub use build_config::{ExperimentalFlags, LspConfig};
 pub use engine_threading::Engines;
 
 /// Given an input `Arc<str>` and an optional [BuildConfig], parse the input into a [lexed::LexedProgram] and [parsed::ParseProgram].
@@ -100,6 +100,7 @@ pub fn parse(
             config.build_target,
             config.include_tests,
             config.experimental,
+            config.lsp_mode.as_ref(),
         )
         .map(
             |ParsedModuleTree {
@@ -242,6 +243,7 @@ fn parse_submodules(
     build_target: BuildTarget,
     include_tests: bool,
     experimental: ExperimentalFlags,
+    lsp_mode: Option<&LspConfig>,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
@@ -275,6 +277,7 @@ fn parse_submodules(
             build_target,
             include_tests,
             experimental,
+            lsp_mode,
         ) {
             if !matches!(kind, parsed::TreeType::Library) {
                 let source_id = engines.se().get_source_id(submod_path.as_ref());
@@ -328,6 +331,7 @@ fn parse_module_tree(
     build_target: BuildTarget,
     include_tests: bool,
     experimental: ExperimentalFlags,
+    lsp_mode: Option<&LspConfig>,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
@@ -347,6 +351,7 @@ fn parse_module_tree(
         build_target,
         include_tests,
         experimental,
+        lsp_mode,
     );
 
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
@@ -395,12 +400,16 @@ fn parse_module_tree(
         lexed_module: lexed,
         parse_module: parsed,
     };
+    let version = lsp_mode
+        .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
+        .unwrap_or(None);
     let cache_entry = ModuleCacheEntry {
         path,
         modified_time,
         hash,
         dependencies,
         include_tests,
+        version
     };
     query_engine.insert_parse_module_cache_entry(cache_entry);
 
@@ -411,36 +420,49 @@ fn is_parse_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
     include_tests: bool,
+    build_config: Option<&BuildConfig>,
 ) -> bool {
     let query_engine = engines.qe();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
     let entry = query_engine.get_parse_module_cache_entry(&key);
     match entry {
         Some(entry) => {
-            let modified_time = std::fs::metadata(path.as_path())
-                .ok()
-                .and_then(|m| m.modified().ok());
-
             // Let's check if we can re-use the dependency information
-            // we got from the cache, which is only true if the file hasn't been
-            // modified since or if its hash is the same.
-            let cache_up_to_date = entry.modified_time == modified_time || {
-                let src = std::fs::read_to_string(path.as_path()).unwrap();
-
-                let mut hasher = DefaultHasher::new();
-                src.hash(&mut hasher);
-                let hash = hasher.finish();
-
-                hash == entry.hash
-            };
+            // we got from the cache.
+            let cache_up_to_date = build_config
+                .as_ref()
+                .and_then(|x| x.lsp_mode.as_ref())
+                .and_then(|lsp| {
+                    // First try to get the file version from lsp if it exists
+                    lsp.file_versions.get(path.as_ref())
+                })
+                .map_or_else(
+                    || {
+                        // Otherwise we can safely read the file from disk here, as the LSP has not modified it, or we are not in LSP mode.
+                        // Check if the file has been modified or if its hash is the same as the last compilation
+                        let modified_time = std::fs::metadata(path.as_path())
+                            .ok()
+                            .and_then(|m| m.modified().ok());
+                        entry.modified_time == modified_time || {
+                            let src = std::fs::read_to_string(path.as_path()).unwrap();
+                            let mut hasher = DefaultHasher::new();
+                            src.hash(&mut hasher);
+                            let hash = hasher.finish();
+                            hash == entry.hash
+                        }
+                    },
+                    |version| {
+                        // The cache is invalid if the lsp version is greater than the last compilation
+                        !version.map_or(false, |v| v > entry.version.unwrap_or(0))
+                    },
+                );
 
             // Look at the dependencies recursively to make sure they have not been
             // modified either.
             if cache_up_to_date {
-                entry
-                    .dependencies
-                    .iter()
-                    .all(|path| is_parse_module_cache_up_to_date(engines, path, include_tests))
+                entry.dependencies.iter().all(|path| {
+                    is_parse_module_cache_up_to_date(engines, path, include_tests, build_config)
+                })
             } else {
                 false
             }
@@ -633,7 +655,7 @@ pub fn compile_to_ast(
         let include_tests = config.include_tests;
 
         // Check if we can re-use the data in the cache.
-        if is_parse_module_cache_up_to_date(engines, &path, include_tests) {
+        if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
             entry.programs.metrics.reused_modules += 1;
 

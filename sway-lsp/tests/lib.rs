@@ -8,9 +8,7 @@ use sway_lsp::{
     server_state::ServerState,
 };
 use sway_lsp_test_utils::{
-    assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
-    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir,
+    assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir, e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, random_delay, runnables_test_dir, self_impl_reassignment_dir, setup_panic_hook, sway_workspace_dir, test_fixtures_dir
 };
 use tower_lsp::LspService;
 
@@ -91,7 +89,7 @@ async fn did_open() {
 async fn did_change() {
     let (mut service, _) = LspService::new(ServerState::new);
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+    let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
     service.inner().wait_for_parsing().await;
     shutdown_and_exit(&mut service).await;
 }
@@ -102,7 +100,7 @@ async fn did_cache_test() {
         .custom_method("sway/metrics", ServerState::metrics)
         .finish();
     let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-    let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+    let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
     service.inner().wait_for_parsing().await;
     let metrics = lsp::metrics_request(&mut service, &uri).await;
     assert!(metrics.len() >= 2);
@@ -124,7 +122,7 @@ async fn did_change_stress_test() {
     let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
     let times = 400;
     for version in 0..times {
-        let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
+        let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
         if version == 0 {
             service.inner().wait_for_parsing().await;
         }
@@ -136,6 +134,108 @@ async fn did_change_stress_test() {
         }
     }
     shutdown_and_exit(&mut service).await;
+}
+
+/// Executes an asynchronous block of code within a synchronous test function.
+///
+/// This macro simplifies the process of running asynchronous code inside
+/// Rust tests, which are inherently synchronous. It creates a new Tokio runtime
+/// and uses it to run the provided asynchronous code block to completion. This
+/// approach is particularly useful in testing environments where asynchronous
+/// operations need to be performed sequentially to avoid contention among async
+/// resources.
+///
+/// Usage:
+/// ```ignore
+/// #[test]
+/// fn my_async_test() {
+///     run_async!({
+///         // Your async code here.
+///     });
+/// }
+/// ```
+///
+/// This was needed because directly using `#[tokio::test]` in a large test suite
+/// with async operations can lead to issues such as test interference and resource
+/// contention, which may result in flaky tests. By ensuring each test runs
+/// sequentially with its own Tokio runtime, we mitigate these issues and improve
+/// test reliability.
+macro_rules! run_async {
+    ($async_block:block) => {{
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create a runtime");
+        rt.block_on(async { $async_block });
+    }};
+}
+
+fn garbage_collection_runner(path: PathBuf) {
+    run_async!({
+        setup_panic_hook();
+        let (mut service, _) = LspService::new(ServerState::new);
+        // set the garbage collection frequency to 1
+        service
+            .inner()
+            .config
+            .write()
+            .garbage_collection
+            .gc_frequency = 1;
+        let uri = init_and_open(&mut service, path).await;
+        let times = 60;
+        for version in 1..times {
+            eprintln!("version: {}", version);
+            let params = if rand::random::<u64>() % 3 < 1 {
+                // enter keypress at line 20
+                lsp::create_did_change_params(
+                    &uri,
+                    version,
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    0,
+                )
+            } else {
+                // backspace keypress at line 21
+                lsp::create_did_change_params(
+                    &uri,
+                    version,
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    Position {
+                        line: 21,
+                        character: 0,
+                    },
+                    1,
+                )
+            };
+            let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
+            if version == 0 {
+                service.inner().wait_for_parsing().await;
+            }
+            // wait for a random amount of time to simulate typing
+            random_delay().await;
+        }
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn garbage_collection_storage() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+        .join("src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
+fn garbage_collection_paths() {
+    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    garbage_collection_runner(p);
 }
 
 #[tokio::test]
@@ -152,7 +252,7 @@ async fn lsp_syncs_with_workspace_edits() {
         def_path: uri.as_str(),
     };
     lsp::definition_check(service.inner(), &go_to).await;
-    let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+    let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
     service.inner().wait_for_parsing().await;
     go_to.def_line = 20;
     lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
@@ -1035,7 +1135,7 @@ async fn did_change_stress_test_random_wait() {
     let times = 400;
     for version in 0..times {
         //eprintln!("version: {}", version);
-        let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
+        let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
         if version == 0 {
             service.inner().wait_for_parsing().await;
         }

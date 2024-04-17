@@ -16,10 +16,31 @@ pub struct Config {
     pub on_enter: OnEnterConfig,
     #[serde(default, skip_serializing)]
     trace: TraceConfig,
+    #[serde(default)]
+    pub garbage_collection: GarbageCollectionConfig,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Default)]
 struct TraceConfig {}
+
+// Options for configuring garbage collection.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GarbageCollectionConfig {
+    pub gc_enabled: bool,
+    pub gc_frequency: i32,
+}
+
+impl Default for GarbageCollectionConfig {
+    fn default() -> Self {
+        Self {
+            gc_enabled: true,
+            // Garbage collection is fairly expsensive so we default to only clear on every 3rd keystroke.
+            // Waiting too long to clear can cause a stack overflow to occur.
+            gc_frequency: 3,
+        }
+    }
+}
 
 // Options for debugging various parts of the server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

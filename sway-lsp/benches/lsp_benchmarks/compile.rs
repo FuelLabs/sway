@@ -8,18 +8,22 @@ const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 fn benchmarks(c: &mut Criterion) {
     // Load the test project
     let uri = Url::from_file_path(super::benchmark_dir().join("src/main.sw")).unwrap();
+    let mut lsp_mode = Some(sway_core::LspConfig {
+        file_versions: Default::default(),
+    });
     c.bench_function("compile", |b| {
         b.iter(|| {
             let engines = Engines::default();
-            let _ = black_box(session::compile(&uri, &engines, None).unwrap());
+            let _ = black_box(session::compile(&uri, &engines, None, lsp_mode.clone()).unwrap());
         })
     });
 
     c.bench_function("traverse", |b| {
-        let engines = Engines::default();
-        let results = black_box(session::compile(&uri, &engines, None).unwrap());
+        let engines_original = Engines::default();
+        let engines_clone = Engines::default();
+        let results = black_box(session::compile(&uri, &engines_clone, None, lsp_mode.clone()).unwrap());
         b.iter(|| {
-            let _ = black_box(session::traverse(results.clone(), &engines).unwrap());
+            let _ = black_box(session::traverse(results.clone(), &engines_original, &engines_clone).unwrap());
         })
     });
 
@@ -27,7 +31,7 @@ fn benchmarks(c: &mut Criterion) {
         let engines = Engines::default();
         b.iter(|| {
             for _ in 0..NUM_DID_CHANGE_ITERATIONS {
-                let _ = black_box(session::compile(&uri, &engines, None).unwrap());
+                let _ = black_box(session::compile(&uri, &engines, None, lsp_mode.clone()).unwrap());
             }
         })
     });

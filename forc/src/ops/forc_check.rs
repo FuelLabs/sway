@@ -39,6 +39,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         build_target,
         terse_mode,
         tests_enabled,
+        None,
         engines,
         None,
     )?;

@@ -217,6 +217,7 @@ pub fn compile_html(
         BuildTarget::default(),
         build_instructions.silent,
         tests_enabled,
+        None,
         &engines,
         None,
     )?;

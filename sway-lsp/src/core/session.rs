@@ -31,14 +31,12 @@ use std::{
     sync::{atomic::AtomicBool, Arc},
 };
 use sway_core::{
-    decl_engine::DeclEngine,
-    language::{
+    decl_engine::DeclEngine, language::{
         lexed::LexedProgram,
         parsed::{AstNode, ParseProgram},
-        ty::{self},
+        ty,
         HasSubmodules,
-    },
-    BuildTarget, Engines, Namespace, Programs,
+    }, BuildTarget, Engines, LspConfig, Namespace, Programs
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{SourceEngine, SourceId, Spanned};
@@ -430,6 +428,7 @@ pub fn compile(
     uri: &Url,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    lsp_mode: Option<LspConfig>,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
@@ -438,7 +437,7 @@ pub fn compile(
         BuildTarget::default(),
         true,
         tests_enabled,
-        engines,
+        lsp_mode,engines,
         retrigger_compilation,
     )
     .map_err(LanguageServerError::FailedToCompile)
@@ -453,7 +452,8 @@ pub struct TraversalResult {
 
 pub fn traverse(
     results: Vec<(Option<Programs>, Handler)>,
-    engines: &Engines,
+    engines_original: &Engines,
+    engines_clone: &Engines,
 ) -> Result<TraversalResult, LanguageServerError> {
     let token_map = TokenMap::new();
     let metrics_map = DashMap::new();
@@ -479,6 +479,17 @@ pub fn traverse(
         if let Some(source_id) = source_id {
             metrics_map.insert(source_id, metrics.clone());
         }
+
+        // Check if the cached AST was returned by the compiler for the users workspace.
+        // If it was, then we need to use the original engines for traversal.
+        //
+        // This is due to the garbage collector removing types from the engines_clone
+        // and they have not been re-added due to compilation being skipped.
+        let engines = if i == results_len - 1 && metrics.reused_modules > 0 {
+            &*engines_original
+        } else {
+            engines_clone
+        };
 
         // Get a reference to the typed program AST.
         let typed_program = typed
@@ -530,11 +541,13 @@ pub fn traverse(
 /// Parses the project and returns true if the compiler diagnostics are new and should be published.
 pub fn parse_project(
     uri: &Url,
-    engines: &Engines,
+    engines_original: &Engines,
+    engines_clone: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     parse_result: &mut ParseResult,
+    lsp_mode: Option<LspConfig>,
 ) -> Result<(), LanguageServerError> {
-    let results = compile(uri, engines, retrigger_compilation)?;
+    let results = compile(uri, engines_clone, retrigger_compilation, lsp_mode.clone())?;
     if results.last().is_none() {
         return Err(LanguageServerError::ProgramsIsNone);
     }
@@ -543,7 +556,7 @@ pub fn parse_project(
         programs,
         token_map,
         metrics,
-    } = traverse(results, engines)?;
+    } = traverse(results, engines_original, engines_clone)?;
     let (lexed, parsed, typed) = programs.ok_or(LanguageServerError::ProgramsIsNone)?;
 
     parse_result.diagnostics = diagnostics;
@@ -626,9 +639,10 @@ mod tests {
     fn parse_project_returns_manifest_file_not_found() {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
-        let engines = Engines::default();
+        let engines_original = Engines::default();
+        let engines_clone = Engines::default();
         let parse_result = &mut ParseResult::default();
-        let result = parse_project(&uri, &engines, None, parse_result)
+        let result = parse_project(&uri, &engines_original, &engines_clone, None, parse_result, None)
             .expect_err("expected ManifestFileNotFound");
         assert!(matches!(
             result,
