@@ -258,7 +258,6 @@ fn create_payload(
     8	    byte[8]	    param1  First parameter (function selector pointer)
     8	    byte[8]	    param2  Second parameter (encoded arguments pointer)
     */
-
     Bytes::from(encode((
         target,
         asm(a: function_selector.ptr()) {
