@@ -18,7 +18,6 @@ mod generics_in_abi;
 mod hashing;
 mod logging;
 mod low_level_call;
-mod low_level_call_bytes;
 mod messages;
 mod methods;
 mod option_field_order;
