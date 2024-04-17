@@ -1618,9 +1618,11 @@ pub fn dependency_namespace(
         namespace::Module::default()
     };
 
-    root_module.is_external = true;
-    root_module.name = name;
-    root_module.visibility = Visibility::Public;
+    root_module.write(engines, |root_module| {
+        root_module.is_external = true;
+        root_module.name = name.clone();
+        root_module.visibility = Visibility::Public;
+    });
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1632,7 +1634,8 @@ pub fn dependency_namespace(
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no namespace module"),
+                .expect("no namespace module")
+                .read(engines, |m| m.clone()),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1643,16 +1646,16 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut ns = namespace::Module::default_with_contract_id(
+                let mut module = namespace::Module::default_with_contract_id(
                     engines,
                     name.clone(),
                     contract_id_value,
                     experimental,
                 )?;
-                ns.is_external = true;
-                ns.name = name;
-                ns.visibility = Visibility::Public;
-                ns
+                module.is_external = true;
+                module.name = name;
+                module.visibility = Visibility::Public;
+                module
             }
         };
         root_module.insert_submodule(dep_name, dep_namespace);
@@ -2460,9 +2463,10 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            let mut root_module = compiled.root_module;
-            root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
-            lib_namespace_map.insert(node, root_module);
+            compiled.root_module.write(&engines, |root_module| {
+                root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
+            });
+            lib_namespace_map.insert(node, compiled.root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2712,7 +2716,11 @@ pub fn check(
         match programs.typed.as_ref() {
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
-                    let mut module = typed_program.root.namespace.module().clone();
+                    let mut module = typed_program
+                        .root
+                        .namespace
+                        .module_id(engines)
+                        .read(engines, |m| m.clone());
                     module.name = Some(Ident::new_no_span(pkg.name.clone()));
                     module.span = Some(
                         Span::new(

@@ -552,7 +552,7 @@ fn compile_core(
             let core_module = typed_program
                 .root
                 .namespace
-                .module()
+                .module(engines)
                 .submodules()
                 .into_iter()
                 .fold(
