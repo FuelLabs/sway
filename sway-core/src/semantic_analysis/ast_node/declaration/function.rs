@@ -66,10 +66,11 @@ impl ty::TyFunctionDecl {
 
         // If functions aren't allowed in this location, return an error.
         if ctx.functions_disallowed() {
-            return Err(handler.emit_err(CompileError::Unimplemented(
-                "Nested function definitions are not allowed at this time.",
-                span.clone(),
-            )));
+            return Err(handler.emit_err(CompileError::Unimplemented {
+                feature: "Declaring nested functions".to_string(),
+                help: vec![],
+                span: span.clone(),
+            }));
         }
 
         // Warn against non-snake case function names.

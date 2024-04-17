@@ -184,10 +184,11 @@ fn type_check_variable(
             let literal = match value.extract_literal_value() {
                 Some(value) => value,
                 None => {
-                    return Err(handler.emit_err(CompileError::Unimplemented(
-                        "constant values of this type are not supported yet",
+                    return Err(handler.emit_err(CompileError::Unimplemented {
+                        feature: "Supporting constant values of this type in patterns".to_string(),
+                        help: vec![],
                         span,
-                    )));
+                    }));
                 }
             };
             ty::TyScrutinee {

@@ -7,7 +7,7 @@ use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::Keywor
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session) = Runtime::new()
+    let (uri, session, documents) = Runtime::new()
         .unwrap()
         .block_on(async { black_box(super::compile_test_project().await) });
     let config = sway_lsp::config::Config::default();
@@ -96,10 +96,12 @@ fn benchmarks(c: &mut Criterion) {
                 text: "\n".to_string(),
             }],
         };
-        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &session, &uri, &params))
+        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &documents, &uri, &params))
     });
 
-    c.bench_function("format", |b| b.iter(|| session.format_text(&uri)));
+    c.bench_function("format", |b| {
+        b.iter(|| capabilities::formatting::format_text(&documents, &uri))
+    });
 }
 
 criterion_group! {

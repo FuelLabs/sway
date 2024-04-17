@@ -6,7 +6,7 @@ use crate::{
     Ident,
 };
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, InvalidImplementingForType},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{integer_bits::IntegerBits, span::Span, SourceId};
@@ -1228,12 +1228,24 @@ impl TypeInfo {
     }
 
     /// Given a [TypeInfo] `self`, check to see if `self` is currently
-    /// supported in match expressions, and return an error if it is not.
+    /// supported as a match expression's matched value, and return an error if it is not.
     pub(crate) fn expect_is_supported_in_match_expressions(
         &self,
         handler: &Handler,
+        engines: &Engines,
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
+        const CURRENTLY_SUPPORTED_TYPES_MESSAGE: [&str; 8] = [
+            "Sway currently supports pattern matching on these types:",
+            "  - b256",
+            "  - boolean",
+            "  - enums",
+            "  - structs",
+            "  - tuples",
+            "  - unsigned integers",
+            "  - Never type (`!`)",
+        ];
+
         match self {
             TypeInfo::UnsignedInteger(_)
             | TypeInfo::Enum { .. }
@@ -1243,32 +1255,53 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Alias { .. }
             | TypeInfo::Never => Ok(()),
-            TypeInfo::Unknown
-            | TypeInfo::RawUntypedPtr
+            TypeInfo::Alias { ty, .. } => {
+                let ty = engines.te().get(ty.type_id);
+                ty.expect_is_supported_in_match_expressions(handler, engines, span)
+            }
+            TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(..)
             | TypeInfo::Slice(..)
-            | TypeInfo::ContractCaller { .. }
-            | TypeInfo::Custom { .. }
             | TypeInfo::StringArray(_)
             | TypeInfo::StringSlice
+            | TypeInfo::Array(_, _) => Err(handler.emit_err(CompileError::Unimplemented {
+                feature: format!(
+                    "Matched value has type \"{}\". Matching on this type",
+                    engines.help_out(self)
+                ),
+                help: {
+                    let mut help = vec![];
+                    for line in CURRENTLY_SUPPORTED_TYPES_MESSAGE {
+                        help.push(line.to_string());
+                    }
+                    help
+                },
+                span: span.clone(),
+            })),
+            TypeInfo::Ref { .. } => Err(handler.emit_err(CompileError::Unimplemented {
+                // TODO-IG: Implement.
+                feature: "Using references in match expressions".to_string(),
+                help: vec![],
+                span: span.clone(),
+            })),
+            TypeInfo::ErrorRecovery(err) => Err(*err),
+            TypeInfo::Unknown
+            | TypeInfo::ContractCaller { .. }
+            | TypeInfo::Custom { .. }
             | TypeInfo::Contract
-            | TypeInfo::Array(_, _)
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
             | TypeInfo::TypeParam(_)
-            | TypeInfo::TraitType { .. } => Err(handler.emit_err(CompileError::Unimplemented(
-                "Matching on this type is currently not supported.",
-                span.clone(),
-            ))),
-            TypeInfo::Ref { .. } => Err(handler.emit_err(CompileError::Unimplemented(
-                // TODO-IG: Implement.
-                "Using references in match expressions is currently not supported.",
-                span.clone(),
-            ))),
-            TypeInfo::ErrorRecovery(err) => Err(*err),
+            | TypeInfo::TraitType { .. } => {
+                Err(handler.emit_err(CompileError::MatchedValueIsNotValid {
+                    supported_types_message: CURRENTLY_SUPPORTED_TYPES_MESSAGE
+                        .into_iter()
+                        .collect(),
+                    span: span.clone(),
+                }))
+            }
         }
     }
 
@@ -1277,11 +1310,17 @@ impl TypeInfo {
     pub(crate) fn expect_is_supported_in_impl_blocks_self(
         &self,
         handler: &Handler,
+        trait_name: Option<&Ident>,
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
         if TypeInfo::is_self_type(self) {
-            return Err(handler
-                .emit_err(CompileError::SelfIsNotValidAsImplementingFor { span: span.clone() }));
+            return Err(
+                handler.emit_err(CompileError::TypeIsNotValidAsImplementingFor {
+                    invalid_type: InvalidImplementingForType::SelfType,
+                    trait_name: trait_name.map(|name| name.to_string()),
+                    span: span.clone(),
+                }),
+            );
         }
         match self {
             TypeInfo::UnsignedInteger(_)
@@ -1305,14 +1344,24 @@ impl TypeInfo {
             | TypeInfo::TraitType { .. }
             | TypeInfo::Ref { .. }
             | TypeInfo::Never => Ok(()),
+            TypeInfo::Unknown if span.as_str() == "_" => Err(handler.emit_err(
+                CompileError::TypeIsNotValidAsImplementingFor {
+                    invalid_type: InvalidImplementingForType::Placeholder,
+                    trait_name: trait_name.map(|name| name.to_string()),
+                    span: span.clone(),
+                },
+            )),
             TypeInfo::Unknown
             | TypeInfo::ContractCaller { .. }
             | TypeInfo::Storage { .. }
             | TypeInfo::Placeholder(_)
-            | TypeInfo::TypeParam(_) => Err(handler.emit_err(CompileError::Unimplemented(
-                "implementing traits on this type is unsupported right now",
-                span.clone(),
-            ))),
+            | TypeInfo::TypeParam(_) => Err(handler.emit_err(
+                CompileError::TypeIsNotValidAsImplementingFor {
+                    invalid_type: InvalidImplementingForType::Other,
+                    trait_name: trait_name.map(|name| name.to_string()),
+                    span: span.clone(),
+                },
+            )),
             TypeInfo::ErrorRecovery(err) => Err(*err),
         }
     }

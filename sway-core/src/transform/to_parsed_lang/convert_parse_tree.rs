@@ -25,9 +25,9 @@ use sway_ast::{
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
     Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
 };
-use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
 use sway_types::{
     constants::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
@@ -285,7 +285,7 @@ fn item_use_to_use_statements(
     // This is not the case for `use foo;`, which is currently not supported
     for use_stmt in ret.iter() {
         if use_stmt.call_path.is_empty() {
-            let error = ConvertParseTreeError::ImportsWithoutItemsNotSupports {
+            let error = ConvertParseTreeError::ImportsWithoutItemsNotSupported {
                 span: use_stmt.span.clone(),
             };
             return Err(handler.emit_err(error.into()));
@@ -4020,12 +4020,51 @@ fn pattern_to_scrutinee(
             span: underscore_token.span(),
         },
         Pattern::Var {
-            reference, name, ..
+            reference,
+            mutable,
+            name,
         } => {
-            if reference.is_some() {
-                let error = ConvertParseTreeError::RefPatternsNotSupportedHere { span };
-                return Err(handler.emit_err(error.into()));
+            let unsupported_ref_mut = match (reference, mutable) {
+                (Some(reference), Some(mutable)) => Some((
+                    "ref mut",
+                    vec![
+                        "If you want to change the matched value, or some of its parts, consider using the matched value".to_string(),
+                        format!("directly in the block, instead of the pattern variable \"{name}\"."),
+                    ],
+                    Span::join(reference.span(), mutable.span())
+                )),
+                (Some(reference), None) => Some((
+                    "ref",
+                    vec![
+                        "If you want to avoid copying the matched value, or some of its parts, consider using the matched value".to_string(),
+                        format!("directly in the block, instead of the pattern variable \"{name}\"."),
+                    ],
+                    reference.span()
+                )),
+                (None, Some(mutable)) => Some((
+                    "mut",
+                    vec![
+                        format!("If you want change the value of the pattern variable \"{name}\", consider declaring its mutable copy within the block:"),
+                        format!("  let mut {name} = {name};"),
+                        format!("Note that the pattern variable \"{name}\" already contains a copy of the matched value, or some of its parts,"),
+                        format!("and that the original matched value will not be affected when changing the mutable \"{name}\"."),
+                        " ".to_string(),
+                        "Alternatively, if you want to change the matched value, or some of its parts, consider using the matched value".to_string(),
+                        format!("directly in the block, instead of the pattern variable \"{name}\"."),
+                    ],
+                    mutable.span()
+                )),
+                _ => None,
+            };
+
+            if let Some((msg, help, span)) = unsupported_ref_mut {
+                return Err(handler.emit_err(CompileError::Unimplemented {
+                    feature: format!("Using `{msg}` in pattern variables"),
+                    help,
+                    span,
+                }));
             }
+
             Scrutinee::Variable { name, span }
         }
         Pattern::AmbiguousSingleIdent(ident) => Scrutinee::AmbiguousSingleIdent(ident),

@@ -48,10 +48,10 @@ async fn script_configurables() -> Result<()> {
     };
     let new_enum = EnumWithGeneric::VariantTwo;
 
-    let configurables = MyScriptConfigurables::new()
-        .with_STR_4(new_str.clone())
-        .with_STRUCT(new_struct.clone())
-        .with_ENUM(new_enum.clone());
+    let configurables = MyScriptConfigurables::default()
+        .with_STR_4(new_str.clone())?
+        .with_STRUCT(new_struct.clone())?
+        .with_ENUM(new_enum.clone())?;
 
     let response = instance
         .with_configurables(configurables)
