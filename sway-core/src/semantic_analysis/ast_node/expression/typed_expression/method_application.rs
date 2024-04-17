@@ -794,7 +794,7 @@ pub(crate) fn monomorphize_method_application(
                         }
                     }
                     let implementing_type_parameters =
-                        implementing_for_typeid.get_type_parameters(type_engine, decl_engine);
+                        implementing_for_typeid.get_type_parameters(engines);
                     if let Some(implementing_type_parameters) = implementing_type_parameters {
                         for p in method.type_parameters.clone() {
                             if p.is_from_parent {
