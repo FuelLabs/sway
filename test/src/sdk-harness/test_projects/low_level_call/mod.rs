@@ -28,7 +28,7 @@ abigen!(
     ),
     Script(
         name = "TestScript",
-        abi = "test_projects/low_level_call/out/release/low_level_call-abi.json"
+        abi = "test_projects/low_level_call_bytes/out/release/low_level_call_bytes-abi.json"
     )
 );
 
@@ -42,7 +42,7 @@ async fn low_level_call(
     // Build the script instance
     let script_instance = TestScript::new(
         wallet,
-        "test_projects/low_level_call/out/release/low_level_call.bin",
+        "test_projects/low_level_call_bytes/out/release/low_level_call_bytes.bin",
     );
 
     // Add the contract being called to the inputs and outputs
@@ -62,7 +62,12 @@ async fn low_level_call(
 
     // Run the script which will call the contract
     let tx = script_instance
-        .main(id, function_selector, calldata, single_value_type_arg)
+        .main(
+            id,
+            fuels::types::Bytes(function_selector),
+            fuels::types::Bytes(calldata),
+            single_value_type_arg,
+        )
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output])
         .with_tx_policies(TxPolicies::default());
