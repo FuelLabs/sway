@@ -1850,8 +1850,7 @@ pub fn compile(
                         program: typed_program,
                         abi_with_callpaths: profile.json_abi_with_callpaths,
                     },
-                    engines.te(),
-                    engines.de(),
+                    engines,
                     &mut types,
                     profile
                         .experimental
