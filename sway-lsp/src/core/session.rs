@@ -40,7 +40,7 @@ use sway_core::{
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::{SourceEngine, SourceId, Spanned};
+use sway_types::{ModuleId, SourceEngine, SourceId, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
@@ -66,7 +66,7 @@ pub struct Session {
     pub sync: SyncWorkspace,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
-    pub metrics: DashMap<SourceId, PerformanceData>,
+    pub metrics: DashMap<ModuleId, PerformanceData>,
 }
 
 impl Default for Session {
@@ -276,6 +276,7 @@ pub fn traverse(
     session: Arc<Session>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     session.token_map.clear();
+    eprintln!("📖 Metrics | clearing metrics. {:#?}", session.metrics);
     session.metrics.clear();
     let mut diagnostics: CompileResults = (Default::default(), Default::default());
     let results_len = results.len();
@@ -294,11 +295,25 @@ pub fn traverse(
             metrics,
         } = value.unwrap();
 
+        
         let source_id = lexed.root.tree.span().source_id().cloned();
         if let Some(source_id) = source_id {
-            session.metrics.insert(source_id, metrics.clone());
-        }
+            // convert source id to path
+            let path = engines_clone.se().get_path(&source_id);
+            let manifest_path = sway_utils::find_parent_manifest_dir(path.clone()).unwrap_or(path.clone());
+            let manifest_source_id = engines_clone.se().get_source_id(&manifest_path);
 
+            let module_id = engines_clone.se().get_module_id(&path);
+            eprintln!("💁 Path Module ID: {:?}", module_id);
+
+            let module_id = engines_clone.se().get_module_id(&manifest_path).unwrap();
+            eprintln!("💁 Manifest Module ID: {:?}", module_id);
+
+            eprintln!("📖 Metrics | inserting source id {:?} for path: {:?}", &source_id, &path);
+            eprintln!("📖 Metrics | inserting source id {:?} for path: {:?}", &manifest_source_id, &manifest_path);
+            session.metrics.insert(module_id, metrics.clone());
+        }
+        
         let engines_ref = session.engines.read();
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines for traversal.
@@ -306,8 +321,10 @@ pub fn traverse(
         // This is due to the garbage collector removing types from the engines_clone
         // and they have not been re-added due to compilation being skipped.
         let engines = if i == results_len - 1 && metrics.reused_modules > 0 {
+            eprintln!("🚒 Using original engines");
             &*engines_ref
         } else {
+            eprintln!("🚒 Using original clone");
             engines_clone
         };
 

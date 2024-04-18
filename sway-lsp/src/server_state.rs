@@ -158,24 +158,67 @@ impl ServerState {
                             experimental,
                         ) {
                             Ok(_) => {
+                                let se_clone = engines_clone.se().clone();
+                                let path = uri.to_file_path().unwrap();
+                                let manifest_path = sway_utils::find_parent_manifest_dir(path.clone()).unwrap_or(path.clone());
+                                let module_id = engines_clone.se().get_module_id(&manifest_path).unwrap();
+                                
+                                let source_id = engines_clone.se().get_source_id(&path);
+
+                                //let module_id = engines_clone.se().get_module_id(&path);
+                                eprintln!("🙆 Module ID: {:?}", module_id);
+
+                                eprintln!("1st get source_id: {:?}", source_id);
+                                match session.metrics.get(&module_id) {
+                                    Some(metrics) => {
+                                        eprintln!("source_id from engines clone found");
+                                    }
+                                    None => {
+                                        let source_id = session.engines.read().se().get_source_id(&path); 
+                                        eprintln!("2nd get source_id: {:?}", source_id);
+                                        match session.metrics.get(&module_id) {
+                                            Some(metrics) => {
+                                                eprintln!("source_id from original engines found"); 
+                                            }
+                                            None => {
+                                                eprintln!("❌ No source ID found in either engines");
+                                                tracing::error!("Metrics not found for source_id: {:?} | path {:?}", source_id, path);
+                                                for i in session.metrics.iter() {
+                                                    let k = i.key();
+                                                    tracing::error!("Metrics keys: {:?}", k);
+                                                }
+                                                
+                                                eprintln!("SE clone = {:#?}", se_clone);
+                                                eprintln!("");
+                                                eprintln!("SE original = {:#?}", session.engines.read().se());
+                                                panic!();
+                                            }
+                                        }
+                                    }
+                                }
+
                                 if let Ok(path) = uri.to_file_path() {
                                     let path = Arc::new(path);
                                     let source_id =
                                         session.engines.read().se().get_source_id(&path);
-                                    let metrics = session
-                                        .metrics
-                                        .get(&source_id)
-                                        .expect("metrics not found for source_id");
-                                    // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
-                                    // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
-                                    // as the engines_clone might have cleared some types that are still in use.
-                                    if metrics.reused_modules == 0 {
-                                        // The compiler did not reuse the workspace AST.
-                                        // We need to overwrite the old engines with the engines clone.
-                                        mem::swap(
-                                            &mut *session.engines.write(),
-                                            &mut engines_clone,
-                                        );
+                                    if let Some(metrics) = session.metrics.get(&module_id) {
+                                        // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
+                                        // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
+                                        // as the engines_clone might have cleared some types that are still in use.
+                                        if metrics.reused_modules == 0 {
+                                            // The compiler did not reuse the workspace AST.
+                                            // We need to overwrite the old engines with the engines clone.
+                                            mem::swap(
+                                                &mut *session.engines.write(),
+                                                &mut engines_clone,
+                                            );
+                                        }
+                                    } else {
+                                        // tracing::error!("Metrics not found for source_id: {:?} | path {:?}", source_id, path);
+                                        // for i in session.metrics.iter() {
+                                        //     let k = i.key();
+                                        //     tracing::error!("Metrics keys: {:?}", k);
+                                        // } 
                                     }
                                 }
                                 *last_compilation_state.write() = LastCompilationState::Success;
