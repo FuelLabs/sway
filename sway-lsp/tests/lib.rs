@@ -4,8 +4,7 @@ use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use std::{fs, path::PathBuf};
 use sway_lsp::{
-    handlers::{notification, request},
-    server_state::ServerState,
+    core::session, handlers::{notification, request}, server_state::ServerState
 };
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
@@ -342,6 +341,19 @@ fn lsp_syncs_with_workspace_edits() {
         go_to.def_line = 20;
         lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
         shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn compilation_succeeds_when_triggered_from_module() {
+    run_async!({
+        let server = ServerState::default();
+        let _ = open(
+            &server,
+            test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
+        )
+        .await;
+        let _ = server.shutdown_server().await;
     });
 }
 

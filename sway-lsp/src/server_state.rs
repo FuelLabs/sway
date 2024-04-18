@@ -159,8 +159,10 @@ impl ServerState {
                         ) {
                             Ok(_) => {
                                 let path = uri.to_file_path().unwrap();
+                                // Find the module id from the path
                                 match session::module_id_from_path(&path, &engines_clone) {
                                     Ok(module_id) => {
+                                        // Use the module id to get the metrics for the module
                                         if let Some(metrics) = session.metrics.get(&module_id) {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
