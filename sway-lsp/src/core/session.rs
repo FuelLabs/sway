@@ -2,16 +2,15 @@ use crate::{
     capabilities::{
         self,
         diagnostic::DiagnosticMap,
-        formatting::get_page_text_edit,
         runnable::{Runnable, RunnableMainFn, RunnableTestFn},
     },
     core::{
-        document::TextDocument,
+        document::{Documents, TextDocument},
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
     },
-    error::{DocumentError, LanguageServerError},
+    error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
         dependency, lexed_tree, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
     },
@@ -19,8 +18,7 @@ use crate::{
 use dashmap::DashMap;
 use forc_pkg as pkg;
 use lsp_types::{
-    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation,
-    TextDocumentContentChangeEvent, TextEdit, Url,
+    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
 };
 use parking_lot::RwLock;
 use pkg::{
@@ -42,11 +40,9 @@ use sway_core::{
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::{SourceEngine, SourceId, Spanned};
+use sway_types::{ModuleId, SourceEngine, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
-use tokio::{fs::File, io::AsyncWriteExt};
 
-pub type Documents = DashMap<String, TextDocument>;
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;
 
@@ -64,14 +60,13 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct Session {
     token_map: TokenMap,
-    pub documents: Documents,
     pub runnables: RunnableMap,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
-    pub metrics: DashMap<SourceId, PerformanceData>,
+    pub metrics: DashMap<ModuleId, PerformanceData>,
 }
 
 impl Default for Session {
@@ -84,7 +79,6 @@ impl Session {
     pub fn new() -> Self {
         Session {
             token_map: TokenMap::new(),
-            documents: DashMap::new(),
             runnables: DashMap::new(),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
@@ -94,14 +88,18 @@ impl Session {
         }
     }
 
-    pub async fn init(&self, uri: &Url) -> Result<ProjectDirectory, LanguageServerError> {
+    pub async fn init(
+        &self,
+        uri: &Url,
+        documents: &Documents,
+    ) -> Result<ProjectDirectory, LanguageServerError> {
         let manifest_dir = PathBuf::from(uri.path());
         // Create a new temp dir that clones the current workspace
         // and store manifest and temp paths
         self.sync.create_temp_dir_from_workspace(&manifest_dir)?;
         self.sync.clone_manifest_dir_to_temp()?;
         // iterate over the project dir, parse all sway files
-        let _ = self.store_sway_files().await;
+        let _ = self.store_sway_files(documents).await;
         self.sync.watch_and_sync_manifest();
         self.sync.manifest_dir().map_err(Into::into)
     }
@@ -212,111 +210,12 @@ impl Session {
             .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))
     }
 
-    pub fn format_text(&self, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
-        let document = self
-            .documents
-            .try_get(url.path())
-            .try_unwrap()
-            .ok_or_else(|| DocumentError::DocumentNotFound {
-                path: url.path().to_string(),
-            })?;
-
-        get_page_text_edit(Arc::from(document.get_text()), &mut <_>::default())
-            .map(|page_text_edit| vec![page_text_edit])
-    }
-
-    pub async fn handle_open_file(&self, uri: &Url) {
-        if !self.documents.contains_key(uri.path()) {
-            if let Ok(text_document) = TextDocument::build_from_path(uri.path()).await {
-                let _ = self.store_document(text_document);
-            }
-        }
-    }
-
-    /// Asynchronously writes the changes to the file and updates the document.
-    pub async fn write_changes_to_file(
-        &self,
-        uri: &Url,
-        changes: Vec<TextDocumentContentChangeEvent>,
-    ) -> Result<(), LanguageServerError> {
-        let src = self.update_text_document(uri, changes).ok_or_else(|| {
-            DocumentError::DocumentNotFound {
-                path: uri.path().to_string(),
-            }
-        })?;
-
-        let mut file =
-            File::create(uri.path())
-                .await
-                .map_err(|err| DocumentError::UnableToCreateFile {
-                    path: uri.path().to_string(),
-                    err: err.to_string(),
-                })?;
-
-        file.write_all(src.as_bytes())
-            .await
-            .map_err(|err| DocumentError::UnableToWriteFile {
-                path: uri.path().to_string(),
-                err: err.to_string(),
-            })?;
-
-        Ok(())
-    }
-
-    /// Get the document at the given [Url].
-    pub fn get_text_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
-        self.documents
-            .try_get(url.path())
-            .try_unwrap()
-            .ok_or_else(|| DocumentError::DocumentNotFound {
-                path: url.path().to_string(),
-            })
-            .map(|document| document.clone())
-    }
-
-    /// Update the document at the given [Url] with the Vec of changes returned by the client.
-    pub fn update_text_document(
-        &self,
-        url: &Url,
-        changes: Vec<TextDocumentContentChangeEvent>,
-    ) -> Option<String> {
-        self.documents
-            .try_get_mut(url.path())
-            .try_unwrap()
-            .map(|mut document| {
-                changes.iter().for_each(|change| {
-                    document.apply_change(change);
-                });
-                document.get_text()
-            })
-    }
-
-    /// Remove the text document from the session.
-    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
-        self.documents
-            .remove(url.path())
-            .ok_or_else(|| DocumentError::DocumentNotFound {
-                path: url.path().to_string(),
-            })
-            .map(|(_, text_document)| text_document)
-    }
-
-    /// Store the text document in the session.
-    fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
-        let uri = text_document.get_uri().to_string();
-        self.documents
-            .insert(uri.clone(), text_document)
-            .map_or(Ok(()), |_| {
-                Err(DocumentError::DocumentAlreadyStored { path: uri })
-            })
-    }
-
     /// Populate [Documents] with sway files found in the workspace.
-    async fn store_sway_files(&self) -> Result<(), LanguageServerError> {
+    async fn store_sway_files(&self, documents: &Documents) -> Result<(), LanguageServerError> {
         let temp_dir = self.sync.temp_dir()?;
         // Store the documents.
         for path in get_sway_files(temp_dir).iter().filter_map(|fp| fp.to_str()) {
-            self.store_document(TextDocument::build_from_path(path).await?)?;
+            documents.store_document(TextDocument::build_from_path(path).await?)?;
         }
         Ok(())
     }
@@ -395,22 +294,26 @@ pub fn traverse(
             metrics,
         } = value.unwrap();
 
-        let source_id = lexed.root.tree.span().source_id().cloned();
-        if let Some(source_id) = source_id {
-            session.metrics.insert(source_id, metrics.clone());
-        }
-
-        let engines_ref = session.engines.read();
         // Check if the cached AST was returned by the compiler for the users workspace.
         // If it was, then we need to use the original engines for traversal.
         //
         // This is due to the garbage collector removing types from the engines_clone
         // and they have not been re-added due to compilation being skipped.
+        let engines_ref = session.engines.read();
         let engines = if i == results_len - 1 && metrics.reused_modules > 0 {
             &*engines_ref
         } else {
             engines_clone
         };
+
+        // Convert the source_id to a path so we can use the manifest path to get the module_id.
+        // This is used to store the metrics for the module.
+        let source_id = lexed.root.tree.span().source_id().cloned();
+        if let Some(source_id) = source_id {
+            let path = engines.se().get_path(&source_id);
+            let module_id = module_id_from_path(&path, engines)?;
+            session.metrics.insert(module_id, metrics);
+        }
 
         // Get a reference to the typed program AST.
         let typed_program = typed
@@ -458,7 +361,6 @@ pub fn traverse(
             });
         }
     }
-
     Ok(Some(diagnostics))
 }
 
@@ -583,31 +485,23 @@ fn create_runnables(
     }
 }
 
+/// Resolves a `ModuleId` from a given `path` using the manifest directory.
+pub(crate) fn module_id_from_path(
+    path: &PathBuf,
+    engines: &Engines,
+) -> Result<ModuleId, DirectoryError> {
+    let module_id = sway_utils::find_parent_manifest_dir(path)
+        .and_then(|manifest_path| engines.se().get_module_id(&manifest_path))
+        .ok_or_else(|| DirectoryError::ModuleIdNotFound {
+            path: path.to_string_lossy().to_string(),
+        })?;
+    Ok(module_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use sway_lsp_test_utils::{get_absolute_path, get_url};
-
-    #[tokio::test]
-    async fn store_document_returns_empty_tuple() {
-        let session = Session::new();
-        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
-        let document = TextDocument::build_from_path(&path).await.unwrap();
-        let result = Session::store_document(&session, document);
-        assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn store_document_returns_document_already_stored_error() {
-        let session = Session::new();
-        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
-        let document = TextDocument::build_from_path(&path).await.unwrap();
-        Session::store_document(&session, document).expect("expected successfully stored");
-        let document = TextDocument::build_from_path(&path).await.unwrap();
-        let result = Session::store_document(&session, document)
-            .expect_err("expected DocumentAlreadyStored");
-        assert_eq!(result, DocumentError::DocumentAlreadyStored { path });
-    }
 
     #[test]
     fn parse_project_returns_manifest_file_not_found() {
