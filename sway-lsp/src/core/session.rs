@@ -490,7 +490,7 @@ pub(crate) fn module_id_from_path(
     path: &PathBuf,
     engines: &Engines,
 ) -> Result<ModuleId, DirectoryError> {
-    let module_id = sway_utils::find_parent_manifest_dir(&path)
+    let module_id = sway_utils::find_parent_manifest_dir(path)
         .and_then(|manifest_path| engines.se().get_module_id(&manifest_path))
         .ok_or_else(|| DirectoryError::ModuleIdNotFound {
             path: path.to_string_lossy().to_string(),
