@@ -4,9 +4,9 @@ use increment_abi::Incrementor;
 use dynamic_contract_call::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0xb7a555aa47aaa778e0b1c351e897e83b08b34a1599114166bb5635721da0ab14;
+const CONTRACT_ID = 0x4440ac68a7f88e414ae29425ab22c6aed0434cf6632d0ee1d41ab82607923493;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x3c1b3e3ad4debae2393ff81b5d77260c62f1356daa51c67ff220a09e7838a52a;
+const CONTRACT_ID = 0x1fc4e213dd620f6f452736398448e6352a5dac3c7815cc6f808e7a7104146a31;
 
 fn main() -> bool {
     let the_abi = abi(Incrementor, CONTRACT_ID);

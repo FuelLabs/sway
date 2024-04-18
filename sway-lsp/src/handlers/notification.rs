@@ -2,7 +2,10 @@
 //! Protocol. This module specifically handles notification messages sent by the Client.
 
 use crate::{
-    core::{document, session::Session},
+    core::{
+        document::{self, Documents},
+        session::Session,
+    },
     error::LanguageServerError,
     server_state::{CompilationContext, ServerState, TaskMessage},
 };
@@ -21,10 +24,9 @@ pub async fn handle_did_open_text_document(
     params: DidOpenTextDocumentParams,
 ) -> Result<(), LanguageServerError> {
     let (uri, session) = state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
-    session.handle_open_file(&uri).await;
+    state.documents.handle_open_file(&uri).await;
     // If the token map is empty, then we need to parse the project.
     // Otherwise, don't recompile the project when a new file in the project is opened
     // as the workspace is already compiled.
@@ -92,14 +94,18 @@ pub async fn handle_did_change_text_document(
     }
 
     let (uri, session) = state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
-    session
+    state
+        .documents
         .write_changes_to_file(&uri, params.content_changes)
         .await?;
 
-    let file_versions = file_versions(&session, &uri, Some(params.text_document.version as u64));
+    let file_versions = file_versions(
+        &state.documents,
+        &uri,
+        Some(params.text_document.version as u64),
+    );
     send_new_compilation_request(
         state,
         session.clone(),
@@ -112,12 +118,12 @@ pub async fn handle_did_change_text_document(
 }
 
 fn file_versions(
-    session: &Session,
+    documents: &Documents,
     uri: &Url,
     version: Option<u64>,
 ) -> BTreeMap<PathBuf, Option<u64>> {
     let mut file_versions = BTreeMap::new();
-    for item in session.documents.iter() {
+    for item in documents.iter() {
         let path = PathBuf::from(item.key());
         if path == uri.to_file_path().unwrap() {
             file_versions.insert(path, version);
@@ -134,11 +140,10 @@ pub(crate) async fn handle_did_save_text_document(
 ) -> Result<(), LanguageServerError> {
     document::remove_dirty_flag(&params.text_document.uri)?;
     let (uri, session) = state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await?;
     session.sync.resync()?;
-    let file_versions = file_versions(&session, &uri, None);
+    let file_versions = file_versions(&state.documents, &uri, None);
     send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
     state.wait_for_parsing().await;
     state
@@ -152,13 +157,10 @@ pub(crate) async fn handle_did_change_watched_files(
     params: DidChangeWatchedFilesParams,
 ) -> Result<(), LanguageServerError> {
     for event in params.changes {
-        let (uri, session) = state
-            .sessions
-            .uri_and_session_from_workspace(&event.uri)
-            .await?;
+        let (uri, _) = state.uri_and_session_from_workspace(&event.uri).await?;
         if let FileChangeType::DELETED = event.typ {
             document::remove_dirty_flag(&event.uri)?;
-            let _ = session.remove_document(&uri);
+            let _ = state.documents.remove_document(&uri);
         }
     }
     Ok(())
