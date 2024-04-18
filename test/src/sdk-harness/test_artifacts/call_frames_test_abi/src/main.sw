@@ -10,7 +10,6 @@ pub struct TestStruct2 {
 }
 
 abi CallFramesTest {
-    fn get_id() -> ContractId;
     fn get_id_contract_id_this() -> ContractId;
     fn get_asset_id() -> AssetId;
     fn get_code_size() -> u64;
