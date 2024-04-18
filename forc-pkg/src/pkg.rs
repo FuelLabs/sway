@@ -59,7 +59,7 @@ type GraphIx = u32;
 type Node = Pinned;
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Edge {
-    /// The name specified on the left hand side of the `=` in a depenedency declaration under
+    /// The name specified on the left hand side of the `=` in a dependency declaration under
     /// `[dependencies]` or `[contract-dependencies]` within a forc manifest.
     ///
     /// The name of a dependency may differ from the package name in the case that the dependency's
@@ -604,7 +604,7 @@ impl BuildPlan {
         )
     }
 
-    /// Create a new build plan for the project by fetching and pinning all dependenies.
+    /// Create a new build plan for the project by fetching and pinning all dependencies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
     pub fn from_manifests(
