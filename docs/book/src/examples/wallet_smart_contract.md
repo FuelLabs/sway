@@ -2,7 +2,7 @@
 
 The ABI declaration is a separate project from your ABI implementation. The project structure for the code should be organized as follows with the `wallet_abi` treated as an external library:
 
-```
+```sh
 .
 ├── wallet_abi
 │   ├── Forc.toml
@@ -16,7 +16,7 @@ The ABI declaration is a separate project from your ABI implementation. The proj
 
 It's also important to specify the source of the dependency within the project's `Forc.toml` file when using external libraries. Inside the `wallet_smart_contract` project, it requires a declaration like this:
 
-```
+```sh
 [dependencies]
 wallet_abi = { path = "../wallet_abi/" }
 ```
@@ -24,7 +24,7 @@ wallet_abi = { path = "../wallet_abi/" }
 ## ABI Declaration
 
 ```sway
-{{#include ../../../../examples/wallet_abi/src/main.sw:abi_library}}
+{{#include ../../`../../examples/wallet_abi/src/main.sw:abi_library}}
 ```
 
 ## ABI Implementation
