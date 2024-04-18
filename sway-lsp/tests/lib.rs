@@ -4,7 +4,8 @@ use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use std::{fs, path::PathBuf};
 use sway_lsp::{
-    core::session, handlers::{notification, request}, server_state::ServerState
+    handlers::{notification, request},
+    server_state::ServerState,
 };
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
