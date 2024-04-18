@@ -178,7 +178,11 @@ impl ServerState {
                                         );
                                     }
                                 } else {
-                                    tracing::error!("Metrics not found for module_id: {:?} | path {:?}", module_id, path);
+                                    tracing::error!(
+                                        "Metrics not found for module_id: {:?} | path {:?}",
+                                        module_id,
+                                        path
+                                    );
                                 }
                                 *last_compilation_state.write() = LastCompilationState::Success;
                             }
