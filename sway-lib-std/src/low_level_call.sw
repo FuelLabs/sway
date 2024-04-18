@@ -152,9 +152,7 @@ fn create_payload(
         "function selector must be 8 bytes",
     );
 
-    // let mut payload = Bytes::new().append(contract_id_to_bytes(target)).append(function_selector);
-    let mut payload = Bytes::new();
-    payload.append(target.bits().to_be_bytes());
+    let mut payload = Bytes::from(target.bits());
     payload.append(function_selector.clone());
 
     if (single_value_type_arg) {
