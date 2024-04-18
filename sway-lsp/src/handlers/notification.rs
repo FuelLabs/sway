@@ -7,7 +7,7 @@ use crate::{
         session::Session,
     },
     error::LanguageServerError,
-    server_state::{CompilationContext, ServerState, TaskMessage},
+    server_state::{CompilationContext, RunnableMap, ServerState, TaskMessage},
 };
 use lsp_types::{
     DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
@@ -40,6 +40,7 @@ pub async fn handle_did_open_text_document(
                 optimized_build: false,
                 gc_options: state.config.read().garbage_collection.clone(),
                 file_versions: BTreeMap::new(),
+                runnables: state.runnables.clone(),
             }));
         state.is_compiling.store(true, Ordering::SeqCst);
 
@@ -58,6 +59,7 @@ fn send_new_compilation_request(
     version: Option<i32>,
     optimized_build: bool,
     file_versions: BTreeMap<PathBuf, Option<u64>>,
+    runnables: Arc<RunnableMap>,
 ) {
     if state.is_compiling.load(Ordering::SeqCst) {
         // If we are already compiling, then we need to retrigger compilation
@@ -82,6 +84,7 @@ fn send_new_compilation_request(
             optimized_build,
             gc_options: state.config.read().garbage_collection.clone(),
             file_versions,
+            runnables
         }));
 }
 
@@ -113,6 +116,7 @@ pub async fn handle_did_change_text_document(
         Some(params.text_document.version),
         true,
         file_versions,
+        state.runnables.clone(),
     );
     Ok(())
 }
@@ -144,7 +148,7 @@ pub(crate) async fn handle_did_save_text_document(
         .await?;
     session.sync.resync()?;
     let file_versions = file_versions(&state.documents, &uri, None);
-    send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions);
+    send_new_compilation_request(state, session.clone(), &uri, None, false, file_versions, state.runnables.clone());
     state.wait_for_parsing().await;
     state
         .publish_diagnostics(uri, params.text_document.uri, session)

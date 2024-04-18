@@ -2,18 +2,15 @@ use crate::{
     capabilities::{
         self,
         diagnostic::DiagnosticMap,
-        runnable::{Runnable, RunnableMainFn, RunnableTestFn},
-    },
-    core::{
+        runnable::{RunnableMainFn, RunnableTestFn},
+    }, core::{
         document::{Documents, TextDocument},
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
-    },
-    error::{DocumentError, LanguageServerError},
-    traverse::{
+    }, error::{DocumentError, LanguageServerError}, server_state::RunnableMap, traverse::{
         dependency, lexed_tree, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
-    },
+    }
 };
 use dashmap::DashMap;
 use forc_pkg as pkg;
@@ -43,7 +40,6 @@ use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning}
 use sway_types::{SourceEngine, SourceId, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
 
-pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;
 
 #[derive(Default, Debug)]
@@ -60,7 +56,6 @@ pub struct CompiledProgram {
 #[derive(Debug)]
 pub struct Session {
     token_map: TokenMap,
-    pub runnables: RunnableMap,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -79,7 +74,6 @@ impl Session {
     pub fn new() -> Self {
         Session {
             token_map: TokenMap::new(),
-            runnables: DashMap::new(),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(Default::default()),
             engines: <_>::default(),
@@ -368,6 +362,7 @@ pub fn parse_project(
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     session: Arc<Session>,
+    runnables: &RunnableMap,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let results = compile(
@@ -392,7 +387,7 @@ pub fn parse_project(
     }
     if let Some(typed) = &session.compiled_program.read().typed {
         session.runnables.clear();
-        create_runnables(&session.runnables, typed, engines.de(), engines.se());
+        create_runnables(runnables, typed, engines.de(), engines.se());
     }
     Ok(())
 }
@@ -492,6 +487,7 @@ mod tests {
         let dir = get_absolute_path("sway-lsp/tests/fixtures");
         let uri = get_url(&dir);
         let engines = Engines::default();
+        let runnables = RunnableMap::default();
         let session = Arc::new(Session::new());
         let result = parse_project(
             &uri,
@@ -499,6 +495,7 @@ mod tests {
             None,
             None,
             session,
+            &runnables,
             sway_core::ExperimentalFlags {
                 new_encoding: false,
             },

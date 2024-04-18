@@ -262,7 +262,7 @@ pub async fn handle_code_lens(
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((url, session)) => Ok(Some(capabilities::code_lens::code_lens(&session, &url))),
+        Ok((url, _)) => Ok(Some(capabilities::code_lens::code_lens(&state.runnables, &url))),
         Err(err) => {
             tracing::error!("{}", err.to_string());
             Ok(None)

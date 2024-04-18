@@ -1,6 +1,7 @@
 //! The context or environment in which the language server functions.
 
 use crate::{
+    capabilities::runnable::Runnable,
     config::{Config, GarbageCollectionConfig, Warnings},
     core::{
         document::Documents,
@@ -28,6 +29,8 @@ use sway_core::LspConfig;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
+pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
+
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
     pub(crate) client: Option<Client>,
@@ -36,6 +39,7 @@ pub struct ServerState {
     /// A collection of [Session]s, each of which represents a project that has been opened in the users workspace
     pub(crate) sessions: Arc<DashMap<PathBuf, Arc<Session>>>,
     pub documents: Documents,
+    pub runnables: Arc<RunnableMap>,
     // Compilation thread related fields
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
     pub is_compiling: Arc<AtomicBool>,
@@ -54,6 +58,7 @@ impl Default for ServerState {
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: Arc::new(DashMap::new()),
             documents: Documents::new(),
+            runnables: Arc::new(DashMap::new()),
             retrigger_compilation: Arc::new(AtomicBool::new(false)),
             is_compiling: Arc::new(AtomicBool::new(false)),
             cb_tx,
@@ -94,6 +99,7 @@ pub struct CompilationContext {
     pub optimized_build: bool,
     pub gc_options: GarbageCollectionConfig,
     pub file_versions: BTreeMap<PathBuf, Option<u64>>,
+    pub runnables: Arc<RunnableMap>,
 }
 
 impl ServerState {
@@ -155,6 +161,7 @@ impl ServerState {
                             Some(retrigger_compilation.clone()),
                             lsp_mode,
                             session.clone(),
+                            &ctx.runnables,
                             experimental,
                         ) {
                             Ok(_) => {
