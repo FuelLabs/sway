@@ -10,7 +10,7 @@ use crate::{
         token::{self, TypedAstToken},
         token_map::{TokenMap, TokenMapExt},
     },
-    error::{DocumentError, LanguageServerError},
+    error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
         dependency, lexed_tree, parsed_tree::ParsedTree, typed_tree::TypedTree, ParseContext,
     },
@@ -311,9 +311,7 @@ pub fn traverse(
         let source_id = lexed.root.tree.span().source_id().cloned();
         if let Some(source_id) = source_id {
             let path = engines.se().get_path(&source_id);
-            let manifest_path =
-                sway_utils::find_parent_manifest_dir(path.clone()).unwrap_or(path.clone());
-            let module_id = engines.se().get_module_id(&manifest_path).unwrap();
+            let module_id = module_id_from_path(&path, engines)?;
             session.metrics.insert(module_id, metrics);
         }
 
@@ -485,6 +483,19 @@ fn create_runnables(
             runnables.entry(path).or_default().push(runnable);
         }
     }
+}
+
+/// Resolves a `ModuleId` from a given `path` using the manifest directory.
+pub(crate) fn module_id_from_path(
+    path: &PathBuf,
+    engines: &Engines,
+) -> Result<ModuleId, DirectoryError> {
+    let module_id = sway_utils::find_parent_manifest_dir(&path)
+        .and_then(|manifest_path| engines.se().get_module_id(&manifest_path))
+        .ok_or_else(|| DirectoryError::ModuleIdNotFound {
+            path: path.to_string_lossy().to_string(),
+        })?;
+    Ok(module_id)
 }
 
 #[cfg(test)]

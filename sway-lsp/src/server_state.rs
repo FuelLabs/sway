@@ -159,32 +159,30 @@ impl ServerState {
                         ) {
                             Ok(_) => {
                                 let path = uri.to_file_path().unwrap();
-                                let manifest_path =
-                                    sway_utils::find_parent_manifest_dir(path.clone())
-                                        .unwrap_or(path.clone());
-                                let module_id =
-                                    engines_clone.se().get_module_id(&manifest_path).unwrap();
-
-                                if let Some(metrics) = session.metrics.get(&module_id) {
-                                    // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
-                                    // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
-                                    // as the engines_clone might have cleared some types that are still in use.
-                                    if metrics.reused_modules == 0 {
-                                        // The compiler did not reuse the workspace AST.
-                                        // We need to overwrite the old engines with the engines clone.
-                                        mem::swap(
-                                            &mut *session.engines.write(),
-                                            &mut engines_clone,
-                                        );
+                                match session::module_id_from_path(&path, &engines_clone) {
+                                    Ok(module_id) => {
+                                        if let Some(metrics) = session.metrics.get(&module_id) {
+                                            // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
+                                            // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
+                                            // as the engines_clone might have cleared some types that are still in use.
+                                            if metrics.reused_modules == 0 {
+                                                // The compiler did not reuse the workspace AST.
+                                                // We need to overwrite the old engines with the engines clone.
+                                                mem::swap(
+                                                    &mut *session.engines.write(),
+                                                    &mut engines_clone,
+                                                );
+                                            }
+                                        }
+                                        *last_compilation_state.write() =
+                                            LastCompilationState::Success;
                                     }
-                                } else {
-                                    tracing::error!(
-                                        "Metrics not found for module_id: {:?} | path {:?}",
-                                        module_id,
-                                        path
-                                    );
+                                    Err(err) => {
+                                        tracing::error!("{}", err.to_string());
+                                        *last_compilation_state.write() =
+                                            LastCompilationState::Failed;
+                                    }
                                 }
-                                *last_compilation_state.write() = LastCompilationState::Success;
                             }
                             Err(_err) => {
                                 *last_compilation_state.write() = LastCompilationState::Failed;
