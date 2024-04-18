@@ -30,9 +30,10 @@ impl From<u8> for U128 {
     /// # Examples
     ///
     /// ```sway
+    /// use std::u128::U128;
     ///
     /// fn foo() {
-    ///     let u128_value = u128::from(0u8);
+    ///     let u128_value = U128::from(0u8);
     /// }
     /// ```
     fn from(val: u8) -> Self {
@@ -53,9 +54,10 @@ impl From<u16> for U128 {
     /// # Examples
     ///
     /// ```sway
+    /// use std::u128::U128;
     ///
     /// fn foo() {
-    ///     let u128_value = u128::from(0u16);
+    ///     let u128_value = U128::from(0u16);
     /// }
     /// ```
     fn from(val: u16) -> Self {
@@ -76,9 +78,10 @@ impl From<u32> for U128 {
     /// # Examples
     ///
     /// ```sway
+    /// use std::u128::U128;
     ///
     /// fn foo() {
-    ///     let u128_value = u128::from(0u32);
+    ///     let u128_value = U128::from(0u32);
     /// }
     /// ```
     fn from(val: u32) -> Self {
@@ -99,9 +102,10 @@ impl From<u64> for U128 {
     /// # Examples
     ///
     /// ```sway
+    /// use std::u128::U128;
     ///
     /// fn foo() {
-    ///     let u128_value = u128::from(0u64);
+    ///     let u128_value = U128::from(0u64);
     /// }
     /// ```
     fn from(val: u64) -> Self {
