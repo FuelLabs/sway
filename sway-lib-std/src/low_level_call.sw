@@ -20,57 +20,6 @@ pub struct CallParams {
     pub gas: u64,
 }
 
-// TODO : Replace with `from` when implemented
-/// Represent a contract ID as a `Bytes`, so it can be concatenated with a payload.
-///
-/// # Additional Information
-///
-/// It is recommended to use the `call_with_function_selector` function directly, unless you know what you are doing.
-///
-/// # Arguments
-///
-/// * `contract_id`: [ContractId] - The contract ID to be represented as a `Bytes`.
-///
-/// # Returns
-///
-/// * [Bytes] - The input ContractId represented as a `Bytes`.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::low_level_call::{contract_id_to_bytes, call_with_raw_payload, CallParams};
-///
-/// fn call_with_copy_type_arg(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
-///     let mut payload = Bytes::new();
-///     payload.append(contract_id_to_bytes(target));
-///     payload.append(function_selector);
-///     payload.append(calldata);
-///
-///     call_with_raw_payload(payload, call_params);
-/// }
-/// ```
-///
-/// ```sway
-/// use std::low_level_call::{bytes::Bytes, contract_id_to_bytes, call_with_raw_payload, CallParams, ptr_as_bytes};
-///
-/// fn call_with_reference_type_arg(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
-///     let mut payload = Bytes::new();
-///     payload.append(contract_id_to_bytes(target));
-///     payload.append(function_selector);
-///     payload.append(ptr_as_bytes(calldata.buf.ptr));
-///
-///     call_with_raw_payload(payload, call_params);
-/// }
-/// ```
-#[cfg(experimental_new_encoding = false)]
-fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
-    let target_ptr = alloc_bytes(32);
-
-    __addr_of(contract_id).copy_bytes_to(target_ptr, 32);
-
-    Bytes::from(raw_slice::from_parts::<u8>(target_ptr, 32))
-}
-
 /// Represent a raw pointer as a `Bytes`, so it can be concatenated with a payload.
 ///
 /// # Additional Information
@@ -205,7 +154,7 @@ fn create_payload(
 
     // let mut payload = Bytes::new().append(contract_id_to_bytes(target)).append(function_selector);
     let mut payload = Bytes::new();
-    payload.append(contract_id_to_bytes(target));
+    payload.append(target.bits().to_be_bytes());
     payload.append(function_selector.clone());
 
     if (single_value_type_arg) {
