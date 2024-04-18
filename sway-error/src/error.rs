@@ -165,6 +165,21 @@ pub enum CompileError {
         /// The complete left-hand side of the assignment.
         lhs_span: Span,
     },
+    #[error("This reference is not a reference to mutable value (`&mut`).")]
+    AssignmentViaNonMutableReference {
+        /// Name of the reference, if the left-hand side of the assignment is a reference variable,
+        /// pointing to the name in the reference variable declaration.
+        ///
+        /// `None` if the assignment LHS is an arbitrary expression and not a variable.
+        decl_reference_name: Option<Ident>,
+        /// [Span] of the right-hand side of the reference variable definition,
+        /// if the left-hand side of the assignment is a reference variable.
+        decl_reference_rhs: Option<Span>,
+        /// The type of the reference, if the left-hand side of the assignment is a reference variable,
+        /// expected to start with `&`.
+        decl_reference_type: String,
+        span: Span,
+    },
     #[error(
         "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
             \"{variable_name}\" is not declared as mutable."
@@ -963,6 +978,7 @@ impl Spanned for CompileError {
             AssignmentToNonMutableVariable { lhs_span, .. } => lhs_span.clone(),
             AssignmentToConstantOrConfigurable { lhs_span, .. } => lhs_span.clone(),
             DeclAssignmentTargetCannotBeAssignedTo { lhs_span, .. } => lhs_span.clone(),
+            AssignmentViaNonMutableReference { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
@@ -2127,6 +2143,72 @@ impl ToDiagnostic for CompileError {
                     }
                 ],
                 help: vec![],
+            },
+            AssignmentViaNonMutableReference { decl_reference_name, decl_reference_rhs, decl_reference_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Reference is not a reference to mutable value (`&mut`)".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    // This reference expression is not a reference to mutable value (`&mut`).
+                    //  or
+                    // Reference "ref_xyz" is not a reference to mutable value (`&mut`).
+                    format!("{} is not a reference to mutable value (`&mut`).",
+                        match decl_reference_name {
+                            Some(decl_reference_name) => format!("Reference \"{decl_reference_name}\""),
+                            _ => "This reference expression".to_string(),
+                        }
+                    )
+                ),
+                hints: vec![
+                    match decl_reference_name {
+                        Some(decl_reference_name) => Hint::info(
+                            source_engine,
+                            decl_reference_name.span(),
+                            format!("Reference \"{decl_reference_name}\" is declared here as a reference to immutable value.")
+                        ),
+                        _ => Hint::none(),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) => Hint::info(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("This expression has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                        _ => Hint::info(
+                            source_engine,
+                            span.clone(),
+                            format!("It has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) if decl_reference_rhs.as_str().starts_with("&") => Hint::help(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("Consider taking here a reference to mutable value: `&mut {}`.",
+                                first_line(decl_reference_rhs.as_str()[1..].trim(), true)
+                            )
+                        ),
+                        _ => Hint::none(),
+                    },
+                ],
+                help: vec![
+                    format!("{} dereferenced in assignment targets must {} references to mutable values (`&mut`).",
+                        if matches!(decl_reference_name, Some(_)) {
+                            "References"
+                        } else {
+                            "Reference expressions"
+                        },
+                        if matches!(decl_reference_name, Some(_)) {
+                            "be"
+                        } else {
+                            "result in"
+                        }
+                    ),
+                ],
             },
             Unimplemented { feature, help, span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Used feature is currently not implemented".to_string())),

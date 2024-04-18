@@ -22,7 +22,7 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, GetDeclIdent, TyCodeBlock, TyDecl, TyImplItem, TyReassignmentTarget, VariableMutability},
+        ty::{self, GetDeclIdent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant, TyImplItem, TyReassignmentTarget, VariableMutability},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -1999,17 +1999,58 @@ impl ty::TyExpression {
 
         let (lhs, expected_rhs_type) = match lhs {
             ReassignmentTarget::Deref(dereference_exp) => {
-                let Expression { kind: ExpressionKind::Deref(reference_exp), .. } = *dereference_exp else {
-                    return Err(handler.emit_err(CompileError::Internal(
+                let internal_compiler_error = || Result::<Self, _>::Err(handler.emit_err(CompileError::Internal(
                         "Left-hand side of the reassignment must be dereferencing.",
-                        dereference_exp.span
+                        dereference_exp.span.clone()
                     )));
+
+                let Expression { kind: ExpressionKind::Deref(reference_exp), .. } = *dereference_exp else {
+                    return internal_compiler_error();
                 };
 
                 let reference_exp_span = reference_exp.span();
-                let deref_exp = Self::type_check_deref(handler, ctx.by_ref(), reference_exp, reference_exp_span)?;
+                let deref_exp = Self::type_check_deref(handler, ctx.by_ref(), reference_exp, reference_exp_span.clone())?;
 
-                // TODO-IG! Type-checking.
+                let TyExpression { expression: TyExpressionVariant::Deref(reference_exp), .. } = &deref_exp else {
+                    return internal_compiler_error();
+                };
+
+                let TypeInfo::Ref { to_mutable_value, .. } = *type_engine.get(reference_exp.return_type) else {
+                    return internal_compiler_error();
+                };
+
+                if !to_mutable_value {
+                    let (decl_reference_name, decl_reference_rhs, decl_reference_type) = match &reference_exp.expression {
+                        TyExpressionVariant::VariableExpression { name, ..} => {
+                            let var_decl = ctx.namespace().resolve_symbol_typed(
+                                handler,
+                                engines,
+                                name,
+                                ctx.self_type(),
+                            )?;
+
+                            let TyDecl::VariableDecl(var_decl) = var_decl else {
+                                return Err(handler.emit_err(CompileError::Internal(
+                                    "Dereferenced expression must be a variable.",
+                                    reference_exp_span
+                                )));
+
+                            };
+
+                            let reference_type = engines.help_out(type_engine.get_unaliased_type_id(var_decl.return_type)).to_string();
+
+                            (Some(var_decl.name), Some(var_decl.body.span), reference_type)
+                        },
+                        _ => (None, None, engines.help_out(type_engine.get_unaliased_type_id(reference_exp.return_type)).to_string()),
+                    };
+
+                    return Err(handler.emit_err(CompileError::AssignmentViaNonMutableReference {
+                        decl_reference_name,
+                        decl_reference_rhs,
+                        decl_reference_type,
+                        span: reference_exp_span
+                    }));
+                }
 
                 let expected_rhs_type = deref_exp.return_type;
                 (TyReassignmentTarget::Deref(Box::new(deref_exp)), expected_rhs_type)

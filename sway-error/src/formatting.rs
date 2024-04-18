@@ -260,3 +260,33 @@ pub(crate) fn ascii_sentence_case(text: &String) -> Cow<String> {
         Cow::Owned(result.to_owned())
     }
 }
+
+/// Returns the first line in `text`, up to the first `\n` if the `text` contains
+/// multiple lines, and optionally adds ellipses "..." to the end of the line
+/// if `with_ellipses` is true.
+/// 
+/// If the `text` is a single-line string, returns the original `text`.
+/// 
+/// Suitable for showing just the first line of a piece of code.
+/// E.g., if `text` is:
+///   if x {
+///     0
+///   } else {
+///     1
+///   }
+///  the returned value, with ellipses, will be:
+///   if x {...
+pub(crate) fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
+    if !text.contains('\n') {
+        Cow::Borrowed(text)
+    } else {
+        let index_of_new_line = text.find('\n').unwrap();
+        Cow::Owned(
+            text[..index_of_new_line].to_string() + if with_ellipses {
+                "..."
+            } else {
+                ""
+            }
+        )
+    }
+}
