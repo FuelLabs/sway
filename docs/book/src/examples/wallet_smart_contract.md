@@ -1,6 +1,6 @@
 # Wallet Smart Contract
 
-The ABI declaration is a separate project from your ABI implementation. The project structure for the code should be organized as follows:
+The ABI declaration is a separate project from your ABI implementation. The project structure for the code should be organized as follows with the `wallet_abi` treated as an external library:
 
 ```
 .
