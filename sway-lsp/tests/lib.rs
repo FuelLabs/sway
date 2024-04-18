@@ -346,6 +346,19 @@ fn lsp_syncs_with_workspace_edits() {
 }
 
 #[test]
+fn compilation_succeeds_when_triggered_from_module() {
+    run_async!({
+        let server = ServerState::default();
+        let _ = open(
+            &server,
+            test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
+        )
+        .await;
+        let _ = server.shutdown_server().await;
+    });
+}
+
+#[test]
 fn show_ast() {
     run_async!({
         let server = ServerState::default();
