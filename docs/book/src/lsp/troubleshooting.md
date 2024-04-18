@@ -27,7 +27,7 @@ pkill forc-lsp
 ```
 
 ### Large projects
-Sway projects with ten or more Sway files are likely to have slower LSP performance. We are working on better support for large sway projects.
+Sway projects with ten or more Sway files are likely to have slower LSP performance. We are working on better support for large projects.
 
 In the meantime, if it's too slow, you can disable the LSP server entirely with the `sway-lsp.diagnostic.disableLsp` setting. The extension will still provide basic syntax highlighting, command palettes, as well as the Sway debugger, but all other language features will be disabled.
 
