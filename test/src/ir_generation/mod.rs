@@ -39,7 +39,7 @@ impl Checker {
     ///
     /// # ::check-ir-optimized::
     ///
-    /// Optimized IR chekcer can be configured with `pass: <PASSNAME or o1>`. When
+    /// Optimized IR checker can be configured with `pass: <PASSNAME or o1>`. When
     /// `o1` is chosen, all the configured passes are chosen automatically.
     ///
     /// ```
