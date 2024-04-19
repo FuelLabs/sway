@@ -4,11 +4,11 @@
 <li>[AssetId] - The asset included in the current call frame.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
+<pre><code class="language-sway">use std::call_frames::msg_asset_id;
 
 fn foo() {
     let asset = msg_asset_id();
-    assert(asset == BASE_ASSET_ID);
+    assert(asset == AssetId::base());
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

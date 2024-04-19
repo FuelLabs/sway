@@ -8,11 +8,11 @@
 <li>[Option<!-- raw HTML omitted -->] - The asset_id of the input at <code>index</code>, if the input’s type is <code>Input::Coin</code> or <code>Input::Message</code>, else <code>None</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{constants::BASE_ASSET_ID, inputs::input_asset_id};
+<pre><code class="language-sway">use std::inputs::input_asset_id;
 
 fn foo() {
     let input_asset_id = input_asset_id(0);
-    assert(input_asset_id.unwrap() == BASE_ASSET_ID);
+    assert(input_asset_id.unwrap() == AssetId::base());
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

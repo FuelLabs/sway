@@ -13,11 +13,11 @@ the address <code>to</code>.</p>
 <li>When there are no free variable outputs.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::transfer_to_address};
+<pre><code class="language-sway">use std::{constants::ZERO_B256, asset::transfer_to_address};
 
 fn foo() {
     let to_address = Address::from(ZERO_B256);
-    transfer_to_address(to_address, BASE_ASSET_ID, 500);
+    transfer_to_address(to_address, AssetId::base(), 500);
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

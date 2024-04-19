@@ -16,11 +16,11 @@ to the <strong><em>PERMANENT LOSS OF COINS</em></strong> if not used with care.<
 <li>When <code>amount</code> is equal to zero.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::force_transfer_to_contract};
+<pre><code class="language-sway">use std::{constants::ZERO_B256, asset::force_transfer_to_contract};
 
 fn foo() {
     let to_contract_id = ContractId::from(ZERO_B256);
-    force_transfer_to_contract(to_contract_id, BASE_ASSET_ID, 500);
+    force_transfer_to_contract(to_contract_id, AssetId::base(), 500);
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
