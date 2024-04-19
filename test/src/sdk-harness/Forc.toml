@@ -17,7 +17,6 @@ members = [
   "test_projects/hashing",
   "test_projects/logging",
   "test_projects/low_level_call",
-  "test_projects/low_level_call_bytes",
   "test_projects/messages",
   "test_projects/option_field_order",
   "test_projects/option_in_abi",

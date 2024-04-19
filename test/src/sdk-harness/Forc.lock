@@ -167,11 +167,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "low_level_call_bytes"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "low_level_callee_contract"
 source = "member"
 dependencies = ["std"]
