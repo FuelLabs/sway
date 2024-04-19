@@ -131,7 +131,7 @@ impl ModuleDepGraph {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing module dep analysis graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting module dep analysis graph to path {graph_path:?}\n{error}"
                     );
                 }
             }
