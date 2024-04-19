@@ -1,7 +1,7 @@
 script;
 
-use std::low_level_call::{call_with_function_selector, CallParams};
 use std::bytes::Bytes;
+use std::low_level_call::{call_with_function_selector, CallParams};
 
 fn main(
     target: ContractId,

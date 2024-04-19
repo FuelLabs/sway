@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "test_projects/abi_impl_methods_callable",
+  "test_projects/asset_id",
   "test_projects/asset_ops",
   "test_projects/block",
   "test_projects/call_frames",
