@@ -93,7 +93,7 @@ impl From<u32> for U128 {
 }
 
 impl From<u64> for U128 {
-    /// Casts a `u64` to a `U128`.
+    /// Converts a `u64` to a `U128`.
     ///
     /// # Returns
     ///
