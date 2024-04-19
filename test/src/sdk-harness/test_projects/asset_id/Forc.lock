@@ -1,0 +1,13 @@
+[[package]]
+name = "asset_id"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-EAEA0954D15D4BBE"
+
+[[package]]
+name = "std"
+source = "path+from-root-EAEA0954D15D4BBE"
+dependencies = ["core"]

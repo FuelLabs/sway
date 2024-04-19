@@ -141,7 +141,8 @@ impl ty::TyFunctionDecl {
                     )
                 };
 
-                let call_path = CallPath::from(name.clone()).to_fullpath(ctx.namespace());
+                let call_path =
+                    CallPath::from(name.clone()).to_fullpath(ctx.engines(), ctx.namespace());
 
                 let function_decl = ty::TyFunctionDecl {
                     name: name.clone(),
