@@ -45,7 +45,7 @@ impl From<u8> for U128 {
 }
 
 impl From<u16> for U128 {
-    /// Casts a `u16` to a `U128`.
+    /// Converts a `u16` to a `U128`.
     ///
     /// # Returns
     ///
