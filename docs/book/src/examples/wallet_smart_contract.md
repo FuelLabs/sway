@@ -16,11 +16,6 @@ The ABI declaration is a separate project from your ABI implementation. The proj
 
 It's also important to specify the source of the dependency within the project's `Forc.toml` file when using external libraries. Inside the `wallet_smart_contract` project, it requires a declaration like this:
 
-```sh
-[dependencies]
-wallet_abi = { path = "../wallet_abi/" }
-```
-
 ## ABI Declaration
 
 ```sway
