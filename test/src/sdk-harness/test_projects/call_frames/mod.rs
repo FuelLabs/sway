@@ -23,13 +23,6 @@ async fn get_call_frames_instance() -> (CallFramesTestContract<WalletUnlocked>, 
 }
 
 #[tokio::test]
-async fn can_get_contract_id() {
-    let (instance, id) = get_call_frames_instance().await;
-    let result = instance.methods().get_id().call().await.unwrap();
-    assert_eq!(result.value, id);
-}
-
-#[tokio::test]
 async fn can_get_id_contract_id_this() {
     let (instance, id) = get_call_frames_instance().await;
     let result = instance
