@@ -1,6 +1,6 @@
 //! Tools related to handling/recovering from Sway compile errors and reporting them to the user.
 
-use crate::{language::parsed::VariableDeclaration, namespace::ModulePath, Namespace};
+use crate::{language::parsed::VariableDeclaration, namespace::ModulePath, Engines, Namespace};
 
 /// Acts as the result of parsing `Declaration`s, `Expression`s, etc.
 /// Some `Expression`s need to be able to create `VariableDeclaration`s,
@@ -30,6 +30,7 @@ impl<T> ParserLifter<T> {
 /// and that fixing it means changing the code in the module given by the `absolute_module_path`
 /// this function returns true if the programmer can change that module.
 pub(crate) fn module_can_be_changed(
+    _engines: &Engines,
     issue_namespace: &Namespace,
     absolute_module_path: &ModulePath,
 ) -> bool {

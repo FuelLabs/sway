@@ -54,10 +54,10 @@ impl ty::TyAstNode {
                     let mut is_external = false;
                     if let Some(submodule) = ctx
                         .namespace()
-                        .module()
-                        .submodule(&[a.call_path[0].clone()])
+                        .module(engines)
+                        .submodule(engines, &[a.call_path[0].clone()])
                     {
-                        is_external = submodule.is_external;
+                        is_external = submodule.read(engines, |m| m.is_external);
                     }
                     let path = if is_external || a.is_absolute {
                         a.call_path.clone()
