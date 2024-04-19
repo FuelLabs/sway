@@ -7,7 +7,6 @@ use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
 use ::asset_id::AssetId;
-use ::call_frames::contract_id;
 use ::constants::ZERO_B256;
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
