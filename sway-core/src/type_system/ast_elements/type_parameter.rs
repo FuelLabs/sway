@@ -149,6 +149,7 @@ impl TypeParameter {
                 name: name.clone(),
                 trait_constraints: VecSet(vec![]),
                 parent: None,
+                is_from_type_parameter: true,
             },
             span.source_id(),
         );
@@ -305,6 +306,7 @@ impl TypeParameter {
             name: _,
             trait_constraints: _,
             parent,
+            is_from_type_parameter: _,
         } = &*type_engine.get(type_id)
         {
             *parent
@@ -320,6 +322,7 @@ impl TypeParameter {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
                 parent,
+                is_from_type_parameter: true,
             },
             name_ident.span().source_id(),
         );
@@ -365,6 +368,7 @@ impl TypeParameter {
             name: _,
             trait_constraints: _,
             parent,
+            is_from_type_parameter: _,
         } = &*type_engine.get(type_parameter.type_id)
         {
             *parent
@@ -380,6 +384,7 @@ impl TypeParameter {
                     name: type_parameter.name_ident.clone(),
                     trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
                     parent,
+                    is_from_type_parameter: true,
                 }
                 .into(),
                 source_id: type_parameter.name_ident.span().source_id().cloned(),
@@ -454,6 +459,7 @@ impl TypeParameter {
                         name,
                         trait_constraints,
                         parent,
+                        is_from_type_parameter,
                     } = &*ctx.engines().te().get(*type_id)
                     {
                         if parent.is_some() {
@@ -467,6 +473,7 @@ impl TypeParameter {
                                     name: name.clone(),
                                     trait_constraints: trait_constraints.clone(),
                                     parent: Some(*parent_type_id),
+                                    is_from_type_parameter: *is_from_type_parameter,
                                 }
                                 .into(),
                                 source_id: name.span().source_id().cloned(),

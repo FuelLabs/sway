@@ -365,6 +365,7 @@ impl TypeId {
                 name: _,
                 trait_constraints,
                 parent: _,
+                is_from_type_parameter: _,
             } => {
                 found.insert(*self, trait_constraints.to_vec());
                 for trait_constraint in trait_constraints.iter() {
