@@ -104,13 +104,11 @@ impl ty::TyFunctionParameter {
     }
 
     pub fn insert_into_namespace(&self, handler: &Handler, mut ctx: TypeCheckContext) {
+        let engines = ctx.engines();
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx
-            .namespace_mut()
-            .module_mut()
-            .current_items_mut()
-            .insert_symbol(
+        let _ = ctx.namespace_mut().module_mut(engines).write(engines, |m| {
+            m.current_items_mut().insert_symbol(
                 handler,
                 self.name.clone(),
                 ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
@@ -129,6 +127,7 @@ impl ty::TyFunctionParameter {
                 })),
                 const_shadowing_mode,
                 generic_shadowing_mode,
-            );
+            )
+        });
     }
 }

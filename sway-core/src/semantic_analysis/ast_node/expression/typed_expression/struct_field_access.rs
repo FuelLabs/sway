@@ -65,7 +65,7 @@ pub(crate) fn instantiate_struct_field_access(
 
     let decl = engines.de().get_struct(struct_decl_ref);
     let (struct_can_be_changed, is_public_struct_access) =
-        StructAccessInfo::get_info(&decl, namespace).into();
+        StructAccessInfo::get_info(engines, &decl, namespace).into();
 
     let field = match decl.find_field(&field_to_access) {
         Some(field) => {

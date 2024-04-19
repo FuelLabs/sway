@@ -298,7 +298,7 @@ impl CallPath {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, namespace: &Namespace) -> CallPath {
+    pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
         if self.is_absolute {
             return self.clone();
         }
@@ -311,17 +311,16 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(use_synonym) = namespace
-                .module()
-                .current_items()
-                .use_synonyms
-                .get(&self.suffix)
-            {
+            if let Some(use_synonym) = namespace.module_id(engines).read(engines, |m| {
+                m.current_items().use_synonyms.get(&self.suffix).cloned()
+            }) {
                 synonym_prefixes = use_synonym.0.clone();
                 is_absolute = true;
-                let submodule = namespace.module().submodule(&[use_synonym.0[0].clone()]);
+                let submodule = namespace
+                    .module(engines)
+                    .submodule(engines, &[use_synonym.0[0].clone()]);
                 if let Some(submodule) = submodule {
-                    is_external = submodule.is_external;
+                    is_external = submodule.read(engines, |m| m.is_external);
                 }
             }
 
@@ -346,13 +345,16 @@ impl CallPath {
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
-        } else if let Some(m) = namespace.module().submodule(&[self.prefixes[0].clone()]) {
+        } else if let Some(m) = namespace
+            .module(engines)
+            .submodule(engines, &[self.prefixes[0].clone()])
+        {
             // If some prefixes are already present, attempt to complete the path by adding the
             // package name and the path to the current submodule.
             //
             // If the path starts with an external module (i.e. a module that is imported in
             // `Forc.toml`), then do not change it since it's a complete path already.
-            if m.is_external {
+            if m.read(engines, |m| m.is_external) {
                 CallPath {
                     prefixes: self.prefixes.clone(),
                     suffix: self.suffix.clone(),
@@ -360,7 +362,7 @@ impl CallPath {
                 }
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
-                if let Some(pkg_name) = &namespace.root_module().name {
+                if let Some(pkg_name) = &namespace.root_module().read(engines, |m| m.name.clone()) {
                     prefixes.push(pkg_name.clone());
                 }
                 for mod_path in namespace.mod_path() {
@@ -390,11 +392,11 @@ impl CallPath {
     /// `my_project`, the corresponding call path is `pkga::SOME_CONST`.
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are left unchanged.
-    pub fn to_import_path(&self, namespace: &Namespace) -> CallPath {
-        let converted = self.to_fullpath(namespace);
+    pub fn to_import_path(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
+        let converted = self.to_fullpath(engines, namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root_module().name == Some(first.clone()) {
+            if namespace.root_module().read(engines, |m| m.name.clone()) == Some(first.clone()) {
                 return converted.lshift();
             }
         }

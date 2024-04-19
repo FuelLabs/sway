@@ -185,9 +185,10 @@ impl Session {
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
             let program = compiled_program.typed.clone()?;
+            let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
-                program.root.namespace.module().current_items(),
-                &self.engines.read(),
+                program.root.namespace.module(&engines).current_items(),
+                &engines,
                 ident_to_complete,
                 &fn_decl,
                 position,
@@ -326,7 +327,7 @@ pub fn traverse(
         let ctx = ParseContext::new(
             &session.token_map,
             engines,
-            typed_program.root.namespace.module(),
+            typed_program.root.namespace.module(engines),
         );
 
         // The final element in the results is the main program.
