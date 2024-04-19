@@ -12,6 +12,7 @@ use std::{collections::HashMap, option::Option};
 use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
+    Engines,
 };
 use sway_types::{BaseIdent, Spanned};
 
@@ -23,13 +24,14 @@ pub(crate) struct Documentation(pub(crate) Vec<Document>);
 impl Documentation {
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         project_name: &str,
         typed_program: &TyProgram,
         document_private_items: bool,
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
         let namespace = &typed_program.root.namespace;
+        let decl_engine = engines.de();
         let mut docs: Documentation = Default::default();
         let mut impl_traits: Vec<(TyImplTrait, ModuleInfo)> = Vec::new();
         let module_info = ModuleInfo::from_ty_module(vec![project_name.to_owned()], None);
@@ -87,7 +89,7 @@ impl Documentation {
                                 Some(decl_module_info.module_prefixes.to_owned())
                             } else {
                                 impl_trait.trait_name =
-                                    impl_trait.trait_name.to_fullpath(namespace);
+                                    impl_trait.trait_name.to_fullpath(engines, namespace);
                                 None
                             };
 

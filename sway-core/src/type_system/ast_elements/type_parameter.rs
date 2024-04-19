@@ -176,9 +176,10 @@ impl TypeParameter {
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
+        let engines = ctx.engines();
         let _ = ctx
             .namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -189,7 +190,7 @@ impl TypeParameter {
             );
         let _ = ctx
             .namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -439,7 +440,7 @@ impl TypeParameter {
 
             let sy = ctx
                 .namespace()
-                .module()
+                .module(ctx.engines())
                 .current_items()
                 .symbols
                 .get(name_ident)
@@ -521,7 +522,7 @@ impl TypeParameter {
                 // Check to see if the trait constraints are satisfied.
                 match ctx
                     .namespace_mut()
-                    .module_mut()
+                    .module_mut(engines)
                     .current_items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
@@ -636,7 +637,9 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace());
+                        let import_path = trait_decl
+                            .call_path
+                            .to_import_path(ctx.engines(), ctx.namespace());
                         if import_path == trait_decl.call_path {
                             // If external library.
                             import_path.to_string()
