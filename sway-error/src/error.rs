@@ -2,7 +2,7 @@ use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::formatting::*;
 use crate::lex_error::LexError;
-use crate::parser_error::ParseError;
+use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
@@ -2322,6 +2322,79 @@ impl ToDiagnostic for CompileError {
                     "In expressions, module paths can only be used to fully qualify names with a path.".to_string(),
                     format!("E.g., `{module_path}::SOME_CONSTANT` or `{module_path}::some_function()`."),
                 ]
+            },
+            Parse { error } => {
+                match &error.kind {
+                    ParseErrorKind::UnassignableExpression { erroneous_expression_kind, erroneous_expression_span } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Expression cannot be assigned to".to_string())),
+                        // A bit of a special handling for parentheses, because they are the only
+                        // expression kind whose friendly name is in plural. Having it in singular
+                        // or without this simple special handling gives very odd sounding sentences.
+                        // Therefore, just a bit of a special handling.
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("This expression cannot be assigned to, because it {} {}{}.",
+                                if &error.span == erroneous_expression_span { // If the whole expression is erroneous.
+                                    "is"
+                                } else {
+                                    "contains"
+                                },
+                                if *erroneous_expression_kind == "parentheses" {
+                                    ""
+                                } else {
+                                    a_or_an(erroneous_expression_kind)
+                                },
+                                erroneous_expression_kind
+                            )
+                        ),
+                        hints: vec![
+                            if &error.span != erroneous_expression_span {
+                                Hint::info(
+                                    source_engine,
+                                    erroneous_expression_span.clone(),
+                                    format!("{} the contained {erroneous_expression_kind}.",
+                                        if *erroneous_expression_kind == "parentheses" {
+                                            "These are"
+                                        } else {
+                                            "This is"
+                                        }
+                                    )
+                                )
+                            } else {
+                                Hint::none()
+                            },
+                        ],
+                        help: vec![
+                            format!("{} cannot be {}an assignment target.",
+                                ascii_sentence_case(&erroneous_expression_kind.to_string()),
+                                if &error.span == erroneous_expression_span {
+                                    ""
+                                } else {
+                                    "a part of "
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "In Sway, assignment targets must be one of the following:".to_string(),
+                            format!("{}- Expressions starting with a mutable variable, optionally having", Indent::Single),
+                            format!("{}  array or tuple element accesses, struct field accesses,", Indent::Single),
+                            format!("{}  or arbitrary combinations of those.", Indent::Single),
+                            format!("{}  E.g., `mut_var` or `mut_struct.field` or `mut_array[x + y].field.1`.", Indent::Single),
+                            Diagnostic::help_empty_line(),
+                            format!("{}- Dereferencing of an arbitrary expression that results in a", Indent::Single),
+                            format!("{}  reference to mutable value.", Indent::Single),
+                            format!("{}  E.g., `*ref_to_mutable_value` or `*max_mut(&mut x, &mut y)`.", Indent::Single),
+                        ]
+                    },
+                    _ => Diagnostic {
+                                // TODO: Temporary we use self here to achieve backward compatibility.
+                                //       In general, self must not be used and will not be used once we
+                                //       switch to our own #[error] macro. All the values for the formatting
+                                //       of a diagnostic must come from the enum variant parameters.
+                                issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                                ..Default::default()
+                        },
+                }
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.

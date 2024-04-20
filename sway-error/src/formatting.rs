@@ -237,8 +237,10 @@ pub(crate) fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
 }
  
 /// Returns indefinite article "a" or "an" that corresponds to the `word`,
-/// or an empty string if the indefinite article do not fit to the word,
-/// e.g, if it is a plural.
+/// or an empty string if the indefinite article do not fit to the word.
+/// 
+/// Note that the function does not recognize plurals and assumes that the
+/// `word` is in singular.
 ///
 /// If an article is returned, it is followed by a space, e.g. "a ".
 pub(crate) fn a_or_an(word: &'static str) -> &'static str {

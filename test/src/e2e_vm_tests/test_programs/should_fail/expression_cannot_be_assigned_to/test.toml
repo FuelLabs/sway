@@ -1,0 +1,75 @@
+category = "fail"
+
+#check: $()Expression cannot be assigned to
+#check: $()S { x: 0 } = 0;
+#nextln: $()This expression cannot be assigned to, because it is a struct instantiation.
+#check: $()Struct instantiation cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()S { x: 0 }.x = 0;
+#nextln: $()This expression cannot be assigned to, because it contains a struct instantiation.
+#nextln: $()This is the contained struct instantiation.
+#check: $()Struct instantiation cannot be a part of an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()return_array() = 1;
+#nextln: $()This expression cannot be assigned to, because it is a function call.
+#check: $()Function call cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()return_array()[0].x.1 = 1;
+#nextln: $()This expression cannot be assigned to, because it contains a function call.
+#nextln: $()This is the contained function call.
+#check: $()Function call cannot be a part of an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()s.method() = 2;
+#nextln: $()This expression cannot be assigned to, because it is a method call.
+#check: $()Method call cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()s.method().x = 2;
+#nextln: $()This expression cannot be assigned to, because it contains a method call.
+#nextln: $()This is the contained method call.
+#check: $()Method call cannot be a part of an assignment target.
+
+#check: $()error
+#check: $()return = 3;
+#nextln: $()Expected an expression.
+
+#check: $()Expression cannot be assigned to
+#check: $()break = 4;
+#nextln: $()This expression cannot be assigned to, because it is a break.
+#check: $()Break cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()continue = 5;
+#nextln: $()This expression cannot be assigned to, because it is a continue.
+#check: $()Continue cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()(2 + 2) = 6;
+#nextln: $()This expression cannot be assigned to, because it is parentheses.
+#check: $()Parentheses cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()(2 + 2).x = 6;
+#nextln: $()This expression cannot be assigned to, because it contains parentheses.
+#nextln: $()These are the contained parentheses.
+#check: $()Parentheses cannot be a part of an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $()2 + 2 = 4;
+#nextln: $()This expression cannot be assigned to, because it is an addition.
+#check: $()Addition cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $(){ } = 7;
+#nextln: $()This expression cannot be assigned to, because it is a block.
+#check: $()Block cannot be an assignment target.
+
+#check: $()Expression cannot be assigned to
+#check: $(){ s }.x = 7;
+#nextln: $()This expression cannot be assigned to, because it contains a block.
+#nextln: $()This is the contained block.
+#check: $()Block cannot be a part of an assignment target.
