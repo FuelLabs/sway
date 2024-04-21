@@ -512,7 +512,8 @@ impl ty::TyExpression {
                         span: name.span(),
                         mutability,
                         call_path: Some(
-                            CallPath::from(decl_name.clone()).to_fullpath(ctx.namespace()),
+                            CallPath::from(decl_name.clone())
+                                .to_fullpath(ctx.engines(), ctx.namespace()),
                         ),
                     },
                     span,
@@ -526,7 +527,9 @@ impl ty::TyExpression {
                     expression: ty::TyExpressionVariant::ConstantExpression {
                         const_decl: Box::new(const_decl),
                         span: name.span(),
-                        call_path: Some(CallPath::from(decl_name).to_fullpath(ctx.namespace())),
+                        call_path: Some(
+                            CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
+                        ),
                     },
                     span,
                 }
@@ -1041,32 +1044,29 @@ impl ty::TyExpression {
 
         if !ctx
             .namespace()
-            .module()
-            .current_items()
-            .has_storage_declared()
+            .module_id(engines)
+            .read(engines, |m| m.current_items().has_storage_declared())
         {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
-        let storage_fields = ctx
-            .namespace()
-            .module()
-            .current_items()
-            .get_storage_field_descriptors(handler, decl_engine)?;
+        let storage_fields = ctx.namespace().module_id(engines).read(engines, |m| {
+            m.current_items()
+                .get_storage_field_descriptors(handler, decl_engine)
+        })?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) = ctx
-            .namespace()
-            .module()
-            .current_items()
-            .apply_storage_load(
-                handler,
-                ctx.engines,
-                ctx.namespace(),
-                checkee,
-                &storage_fields,
-                storage_keyword_span,
-            )?;
+        let (storage_access, mut access_type) =
+            ctx.namespace().module_id(engines).read(engines, |m| {
+                m.current_items().apply_storage_load(
+                    handler,
+                    ctx.engines,
+                    ctx.namespace(),
+                    checkee.clone(),
+                    &storage_fields,
+                    storage_keyword_span.clone(),
+                )
+            })?;
 
         // The type of a storage access is `core::storage::StorageKey`. This is
         // the path to it.
@@ -1285,9 +1285,8 @@ impl ty::TyExpression {
         let not_module = {
             let h = Handler::default();
             ctx.namespace()
-                .module()
-                .lookup_submodule(&h, &path)
-                .is_err()
+                .module_id(engines)
+                .read(engines, |m| m.lookup_submodule(&h, engines, &path).is_err())
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1406,17 +1405,20 @@ impl ty::TyExpression {
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
                 ctx.namespace()
-                    .module()
-                    .lookup_submodule(
-                        &module_probe_handler,
-                        &[
-                            call_path_binding.inner.call_path.prefixes,
-                            vec![call_path_binding.inner.call_path.suffix],
-                        ]
-                        .concat(),
-                    )
-                    .ok()
-                    .is_some()
+                    .module_id(ctx.engines())
+                    .read(ctx.engines(), |m| {
+                        m.lookup_submodule(
+                            &module_probe_handler,
+                            ctx.engines(),
+                            &[
+                                call_path_binding.inner.call_path.prefixes.clone(),
+                                vec![call_path_binding.inner.call_path.suffix.clone()],
+                            ]
+                            .concat(),
+                        )
+                        .ok()
+                        .is_some()
+                    })
             };
 
             // Check if this could be a function
@@ -2151,15 +2153,17 @@ impl ty::TyExpression {
                 let indices = indices.into_iter().rev().collect::<Vec<_>>();
                 let (ty_of_field, _ty_of_parent) = ctx
                     .namespace()
-                    .module()
-                    .current_items()
-                    .find_subfield_type(
-                        handler,
-                        ctx.engines(),
-                        ctx.namespace(),
-                        &base_name,
-                        &indices,
-                    )?;
+                    .module_id(engines)
+                    .read(engines, |m| {
+                        m.current_items()
+                            .find_subfield_type(
+                                handler,
+                                ctx.engines(),
+                                ctx.namespace(),
+                                &base_name,
+                                &indices,
+                            )
+                    })?;
 
                 (TyReassignmentTarget::ElementAccess { base_name, base_type, indices }, ty_of_field)
             }

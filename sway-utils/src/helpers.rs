@@ -113,7 +113,7 @@ where
     F: Fn(&Path) -> bool,
 {
     find_parent_manifest_dir(starter_path).and_then(|manifest_dir| {
-        // If given check satisifies return current dir otherwise start searching from the parent.
+        // If given check satisfies return current dir otherwise start searching from the parent.
         if f(&manifest_dir) {
             Some(manifest_dir)
         } else if let Some(parent_dir) = manifest_dir.parent() {

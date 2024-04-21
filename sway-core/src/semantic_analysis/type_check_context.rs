@@ -277,9 +277,9 @@ impl<'a> TypeCheckContext<'a> {
         // We're checking a submodule, so no need to pass through anything other than the
         // namespace and the engines.
         let engines = self.engines;
-        let mut submod_ns = self
-            .namespace_mut()
-            .enter_submodule(mod_name, visibility, module_span);
+        let mut submod_ns =
+            self.namespace_mut()
+                .enter_submodule(engines, mod_name, visibility, module_span);
         let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
         with_submod_ctx(submod_ctx)
     }
@@ -530,8 +530,9 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
+        let engines = self.engines;
         self.namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -560,6 +561,7 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&ModulePath>,
         mod_path: &ModulePath,
     ) -> Result<TypeId, ErrorEmitted> {
+        let engines = self.engines;
         let type_engine = self.engines.te();
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match (*type_engine.get(type_id)).clone() {
@@ -570,7 +572,7 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace()
-                        .module()
+                        .module(engines)
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
@@ -776,6 +778,7 @@ impl<'a> TypeCheckContext<'a> {
         mod_path: &ModulePath,
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
+        let engines = self.engines;
         let (decl, mod_path) = self
             .namespace()
             .root
@@ -804,7 +807,7 @@ impl<'a> TypeCheckContext<'a> {
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
             let module = self
                 .namespace()
-                .lookup_submodule_from_absolute_path(handler, prefix)?;
+                .lookup_submodule_from_absolute_path(handler, engines, prefix)?;
             if module.visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -877,7 +880,7 @@ impl<'a> TypeCheckContext<'a> {
                     call_path
                         .clone()
                         .to_call_path(handler)?
-                        .to_fullpath(self.namespace()),
+                        .to_fullpath(self.engines(), self.namespace()),
                 ),
                 _ => None,
             };
@@ -1041,9 +1044,11 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // grab the local module
-        let local_module = self
-            .namespace()
-            .lookup_submodule_from_absolute_path(handler, &self.namespace().mod_path)?;
+        let local_module = self.namespace().lookup_submodule_from_absolute_path(
+            handler,
+            self.engines(),
+            &self.namespace().mod_path,
+        )?;
 
         // grab the local items from the local module
         let local_items = local_module
@@ -1065,9 +1070,11 @@ impl<'a> TypeCheckContext<'a> {
             });
 
         // grab the module where the type itself is declared
-        let type_module = self
-            .namespace()
-            .lookup_submodule_from_absolute_path(handler, item_prefix)?;
+        let type_module = self.namespace().lookup_submodule_from_absolute_path(
+            handler,
+            self.engines(),
+            item_prefix,
+        )?;
 
         // grab the items from where the type is declared
         let mut type_items = type_module
@@ -1451,14 +1458,14 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         // Use trait name with full path, improves consistency between
         // this inserting and getting in `get_methods_for_type_and_trait_name`.
-        let full_trait_name = trait_name.to_fullpath(self.namespace());
+        let full_trait_name = trait_name.to_fullpath(self.engines(), self.namespace());
         let engines = self.engines;
         let items = items
             .iter()
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
             .collect::<Vec<_>>();
         self.namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .implemented_traits
             .insert(
@@ -1491,10 +1498,10 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
-        let trait_name = trait_name.to_fullpath(self.namespace());
+        let trait_name = trait_name.to_fullpath(self.engines(), self.namespace());
 
         self.namespace()
-            .module()
+            .module(self.engines())
             .current_items()
             .implemented_traits
             .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
@@ -1681,7 +1688,7 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
         self.namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .implemented_traits
             .insert_for_type(engines, type_id);
@@ -1696,7 +1703,7 @@ impl<'a> TypeCheckContext<'a> {
         let engines = self.engines;
 
         self.namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .implemented_traits
             .check_if_trait_constraints_are_satisfied_for_type(

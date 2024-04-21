@@ -4,6 +4,11 @@ source = "member"
 dependencies = ["core"]
 
 [[package]]
+name = "asset_id"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "asset_ops"
 source = "member"
 dependencies = ["std"]
@@ -162,11 +167,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "low_level_call_bytes"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "low_level_callee_contract"
 source = "member"
 dependencies = ["std"]
@@ -268,7 +268,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-872BB25145BD9C7F"
+source = "path+from-root-EAEA0954D15D4BBE"
 dependencies = ["core"]
 
 [[package]]

@@ -1,6 +1,5 @@
 script;
 
-use std::constants::BASE_ASSET_ID;
 use balance_test_abi::BalanceTest;
 
 #[cfg(experimental_new_encoding = false)]
@@ -15,7 +14,7 @@ fn main() -> bool {
     }
     ();
 
-    let balance = asm(asset_bal, asset: BASE_ASSET_ID, id: CONTRACT_ID) {
+    let balance = asm(asset_bal, asset: AssetId::base(), id: CONTRACT_ID) {
         bal asset_bal asset id;
         asset_bal: u64
     };
