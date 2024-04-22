@@ -6,6 +6,7 @@ use ::assert::{assert, assert_eq};
 use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
+use ::clone::Clone;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -904,6 +905,16 @@ impl From<Bytes> for Vec<u8> {
             i += 1;
         };
         vec
+    }
+}
+
+impl Clone for Bytes {
+    fn clone(self) -> Self {
+        let len = self.len();
+        let mut c = Self::with_capacity(len);
+        c.len = len;
+        self.ptr().copy_bytes_to(c.ptr(), len);
+        c
     }
 }
 

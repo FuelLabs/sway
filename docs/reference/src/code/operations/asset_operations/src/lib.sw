@@ -25,7 +25,7 @@ use std::asset::transfer_to_address;
 use std::asset::force_transfer_to_contract;
 // ANCHOR_END: force_transfer_to_contract_import
 
-use std::constants::{BASE_ASSET_ID, ZERO_B256};
+use std::constants::ZERO_B256;
 
 fn minting() {
     // ANCHOR: mint
@@ -77,7 +77,7 @@ fn transferring_to_address() {
     // ANCHOR: transfer_to_address
     let amount = 10;
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
-    let asset = BASE_ASSET_ID;
+    let asset = AssetId::base();
     let user = Address::from(address);
 
     transfer_to_address(user, asset, amount);
@@ -88,7 +88,7 @@ fn transferring_to_contract() {
     // ANCHOR: force_transfer_to_contract
     let amount = 10;
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
-    let asset = BASE_ASSET_ID;
+    let asset = AssetId::base();
     let pool = ContractId::from(address);
 
     force_transfer_to_contract(pool, asset, amount);
@@ -99,7 +99,7 @@ fn transferring_to() {
     // ANCHOR: transfer
     let amount = 10;
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
-    let asset = BASE_ASSET_ID;
+    let asset = AssetId::base();
     let user = Identity::Address(Address::from(address));
     let pool = Identity::ContractId(ContractId::from(address));
 

@@ -19,11 +19,12 @@ async fn run_external_can_proxy_call() {
     .await
     .unwrap();
 
+    let configurables = RunExternalProxyContractConfigurables::default()
+        .with_TARGET(target_id.clone().into())
+        .unwrap();
     let id = Contract::load_from(
         "test_projects/run_external_proxy/out/release/run_external_proxy.bin",
-        LoadConfiguration::default().with_configurables(
-            RunExternalProxyContractConfigurables::new().with_TARGET(target_id.clone().into()),
-        ),
+        LoadConfiguration::default().with_configurables(configurables),
     )
     .unwrap()
     .deploy(&wallet, TxPolicies::default())

@@ -1,0 +1,27 @@
+category = "fail"
+
+#check: $()Used feature is currently not implemented
+#check: $()ref v => {
+#nextln: $()Using `ref` in pattern variables is currently not implemented.
+
+#check: $()Used feature is currently not implemented
+#check: $()mut v => {
+#nextln: $()Using `mut` in pattern variables is currently not implemented.
+#check: $()let mut v = v;
+
+#check: $()Used feature is currently not implemented
+#check: $()ref mut v => {
+#nextln: $()Using `ref mut` in pattern variables is currently not implemented.
+
+#check: $()Used feature is currently not implemented
+#check: $()if let ref v = x { };
+#nextln: $()Using `ref` in pattern variables is currently not implemented.
+
+#check: $()Used feature is currently not implemented
+#check: $()if let mut v = x { };
+#nextln: $()Using `mut` in pattern variables is currently not implemented.
+#check: $()let mut v = v;
+
+#check: $()Used feature is currently not implemented
+#check: $()if let ref mut v = x { };
+#nextln: $()Using `ref mut` in pattern variables is currently not implemented.

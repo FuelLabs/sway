@@ -812,7 +812,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         self.cur_bytecode.push(Op::register_move(
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
-            "save locals base register",
+            format!(
+                "save locals base register for {}",
+                function.get_name(self.context)
+            )
+            .to_string(),
             None,
         ));
 
