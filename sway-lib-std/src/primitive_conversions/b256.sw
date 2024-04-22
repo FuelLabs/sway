@@ -60,7 +60,7 @@ impl From<U128> for b256 {
     /// }
     /// ```
     fn from(num: U128) -> Self {
-        let input = (0u64, 0u64, num.upper, num.lower);
+        let input = (0u64, 0u64, num.upper(), num.lower());
         asm(input: input) {
             input: b256
         }
@@ -111,8 +111,8 @@ fn test_b256_from_u256() {
 fn test_b256_from_u128() {
     use ::assert::assert;
 
-    let b256_value = <b256 as From<U128>>::from(U128::from((ffffffffffffffff_u64, ffffffffffffffff_u64)));
+    let b256_value = <b256 as From<U128>>::from(U128::from((18446744073709551615_u64, 18446744073709551615_u64)));
     assert(
-        b256_value == 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff_b256,
+        b256_value == 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff,
     );
 }
