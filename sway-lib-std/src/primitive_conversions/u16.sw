@@ -81,6 +81,16 @@ impl TryFrom<u256> for u16 {
     }
 }
 
+impl TryFrom<U128> for u16 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            <u16 as TryFrom<u64>>::try_from(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
 #[test]
 fn test_u16_from_u8() {
     use ::assert::assert;
@@ -139,6 +149,22 @@ fn test_u16_try_from_u256() {
 
     assert(u16_1.is_some());
     assert(u16_1.unwrap() == 2u16);
+
+    assert(u16_2.is_none());
+}
+
+#[test]
+fn test_u16_try_from_U128() {
+    use ::assert::assert;
+
+    let u128_1: U128 = U128::new();
+    let u128_2: U128 = U128::from((0, u16::max().as_u64() + 1));
+
+    let u16_1 = <u16 as TryFrom<U128>>::try_from(u128_1);
+    let u16_2 = <u16 as TryFrom<U128>>::try_from(u128_2);
+
+    assert(u16_1.is_some());
+    assert(u16_1.unwrap() == 0u16);
 
     assert(u16_2.is_none());
 }

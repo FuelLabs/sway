@@ -115,6 +115,16 @@ impl TryFrom<u256> for u64 {
     }
 }
 
+impl TryFrom<U128> for u64 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            Some(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
 // TODO: Replace <u64 as From<T>> with u64::from when https://github.com/FuelLabs/sway/issues/5798 is resolved.
 #[test]
 fn test_u64_from_u8() {
@@ -170,6 +180,22 @@ fn test_u64_try_from_u256() {
 
     assert(u64_1.is_some());
     assert(u64_1.unwrap() == 2);
+
+    assert(u64_2.is_none());
+}
+
+#[test]
+fn test_u64_try_from_U128() {
+    use ::assert::assert;
+
+    let u128_1: U128 = U128::new();
+    let u128_2: U128 = U128::from((1, 0));
+
+    let u64_1 = <u64 as TryFrom<U128>>::try_from(u128_1);
+    let u64_2 = <u64 as TryFrom<U128>>::try_from(u128_2);
+
+    assert(u64_1.is_some());
+    assert(u64_1.unwrap() == 0u64);
 
     assert(u64_2.is_none());
 }
