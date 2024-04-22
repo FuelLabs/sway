@@ -39,7 +39,7 @@ impl Checker {
     ///
     /// # ::check-ir-optimized::
     ///
-    /// Optimized IR chekcer can be configured with `pass: <PASSNAME or o1>`. When
+    /// Optimized IR checker can be configured with `pass: <PASSNAME or o1>`. When
     /// `o1` is chosen, all the configured passes are chosen automatically.
     ///
     /// ```
@@ -552,7 +552,7 @@ fn compile_core(
             let core_module = typed_program
                 .root
                 .namespace
-                .module()
+                .module(engines)
                 .submodules()
                 .into_iter()
                 .fold(

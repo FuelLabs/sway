@@ -129,7 +129,7 @@ fn build_docs(
     );
 
     let raw_docs = Documentation::from_ty_program(
-        engines.de(),
+        engines,
         pkg_manifest.project_name(),
         &ty_program,
         document_private_items,

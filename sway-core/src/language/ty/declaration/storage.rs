@@ -137,7 +137,7 @@ impl TyStorageDecl {
             match get_struct_decl(previous_field_type_id) {
                 Some(struct_decl) => {
                     let (struct_can_be_changed, is_public_struct_access) =
-                        StructAccessInfo::get_info(&struct_decl, namespace).into();
+                        StructAccessInfo::get_info(engines, &struct_decl, namespace).into();
 
                     match struct_decl.find_field(field) {
                         Some(struct_field) => {

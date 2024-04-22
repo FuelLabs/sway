@@ -62,7 +62,12 @@ async fn low_level_call(
 
     // Run the script which will call the contract
     let tx = script_instance
-        .main(id, function_selector, calldata, single_value_type_arg)
+        .main(
+            id,
+            fuels::types::Bytes(function_selector),
+            fuels::types::Bytes(calldata),
+            single_value_type_arg,
+        )
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output])
         .with_tx_policies(TxPolicies::default());

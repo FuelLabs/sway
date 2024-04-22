@@ -573,9 +573,13 @@ impl ty::TySubmodule {
             mod_name_span: _,
             visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            ty::TyModule::collect(handler, engines, submod_ctx, module)
-        })
+        parent_ctx.enter_submodule(
+            engines,
+            mod_name,
+            *visibility,
+            module.span.clone(),
+            |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
+        )
     }
 
     pub fn type_check(

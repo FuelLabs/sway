@@ -41,11 +41,11 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, engines, src)?;
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let mut symbols_and_decls = vec![];
@@ -55,7 +55,7 @@ impl Root {
             }
         }
 
-        let dst_mod = &mut self.module[dst];
+        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -100,11 +100,11 @@ impl Root {
         dst: &ModulePath,
         alias: Option<Ident>,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, engines, src)?;
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         let mut impls_to_insert = TraitMap::default();
         match src_mod.current_items().symbols.get(item).cloned() {
             Some(decl) => {
@@ -139,7 +139,7 @@ impl Root {
                     );
                 }
                 // no matter what, import it this way though.
-                let dst_mod = &mut self.module[dst];
+                let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                 let add_synonym = |name| {
                     if let Some((_, GlobImport::No, _)) =
                         dst_mod.current_items().use_synonyms.get(name)
@@ -171,7 +171,7 @@ impl Root {
             }
         };
 
-        let dst_mod = &mut self.module[dst];
+        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -194,11 +194,11 @@ impl Root {
         dst: &ModulePath,
         alias: Option<Ident>,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, engines, src)?;
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         match src_mod.current_items().symbols.get(enum_name).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
@@ -225,7 +225,7 @@ impl Root {
                         enum_decl.variants.iter().find(|v| v.name == *variant_name)
                     {
                         // import it this way.
-                        let dst_mod = &mut self.module[dst];
+                        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                         let mut add_synonym = |name| {
                             if let Some((_, GlobImport::No, _)) =
                                 dst_mod.current_items().use_synonyms.get(name)
@@ -294,11 +294,11 @@ impl Root {
         dst: &ModulePath,
         enum_name: &Ident,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, engines, src)?;
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         match src_mod.current_items().symbols.get(enum_name).cloned() {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
@@ -325,7 +325,7 @@ impl Root {
                         let variant_name = &variant_decl.name;
 
                         // import it this way.
-                        let dst_mod = &mut self.module[dst];
+                        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                         dst_mod.current_items_mut().use_synonyms.insert(
                             // TODO: No difference made between imported and declared items
                             variant_name.clone(),
@@ -371,11 +371,11 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, src)?;
+        self.check_module_privacy(handler, engines, src)?;
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let use_synonyms = src_mod.current_items().use_synonyms.clone();
@@ -394,7 +394,7 @@ impl Root {
         let mut symbols_paths_and_decls = vec![];
         for (symbol, (mod_path, _, decl)) in use_synonyms {
             let mut is_external = false;
-            let submodule = src_mod.submodule(&[mod_path[0].clone()]);
+            let submodule = src_mod.submodule(engines, &[mod_path[0].clone()]);
             if let Some(submodule) = submodule {
                 is_external = submodule.is_external
             };
@@ -409,7 +409,7 @@ impl Root {
             symbols_paths_and_decls.push((symbol, path, decl));
         }
 
-        let dst_mod = &mut self.module[dst];
+        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -436,6 +436,7 @@ impl Root {
     fn check_module_privacy(
         &self,
         handler: &Handler,
+        engines: &Engines,
         src: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
         let dst = self.module.mod_path();
@@ -443,7 +444,7 @@ impl Root {
         if !is_ancestor(src, dst) {
             // we don't check the first prefix because direct children are always accessible
             for prefix in iter_prefixes(src).skip(1) {
-                let module = self.module.lookup_submodule(handler, prefix)?;
+                let module = self.module.lookup_submodule(handler, engines, prefix)?;
                 if module.visibility.is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {

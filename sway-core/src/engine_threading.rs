@@ -20,22 +20,6 @@ pub struct Engines {
 }
 
 impl Engines {
-    pub fn new(
-        type_engine: TypeEngine,
-        decl_engine: DeclEngine,
-        parsed_decl_engine: ParsedDeclEngine,
-        query_engine: QueryEngine,
-        source_engine: SourceEngine,
-    ) -> Engines {
-        Engines {
-            type_engine,
-            decl_engine,
-            parsed_decl_engine,
-            query_engine,
-            source_engine,
-        }
-    }
-
     pub fn te(&self) -> &TypeEngine {
         &self.type_engine
     }

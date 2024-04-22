@@ -1,7 +1,6 @@
 script;
 
 use std::bytes::Bytes;
-use std::constants::BASE_ASSET_ID;
 use std::low_level_call::{call_with_function_selector, CallParams};
 
 fn main(
@@ -12,7 +11,7 @@ fn main(
 ) {
     let call_params = CallParams {
         coins: 0,
-        asset_id: BASE_ASSET_ID,
+        asset_id: AssetId::base(),
         gas: 10_000_000,
     };
 
