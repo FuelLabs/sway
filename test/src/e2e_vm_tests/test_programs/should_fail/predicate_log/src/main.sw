@@ -1,12 +1,12 @@
 predicate;
 
 use std::{
-    inputs::input_owner,
+    inputs::input_coin_owner,
     logging::log,
 };
 
 fn main() -> bool {
-    log::<Address>(input_owner(0).unwrap());
+    log::<Address>(input_coin_owner(0).unwrap());
         
     true
 }

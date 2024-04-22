@@ -1,6 +1,6 @@
 use crate::{
     comments::rewrite_with_comments,
-    config::{items::ItemBraceStyle, user_def::FieldAlignment},
+    config::user_def::FieldAlignment,
     formatter::{
         shape::{ExprKind, LineStyle},
         *,
@@ -47,6 +47,8 @@ impl Format for ItemEnum {
 
                 let fields = self.fields.get();
 
+                formatter.shape.code_line.update_expr_new_line(true);
+
                 // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
                 // Determine alignment tactic
@@ -77,7 +79,7 @@ impl Format for ItemEnum {
 
                         let value_pairs_iter = value_pairs.iter().enumerate();
                         for (var_index, (type_field, comma_token)) in value_pairs_iter.clone() {
-                            write!(formatted_code, "{}", &formatter.indent_str()?)?;
+                            write!(formatted_code, "{}", &formatter.indent_to_str()?)?;
 
                             // Add name
                             type_field.name.format(formatted_code, formatter)?;
@@ -139,20 +141,10 @@ impl CurlyBrace for ItemEnum {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        let brace_style = formatter.config.items.item_brace_style;
         let open_brace = Delimiter::Brace.as_open_char();
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                writeln!(line, "\n{open_brace}")?;
-                formatter.indent();
-            }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, " {open_brace}")?;
-                formatter.indent();
-            }
-        }
+        // Add opening brace to the same line
+        write!(line, " {open_brace}")?;
+        formatter.indent();
 
         Ok(())
     }
@@ -165,7 +157,7 @@ impl CurlyBrace for ItemEnum {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
 

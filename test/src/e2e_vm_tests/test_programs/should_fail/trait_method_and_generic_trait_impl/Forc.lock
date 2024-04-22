@@ -1,0 +1,3 @@
+[[package]]
+name = "trait_method_and_generic_trait_impl"
+source = "member"

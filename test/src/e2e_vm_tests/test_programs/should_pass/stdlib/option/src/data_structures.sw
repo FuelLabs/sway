@@ -4,11 +4,11 @@ use core::ops::*;
 use std::hash::*;
 
 /////////////////////////////////////////////////////////////////////////////
-// Data Structures Used in in the Tests
+// Data Structures Used in the Tests
 /////////////////////////////////////////////////////////////////////////////
 pub struct MyStruct {
-    x: u64,
-    y: u64,
+    pub x: u64,
+    pub y: u64,
 }
 
 pub enum MyEnum {

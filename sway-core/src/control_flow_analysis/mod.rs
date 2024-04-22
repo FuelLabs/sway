@@ -39,6 +39,5 @@
 mod analyze_return_paths;
 mod dead_code_analysis;
 mod flow_graph;
-pub use analyze_return_paths::*;
-pub use dead_code_analysis::*;
+
 pub use flow_graph::*;

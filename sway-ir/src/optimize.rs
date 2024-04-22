@@ -33,12 +33,16 @@ pub mod ret_demotion;
 pub use ret_demotion::*;
 pub mod simplify_cfg;
 pub use simplify_cfg::*;
+pub mod sroa;
+pub use sroa::*;
+pub mod fn_dedup;
+pub use fn_dedup::*;
 
 mod target_fuel;
 
 #[cfg(test)]
 pub mod tests {
-    use crate::{PassGroup, PassManager};
+    use crate::{ExperimentalFlags, PassGroup, PassManager};
     use sway_types::SourceEngine;
 
     /// This function parses the IR text representation and run the specified optimizers passes.
@@ -77,6 +81,9 @@ pub mod tests {
             "
             ),
             &source_engine,
+            ExperimentalFlags {
+                new_encoding: false,
+            },
         )
         .unwrap();
 

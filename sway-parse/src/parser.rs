@@ -19,6 +19,7 @@ pub struct Parser<'a, 'e> {
     token_trees: &'a [TokenTree],
     full_span: Span,
     handler: &'e Handler,
+    pub check_double_underscore: bool,
 }
 
 impl<'a, 'e> Parser<'a, 'e> {
@@ -27,6 +28,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: token_stream.token_trees(),
             full_span: token_stream.span(),
             handler,
+            check_double_underscore: true,
         }
     }
 
@@ -49,8 +51,8 @@ impl<'a, 'e> Parser<'a, 'e> {
                     (self.full_span.end() + 1).saturating_sub(trim_offset),
                     self.full_span.source_id().cloned(),
                 )
+                .unwrap_or(Span::dummy())
             }
-            .unwrap(),
         };
         self.emit_error_with_span(kind, span)
     }
@@ -96,6 +98,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match parsing_function(&mut fork) {
@@ -155,6 +158,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
 
         match fork.parse() {
@@ -188,6 +192,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             token_trees: self.token_trees,
             full_span: self.full_span.clone(),
             handler: &handler,
+            check_double_underscore: self.check_double_underscore,
         };
         let r = match T::parse(&mut fork) {
             Ok(result) => {
@@ -244,6 +249,7 @@ impl<'a, 'e> Parser<'a, 'e> {
                     token_trees: token_stream.token_trees(),
                     full_span: token_stream.span(),
                     handler: self.handler,
+                    check_double_underscore: self.check_double_underscore,
                 };
                 Some((parser, span.clone()))
             }
@@ -288,12 +294,12 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// To calculate lines the original source code needs to be transversed.
     pub fn consume_while_line_equals(&mut self, line: usize) {
         loop {
-            let Some(current_token) = self.token_trees.get(0) else {
+            let Some(current_token) = self.token_trees.first() else {
                 break;
             };
 
             let current_span = current_token.span();
-            let current_span_line = current_span.start_pos().line_col().0;
+            let current_span_line = current_span.start_pos().line_col().line;
 
             if current_span_line != line {
                 break;
@@ -444,8 +450,8 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         } else {
             self.last_consumed_token()
                 .map(|x| x.span())
-                .or_else(|| self.fork_token_trees.get(0).map(|x| x.span()))
-                .map(|x| x.start_pos().line_col().0)
+                .or_else(|| self.fork_token_trees.first().map(|x| x.span()))
+                .map(|x| x.start_pos().line_col().line)
         };
 
         self.start(|p| {
@@ -469,6 +475,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
             token_trees: self.fork_token_trees,
             full_span: self.fork_full_span.clone(),
             handler: &self.handler,
+            check_double_underscore: self.original.borrow().check_double_underscore,
         };
         f(&mut p);
         self.finish(p)
@@ -483,7 +490,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
     /// This is the last consumed token of the forked parser. This the token
     /// immediately before the forked parser head.
     pub fn last_consumed_token(&self) -> Option<&GenericTokenTree<TokenStream>> {
-        let fork_head_span = self.fork_token_trees.get(0)?.span();
+        let fork_head_span = self.fork_token_trees.first()?.span();
 
         // find the last token consumed by the fork
         let original = self.original.borrow();
@@ -504,7 +511,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         let original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
-        let qty = if let Some(first_fork_tt) = p.token_trees.get(0) {
+        let qty = if let Some(first_fork_tt) = p.token_trees.first() {
             original
                 .token_trees
                 .iter()
@@ -528,7 +535,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         let mut original = self.original.borrow_mut();
 
         // collect all tokens trees that were consumed by the fork
-        let qty = if let Some(first_fork_tt) = p.token_trees.get(0) {
+        let qty = if let Some(first_fork_tt) = p.token_trees.first() {
             original
                 .token_trees
                 .iter()

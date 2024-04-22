@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::DeclRefFunction,
+    decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
     semantic_analysis::namespace,
@@ -18,18 +18,18 @@ use sway_error::{error::CompileError, handler::Handler};
 use sway_ir::{metadata::combine as md_combine, *};
 use sway_types::Spanned;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_script(
     engines: &Engines,
     context: &mut Context,
-    main_function: &ty::TyFunctionDecl,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
@@ -49,7 +49,7 @@ pub(super) fn compile_script(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         logged_types_map,
         messages_types_map,
         None,
@@ -71,12 +71,12 @@ pub(super) fn compile_script(
 pub(super) fn compile_predicate(
     engines: &Engines,
     context: &mut Context,
-    main_function: &ty::TyFunctionDecl,
+    entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
@@ -96,7 +96,7 @@ pub(super) fn compile_predicate(
         context,
         &mut md_mgr,
         module,
-        main_function,
+        entry_function,
         &HashMap::new(),
         &HashMap::new(),
         None,
@@ -117,12 +117,13 @@ pub(super) fn compile_predicate(
 #[allow(clippy::too_many_arguments)]
 pub(super) fn compile_contract(
     context: &mut Context,
-    abi_entries: &[ty::TyFunctionDecl],
+    entry_function: Option<&DeclId<ty::TyFunctionDecl>>,
+    abi_entries: &[DeclId<ty::TyFunctionDecl>],
     namespace: &namespace::Module,
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Contract);
@@ -138,6 +139,20 @@ pub(super) fn compile_contract(
         declarations,
     )
     .map_err(|err| vec![err])?;
+
+    if let Some(entry_function) = entry_function {
+        compile_entry_function(
+            engines,
+            context,
+            &mut md_mgr,
+            module,
+            entry_function,
+            logged_types_map,
+            messages_types_map,
+            None,
+        )?;
+    }
+
     for decl in abi_entries {
         compile_abi_method(
             context,
@@ -149,6 +164,26 @@ pub(super) fn compile_contract(
             engines,
         )?;
     }
+
+    // Fallback function needs to be compiled
+    for decl in declarations {
+        if let ty::TyDecl::FunctionDecl(decl) = decl {
+            let decl_id = decl.decl_id;
+            let decl = engines.de().get(&decl_id);
+            if decl.is_fallback() {
+                compile_abi_method(
+                    context,
+                    &mut md_mgr,
+                    module,
+                    &decl_id,
+                    logged_types_map,
+                    messages_types_map,
+                    engines,
+                )?;
+            }
+        }
+    }
+
     compile_tests(
         engines,
         context,
@@ -170,7 +205,7 @@ pub(super) fn compile_library(
     declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -205,9 +240,9 @@ pub(crate) fn compile_constants(
     module: Module,
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
-    for decl_name in module_ns.get_all_declared_symbols() {
+    for decl_name in module_ns.current_items().get_all_declared_symbols() {
         if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
-            module_ns.symbols.get(decl_name)
+            module_ns.current_items().symbols.get(decl_name)
         {
             let const_decl = engines.de().get_constant(decl_id);
             let call_path = const_decl.call_path.clone();
@@ -222,7 +257,7 @@ pub(crate) fn compile_constants(
                     lookup: compile_const_decl,
                 },
                 &call_path,
-                &Some(const_decl),
+                &Some((*const_decl).clone()),
             )?;
         }
     }
@@ -267,7 +302,7 @@ fn compile_declarations(
                         lookup: compile_const_decl,
                     },
                     &call_path,
-                    &Some(decl),
+                    &Some((*decl).clone()),
                 )?;
             }
 
@@ -298,6 +333,7 @@ fn compile_declarations(
             | ty::TyDecl::GenericTypeForFunctionScope { .. }
             | ty::TyDecl::StorageDecl { .. }
             | ty::TyDecl::TypeAliasDecl { .. }
+            | ty::TyDecl::TraitTypeDecl { .. }
             | ty::TyDecl::ErrorRecovery(..) => (),
         }
     }
@@ -343,18 +379,19 @@ pub(super) fn compile_entry_function(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDecl,
+    ast_fn_decl: &DeclId<ty::TyFunctionDecl>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
 ) -> Result<Function, Vec<CompileError>> {
     let is_entry = true;
+    let ast_fn_decl = engines.de().get_function(ast_fn_decl);
     compile_function(
         engines,
         context,
         md_mgr,
         module,
-        ast_fn_decl,
+        &ast_fn_decl,
         logged_types_map,
         messages_types_map,
         is_entry,
@@ -371,17 +408,17 @@ pub(super) fn compile_tests(
     module: Module,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
-    test_fns: &[(ty::TyFunctionDecl, DeclRefFunction)],
+    test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()
-        .map(|(ast_fn_decl, decl_ref)| {
+        .map(|(_ast_fn_decl, decl_ref)| {
             compile_entry_function(
                 engines,
                 context,
                 md_mgr,
                 module,
-                ast_fn_decl,
+                decl_ref.id(),
                 logged_types_map,
                 messages_types_map,
                 Some(decl_ref.clone()),
@@ -486,6 +523,7 @@ fn compile_fn(
         selector,
         *visibility == Visibility::Public,
         is_entry,
+        ast_fn_decl.is_fallback(),
         metadata,
     );
 
@@ -497,7 +535,7 @@ fn compile_fn(
         logged_types_map,
         messages_types_map,
     );
-    let mut ret_val = compiler.compile_code_block(context, md_mgr, body)?;
+    let mut ret_val = compiler.compile_code_block_to_value(context, md_mgr, body)?;
 
     // Special case: sometimes the returned value at the end of the function block is hacked
     // together and is invalid.  This can happen with diverging control flow or with implicit
@@ -529,7 +567,10 @@ fn compile_fn(
         if ret_type.is_unit(context) {
             ret_val = Constant::get_unit(context);
         }
-        compiler.current_block.ins(context).ret(ret_val, ret_type);
+        compiler
+            .current_block
+            .append(context)
+            .ret(ret_val, ret_type);
     }
     Ok(func)
 }
@@ -539,13 +580,14 @@ fn compile_abi_method(
     context: &mut Context,
     md_mgr: &mut MetadataManager,
     module: Module,
-    ast_fn_decl: &ty::TyFunctionDecl,
+    ast_fn_decl: &DeclId<ty::TyFunctionDecl>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     engines: &Engines,
 ) -> Result<Function, Vec<CompileError>> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let handler = Handler::default();
+    let ast_fn_decl = engines.de().get_function(ast_fn_decl);
     let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
     let (errors, _warnings) = handler.consume();
     let selector = match get_selector_result.ok() {
@@ -565,16 +607,14 @@ fn compile_abi_method(
         }
     };
 
-    // An ABI method is always an entry point.
-    let is_entry = true;
-
     compile_fn(
         engines,
         context,
         md_mgr,
         module,
-        ast_fn_decl,
-        is_entry,
+        &ast_fn_decl,
+        // ABI are only entries when the "new encoding" is off
+        !context.experimental.new_encoding,
         Some(selector),
         logged_types_map,
         messages_types_map,

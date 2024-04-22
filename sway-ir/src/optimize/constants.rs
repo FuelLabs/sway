@@ -9,9 +9,9 @@ use crate::{
     context::Context,
     error::IrError,
     function::Function,
-    instruction::Instruction,
+    instruction::InstOp,
     value::ValueDatum,
-    AnalysisResults, BranchToWithArgs, Pass, PassMutability, Predicate, ScopedPass,
+    AnalysisResults, BranchToWithArgs, Instruction, Pass, PassMutability, Predicate, ScopedPass,
 };
 
 pub const CONSTCOMBINE_NAME: &str = "constcombine";
@@ -65,10 +65,14 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
         .instruction_iter(context)
         .find_map(
             |(in_block, inst_val)| match &context.values[inst_val.0].value {
-                ValueDatum::Instruction(Instruction::ConditionalBranch {
-                    cond_value,
-                    true_block,
-                    false_block,
+                ValueDatum::Instruction(Instruction {
+                    op:
+                        InstOp::ConditionalBranch {
+                            cond_value,
+                            true_block,
+                            false_block,
+                        },
+                    ..
                 }) if cond_value.is_constant(context) => {
                     match &cond_value.get_constant(context).unwrap().value {
                         ConstantValue::Bool(true) => Some(Ok((
@@ -103,7 +107,13 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
             },
         )| {
             no_more_dest.remove_pred(context, &from_block);
-            cbr.replace(context, ValueDatum::Instruction(Instruction::Branch(dest)));
+            cbr.replace(
+                context,
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::Branch(dest),
+                    parent: cbr.get_instruction(context).unwrap().parent,
+                }),
+            );
             Ok(true)
         },
     )
@@ -114,9 +124,10 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
         .instruction_iter(context)
         .find_map(
             |(block, inst_val)| match &context.values[inst_val.0].value {
-                ValueDatum::Instruction(Instruction::Cmp(pred, val1, val2))
-                    if val1.is_constant(context) && val2.is_constant(context) =>
-                {
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::Cmp(pred, val1, val2),
+                    ..
+                }) if val1.is_constant(context) && val2.is_constant(context) => {
                     let val1 = val1.get_constant(context).unwrap();
                     let val2 = val2.get_constant(context).unwrap();
 
@@ -127,6 +138,7 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
                             let r = match (&val1.value, &val2.value) {
                                 (Uint(val1), Uint(val2)) => val1 > val2,
                                 (U256(val1), U256(val2)) => val1 > val2,
+                                (B256(val1), B256(val2)) => val1 > val2,
                                 _ => {
                                     unreachable!(
                                         "Type checker allowed non integer value for GreaterThan"
@@ -139,6 +151,7 @@ fn combine_cmp(context: &mut Context, function: &Function) -> bool {
                             let r = match (&val1.value, &val2.value) {
                                 (Uint(val1), Uint(val2)) => val1 < val2,
                                 (U256(val1), U256(val2)) => val1 < val2,
+                                (B256(val1), B256(val2)) => val1 < val2,
                                 _ => {
                                     unreachable!(
                                         "Type checker allowed non integer value for GreaterThan"
@@ -169,9 +182,10 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
         .instruction_iter(context)
         .find_map(
             |(block, inst_val)| match &context.values[inst_val.0].value {
-                ValueDatum::Instruction(Instruction::BinaryOp { op, arg1, arg2 })
-                    if arg1.is_constant(context) && arg2.is_constant(context) =>
-                {
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::BinaryOp { op, arg1, arg2 },
+                    ..
+                }) if arg1.is_constant(context) && arg2.is_constant(context) => {
                     let val1 = arg1.get_constant(context).unwrap();
                     let val2 = arg2.get_constant(context).unwrap();
                     use crate::BinaryOpKind::*;
@@ -231,9 +245,10 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
         .instruction_iter(context)
         .find_map(
             |(block, inst_val)| match &context.values[inst_val.0].value {
-                ValueDatum::Instruction(Instruction::UnaryOp { op, arg })
-                    if arg.is_constant(context) =>
-                {
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::UnaryOp { op, arg },
+                    ..
+                }) if arg.is_constant(context) => {
                     let val = arg.get_constant(context).unwrap();
                     use crate::UnaryOpKind::*;
                     use ConstantValue::*;

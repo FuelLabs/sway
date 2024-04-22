@@ -5,6 +5,8 @@ use thiserror::Error;
 pub enum ConvertParseTreeError {
     #[error("pub use imports are not supported")]
     PubUseNotSupported { span: Span },
+    #[error("Imports without items are not supported")]
+    ImportsWithoutItemsNotSupported { span: Span },
     #[error("functions used in applications may not be arbitrary expressions")]
     FunctionArbitraryExpression { span: Span },
     #[error("generics are not supported here")]
@@ -105,10 +107,6 @@ pub enum ConvertParseTreeError {
     CannotAnnotateDependency { span: Span },
     #[error("Expected dependency at the beginning before any other items.")]
     ExpectedDependencyAtBeginning { span: Span },
-    #[error("Ref expressions are not supported yet.")]
-    RefExprNotYetSupported { span: Span },
-    #[error("Deref expressions are not supported yet.")]
-    DerefExprNotYetSupported { span: Span },
     #[error("Constant requires expression.")]
     ConstantRequiresExpression { span: Span },
     #[error("Constant requires type ascription.")]
@@ -121,14 +119,15 @@ pub enum ConvertParseTreeError {
     InvalidCfgProgramTypeArgValue { span: Span, value: String },
     #[error("Expected a value for the program_type argument")]
     ExpectedCfgProgramTypeArgValue { span: Span },
-    #[error("Unexpected call path segments between qualified root and method name.")]
-    UnexpectedCallPathPrefixAfterQualifiedRoot { span: Span },
+    #[error("Expected \"true\" or \"false\" for experimental_new_encoding")]
+    ExpectedExperimentalNewEncodingArgValue { span: Span },
 }
 
 impl Spanned for ConvertParseTreeError {
     fn span(&self) -> Span {
         match self {
             ConvertParseTreeError::PubUseNotSupported { span } => span.clone(),
+            ConvertParseTreeError::ImportsWithoutItemsNotSupported { span } => span.clone(),
             ConvertParseTreeError::FunctionArbitraryExpression { span } => span.clone(),
             ConvertParseTreeError::GenericsNotSupportedHere { span } => span.clone(),
             ConvertParseTreeError::MultipleGenericsNotSupported { span } => span.clone(),
@@ -179,17 +178,13 @@ impl Spanned for ConvertParseTreeError {
             ConvertParseTreeError::CannotDocCommentDependency { span } => span.clone(),
             ConvertParseTreeError::CannotAnnotateDependency { span } => span.clone(),
             ConvertParseTreeError::ExpectedDependencyAtBeginning { span } => span.clone(),
-            ConvertParseTreeError::RefExprNotYetSupported { span } => span.clone(),
-            ConvertParseTreeError::DerefExprNotYetSupported { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresExpression { span } => span.clone(),
             ConvertParseTreeError::ConstantRequiresTypeAscription { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgTargetArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgTargetArgValue { span } => span.clone(),
             ConvertParseTreeError::InvalidCfgProgramTypeArgValue { span, .. } => span.clone(),
             ConvertParseTreeError::ExpectedCfgProgramTypeArgValue { span } => span.clone(),
-            ConvertParseTreeError::UnexpectedCallPathPrefixAfterQualifiedRoot { span } => {
-                span.clone()
-            }
+            ConvertParseTreeError::ExpectedExperimentalNewEncodingArgValue { span } => span.clone(),
         }
     }
 }

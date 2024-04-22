@@ -1,13 +1,13 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-8222DC735DC134D4'
+name = "core"
+source = "path+from-root-FDC0B8F9A0EEE19B"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-8222DC735DC134D4'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-FDC0B8F9A0EEE19B"
+dependencies = ["core"]
 
 [[package]]
-name = 'tuple_types'
-source = 'member'
-dependencies = ['std']
+name = "tuple_trait"
+source = "member"
+dependencies = ["std"]

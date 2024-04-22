@@ -1,9 +1,8 @@
 use crate::{
     config::OnEnterConfig,
-    core::{document::TextDocument, session::Session},
+    core::document::{Documents, TextDocument},
     lsp_ext::OnEnterParams,
 };
-use std::sync::Arc;
 use tower_lsp::lsp_types::{
     DocumentChanges, OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range,
     TextDocumentEdit, TextEdit, Url, WorkspaceEdit,
@@ -17,7 +16,7 @@ const DOC_COMMENT_START: &str = "///";
 /// with the appropriate comment start pattern (// or ///).
 pub fn on_enter(
     config: &OnEnterConfig,
-    session: &Arc<Session>,
+    documents: &Documents,
     temp_uri: &Url,
     params: &OnEnterParams,
 ) -> Option<WorkspaceEdit> {
@@ -26,7 +25,7 @@ pub fn on_enter(
     }
 
     let mut workspace_edit = None;
-    let text_document = session
+    let text_document = documents
         .get_text_document(temp_uri)
         .expect("could not get text document");
 
@@ -119,12 +118,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn get_comment_workspace_edit_double_slash_indented() {
+    #[tokio::test]
+    async fn get_comment_workspace_edit_double_slash_indented() {
         let path = get_absolute_path("sway-lsp/tests/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
-        let text_document =
-            TextDocument::build_from_path(path.as_str()).expect("failed to build document");
+        let text_document = TextDocument::build_from_path(path.as_str())
+            .await
+            .expect("failed to build document");
         let params = OnEnterParams {
             text_document: TextDocumentIdentifier { uri },
             content_changes: vec![TextDocumentContentChangeEvent {
@@ -156,12 +156,13 @@ mod tests {
         assert_text_edit(&edits[0].edits[0], "// ".to_string(), 48, 4);
     }
 
-    #[test]
-    fn get_comment_workspace_edit_triple_slash_paste() {
+    #[tokio::test]
+    async fn get_comment_workspace_edit_triple_slash_paste() {
         let path = get_absolute_path("sway-lsp/tests/fixtures/diagnostics/dead_code/src/main.sw");
         let uri = Url::from_file_path(path.clone()).unwrap();
-        let text_document =
-            TextDocument::build_from_path(path.as_str()).expect("failed to build document");
+        let text_document = TextDocument::build_from_path(path.as_str())
+            .await
+            .expect("failed to build document");
         let params = OnEnterParams {
             text_document: TextDocumentIdentifier { uri },
             content_changes: vec![TextDocumentContentChangeEvent {

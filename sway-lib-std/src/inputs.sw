@@ -3,10 +3,11 @@
 library;
 
 use ::address::Address;
+use ::alloc::alloc_bytes;
 use ::assert::assert;
+use ::asset_id::AssetId;
 use ::bytes::Bytes;
-use ::constants::BASE_ASSET_ID;
-use ::contract_id::{AssetId, ContractId};
+use ::contract_id::ContractId;
 use ::option::Option::{self, *};
 use ::revert::revert;
 use ::tx::{
@@ -18,46 +19,34 @@ use ::tx::{
     tx_type,
 };
 use core::ops::Eq;
-use core::primitive_conversions::*;
 
-const GTF_INPUT_TYPE = 0x101;
+const GTF_INPUT_TYPE = 0x200;
 
 // GTF Opcode const selectors
 //
-// pub const GTF_INPUT_COIN_TX_ID = 0x102;
-// pub const GTF_INPUT_COIN_OUTPUT_INDEX = 0x103;
-pub const GTF_INPUT_COIN_OWNER = 0x104;
-pub const GTF_INPUT_COIN_AMOUNT = 0x105;
-pub const GTF_INPUT_COIN_ASSET_ID = 0x106;
-// pub const GTF_INPUT_COIN_TX_POINTER = 0x107;
-pub const GTF_INPUT_COIN_WITNESS_INDEX = 0x108;
-pub const GTF_INPUT_COIN_MATURITY = 0x109;
-pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x10A;
-pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x10B;
-pub const GTF_INPUT_COIN_PREDICATE = 0x10C;
-pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x10D;
+// pub const GTF_INPUT_COIN_TX_ID = 0x201;
+// pub const GTF_INPUT_COIN_OUTPUT_INDEX = 0x202;
+pub const GTF_INPUT_COIN_OWNER = 0x203;
+pub const GTF_INPUT_COIN_AMOUNT = 0x204;
+pub const GTF_INPUT_COIN_ASSET_ID = 0x205;
+pub const GTF_INPUT_COIN_WITNESS_INDEX = 0x207;
+pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x209;
+pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
+pub const GTF_INPUT_COIN_PREDICATE = 0x20B;
+pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x20C;
 
-// pub const GTF_INPUT_CONTRACT_TX_ID = 0x10E;
-// pub const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x10F;
-// pub const GTF_INPUT_CONTRACT_BALANCE_ROOT = 0x110;
-// pub const GTF_INPUT_CONTRACT_STATE_ROOT = 0x111;
-// pub const GTF_INPUT_CONTRACT_TX_POINTER = 0x112;
-// pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x113;
-pub const GTF_INPUT_MESSAGE_SENDER = 0x115;
-pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x116;
-pub const GTF_INPUT_MESSAGE_AMOUNT = 0x117;
-pub const GTF_INPUT_MESSAGE_NONCE = 0x118;
-// These are based on the old spec (before
-// https://github.com/FuelLabs/fuel-specs/pull/400) because that's what's
-// currently implemented in `fuel-core`, `fuel-asm`, and `fuel-tx. They should
-// eventually be updated.
-pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x119;
-pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x11A;
-pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x11B;
-pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x11C;
-pub const GTF_INPUT_MESSAGE_DATA = 0x11D;
-pub const GTF_INPUT_MESSAGE_PREDICATE = 0x11E;
-pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x11F;
+// pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x225;
+pub const GTF_INPUT_MESSAGE_SENDER = 0x240;
+pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x241;
+pub const GTF_INPUT_MESSAGE_AMOUNT = 0x242;
+pub const GTF_INPUT_MESSAGE_NONCE = 0x243;
+pub const GTF_INPUT_MESSAGE_WITNESS_INDEX = 0x244;
+pub const GTF_INPUT_MESSAGE_DATA_LENGTH = 0x245;
+pub const GTF_INPUT_MESSAGE_PREDICATE_LENGTH = 0x246;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH = 0x247;
+pub const GTF_INPUT_MESSAGE_DATA = 0x248;
+pub const GTF_INPUT_MESSAGE_PREDICATE = 0x249;
+pub const GTF_INPUT_MESSAGE_PREDICATE_DATA = 0x24A;
 
 /// The input type for a transaction.
 pub enum Input {
@@ -116,7 +105,7 @@ pub fn input_type(index: u64) -> Input {
 }
 
 /// Gets the transaction inputs count.
-/// 
+///
 /// # Returns
 ///
 /// * [u8] - The number of inputs in the transaction.
@@ -171,7 +160,7 @@ pub fn input_pointer(index: u64) -> u64 {
 /// * `index`: [u64] - The index of the input to check.
 ///
 /// # Returns
-/// 
+///
 /// * [Option<u64>] - The amount of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples
@@ -192,7 +181,7 @@ pub fn input_amount(index: u64) -> Option<u64> {
     }
 }
 
-/// Gets owner field from input at `index`.
+/// Gets owner field from input at `index` if it's a coin.
 ///
 /// # Arguments
 ///
@@ -205,14 +194,14 @@ pub fn input_amount(index: u64) -> Option<u64> {
 /// # Examples
 ///
 /// ```sway
-/// use std::inputs::input_owner;
+/// use std::inputs::input_coin_owner;
 ///
 /// fn foo() {
-///     let input_owner = input_owner(0);
-///     assert(input_owner.is_some()); // Ensure the input is a coin input.
+///     let input_coin_owner = input_coin_owner(0);
+///     assert(input_coin_owner.is_some()); // Ensure the input is a coin input.
 /// }
 /// ```
-pub fn input_owner(index: u64) -> Option<Address> {
+pub fn input_coin_owner(index: u64) -> Option<Address> {
     match input_type(index) {
         Input::Coin => Some(Address::from(__gtf::<b256>(index, GTF_INPUT_COIN_OWNER))),
         _ => None,
@@ -286,17 +275,17 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::BASE_ASSET_ID, inputs::input_asset_id};
+/// use std::inputs::input_asset_id;
 ///
 /// fn foo() {
 ///     let input_asset_id = input_asset_id(0);
-///     assert(input_asset_id.unwrap() == BASE_ASSET_ID);
+///     assert(input_asset_id.unwrap() == AssetId::base());
 /// }
 /// ```
 pub fn input_asset_id(index: u64) -> Option<AssetId> {
     match input_type(index) {
         Input::Coin => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
-        Input::Message => Some(BASE_ASSET_ID),
+        Input::Message => Some(AssetId::base()),
         Input::Contract => None,
     }
 }
@@ -415,12 +404,11 @@ pub fn input_predicate(index: u64) -> Bytes {
         revert(0);
     };
     let length = wrapped.unwrap().as_u64();
-    let mut data_bytes = Bytes::with_capacity(length);
+    let new_ptr = alloc_bytes(length);
     match input_predicate_pointer(index) {
         Some(d) => {
-            data_bytes.len = length;
-            d.copy_bytes_to(data_bytes.buf.ptr, length);
-            data_bytes
+            d.copy_bytes_to(new_ptr, length);
+            Bytes::from(raw_slice::from_parts::<u8>(new_ptr, length))
         },
         None => revert(0),
     }
@@ -455,38 +443,6 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
 }
 
 // Coin Inputs
-
-/// Gets the maturity from the input at `index`.
-///
-/// # Additional Information
-///
-/// The matury of an input refers to the number of blocks that must pass before the input can be spent.
-///
-/// # Arguments
-///
-/// * `index`: [u64] - The index of the input to check.
-///
-/// # Returns
-///
-/// * [Option<u32>] - The maturity of the input at `index`, if the input's type is `Input::Coin`, else `None`.
-///
-///
-/// # Examples
-///
-/// ```sway
-/// use std::inputs::input_maturity;
-///
-/// fn foo() {
-///     let input_maturity = input_maturity(0);
-///     assert(input_maturity.unwrap() == 0_u32);
-/// }
-/// ```
-pub fn input_maturity(index: u64) -> Option<u32> {
-    match input_type(index) {
-        Input::Coin => Some(__gtf::<u32>(index, GTF_INPUT_COIN_MATURITY)),
-        _ => None,
-    }
-}
 
 /// Gets the sender of the input message at `index`.
 ///
@@ -614,10 +570,10 @@ pub fn input_message_data(index: u64, offset: u64) -> Bytes {
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
     let data_with_offset = data.add_uint_offset(offset);
     let length = input_message_data_length(index).as_u64();
-    let mut data_bytes = Bytes::with_capacity(length);
-    data_bytes.len = length;
-    data_with_offset.copy_bytes_to(data_bytes.buf.ptr, length);
-    data_bytes
+    let new_ptr = alloc_bytes(length);
+
+    data_with_offset.copy_bytes_to(new_ptr, length);
+    Bytes::from(raw_slice::from_parts::<u8>(new_ptr, length))
 }
 
 fn valid_input_type(index: u64, expected_type: Input) -> bool {

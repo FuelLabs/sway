@@ -6,7 +6,7 @@ pub enum MyEnum1 {
 }
 
 pub struct MyStruct1 {
-    A: u64,
+    pub A: u64,
 }
 
 pub type MyIdentity1 = MyEnum1;

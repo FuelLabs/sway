@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-C960D6DF73DB999C"
+
+[[package]]
+name = "std"
+source = "path+from-root-C960D6DF73DB999C"
+dependencies = ["core"]
+
+[[package]]
+name = "u256_only_hex_literal"
+source = "member"
+dependencies = ["std"]

@@ -1,0 +1,4 @@
+category = "run"
+expected_result = { action = "return", value = 42 }
+validate_abi = false
+expected_warnings = 1 #TODO-DCA: Set to zero once DCA bug is solved.

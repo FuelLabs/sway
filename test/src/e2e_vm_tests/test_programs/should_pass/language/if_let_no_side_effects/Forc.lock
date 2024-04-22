@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-AF27191E41C715AD"
+
+[[package]]
+name = "if_let_no_side_effects"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-AF27191E41C715AD"
+dependencies = ["core"]

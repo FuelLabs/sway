@@ -1,0 +1,3 @@
+[[package]]
+name = "generic_empty_struct_with_constraint"
+source = "member"

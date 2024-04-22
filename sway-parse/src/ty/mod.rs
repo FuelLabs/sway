@@ -9,7 +9,7 @@ use sway_types::{ast::Delimiter, Ident};
 impl Parse for Ty {
     fn parse(parser: &mut Parser) -> ParseResult<Ty> {
         // parse parens carefully, such that only patterns of (ty) are parsed as ty,
-        // and patterns of (ty,) are parsed as one-artity tuples with one element ty
+        // and patterns of (ty,) are parsed as one-arity tuples with one element ty
         if let Some((mut parser, span)) = parser.enter_delimited(Delimiter::Parenthesis) {
             if let Some(_consumed) = parser.check_empty() {
                 return Ok(Ty::Tuple(Parens::new(TyTupleDescriptor::Nil, span)));
@@ -59,6 +59,18 @@ impl Parse for Ty {
                 parser.emit_error(ParseErrorKind::UnexpectedTokenAfterSliceType)
             })?;
             return Ok(Ty::Slice { slice_token, ty });
+        }
+        if let Some(ampersand_token) = parser.take() {
+            let mut_token = parser.take();
+            let ty = Box::new(parser.parse()?);
+            return Ok(Ty::Ref {
+                ampersand_token,
+                mut_token,
+                ty,
+            });
+        }
+        if let Some(bang_token) = parser.take() {
+            return Ok(Ty::Never { bang_token });
         }
         if parser.peek::<OpenAngleBracketToken>().is_some()
             || parser.peek::<DoubleColonToken>().is_some()
@@ -117,5 +129,37 @@ mod tests {
             "#,
         );
         assert_matches!(item, Ty::Slice { .. });
+    }
+
+    #[test]
+    fn parse_ref() {
+        let item = parse::<Ty>(
+            r#"
+            &T
+            "#,
+        );
+        assert_matches!(
+            item,
+            Ty::Ref {
+                mut_token: None,
+                ..
+            }
+        );
+    }
+
+    #[test]
+    fn parse_mut_ref() {
+        let item = parse::<Ty>(
+            r#"
+            &mut T
+            "#,
+        );
+        assert_matches!(
+            item,
+            Ty::Ref {
+                mut_token: Some(_),
+                ..
+            }
+        );
     }
 }

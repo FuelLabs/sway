@@ -4,6 +4,8 @@
 //! The immediate types are used to safely construct numbers that are within their bounds, and the
 //! ops are clones of the actual opcodes, but with the safe primitives as arguments.
 
+use indexmap::IndexMap;
+
 use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
     virtual_immediate::*,
@@ -183,6 +185,8 @@ pub(crate) enum VirtualOp {
 
     /* Cryptographic Instructions */
     ECK1(VirtualRegister, VirtualRegister, VirtualRegister),
+    ECR1(VirtualRegister, VirtualRegister, VirtualRegister),
+    ED19(VirtualRegister, VirtualRegister, VirtualRegister),
     K256(VirtualRegister, VirtualRegister, VirtualRegister),
     S256(VirtualRegister, VirtualRegister, VirtualRegister),
 
@@ -194,12 +198,11 @@ pub(crate) enum VirtualOp {
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
     DataSectionOffsetPlaceholder,
-    DataSectionRegisterLoadPlaceholder,
-    // LWDataId takes a virtual register and a DataId, which points to a labeled piece
+    // LoadDataId takes a virtual register and a DataId, which points to a labeled piece
     // of data in the data section. Note that the ASM op corresponding to a LW is
     // subtly complex: $rB is in bytes and points to some mem address. The immediate
     // third argument is a _word_ offset from that byte address.
-    LWDataId(VirtualRegister, DataId),
+    LoadDataId(VirtualRegister, DataId),
     Undefined,
 }
 
@@ -297,6 +300,8 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
+            ECR1(r1, r2, r3) => vec![r1, r2, r3],
+            ED19(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -308,17 +313,225 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![
-                &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
-                &VirtualRegister::Constant(ConstantRegister::InstructionStart),
-            ],
-            LWDataId(r1, _i) => vec![r1],
+            LoadDataId(r1, _i) => vec![r1],
             Undefined => vec![],
         })
         .into_iter()
         .collect()
     }
 
+    /// Does this op do anything other than just compute something?
+    /// (and hence if the result is dead, the OP can safely be deleted).
+    pub(crate) fn has_side_effect(&self) -> bool {
+        use VirtualOp::*;
+        match self {
+            // Arithmetic and logical
+            ADD(_, _, _)
+            | ADDI(_, _, _)
+            | AND(_, _, _)
+            | ANDI(_, _, _)
+            | DIV(_, _, _)
+            | DIVI(_, _, _)
+            | EQ(_, _, _)
+            | EXP(_, _, _)
+            | EXPI(_, _, _)
+            | GT(_, _, _)
+            | LT(_, _, _)
+            | MLOG(_, _, _)
+            | MOD(_, _, _)
+            | MODI(_, _, _)
+            | MOVE(_, _)
+            | MOVI(_, _)
+            | MROO(_, _, _)
+            | MUL(_, _, _)
+            | MULI(_, _, _)
+            | NOOP
+            | NOT(_, _)
+            | OR(_, _, _)
+            | ORI(_, _, _)
+            | SLL(_, _, _)
+            | SLLI(_, _, _)
+            | SRL(_, _, _)
+            | SRLI(_, _, _)
+            | SUB(_, _, _)
+            | SUBI(_, _, _)
+            | XOR(_, _, _)
+            | XORI(_, _, _)
+            // Memory load
+            | LB(_, _, _)
+            | LW(_, _, _)
+            // Blockchain read
+            |  BAL(_, _, _)
+            |  BHEI(_)
+            | CSIZ(_, _)
+            | SRW(_, _, _)
+            | TIME(_, _)
+            |  GM(_, _)
+            | GTF(_, _, _)
+            // Virtual OPs
+            | LoadDataId(_, _)
+             => self.def_registers().iter().any(|vreg| matches!(vreg, VirtualRegister::Constant(_))),
+            // Memory write and jump
+            WQOP(_, _, _, _)
+            | WQML(_, _, _, _)
+            | WQDV(_, _, _, _)
+            | WQCM(_, _, _, _)
+            | WQAM(_, _, _, _)
+            | JMP(_)
+            | JI(_)
+            | JNE(_, _, _)
+            | JNEI(_, _, _)
+            | JNZI(_, _)
+            | RET(_)
+            | ALOC(_)
+            | CFEI(_)
+            | CFSI(_)
+            | CFE(_)
+            | CFS(_)
+            | MCL(_, _)
+            | MCLI(_, _)
+            | MCP(_, _, _)
+            | MCPI(_, _, _)
+            | MEQ(_, _, _, _)
+            | SB(_, _, _)
+            | SW(_, _, _)
+            // Other blockchain etc ...
+            | BHSH(_, _)
+            | BURN(_, _)
+            | CALL(_, _, _, _)
+            | CB(_)
+            | CCP(_, _, _, _)
+            | CROO(_, _)
+            | LDC(_, _, _)
+            | LOG(_, _, _, _)
+            | LOGD(_, _, _, _)
+            | MINT(_, _)
+            | RETD(_, _)
+            | RVRT(_)
+            | SMO(_, _, _, _)
+            | SCWQ(_, _, _)
+            | SRWQ(_, _, _, _)
+            | SWW(_, _, _)
+            | SWWQ(_, _, _, _)
+            | TR(_, _, _)
+            | TRO(_, _, _, _)
+            | ECK1(_, _, _)
+            | ECR1(_, _, _)
+            | ED19(_, _, _)
+            | K256(_, _, _)
+            | S256(_, _, _)
+            | FLAG(_)
+            // Virtual OPs
+            | BLOB(_)
+            | DataSectionOffsetPlaceholder
+            | Undefined => true
+        }
+    }
+
+    // What are the special registers that an OP may set.
+    pub(crate) fn def_const_registers(&self) -> BTreeSet<&VirtualRegister> {
+        use ConstantRegister::*;
+        use VirtualOp::*;
+        (match self {
+            // Arithmetic and logical
+            ADD(_, _, _)
+            | ADDI(_, _, _)
+            | AND(_, _, _)
+            | ANDI(_, _, _)
+            | DIV(_, _, _)
+            | DIVI(_, _, _)
+            | EQ(_, _, _)
+            | EXP(_, _, _)
+            | EXPI(_, _, _)
+            | GT(_, _, _)
+            | LT(_, _, _)
+            | MLOG(_, _, _)
+            | MOD(_, _, _)
+            | MODI(_, _, _)
+            | MOVE(_, _)
+            | MOVI(_, _)
+            | MROO(_, _, _)
+            | MUL(_, _, _)
+            | MULI(_, _, _)
+            | NOOP
+            | NOT(_, _)
+            | OR(_, _, _)
+            | ORI(_, _, _)
+            | SLL(_, _, _)
+            | SLLI(_, _, _)
+            | SRL(_, _, _)
+            | SRLI(_, _, _)
+            | SUB(_, _, _)
+            | SUBI(_, _, _)
+            | XOR(_, _, _)
+            | XORI(_, _, _)
+            | WQOP(_, _, _, _)
+            | WQML(_, _, _, _)
+            | WQDV(_, _, _, _)
+            | WQCM(_, _, _, _)
+            | WQAM(_, _, _, _)
+            // Cryptographic
+            | ECK1(_, _, _)
+            | ECR1(_, _, _)
+            | ED19(_, _, _)
+             => vec![&VirtualRegister::Constant(Overflow), &VirtualRegister::Constant(Error)],
+            FLAG(_) => vec![&VirtualRegister::Constant(Flags)],
+            JMP(_)
+            | JI(_)
+            | JNE(_, _, _)
+            | JNEI(_, _, _)
+            | JNZI(_, _)
+            | RET(_)
+            | ALOC(_)
+            | CFEI(_)
+            | CFSI(_)
+            | CFE(_)
+            | CFS(_)
+            | LB(_, _, _)
+            | LW(_, _, _)
+            | MCL(_, _)
+            | MCLI(_, _)
+            | MCP(_, _, _)
+            | MCPI(_, _, _)
+            | MEQ(_, _, _, _)
+            | SB(_, _, _)
+            | SW(_, _, _)
+            | BAL(_, _, _)
+            | BHEI(_)
+            | BHSH(_, _)
+            | BURN(_, _)
+            | CALL(_, _, _, _)
+            | CB(_)
+            | CCP(_, _, _, _)
+            | CROO(_, _)
+            | CSIZ(_, _)
+            | LDC(_, _, _)
+            | LOG(_, _, _, _)
+            | LOGD(_, _, _, _)
+            | MINT(_, _)
+            | RETD(_, _)
+            | RVRT(_)
+            | SMO(_, _, _, _)
+            | SCWQ(_, _, _)
+            | SRW(_, _, _)
+            | SRWQ(_, _, _, _)
+            | SWW(_, _, _)
+            | SWWQ(_, _, _, _)
+            | TIME(_, _)
+            | TR(_, _, _)
+            | TRO(_, _, _, _)
+            | K256(_, _, _)
+            | S256(_, _, _)
+            | GM(_, _)
+            | GTF(_, _, _)
+            | BLOB(_)
+            | DataSectionOffsetPlaceholder
+            | LoadDataId(_, _)
+            | Undefined => vec![],
+        })
+        .into_iter()
+        .collect()
+    }
     /// Returns a list of all registers *read* by instruction `self`.
     pub(crate) fn use_registers(&self) -> BTreeSet<&VirtualRegister> {
         use VirtualOp::*;
@@ -337,7 +550,7 @@ impl VirtualOp {
             LT(_r1, r2, r3) => vec![r2, r3],
             MLOG(_r1, r2, r3) => vec![r2, r3],
             MOD(_r1, r2, r3) => vec![r2, r3],
-            MODI(r1, r2, _i) => vec![r1, r2],
+            MODI(_r1, r2, _i) => vec![r2],
             MOVE(_r1, r2) => vec![r2],
             MOVI(_r1, _i) => vec![],
             MROO(_r1, r2, r3) => vec![r2, r3],
@@ -413,6 +626,8 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(r1, r2, r3) => vec![r1, r2, r3],
+            ECR1(r1, r2, r3) => vec![r1, r2, r3],
+            ED19(r1, r2, r3) => vec![r1, r2, r3],
             K256(r1, r2, r3) => vec![r1, r2, r3],
             S256(r1, r2, r3) => vec![r1, r2, r3],
 
@@ -424,10 +639,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
-                ConstantRegister::InstructionStart,
-            )],
-            LWDataId(_r1, _i) => vec![],
+            LoadDataId(_r1, _i) => vec![],
             Undefined => vec![],
         })
         .into_iter()
@@ -529,6 +741,8 @@ impl VirtualOp {
 
             /* Cryptographic Instructions */
             ECK1(_r1, _r2, _r3) => vec![],
+            ECR1(_r1, _r2, _r3) => vec![],
+            ED19(_r1, _r2, _r3) => vec![],
             K256(_r1, _r2, _r3) => vec![],
             S256(_r1, _r2, _r3) => vec![],
 
@@ -539,11 +753,8 @@ impl VirtualOp {
 
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
-            LWDataId(r1, _i) => vec![r1],
+            LoadDataId(r1, _i) => vec![r1],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
-                ConstantRegister::DataSectionStart,
-            )],
             Undefined => vec![],
         })
         .into_iter()
@@ -573,7 +784,7 @@ impl VirtualOp {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+        reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         use VirtualOp::*;
         match self {
@@ -935,6 +1146,16 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
             ),
+            ECR1(r1, r2, r3) => Self::ECR1(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ED19(r1, r2, r3) => Self::ED19(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
             K256(r1, r2, r3) => Self::K256(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
@@ -958,8 +1179,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
-            DataSectionRegisterLoadPlaceholder => Self::DataSectionRegisterLoadPlaceholder,
-            LWDataId(r1, i) => Self::LWDataId(update_reg(reg_to_reg_map, r1), i.clone()),
+            LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
         }
     }
@@ -1007,7 +1227,6 @@ impl VirtualOp {
     pub(crate) fn allocate_registers(&self, pool: &RegisterPool) -> AllocatedOpcode {
         let virtual_registers = self.registers();
         let register_allocation_result = virtual_registers
-            .clone()
             .into_iter()
             .map(|x| match x {
                 VirtualRegister::Constant(c) => (x, Some(AllocatedRegister::Constant(*c))),
@@ -1383,6 +1602,16 @@ impl VirtualOp {
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
             ),
+            ECR1(reg1, reg2, reg3) => AllocatedOpcode::ECR1(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
+            ED19(reg1, reg2, reg3) => AllocatedOpcode::ED19(
+                map_reg(&mapping, reg1),
+                map_reg(&mapping, reg2),
+                map_reg(&mapping, reg3),
+            ),
             K256(reg1, reg2, reg3) => AllocatedOpcode::K256(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
@@ -1406,11 +1635,8 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
-            DataSectionRegisterLoadPlaceholder => {
-                AllocatedOpcode::DataSectionRegisterLoadPlaceholder
-            }
-            LWDataId(reg1, label) => {
-                AllocatedOpcode::LWDataId(map_reg(&mapping, reg1), label.clone())
+            LoadDataId(reg1, label) => {
+                AllocatedOpcode::LoadDataId(map_reg(&mapping, reg1), label.clone())
             }
             Undefined => AllocatedOpcode::Undefined,
         }
@@ -1426,7 +1652,7 @@ fn map_reg(
 }
 
 fn update_reg(
-    reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+    reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     reg: &VirtualRegister,
 ) -> VirtualRegister {
     if let Some(r) = reg_to_reg_map.get(reg) {

@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-EDF14A16D4AB69C3"
+
+[[package]]
+name = "import_non_item"
+source = "member"
+dependencies = ["core"]

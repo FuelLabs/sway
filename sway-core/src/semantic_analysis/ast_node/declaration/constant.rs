@@ -11,7 +11,7 @@ use crate::{
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    Engines, TypeInfo,
+    Engines, SubstTypes, TypeInfo,
 };
 
 impl ty::TyConstantDecl {
@@ -34,15 +34,17 @@ impl ty::TyConstantDecl {
         } = decl;
 
         type_ascription.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_ascription.type_id,
-                ctx.self_type(),
                 &type_ascription.span,
                 EnforceTypeArguments::No,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
+
+        // this subst is required to replace associated types, namely TypeInfo::TraitType.
+        type_ascription.type_id.subst(&ctx.type_subst(), engines);
 
         let mut ctx = ctx
             .by_ref()
@@ -77,7 +79,7 @@ impl ty::TyConstantDecl {
         // to get the type of the variable. The type of the variable *has* to follow
         // `type_ascription` if `type_ascription` is a concrete integer type that does not
         // conflict with the type of `expression` (i.e. passes the type checking above).
-        let return_type = match type_engine.get(type_ascription.type_id) {
+        let return_type = match &*type_engine.get(type_ascription.type_id) {
             TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
             _ => match &value {
                 Some(value) => value.return_type,
@@ -86,7 +88,7 @@ impl ty::TyConstantDecl {
         };
 
         let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(ctx.namespace);
+        call_path = call_path.to_fullpath(engines, ctx.namespace());
 
         // create the const decl
         let decl = ty::TyConstantDecl {
@@ -119,12 +121,38 @@ impl ty::TyConstantDecl {
             call_path,
             span,
             attributes: Default::default(),
-            return_type: type_engine.insert(engines, TypeInfo::Unknown),
+            return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
             type_ascription,
             is_configurable: false,
             value: None,
             visibility,
             implementing_type: None,
         }
+    }
+}
+
+impl TypeCheckAnalysis for TyConstantDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        if let Some(value) = self.value.as_ref() {
+            value.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for TyConstantDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        if let Some(value) = self.value.as_mut() {
+            value.type_check_finalize(handler, ctx)?;
+        }
+        Ok(())
     }
 }

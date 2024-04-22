@@ -7,7 +7,7 @@ use crate::{
 };
 use lsp_types::{CodeActionDisabled, Position, Range, Url};
 use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
-use sway_types::Spanned;
+use sway_types::{LineCol, Spanned};
 
 pub(crate) struct StructNewCodeAction<'a> {
     decl: &'a TyStructDecl,
@@ -22,7 +22,7 @@ impl<'a> GenerateImplCodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
 }
 
 impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a TyStructDecl) -> Self {
         // Before the other functions are called, we need to determine if the new function
         // should be generated in a new impl block, an existing impl block, or not at all.
         // Find the first impl block for this struct if it exists.
@@ -30,12 +30,12 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             .tokens
             .iter()
             .all_references_of_token(ctx.token, ctx.engines)
-            .find_map(|(_, token)| {
+            .find_map(|item| {
                 if let Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
                     ty::ImplTrait { decl_id, .. },
-                ))) = token.typed
+                ))) = item.value().typed
                 {
-                    Some(ctx.engines.de().get_impl_trait(&decl_id))
+                    Some((*ctx.engines.de().get_impl_trait(&decl_id)).clone())
                 } else {
                     None
                 }
@@ -74,7 +74,9 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
         // If there is already an impl block for this struct, insert the new function at the top of it.
         let insertion_position = match self.existing_impl_decl.clone() {
             Some(decl) => {
-                let (first_line, _) = decl.span.start_pos().line_col();
+                let LineCol {
+                    line: first_line, ..
+                } = decl.span.start_pos().line_col();
                 Position {
                     line: first_line as u32,
                     character: 0,
@@ -82,7 +84,9 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             }
             None => {
                 // If we're inserting a whole new impl block, default to the line after the struct declaration.
-                let (last_line, _) = self.decl().span().end_pos().line_col();
+                let LineCol {
+                    line: last_line, ..
+                } = self.decl().span().end_pos().line_col();
                 Position {
                     line: last_line as u32,
                     character: 0,
@@ -119,6 +123,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
                     fn_decl.span().as_str().contains("fn new")
                 }
                 sway_core::language::ty::TyTraitItem::Constant(_) => false,
+                sway_core::language::ty::TyTraitItem::Type(_) => false,
             })
         {
             Some(CodeActionDisabled {

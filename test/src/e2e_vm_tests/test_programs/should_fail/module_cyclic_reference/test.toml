@@ -1,0 +1,4 @@
+category = "fail"
+
+# check: $()A cyclic reference was found between the modules: a, b.
+

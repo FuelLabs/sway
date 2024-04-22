@@ -203,7 +203,7 @@ div.impl-items > div:not(.docblock):not(.item-info),
 .content ul.crate a.crate,
 a.srclink,
 #main-content > .since,
-#help-button > button,
+#help-button > a,
 details.swaydoc-toggle.top-doc > summary,
 details.swaydoc-toggle.top-doc > summary::before,
 details.swaydoc-toggle.non-exhaustive > summary,
@@ -908,12 +908,7 @@ table,
   width: 100%;
 }
 .search-results {
-  display: none;
-  padding-bottom: 2em;
-}
-.search-results.active {
   display: block;
-  clear: both;
 }
 .search-results .desc > span {
   white-space: nowrap;
@@ -921,29 +916,44 @@ table,
   overflow: hidden;
   display: block;
 }
-.search-results > a {
-  display: block;
-  width: 100%;
-  margin-left: 2px;
-  margin-right: 2px;
-  border-bottom: 1px solid #aaa3;
+.search-results table {
+  width: 100%; 
+  white-space: nowrap;
+  table-layout: fixed;
 }
-.search-results > a > div {
-  display: flex;
-  flex-flow: row wrap;
+.search-results tr {
+  cursor: pointer; 
+  height:28px; 
+  border-bottom:1px solid #28323E;
 }
-.search-results .result-name,
-.search-results div.desc,
-.search-results .result-description {
-  width: 50%;
+.search-results tr:hover {
+  background-color: #28323E;
 }
-.search-results .result-name {
-  padding-right: 1em;
-}
-.search-results .result-name > span {
-  display: inline-block;
+.search-results p {
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin: 0;
-  font-weight: normal;
+}
+.search-results td:first-child {
+  padding-right: 15px; 
+  white-space: initial;
+}
+.search-results td:first-child span {
+  font-family: monospace; 
+  font-size: 14px;
+}
+.search-results .type.struct,
+.search-results .type.enum {
+  color: #2DBFB8;
+}
+.search-results .type.function {
+  color: #2BAB63;
+}
+.search-results .type.trait {
+  color: #B78CF2;
+}
+.search-results .type.constant {
+  color: #D2991D;
 }
 .popover {
   font-size: 1rem;
@@ -1329,7 +1339,7 @@ pre.sway {
   height: 34px;
 }
 #settings-menu > a,
-#help-button > button,
+#help-button > a,
 #copy-path {
   padding: 5px;
   width: 33px;
@@ -1341,7 +1351,7 @@ pre.sway {
   padding: 0;
 }
 #settings-menu > a,
-#help-button > button {
+#help-button > a {
   padding: 5px;
   height: 100%;
   display: block;
@@ -1374,7 +1384,7 @@ pre.sway {
 input:checked + .slider {
   background-color: var(--settings-input-color);
 }
-#help-button > button {
+#help-button > a {
   text-align: center;
   font-size: 20px;
   padding-top: 2px;

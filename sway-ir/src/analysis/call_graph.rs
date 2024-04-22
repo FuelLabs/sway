@@ -1,20 +1,24 @@
 /// Build call graphs for the program being compiled.
 /// If a function F1 calls function F2, then the call
 /// graph has an edge F1->F2.
-use crate::{Context, Function, Instruction, ValueDatum};
+use crate::{Context, Function, InstOp, Instruction, ValueDatum};
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use indexmap::IndexSet;
+use sway_types::{FxIndexMap, FxIndexSet};
 
-pub type CallGraph = FxHashMap<Function, FxHashSet<Function>>;
+pub type CallGraph = FxIndexMap<Function, FxIndexSet<Function>>;
 
 /// Build call graph considering all providing functions.
 pub fn build_call_graph(ctx: &Context, functions: &[Function]) -> CallGraph {
     let mut res = CallGraph::default();
     for function in functions {
         let entry = res.entry(*function);
-        let entry = entry.or_insert_with(FxHashSet::default);
+        let entry = entry.or_insert_with(IndexSet::default);
         for (_, inst) in function.instruction_iter(ctx) {
-            if let ValueDatum::Instruction(Instruction::Call(callee, _)) = ctx.values[inst.0].value
+            if let ValueDatum::Instruction(Instruction {
+                op: InstOp::Call(callee, _),
+                ..
+            }) = ctx.values[inst.0].value
             {
                 entry.insert(callee);
             }
@@ -29,10 +33,10 @@ pub fn build_call_graph(ctx: &Context, functions: &[Function]) -> CallGraph {
 pub fn callee_first_order(cg: &CallGraph) -> Vec<Function> {
     let mut res = Vec::new();
 
-    let mut visited = FxHashSet::<Function>::default();
+    let mut visited = FxIndexSet::<Function>::default();
     fn post_order_visitor(
         cg: &CallGraph,
-        visited: &mut FxHashSet<Function>,
+        visited: &mut FxIndexSet<Function>,
         res: &mut Vec<Function>,
         node: Function,
     ) {

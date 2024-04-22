@@ -4,11 +4,20 @@ use forc_pkg::source::IPFSNode;
 use forc_util::{forc_result_bail, ForcResult};
 use sway_core::{BuildTarget, Engines};
 
+forc_util::cli_examples! {
+    crate::cli::Opt {
+        [ Check the current project => "forc check" ]
+        [ Check the current project with a different path => "forc check --path <PATH>" ]
+        [ Check the current project without updating dependencies => "forc check --locked" ]
+    }
+}
+
 /// Check the current or target project and all of its dependencies for errors.
 ///
 /// This will essentially compile the packages without performing the final step of code generation,
 /// which is faster than running forc build.
 #[derive(Debug, Default, Parser)]
+#[clap(bin_name = "forc check", version, after_help = help())]
 pub struct Command {
     /// Build target to use for code generation.
     #[clap(value_enum, default_value_t=BuildTarget::default(), alias="target")]
@@ -35,6 +44,10 @@ pub struct Command {
     /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
+
+    /// Set of experimental flags
+    #[clap(long)]
+    pub experimental_new_encoding: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

@@ -1,13 +1,13 @@
 [[package]]
-name = 'abort_control_flow_good'
-source = 'member'
-dependencies = ['std']
+name = "core"
+source = "path+from-root-BA34DF212BA52818"
 
 [[package]]
-name = 'core'
-source = 'path+from-root-CB060A17C0778A7E'
+name = "match_expressions_with_self"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'std'
-source = 'path+from-root-CB060A17C0778A7E'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-BA34DF212BA52818"
+dependencies = ["core"]

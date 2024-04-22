@@ -1,0 +1,85 @@
+category = "fail"
+
+#check: $()error
+#check: $()let _: MyOption = Option::Some(123);
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyOption
+#nextln: $()found:    Option<numeric>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: MyOption = Option::None;
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyOption
+#nextln: $()found:    Option<T>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: MyOtherOption = Option::Some(123);
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyOtherOption
+#nextln: $()found:    Option<numeric>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: MyOtherOption = Option::None;
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyOtherOption
+#nextln: $()found:    Option<T>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let o: OptionAlias<u8> = Option::Some(123u64);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let o: Option<u8> = OptionAlias::Some(123u64);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: Option<u8> = Option::Some(123u64);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: Option<u8> = Option::Some::<bool>(true);
+#nextln: $()Mismatched types.
+#nextln: $()expected: Option<u8>
+#nextln: $()found:    Option<bool>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: Option<u8> = Option::Some::<bool>("not bool");
+#nextln: $()Mismatched types.
+#nextln: $()expected: bool
+#nextln: $()found:    str.
+#nextln: $()Enum instantiator must match its declared variant type.
+
+#not: $()GenericEnum::A(x) => x == 123u64, // No error here.
+
+#check: $()error
+#check: $()let o: GenericEnum<_, bool> = GenericEnum::<u8, _>::A(123u64);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+
+#check: $()error
+#check: $()et o: GenericEnum<u8, bool> = GenericEnum::<u8, u32>::A(123u8);
+#nextln: $()Mismatched types.
+#nextln: $()expected: GenericEnum<u8, bool>
+#nextln: $()found:    GenericEnum<u8, u32>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#not: $()GenericEnum::B(x) => x == 123u32, // No error here.
+
+#check: $()error
+#check: $()let o: GenericEnum<_, _> = GenericEnum::A(123); // ERROR: Cannot infer "B".
+#nextln: $()Cannot infer type for type parameter "B". Insufficient type information provided. Try annotating its type.

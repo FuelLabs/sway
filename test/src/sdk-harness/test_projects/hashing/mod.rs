@@ -9,7 +9,7 @@ use sha3::Keccak256;
 
 abigen!(Contract(
     name = "HashingTestContract",
-    abi = "test_projects/hashing/out/debug/hashing-abi.json"
+    abi = "test_projects/hashing/out/release/hashing-abi.json"
 ));
 
 enum Hash {
@@ -143,14 +143,14 @@ fn hash_struct(arr: [u8; 55], algorithm: Hash) -> [u8; 32] {
 }
 
 async fn get_hashing_instance() -> (HashingTestContract<WalletUnlocked>, ContractId) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id = Contract::load_from(
-        "test_projects/hashing/out/debug/hashing.bin",
+        "test_projects/hashing/out/release/hashing.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = HashingTestContract::new(id.clone(), wallet);

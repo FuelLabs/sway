@@ -28,7 +28,7 @@ ___
 __size_of_str_array<T>() -> u64
 ```
 
-**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of "string arrays" where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
+**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of "string arrays" where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a "string array" `0` is returned.
 
 **Constraints:** None.
 
@@ -80,7 +80,7 @@ __eq<T>(lhs: T, rhs: T) -> bool
 
 **Description:** Returns whether `lhs` and `rhs` are equal.
 
-**Constraints:** `T` is `bool`, `u8`, `u16`, `u32`, `u64`, or `raw_ptr`.
+**Constraints:** `T` is `bool`, `u8`, `u16`, `u32`, `u64`, `u256`, `b256` or `raw_ptr`.
 
 ___
 
@@ -90,7 +90,7 @@ __gt<T>(lhs: T, rhs: T) -> bool
 
 **Description:** Returns whether `lhs` is greater than `rhs`.
 
-**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -99,14 +99,14 @@ __lt<T>(lhs: T, rhs: T) -> bool
 
 **Description:** Returns whether `lhs` is less than `rhs`.
 
-**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
 __gtf<T>(index: u64, tx_field_id: u64) -> T
 ```
 
-**Description:** Returns transaction field with ID `tx_field_id` at index `index`, if applicable. This is a wrapper around FuelVM's [`gtf` instruction](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gtf-get-transaction-fields). The resuting field is cast to `T`.
+**Description:** Returns transaction field with ID `tx_field_id` at index `index`, if applicable. This is a wrapper around FuelVM's [`gtf` instruction](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gtf-get-transaction-fields). The resulting field is cast to `T`.
 
 **Constraints:** None.
 
@@ -178,7 +178,7 @@ __add<T>(lhs: T, rhs: T) -> T
 
 **Description:** Adds `lhs` and `rhs` and returns the result.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -188,7 +188,7 @@ __sub<T>(lhs: T, rhs: T) -> T
 
 **Description:** Subtracts `rhs` from `lhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -198,7 +198,7 @@ __mul<T>(lhs: T, rhs: T) -> T
 
 **Description:** Multiplies `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -208,7 +208,7 @@ __div<T>(lhs: T, rhs: T) -> T
 
 **Description:** Divides `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 
 ___
 
@@ -218,7 +218,7 @@ __and<T>(lhs: T, rhs: T) -> T
 
 **Description:** Bitwise AND `lhs` and `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 
 ___
 
@@ -228,7 +228,7 @@ __or<T>(lhs: T, rhs: T) -> T
 
 **Description:** Bitwise OR `lhs` and `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 
 ___
 
@@ -238,7 +238,7 @@ __xor<T>(lhs: T, rhs: T) -> T
 
 **Description:** Bitwise XOR `lhs` and `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -247,7 +247,7 @@ __mod<T>(lhs: T, rhs: T) -> T
 
 **Description:** Modulo of `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`.
 ___
 
 ```sway
@@ -256,7 +256,7 @@ __rsh<T>(lhs: T, rhs: u64) -> T
 
 **Description:** Logical right shift of `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -265,7 +265,7 @@ __lsh<T>(lhs: T, rhs: u64) -> T
 
 **Description:** Logical left shift of `lhs` by `rhs`.
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
 ___
 
 ```sway
@@ -314,5 +314,14 @@ __not(op: T) -> T
 
 **Description:** Bitwise NOT of `op`
 
-**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+**Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
+
 ___
+
+```sway
+__jmp_mem()
+```
+
+**Description:** Jumps to `MEM[$hp]`.
+
+**Constraints:** None.

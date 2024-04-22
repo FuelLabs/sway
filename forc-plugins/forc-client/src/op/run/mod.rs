@@ -2,7 +2,7 @@ mod encode;
 use crate::{
     cmd,
     util::{
-        gas::{get_gas_limit, get_gas_price},
+        gas::get_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -14,7 +14,8 @@ use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
-use pkg::BuiltPackage;
+use fuels_accounts::provider::Provider;
+use pkg::{manifest::build_profile::ExperimentalFlags, BuiltPackage};
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
@@ -69,7 +70,6 @@ pub async fn run_pkg(
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
-    let client = FuelClient::new(node_url.clone())?;
 
     let script_data = match (&command.data, &command.args) {
         (None, Some(args)) => {
@@ -108,18 +108,31 @@ pub async fn run_pkg(
         WalletSelectionMode::ForcWallet
     };
 
-    let tx = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data)
-        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
-        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
-        .maturity(command.maturity.maturity.into())
-        .add_contracts(contract_ids)
+    let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
+    tb.maturity(command.maturity.maturity.into())
+        .add_contracts(contract_ids);
+
+    let provider = Provider::connect(node_url.clone()).await?;
+
+    let script_gas_limit = if compiled.bytecode.bytes.is_empty() {
+        0
+    } else if let Some(script_gas_limit) = command.gas.script_gas_limit {
+        script_gas_limit
+    // Dry run tx and get `gas_used`
+    } else {
+        get_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
+    };
+    tb.script_gas_limit(script_gas_limit);
+
+    let tx = tb
         .finalize_signed(
-            client.clone(),
+            Provider::connect(node_url.clone()).await?,
             command.default_signer,
             command.signing_key,
             wallet_mode,
         )
         .await?;
+
     if command.dry_run {
         info!("{:?}", tx);
         Ok(RanScript { receipts: vec![] })
@@ -160,27 +173,36 @@ async fn send_tx(
     pretty_print: bool,
     simulate: bool,
 ) -> Result<Vec<fuel_tx::Receipt>> {
-    use fuels_accounts::provider::ClientExt;
     let outputs = {
         if !simulate {
-            let (_, receipts) = client.submit_and_await_commit_with_receipts(tx).await?;
-            if let Some(receipts) = receipts {
-                Ok(receipts)
-            } else {
-                bail!("The `receipts` during `send_tx` is empty")
+            let status = client.submit_and_await_commit(tx).await?;
+
+            match status {
+                fuel_core_client::client::types::TransactionStatus::Success {
+                    receipts, ..
+                } => receipts,
+                fuel_core_client::client::types::TransactionStatus::Failure {
+                    receipts, ..
+                } => receipts,
+                _ => vec![],
             }
         } else {
-            client.dry_run(tx).await
+            let txs = vec![tx.clone()];
+            let receipts = client.dry_run(txs.as_slice()).await?;
+            let receipts = receipts
+                .first()
+                .map(|tx| &tx.result)
+                .map(|res| res.receipts());
+            match receipts {
+                Some(receipts) => receipts.to_vec(),
+                None => vec![],
+            }
         }
     };
-
-    match outputs {
-        Ok(logs) => {
-            info!("{}", format_log_receipts(&logs, pretty_print)?);
-            Ok(logs)
-        }
-        Err(e) => bail!("{e}"),
+    if !outputs.is_empty() {
+        info!("{}", format_log_receipts(&outputs, pretty_print)?);
     }
+    Ok(outputs)
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
@@ -217,5 +239,8 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         debug_outfile: cmd.build_output.debug_file.clone(),
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
+        experimental: ExperimentalFlags {
+            new_encoding: cmd.experimental_new_encoding,
+        },
     }
 }

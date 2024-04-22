@@ -2,17 +2,17 @@ use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "GenericsInAbiTestContract",
-    abi = "test_projects/generics_in_abi/out/debug/generics_in_abi-abi.json"
+    abi = "test_projects/generics_in_abi/out/release/generics_in_abi-abi.json"
 ));
 
 async fn get_generics_in_abi_instance() -> (GenericsInAbiTestContract<WalletUnlocked>, ContractId) {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/generics_in_abi/out/debug/generics_in_abi.bin",
+        "test_projects/generics_in_abi/out/release/generics_in_abi.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
     let instance = GenericsInAbiTestContract::new(id.clone(), wallet);

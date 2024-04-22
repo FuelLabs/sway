@@ -8,7 +8,7 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbols, AnalysisResults, Context, EscapedSymbols, FuelVmInstruction, Function,
+    get_symbols, memory_utils, AnalysisResults, Context, EscapedSymbols, Function, InstOp,
     Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value,
     ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
@@ -44,159 +44,8 @@ fn can_eliminate_instruction(
     escaped_symbols: &EscapedSymbols,
 ) -> bool {
     let inst = val.get_instruction(context).unwrap();
-    (!inst.is_terminator() && !inst.may_have_side_effect())
+    (!inst.op.is_terminator() && !inst.op.may_have_side_effect())
         || is_removable_store(context, val, num_symbol_uses, escaped_symbols)
-}
-
-fn get_loaded_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    match val.get_instruction(context).unwrap() {
-        Instruction::UnaryOp { .. }
-        | Instruction::BinaryOp { .. }
-        | Instruction::BitCast(_, _)
-        | Instruction::Branch(_)
-        | Instruction::ConditionalBranch { .. }
-        | Instruction::Cmp(_, _, _)
-        | Instruction::Nop
-        | Instruction::CastPtr(_, _)
-        | Instruction::GetLocal(_)
-        | Instruction::GetElemPtr { .. }
-        | Instruction::IntToPtr(_, _) => vec![],
-        Instruction::PtrToInt(src_val_ptr, _) => get_symbols(context, *src_val_ptr).to_vec(),
-        Instruction::ContractCall {
-            params,
-            coins,
-            asset_id,
-            ..
-        } => [*params, *coins, *asset_id]
-            .iter()
-            .flat_map(|val| get_symbols(context, *val).to_vec())
-            .collect(),
-        Instruction::Call(_, args) => args
-            .iter()
-            .flat_map(|val| get_symbols(context, *val).to_vec())
-            .collect(),
-        Instruction::AsmBlock(_, args) => args
-            .iter()
-            .filter_map(|val| {
-                val.initializer
-                    .map(|val| get_symbols(context, val).to_vec())
-            })
-            .flatten()
-            .collect(),
-        Instruction::MemCopyBytes { src_val_ptr, .. }
-        | Instruction::MemCopyVal { src_val_ptr, .. }
-        | Instruction::Ret(src_val_ptr, _)
-        | Instruction::Load(src_val_ptr)
-        | Instruction::FuelVm(FuelVmInstruction::Log {
-            log_val: src_val_ptr,
-            ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(src_val_ptr))
-        | Instruction::FuelVm(FuelVmInstruction::StateStoreWord {
-            key: src_val_ptr, ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord {
-            key: src_val_ptr, ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::StateClear {
-            key: src_val_ptr, ..
-        }) => get_symbols(context, *src_val_ptr).to_vec(),
-        Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord {
-            stored_val: memopd1,
-            key: memopd2,
-            ..
-        })
-        | Instruction::FuelVm(FuelVmInstruction::Smo {
-            recipient: memopd1,
-            message: memopd2,
-            ..
-        }) => get_symbols(context, *memopd1)
-            .iter()
-            .cloned()
-            .chain(get_symbols(context, *memopd2).iter().cloned())
-            .collect(),
-        Instruction::Store { dst_val_ptr: _, .. } => vec![],
-        Instruction::FuelVm(FuelVmInstruction::Gtf { .. })
-        | Instruction::FuelVm(FuelVmInstruction::ReadRegister(_))
-        | Instruction::FuelVm(FuelVmInstruction::Revert(_)) => vec![],
-        Instruction::FuelVm(FuelVmInstruction::WideUnaryOp { arg, .. }) => {
-            get_symbols(context, *arg).to_vec()
-        }
-        Instruction::FuelVm(FuelVmInstruction::WideBinaryOp { arg1, arg2, .. })
-        | Instruction::FuelVm(FuelVmInstruction::WideCmpOp { arg1, arg2, .. }) => {
-            get_symbols(context, *arg1)
-                .iter()
-                .cloned()
-                .chain(get_symbols(context, *arg2).iter().cloned())
-                .collect()
-        }
-        Instruction::FuelVm(FuelVmInstruction::WideModularOp {
-            arg1, arg2, arg3, ..
-        }) => get_symbols(context, *arg1)
-            .iter()
-            .cloned()
-            .chain(get_symbols(context, *arg2).iter().cloned())
-            .chain(get_symbols(context, *arg3).iter().cloned())
-            .collect(),
-    }
-}
-
-fn get_stored_symbols(context: &Context, val: Value) -> Vec<Symbol> {
-    match val.get_instruction(context).unwrap() {
-        Instruction::UnaryOp { .. }
-        | Instruction::BinaryOp { .. }
-        | Instruction::BitCast(_, _)
-        | Instruction::Branch(_)
-        | Instruction::ConditionalBranch { .. }
-        | Instruction::Cmp(_, _, _)
-        | Instruction::Nop
-        | Instruction::PtrToInt(_, _)
-        | Instruction::Ret(_, _)
-        | Instruction::CastPtr(_, _)
-        | Instruction::GetLocal(_)
-        | Instruction::GetElemPtr { .. }
-        | Instruction::IntToPtr(_, _) => vec![],
-        Instruction::ContractCall { params, .. } => get_symbols(context, *params),
-        Instruction::Call(_, args) => args
-            .iter()
-            .flat_map(|val| get_symbols(context, *val).to_vec())
-            .collect(),
-        Instruction::AsmBlock(_, args) => args
-            .iter()
-            .filter_map(|val| {
-                val.initializer
-                    .map(|val| get_symbols(context, val).to_vec())
-            })
-            .flatten()
-            .collect(),
-        Instruction::MemCopyBytes { dst_val_ptr, .. }
-        | Instruction::MemCopyVal { dst_val_ptr, .. }
-        | Instruction::Store { dst_val_ptr, .. } => get_symbols(context, *dst_val_ptr).to_vec(),
-        Instruction::Load(_) => vec![],
-        Instruction::FuelVm(vmop) => match vmop {
-            FuelVmInstruction::Gtf { .. }
-            | FuelVmInstruction::Log { .. }
-            | FuelVmInstruction::ReadRegister(_)
-            | FuelVmInstruction::Revert(_)
-            | FuelVmInstruction::Smo { .. }
-            | FuelVmInstruction::StateClear { .. } => vec![],
-            FuelVmInstruction::StateLoadQuadWord { load_val, .. } => {
-                get_symbols(context, *load_val).to_vec()
-            }
-            FuelVmInstruction::StateLoadWord(_) | FuelVmInstruction::StateStoreWord { .. } => {
-                vec![]
-            }
-            FuelVmInstruction::StateStoreQuadWord { stored_val: _, .. } => vec![],
-            FuelVmInstruction::WideUnaryOp { result, .. } => get_symbols(context, *result).to_vec(),
-            FuelVmInstruction::WideBinaryOp { result, .. } => {
-                get_symbols(context, *result).to_vec()
-            }
-            FuelVmInstruction::WideModularOp { result, .. } => {
-                get_symbols(context, *result).to_vec()
-            }
-            FuelVmInstruction::WideCmpOp { .. } => vec![],
-        },
-    }
 }
 
 fn is_removable_store(
@@ -205,11 +54,11 @@ fn is_removable_store(
     num_symbol_uses: &HashMap<Symbol, u32>,
     escaped_symbols: &EscapedSymbols,
 ) -> bool {
-    match val.get_instruction(context).unwrap() {
-        Instruction::MemCopyBytes { dst_val_ptr, .. }
-        | Instruction::MemCopyVal { dst_val_ptr, .. }
-        | Instruction::Store { dst_val_ptr, .. } => {
-            let syms = get_symbols(context, *dst_val_ptr);
+    match val.get_instruction(context).unwrap().op {
+        InstOp::MemCopyBytes { dst_val_ptr, .. }
+        | InstOp::MemCopyVal { dst_val_ptr, .. }
+        | InstOp::Store { dst_val_ptr, .. } => {
+            let syms = get_symbols(context, dst_val_ptr);
             syms.iter().all(|sym| {
                 !escaped_symbols.contains(sym)
                     && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
@@ -247,14 +96,14 @@ pub fn dce(
 
     // Go through each instruction and update use_count.
     for (_block, inst) in function.instruction_iter(context) {
-        for sym in get_loaded_symbols(context, inst) {
+        for sym in memory_utils::get_loaded_symbols(context, inst) {
             num_symbol_uses
                 .entry(sym)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
 
-        for stored_sym in get_stored_symbols(context, inst) {
+        for stored_sym in memory_utils::get_stored_symbols(context, inst) {
             stores_of_sym
                 .entry(stored_sym)
                 .and_modify(|stores| stores.push(inst))
@@ -262,13 +111,13 @@ pub fn dce(
         }
 
         let inst = inst.get_instruction(context).unwrap();
-        if let Instruction::GetLocal(local) = inst {
+        if let InstOp::GetLocal(local) = inst.op {
             num_local_uses
-                .entry(*local)
+                .entry(local)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
-        let opds = inst.get_operands();
+        let opds = inst.op.get_operands();
         for v in opds {
             match context.values[v.0].value {
                 ValueDatum::Instruction(_) => {
@@ -301,7 +150,7 @@ pub fn dce(
             continue;
         }
         // Process dead's operands.
-        let opds = dead.get_instruction(context).unwrap().get_operands();
+        let opds = dead.get_instruction(context).unwrap().op.get_operands();
         for v in opds {
             // Reduce the use count of v. If it reaches 0, add it to the worklist.
             match context.values[v.0].value {
@@ -316,7 +165,7 @@ pub fn dce(
                 }
             }
         }
-        for sym in get_loaded_symbols(context, dead) {
+        for sym in memory_utils::get_loaded_symbols(context, dead) {
             let nu = num_symbol_uses.get_mut(&sym).unwrap();
             *nu -= 1;
             if *nu == 0 {
@@ -327,7 +176,10 @@ pub fn dce(
         }
         cemetery.insert(dead);
 
-        if let ValueDatum::Instruction(Instruction::GetLocal(local)) = context.values[dead.0].value
+        if let ValueDatum::Instruction(Instruction {
+            op: InstOp::GetLocal(local),
+            ..
+        }) = context.values[dead.0].value
         {
             let count = num_local_uses.get_mut(&local).unwrap();
             *count -= 1;
@@ -366,7 +218,7 @@ pub fn func_dce(
 ) -> Result<bool, IrError> {
     let entry_fns = module
         .function_iter(context)
-        .filter(|func| func.is_entry(context))
+        .filter(|func| func.is_entry(context) || func.is_fallback(context))
         .collect::<Vec<_>>();
     // Recursively find all the functions called by an entry function.
     fn grow_called_function_set(
@@ -381,8 +233,8 @@ pub fn func_dce(
                 .filter_map(|(_block, ins_value)| {
                     ins_value
                         .get_instruction(context)
-                        .and_then(|ins| match ins {
-                            Instruction::Call(f, _args) => Some(f),
+                        .and_then(|ins| match &ins.op {
+                            InstOp::Call(f, _args) => Some(f),
                             _otherwise => None,
                         })
                 })

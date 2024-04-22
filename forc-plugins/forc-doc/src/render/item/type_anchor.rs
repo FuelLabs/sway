@@ -1,3 +1,4 @@
+//! Creation of HTML anchors for types that can be linked.
 use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};
@@ -22,7 +23,7 @@ pub(crate) fn render_type_anchor(
     match type_info {
         TypeInfo::Array(ty_arg, len) => {
             let inner = render_type_anchor(
-                render_plan.engines.te().get(ty_arg.type_id),
+                (*render_plan.engines.te().get(ty_arg.type_id)).clone(),
                 render_plan,
                 current_module_info,
             )?;
@@ -36,7 +37,7 @@ pub(crate) fn render_type_anchor(
             let mut rendered_args: Vec<_> = Vec::new();
             for ty_arg in ty_args {
                 rendered_args.push(render_type_anchor(
-                    render_plan.engines.te().get(ty_arg.type_id),
+                    (*render_plan.engines.te().get(ty_arg.type_id)).clone(),
                     render_plan,
                     current_module_info,
                 )?)
@@ -56,9 +57,10 @@ pub(crate) fn render_type_anchor(
                     : decl_ref.name().clone().as_str();
                 })
             } else {
-                let module_info = ModuleInfo::from_call_path(enum_decl.call_path);
+                let module_info = ModuleInfo::from_call_path(&enum_decl.call_path);
                 let file_name = format!("enum.{}.html", decl_ref.name().clone().as_str());
-                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                let href =
+                    module_info.file_path_from_location(&file_name, current_module_info, false)?;
                 Ok(box_html! {
                     a(class="enum", href=href) {
                         : decl_ref.name().clone().as_str();
@@ -73,9 +75,10 @@ pub(crate) fn render_type_anchor(
                     : decl_ref.name().clone().as_str();
                 })
             } else {
-                let module_info = ModuleInfo::from_call_path(struct_decl.call_path);
+                let module_info = ModuleInfo::from_call_path(&struct_decl.call_path);
                 let file_name = format!("struct.{}.html", decl_ref.name().clone().as_str());
-                let href = module_info.file_path_from_location(&file_name, current_module_info)?;
+                let href =
+                    module_info.file_path_from_location(&file_name, current_module_info, false)?;
                 Ok(box_html! {
                     a(class="struct", href=href) {
                         : decl_ref.name().clone().as_str();
@@ -115,11 +118,11 @@ pub(crate) fn render_type_anchor(
                 Err(anyhow!("Deferred AbiName is unhandled"))
             }
         }
-        TypeInfo::Custom { call_path, .. } => Ok(box_html! {
-            : call_path.suffix.as_str();
-        }),
-        TypeInfo::SelfType => Ok(box_html! {
-            : "Self";
+        TypeInfo::Custom {
+            qualified_call_path,
+            ..
+        } => Ok(box_html! {
+            : qualified_call_path.call_path.suffix.as_str();
         }),
         TypeInfo::B256 => Ok(box_html! {
             : "b256";

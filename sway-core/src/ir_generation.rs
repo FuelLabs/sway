@@ -13,12 +13,13 @@ use sway_types::span::Span;
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
 
-use crate::{language::ty, Engines};
+use crate::{language::ty, Engines, ExperimentalFlags};
 
 pub fn compile_program<'eng>(
     program: &ty::TyProgram,
     include_tests: bool,
     engines: &'eng Engines,
+    experimental: ExperimentalFlags,
 ) -> Result<Context<'eng>, Vec<CompileError>> {
     let declaration_engine = engines.de();
 
@@ -46,7 +47,12 @@ pub fn compile_program<'eng>(
         .map(|(message_id, type_id)| (*type_id, *message_id))
         .collect();
 
-    let mut ctx = Context::new(engines.se());
+    let mut ctx = Context::new(
+        engines.se(),
+        sway_ir::ExperimentalFlags {
+            new_encoding: experimental.new_encoding,
+        },
+    );
     ctx.program_kind = match kind {
         ty::TyProgramKind::Script { .. } => Kind::Script,
         ty::TyProgramKind::Predicate { .. } => Kind::Predicate,
@@ -57,30 +63,34 @@ pub fn compile_program<'eng>(
     match kind {
         // predicates and scripts have the same codegen, their only difference is static
         // type-check time checks.
-        ty::TyProgramKind::Script { main_function } => compile::compile_script(
+        ty::TyProgramKind::Script { entry_function, .. } => compile::compile_script(
             engines,
             &mut ctx,
-            main_function,
-            &root.namespace,
+            entry_function,
+            root.namespace.module(engines),
             declarations,
             &logged_types,
             &messages_types,
             &test_fns,
         ),
-        ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
+        ty::TyProgramKind::Predicate { entry_function, .. } => compile::compile_predicate(
             engines,
             &mut ctx,
-            main_function,
-            &root.namespace,
+            entry_function,
+            root.namespace.module(engines),
             declarations,
             &logged_types,
             &messages_types,
             &test_fns,
         ),
-        ty::TyProgramKind::Contract { abi_entries } => compile::compile_contract(
-            &mut ctx,
+        ty::TyProgramKind::Contract {
+            entry_function,
             abi_entries,
-            &root.namespace,
+        } => compile::compile_contract(
+            &mut ctx,
+            entry_function.as_ref(),
+            abi_entries,
+            root.namespace.module(engines),
             declarations,
             &logged_types,
             &messages_types,
@@ -90,7 +100,7 @@ pub fn compile_program<'eng>(
         ty::TyProgramKind::Library { .. } => compile::compile_library(
             engines,
             &mut ctx,
-            &root.namespace,
+            root.namespace.module(engines),
             declarations,
             &logged_types,
             &messages_types,

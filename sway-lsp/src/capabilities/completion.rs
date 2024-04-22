@@ -30,14 +30,14 @@ fn completion_items_for_type_id(
 ) -> Vec<CompletionItem> {
     let mut completion_items = vec![];
     let type_info = engines.te().get(type_id);
-    if let TypeInfo::Struct(decl_ref) = type_info {
+    if let TypeInfo::Struct(decl_ref) = &*type_info {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
-        for field in struct_decl.fields {
+        for field in struct_decl.fields.iter() {
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::FIELD),
                 label: field.name.as_str().to_string(),
                 label_details: Some(CompletionItemLabelDetails {
-                    description: Some(field.type_argument.span.str()),
+                    description: Some(field.type_argument.span.clone().str()),
                     detail: None,
                 }),
                 ..Default::default()
@@ -47,8 +47,9 @@ fn completion_items_for_type_id(
     }
 
     for method in namespace.get_methods_for_type(engines, type_id) {
+        let method = method.expect_typed();
         let fn_decl = engines.de().get_function(&method.id().clone());
-        let params = fn_decl.clone().parameters;
+        let params = &fn_decl.parameters;
 
         // Only show methods that take `self` as the first parameter.
         if params.first().map(|p| p.is_self()).unwrap_or(false) {
@@ -151,25 +152,26 @@ fn type_id_of_raw_ident(
             let method_name = parts[i].split_at(parts[i].find('(').unwrap_or(0)).0;
             curr_type_id = namespace
                 .get_methods_for_type(engines, curr_type_id?)
-                .iter()
-                .find_map(|decl_ref| {
-                    if decl_ref.name().clone().as_str() == method_name {
+                .into_iter()
+                .find_map(|method| {
+                    let method = method.expect_typed();
+                    if method.name().clone().as_str() == method_name {
                         return Some(
                             engines
                                 .de()
-                                .get_function(&decl_ref.id().clone())
+                                .get_function(&method.id().clone())
                                 .return_type
                                 .type_id,
                         );
                     }
                     None
                 });
-        } else if let TypeInfo::Struct(decl_ref) = engines.te().get(curr_type_id.unwrap()) {
+        } else if let TypeInfo::Struct(decl_ref) = &*engines.te().get(curr_type_id.unwrap()) {
             let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
             curr_type_id = struct_decl
                 .fields
                 .iter()
-                .find(|field| field.name.to_string() == parts[i])
+                .find(|field| field.name.as_str() == parts[i])
                 .map(|field| field.type_argument.type_id);
         }
         i += 1;

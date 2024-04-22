@@ -1,11 +1,15 @@
+use std::sync::Arc;
+
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Span;
 
 use crate::{
     decl_engine::{DeclEngine, DeclRef, DeclRefFunction},
-    language::ty::*,
     language::ModName,
+    language::{ty::*, HasModule, HasSubmodules},
     semantic_analysis::namespace,
-    transform,
+    transform::{self, AllowDeprecatedState},
+    Engines,
 };
 
 #[derive(Clone, Debug)]
@@ -47,7 +51,7 @@ impl TyModule {
     pub fn test_fns<'a: 'b, 'b>(
         &'b self,
         decl_engine: &'a DeclEngine,
-    ) -> impl '_ + Iterator<Item = (TyFunctionDecl, DeclRefFunction)> {
+    ) -> impl '_ + Iterator<Item = (Arc<TyFunctionDecl>, DeclRefFunction)> {
         self.all_nodes.iter().filter_map(|node| {
             if let TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
                 decl_id,
@@ -65,6 +69,51 @@ impl TyModule {
                 }
             }
             None
+        })
+    }
+
+    /// All contract functions within this module.
+    pub fn contract_fns<'a: 'b, 'b>(
+        &'b self,
+        engines: &'a Engines,
+    ) -> impl '_ + Iterator<Item = DeclRefFunction> {
+        self.all_nodes
+            .iter()
+            .flat_map(move |node| node.contract_fns(engines))
+    }
+
+    pub(crate) fn check_deprecated(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+        allow_deprecated: &mut AllowDeprecatedState,
+    ) {
+        for (_, submodule) in self.submodules.iter() {
+            submodule
+                .module
+                .check_deprecated(engines, handler, allow_deprecated);
+        }
+
+        for node in self.all_nodes.iter() {
+            node.check_deprecated(engines, handler, allow_deprecated);
+        }
+    }
+
+    pub(crate) fn check_recursive(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for (_, submodule) in self.submodules.iter() {
+                let _ = submodule.module.check_recursive(engines, handler);
+            }
+
+            for node in self.all_nodes.iter() {
+                let _ = node.check_recursive(engines, handler);
+            }
+
+            Ok(())
         })
     }
 }
@@ -89,5 +138,17 @@ impl<'module> Iterator for SubmodulesRecursive<'module> {
                 },
             }
         }
+    }
+}
+
+impl HasModule<TyModule> for TySubmodule {
+    fn module(&self) -> &TyModule {
+        &self.module
+    }
+}
+
+impl HasSubmodules<TySubmodule> for TyModule {
+    fn submodules(&self) -> &[(ModName, TySubmodule)] {
+        &self.submodules
     }
 }

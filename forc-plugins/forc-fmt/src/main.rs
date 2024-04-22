@@ -2,7 +2,11 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_pkg::{manifest::ManifestFile, WorkspaceManifestFile};
+use forc_pkg::{
+    manifest::{GenericManifestFile, ManifestFile},
+    WorkspaceManifestFile,
+};
+use forc_util::fs_locking::PidFileLocking;
 use prettydiff::{basic::DiffOp, diff_lines};
 use std::{
     default::Default,
@@ -14,15 +18,26 @@ use taplo::formatter as taplo_fmt;
 use tracing::{debug, error, info};
 
 use forc_tracing::{init_tracing_subscriber, println_error, println_green, println_red};
-use forc_util::{find_parent_manifest_dir, is_sway_file};
 use sway_core::{BuildConfig, BuildTarget};
-use sway_utils::{constants, get_sway_files};
+use sway_utils::{constants, find_parent_manifest_dir, get_sway_files, is_sway_file};
 use swayfmt::Formatter;
+
+forc_util::cli_examples! {
+    crate::App {
+        [ Run the formatter in check mode on the current directory => "forc fmt --check"]
+        [ Run the formatter in check mode on the current directory with short format => "forc fmt -c"]
+        [ Run formatter against a given file => "forc fmt --file {path}/src/main.sw"]
+        [ Run formatter against a given file with short format => "forc fmt -f {path}/src/main.sw"]
+        [ Run formatter against a given dir => "forc fmt --path {path}"]
+        [ Run formatter against a given dir with short format => "forc fmt -p {path}"]
+    }
+}
 
 #[derive(Debug, Parser)]
 #[clap(
     name = "forc-fmt",
-    about = "Forc plugin for running the Sway code formatter.",
+    about = "Forc plugin for running the Sway code formatter",
+    after_help = help(),
     version
 )]
 pub struct App {
@@ -35,8 +50,10 @@ pub struct App {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
     pub path: Option<String>,
+    #[clap(short, long)]
     /// Formats a single .sw file with the default settings.
-    /// If not specified, current working directory will be formatted using a Forc.toml configuration.
+    /// If not specified, current working directory will be formatted using a Forc.toml
+    /// configuration.
     pub file: Option<String>,
 }
 
@@ -78,7 +95,6 @@ fn run() -> Result<()> {
     };
 
     let manifest_file = forc_pkg::manifest::ManifestFile::from_dir(&dir)?;
-
     match manifest_file {
         ManifestFile::Workspace(ws) => {
             format_workspace_at_dir(&app, &ws, &dir)?;
@@ -87,8 +103,16 @@ fn run() -> Result<()> {
             format_pkg_at_dir(&app, &dir, &mut formatter)?;
         }
     }
-
     Ok(())
+}
+
+/// Checks if the specified file is marked as "dirty".
+/// This is used to prevent formatting files that are currently open in an editor
+/// with unsaved changes.
+///
+/// Returns `true` if a corresponding "dirty" flag file exists, `false` otherwise.
+fn is_file_dirty<X: AsRef<Path>>(path: X) -> bool {
+    PidFileLocking::lsp(path.as_ref()).is_locked()
 }
 
 /// Recursively get a Vec<PathBuf> of subdirectories that contains a Forc.toml.
@@ -126,6 +150,14 @@ fn format_file(
     formatter: &mut Formatter,
 ) -> Result<bool> {
     let file = file.canonicalize()?;
+    if is_file_dirty(&file) {
+        bail!(
+            "The below file is open in an editor and contains unsaved changes.\n       \
+             Please save it before formatting.\n       \
+             {}",
+            file.display()
+        );
+    }
     if let Ok(file_content) = fs::read_to_string(&file) {
         let mut edited = false;
         let file_content: Arc<str> = Arc::from(file_content);
@@ -154,7 +186,11 @@ fn format_file(
                 // TODO: Support formatting for incomplete/invalid sway code.
                 // https://github.com/FuelLabs/sway/issues/5012
                 debug!("{}", err);
-                bail!("Failed to compile: {:?}", file);
+                if let Some(file) = file.to_str() {
+                    bail!("Failed to compile {}\n{}", file, err);
+                } else {
+                    bail!("Failed to compile.\n{}", err);
+                }
             }
         }
     }

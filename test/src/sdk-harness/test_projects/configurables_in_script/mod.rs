@@ -4,11 +4,11 @@ use fuels::{prelude::*, types::SizedAsciiString};
 async fn script_uses_default_configurables() -> Result<()> {
     abigen!(Script(
         name = "MyScript",
-        abi = "test_projects/configurables_in_script/out/debug/configurables_in_script-abi.json"
+        abi = "test_projects/configurables_in_script/out/release/configurables_in_script-abi.json"
     ));
 
-    let wallet = launch_provider_and_get_wallet().await;
-    let bin_path = "test_projects/configurables_in_script/out/debug/configurables_in_script.bin";
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let bin_path = "test_projects/configurables_in_script/out/release/configurables_in_script.bin";
     let instance = MyScript::new(wallet, bin_path);
 
     let response = instance.main().call().await?;
@@ -34,11 +34,11 @@ async fn script_uses_default_configurables() -> Result<()> {
 async fn script_configurables() -> Result<()> {
     abigen!(Script(
         name = "MyScript",
-        abi = "test_projects/configurables_in_script/out/debug/configurables_in_script-abi.json"
+        abi = "test_projects/configurables_in_script/out/release/configurables_in_script-abi.json"
     ));
 
-    let wallet = launch_provider_and_get_wallet().await;
-    let bin_path = "test_projects/configurables_in_script/out/debug/configurables_in_script.bin";
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let bin_path = "test_projects/configurables_in_script/out/release/configurables_in_script.bin";
     let instance = MyScript::new(wallet, bin_path);
 
     let new_str: SizedAsciiString<4> = "FUEL".try_into()?;
@@ -48,10 +48,10 @@ async fn script_configurables() -> Result<()> {
     };
     let new_enum = EnumWithGeneric::VariantTwo;
 
-    let configurables = MyScriptConfigurables::new()
-        .set_STR_4(new_str.clone())
-        .set_STRUCT(new_struct.clone())
-        .set_ENUM(new_enum.clone());
+    let configurables = MyScriptConfigurables::default()
+        .with_STR_4(new_str.clone())?
+        .with_STRUCT(new_struct.clone())?
+        .with_ENUM(new_enum.clone())?;
 
     let response = instance
         .with_configurables(configurables)
@@ -68,7 +68,7 @@ async fn script_configurables() -> Result<()> {
         new_enum,
     );
 
-    assert_eq!(response.value, expected_value);
+    pretty_assertions::assert_eq!(response.value, expected_value);
 
     Ok(())
 }

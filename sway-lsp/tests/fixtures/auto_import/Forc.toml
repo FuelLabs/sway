@@ -1,0 +1,9 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "auto_import"
+implicit-std = false
+
+[dependencies]
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.48.1" }

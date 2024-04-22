@@ -11,11 +11,8 @@ pub mod source;
 
 pub use lock::Lock;
 pub use manifest::{
-    BuildProfile, PackageManifest, PackageManifestFile, WorkspaceManifest, WorkspaceManifestFile,
+    build_profile::BuildProfile, PackageManifest, PackageManifestFile, WorkspaceManifest,
+    WorkspaceManifestFile,
 };
 #[doc(inline)]
 pub use pkg::*;
-
-const CORE: &str = "core";
-const STD: &str = "std";
-const PRELUDE: &str = "prelude";

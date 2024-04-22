@@ -66,6 +66,7 @@ impl Spanned for ItemKind {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct TypeField {
+    pub visibility: Option<PubToken>,
     pub name: Ident,
     pub colon_token: ColonToken,
     pub ty: Ty,
@@ -73,7 +74,12 @@ pub struct TypeField {
 
 impl Spanned for TypeField {
     fn span(&self) -> Span {
-        Span::join(self.name.span(), self.ty.span())
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.name.span(),
+        };
+        let end = self.ty.span();
+        Span::join(start, end)
     }
 }
 
@@ -124,6 +130,26 @@ impl Spanned for FnSignature {
                 Some((_right_arrow, ty)) => ty.span(),
                 None => self.arguments.span(),
             },
+        };
+        Span::join(start, end)
+    }
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct TraitType {
+    pub name: Ident,
+    pub type_token: TypeToken,
+    pub eq_token_opt: Option<EqToken>,
+    pub ty_opt: Option<Ty>,
+    pub semicolon_token: SemicolonToken,
+}
+
+impl Spanned for TraitType {
+    fn span(&self) -> Span {
+        let start = self.type_token.span();
+        let end = match &self.ty_opt {
+            Some(ty_opt) => ty_opt.span(),
+            None => self.name.span(),
         };
         Span::join(start, end)
     }

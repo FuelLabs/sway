@@ -2,10 +2,11 @@
 library;
 
 use ::{alloc::{alloc_bytes, realloc_bytes}, vec::Vec};
-use ::assert::assert;
+use ::assert::{assert, assert_eq};
 use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
-use ::convert::From;
+use ::convert::{From, Into, *};
+use ::clone::Clone;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -47,6 +48,36 @@ impl RawBytes {
         let new_cap = if self.cap == 0 { 1 } else { 2 * self.cap };
         self.ptr = realloc_bytes(self.ptr, self.cap, new_cap);
         self.cap = new_cap;
+    }
+}
+
+impl From<raw_slice> for RawBytes {
+    /// Creates a `RawBytes` from a `raw_slice`.
+    ///
+    /// ### Examples
+    ///
+    /// ```sway
+    /// use std:bytes::RawBytes;
+    ///
+    /// let mut vec = Vec::new();
+    /// let a = 5u8;
+    /// let b = 7u8;
+    /// let c = 9u8
+    ///
+    /// vec.push(a);
+    /// vec.push(b);
+    /// vec.push(c);
+    ///
+    /// let vec_as_raw_slice = vec.as_raw_slice();
+    /// let raw_bytes = RawBytes::from(vec_as_raw_slice);
+    ///
+    /// assert(raw_bytes.capacity == 3);
+    /// ```
+    fn from(slice: raw_slice) -> Self {
+        Self {
+            ptr: slice.ptr(),
+            cap: slice.number_of_bytes(),
+        }
     }
 }
 
@@ -111,7 +142,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::with_capacity(2);
+    ///     let mut bytes = Bytes::with_capacity(2);
     ///     // does not allocate
     ///     bytes.push(5);
     ///     // does not re-allocate
@@ -175,11 +206,11 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
-    /// 
+    ///     let mut bytes = Bytes::new();
+    ///
     ///     let res = bytes.pop();
     ///     assert(res.is_none());
-    /// 
+    ///
     ///     bytes.push(5);
     ///     let res = bytes.pop();
     ///     assert(res.unwrap() == 5);
@@ -214,7 +245,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     bytes.push(5u8);
     ///     bytes.push(10u8);
     ///     bytes.push(15u8);
@@ -252,18 +283,18 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 5u8;
     ///     let b = 7u8;
     ///     let c = 9u8;
     ///     bytes.push(a);
     ///     bytes.push(b);
     ///     bytes.push(c);
-    /// 
+    ///
     ///     let d = 11u8;
-    /// 
+    ///
     ///     bytes.set(1, d);
-    /// 
+    ///
     ///     assert(bytes.len() == 3);
     ///     assert(bytes.get(0).unwrap() == a);
     ///     assert(bytes.get(1).unwrap() == d);
@@ -296,7 +327,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 11u8;
     ///     let b = 11u8;
     ///     let c = 11u8;
@@ -305,7 +336,7 @@ impl Bytes {
     ///     bytes.push(b);
     ///     bytes.push(c);
     ///     bytes.insert(1, d);
-    /// 
+    ///
     ///     assert(bytes.get(0).unwrap() == a);
     ///     assert(bytes.get(1).unwrap() == d);
     ///     assert(bytes.get(2).unwrap() == b);
@@ -316,7 +347,7 @@ impl Bytes {
         assert(index <= self.len);
 
         // If there is insufficient capacity, grow the buffer.
-        if self.len == self.buf.cap {
+        if self.len == self.buf.capacity() {
             self.buf.grow();
         }
 
@@ -362,7 +393,7 @@ impl Bytes {
     /// use std::bytes::Byte;
     ///
     /// fn foo() {
-    ///     let bytes = Byte::new();
+    ///     let mut bytes = Byte::new();
     ///     bytes.push(5);
     ///     bytes.push(10);
     ///     bytes.push(15);
@@ -413,16 +444,16 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     let a = 5u8;
     ///     let b = 7u8;
     ///     let c = 9u8;
     ///     bytes.push(a);
     ///     bytes.push(b);
     ///     bytes.push(c);
-    /// 
+    ///
     ///     bytes.swap(0, 1);
-    /// 
+    ///
     ///     assert(bytes.get(0).unwrap() == b);
     ///     assert(bytes.get(1).unwrap() == a);
     ///     assert(bytes.get(2).unwrap() == c);
@@ -464,7 +495,7 @@ impl Bytes {
     /// }
     /// ```
     pub fn capacity(self) -> u64 {
-        self.buf.cap
+        self.buf.capacity()
     }
 
     /// Gets the length of the `Bytes`.
@@ -479,7 +510,7 @@ impl Bytes {
     /// use std::bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     assert(bytes.len() == 0);
     ///     bytes.push(5);
     ///     assert(bytes.len() == 1);
@@ -502,16 +533,15 @@ impl Bytes {
     /// use std:bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     bytes.push(5);
     ///     bytes.clear()
     ///     assert(bytes.is_empty());
     /// }
     /// ```
     pub fn clear(ref mut self) {
-        self.buf.ptr = alloc_bytes(0);
+        self.buf = RawBytes::new();
         self.len = 0;
-        self.buf.cap = 0;
     }
 
     /// Returns `true` if the type contains no elements.
@@ -526,7 +556,7 @@ impl Bytes {
     /// use std:bytes::Bytes;
     ///
     /// fn foo() {
-    ///     let bytes = Bytes::new();
+    ///     let mut bytes = Bytes::new();
     ///     assert(bytes.is_empty());
     ///     bytes.push(5);
     ///     assert(!bytes.is_empty());
@@ -537,9 +567,29 @@ impl Bytes {
     pub fn is_empty(self) -> bool {
         self.len == 0
     }
+
+    /// Gets the pointer of the allocation.
+    ///
+    /// # Returns
+    ///
+    /// [raw_ptr] - The location in memory that the allocated bytes live.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::bytes::Bytes;
+    ///
+    /// fn foo() {
+    ///     let bytes = Bytes::new();
+    ///     assert(!bytes.ptr().is_null());
+    /// }
+    /// ```
+    pub fn ptr(self) -> raw_ptr {
+        self.buf.ptr()
+    }
 }
 
-// Need to use seperate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
+// Need to use separate impl blocks for now: https://github.com/FuelLabs/sway/issues/1548
 impl Bytes {
     /// Divides one Bytes into two at an index.
     ///
@@ -582,19 +632,27 @@ impl Bytes {
         let left_len = mid;
         let right_len = self.len - mid;
 
-        let mut left_bytes = Self { buf: RawBytes::with_capacity(left_len), len: left_len };
-        let mut right_bytes = Self { buf: RawBytes::with_capacity(right_len), len: right_len };
+        let mut left_bytes = Self {
+            buf: RawBytes::with_capacity(left_len),
+            len: left_len,
+        };
+        let mut right_bytes = Self {
+            buf: RawBytes::with_capacity(right_len),
+            len: right_len,
+        };
 
         if mid > 0 {
-            self.buf.ptr().copy_bytes_to(left_bytes.buf.ptr(), left_len);
+            self.buf.ptr().copy_bytes_to(left_bytes.ptr(), left_len);
         };
         if mid != self.len {
-            self.buf.ptr().add_uint_offset(mid).copy_bytes_to(right_bytes.buf.ptr(), right_len);
+            self.buf
+                .ptr()
+                .add_uint_offset(mid)
+                .copy_bytes_to(right_bytes.ptr(), right_len);
         };
 
         left_bytes.len = left_len;
         right_bytes.len = right_len;
-
         (left_bytes, right_bytes)
     }
 
@@ -616,13 +674,13 @@ impl Bytes {
     ///     bytes.push(7u8);
     ///     bytes.push(9u8);
     ///     assert(bytes.len() == 3);
-    /// 
+    ///
     ///     let mut bytes2 = Bytes::new();
     ///     bytes2.push(5u8);
     ///     bytes2.push(7u8);
     ///     bytes2.push(9u8);
     ///     assert(bytes2.len() == 3);
-    /// 
+    ///
     ///     let first_length = bytes.len();
     ///     let second_length = bytes2.len();
     ///     let first_cap = bytes.capacity();
@@ -633,7 +691,8 @@ impl Bytes {
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {
-        if other.len == 0 {
+        let other_len = other.len();
+        if other_len == 0 {
             return
         };
 
@@ -644,21 +703,22 @@ impl Bytes {
             return;
         };
 
-        let both_len = self.len + other.len;
+        let both_len = self.len + other_len;
         let other_start = self.len;
 
         // reallocate with combined capacity, write `other`, set buffer capacity
-        self.buf.ptr = realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len);
-
-        let mut i = 0;
-        while i < other.len {
-            let new_ptr = self.buf.ptr().add_uint_offset(other_start);
-            new_ptr.add_uint_offset(i).write_byte(other.buf.ptr.add_uint_offset(i).read_byte());
-            i += 1;
+        if self.buf.capacity() < both_len {
+            let new_slice = raw_slice::from_parts::<u8>(
+                realloc_bytes(self.buf.ptr(), self.buf.capacity(), both_len),
+                both_len,
+            );
+            self.buf = RawBytes::from(new_slice);
         }
 
+        let new_ptr = self.buf.ptr().add_uint_offset(other_start);
+        other.ptr().copy_bytes_to(new_ptr, other_len);
+
         // set capacity and length
-        self.buf.cap = both_len;
         self.len = both_len;
 
         // clear `other`
@@ -668,11 +728,11 @@ impl Bytes {
 
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
-        if self.len != other.len {
+        if self.len != other.len() {
             return false;
         }
 
-        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
+        asm(result, r2: self.buf.ptr(), r3: other.ptr(), r4: self.len) {
             meq result r2 r3 r4;
             result: bool
         }
@@ -682,7 +742,9 @@ impl core::ops::Eq for Bytes {
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
+        asm(ptr: (self.buf.ptr(), self.len)) {
+            ptr: raw_slice
+        }
     }
 }
 
@@ -693,19 +755,21 @@ impl From<b256> for Bytes {
         let mut bytes = Self::with_capacity(32);
         bytes.len = 32;
         // Copy bytes from contract_id into the buffer of the target bytes
-        __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
+        __addr_of(b).copy_bytes_to(bytes.buf.ptr(), 32);
 
         bytes
     }
+}
 
+impl From<Bytes> for b256 {
     // NOTE: this cas be lossy! Added here as the From trait currently requires it,
     // but the conversion from `Bytes` ->`b256` should be implemented as
     // `impl TryFrom<Bytes> for b256` when the `TryFrom` trait lands:
     // https://github.com/FuelLabs/sway/pull/3881
-    fn into(self) -> b256 {
+    fn from(bytes: Bytes) -> b256 {
         let mut value = 0x0000000000000000000000000000000000000000000000000000000000000000;
         let ptr = __addr_of(value);
-        self.buf.ptr().copy_to::<b256>(ptr, 1);
+        bytes.buf.ptr().copy_to::<b256>(ptr, 1);
 
         value
     }
@@ -727,7 +791,7 @@ impl From<raw_slice> for Bytes {
     /// vec.push(a);
     /// vec.push(b);
     /// vec.push(c);
-    /// 
+    ///
     /// let vec_as_raw_slice = vec.as_raw_slice();
     /// let bytes = Bytes::from(vec_as_raw_slice);
     ///
@@ -737,16 +801,14 @@ impl From<raw_slice> for Bytes {
     /// assert(bytes.get(2).unwrap() == c);
     /// ```
     fn from(slice: raw_slice) -> Self {
-        let number_of_bytes = slice.number_of_bytes();
         Self {
-            buf: RawBytes {
-                ptr: slice.ptr(),
-                cap: number_of_bytes,
-            },
-            len: number_of_bytes,
+            buf: RawBytes::from(slice),
+            len: slice.number_of_bytes(),
         }
     }
+}
 
+impl From<Bytes> for raw_slice {
     /// Creates a `raw_slice` from a `Bytes`.
     ///
     /// ### Examples
@@ -768,8 +830,10 @@ impl From<raw_slice> for Bytes {
     ///
     /// assert(slice.number_of_bytes() == 3);
     /// ```
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) { ptr: raw_slice }
+    fn from(bytes: Bytes) -> raw_slice {
+        asm(ptr: (bytes.buf.ptr(), bytes.len)) {
+            ptr: raw_slice
+        }
     }
 }
 
@@ -806,7 +870,9 @@ impl From<Vec<u8>> for Bytes {
         };
         bytes
     }
+}
 
+impl From<Bytes> for Vec<u8> {
     /// Creates a `Vec<u8>` from a `Bytes`.
     ///
     /// ### Examples
@@ -831,14 +897,51 @@ impl From<Vec<u8>> for Bytes {
     /// assert(vec.get(1).unwrap() == b);
     /// assert(vec.get(2).unwrap() == c);
     /// ```
-    fn into(self) -> Vec<u8> {
-        let mut vec = Vec::with_capacity(self.len);
+    fn from(bytes: Bytes) -> Vec<u8> {
+        let mut vec = Vec::with_capacity(bytes.len);
         let mut i = 0;
-        while i < self.len {
-            vec.push(self.get(i).unwrap());
+        while i < bytes.len {
+            vec.push(bytes.get(i).unwrap());
             i += 1;
         };
         vec
+    }
+}
+
+impl Clone for Bytes {
+    fn clone(self) -> Self {
+        let len = self.len();
+        let mut c = Self::with_capacity(len);
+        c.len = len;
+        self.ptr().copy_bytes_to(c.ptr(), len);
+        c
+    }
+}
+
+impl AbiEncode for Bytes {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push_u64(self.len);
+
+        let mut i = 0;
+        while i < self.len {
+            let item = self.get(i).unwrap();
+            item.abi_encode(buffer);
+            i += 1;
+        }
+    }
+}
+
+impl AbiDecode for Bytes {
+    fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
+        let len = u64::abi_decode(buffer);
+        let data = buffer.read_bytes(len);
+        Bytes {
+            buf: RawBytes {
+                ptr: data.ptr(),
+                cap: len,
+            },
+            len,
+        }
     }
 }
 
@@ -860,6 +963,7 @@ fn test_new_bytes() {
     let bytes = Bytes::new();
     assert(bytes.len() == 0);
 }
+
 #[test()]
 fn test_push() {
     let (_, a, b, c) = setup();
@@ -871,6 +975,7 @@ fn test_push() {
     bytes.push(c);
     assert(bytes.len() == 3);
 }
+
 #[test()]
 fn test_pop() {
     let (mut bytes, a, b, c) = setup();
@@ -910,11 +1015,13 @@ fn test_pop() {
     assert(bytes.pop().is_none() == true);
     assert(bytes.len() == 0);
 }
+
 #[test()]
 fn test_len() {
     let (mut bytes, _, _, _) = setup();
     assert(bytes.len() == 3);
 }
+
 #[test()]
 fn test_clear() {
     let (mut bytes, _, _, _) = setup();
@@ -924,6 +1031,7 @@ fn test_clear() {
 
     assert(bytes.len() == 0);
 }
+
 #[test()]
 fn test_packing() {
     let mut bytes = Bytes::new();
@@ -1194,7 +1302,6 @@ fn test_append_to_empty_bytes() {
 
     assert(bytes2.len() == 0);
     assert(bytes2.capacity() == 0);
-
 }
 
 #[test()]
@@ -1225,7 +1332,9 @@ fn test_eq() {
 #[test()]
 fn test_as_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) {
+        ptr: raw_slice
+    };
     let mut bytes = Bytes::from(slice_1);
     let slice_2 = bytes.as_raw_slice();
     assert(slice_1.ptr() == slice_2.ptr());
@@ -1236,7 +1345,9 @@ fn test_as_raw_slice() {
 #[test()]
 fn test_from_raw_slice() {
     let val = 0x3497297632836282349729763283628234972976328362823497297632836282;
-    let slice_1 = asm(ptr: (__addr_of(val), 32)) { ptr: raw_slice };
+    let slice_1 = asm(ptr: (__addr_of(val), 32)) {
+        ptr: raw_slice
+    };
     let mut bytes = Bytes::from(slice_1);
     let slice_2 = bytes.as_raw_slice();
     assert(slice_1.ptr() == slice_2.ptr());
@@ -1274,4 +1385,13 @@ fn test_into_b256() {
     let expected: b256 = 0x3333333333333333333333333333333333333333333333333333333333333333;
 
     assert(value == expected);
+}
+
+#[test]
+pub fn test_encode_decode() {
+    let initial = 0x3333333333333333333333333333333333333333333333333333333333333333;
+    let initial: Bytes = Bytes::from(initial);
+    let decoded = abi_decode::<Bytes>(encode(initial));
+
+    assert_eq(decoded, initial);
 }

@@ -12,7 +12,7 @@ pub trait Named {
     fn name(&self) -> &BaseIdent;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct BaseIdent {
     name_override_opt: Option<String>,
     span: Span,
@@ -75,6 +75,14 @@ impl BaseIdent {
             is_raw_ident: false,
         }
     }
+
+    pub fn dummy() -> Ident {
+        Ident {
+            name_override_opt: Some("foo".into()),
+            span: Span::dummy(),
+            is_raw_ident: false,
+        }
+    }
 }
 
 /// An [Ident] is an _identifier_ with a corresponding `span` from which it was derived.
@@ -133,6 +141,12 @@ impl fmt::Display for Ident {
     }
 }
 
+impl fmt::Debug for Ident {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.as_str())
+    }
+}
+
 /// An [IdentUnique] is an _identifier_ with a corresponding `span` from which it was derived.
 /// Its hash and equality implementation takes the full span into account, meaning that identifiers
 /// are considered unique if they originate from different files.
@@ -186,3 +200,15 @@ impl PartialOrd for IdentUnique {
 }
 
 impl Eq for IdentUnique {}
+
+impl Spanned for IdentUnique {
+    fn span(&self) -> Span {
+        self.0.span()
+    }
+}
+
+impl fmt::Display for IdentUnique {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}", self.0.as_str())
+    }
+}

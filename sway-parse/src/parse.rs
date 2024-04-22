@@ -51,9 +51,8 @@ macro_rules! impl_tuple (
         where
             $($name: Parse,)*
         {
+            #[allow(unused)]
             fn parse(parser: &mut Parser) -> ParseResult<($($name,)*)> {
-                #[allow(unused)]
-                let parser = parser;
                 $(
                     #[allow(non_snake_case)]
                     let $name = parser.parse()?;
@@ -126,7 +125,7 @@ where
 
 impl Peek for Ident {
     fn peek(peeker: Peeker<'_>) -> Option<Ident> {
-        peeker.peek_ident().ok().map(Ident::clone)
+        peeker.peek_ident().ok().cloned()
     }
 }
 
@@ -135,7 +134,10 @@ impl Parse for Ident {
         match parser.take::<Ident>() {
             Some(ident) => {
                 let ident_str = ident.as_str();
-                if ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none() {
+
+                if parser.check_double_underscore
+                    && (ident_str.starts_with("__") && Intrinsic::try_from_str(ident_str).is_none())
+                {
                     return Err(parser.emit_error_with_span(
                         ParseErrorKind::InvalidDoubleUnderscore,
                         ident.span(),

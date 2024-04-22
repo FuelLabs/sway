@@ -1,16 +1,15 @@
 library;
 
 use ::assert::assert;
-use ::bytes::Bytes;
-use ::convert::From;
+use ::bytes::*;
+use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 
-
 /// A UTF-8 encoded growable string.
-/// 
+///
 /// # Additional Information
-/// 
+///
 /// WARNING: As this type is meant to be forward compatible with UTF-8, do *not*
 /// add any mutation functionality or unicode input of any kind until `char` is
 /// implemented, codepoints are *not* guaranteed to fall on byte boundaries
@@ -36,7 +35,7 @@ impl String {
     ///     string.push(0u8);
     ///     let bytes = string.as_bytes();
     ///     assert(bytes.len() == 1);
-    ///     assert(bytes.get(0).unwrap() == 0u8);   
+    ///     assert(bytes.get(0).unwrap() == 0u8);
     /// }
     /// ```
     pub fn as_bytes(self) -> Bytes {
@@ -113,9 +112,7 @@ impl String {
     /// }
     /// ```
     pub fn from_ascii(bytes: Bytes) -> Self {
-        Self {
-            bytes,
-        }
+        Self { bytes }
     }
 
     /// Converts a string slice containing ASCII encoded bytes to a `String`
@@ -141,13 +138,8 @@ impl String {
         let str_size = s.len();
         let str_ptr = s.as_ptr();
 
-        let mut bytes = Bytes::with_capacity(str_size);
-        bytes.len = str_size;
-
-        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-        
         Self {
-            bytes
+            bytes: Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)),
         }
     }
 
@@ -221,24 +213,42 @@ impl String {
             bytes: Bytes::with_capacity(capacity),
         }
     }
+
+    /// Gets the pointer of the allocation.
+    ///
+    /// # Returns
+    ///
+    /// [raw_ptr] - The location in memory that the allocated string lives.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let string = String::new();
+    ///     assert(!string.ptr().is_null());
+    /// }
+    /// ```
+    pub fn ptr(self) -> raw_ptr {
+        self.bytes.ptr()
+    }
 }
 
 impl From<Bytes> for String {
     fn from(b: Bytes) -> Self {
-        let mut string = Self::new();
-        string.bytes = b;
-        string
+        Self { bytes: b }
     }
+}
 
-    fn into(self) -> Bytes {
-        self.bytes
+impl From<String> for Bytes {
+    fn from(s: String) -> Bytes {
+        s.as_bytes()
     }
 }
 
 impl AsRawSlice for String {
     /// Returns a raw slice to all of the elements in the string.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.bytes.buf.ptr(), self.bytes.len)) { ptr: raw_slice }
+        self.bytes.as_raw_slice()
     }
 }
 
@@ -248,15 +258,17 @@ impl From<raw_slice> for String {
             bytes: Bytes::from(slice),
         }
     }
+}
 
-    fn into(self) -> raw_slice {
-        asm(ptr: (self.bytes.buf.ptr(), self.bytes.len)) { ptr: raw_slice }
+impl From<String> for raw_slice {
+    fn from(s: String) -> raw_slice {
+        raw_slice::from(s.as_bytes())
     }
 }
 
 impl Eq for String {
     fn eq(self, other: Self) -> bool {
-        self.bytes == other.bytes
+        self.bytes == other.as_bytes()
     }
 }
 
@@ -500,7 +512,7 @@ fn string_test_equal() {
 #[test]
 fn string_test_hash() {
     use ::hash::sha256;
-    
+
     let mut bytes = Bytes::new();
     bytes.push(0u8);
 

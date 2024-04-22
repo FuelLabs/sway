@@ -1,0 +1,8 @@
+[project]
+name = "resolve_local_items_that_shadow_imports"
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+
+[dependencies]
+std = { path = "../../../reduced_std_libs/sway-lib-std-assert" }

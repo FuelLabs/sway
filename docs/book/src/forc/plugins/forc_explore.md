@@ -1,1 +1,1 @@
-# forc explore
+# `forc explore`

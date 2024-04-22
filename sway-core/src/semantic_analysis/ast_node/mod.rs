@@ -10,8 +10,7 @@ use crate::{
     language::{parsed::*, ty},
     semantic_analysis::*,
     type_system::*,
-    types::DeterministicallyAborts,
-    Ident,
+    Engines, Ident,
 };
 
 use sway_error::{
@@ -20,7 +19,26 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
+use super::collection_context::SymbolCollectionContext;
+
 impl ty::TyAstNode {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        node: &AstNode,
+    ) -> Result<(), ErrorEmitted> {
+        match node.content.clone() {
+            AstNodeContent::UseStatement(_a) => {}
+            AstNodeContent::IncludeStatement(_i) => (),
+            AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
+            AstNodeContent::Expression(_expr) => (),
+            AstNodeContent::Error(_spans, _err) => (),
+        };
+
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
@@ -34,20 +52,23 @@ impl ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(a) => {
                     let mut is_external = false;
-                    if let Some(submodule) = ctx.namespace.submodule(&[a.call_path[0].clone()]) {
-                        is_external = submodule.is_external;
+                    if let Some(submodule) = ctx
+                        .namespace()
+                        .module(engines)
+                        .submodule(engines, &[a.call_path[0].clone()])
+                    {
+                        is_external = submodule.read(engines, |m| m.is_external);
                     }
                     let path = if is_external || a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        ctx.namespace.find_module_path(&a.call_path)
+                        ctx.namespace().prepend_module_path(&a.call_path)
                     };
                     let _ = match a.import_type {
                         ImportType::Star => {
                             // try a standard starimport first
                             let star_import_handler = Handler::default();
-                            let import =
-                                ctx.star_import(&star_import_handler, &path, a.is_absolute);
+                            let import = ctx.star_import(&star_import_handler, &path);
                             if import.is_ok() {
                                 handler.append(star_import_handler);
                                 import
@@ -59,7 +80,6 @@ impl ty::TyAstNode {
                                         &variant_import_handler,
                                         path,
                                         enum_name,
-                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         handler.append(variant_import_handler);
@@ -75,18 +95,13 @@ impl ty::TyAstNode {
                             }
                         }
                         ImportType::SelfImport(_) => {
-                            ctx.self_import(handler, &path, a.alias.clone(), a.is_absolute)
+                            ctx.self_import(handler, &path, a.alias.clone())
                         }
                         ImportType::Item(ref s) => {
                             // try a standard item import first
                             let item_import_handler = Handler::default();
-                            let import = ctx.item_import(
-                                &item_import_handler,
-                                &path,
-                                s,
-                                a.alias.clone(),
-                                a.is_absolute,
-                            );
+                            let import =
+                                ctx.item_import(&item_import_handler, &path, s, a.alias.clone());
 
                             if import.is_ok() {
                                 handler.append(item_import_handler);
@@ -101,7 +116,6 @@ impl ty::TyAstNode {
                                         enum_name,
                                         s,
                                         a.alias.clone(),
-                                        a.is_absolute,
                                     );
                                     if variant_import.is_ok() {
                                         handler.append(variant_import_handler);
@@ -121,33 +135,47 @@ impl ty::TyAstNode {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: a.alias,
                             call_path: a.call_path,
+                            span: a.span,
                             is_absolute: a.is_absolute,
                             import_type: a.import_type,
                         }),
                     })
                 }
-                AstNodeContent::IncludeStatement(_) => {
+                AstNodeContent::IncludeStatement(i) => {
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
-                        side_effect: ty::TySideEffectVariant::IncludeStatement,
+                        side_effect: ty::TySideEffectVariant::IncludeStatement(
+                            ty::TyIncludeStatement {
+                                mod_name: i.mod_name,
+                                span: i.span,
+                                visibility: i.visibility,
+                            },
+                        ),
                     })
                 }
                 AstNodeContent::Declaration(decl) => {
                     ty::TyAstNodeContent::Declaration(ty::TyDecl::type_check(handler, ctx, decl)?)
                 }
                 AstNodeContent::Expression(expr) => {
-                    let ctx = ctx
-                        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown))
-                        .with_help_text("");
+                    let mut ctx = ctx;
+                    match expr.kind {
+                        ExpressionKind::ImplicitReturn(_) => {
+                            // Do not use any type annotation with implicit returns as that
+                            // will later cause type inference errors when matching implicit block
+                            // types.
+                        }
+                        _ => {
+                            ctx = ctx
+                                .with_help_text("")
+                                .with_type_annotation(type_engine.insert(
+                                    engines,
+                                    TypeInfo::Unknown,
+                                    None,
+                                ));
+                        }
+                    }
                     let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
-                }
-                AstNodeContent::ImplicitReturnExpression(expr) => {
-                    let ctx =
-                        ctx.with_help_text("Implicit return must match up with block's type.");
-                    let typed_expr = ty::TyExpression::type_check(handler, ctx, expr.clone())
-                        .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
-                    ty::TyAstNodeContent::ImplicitReturnExpression(typed_expr)
                 }
                 AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
             },
@@ -155,21 +183,26 @@ impl ty::TyAstNode {
         };
 
         if let ty::TyAstNode {
-            content: ty::TyAstNodeContent::Expression(ty::TyExpression { .. }),
+            content: ty::TyAstNodeContent::Expression(ty::TyExpression { expression, .. }),
             ..
-        } = node
+        } = &node
         {
-            if !node
-                .type_info(type_engine)
-                .can_safely_ignore(type_engine, decl_engine)
-            {
-                handler.emit_warn(CompileWarning {
-                    warning_content: Warning::UnusedReturnValue {
-                        r#type: engines.help_out(node.type_info(type_engine)).to_string(),
-                    },
-                    span: node.span.clone(),
-                })
-            };
+            match expression {
+                ty::TyExpressionVariant::ImplicitReturn(_) => {}
+                _ => {
+                    if !node
+                        .type_info(type_engine)
+                        .can_safely_ignore(type_engine, decl_engine)
+                    {
+                        handler.emit_warn(CompileWarning {
+                            warning_content: Warning::UnusedReturnValue {
+                                r#type: engines.help_out(node.type_info(type_engine)).to_string(),
+                            },
+                            span: node.span.clone(),
+                        })
+                    };
+                }
+            }
         }
 
         Ok(node)

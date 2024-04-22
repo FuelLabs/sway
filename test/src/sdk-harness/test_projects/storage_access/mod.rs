@@ -2,17 +2,17 @@ use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "TestStorageAccessContract",
-    abi = "test_projects/storage_access/out/debug/storage_access-abi.json",
+    abi = "test_projects/storage_access/out/release/storage_access-abi.json",
 ));
 
 async fn test_storage_access_instance() -> TestStorageAccessContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/storage_access/out/debug/storage_access.bin",
+        "test_projects/storage_access/out/release/storage_access.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -162,4 +162,11 @@ async fn maps_in_struct_access() {
             .value,
         (None, None)
     );
+}
+
+#[tokio::test]
+async fn clears_storage_key() {
+    let methods = test_storage_access_instance().await.methods();
+
+    assert!(methods.clears_storage_key().call().await.unwrap().value);
 }

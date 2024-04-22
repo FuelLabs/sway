@@ -4,10 +4,6 @@ use call_frames_test_abi::{CallFramesTest, TestStruct, TestStruct2};
 use std::call_frames::*;
 
 impl CallFramesTest for Contract {
-    fn get_id() -> ContractId {
-        contract_id()
-    }
-
     fn get_id_contract_id_this() -> ContractId {
         ContractId::this()
     }

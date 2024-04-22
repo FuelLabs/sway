@@ -18,6 +18,9 @@ storage {
     str8: str[8] = __to_str_array("aaaaaaaa"),
     str9: str[9] = __to_str_array("aaaaaaaaa"),
     str10: str[10] = __to_str_array("aaaaaaaaaa"),
+
+    const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
+    const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
 }
 
 impl BasicStorage for Contract {
@@ -38,7 +41,7 @@ impl BasicStorage for Contract {
 
     #[storage(write)]
     fn intrinsic_store_word(key: b256, value: u64) {
-        __state_store_word(key, value);
+        let _ = __state_store_word(key, value);
     }
 
     #[storage(read)]
@@ -56,13 +59,13 @@ impl BasicStorage for Contract {
             i += 1;
         }
 
-        __state_load_quad(key, values.buf.ptr(), slots);
+        let _ = __state_load_quad(key, values.ptr(), slots);
         values
     }
 
     #[storage(write)]
     fn intrinsic_store_quad(key: b256, values: Vec<Quad>) {
-        __state_store_quad(key, values.buf.ptr(), values.len());
+        let _ = __state_store_quad(key, values.ptr(), values.len());
     }
 
     #[storage(read, write)]
@@ -91,6 +94,17 @@ pub struct T {
 pub enum E {
     A: u64,
     B: T,
+}
+
+pub enum F {
+    A: u8,
+    B: bool,
+    C: (),
+}
+
+pub enum G {
+    A: u8,
+    B: u64,
 }
 
 // These inputs are taken from the storage_access_contract test.
@@ -186,6 +200,61 @@ fn test_storage() {
     let e2_ = read::<E>(key, 0).unwrap();
     match (e2, e2_) {
         (E::A(i1), E::A(i2)) => {
+            assert(i1 == 777);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let f1: F = F::A(8);
+    write(key, 0, f1);
+    let f1_ = read::<F>(key, 0).unwrap();
+    match (f1, f1_) {
+        (F::A(i1), F::A(i2)) => {
+            assert(i1 == 8);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let f2: F = F::B(true);
+    write(key, 0, f2);
+    let f2_ = read::<F>(key, 0).unwrap();
+    match (f2, f2_) {
+        (F::B(i1), F::B(i2)) => {
+            assert(i1 == true);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let f3: F = F::C;
+    write(key, 0, f3);
+    let f3_ = read::<F>(key, 0).unwrap();
+    match (f3, f3_) {
+        (F::C, F::C) => {
+            assert(true);
+        }
+        _ => assert(false),
+    }
+
+    let g1: G = G::A(8);
+    write(key, 0, g1);
+    let g1_ = read::<G>(key, 0).unwrap();
+    match (g1, g1_) {
+        (G::A(i1), G::A(i2)) => {
+            assert(i1 == 8);
+            assert(i1 == i2);
+        }
+        _ => assert(false),
+    }
+
+    let g2: G = G::B(64);
+    write(key, 0, g2);
+    let g2_ = read::<G>(key, 0).unwrap();
+    match (g2, g2_) {
+        (G::B(i1), G::B(i2)) => {
+            assert(i1 == 64);
             assert(i1 == i2);
         }
         _ => assert(false),
@@ -203,6 +272,18 @@ fn test_storage() {
     assert_streq(storage.str8.read(), "aaaaaaaa");
     assert_streq(storage.str9.read(), "aaaaaaaaa");
     assert_streq(storage.str10.read(), "aaaaaaaaaa");
+
+    assert_eq(storage.c1.read(), C1);
+    storage.c1.write(2);
+    assert_eq(storage.c1.read(), 2);
+    
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
+    storage.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
+    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);
+
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
+    storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to

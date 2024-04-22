@@ -41,6 +41,13 @@ pub enum Expr {
         condition: Box<Expr>,
         block: Braces<CodeBlockContents>,
     },
+    For {
+        for_token: ForToken,
+        in_token: InToken,
+        value_pattern: Pattern,
+        iterator: Box<Expr>,
+        block: Braces<CodeBlockContents>,
+    },
     FuncApp {
         func: Box<Expr>,
         args: Parens<Punctuated<Expr, CommaToken>>,
@@ -68,11 +75,12 @@ pub enum Expr {
         field_span: Span,
     },
     Ref {
-        ref_token: RefToken,
+        ampersand_token: AmpersandToken,
+        mut_token: Option<MutToken>,
         expr: Box<Expr>,
     },
     Deref {
-        deref_token: DerefToken,
+        star_token: StarToken,
         expr: Box<Expr>,
     },
     Not {
@@ -220,6 +228,9 @@ impl Spanned for Expr {
             Expr::While {
                 while_token, block, ..
             } => Span::join(while_token.span(), block.span()),
+            Expr::For {
+                for_token, block, ..
+            } => Span::join(for_token.span(), block.span()),
             Expr::FuncApp { func, args } => Span::join(func.span(), args.span()),
             Expr::Index { target, arg } => Span::join(target.span(), arg.span()),
             Expr::MethodCall { target, args, .. } => Span::join(target.span(), args.span()),
@@ -227,8 +238,12 @@ impl Spanned for Expr {
             Expr::TupleFieldProjection {
                 target, field_span, ..
             } => Span::join(target.span(), field_span.clone()),
-            Expr::Ref { ref_token, expr } => Span::join(ref_token.span(), expr.span()),
-            Expr::Deref { deref_token, expr } => Span::join(deref_token.span(), expr.span()),
+            Expr::Ref {
+                ampersand_token,
+                expr,
+                ..
+            } => Span::join(ampersand_token.span(), expr.span()),
+            Expr::Deref { star_token, expr } => Span::join(star_token.span(), expr.span()),
             Expr::Not { bang_token, expr } => Span::join(bang_token.span(), expr.span()),
             Expr::Pow { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
             Expr::Mul { lhs, rhs, .. } => Span::join(lhs.span(), rhs.span()),
@@ -487,13 +502,52 @@ impl Expr {
     }
 
     pub fn is_control_flow(&self) -> bool {
-        matches!(
-            self,
+        match self {
             Expr::Block(..)
-                | Expr::Asm(..)
-                | Expr::If(..)
-                | Expr::Match { .. }
-                | Expr::While { .. },
-        )
+            | Expr::Asm(..)
+            | Expr::If(..)
+            | Expr::Match { .. }
+            | Expr::While { .. }
+            | Expr::For { .. } => true,
+            Expr::Error(..)
+            | Expr::Path(..)
+            | Expr::Literal(..)
+            | Expr::AbiCast { .. }
+            | Expr::Struct { .. }
+            | Expr::Tuple(..)
+            | Expr::Parens(..)
+            | Expr::Array(..)
+            | Expr::Return { .. }
+            | Expr::FuncApp { .. }
+            | Expr::Index { .. }
+            | Expr::MethodCall { .. }
+            | Expr::FieldProjection { .. }
+            | Expr::TupleFieldProjection { .. }
+            | Expr::Ref { .. }
+            | Expr::Deref { .. }
+            | Expr::Not { .. }
+            | Expr::Mul { .. }
+            | Expr::Div { .. }
+            | Expr::Pow { .. }
+            | Expr::Modulo { .. }
+            | Expr::Add { .. }
+            | Expr::Sub { .. }
+            | Expr::Shl { .. }
+            | Expr::Shr { .. }
+            | Expr::BitAnd { .. }
+            | Expr::BitXor { .. }
+            | Expr::BitOr { .. }
+            | Expr::Equal { .. }
+            | Expr::NotEqual { .. }
+            | Expr::LessThan { .. }
+            | Expr::GreaterThan { .. }
+            | Expr::LessThanEq { .. }
+            | Expr::GreaterThanEq { .. }
+            | Expr::LogicalAnd { .. }
+            | Expr::LogicalOr { .. }
+            | Expr::Reassignment { .. }
+            | Expr::Break { .. }
+            | Expr::Continue { .. } => false,
+        }
     }
 }

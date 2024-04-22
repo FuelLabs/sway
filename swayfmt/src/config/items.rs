@@ -1,6 +1,7 @@
 //! Configuration options related to item formatting.
+
 use crate::{
-    config::{lists::ListTactic, user_opts::ItemsOptions},
+    config::user_opts::ItemsOptions,
     constants::{DEFAULT_BLANK_LINES_LOWER_BOUND, DEFAULT_BLANK_LINES_UPPER_BOUND},
 };
 use serde::{Deserialize, Serialize};
@@ -20,7 +21,7 @@ pub struct Items {
 impl Default for Items {
     fn default() -> Self {
         Self {
-            item_brace_style: ItemBraceStyle::SameLineWhere,
+            item_brace_style: Default::default(),
             blank_lines_upper_bound: DEFAULT_BLANK_LINES_UPPER_BOUND,
             blank_lines_lower_bound: DEFAULT_BLANK_LINES_LOWER_BOUND,
             empty_item_single_line: true,
@@ -47,29 +48,23 @@ impl Items {
 }
 
 /// Preference of how list-like items are displayed.
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+///
+/// Defaults to `Tall`.
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ItemsLayout {
     /// Fit as much on one line as possible.
     Compressed,
     /// Items are placed horizontally if sufficient space, vertically otherwise.
+    #[default]
     Tall,
     /// Place every item on a separate line.
     Vertical,
 }
 
-impl ItemsLayout {
-    pub fn to_list_tactic(self, len: usize) -> ListTactic {
-        match self {
-            ItemsLayout::Compressed => ListTactic::Mixed,
-            ItemsLayout::Tall => ListTactic::HorizontalVertical,
-            ItemsLayout::Vertical if len == 1 => ListTactic::Horizontal,
-            ItemsLayout::Vertical => ListTactic::Vertical,
-        }
-    }
-}
-
 /// Where to put the opening brace of items (`fn`, `impl`, etc.).
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+///
+/// Defaults to `SameLineWhere`.
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub enum ItemBraceStyle {
     /// Put the opening brace on the next line.
     AlwaysNextLine,
@@ -77,5 +72,6 @@ pub enum ItemBraceStyle {
     PreferSameLine,
     /// Prefer the same line except where there is a where-clause, in which
     /// case force the brace to be put on the next line.
+    #[default]
     SameLineWhere,
 }

@@ -24,7 +24,9 @@ impl MyContract for Contract {
 
         // External call
         let caller = abi(OtherContract, external_contract_id.into());
-        caller.external_call { coins: bal }();
+        caller.external_call {
+            coins: bal,
+        }();
 
         // Storage update _after_ external call
         storage.balances.insert(sender, 0);

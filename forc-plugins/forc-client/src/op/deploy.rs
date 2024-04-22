@@ -1,13 +1,13 @@
 use crate::{
     cmd,
     util::{
-        gas::{get_gas_limit, get_gas_price},
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
     },
 };
 use anyhow::{bail, Context, Result};
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::default_output_directory;
@@ -16,8 +16,9 @@ use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
+use fuels_accounts::provider::Provider;
 use futures::FutureExt;
-use pkg::BuiltPackage;
+use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{
@@ -41,7 +42,7 @@ pub struct DeploymentArtifact {
     chain_id: ChainId,
     contract_id: String,
     deployment_size: usize,
-    deployed_block_id: String,
+    deployed_block_height: u32,
 }
 
 impl DeploymentArtifact {
@@ -215,7 +216,14 @@ pub async fn deploy_pkg(
 
     let bytecode = &compiled.bytecode.bytes;
 
-    let mut storage_slots = compiled.storage_slots.clone();
+    let mut storage_slots =
+        if let Some(storage_slot_override_file) = &command.override_storage_slots {
+            let storage_slots_file = std::fs::read_to_string(storage_slot_override_file)?;
+            let storage_slots: Vec<StorageSlot> = serde_json::from_str(&storage_slots_file)?;
+            storage_slots
+        } else {
+            compiled.storage_slots.clone()
+        };
     storage_slots.sort();
 
     let contract = Contract::from(bytecode.clone());
@@ -230,12 +238,10 @@ pub async fn deploy_pkg(
     };
 
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
-        .gas_limit(get_gas_limit(&command.gas, client.chain_info().await?))
-        .gas_price(get_gas_price(&command.gas, client.node_info().await?))
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
-            client.clone(),
+            Provider::connect(node_url.clone()).await?,
             command.default_signer || command.unsigned,
             command.signing_key,
             wallet_mode,
@@ -243,20 +249,20 @@ pub async fn deploy_pkg(
         .await?;
 
     let tx = Transaction::from(tx);
-    let chain_id = client.chain_info().await?.consensus_parameters.chain_id;
+    let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
             TransactionStatus::Submitted { .. } => {
                 bail!("contract {} deployment timed out", &contract_id);
             }
-            TransactionStatus::Success { block_id, .. } => {
+            TransactionStatus::Success { block_height, .. } => {
                 let pkg_name = manifest.project_name();
                 info!("\n\nContract {pkg_name} Deployed!");
 
                 info!("\nNetwork: {node_url}");
                 info!("Contract ID: 0x{contract_id}");
-                info!("Deployed in block {}", &block_id);
+                info!("Deployed in block {}", &block_height);
 
                 // Create a deployment artifact.
                 let deployment_size = bytecode.len();
@@ -267,7 +273,7 @@ pub async fn deploy_pkg(
                     chain_id,
                     contract_id: format!("0x{}", contract_id),
                     deployment_size,
-                    deployed_block_id: block_id,
+                    deployed_block_height: *block_height,
                 };
 
                 let output_dir = command
@@ -333,14 +339,17 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             json_abi: cmd.minify.json_abi,
             json_storage_slots: cmd.minify.json_storage_slots,
         },
-        build_profile: cmd.build_profile.build_profile.clone(),
-        release: cmd.build_profile.release,
-        error_on_warnings: cmd.build_profile.error_on_warnings,
+        build_profile: cmd.build_profile.clone(),
+        release: cmd.build_profile == BuildProfile::RELEASE,
+        error_on_warnings: false,
         binary_outfile: cmd.build_output.bin_file.clone(),
         debug_outfile: cmd.build_output.debug_file.clone(),
         build_target: BuildTarget::default(),
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
+        experimental: ExperimentalFlags {
+            new_encoding: cmd.experimental_new_encoding,
+        },
     }
 }
 

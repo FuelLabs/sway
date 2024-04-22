@@ -4,7 +4,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty, CallPath},
+    language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
     Ident,
@@ -126,10 +126,10 @@ impl Spanned for TypeArgs {
 }
 
 impl PartialEqWithEngines for TypeArgs {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, engines),
-            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, engines),
+            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, ctx),
+            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, ctx),
             _ => false,
         }
     }
@@ -142,8 +142,8 @@ impl<T> Spanned for TypeBinding<T> {
 }
 
 impl PartialEqWithEngines for TypeBinding<()> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.span == other.span && self.type_arguments.eq(&other.type_arguments, ctx)
     }
 }
 
@@ -170,10 +170,9 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let type_info_span = type_ident.span();
 
         // find the module that the symbol is in
-        let type_info_prefix = ctx.namespace.find_module_path(&self.inner.prefixes);
-        ctx.namespace
-            .root()
-            .check_submodule(handler, &type_info_prefix)?;
+        let type_info_prefix = ctx.namespace().prepend_module_path(&self.inner.prefixes);
+        ctx.namespace()
+            .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
 
         // create the type info object
         let type_info = type_info.apply_type_arguments(
@@ -184,15 +183,14 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
 
         // resolve the type of the type info object
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
-                type_engine.insert(engines, type_info),
-                ctx.self_type(),
+                type_engine.insert(engines, type_info, type_info_span.source_id()),
                 &type_info_span,
                 EnforceTypeArguments::No,
                 Some(&type_info_prefix),
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         Ok(type_id)
     }
@@ -232,13 +230,11 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx
-            .resolve_call_path_with_visibility_check(handler, &self.inner)
-            .cloned()?;
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a fn declaration.
         let fn_ref = unknown_decl.to_fn_ref(handler)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_function(fn_ref.id());
+        let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
         match self.type_arguments {
             // Monomorphize the copy, in place.
             TypeArgs::Regular(_) => {
@@ -253,16 +249,15 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             TypeArgs::Prefix(_) => {
                 // Resolve the type arguments without monomorphizing.
                 for type_argument in self.type_arguments.to_vec_mut().iter_mut() {
-                    ctx.resolve_type_with_self(
+                    ctx.resolve_type(
                         handler,
                         type_argument.type_id,
-                        ctx.self_type(),
                         &type_argument.span,
                         EnforceTypeArguments::Yes,
                         None,
                     )
                     .unwrap_or_else(|err| {
-                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err))
+                        type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None)
                     });
                 }
             }
@@ -294,13 +289,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx
-            .resolve_call_path_with_visibility_check(handler, &self.inner)
-            .cloned()?;
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a struct declaration.
         let struct_ref = unknown_decl.to_struct_ref(handler, engines)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = decl_engine.get_struct(struct_ref.id());
+        let mut new_copy = (*decl_engine.get_struct(struct_ref.id())).clone();
         // Monomorphize the copy, in place.
         ctx.monomorphize(
             handler,
@@ -311,7 +304,11 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_struct_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Struct(new_struct_ref.clone()));
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::Struct(new_struct_ref.clone()),
+            new_struct_ref.span().source_id(),
+        );
         Ok((new_struct_ref, Some(type_id), None))
     }
 }
@@ -333,9 +330,7 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let decl_engine = ctx.engines.de();
         let engines = ctx.engines();
         // Grab the declaration.
-        let unknown_decl = ctx
-            .resolve_call_path_with_visibility_check(handler, &self.inner)
-            .cloned()?;
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Get a new copy from the declaration engine.
         let mut new_copy = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
@@ -343,11 +338,11 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             ..
         }) = &unknown_decl
         {
-            decl_engine.get_enum(enum_ref.id())
+            (*decl_engine.get_enum(enum_ref.id())).clone()
         } else {
             // Check to see if this is a enum declaration.
             let enum_ref = unknown_decl.to_enum_ref(handler, engines)?;
-            decl_engine.get_enum(enum_ref.id())
+            (*decl_engine.get_enum(enum_ref.id())).clone()
         };
 
         // Monomorphize the copy, in place.
@@ -360,8 +355,29 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         )?;
         // Insert the new copy into the declaration engine.
         let new_enum_ref = ctx.engines.de().insert(new_copy);
-        let type_id = type_engine.insert(engines, TypeInfo::Enum(new_enum_ref.clone()));
+        let type_id = type_engine.insert(
+            engines,
+            TypeInfo::Enum(new_enum_ref.clone()),
+            new_enum_ref.span().source_id(),
+        );
         Ok((new_enum_ref, Some(type_id), Some(unknown_decl)))
+    }
+}
+
+impl TypeBinding<QualifiedCallPath> {
+    pub(crate) fn type_check_qualified(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<DeclRef<DeclId<ty::TyConstantDecl>>, ErrorEmitted> {
+        // Grab the declaration.
+        let unknown_decl =
+            ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
+
+        // Check to see if this is a const declaration.
+        let const_ref = unknown_decl.to_const_ref(handler)?;
+
+        Ok(const_ref)
     }
 }
 
@@ -379,9 +395,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         ErrorEmitted,
     > {
         // Grab the declaration.
-        let unknown_decl = ctx
-            .resolve_call_path_with_visibility_check(handler, &self.inner)
-            .cloned()?;
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
         let const_ref = unknown_decl.to_const_ref(handler)?;

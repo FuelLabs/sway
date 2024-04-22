@@ -3,9 +3,14 @@ use crate::{
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use sway_error::error::CompileError;
 use sway_types::Spanned;
+
+const UNIFY_ARGS_HELP_TEXT: &str =
+    "The argument that has been provided to this function's type does \
+not match the declared type of the parameter in the function \
+declaration.";
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn instantiate_function_application(
@@ -18,7 +23,7 @@ pub(crate) fn instantiate_function_application(
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let decl_engine = ctx.engines.de();
 
-    let mut function_decl = decl_engine.get_function(&function_decl_ref);
+    let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
 
     if arguments.is_none() {
         return Err(
@@ -47,7 +52,8 @@ pub(crate) fn instantiate_function_application(
         false,
     )?;
 
-    let typed_arguments = type_check_arguments(handler, ctx.by_ref(), arguments)?;
+    let typed_arguments =
+        type_check_arguments(handler, ctx.by_ref(), arguments, &function_decl.parameters)?;
 
     let typed_arguments_with_names = unify_arguments_and_parameters(
         handler,
@@ -56,10 +62,6 @@ pub(crate) fn instantiate_function_application(
         &function_decl.parameters,
     )?;
 
-    // Retrieve the implemented traits for the type of the return type and
-    // insert them in the broader namespace.
-    ctx.insert_trait_implementation_for_type(function_decl.return_type.type_id);
-
     // Handle the trait constraints. This includes checking to see if the trait
     // constraints are satisfied and replacing old decl ids based on the
     // constraint with new decl ids based on the new type.
@@ -67,8 +69,10 @@ pub(crate) fn instantiate_function_application(
         handler,
         ctx.by_ref(),
         &function_decl.type_parameters,
+        function_decl.name.as_str(),
         &call_path_binding.span(),
     )?;
+
     function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
@@ -78,12 +82,14 @@ pub(crate) fn instantiate_function_application(
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
-            contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
             fn_ref: new_decl_ref,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
+            deferred_monomorphization: false,
+            contract_call_params: IndexMap::new(),
+            contract_caller: None,
         },
         return_type: return_type.type_id,
         span,
@@ -97,18 +103,27 @@ fn type_check_arguments(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     arguments: Vec<parsed::Expression>,
+    parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<ty::TyExpression>, ErrorEmitted> {
-    let type_engine = ctx.engines.te();
     let engines = ctx.engines();
+
+    // Sanity check before zipping arguments and parameters
+    if arguments.len() != parameters.len() {
+        return Err(handler.emit_err(CompileError::Internal(
+            "Arguments and parameters length are not equal.",
+            Span::dummy(),
+        )));
+    }
 
     handler.scope(|handler| {
         let typed_arguments = arguments
             .into_iter()
-            .map(|arg| {
+            .zip(parameters)
+            .map(|(arg, param)| {
                 let ctx = ctx
                     .by_ref()
-                    .with_help_text("")
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+                    .with_help_text(UNIFY_ARGS_HELP_TEXT)
+                    .with_type_annotation(param.type_argument.type_id);
                 ty::TyExpression::type_check(handler, ctx, arg.clone())
                     .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
@@ -141,9 +156,7 @@ fn unify_arguments_and_parameters(
                     arg.return_type,
                     param.type_argument.type_id,
                     &arg.span,
-                    "The argument that has been provided to this function's type does \
-            not match the declared type of the parameter in the function \
-            declaration.",
+                    UNIFY_ARGS_HELP_TEXT,
                     None,
                 );
                 Ok(())

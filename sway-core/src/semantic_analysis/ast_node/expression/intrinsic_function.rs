@@ -66,15 +66,11 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_state_quad(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Log => type_check_log(handler, ctx, kind, arguments, span),
-            Intrinsic::Add
-            | Intrinsic::Sub
-            | Intrinsic::Mul
-            | Intrinsic::Div
-            | Intrinsic::And
-            | Intrinsic::Or
-            | Intrinsic::Xor
-            | Intrinsic::Mod => {
-                type_check_binary_op(handler, ctx, kind, arguments, type_arguments, span)
+            Intrinsic::Add | Intrinsic::Sub | Intrinsic::Mul | Intrinsic::Div | Intrinsic::Mod => {
+                type_check_arith_binary_op(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::And | Intrinsic::Or | Intrinsic::Xor => {
+                type_check_bitwise_binary_op(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Lsh | Intrinsic::Rsh => {
                 type_check_shift_binary_op(handler, ctx, kind, arguments, type_arguments, span)
@@ -87,6 +83,15 @@ impl ty::TyIntrinsicFunctionKind {
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
+            Intrinsic::JmpMem => {
+                type_check_jmp_mem(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::ContractCall => {
+                type_check_contract_call(handler, ctx, kind, arguments, type_arguments, span)
+            }
+            Intrinsic::ContractRet => {
+                type_check_contract_ret(handler, ctx, kind, arguments, type_arguments, span)
+            }
         }
     }
 }
@@ -113,22 +118,35 @@ fn type_check_not(
         }));
     }
 
-    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
+    let return_type = type_engine.insert(engines, TypeInfo::Unknown, None);
 
     let mut ctx = ctx.with_help_text("").with_type_annotation(return_type);
 
     let operand = arguments[0].clone();
     let operand_expr = ty::TyExpression::type_check(handler, ctx.by_ref(), operand)?;
 
-    Ok((
-        ty::TyIntrinsicFunctionKind {
-            kind,
-            arguments: vec![operand_expr],
-            type_arguments: vec![],
-            span,
-        },
-        return_type,
-    ))
+    let t_arc = engines.te().get(operand_expr.return_type);
+    let t = &*t_arc;
+    match t {
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![operand_expr],
+                type_arguments: vec![],
+                span,
+            },
+            return_type,
+        )),
+        _ => Err(handler.emit_err(CompileError::TypeError(
+            sway_error::type_error::TypeError::MismatchedType {
+                expected: "numeric or b256".into(),
+                received: engines.help_out(return_type).to_string(),
+                help_text: "".into(),
+                span,
+                internal: "8".into(),
+            },
+        ))),
+    }
 }
 
 /// Signature: `__size_of_val<T>(val: T) -> u64`
@@ -154,16 +172,19 @@ fn type_check_size_of_val(
     }
     let ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let exp = ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?;
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![exp],
         type_arguments: vec![],
-        span,
+        span: span.clone(),
     };
-    let return_type =
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        span.source_id(),
+    );
     Ok((intrinsic_function, return_type))
 }
 
@@ -200,17 +221,16 @@ fn type_check_size_of_type(
         .to_typeinfo(targ.type_id, &targ.span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    let initial_type_id = type_engine.insert(engines, initial_type_info);
+    let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![],
@@ -222,8 +242,11 @@ fn type_check_size_of_type(
         }],
         span,
     };
-    let return_type =
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
     Ok((intrinsic_function, return_type))
 }
 
@@ -253,17 +276,16 @@ fn type_check_is_reference_type(
         .to_typeinfo(targ.type_id, &targ.span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    let initial_type_id = type_engine.insert(engines, initial_type_info);
+    let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![],
@@ -277,7 +299,7 @@ fn type_check_is_reference_type(
     };
     Ok((
         intrinsic_function,
-        type_engine.insert(engines, TypeInfo::Boolean),
+        type_engine.insert(engines, TypeInfo::Boolean, None),
     ))
 }
 
@@ -307,17 +329,16 @@ fn type_check_assert_is_str_array(
         .to_typeinfo(targ.type_id, &targ.span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    let initial_type_id = type_engine.insert(engines, initial_type_info);
+    let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
         arguments: vec![],
@@ -331,7 +352,7 @@ fn type_check_assert_is_str_array(
     };
     Ok((
         intrinsic_function,
-        type_engine.insert(engines, TypeInfo::Tuple(vec![])),
+        type_engine.insert(engines, TypeInfo::Tuple(vec![]), None),
     ))
 }
 
@@ -362,9 +383,11 @@ fn type_check_to_str_array(
 
             let span = arg.span.clone();
 
-            let mut ctx = ctx
-                .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+                engines,
+                TypeInfo::Unknown,
+                None,
+            ));
             let new_type = ty::TyExpression::type_check(handler, ctx.by_ref(), arg)?;
 
             Ok((
@@ -374,7 +397,7 @@ fn type_check_to_str_array(
                     type_arguments: vec![],
                     span,
                 },
-                type_engine.insert(engines, t),
+                type_engine.insert(engines, t, None),
             ))
         }
         _ => Err(handler.emit_err(CompileError::ExpectedStringLiteral { span: arg.span })),
@@ -409,9 +432,9 @@ fn type_check_cmp(
             span,
         }));
     }
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let mut ctx =
+        ctx.by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let lhs = arguments[0].clone();
     let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
@@ -423,9 +446,14 @@ fn type_check_cmp(
         .to_typeinfo(lhs.return_type, &lhs.span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    let is_valid_arg_ty = matches!(arg_ty, TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric)
-        || (matches!(&kind, Intrinsic::Eq)
-            && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr));
+
+    let is_eq_bool_ptr = matches!(&kind, Intrinsic::Eq)
+        && matches!(arg_ty, TypeInfo::Boolean | TypeInfo::RawUntypedPtr);
+    let is_valid_arg_ty = matches!(
+        arg_ty,
+        TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric | TypeInfo::B256
+    ) || is_eq_bool_ptr;
+
     if !is_valid_arg_ty {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
@@ -441,7 +469,7 @@ fn type_check_cmp(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Boolean),
+        type_engine.insert(engines, TypeInfo::Boolean, None),
     ))
 }
 
@@ -479,15 +507,19 @@ fn type_check_gtf(
     }
 
     // Type check the first argument which is the index
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let index = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
 
     // Type check the second argument which is the tx field ID
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let tx_field_id = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
 
     let targ = type_arguments[0].clone();
@@ -495,17 +527,16 @@ fn type_check_gtf(
         .to_typeinfo(targ.type_id, &targ.span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    let initial_type_id = type_engine.insert(engines, initial_type_info);
+    let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::Yes,
             None,
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
     Ok((
         ty::TyIntrinsicFunctionKind {
@@ -545,7 +576,7 @@ fn type_check_addr_of(
     }
     let ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let exp = ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?;
     let copy_type_info = type_engine
         .to_typeinfo(exp.return_type, &span)
@@ -565,7 +596,7 @@ fn type_check_addr_of(
         type_arguments: vec![],
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::RawUntypedPtr);
+    let return_type = type_engine.insert(engines, TypeInfo::RawUntypedPtr, None);
     Ok((intrinsic_function, return_type))
 }
 
@@ -594,13 +625,16 @@ fn type_check_state_clear(
     // `key` argument
     let mut ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(key_exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
+    if !key_ty.eq(
+        &TypeInfo::B256,
+        &PartialEqWithEnginesContext::new(ctx.engines()),
+    ) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
@@ -609,9 +643,11 @@ fn type_check_state_clear(
     }
 
     // `slots` argument
-    let mut ctx = ctx.with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let number_of_slots_exp =
         ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
 
@@ -622,7 +658,7 @@ fn type_check_state_clear(
         type_arguments: vec![],
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::Boolean);
+    let return_type = type_engine.insert(engines, TypeInfo::Boolean, None);
     Ok((intrinsic_function, return_type))
 }
 
@@ -648,13 +684,13 @@ fn type_check_state_load_word(
     }
     let ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let exp = ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, engines) {
+    if !key_ty.eq(&TypeInfo::B256, &PartialEqWithEnginesContext::new(engines)) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
@@ -667,8 +703,11 @@ fn type_check_state_load_word(
         type_arguments: vec![],
         span,
     };
-    let return_type =
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour));
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
     Ok((intrinsic_function, return_type))
 }
 
@@ -703,41 +742,46 @@ fn type_check_state_store_word(
     }
     let mut ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(key_exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
+    if !key_ty.eq(
+        &TypeInfo::B256,
+        &PartialEqWithEnginesContext::new(ctx.engines()),
+    ) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
             hint: "Argument type must be B256, a key into the state storage".to_string(),
         }));
     }
-    let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let val_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
-    let ctx = ctx.with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
-    let type_argument = type_arguments.get(0).map(|targ| {
-        let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let ctx = ctx.with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
+    let type_argument = type_arguments.first().map(|targ| {
+        let mut ctx =
+            ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
             .map_err(|e| handler.emit_err(e.into()))
             .unwrap_or_else(TypeInfo::ErrorRecovery);
-        let initial_type_id = type_engine.insert(engines, initial_type_info);
+        let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 initial_type_id,
-                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
         TypeArgument {
             type_id,
             initial_type_id,
@@ -751,7 +795,7 @@ fn type_check_state_store_word(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::Boolean);
+    let return_type = type_engine.insert(engines, TypeInfo::Boolean, None);
     Ok((intrinsic_function, return_type))
 }
 
@@ -793,43 +837,48 @@ fn type_check_state_quad(
     }
     let mut ctx = ctx
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let key_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
     let key_ty = type_engine
         .to_typeinfo(key_exp.return_type, &span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    if !key_ty.eq(&TypeInfo::B256, ctx.engines()) {
+    if !key_ty.eq(
+        &TypeInfo::B256,
+        &PartialEqWithEnginesContext::new(ctx.engines()),
+    ) {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span,
             hint: "Argument type must be B256, a key into the state storage".to_string(),
         }));
     }
-    let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let val_exp = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
-    let mut ctx = ctx.with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let number_of_slots_exp =
         ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[2].clone())?;
-    let type_argument = type_arguments.get(0).map(|targ| {
-        let mut ctx = ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let type_argument = type_arguments.first().map(|targ| {
+        let mut ctx =
+            ctx.with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
             .map_err(|e| handler.emit_err(e.into()))
             .unwrap_or_else(TypeInfo::ErrorRecovery);
-        let initial_type_id = type_engine.insert(engines, initial_type_info);
+        let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 initial_type_id,
-                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
         TypeArgument {
             type_id,
             initial_type_id,
@@ -843,7 +892,7 @@ fn type_check_state_quad(
         type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::Boolean);
+    let return_type = type_engine.insert(engines, TypeInfo::Boolean, None);
     Ok((intrinsic_function, return_type))
 }
 
@@ -870,7 +919,7 @@ fn type_check_log(
     let ctx = ctx
         .by_ref()
         .with_help_text("")
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
     let exp = ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?;
     let intrinsic_function = ty::TyIntrinsicFunctionKind {
         kind,
@@ -878,7 +927,7 @@ fn type_check_log(
         type_arguments: vec![],
         span,
     };
-    let return_type = type_engine.insert(engines, TypeInfo::Tuple(vec![]));
+    let return_type = type_engine.insert(engines, TypeInfo::Tuple(vec![]), None);
     Ok((intrinsic_function, return_type))
 }
 
@@ -909,7 +958,7 @@ fn type_check_log(
 /// Signature: `__xor<T>(lhs: T, rhs: T) -> T`
 /// Description: Bitwise Xor `lhs` and `rhs` and returns the result.
 /// Constraints: `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-fn type_check_binary_op(
+fn type_check_arith_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -935,7 +984,7 @@ fn type_check_binary_op(
         }));
     }
 
-    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
+    let return_type = type_engine.insert(engines, TypeInfo::Numeric, None);
     let mut ctx = ctx
         .by_ref()
         .with_type_annotation(return_type)
@@ -957,14 +1006,7 @@ fn type_check_binary_op(
     ))
 }
 
-/// Signature: `__lsh<T, U>(lhs: T, rhs: U) -> T`
-/// Description: Logical left shifts the `lhs` by the `rhs` and returns the result.
-/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-///
-/// Signature: `__rsh<T, U>(lhs: T, rhs: U) -> T`
-/// Description: Logical right shifts the `lhs` by the `rhs` and returns the result.
-/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
-fn type_check_shift_binary_op(
+fn type_check_bitwise_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -990,8 +1032,74 @@ fn type_check_shift_binary_op(
         }));
     }
 
-    let return_type = type_engine.insert(engines, TypeInfo::Numeric);
+    let return_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+    let mut ctx = ctx
+        .by_ref()
+        .with_type_annotation(return_type)
+        .with_help_text("Incorrect argument type");
 
+    let lhs = arguments[0].clone();
+    let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
+    let rhs = arguments[1].clone();
+    let rhs = ty::TyExpression::type_check(handler, ctx, rhs)?;
+
+    let t_arc = engines.te().get(lhs.return_type);
+    let t = &*t_arc;
+    match t {
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![lhs, rhs],
+                type_arguments: vec![],
+                span,
+            },
+            return_type,
+        )),
+        _ => Err(handler.emit_err(CompileError::TypeError(
+            sway_error::type_error::TypeError::MismatchedType {
+                expected: "numeric or b256".into(),
+                received: engines.help_out(return_type).to_string(),
+                help_text: "".into(),
+                span,
+                internal: "7".into(),
+            },
+        ))),
+    }
+}
+
+/// Signature: `__lsh<T, U>(lhs: T, rhs: U) -> T`
+/// Description: Logical left shifts the `lhs` by the `rhs` and returns the result.
+/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+///
+/// Signature: `__rsh<T, U>(lhs: T, rhs: U) -> T`
+/// Description: Logical right shifts the `lhs` by the `rhs` and returns the result.
+/// Constraints: `T` and `U` are an integer type, i.e. `u8`, `u16`, `u32`, `u64`.
+fn type_check_shift_binary_op(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let engines = ctx.engines();
+
+    if arguments.len() != 2 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        }));
+    }
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    let return_type = engines.te().insert(engines, TypeInfo::Unknown, None);
     let lhs = arguments[0].clone();
     let lhs = ty::TyExpression::type_check(
         handler,
@@ -1006,19 +1114,32 @@ fn type_check_shift_binary_op(
         handler,
         ctx.by_ref()
             .with_help_text("Incorrect argument type")
-            .with_type_annotation(engines.te().insert(engines, TypeInfo::Numeric)),
+            .with_type_annotation(engines.te().insert(engines, TypeInfo::Numeric, None)),
         rhs,
     )?;
 
-    Ok((
-        ty::TyIntrinsicFunctionKind {
-            kind,
-            arguments: vec![lhs, rhs],
-            type_arguments: vec![],
-            span,
-        },
-        return_type,
-    ))
+    let t_arc = engines.te().get(lhs.return_type);
+    let t = &*t_arc;
+    match t {
+        TypeInfo::B256 | TypeInfo::UnsignedInteger(_) | TypeInfo::Numeric => Ok((
+            ty::TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![lhs, rhs],
+                type_arguments: vec![],
+                span,
+            },
+            return_type,
+        )),
+        _ => Err(handler.emit_err(CompileError::TypeError(
+            sway_error::type_error::TypeError::MismatchedType {
+                expected: "numeric or b256".into(),
+                received: engines.help_out(return_type).to_string(),
+                help_text: "Incorrect argument type".into(),
+                span: lhs.span,
+                internal: "6".into(),
+            },
+        ))),
+    }
 }
 
 /// Signature: `__revert(code: u64)`
@@ -1052,9 +1173,11 @@ fn type_check_revert(
     }
 
     // Type check the argument which is the revert code
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let revert_code = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
 
     Ok((
@@ -1064,8 +1187,47 @@ fn type_check_revert(
             type_arguments: vec![],
             span,
         },
-        type_engine.insert(engines, TypeInfo::Unknown), // TODO: change this to the `Never` type when
-                                                        // available
+        type_engine.insert(engines, TypeInfo::Never, None),
+    ))
+}
+
+/// Signature: `__jmp_mem() -> !`
+/// Description: Jumps to `MEM[$hp]`.
+fn type_check_jmp_mem(
+    handler: &Handler,
+    ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if !arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumTArgs {
+            name: kind.to_string(),
+            expected: 0,
+            span,
+        }));
+    }
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![],
+            type_arguments: vec![],
+            span,
+        },
+        type_engine.insert(engines, TypeInfo::Never, None),
     ))
 }
 
@@ -1106,21 +1268,20 @@ fn type_check_ptr_ops(
         .to_typeinfo(targ.type_id, &targ.span)
         .map_err(|e| handler.emit_err(e.into()))
         .unwrap_or_else(TypeInfo::ErrorRecovery);
-    let initial_type_id = type_engine.insert(engines, initial_type_info);
+    let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
     let type_id = ctx
-        .resolve_type_with_self(
+        .resolve_type(
             handler,
             initial_type_id,
-            ctx.self_type(),
             &targ.span,
             EnforceTypeArguments::No,
             None,
         )
-        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+        .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+    let mut ctx =
+        ctx.by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
 
     let lhs = arguments[0].clone();
     let lhs = ty::TyExpression::type_check(handler, ctx.by_ref(), lhs)?;
@@ -1142,15 +1303,17 @@ fn type_check_ptr_ops(
     let ctx = ctx
         .by_ref()
         .with_help_text("Incorrect argument type")
-        .with_type_annotation(
-            type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-        );
+        .with_type_annotation(type_engine.insert(
+            engines,
+            TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+            None,
+        ));
     let rhs = ty::TyExpression::type_check(handler, ctx, rhs)?;
 
     Ok((
         ty::TyIntrinsicFunctionKind {
             kind,
-            arguments: vec![lhs, rhs],
+            arguments: vec![lhs.clone(), rhs],
             type_arguments: vec![TypeArgument {
                 type_id,
                 initial_type_id,
@@ -1159,7 +1322,7 @@ fn type_check_ptr_ops(
             }],
             span,
         },
-        type_engine.insert(engines, lhs_ty),
+        type_engine.insert(engines, lhs_ty, lhs.span.source_id()),
     ))
 }
 
@@ -1195,26 +1358,25 @@ fn type_check_smo(
     }
 
     // Type check the type argument
-    let type_argument = type_arguments.get(0).map(|targ| {
+    let type_argument = type_arguments.first().map(|targ| {
         let mut ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown));
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         let initial_type_info = type_engine
             .to_typeinfo(targ.type_id, &targ.span)
             .map_err(|e| handler.emit_err(e.into()))
             .unwrap_or_else(TypeInfo::ErrorRecovery);
-        let initial_type_id = type_engine.insert(engines, initial_type_info);
+        let initial_type_id = type_engine.insert(engines, initial_type_info, targ.span.source_id());
         let type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 initial_type_id,
-                ctx.self_type(),
                 &targ.span,
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
         TypeArgument {
             type_id,
             initial_type_id,
@@ -1224,9 +1386,9 @@ fn type_check_smo(
     });
 
     // Type check the first argument which is the recipient address, so it has to be a `b256`.
-    let mut ctx = ctx
-        .by_ref()
-        .with_type_annotation(type_engine.insert(engines, TypeInfo::B256));
+    let mut ctx =
+        ctx.by_ref()
+            .with_type_annotation(type_engine.insert(engines, TypeInfo::B256, None));
     let recipient = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[0].clone())?;
 
     // Type check the second argument which is the data, which can be anything. If a type
@@ -1234,21 +1396,25 @@ fn type_check_smo(
     let mut ctx = ctx.by_ref().with_type_annotation(
         type_argument
             .clone()
-            .map_or(type_engine.insert(engines, TypeInfo::Unknown), |ta| {
+            .map_or(type_engine.insert(engines, TypeInfo::Unknown, None), |ta| {
                 ta.type_id
             }),
     );
     let data = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[1].clone())?;
 
     // Type check the third argument which is the output index, so it has to be a `u64`.
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
 
     // Type check the fourth argument which is the amount of coins to send, so it has to be a `u64`.
-    let mut ctx = ctx.by_ref().with_type_annotation(
-        type_engine.insert(engines, TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)),
-    );
+    let mut ctx = ctx.by_ref().with_type_annotation(type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    ));
     let coins = ty::TyExpression::type_check(handler, ctx.by_ref(), arguments[2].clone())?;
 
     Ok((
@@ -1258,6 +1424,92 @@ fn type_check_smo(
             type_arguments: type_argument.map_or(vec![], |ta| vec![ta]),
             span,
         },
-        type_engine.insert(engines, TypeInfo::Tuple(vec![])),
+        type_engine.insert(engines, TypeInfo::Tuple(vec![]), None),
     ))
+}
+
+/// Signature: `__contract_call<T>()`
+/// Description: Calls another contract
+/// Constraints: None.
+fn type_check_contract_ret(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    _kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    _type_arguments: Vec<TypeArgument>,
+    _span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let arguments: Vec<ty::TyExpression> = arguments
+        .iter()
+        .map(|x| {
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+            ty::TyExpression::type_check(handler, ctx, x.clone())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let t = ctx
+        .engines
+        .te()
+        .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
+
+    Ok((
+        ty::TyIntrinsicFunctionKind {
+            kind: Intrinsic::ContractRet,
+            arguments,
+            type_arguments: vec![],
+            span: Span::dummy(),
+        },
+        t,
+    ))
+}
+
+/// Signature: `__contract_call()`
+/// Description: Calls another contract
+/// Constraints: None.
+fn type_check_contract_call(
+    handler: &Handler,
+    mut ctx: TypeCheckContext,
+    kind: sway_ast::Intrinsic,
+    arguments: Vec<Expression>,
+    type_arguments: Vec<TypeArgument>,
+    span: Span,
+) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    if !type_arguments.is_empty() {
+        return Err(handler.emit_err(CompileError::TypeArgumentsNotAllowed { span }));
+    }
+
+    let return_type_id = ctx
+        .engines
+        .te()
+        .insert(ctx.engines, TypeInfo::Tuple(vec![]), None);
+
+    // Arguments
+    let arguments: Vec<ty::TyExpression> = arguments
+        .iter()
+        .map(|x| {
+            let ctx = ctx
+                .by_ref()
+                .with_help_text("")
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+            ty::TyExpression::type_check(handler, ctx, x.clone())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let intrinsic_function = ty::TyIntrinsicFunctionKind {
+        kind,
+        arguments,
+        type_arguments: vec![],
+        span,
+    };
+
+    Ok((intrinsic_function, return_type_id))
 }

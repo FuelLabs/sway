@@ -1,10 +1,9 @@
-use sway_error::handler::{ErrorEmitted, Handler};
-
 use crate::{
     language::{parsed::*, ty, CallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
     type_system::*,
 };
+use sway_error::handler::{ErrorEmitted, Handler};
 
 impl ty::TyStructDecl {
     pub(crate) fn type_check(
@@ -23,38 +22,36 @@ impl ty::TyStructDecl {
         } = decl;
 
         // create a namespace for the decl, used to create a scope for generics
-        let mut decl_namespace = ctx.namespace.clone();
-        let mut ctx = ctx.scoped(&mut decl_namespace);
+        ctx.scoped(|mut ctx| {
+            // Type check the type parameters.
+            let new_type_parameters = TypeParameter::type_check_type_params(
+                handler,
+                ctx.by_ref(),
+                type_parameters,
+                None,
+            )?;
 
-        // Type check the type parameters.
-        let new_type_parameters =
-            TypeParameter::type_check_type_params(handler, ctx.by_ref(), type_parameters)?;
+            // type check the fields
+            let mut new_fields = vec![];
+            for field in fields.into_iter() {
+                new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
+            }
 
-        // Insert them into the current namespace.
-        for p in &new_type_parameters {
-            p.insert_into_namespace(handler, ctx.by_ref())?;
-        }
+            let mut path: CallPath = name.into();
+            path = path.to_fullpath(ctx.engines(), ctx.namespace());
 
-        // type check the fields
-        let mut new_fields = vec![];
-        for field in fields.into_iter() {
-            new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
-        }
+            // create the struct decl
+            let decl = ty::TyStructDecl {
+                call_path: path,
+                type_parameters: new_type_parameters,
+                fields: new_fields,
+                visibility,
+                span,
+                attributes,
+            };
 
-        let mut path: CallPath = name.into();
-        path = path.to_fullpath(ctx.namespace);
-
-        // create the struct decl
-        let decl = ty::TyStructDecl {
-            call_path: path,
-            type_parameters: new_type_parameters,
-            fields: new_fields,
-            visibility,
-            span,
-            attributes,
-        };
-
-        Ok(decl)
+            Ok(decl)
+        })
     }
 }
 
@@ -68,21 +65,43 @@ impl ty::TyStructField {
 
         let mut type_argument = field.type_argument;
         type_argument.type_id = ctx
-            .resolve_type_with_self(
+            .resolve_type(
                 handler,
                 type_argument.type_id,
-                ctx.self_type(),
                 &type_argument.span,
                 EnforceTypeArguments::Yes,
                 None,
             )
-            .unwrap_or_else(|err| type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err)));
+            .unwrap_or_else(|err| {
+                type_engine.insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
+            });
         let field = ty::TyStructField {
+            visibility: field.visibility,
             name: field.name,
             span: field.span,
             type_argument,
             attributes: field.attributes,
         };
         Ok(field)
+    }
+}
+
+impl TypeCheckAnalysis for ty::TyStructDecl {
+    fn type_check_analyze(
+        &self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for ty::TyStructDecl {
+    fn type_check_finalize(
+        &mut self,
+        _handler: &Handler,
+        _ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        Ok(())
     }
 }

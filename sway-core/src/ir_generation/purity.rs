@@ -8,7 +8,7 @@ use crate::{
 
 use sway_error::warning::{CompileWarning, Warning};
 use sway_error::{error::CompileError, handler::Handler};
-use sway_ir::{Context, FuelVmInstruction, Function, Instruction};
+use sway_ir::{Context, FuelVmInstruction, Function, InstOp};
 use sway_types::span::Span;
 
 use std::collections::HashMap;
@@ -42,33 +42,27 @@ pub(crate) fn check_function_purity(
             ins_value
                 .get_instruction(context)
                 .map(|instruction| {
-                    match instruction {
-                        Instruction::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
-                        | Instruction::FuelVm(FuelVmInstruction::StateLoadWord(_)) => {
-                            (true, writes)
-                        }
+                    match &instruction.op {
+                        InstOp::FuelVm(FuelVmInstruction::StateLoadQuadWord { .. })
+                        | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(_)) => (true, writes),
 
-                        Instruction::FuelVm(FuelVmInstruction::StateClear { .. })
-                        | Instruction::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
-                        | Instruction::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => {
-                            (reads, true)
-                        }
+                        InstOp::FuelVm(FuelVmInstruction::StateClear { .. })
+                        | InstOp::FuelVm(FuelVmInstruction::StateStoreQuadWord { .. })
+                        | InstOp::FuelVm(FuelVmInstruction::StateStoreWord { .. }) => (reads, true),
 
                         // Iterate for and check each instruction in the ASM block.
-                        Instruction::AsmBlock(asm_block, _args) => {
-                            asm_block.get_content(context).body.iter().fold(
-                                (reads, writes),
-                                |(reads, writes), asm_op| match asm_op.name.as_str() {
-                                    "scwq" | "srw" | "srwq" => (true, writes),
-                                    "sww" | "swwq" => (reads, true),
-                                    _ => (reads, writes),
-                                },
-                            )
-                        }
+                        InstOp::AsmBlock(asm_block, _args) => asm_block.body.iter().fold(
+                            (reads, writes),
+                            |(reads, writes), asm_op| match asm_op.op_name.as_str() {
+                                "scwq" | "srw" | "srwq" => (true, writes),
+                                "sww" | "swwq" => (reads, true),
+                                _ => (reads, writes),
+                            },
+                        ),
 
                         // Recurse to find the called function purity.  Use memoisation to
                         // avoid redoing work.
-                        Instruction::Call(callee, _args) => {
+                        InstOp::Call(callee, _args) => {
                             let (called_fn_reads, called_fn_writes) =
                                 env.memos.get(callee).copied().unwrap_or_else(|| {
                                     let r_w = check_function_purity(

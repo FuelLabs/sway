@@ -1,4 +1,4 @@
-//! Configurable yet nonchanging constants for the compiler.
+//! Configurable yet non-changing constants for the compiler.
 
 /// The default extension of [LANGUAGE_NAME] files, e.g. `main.sw`.
 pub const DEFAULT_FILE_EXTENSION: &str = "sw";
@@ -17,15 +17,6 @@ pub const CONTRACT_CALL_ASSET_ID_PARAMETER_DEFAULT_VALUE: [u8; 32] = [0; 32];
 
 /// The default entry point for scripts and predicates.
 pub const DEFAULT_ENTRY_POINT_FN_NAME: &str = "main";
-
-/// The default prefix for the compiler generated names of tuples
-pub const TUPLE_NAME_PREFIX: &str = "__tuple_";
-
-// The default prefix for the compiler generated names of struct fields
-pub const DESTRUCTURE_PREFIX: &str = "__destructure_";
-
-/// The default prefix for the compiler generated names of match
-pub const MATCH_RETURN_VAR_NAME_PREFIX: &str = "__match_return_var_name_";
 
 /// The valid attribute strings related to storage and purity.
 pub const STORAGE_PURITY_ATTRIBUTE_NAME: &str = "storage";
@@ -52,11 +43,19 @@ pub const PAYABLE_ATTRIBUTE_NAME: &str = "payable";
 /// The valid attribute strings related to allow.
 pub const ALLOW_ATTRIBUTE_NAME: &str = "allow";
 pub const ALLOW_DEAD_CODE_NAME: &str = "dead_code";
+pub const ALLOW_DEPRECATED_NAME: &str = "deprecated";
 
 /// The valid attribute strings related to conditional compilation.
 pub const CFG_ATTRIBUTE_NAME: &str = "cfg";
 pub const CFG_TARGET_ARG_NAME: &str = "target";
 pub const CFG_PROGRAM_TYPE_ARG_NAME: &str = "program_type";
+pub const CFG_EXPERIMENTAL_NEW_ENCODING: &str = "experimental_new_encoding";
+
+pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
+
+pub const NAMESPACE_ATTRIBUTE_NAME: &str = "namespace";
+
+pub const FALLBACK_ATTRIBUTE_NAME: &str = "fallback";
 
 /// The list of valid attributes.
 pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
@@ -68,4 +67,11 @@ pub const VALID_ATTRIBUTE_NAMES: &[&str] = &[
     PAYABLE_ATTRIBUTE_NAME,
     ALLOW_ATTRIBUTE_NAME,
     CFG_ATTRIBUTE_NAME,
+    DEPRECATED_ATTRIBUTE_NAME,
+    NAMESPACE_ATTRIBUTE_NAME,
+    FALLBACK_ATTRIBUTE_NAME,
 ];
+
+pub const CORE: &str = "core";
+pub const STD: &str = "std";
+pub const PRELUDE: &str = "prelude";

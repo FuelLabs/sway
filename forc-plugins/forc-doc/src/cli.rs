@@ -1,10 +1,22 @@
+//! The command line interface for `forc doc`.
 use clap::Parser;
 use forc_pkg::source::IPFSNode;
 
-#[derive(Debug, Parser)]
+forc_util::cli_examples! {
+    crate::Command {
+        [ Build the docs for a project in the current path => "forc doc"]
+        [ Build the docs for a project in the current path and open it in the browser => "forc doc --open" ]
+        [ Build the docs for a project located in another path => "forc doc --manifest-path {path}" ]
+        [ Build the docs for the current project exporting private types => "forc doc --document-private-items" ]
+        [ Build the docs offline without downloading any dependency from the network => "forc doc --offline" ]
+    }
+}
+
+/// Forc plugin for building a Sway package's documentation
+#[derive(Debug, Parser, Default)]
 #[clap(
     name = "forc-doc",
-    about = "Forc plugin for building a Sway package's documentation",
+    after_help = help(),
     version
 )]
 pub struct Command {
@@ -37,4 +49,10 @@ pub struct Command {
     /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
+
+    #[cfg(test)]
+    pub(crate) doc_path: Option<String>,
+
+    #[clap(long)]
+    pub experimental_new_encoding: bool,
 }

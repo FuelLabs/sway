@@ -1,9 +1,0 @@
-[project]
-authors = ["Fuel Labs <contact@fuel.sh>"]
-entry = "main.sw"
-license = "Apache-2.0"
-name = "token_ops_test"
-
-[dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
-test_fuel_coin_abi = { path = "../../test_abis/test_fuel_coin_abi" }

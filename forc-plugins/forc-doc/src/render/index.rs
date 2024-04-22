@@ -1,6 +1,10 @@
+//! Handles creation of `index.html` files.
 use crate::{
     doc::module::ModuleInfo,
-    render::{constant::IDENTITY, link::DocLinks, sidebar::*, BlockTitle, DocStyle, Renderable},
+    render::{
+        constant::IDENTITY, link::DocLinks, search::generate_searchbar, sidebar::*, BlockTitle,
+        DocStyle, Renderable,
+    },
     RenderPlan, ASSETS_DIR_NAME,
 };
 use anyhow::Result;
@@ -57,33 +61,14 @@ impl Renderable for AllDocIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        // div(class="sub-container") {
-                        //     nav(class="sub") {
-                        //         form(class="search-form") {
-                        //             div(class="search-container") {
-                        //                 span;
-                        //                 input(
-                        //                     class="search-input",
-                        //                     name="search",
-                        //                     autocomplete="off",
-                        //                     spellcheck="false",
-                        //                     // TODO: Add functionality.
-                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
-                        //                     type="search"
-                        //                 );
-                        //                 div(id="help-button", title="help", tabindex="-1") {
-                        //                     button(type="button") { : "?" }
-                        //                 }
-                        //             }
-                        //         }
-                        //     }
-                        // }
+                        : generate_searchbar(self.project_name.clone());
                         section(id="main-content", class="content") {
                             h1(class="fqn") {
                                 span(class="in-band") { : "List of all items" }
                             }
                             : doc_links;
                         }
+                        section(id="search", class="search-results");
                     }
                 }
                 script(src=format!("../{ASSETS_DIR_NAME}/highlight.js"));
@@ -184,27 +169,7 @@ impl Renderable for ModuleIndex {
                 : sidebar;
                 main {
                     div(class="width-limiter") {
-                        // div(class="sub-container") {
-                        //     nav(class="sub") {
-                        //         form(class="search-form") {
-                        //             div(class="search-container") {
-                        //                 span;
-                        //                 input(
-                        //                     class="search-input",
-                        //                     name="search",
-                        //                     autocomplete="off",
-                        //                     spellcheck="false",
-                        //                     // TODO: Add functionality.
-                        //                     placeholder="Searchbar unimplemented, see issue #3480...",
-                        //                     type="search"
-                        //                 );
-                        //                 div(id="help-button", title="help", tabindex="-1") {
-                        //                     button(type="button") { : "?" }
-                        //                 }
-                        //             }
-                        //         }
-                        //     }
-                        // }
+                        : generate_searchbar(self.module_info.clone());
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {
@@ -231,6 +196,7 @@ impl Renderable for ModuleIndex {
                             }
                             : doc_links;
                         }
+                        section(id="search", class="search-results");
                     }
                 }
                 script(src=sway_hjs);

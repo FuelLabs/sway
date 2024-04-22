@@ -1,10 +1,10 @@
 # Inline Assembly in Sway
 
-While many users will never have to touch assembly language while writing sway code, it is a powerful tool that enables many advanced use-cases (ie: optimizations, building libraries, etc).
+While many users will never have to touch assembly language while writing sway code, it is a powerful tool that enables many advanced use-cases (e.g., optimizations, building libraries, etc).
 
 ## ASM Block
 
-In Sway, the way we use assembly inline is to declare an asm block like this:
+In Sway, the way we use assembly inline is to declare an `asm` block like this:
 
 ```sway
 asm() {...}
@@ -23,7 +23,7 @@ pub fn add_1(num: u32) -> u32 {
 }
 ```
 
-An `asm` block can only return a single register. If you really need to return more than one value, you can modify a tuple. Here's an example showing how can implement this `(u64, u64)`:
+An `asm` block can only return a single register. If you really need to return more than one value, you can modify a tuple. Here's an example showing how you can implement this `(u64, u64)`:
 
 ```sway
 {{#include ../../../../examples/asm_return_tuple_pointer/src/main.sw}}

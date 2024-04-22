@@ -1,33 +1,36 @@
 use assert_matches::assert_matches;
-use fuels::{
-    prelude::*,
-    tx::Receipt,
-    types::transaction_builders::{ScriptTransactionBuilder, TransactionBuilder},
-};
+use fuels::{prelude::*, tx::Receipt, types::transaction_builders::ScriptTransactionBuilder};
 
 async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let provider = wallet.provider().unwrap();
 
     let wallet_coins = wallet
         .get_asset_inputs_for_amount(
             AssetId::default(),
             wallet.get_asset_balance(&AssetId::default()).await.unwrap(),
-            None,
         )
         .await
         .unwrap();
 
     let mut tx =
-        ScriptTransactionBuilder::prepare_transfer(wallet_coins, vec![], TxParameters::default())
-            .set_script(std::fs::read(
-                "test_projects/script_data/out/debug/script_data.bin",
+        ScriptTransactionBuilder::prepare_transfer(wallet_coins, vec![], Default::default())
+            .with_script(std::fs::read(
+                "test_projects/script_data/out/release/script_data.bin",
             )?)
-            .set_script_data(script_data)
-            .build()?;
+            .with_script_data(script_data);
 
-    wallet.sign_transaction(&mut tx)?;
+    tx.add_signer(wallet.clone()).unwrap();
 
-    wallet.provider().unwrap().send_transaction(&tx).await
+    let tx = tx.build(provider).await?;
+
+    let provider = wallet.provider().unwrap();
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    provider
+        .tx_status(&tx_id)
+        .await
+        .unwrap()
+        .take_receipts_checked(None)
 }
 
 #[tokio::test]

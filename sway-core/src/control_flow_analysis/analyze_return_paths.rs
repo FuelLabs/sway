@@ -148,7 +148,10 @@ fn connect_node<'eng: 'cfg, 'cfg>(
             expression: ty::TyExpressionVariant::Return(..),
             ..
         })
-        | ty::TyAstNodeContent::ImplicitReturnExpression(_) => {
+        | ty::TyAstNodeContent::Expression(ty::TyExpression {
+            expression: ty::TyExpressionVariant::ImplicitReturn(..),
+            ..
+        }) => {
             let this_index = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf_ix in leaves {
                 graph.add_edge(*leaf_ix, this_index, "".into());
@@ -201,6 +204,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | ty::TyDecl::EnumVariantDecl(_)
         | ty::TyDecl::StorageDecl(_)
         | ty::TyDecl::TypeAliasDecl(_)
+        | ty::TyDecl::TraitTypeDecl(_)
         | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaves.to_vec()),
         ty::TyDecl::VariableDecl(_) | ty::TyDecl::ConstantDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
@@ -219,15 +223,16 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             Ok(leaves.to_vec())
         }
         ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
+            let impl_trait = decl_engine.get_impl_trait(decl_id);
             let ty::TyImplTrait {
                 trait_name, items, ..
-            } = decl_engine.get_impl_trait(decl_id);
+            } = &*impl_trait;
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
             }
 
-            connect_impl_trait(engines, &trait_name, graph, &items, entry_node)?;
+            connect_impl_trait(engines, trait_name, graph, items, entry_node)?;
             Ok(leaves.to_vec())
         }
         ty::TyDecl::ErrorRecovery(..) => Ok(leaves.to_vec()),
@@ -266,6 +271,7 @@ fn connect_impl_trait<'eng: 'cfg, 'cfg>(
                 methods_and_indexes.push((fn_decl.name.clone(), fn_decl_entry_node));
             }
             TyImplItem::Constant(_const_decl) => {}
+            TyImplItem::Type(_type_decl) => {}
         }
     }
     // Now, insert the methods into the trait method namespace.

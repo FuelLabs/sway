@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-54A4EED6869943AB"
+
+[[package]]
+name = "references_in_asm_blocks"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-54A4EED6869943AB"
+dependencies = ["core"]

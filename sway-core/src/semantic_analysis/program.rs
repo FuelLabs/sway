@@ -1,16 +1,42 @@
 use crate::{
-    language::{parsed::ParseProgram, ty},
+    language::{
+        parsed::ParseProgram,
+        ty::{self, TyProgram},
+    },
     metadata::MetadataManager,
     semantic_analysis::{
         namespace::{self, Namespace},
         TypeCheckContext,
     },
-    Engines,
+    BuildConfig, Engines,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
-impl ty::TyProgram {
+use super::{
+    collection_context::SymbolCollectionContext, TypeCheckAnalysis, TypeCheckAnalysisContext,
+    TypeCheckFinalization, TypeCheckFinalizationContext,
+};
+
+impl TyProgram {
+    /// Collects the given parsed program to produce a symbol map and module evaluation order.
+    ///
+    /// The given `initial_namespace` acts as an initial state for each module within this program.
+    /// It should contain a submodule for each library package dependency.
+    pub fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        parsed: &ParseProgram,
+        initial_namespace: namespace::Root,
+    ) -> Result<SymbolCollectionContext, ErrorEmitted> {
+        let namespace = Namespace::init_root(initial_namespace);
+        let mut ctx = SymbolCollectionContext::new(namespace);
+        let ParseProgram { root, kind: _ } = parsed;
+
+        ty::TyModule::collect(handler, engines, &mut ctx, root)?;
+        Ok(ctx)
+    }
+
     /// Type-check the given parsed program to produce a typed program.
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
@@ -19,25 +45,45 @@ impl ty::TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        initial_namespace: namespace::Module,
+        initial_namespace: namespace::Root,
         package_name: &str,
+        build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
+        let experimental =
+            build_config
+                .map(|x| x.experimental)
+                .unwrap_or(crate::ExperimentalFlags {
+                    new_encoding: false,
+                });
+
         let mut namespace = Namespace::init_root(initial_namespace);
-        let ctx =
-            TypeCheckContext::from_root(&mut namespace, engines).with_kind(parsed.kind.clone());
+        let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
+            .with_kind(parsed.kind);
+
         let ParseProgram { root, kind } = parsed;
-        ty::TyModule::type_check(handler, ctx, root).and_then(|root| {
-            let res = Self::validate_root(handler, engines, &root, kind.clone(), package_name);
-            res.map(|(kind, declarations, configurables)| Self {
-                kind,
-                root,
-                declarations,
-                configurables,
-                storage_slots: vec![],
-                logged_types: vec![],
-                messages_types: vec![],
-            })
-        })
+
+        let root = ty::TyModule::type_check(handler, ctx.by_ref(), engines, parsed.kind, root)?;
+
+        let (kind, declarations, configurables) = Self::validate_root(
+            handler,
+            engines,
+            &root,
+            *kind,
+            package_name,
+            ctx.experimental,
+        )?;
+
+        let program = TyProgram {
+            kind,
+            root,
+            declarations,
+            configurables,
+            storage_slots: vec![],
+            logged_types: vec![],
+            messages_types: vec![],
+        };
+
+        Ok(program)
     }
 
     pub(crate) fn get_typed_program_with_initialized_storage_slots(
@@ -86,5 +132,33 @@ impl ty::TyProgram {
                 ..self
             }),
         }
+    }
+}
+
+impl TypeCheckAnalysis for TyProgram {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        for node in self.root.all_nodes.iter() {
+            node.type_check_analyze(handler, ctx)?;
+        }
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for TyProgram {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        handler.scope(|handler| {
+            for node in self.root.all_nodes.iter_mut() {
+                let _ = node.type_check_finalize(handler, ctx);
+            }
+            Ok(())
+        })
     }
 }

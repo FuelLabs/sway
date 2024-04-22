@@ -1,6 +1,9 @@
 contract;
 
+// ANCHOR: storage_namespace
+#[namespace(my_storage_namespace)]
 storage {
+    // ANCHOR_END: storage_namespace
     var: u64 = 0,
 }
 
@@ -80,3 +83,14 @@ fn foo() {}
 #[inline(always)]
 fn bar() {}
 // ANCHOR_END: always_inline
+
+
+// ANCHOR: allow_deprecated_annotation
+#[deprecated(note = "this is deprecated")]
+struct DeprecatedStruct {}
+
+#[allow(deprecated)]
+fn using_deprecated_struct() {
+    let _ = DeprecatedStruct {};
+}
+// ANCHOR_END: allow_deprecated_annotation

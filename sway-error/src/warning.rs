@@ -67,6 +67,9 @@ pub enum Warning {
     ShadowsOtherSymbol {
         name: Ident,
     },
+    UninitializedAsmRegShadowsVariable {
+        name: Ident,
+    },
     OverridingTraitImplementation,
     DeadDeclaration,
     DeadEnumDeclaration,
@@ -115,6 +118,9 @@ pub enum Warning {
         block_name: Ident,
     },
     ModulePrivacyDisabled,
+    UsingDeprecated {
+        message: String,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -199,6 +205,10 @@ impl fmt::Display for Warning {
                 f,
                 "This shadows another symbol in this scope with the same name \"{name}\"."
             ),
+            UninitializedAsmRegShadowsVariable { name } => write!(
+                f,
+                "This unitialized register is shadowing a variable, you probably meant to also initialize it like \"{name}: {name}\"."
+            ),
             OverridingTraitImplementation => write!(
                 f,
                 "This trait implementation overrides another one that was previously defined."
@@ -253,9 +263,14 @@ impl fmt::Display for Warning {
             ModulePrivacyDisabled => write!(f, "Module privacy rules will soon change to make modules private by default.
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
+            UsingDeprecated { message } => write!(f, "{}", message),
         }
     }
 }
+
+#[allow(dead_code)]
+const FUTURE_HARD_ERROR_HELP: &str =
+    "In future versions of Sway this warning will become a hard error.";
 
 impl ToDiagnostic for CompileWarning {
     fn to_diagnostic(&self, source_engine: &sway_types::SourceEngine) -> Diagnostic {
@@ -296,7 +311,7 @@ impl ToDiagnostic for CompileWarning {
                     Hint::info(
                         source_engine,
                         match_value.clone(),
-                        format!("`{}`, of type \"{match_type}\", is the value to match on.", match_value.as_str())
+                        format!("The expression to match on is of type \"{match_type}\".")
                     ),
                     if preceding_arms.is_right() {
                         Hint::help(

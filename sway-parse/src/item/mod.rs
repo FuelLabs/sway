@@ -1,13 +1,13 @@
 use crate::{Parse, ParseResult, ParseToEnd, Parser, ParserConsumed};
 
 use sway_ast::keywords::{
-    AbiToken, ClassToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken, ModToken,
-    MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
+    AbiToken, ClassToken, ColonToken, ConfigurableToken, ConstToken, EnumToken, FnToken, ImplToken,
+    ModToken, MutToken, OpenAngleBracketToken, RefToken, SelfToken, SemicolonToken, StorageToken,
     StructToken, TraitToken, TypeToken, UseToken, WhereToken,
 };
 use sway_ast::{
     FnArg, FnArgs, FnSignature, ItemConst, ItemEnum, ItemFn, ItemKind, ItemStruct, ItemTrait,
-    ItemTypeAlias, ItemUse, Submodule, TypeField,
+    ItemTypeAlias, ItemUse, Submodule, TraitType, TypeField,
 };
 use sway_error::parser_error::ParseErrorKind;
 
@@ -58,7 +58,11 @@ impl Parse for ItemKind {
             ItemKind::Abi(item)
         } else if let Some(mut item) = parser.guarded_parse::<ConstToken, ItemConst>()? {
             item.visibility = visibility.take();
-            parser.take::<SemicolonToken>();
+            parser.take::<SemicolonToken>().ok_or_else(|| {
+                parser.emit_error(ParseErrorKind::ExpectedPunct {
+                    kinds: vec![sway_types::ast::PunctKind::Semicolon],
+                })
+            })?;
             ItemKind::Const(item)
         } else if let Some(item) = parser.guarded_parse::<StorageToken, _>()? {
             ItemKind::Storage(item)
@@ -90,9 +94,15 @@ impl Parse for ItemKind {
 
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
+        let visibility = parser.take();
         Ok(TypeField {
+            visibility,
             name: parser.parse()?,
-            colon_token: parser.parse()?,
+            colon_token: if parser.peek::<ColonToken>().is_some() {
+                parser.parse()
+            } else {
+                Err(parser.emit_error(ParseErrorKind::MissingColonInEnumTypeField))
+            }?,
             ty: parser.parse()?,
         })
     }
@@ -173,6 +183,26 @@ impl Parse for FnSignature {
                 None => None,
             },
             where_clause_opt: parser.guarded_parse::<WhereToken, _>()?,
+        })
+    }
+}
+
+impl Parse for TraitType {
+    fn parse(parser: &mut Parser) -> ParseResult<TraitType> {
+        let type_token = parser.parse()?;
+        let name = parser.parse()?;
+        let eq_token_opt = parser.take();
+        let ty_opt = match &eq_token_opt {
+            Some(_eq) => Some(parser.parse()?),
+            None => None,
+        };
+        let semicolon_token = parser.peek().unwrap_or_default();
+        Ok(TraitType {
+            type_token,
+            name,
+            eq_token_opt,
+            ty_opt,
+            semicolon_token,
         })
     }
 }

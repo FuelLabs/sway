@@ -1,9 +1,16 @@
+pub mod execute;
+pub mod setup;
+
+use crate::execute::TestExecutor;
+use crate::setup::{
+    ContractDeploymentSetup, ContractTestSetup, DeploymentSetup, ScriptTestSetup, TestSetup,
+};
 use forc_pkg as pkg;
 use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
-use fuel_vm::gas::GasCosts;
-use fuel_vm::{self as vm, fuel_asm, prelude::Instruction};
+use fuel_vm::{self as vm};
+use pkg::manifest::build_profile::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
@@ -11,6 +18,10 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
+use tx::consensus_parameters::ConsensusParametersV1;
+use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
+use vm::interpreter::InterpreterParams;
+use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
 #[derive(Debug)]
@@ -36,6 +47,7 @@ pub struct TestDetails {
 }
 
 /// The filter to be used to only run matching tests.
+#[derive(Debug, Clone)]
 pub struct TestFilter<'a> {
     /// The phrase used for filtering, a `&str` searched/matched with test name.
     pub filter_phrase: &'a str,
@@ -45,7 +57,7 @@ pub struct TestFilter<'a> {
 }
 
 /// The result of executing a single test within a single package.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestResult {
     /// The name of the function.
     pub name: String,
@@ -114,49 +126,24 @@ pub enum PackageWithDeploymentToTest {
     Contract(ContractToTest),
 }
 
-/// Required test setup for package types that requires a deployment.
-#[derive(Debug)]
-enum DeploymentSetup {
-    Script(ScriptTestSetup),
-    Contract(ContractTestSetup),
-}
-
-impl DeploymentSetup {
-    /// Returns the storage for this test setup
-    fn storage(&self) -> &vm::storage::MemoryStorage {
-        match self {
-            DeploymentSetup::Script(script_setup) => &script_setup.storage,
-            DeploymentSetup::Contract(contract_setup) => &contract_setup.storage,
-        }
-    }
-
-    /// Return the root contract id if this is a contract setup.
-    fn root_contract_id(&self) -> Option<tx::ContractId> {
-        match self {
-            DeploymentSetup::Script(_) => None,
-            DeploymentSetup::Contract(contract_setup) => Some(contract_setup.root_contract_id),
-        }
-    }
-}
-
 /// The set of options provided to the `test` function.
 #[derive(Default, Clone)]
-pub struct Opts {
+pub struct TestOpts {
     pub pkg: pkg::PkgOpts,
     pub print: pkg::PrintOpts,
     pub minify: pkg::MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
-    /// If set, outputs source file mapping in JSON format
+    /// If set, outputs debug info to the provided file.
+    /// If the argument provided ends with .json, a JSON is emitted,
+    /// otherwise, an ELF file containing DWARF is emitted.
     pub debug_outfile: Option<String>,
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     pub release: bool,
     /// Should warnings be treated as errors?
     pub error_on_warnings: bool,
@@ -164,6 +151,8 @@ pub struct Opts {
     pub time_phases: bool,
     /// Output compilation metrics into file.
     pub metrics_outfile: Option<String>,
+    /// Set of experimental flags
+    pub experimental: ExperimentalFlags,
 }
 
 /// The set of options provided for controlling logs printed for each test.
@@ -171,69 +160,6 @@ pub struct Opts {
 pub struct TestPrintOpts {
     pub pretty_print: bool,
     pub print_logs: bool,
-}
-
-/// The storage and the contract id (if a contract is being tested) for a test.
-#[derive(Debug)]
-enum TestSetup {
-    WithDeployment(DeploymentSetup),
-    WithoutDeployment(vm::storage::MemoryStorage),
-}
-
-impl TestSetup {
-    /// Returns the storage for this test setup
-    fn storage(&self) -> &vm::storage::MemoryStorage {
-        match self {
-            TestSetup::WithDeployment(deployment_setup) => deployment_setup.storage(),
-            TestSetup::WithoutDeployment(storage) => storage,
-        }
-    }
-
-    /// Produces an iterator yielding contract ids of contract dependencies for this test setup.
-    fn contract_dependency_ids(&self) -> impl Iterator<Item = &tx::ContractId> + '_ {
-        match self {
-            TestSetup::WithDeployment(deployment_setup) => match deployment_setup {
-                DeploymentSetup::Script(script_setup) => {
-                    script_setup.contract_dependency_ids.iter()
-                }
-                DeploymentSetup::Contract(contract_setup) => {
-                    contract_setup.contract_dependency_ids.iter()
-                }
-            },
-            TestSetup::WithoutDeployment(_) => [].iter(),
-        }
-    }
-
-    /// Return the root contract id if this is a contract setup.
-    fn root_contract_id(&self) -> Option<tx::ContractId> {
-        match self {
-            TestSetup::WithDeployment(deployment_setup) => deployment_setup.root_contract_id(),
-            TestSetup::WithoutDeployment(_) => None,
-        }
-    }
-
-    /// Produces an iterator yielding all contract ids required to be included in the transaction
-    /// for this test setup.
-    fn contract_ids(&self) -> impl Iterator<Item = tx::ContractId> + '_ {
-        self.contract_dependency_ids()
-            .cloned()
-            .chain(self.root_contract_id())
-    }
-}
-
-/// The data collected to test a contract.
-#[derive(Debug)]
-struct ContractTestSetup {
-    storage: vm::storage::MemoryStorage,
-    contract_dependency_ids: Vec<tx::ContractId>,
-    root_contract_id: tx::ContractId,
-}
-
-/// The data collected to test a script.
-#[derive(Debug)]
-struct ScriptTestSetup {
-    storage: vm::storage::MemoryStorage,
-    contract_dependency_ids: Vec<tx::ContractId>,
 }
 
 impl TestedPackage {
@@ -271,22 +197,27 @@ impl PackageWithDeploymentToTest {
     /// For contract deploys all contract dependencies and the root contract itself.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
-        let params = tx::ConsensusParameters::default();
+        let gas_price = 0;
+        let params = maxed_consensus_params();
         let storage = vm::storage::MemoryStorage::default();
-        let mut interpreter =
-            vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
+        let interpreter_params = InterpreterParams::new(gas_price, params.clone());
+        let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
+            vm::interpreter::Interpreter::with_storage(storage, interpreter_params);
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
         let contract_dependency_setups = self
             .contract_dependencies()
-            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, params));
+            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, &params));
 
         // Deploy contract dependencies of the root contract and collect their ids.
         let contract_dependency_ids = contract_dependency_setups
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
-                interpreter.transact(tx)?;
+                let tx = tx
+                    .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                    .unwrap();
+                interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
@@ -298,10 +229,15 @@ impl PackageWithDeploymentToTest {
             let (root_contract_id, root_contract_tx) = deployment_transaction(
                 &contract_to_test.pkg,
                 &contract_to_test.without_tests_bytecode,
-                params,
+                &params,
             );
+            let root_contract_tx = root_contract_tx
+                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .unwrap();
             // Deploy the root contract.
-            interpreter.transact(root_contract_tx)?;
+            interpreter
+                .transact(root_contract_tx)
+                .map_err(anyhow::Error::msg)?;
             let storage = interpreter.as_ref().clone();
             DeploymentSetup::Contract(ContractTestSetup {
                 storage,
@@ -320,23 +256,48 @@ impl PackageWithDeploymentToTest {
     }
 }
 
+/// Returns a mapping of each member package of a build plan to its compiled contract dependencies,
+/// ordered by deployment order.
+///
+/// Each dependency package needs to be deployed before executing the test for that package.
+fn get_contract_dependency_map(
+    built: &Built,
+    build_plan: &pkg::BuildPlan,
+) -> ContractDependencyMap {
+    let built_members: HashMap<&pkg::Pinned, Arc<pkg::BuiltPackage>> =
+        built.into_members().collect();
+    // For each member node, collect their contract dependencies.
+    build_plan
+        .member_nodes()
+        .map(|member_node| {
+            let graph = build_plan.graph();
+            let pinned_member = graph[member_node].clone();
+            let contract_dependencies = build_plan
+                .contract_dependencies(member_node)
+                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                .filter_map(|pinned| built_members.get(&pinned))
+                .cloned()
+                .collect::<Vec<_>>();
+            (pinned_member, contract_dependencies)
+        })
+        .collect()
+}
+
 impl BuiltTests {
     /// Constructs a `PackageTests` from `Built`.
-    ///
-    /// `contract_dependencies` represents ordered (by deployment order) packages that needs to be deployed for each package, before executing the test.
-    pub(crate) fn from_built(
-        built: Built,
-        contract_dependencies: &ContractDependencyMap,
-    ) -> anyhow::Result<BuiltTests> {
+    pub fn from_built(built: Built, build_plan: &pkg::BuildPlan) -> anyhow::Result<BuiltTests> {
+        let contract_dependencies = get_contract_dependency_map(&built, build_plan);
         let built = match built {
             Built::Package(built_pkg) => BuiltTests::Package(PackageTests::from_built_pkg(
                 built_pkg,
-                contract_dependencies,
+                &contract_dependencies,
             )),
             Built::Workspace(built_workspace) => {
                 let pkg_tests = built_workspace
                     .into_iter()
-                    .map(|built_pkg| PackageTests::from_built_pkg(built_pkg, contract_dependencies))
+                    .map(|built_pkg| {
+                        PackageTests::from_built_pkg(built_pkg, &contract_dependencies)
+                    })
                     .collect();
                 BuiltTests::Workspace(pkg_tests)
             }
@@ -407,71 +368,49 @@ impl<'a> PackageTests {
                 .bytecode
                 .entries
                 .par_iter()
-                .filter_map(|entry| entry.kind.test().map(|test| (entry, test)))
-                .filter(|(entry, _)| {
-                    // If a test filter is specified, only the tests containing the filter phrase in
-                    // their name are going to be executed.
-                    match &test_filter {
-                        Some(filter) => filter.filter(&entry.finalized.fn_name),
-                        None => true,
+                .filter_map(|entry| {
+                    if let Some(test_entry) = entry.kind.test() {
+                        // If a test filter is specified, only the tests containing the filter phrase in
+                        // their name are going to be executed.
+                        let name = entry.finalized.fn_name.clone();
+                        if let Some(filter) = test_filter {
+                            if !filter.filter(&name) {
+                                return None;
+                            }
+                        }
+                        return Some((entry, test_entry));
                     }
+                    None
                 })
                 .map(|(entry, test_entry)| {
+                    // Execute the test and return the result.
                     let offset = u32::try_from(entry.finalized.imm)
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
                     let test_setup = self.setup()?;
-                    let (state, duration, receipts) =
-                        exec_test(&pkg_with_tests.bytecode.bytes, offset, test_setup);
-
-                    let gas_used = *receipts
-                        .iter()
-                        .find_map(|receipt| match receipt {
-                            tx::Receipt::ScriptResult { gas_used, .. } => Some(gas_used),
-                            _ => None,
-                        })
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("missing used gas information from test execution")
-                        })?;
-
-                    // Only retain `Log` and `LogData` receipts.
-                    let logs = receipts
-                        .into_iter()
-                        .filter(|receipt| {
-                            matches!(receipt, fuel_tx::Receipt::Log { .. })
-                                || matches!(receipt, fuel_tx::Receipt::LogData { .. })
-                        })
-                        .collect();
-
-                    let span = test_entry.span.clone();
-                    let file_path = test_entry.file_path.clone();
-                    let condition = test_entry.pass_condition.clone();
-                    Ok(TestResult {
+                    TestExecutor::build(
+                        &pkg_with_tests.bytecode.bytes,
+                        offset,
+                        test_setup,
+                        test_entry,
                         name,
-                        file_path,
-                        duration,
-                        span,
-                        state,
-                        condition,
-                        logs,
-                        gas_used,
-                    })
+                    )?
+                    .execute()
                 })
                 .collect::<anyhow::Result<_>>()
         })?;
 
-        let tested_pkg = TestedPackage {
+        Ok(TestedPackage {
             built: Box::new(pkg_with_tests.clone()),
             tests,
-        };
-        Ok(tested_pkg)
+        })
     }
 
     /// Setup the storage for a test and returns a contract id for testing contracts.
     ///
     /// For testing contracts, storage returned from this function contains the deployed contract.
     /// For other types, default storage is returned.
-    fn setup(&self) -> anyhow::Result<TestSetup> {
+    pub fn setup(&self) -> anyhow::Result<TestSetup> {
         match self {
             PackageTests::Contract(contract_to_test) => {
                 let test_setup = contract_to_test.deploy()?;
@@ -488,7 +427,28 @@ impl<'a> PackageTests {
     }
 }
 
-impl Opts {
+impl From<TestOpts> for pkg::BuildOpts {
+    fn from(val: TestOpts) -> Self {
+        pkg::BuildOpts {
+            pkg: val.pkg,
+            print: val.print,
+            minify: val.minify,
+            binary_outfile: val.binary_outfile,
+            debug_outfile: val.debug_outfile,
+            build_target: val.build_target,
+            build_profile: val.build_profile,
+            release: val.release,
+            error_on_warnings: val.error_on_warnings,
+            time_phases: val.time_phases,
+            metrics_outfile: val.metrics_outfile,
+            tests: true,
+            member_filter: Default::default(),
+            experimental: val.experimental,
+        }
+    }
+}
+
+impl TestOpts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
         pkg::BuildOpts {
@@ -505,6 +465,7 @@ impl Opts {
             metrics_outfile: self.metrics_outfile,
             tests: true,
             member_filter: Default::default(),
+            experimental: self.experimental,
         }
     }
 }
@@ -523,7 +484,7 @@ impl TestResult {
         }
     }
 
-    /// Return the revert code for this `TestResult` if the test is reverted.
+    /// Return the revert code for this [TestResult] if the test is reverted.
     pub fn revert_code(&self) -> Option<u64> {
         match self.state {
             vm::state::ProgramState::Revert(revert_code) => Some(revert_code),
@@ -531,7 +492,7 @@ impl TestResult {
         }
     }
 
-    /// Return a `ErrorSignal` for this `TestResult` if the test is failed to pass.
+    /// Return an [ErrorSignal] for this [TestResult] if the test is failed to pass.
     pub fn error_signal(&self) -> anyhow::Result<ErrorSignal> {
         let revert_code = self.revert_code().ok_or_else(|| {
             anyhow::anyhow!("there is no revert code to convert to `ErrorSignal`")
@@ -539,7 +500,7 @@ impl TestResult {
         ErrorSignal::try_from_revert_code(revert_code).map_err(|e| anyhow::anyhow!(e))
     }
 
-    /// Return `TestDetails` from the span of the function declaring this test.
+    /// Return [TestDetails] from the span of the function declaring this test.
     pub fn details(&self) -> anyhow::Result<TestDetails> {
         let span_start = self.span.start();
         let file_str = fs::read_to_string(&*self.file_path)?;
@@ -627,41 +588,37 @@ impl BuiltTests {
 }
 
 /// First builds the package or workspace, ready for execution.
-pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.into_build_opts();
+pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
+    let build_opts = opts.into();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
     let built = pkg::build_with_options(build_opts)?;
-    let built_members: HashMap<&pkg::Pinned, Arc<BuiltPackage>> = built.into_members().collect();
-
-    // For each member node collect their contract dependencies.
-    let member_contract_dependencies: HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>> =
-        build_plan
-            .member_nodes()
-            .map(|member_node| {
-                let graph = build_plan.graph();
-                let pinned_member = graph[member_node].clone();
-                let contract_dependencies = build_plan
-                    .contract_dependencies(member_node)
-                    .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-                    .filter_map(|pinned| built_members.get(&pinned))
-                    .cloned()
-                    .collect();
-
-                (pinned_member, contract_dependencies)
-            })
-            .collect();
-    BuiltTests::from_built(built, &member_contract_dependencies)
+    BuiltTests::from_built(built, &build_plan)
 }
 
-/// Result of preparing a deployment transaction setup for a contract.
-type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked<tx::Create>);
+/// Returns a `ConsensusParameters` which has maximum length/size allowance for scripts, contracts,
+/// and transactions.
+pub(crate) fn maxed_consensus_params() -> ConsensusParameters {
+    let script_params = ScriptParameters::DEFAULT
+        .with_max_script_length(u64::MAX)
+        .with_max_script_data_length(u64::MAX);
+    let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
+    let contract_params = ContractParameters::DEFAULT
+        .with_contract_max_size(u64::MAX)
+        .with_max_storage_slots(u64::MAX);
+    ConsensusParameters::V1(ConsensusParametersV1 {
+        script_params,
+        tx_params,
+        contract_params,
+        ..Default::default()
+    })
+}
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
 /// executions with deployed contract.
 fn deployment_transaction(
     built_pkg: &pkg::BuiltPackage,
     without_tests_bytecode: &pkg::BuiltPackageBytecode,
-    params: tx::ConsensusParameters,
+    params: &tx::ConsensusParameters,
 ) -> ContractDeploymentSetup {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots.clone();
@@ -674,10 +631,10 @@ fn deployment_transaction(
     let contract_id = contract.id(&salt, &root, &state_root);
 
     // Create the deployment transaction.
-    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
+    let rng = &mut rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
 
     // Prepare the transaction metadata.
-    let secret_key = rng.gen();
+    let secret_key = SecretKey::random(rng);
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
@@ -686,11 +643,11 @@ fn deployment_transaction(
     let block_height = (u32::MAX >> 1).into();
 
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
-        .with_params(params)
-        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
+        .with_params(params.clone())
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
-        .finalize_checked(block_height, &GasCosts::default());
+        .finalize_checked(block_height);
     (contract_id, tx)
 }
 
@@ -717,137 +674,33 @@ fn run_tests(
     }
 }
 
-/// Given some bytecode and an instruction offset for some test's desired entry point, patch the
-/// bytecode with a `JI` (jump) instruction to jump to the desired test.
-///
-/// We want to splice in the `JI` only after the initial data section setup is complete, and only
-/// if the entry point doesn't begin exactly after the data section setup.
-///
-/// The following is how the beginning of the bytecode is laid out:
-///
-/// ```ignore
-/// [0] ji   i4                       ; Jumps to the data section setup.
-/// [1] noop
-/// [2] DATA_SECTION_OFFSET[0..32]
-/// [3] DATA_SECTION_OFFSET[32..64]
-/// [4] lw   $ds $is 1                ; The data section setup, i.e. where the first ji lands.
-/// [5] add  $$ds $$ds $is
-/// [6] <first-entry-point>           ; This is where we want to jump from to our test code!
-/// ```
-fn patch_test_bytecode(bytecode: &[u8], test_offset: u32) -> std::borrow::Cow<[u8]> {
-    // TODO: Standardize this or add metadata to bytecode.
-    const PROGRAM_START_INST_OFFSET: u32 = 6;
-    const PROGRAM_START_BYTE_OFFSET: usize = PROGRAM_START_INST_OFFSET as usize * Instruction::SIZE;
-
-    // If our desired entry point is the program start, no need to jump.
-    if test_offset == PROGRAM_START_INST_OFFSET {
-        return std::borrow::Cow::Borrowed(bytecode);
-    }
-
-    // Create the jump instruction and splice it into the bytecode.
-    let ji = fuel_asm::op::ji(test_offset);
-    let ji_bytes = ji.to_bytes();
-    let start = PROGRAM_START_BYTE_OFFSET;
-    let end = start + ji_bytes.len();
-    let mut patched = bytecode.to_vec();
-    patched.splice(start..end, ji_bytes);
-    std::borrow::Cow::Owned(patched)
-}
-
-// Execute the test whose entry point is at the given instruction offset as if it were a script.
-fn exec_test(
-    bytecode: &[u8],
-    test_offset: u32,
-    test_setup: TestSetup,
-) -> (
-    vm::state::ProgramState,
-    std::time::Duration,
-    Vec<fuel_tx::Receipt>,
-) {
-    let storage = test_setup.storage().clone();
-
-    // Patch the bytecode to jump to the relevant test.
-    let bytecode = patch_test_bytecode(bytecode, test_offset).into_owned();
-
-    // Create a transaction to execute the test function.
-    let script_input_data = vec![];
-    let mut rng = rand::rngs::StdRng::seed_from_u64(TEST_METADATA_SEED);
-
-    // Prepare the transaction metadata.
-    let secret_key = rng.gen();
-    let utxo_id = rng.gen();
-    let amount = 1;
-    let maturity = 1.into();
-    let asset_id = rng.gen();
-    let tx_pointer = rng.gen();
-    let block_height = (u32::MAX >> 1).into();
-
-    let params = tx::ConsensusParameters::default();
-    let mut tx = tx::TransactionBuilder::script(bytecode, script_input_data)
-        .add_unsigned_coin_input(
-            secret_key,
-            utxo_id,
-            amount,
-            asset_id,
-            tx_pointer,
-            0u32.into(),
-        )
-        .gas_limit(tx::ConsensusParameters::DEFAULT.max_gas_per_tx)
-        .maturity(maturity)
-        .clone();
-    let mut output_index = 1;
-    // Insert contract ids into tx input
-    for contract_id in test_setup.contract_ids() {
-        tx.add_input(tx::Input::contract(
-            tx::UtxoId::new(tx::Bytes32::zeroed(), 0),
-            tx::Bytes32::zeroed(),
-            tx::Bytes32::zeroed(),
-            tx::TxPointer::new(0u32.into(), 0),
-            contract_id,
-        ))
-        .add_output(tx::Output::Contract {
-            input_index: output_index,
-            balance_root: fuel_tx::Bytes32::zeroed(),
-            state_root: tx::Bytes32::zeroed(),
-        });
-        output_index += 1;
-    }
-    let tx = tx.finalize_checked(block_height, &GasCosts::default());
-
-    let mut interpreter =
-        vm::interpreter::Interpreter::with_storage(storage, params, GasCosts::default());
-
-    // Execute and return the result.
-    let start = std::time::Instant::now();
-    let transition = interpreter.transact(tx).unwrap();
-    let duration = start.elapsed();
-    let state = *transition.state();
-    let receipts = transition.receipts().to_vec();
-
-    (state, duration, receipts)
-}
-
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{build, BuiltTests, Opts, TestFilter, TestResult};
+    use crate::{build, BuiltTests, TestFilter, TestOpts, TestResult};
 
     /// Name of the folder containing required data for tests to run, such as an example forc
     /// project.
     const TEST_DATA_FOLDER_NAME: &str = "test_data";
     /// Name of the library package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
     const TEST_LIBRARY_PACKAGE_NAME: &str = "test_library";
+    /// Name of the contract package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_CONTRACT_PACKAGE_NAME: &str = "test_contract";
+    /// Name of the predicate package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_PREDICATE_PACKAGE_NAME: &str = "test_predicate";
+    /// Name of the script package in the "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME".
+    const TEST_SCRIPT_PACKAGE_NAME: &str = "test_script";
 
-    /// Build the tests in the test library located at
+    /// Build the tests in the test package with the given name located at
     /// "CARGO_MANIFEST_DIR/TEST_DATA_FOLDER_NAME/TEST_LIBRARY_PACKAGE_NAME".
-    fn test_library_built_tests() -> anyhow::Result<BuiltTests> {
+    fn test_package_built_tests(package_name: &str) -> anyhow::Result<BuiltTests> {
         let cargo_manifest_dir = env!("CARGO_MANIFEST_DIR");
         let library_package_dir = PathBuf::from(cargo_manifest_dir)
             .join(TEST_DATA_FOLDER_NAME)
-            .join(TEST_LIBRARY_PACKAGE_NAME);
+            .join(package_name);
         let library_package_dir_string = library_package_dir.to_string_lossy().to_string();
-        let build_options = Opts {
+        let build_options = TestOpts {
             pkg: forc_pkg::PkgOpts {
                 path: Some(library_package_dir_string),
                 ..Default::default()
@@ -857,10 +710,11 @@ mod tests {
         build(build_options)
     }
 
-    fn test_library_test_results(
+    fn test_package_test_results(
+        package_name: &str,
         test_filter: Option<TestFilter>,
     ) -> anyhow::Result<Vec<TestResult>> {
-        let built_tests = test_library_built_tests()?;
+        let built_tests = test_package_built_tests(package_name)?;
         let test_runner_count = crate::TestRunnerCount::Auto;
         let tested = built_tests.run(test_runner_count, test_filter)?;
         match tested {
@@ -879,10 +733,29 @@ mod tests {
             exact_match: true,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 1)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 1);
+        assert_eq!(tested_contract_test_count, 1);
+        assert_eq!(tested_predicate_test_count, 1);
+        assert_eq!(tested_script_test_count, 1);
     }
 
     #[test]
@@ -893,10 +766,29 @@ mod tests {
             exact_match: true,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 0)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 0);
+        assert_eq!(tested_contract_test_count, 0);
+        assert_eq!(tested_predicate_test_count, 0);
+        assert_eq!(tested_script_test_count, 0);
     }
 
     #[test]
@@ -907,10 +799,29 @@ mod tests {
             exact_match: false,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 0)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 0);
+        assert_eq!(tested_contract_test_count, 0);
+        assert_eq!(tested_predicate_test_count, 0);
+        assert_eq!(tested_script_test_count, 0);
     }
 
     #[test]
@@ -921,10 +832,29 @@ mod tests {
             exact_match: false,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 1)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 1);
+        assert_eq!(tested_contract_test_count, 1);
+        assert_eq!(tested_predicate_test_count, 1);
+        assert_eq!(tested_script_test_count, 1);
     }
 
     #[test]
@@ -935,18 +865,54 @@ mod tests {
             exact_match: false,
         };
 
-        let test_results = test_library_test_results(Some(test_filter)).unwrap();
-        let tested_package_test_count = test_results.len();
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_library_test_count = test_library_results.len();
 
-        assert_eq!(tested_package_test_count, 2)
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, Some(test_filter.clone()))
+                .unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, Some(test_filter)).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 2);
+        assert_eq!(tested_contract_test_count, 2);
+        assert_eq!(tested_predicate_test_count, 2);
+        assert_eq!(tested_script_test_count, 2);
     }
 
     #[test]
     fn test_no_filter() {
         let test_filter = None;
-        let test_results = test_library_test_results(test_filter).unwrap();
-        let tested_package_test_count = test_results.len();
 
-        assert_eq!(tested_package_test_count, 2)
+        let test_library_results =
+            test_package_test_results(TEST_LIBRARY_PACKAGE_NAME, test_filter.clone()).unwrap();
+        let tested_library_test_count = test_library_results.len();
+
+        let test_contract_results =
+            test_package_test_results(TEST_CONTRACT_PACKAGE_NAME, test_filter.clone()).unwrap();
+        let tested_contract_test_count = test_contract_results.len();
+
+        let test_predicate_results =
+            test_package_test_results(TEST_PREDICATE_PACKAGE_NAME, test_filter.clone()).unwrap();
+        let tested_predicate_test_count = test_predicate_results.len();
+
+        let test_script_results =
+            test_package_test_results(TEST_SCRIPT_PACKAGE_NAME, test_filter).unwrap();
+        let tested_script_test_count = test_script_results.len();
+
+        assert_eq!(tested_library_test_count, 2);
+        assert_eq!(tested_contract_test_count, 2);
+        assert_eq!(tested_predicate_test_count, 2);
+        assert_eq!(tested_script_test_count, 2);
     }
 }

@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::{collections::HashMap, sync::Arc};
 mod miden_op;
+use indexmap::IndexMap;
 pub use miden_op::MidenAsmOp;
 
 use crate::{
@@ -59,7 +60,7 @@ impl StackManager {
 // for now, we can use function names for readability
 pub type ProcedureName = String;
 
-pub type ProcedureMap = HashMap<ProcedureName, Procedure>;
+pub type ProcedureMap = IndexMap<ProcedureName, Procedure>;
 
 /// MidenVM Asm is built in the following way:
 /// Function bodies are abstracted into [Procedures]
@@ -283,57 +284,57 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
     }
     pub(super) fn compile_instruction(&mut self, handler: &Handler, instr_val: &Value) {
         if let Some(instruction) = instr_val.get_instruction(self.context) {
-            match instruction {
-                Instruction::AsmBlock(asm, args) => todo!(),
-                Instruction::BitCast(val, ty) => todo!(),
-                Instruction::UnaryOp { op, arg } => {
+            match &instruction.op {
+                InstOp::AsmBlock(asm, args) => todo!(),
+                InstOp::BitCast(val, ty) => todo!(),
+                InstOp::UnaryOp { op, arg } => {
                     todo!()
                 }
-                Instruction::BinaryOp { op, arg1, arg2 } => {
+                InstOp::BinaryOp { op, arg1, arg2 } => {
                     todo!()
                 }
-                Instruction::Branch(to_block) => todo!(),
-                Instruction::Call(func, args) => self.compile_call(instr_val, func, args),
-                Instruction::CastPtr(val, ty) => {
+                InstOp::Branch(to_block) => todo!(),
+                InstOp::Call(func, args) => self.compile_call(instr_val, func, args),
+                InstOp::CastPtr(val, ty) => {
                     todo!()
                 }
-                Instruction::Cmp(pred, lhs_value, rhs_value) => {
+                InstOp::Cmp(pred, lhs_value, rhs_value) => {
                     todo!()
                 }
-                Instruction::ConditionalBranch {
+                InstOp::ConditionalBranch {
                     cond_value,
                     true_block,
                     false_block,
                 } => self.compile_conditional_branch(handler, cond_value, true_block, false_block),
-                Instruction::ContractCall {
+                InstOp::ContractCall {
                     params,
                     coins,
                     asset_id,
                     gas,
                     ..
                 } => todo!(),
-                Instruction::FuelVm(fuel_vm_instr) => todo!(),
-                Instruction::GetElemPtr {
+                InstOp::FuelVm(fuel_vm_instr) => todo!(),
+                InstOp::GetElemPtr {
                     base,
                     elem_ptr_ty,
                     indices,
                 } => todo!(),
-                Instruction::GetLocal(local_var) => todo!(),
-                Instruction::IntToPtr(val, _) => todo!(),
-                Instruction::Load(src_val) => todo!(),
-                Instruction::MemCopyBytes {
+                InstOp::GetLocal(local_var) => todo!(),
+                InstOp::IntToPtr(val, _) => todo!(),
+                InstOp::Load(src_val) => todo!(),
+                InstOp::MemCopyBytes {
                     dst_val_ptr,
                     src_val_ptr,
                     byte_len,
                 } => todo!(),
-                Instruction::MemCopyVal {
+                InstOp::MemCopyVal {
                     dst_val_ptr,
                     src_val_ptr,
                 } => todo!(),
-                Instruction::Nop => (),
-                Instruction::PtrToInt(ptr_val, int_ty) => todo!(),
-                Instruction::Ret(ret_val, ty) => self.compile_return(ret_val, ty),
-                Instruction::Store {
+                InstOp::Nop => (),
+                InstOp::PtrToInt(ptr_val, int_ty) => todo!(),
+                InstOp::Ret(ret_val, ty) => self.compile_return(ret_val, ty),
+                InstOp::Store {
                     dst_val_ptr,
                     stored_val,
                 } => todo!(),
@@ -658,6 +659,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             String(_) => todo!(),
             Array(_) => todo!(),
             Struct(_) => todo!(),
+            Reference(_) => todo!(),
         }
     }
 }

@@ -20,6 +20,8 @@ pub enum LanguageServerError {
     FailedToParse,
     #[error("Error formatting document: {0}")]
     FormatError(FormatterError),
+    #[error("No Programs were returned from the compiler")]
+    ProgramsIsNone,
     #[error("Unable to acquire a semaphore permit for parsing")]
     UnableToAcquirePermit,
 }
@@ -40,6 +42,8 @@ pub enum DocumentError {
     UnableToCreateFile { path: String, err: String },
     #[error("Unable to write string to file at {:?} : {:?}", path, err)]
     UnableToWriteFile { path: String, err: String },
+    #[error("File wasn't able to be removed at path {:?} : {:?}", path, err)]
+    UnableToRemoveFile { path: String, err: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -50,6 +54,8 @@ pub enum DirectoryError {
     ManifestDirNotFound,
     #[error("Can't extract project name from {:?}", dir)]
     CantExtractProjectName { dir: String },
+    #[error("Failed to create hidden .lsp_locks directory: {0}")]
+    LspLocksDirFailed(String),
     #[error("Failed to create temp directory")]
     TempDirFailed,
     #[error("Failed to canonicalize path")]
@@ -66,6 +72,8 @@ pub enum DirectoryError {
     PathFromUrlFailed { url: String },
     #[error("Unable to create span from path {:?}", path)]
     SpanFromPathFailed { path: String },
+    #[error("No module ID found for path {:?}", path)]
+    ModuleIdNotFound { path: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

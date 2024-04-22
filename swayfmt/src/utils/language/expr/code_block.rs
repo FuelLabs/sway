@@ -1,6 +1,5 @@
 use crate::{
     comments::write_comments,
-    config::items::ItemBraceStyle,
     formatter::{shape::LineStyle, *},
     utils::{
         map::byte_span::{ByteSpan, LeafSpans},
@@ -32,14 +31,14 @@ impl Format for CodeBlockContents {
                 _ => {
                     writeln!(formatted_code)?;
                     for statement in self.statements.iter() {
-                        write!(formatted_code, "{}", formatter.indent_str()?)?;
+                        write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         statement.format(formatted_code, formatter)?;
                         if !formatted_code.ends_with('\n') {
                             writeln!(formatted_code)?;
                         }
                     }
                     if let Some(final_expr) = &self.final_expr_opt {
-                        write!(formatted_code, "{}", formatter.indent_str()?)?;
+                        write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         final_expr.format(formatted_code, formatter)?;
                         writeln!(formatted_code)?;
                     }
@@ -66,18 +65,8 @@ impl CurlyBrace for CodeBlockContents {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         formatter.indent();
-
-        let brace_style = formatter.config.items.item_brace_style;
-        match brace_style {
-            ItemBraceStyle::AlwaysNextLine => {
-                // Add opening brace to the next line.
-                write!(line, "\n{}", Delimiter::Brace.as_open_char())?;
-            }
-            _ => {
-                // Add opening brace to the same line
-                write!(line, "{}", Delimiter::Brace.as_open_char())?;
-            }
-        }
+        // Add opening brace to the same line
+        write!(line, "{}", Delimiter::Brace.as_open_char())?;
 
         Ok(())
     }
@@ -90,7 +79,7 @@ impl CurlyBrace for CodeBlockContents {
         write!(
             line,
             "{}{}",
-            formatter.indent_str()?,
+            formatter.indent_to_str()?,
             Delimiter::Brace.as_close_char()
         )?;
         Ok(())

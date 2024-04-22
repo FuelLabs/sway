@@ -6,30 +6,32 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
-use ::inputs::{Input, input_count, input_owner, input_type};
+use ::inputs::{Input, input_coin_owner, input_count, input_type};
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
     /// The caller is external, but the inputs to the transaction are not all owned by the same address.
     InputsNotAllOwnedBySameAddress: (),
+    /// The caller is internal, but the `caller_address` function was called.
+    CallerIsInternal: (),
 }
 
 /// Returns `true` if the caller is external (i.e. a `script`).
 /// Otherwise, if the caller is a contract, returns `false`.
-/// 
+///
 /// # Additional Information
-/// 
+///
 /// For more information refer to the [VM Instruction Set](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gm-get-metadata).
 ///
 /// # Returns
-///     
+///
 /// * [bool] - `true` if the caller is external, `false` otherwise.
-/// 
+///
 /// # Examples
 ///
 /// ```sway
 /// use std::auth::caller_is_external;
-/// 
+///
 /// fn foo() {
 ///     if caller_is_external() {
 ///         log("Caller is external.")
@@ -79,7 +81,8 @@ pub fn caller_contract_id() -> ContractId {
 ///
 /// # Additional Information
 ///
-/// Returns a Err if the caller is external and the inputs to the transaction are not all owned by the same address.
+/// Returns an `AuthError::InputsNotAllOwnedBySameAddress` if the caller is external and the inputs to the transaction are not all owned by the same address.
+/// Should not return an `AuthError::CallerIsInternal` under any circumstances.
 ///
 /// # Returns
 ///
@@ -93,12 +96,16 @@ pub fn caller_contract_id() -> ContractId {
 ///         Ok(Identity::Address(address)) => log(address),
 ///         Ok(Identity::ContractId(contract_id)) => log(contract_id),
 ///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by same address."),
+///         Err(AuthError::CallerIsInternal) => log("Hell froze over."),
 ///     }
 /// }
 /// ```
 pub fn msg_sender() -> Result<Identity, AuthError> {
     if caller_is_external() {
-        inputs_owner()
+        match caller_address() {
+            Err(err) => Err(err),
+            Ok(owner) => Ok(Identity::Address(owner)),
+        }
     } else {
         // Get caller's `ContractId`.
         Ok(Identity::ContractId(caller_contract_id()))
@@ -108,13 +115,9 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 /// Get the owner of the inputs (of type `Input::Coin` or `Input::Message`) to a
 /// `TransactionScript` if they all share the same owner.
 ///
-/// # Additional Information
-///
-/// Will never return a Ok(Identity::ContractId).
-///
 /// # Returns
 ///
-/// * [Result<Identity, AuthError>] - `Ok(Identity)` if the owner can be determined, `Err(AuthError)` otherwise.
+/// * [Result<Address, AuthError>] - `Ok(Address)` if the owner can be determined, `Err(AuthError)` otherwise.
 ///
 /// # Examples
 ///
@@ -123,13 +126,12 @@ pub fn msg_sender() -> Result<Identity, AuthError> {
 ///
 /// fn foo() {
 ///     match inputs_owner() {
-///         Ok(Identity::Address(address)) => log(address),
-///         Ok(Identity::ContractId(_)) => log("Hell froze over."),
+///         Ok(address) => log(address),
 ///         Err(AuthError::InputsNotAllOwnedBySameAddress) => log("Inputs not all owned by same address."),
 ///     }
 /// }
 /// ```
-fn inputs_owner() -> Result<Identity, AuthError> {
+pub fn caller_address() -> Result<Address, AuthError> {
     let inputs = input_count();
     let mut candidate = None;
     let mut i = 0u8;
@@ -148,7 +150,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // type == InputCoin or InputMessage.
-        let owner_of_input = input_owner(i.as_u64());
+        let owner_of_input = input_coin_owner(i.as_u64());
         if candidate.is_none() {
             // This is the first input seen of the correct type.
             candidate = owner_of_input;
@@ -157,7 +159,7 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         }
 
         // Compare current input owner to candidate.
-        // `candidate` and `input_owner` must be `Some`.
+        // `candidate` and `input_coin_owner` must be `Some`.
         // at this point, so we can unwrap safely.
         if owner_of_input.unwrap() == candidate.unwrap() {
             // Owners are a match, continue looping.
@@ -169,6 +171,40 @@ fn inputs_owner() -> Result<Identity, AuthError> {
         return Err(AuthError::InputsNotAllOwnedBySameAddress);
     }
 
-    // `candidate` must be `Some` at this point, so can unwrap safely.
-    Ok(Identity::Address(candidate.unwrap()))
+    // `candidate` must be `Some` if the caller is an address, otherwise it's a contract.
+    match candidate {
+        Some(address) => Ok(address),
+        None => Err(AuthError::CallerIsInternal),
+    }
+}
+
+/// Get the current predicate's address when called in an internal context.
+///
+/// # Returns
+///
+/// * [Address] - The address of this predicate.
+///
+/// # Reverts
+///
+/// * When called outside of a predicate program.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::auth::predicate_address;
+///
+/// fn main() {
+///     let this_predicate = predicate_address();
+///     log(this_predicate);
+/// }
+/// ```
+pub fn predicate_address() -> Address {
+    // Get index of current predicate.
+    // i3 = GM_GET_VERIFYING_PREDICATE
+    let predicate_index = asm(r1) {
+        gm r1 i3;
+        r1: u64
+    };
+
+    input_coin_owner(predicate_index).unwrap()
 }

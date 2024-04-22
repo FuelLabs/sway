@@ -1,9 +1,10 @@
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    sync::RwLock,
+    fmt::Write,
+    sync::{Arc, RwLock},
 };
 
-use sway_types::{Named, Spanned};
+use sway_types::{ModuleId, Named, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
@@ -11,7 +12,7 @@ use crate::{
     engine_threading::*,
     language::ty::{
         self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
-        TyStructDecl, TyTraitDecl, TyTraitFn, TyTypeAliasDecl,
+        TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl,
     },
 };
 
@@ -21,6 +22,7 @@ pub struct DeclEngine {
     function_slab: ConcurrentSlab<TyFunctionDecl>,
     trait_slab: ConcurrentSlab<TyTraitDecl>,
     trait_fn_slab: ConcurrentSlab<TyTraitFn>,
+    trait_type_slab: ConcurrentSlab<TyTraitType>,
     impl_trait_slab: ConcurrentSlab<TyImplTrait>,
     struct_slab: ConcurrentSlab<TyStructDecl>,
     storage_slab: ConcurrentSlab<TyStorageDecl>,
@@ -32,8 +34,27 @@ pub struct DeclEngine {
     parents: RwLock<HashMap<AssociatedItemDeclId, Vec<AssociatedItemDeclId>>>,
 }
 
+impl Clone for DeclEngine {
+    fn clone(&self) -> Self {
+        DeclEngine {
+            function_slab: self.function_slab.clone(),
+            trait_slab: self.trait_slab.clone(),
+            trait_fn_slab: self.trait_fn_slab.clone(),
+            trait_type_slab: self.trait_type_slab.clone(),
+            impl_trait_slab: self.impl_trait_slab.clone(),
+            struct_slab: self.struct_slab.clone(),
+            storage_slab: self.storage_slab.clone(),
+            abi_slab: self.abi_slab.clone(),
+            constant_slab: self.constant_slab.clone(),
+            enum_slab: self.enum_slab.clone(),
+            type_alias_slab: self.type_alias_slab.clone(),
+            parents: RwLock::new(self.parents.read().unwrap().clone()),
+        }
+    }
+}
+
 pub trait DeclEngineGet<I, U> {
-    fn get(&self, index: &I) -> U;
+    fn get(&self, index: &I) -> Arc<U>;
 }
 
 pub trait DeclEngineInsert<T>
@@ -41,6 +62,13 @@ where
     T: Named + Spanned,
 {
     fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
+}
+
+pub trait DeclEngineInsertArc<T>
+where
+    T: Named + Spanned,
+{
+    fn insert_arc(&self, decl: Arc<T>) -> DeclRef<DeclId<T>>;
 }
 
 pub trait DeclEngineReplace<T> {
@@ -57,13 +85,13 @@ where
 macro_rules! decl_engine_get {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineGet<DeclId<$decl>, $decl> for DeclEngine {
-            fn get(&self, index: &DeclId<$decl>) -> $decl {
+            fn get(&self, index: &DeclId<$decl>) -> Arc<$decl> {
                 self.$slab.get(index.inner())
             }
         }
 
         impl DeclEngineGet<DeclRef<DeclId<$decl>>, $decl> for DeclEngine {
-            fn get(&self, index: &DeclRef<DeclId<$decl>>) -> $decl {
+            fn get(&self, index: &DeclRef<DeclId<$decl>>) -> Arc<$decl> {
                 self.$slab.get(index.id().inner())
             }
         }
@@ -72,6 +100,7 @@ macro_rules! decl_engine_get {
 decl_engine_get!(function_slab, ty::TyFunctionDecl);
 decl_engine_get!(trait_slab, ty::TyTraitDecl);
 decl_engine_get!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_get!(trait_type_slab, ty::TyTraitType);
 decl_engine_get!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_get!(struct_slab, ty::TyStructDecl);
 decl_engine_get!(storage_slab, ty::TyStorageDecl);
@@ -92,11 +121,22 @@ macro_rules! decl_engine_insert {
                 )
             }
         }
+        impl DeclEngineInsertArc<$decl> for DeclEngine {
+            fn insert_arc(&self, decl: Arc<$decl>) -> DeclRef<DeclId<$decl>> {
+                let span = decl.span();
+                DeclRef::new(
+                    decl.name().clone(),
+                    DeclId::new(self.$slab.insert_arc(decl)),
+                    span,
+                )
+            }
+        }
     };
 }
 decl_engine_insert!(function_slab, ty::TyFunctionDecl);
 decl_engine_insert!(trait_slab, ty::TyTraitDecl);
 decl_engine_insert!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_insert!(trait_type_slab, ty::TyTraitType);
 decl_engine_insert!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_insert!(struct_slab, ty::TyStructDecl);
 decl_engine_insert!(storage_slab, ty::TyStorageDecl);
@@ -109,7 +149,7 @@ macro_rules! decl_engine_replace {
     ($slab:ident, $decl:ty) => {
         impl DeclEngineReplace<$decl> for DeclEngine {
             fn replace(&self, index: DeclId<$decl>, decl: $decl) {
-                self.$slab.replace(index, decl);
+                self.$slab.replace(index.inner(), decl);
             }
         }
     };
@@ -117,6 +157,7 @@ macro_rules! decl_engine_replace {
 decl_engine_replace!(function_slab, ty::TyFunctionDecl);
 decl_engine_replace!(trait_slab, ty::TyTraitDecl);
 decl_engine_replace!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_replace!(trait_type_slab, ty::TyTraitType);
 decl_engine_replace!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_replace!(struct_slab, ty::TyStructDecl);
 decl_engine_replace!(storage_slab, ty::TyStorageDecl);
@@ -133,6 +174,7 @@ macro_rules! decl_engine_index {
 decl_engine_index!(function_slab, ty::TyFunctionDecl);
 decl_engine_index!(trait_slab, ty::TyTraitDecl);
 decl_engine_index!(trait_fn_slab, ty::TyTraitFn);
+decl_engine_index!(trait_type_slab, ty::TyTraitType);
 decl_engine_index!(impl_trait_slab, ty::TyImplTrait);
 decl_engine_index!(struct_slab, ty::TyStructDecl);
 decl_engine_index!(storage_slab, ty::TyStorageDecl);
@@ -140,6 +182,52 @@ decl_engine_index!(abi_slab, ty::TyAbiDecl);
 decl_engine_index!(constant_slab, ty::TyConstantDecl);
 decl_engine_index!(enum_slab, ty::TyEnumDecl);
 decl_engine_index!(type_alias_slab, ty::TyTypeAliasDecl);
+
+macro_rules! decl_engine_clear_module {
+    ($($slab:ident, $decl:ty);* $(;)?) => {
+        impl DeclEngine {
+            pub fn clear_module(&mut self, module_id: &ModuleId) {
+                self.parents.write().unwrap().retain(|key, _| {
+                    match key {
+                        AssociatedItemDeclId::TraitFn(decl_id) => {
+                            self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Function(decl_id) => {
+                            self.get_function(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Type(decl_id) => {
+                            self.get_type(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                        },
+                        AssociatedItemDeclId::Constant(decl_id) => {
+                            self.get_constant(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                        },
+                    }
+                });
+
+                $(
+                    self.$slab.retain(|_k, ty| match ty.span().source_id() {
+                        Some(source_id) => &source_id.module_id() != module_id,
+                        None => true,
+                    });
+                )*
+            }
+        }
+    };
+}
+
+decl_engine_clear_module!(
+    function_slab, ty::TyFunctionDecl;
+    trait_slab, ty::TyTraitDecl;
+    trait_fn_slab, ty::TyTraitFn;
+    trait_type_slab, ty::TyTraitType;
+    impl_trait_slab, ty::TyImplTrait;
+    struct_slab, ty::TyStructDecl;
+    storage_slab, ty::TyStorageDecl;
+    abi_slab, ty::TyAbiDecl;
+    constant_slab, ty::TyConstantDecl;
+    enum_slab, ty::TyEnumDecl;
+    type_alias_slab, ty::TyTypeAliasDecl;
+);
 
 impl DeclEngine {
     /// Given a [DeclRef] `index`, finds all the parents of `index` and all the
@@ -173,11 +261,17 @@ impl DeclEngine {
                         (
                             AssociatedItemDeclId::TraitFn(x_id),
                             AssociatedItemDeclId::TraitFn(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        ) => self.get(x_id).eq(
+                            &self.get(curr_parent_id),
+                            &PartialEqWithEnginesContext::new(engines),
+                        ),
                         (
                             AssociatedItemDeclId::Function(x_id),
                             AssociatedItemDeclId::Function(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        ) => self.get(x_id).eq(
+                            &self.get(curr_parent_id),
+                            &PartialEqWithEnginesContext::new(engines),
+                        ),
                         _ => false,
                     }) {
                         left_to_check.push_back(curr_parent.clone());
@@ -207,7 +301,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_function<I>(&self, index: &I) -> ty::TyFunctionDecl
+    pub fn get_function<I>(&self, index: &I) -> Arc<ty::TyFunctionDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyFunctionDecl>,
     {
@@ -219,11 +313,25 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_trait<I>(&self, index: &I) -> ty::TyTraitDecl
+    pub fn get_trait<I>(&self, index: &I) -> Arc<ty::TyTraitDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyTraitDecl>,
     {
         self.get(index)
+    }
+
+    /// Returns all the [ty::TyTraitDecl]s whose name is the same as `trait_name`.
+    ///
+    /// The method does a linear search over all the declared traits and is meant
+    /// to be used only for diagnostic purposes.
+    pub fn get_traits_by_name(&self, trait_name: &Ident) -> Vec<ty::TyTraitDecl> {
+        let mut vec = vec![];
+        for trait_decl in self.trait_slab.values() {
+            if trait_decl.name == *trait_name {
+                vec.push((*trait_decl).clone())
+            }
+        }
+        vec
     }
 
     /// Friendly helper method for calling the `get` method from the
@@ -231,7 +339,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_trait_fn<I>(&self, index: &I) -> ty::TyTraitFn
+    pub fn get_trait_fn<I>(&self, index: &I) -> Arc<ty::TyTraitFn>
     where
         DeclEngine: DeclEngineGet<I, ty::TyTraitFn>,
     {
@@ -243,7 +351,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_impl_trait<I>(&self, index: &I) -> ty::TyImplTrait
+    pub fn get_impl_trait<I>(&self, index: &I) -> Arc<ty::TyImplTrait>
     where
         DeclEngine: DeclEngineGet<I, ty::TyImplTrait>,
     {
@@ -255,7 +363,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_struct<I>(&self, index: &I) -> ty::TyStructDecl
+    pub fn get_struct<I>(&self, index: &I) -> Arc<ty::TyStructDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyStructDecl>,
     {
@@ -267,7 +375,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_storage<I>(&self, index: &I) -> ty::TyStorageDecl
+    pub fn get_storage<I>(&self, index: &I) -> Arc<ty::TyStorageDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyStorageDecl>,
     {
@@ -279,7 +387,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_abi<I>(&self, index: &I) -> ty::TyAbiDecl
+    pub fn get_abi<I>(&self, index: &I) -> Arc<ty::TyAbiDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyAbiDecl>,
     {
@@ -291,7 +399,7 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_constant<I>(&self, index: &I) -> ty::TyConstantDecl
+    pub fn get_constant<I>(&self, index: &I) -> Arc<ty::TyConstantDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyConstantDecl>,
     {
@@ -303,7 +411,19 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_enum<I>(&self, index: &I) -> ty::TyEnumDecl
+    pub fn get_type<I>(&self, index: &I) -> Arc<ty::TyTraitType>
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyTraitType>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_enum<I>(&self, index: &I) -> Arc<ty::TyEnumDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyEnumDecl>,
     {
@@ -315,10 +435,24 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_type_alias<I>(&self, index: &I) -> ty::TyTypeAliasDecl
+    pub fn get_type_alias<I>(&self, index: &I) -> Arc<ty::TyTypeAliasDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyTypeAliasDecl>,
     {
         self.get(index)
+    }
+
+    /// Pretty print method for printing the [DeclEngine]. This method is
+    /// manually implemented to avoid implementation overhead regarding using
+    /// [DisplayWithEngines].
+    pub fn pretty_print(&self, engines: &Engines) -> String {
+        let mut builder = String::new();
+        let mut list = String::with_capacity(1024 * 1024);
+        let funcs = self.function_slab.values();
+        for (i, func) in funcs.iter().enumerate() {
+            list.push_str(&format!("{i} - {:?}\n", engines.help_out(func)));
+        }
+        write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
+        builder
     }
 }

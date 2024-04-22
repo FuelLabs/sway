@@ -1,5 +1,7 @@
 use strum::EnumString;
 
+use crate::Engines;
+
 use super::ParseModule;
 
 /// A parsed, but not yet type-checked, Sway program.
@@ -14,7 +16,7 @@ pub struct ParseProgram {
 /// A Sway program can be either a contract, script, predicate, or a library.
 ///
 /// All submodules declared with `dep` should be `Library`s.
-#[derive(Clone, Debug, PartialEq, Eq, EnumString)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, EnumString)]
 pub enum TreeType {
     #[strum(serialize = "predicate")]
     Predicate,
@@ -43,7 +45,7 @@ impl std::fmt::Display for TreeType {
 
 impl ParseProgram {
     /// Excludes all test functions from the parse tree.
-    pub(crate) fn exclude_tests(&mut self) {
-        self.root.tree.exclude_tests()
+    pub(crate) fn exclude_tests(&mut self, engines: &Engines) {
+        self.root.tree.exclude_tests(engines)
     }
 }

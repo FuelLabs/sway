@@ -3,16 +3,39 @@ library;
 
 use ::intrinsics::size_of_val;
 use ::convert::From;
+use ::hash::*;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
     /// The underlying evm address data.
-    value: b256,
+    bits: b256,
+}
+
+impl EvmAddress {
+    /// Returns the underlying bits for the EvmAddress type.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The `b256` that make up the EvmAddress.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::{evm::EvmAddress, constants::ZERO_B256);
+    ///
+    /// fn foo() {
+    ///     let evm_address = EvmAddress::from(ZERO_B256);
+    ///     assert(evm_address.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.bits
+    }
 }
 
 impl core::ops::Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
-        self.value == other.value
+        self.bits == other.bits
     }
 }
 
@@ -27,11 +50,20 @@ impl From<b256> for EvmAddress {
         };
 
         Self {
-            value: local_bits,
+            bits: local_bits,
         }
     }
+}
 
-    fn into(self) -> b256 {
-        self.value
+impl From<EvmAddress> for b256 {
+    fn from(addr: EvmAddress) -> b256 {
+        addr.bits
+    }
+}
+
+impl Hash for EvmAddress {
+    fn hash(self, ref mut state: Hasher) {
+        let Address { bits } = self;
+        bits.hash(state);
     }
 }

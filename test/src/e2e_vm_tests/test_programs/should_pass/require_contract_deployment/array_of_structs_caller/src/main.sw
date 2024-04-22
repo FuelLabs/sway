@@ -3,8 +3,13 @@ script;
 use array_of_structs_abi::{Id, TestContract, Wrapper};
 use std::hash::*;
 
+#[cfg(experimental_new_encoding = false)]
+const CONTRACT_ID = 0x7fae96947a8cad59cc2a25239f9f80897955d4c1b10d31510681f15842b93265;
+#[cfg(experimental_new_encoding = true)]
+const CONTRACT_ID = 0x0e38f647c805a9ea913ffc8ae37cf3b5a76aa86bb4f42d2057c06c5f45a7edd6;
+
 fn main() -> u64 {
-    let addr = abi(TestContract, 0x8be98f018738eb6e554372cc3e57c24475662e6eeff9781be50b146c41e72d05);
+    let addr = abi(TestContract, CONTRACT_ID);
 
     let input = [Wrapper {
         id: Id {

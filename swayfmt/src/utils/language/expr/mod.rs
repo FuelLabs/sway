@@ -29,6 +29,64 @@ pub(crate) mod struct_field;
 #[cfg(test)]
 mod tests;
 
+#[inline]
+fn two_parts_expr(
+    lhs: &Expr,
+    operator: &str,
+    rhs: &Expr,
+    formatted_code: &mut FormattedCode,
+    formatter: &mut Formatter,
+) -> Result<(), FormatterError> {
+    let mut rhs_code = FormattedCode::new();
+    rhs.format(&mut rhs_code, formatter)?;
+
+    if !formatter.shape.code_line.expr_new_line
+        && rhs_code.len() > formatter.shape.width_heuristics.collection_width
+    {
+        // Right hand side is too long to fit in a single line, and
+        // the current expr is not being rendered multiline at the
+        // expr level, then add an indentation to the following
+        // expression and generate the code
+        formatter.with_shape(
+            formatter
+                .shape
+                .with_code_line_from(LineStyle::Multiline, ExprKind::Undetermined),
+            |formatter| -> Result<(), FormatterError> {
+                formatter.shape.code_line.update_expr_new_line(true);
+
+                lhs.format(formatted_code, formatter)?;
+                formatter.indent();
+                write!(
+                    formatted_code,
+                    "\n{}{} ",
+                    formatter.indent_to_str()?,
+                    operator,
+                )?;
+                rhs.format(formatted_code, formatter)?;
+                formatter.unindent();
+                Ok(())
+            },
+        )?;
+    } else {
+        lhs.format(formatted_code, formatter)?;
+        match formatter.shape.code_line.line_style {
+            LineStyle::Multiline => {
+                write!(
+                    formatted_code,
+                    "\n{}{} ",
+                    formatter.indent_to_str()?,
+                    operator,
+                )?;
+            }
+            _ => {
+                write!(formatted_code, " {} ", operator,)?;
+            }
+        }
+        write!(formatted_code, "{}", rhs_code)?;
+    }
+    Ok(())
+}
+
 impl Format for Expr {
     fn format(
         &self,
@@ -64,6 +122,8 @@ impl Format for Expr {
                         // get the largest field size and the size of the body
                         let (field_width, body_width) =
                             get_field_width(fields.get(), &mut formatter.clone())?;
+
+                        formatter.shape.code_line.update_expr_new_line(true);
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count();
@@ -105,9 +165,15 @@ impl Format for Expr {
                 )?;
             }
             Self::Parens(expr) => {
+                if formatter.shape.code_line.expr_new_line {
+                    formatter.indent();
+                }
                 Self::open_parenthesis(formatted_code, formatter)?;
                 expr.get().format(formatted_code, formatter)?;
                 Self::close_parenthesis(formatted_code, formatter)?;
+                if formatter.shape.code_line.expr_new_line {
+                    formatter.unindent();
+                }
             }
             Self::Block(code_block) => {
                 if !code_block.get().statements.is_empty()
@@ -138,7 +204,13 @@ impl Format for Expr {
                             .shape
                             .get_line_style(None, Some(body_width), &formatter.config);
 
-                        array_descriptor.format(formatted_code, formatter)?;
+                        if formatter.shape.code_line.line_style == LineStyle::Multiline {
+                            // Expr needs to be splitten into multiple lines
+                            array_descriptor.format(formatted_code, formatter)?;
+                        } else {
+                            // Expr fits in a single line
+                            write!(formatted_code, "{}", buf)?;
+                        }
 
                         Ok(())
                     },
@@ -168,7 +240,7 @@ impl Format for Expr {
                     MatchBranch::open_curly_brace(formatted_code, formatter)?;
                     let branches = branches.get();
                     for match_branch in branches.iter() {
-                        write!(formatted_code, "{}", formatter.indent_str()?)?;
+                        write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         match_branch.format(formatted_code, formatter)?;
                         writeln!(formatted_code)?;
                     }
@@ -182,23 +254,58 @@ impl Format for Expr {
                 condition,
                 block,
             } => {
-                write!(formatted_code, "{} ", while_token.span().as_str())?;
-                condition.format(formatted_code, formatter)?;
-                IfExpr::open_curly_brace(formatted_code, formatter)?;
-                block.get().format(formatted_code, formatter)?;
-                IfExpr::close_curly_brace(formatted_code, formatter)?;
+                formatter.with_shape(
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+                    |formatter| -> Result<(), FormatterError> {
+                        write!(formatted_code, "{} ", while_token.span().as_str())?;
+                        condition.format(formatted_code, formatter)?;
+                        IfExpr::open_curly_brace(formatted_code, formatter)?;
+                        block.get().format(formatted_code, formatter)?;
+                        IfExpr::close_curly_brace(formatted_code, formatter)?;
+                        Ok(())
+                    },
+                )?;
+            }
+            Self::For {
+                for_token,
+                in_token,
+                value_pattern,
+                iterator,
+                block,
+            } => {
+                formatter.with_shape(
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+                    |formatter| -> Result<(), FormatterError> {
+                        write!(formatted_code, "{} ", for_token.span().as_str())?;
+                        value_pattern.format(formatted_code, formatter)?;
+                        write!(formatted_code, "{} ", in_token.span().as_str())?;
+                        iterator.format(formatted_code, formatter)?;
+                        IfExpr::open_curly_brace(formatted_code, formatter)?;
+                        block.get().format(formatted_code, formatter)?;
+                        IfExpr::close_curly_brace(formatted_code, formatter)?;
+                        Ok(())
+                    },
+                )?;
             }
             Self::FuncApp { func, args } => {
                 formatter.with_shape(
-                    formatter.shape.with_default_code_line(),
+                    formatter
+                        .shape
+                        .with_code_line_from(LineStyle::Normal, ExprKind::Function),
                     |formatter| -> Result<(), FormatterError> {
                         // don't indent unless on new line
                         if formatted_code.ends_with('\n') {
-                            write!(formatted_code, "{}", formatter.indent_str()?)?;
+                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                         }
                         func.format(formatted_code, formatter)?;
+
                         Self::open_parenthesis(formatted_code, formatter)?;
-                        args.get().format(formatted_code, formatter)?;
+                        let (_, args_str) = write_function_call_arguments(args.get(), formatter)?;
+                        write!(formatted_code, "{}", args_str,)?;
                         Self::close_parenthesis(formatted_code, formatter)?;
 
                         Ok(())
@@ -228,7 +335,8 @@ impl Format for Expr {
                             .shape
                             .code_line
                             .update_line_style(LineStyle::Inline);
-                        format_method_call(
+
+                        let (function_call_length, args_inline) = format_method_call(
                             target,
                             dot_token,
                             path_seg,
@@ -239,11 +347,13 @@ impl Format for Expr {
                         )?;
 
                         // get the largest field size
-                        let (mut field_width, mut body_width): (usize, usize) = (0, 0);
-                        if let Some(contract_args) = &contract_args_opt {
-                            (field_width, body_width) =
-                                get_field_width(contract_args.get(), &mut formatter.clone())?;
-                        }
+                        let (field_width, body_width) = if args_inline {
+                            (function_call_length, function_call_length)
+                        } else if let Some(contract_args) = &contract_args_opt {
+                            get_field_width(contract_args.get(), &mut formatter.clone())?
+                        } else {
+                            (0, 0)
+                        };
 
                         // changes to the actual formatter
                         let expr_width = buf.chars().count();
@@ -255,7 +365,7 @@ impl Format for Expr {
                             &formatter.config,
                         );
 
-                        format_method_call(
+                        let _ = format_method_call(
                             target,
                             dot_token,
                             path_seg,
@@ -274,9 +384,28 @@ impl Format for Expr {
                 dot_token,
                 name,
             } => {
+                let prev_length = formatted_code.len();
                 target.format(formatted_code, formatter)?;
-                write!(formatted_code, "{}", dot_token.span().as_str())?;
-                name.format(formatted_code, formatter)?;
+                let diff = formatted_code.len() - prev_length;
+                if diff > 5 && formatter.shape.code_line.expr_new_line {
+                    // The next next expression should be added onto a new line.
+                    // The only exception is the previous element has fewer than
+                    // 5 characters, in which case we can add the dot onto the
+                    // same line (for example self.x will be rendered in the
+                    // same line)
+                    formatter.indent();
+                    write!(
+                        formatted_code,
+                        "\n{}{}",
+                        formatter.indent_to_str()?,
+                        dot_token.span().as_str()
+                    )?;
+                    name.format(formatted_code, formatter)?;
+                    formatter.unindent();
+                } else {
+                    write!(formatted_code, "{}", dot_token.span().as_str())?;
+                    name.format(formatted_code, formatter)?;
+                }
             }
             Self::TupleFieldProjection {
                 target,
@@ -292,12 +421,20 @@ impl Format for Expr {
                     field_span.as_str(),
                 )?;
             }
-            Self::Ref { ref_token, expr } => {
-                write!(formatted_code, "{} ", ref_token.span().as_str())?;
+            Self::Ref {
+                ampersand_token,
+                mut_token,
+                expr,
+            } => {
+                // TODO-IG: Add unit tests.
+                write!(formatted_code, "{}", ampersand_token.span().as_str())?;
+                if let Some(mut_token) = mut_token {
+                    write!(formatted_code, "{} ", mut_token.span().as_str())?;
+                }
                 expr.format(formatted_code, formatter)?;
             }
-            Self::Deref { deref_token, expr } => {
-                write!(formatted_code, "{} ", deref_token.span().as_str())?;
+            Self::Deref { star_token, expr } => {
+                write!(formatted_code, "{}", star_token.span().as_str())?;
                 expr.format(formatted_code, formatter)?;
             }
             Self::Not { bang_token, expr } => {
@@ -387,7 +524,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.indent_str()?,
+                            formatter.indent_to_str()?,
                             ampersand_token.span().as_str()
                         )?;
                     }
@@ -408,7 +545,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.indent_str()?,
+                            formatter.indent_to_str()?,
                             caret_token.span().as_str()
                         )?;
                     }
@@ -429,7 +566,7 @@ impl Format for Expr {
                         write!(
                             formatted_code,
                             "\n{}{} ",
-                            formatter.indent_str()?,
+                            formatter.indent_to_str()?,
                             pipe_token.span().as_str()
                         )?;
                     }
@@ -502,46 +639,26 @@ impl Format for Expr {
                 double_ampersand_token,
                 rhs,
             } => {
-                lhs.format(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
-                    LineStyle::Multiline => {
-                        write!(
-                            formatted_code,
-                            "\n{}{} ",
-                            formatter.indent_str()?,
-                            double_ampersand_token.span().as_str()
-                        )?;
-                    }
-                    _ => {
-                        write!(
-                            formatted_code,
-                            " {} ",
-                            double_ampersand_token.span().as_str()
-                        )?;
-                    }
-                }
-                rhs.format(formatted_code, formatter)?;
+                two_parts_expr(
+                    lhs,
+                    double_ampersand_token.span().as_str(),
+                    rhs,
+                    formatted_code,
+                    formatter,
+                )?;
             }
             Self::LogicalOr {
                 lhs,
                 double_pipe_token,
                 rhs,
             } => {
-                lhs.format(formatted_code, formatter)?;
-                match formatter.shape.code_line.line_style {
-                    LineStyle::Multiline => {
-                        write!(
-                            formatted_code,
-                            "\n{}{} ",
-                            formatter.indent_str()?,
-                            double_pipe_token.span().as_str()
-                        )?;
-                    }
-                    _ => {
-                        write!(formatted_code, " {} ", double_pipe_token.span().as_str())?;
-                    }
-                }
-                rhs.format(formatted_code, formatter)?;
+                two_parts_expr(
+                    lhs,
+                    double_pipe_token.span().as_str(),
+                    rhs,
+                    formatted_code,
+                    formatter,
+                )?;
             }
             Self::Reassignment {
                 assignable,
@@ -632,6 +749,143 @@ fn format_expr_struct(
     Ok(())
 }
 
+/// Checks if the current generated code is too long to fit into a single line
+/// or it should be broken into multiple lines. The logic to break the
+/// expression into multiple line is handled inside each struct.
+///
+/// Alternatively, if `expr_new_line` is set to true this function always will
+/// return true
+#[inline]
+pub fn should_write_multiline(code: &str, formatter: &Formatter) -> bool {
+    if formatter.shape.code_line.expr_new_line {
+        true
+    } else {
+        let max_per_line = formatter.shape.width_heuristics.collection_width;
+        for (i, c) in code.chars().rev().enumerate() {
+            if c == '\n' {
+                return i > max_per_line;
+            }
+        }
+
+        false
+    }
+}
+
+/// Whether this expression can be inlined if it is the sole argument of a
+/// function/method call
+#[inline]
+fn same_line_if_only_argument(expr: &Expr) -> bool {
+    matches!(
+        expr,
+        Expr::Struct { path: _, fields: _ }
+            | Expr::Tuple(_)
+            | Expr::Array(_)
+            | Expr::Parens(_)
+            | Expr::Not {
+                bang_token: _,
+                expr: _
+            }
+            | Expr::Path(_)
+            | Expr::FuncApp { func: _, args: _ }
+            | Expr::Match {
+                match_token: _,
+                value: _,
+                branches: _
+            }
+    )
+}
+
+#[inline]
+pub(crate) fn is_single_argument_and_can_be_inline<P>(
+    args: &Punctuated<Expr, P>,
+    formatter: &mut Formatter,
+) -> bool
+where
+    P: Format + std::fmt::Debug,
+{
+    formatter.with_shape(
+        formatter
+            .shape
+            .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+        |formatter| -> bool {
+            let mut buf = FormattedCode::new();
+            if args.value_separator_pairs.len() == 1 && args.final_value_opt.is_none() {
+                if same_line_if_only_argument(&args.value_separator_pairs[0].0) {
+                    return true;
+                }
+                let _ = args.value_separator_pairs[0].0.format(&mut buf, formatter);
+            } else if args.value_separator_pairs.is_empty() && args.final_value_opt.is_some() {
+                if let Some(final_value) = &args.final_value_opt {
+                    if same_line_if_only_argument(final_value) {
+                        return true;
+                    }
+                    let _ = (**final_value).format(&mut buf, formatter);
+                }
+            } else {
+                return false;
+            }
+            buf.len() < formatter.shape.width_heuristics.collection_width
+        },
+    )
+}
+
+/// Writes the `(args)` of a function call. This is a common abstraction for
+/// methods and functions and how to organize their arguments.
+#[inline]
+pub fn write_function_call_arguments<P>(
+    args: &Punctuated<Expr, P>,
+    formatter: &mut Formatter,
+) -> Result<(bool, String), FormatterError>
+where
+    P: Format + std::fmt::Debug,
+{
+    let has_single_argument_and_can_be_inlined =
+        is_single_argument_and_can_be_inline(args, formatter);
+
+    formatter.with_shape(
+        formatter
+            .shape
+            .with_code_line_from(LineStyle::Normal, ExprKind::Function),
+        |formatter| -> Result<(bool, String), FormatterError> {
+            let mut buf = FormattedCode::new();
+            args.format(&mut buf, formatter)?;
+
+            Ok(if has_single_argument_and_can_be_inlined {
+                (true, buf.trim().to_owned())
+            } else {
+                // Check if the arguments can fit on a single line
+                let expr_width = buf.chars().count();
+                formatter.shape.code_line.add_width(expr_width);
+                formatter.shape.get_line_style(
+                    Some(expr_width),
+                    Some(expr_width),
+                    &formatter.config,
+                );
+
+                if expr_width == 0 {
+                    return Ok((true, "".to_owned()));
+                }
+                match formatter.shape.code_line.line_style {
+                    LineStyle::Multiline => {
+                        // force each param to be a new line
+                        formatter.shape.code_line.update_expr_new_line(true);
+                        formatter.indent();
+                        // should be rewritten to a multi-line
+                        let mut formatted_code = FormattedCode::new();
+                        let mut buf = FormattedCode::new();
+                        args.format(&mut buf, formatter)?;
+                        formatter.unindent();
+                        writeln!(formatted_code, "{}", buf.trim_end())?;
+                        formatter.write_indent_into_buffer(&mut formatted_code)?;
+                        (false, formatted_code)
+                    }
+                    _ => (true, buf.trim().to_owned()),
+                }
+            })
+        },
+    )
+}
+
 fn format_method_call(
     target: &Expr,
     dot_token: &DotToken,
@@ -640,13 +894,20 @@ fn format_method_call(
     args: &Parens<Punctuated<Expr, CommaToken>>,
     formatted_code: &mut FormattedCode,
     formatter: &mut Formatter,
-) -> Result<(), FormatterError> {
+) -> Result<(usize, bool), FormatterError> {
     // don't indent unless on new line
     if formatted_code.ends_with('\n') {
-        write!(formatted_code, "{}", formatter.indent_str()?)?;
+        write!(formatted_code, "{}", formatter.indent_to_str()?)?;
     }
     target.format(formatted_code, formatter)?;
+
+    if formatter.shape.code_line.expr_new_line {
+        formatter.indent();
+        write!(formatted_code, "\n{}", formatter.indent_to_str()?)?;
+    }
+
     write!(formatted_code, "{}", dot_token.span().as_str())?;
+
     path_seg.format(formatted_code, formatter)?;
     if let Some(contract_args) = &contract_args_opt {
         ExprStructField::open_curly_brace(formatted_code, formatter)?;
@@ -661,18 +922,18 @@ fn format_method_call(
         }
         ExprStructField::close_curly_brace(formatted_code, formatter)?;
     }
-    formatter.with_shape(
-        formatter.shape.with_default_code_line(),
-        |formatter| -> Result<(), FormatterError> {
-            Expr::open_parenthesis(formatted_code, formatter)?;
-            args.get().format(formatted_code, formatter)?;
-            Expr::close_parenthesis(formatted_code, formatter)?;
 
-            Ok(())
-        },
-    )?;
+    let len_function_call = formatted_code.len();
 
-    Ok(())
+    Expr::open_parenthesis(formatted_code, formatter)?;
+    let (args_inline, args_str) = write_function_call_arguments(args.get(), formatter)?;
+    write!(formatted_code, "{}", args_str,)?;
+    Expr::close_parenthesis(formatted_code, formatter)?;
+
+    if formatter.shape.code_line.expr_new_line {
+        formatter.unindent();
+    }
+    Ok((len_function_call, args_inline))
 }
 
 fn get_field_width(
@@ -781,6 +1042,20 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
             collected_spans.append(&mut block.leaf_spans());
             collected_spans
         }
+        Expr::For {
+            for_token,
+            in_token,
+            value_pattern,
+            iterator,
+            block,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(for_token.span())];
+            collected_spans.append(&mut value_pattern.leaf_spans());
+            collected_spans.append(&mut vec![ByteSpan::from(in_token.span())]);
+            collected_spans.append(&mut iterator.leaf_spans());
+            collected_spans.append(&mut block.leaf_spans());
+            collected_spans
+        }
         Expr::FuncApp { func, args } => {
             let mut collected_spans = Vec::new();
             collected_spans.append(&mut func.leaf_spans());
@@ -833,13 +1108,20 @@ fn expr_leaf_spans(expr: &Expr) -> Vec<ByteSpan> {
             collected_spans.push(ByteSpan::from(field_span.clone()));
             collected_spans
         }
-        Expr::Ref { ref_token, expr } => {
-            let mut collected_spans = vec![ByteSpan::from(ref_token.span())];
+        Expr::Ref {
+            ampersand_token,
+            mut_token,
+            expr,
+        } => {
+            let mut collected_spans = vec![ByteSpan::from(ampersand_token.span())];
+            if let Some(mut_token) = mut_token {
+                collected_spans.push(ByteSpan::from(mut_token.span()));
+            }
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
         }
-        Expr::Deref { deref_token, expr } => {
-            let mut collected_spans = vec![ByteSpan::from(deref_token.span())];
+        Expr::Deref { star_token, expr } => {
+            let mut collected_spans = vec![ByteSpan::from(star_token.span())];
             collected_spans.append(&mut expr.leaf_spans());
             collected_spans
         }

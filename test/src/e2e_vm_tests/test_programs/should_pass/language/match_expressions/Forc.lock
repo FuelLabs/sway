@@ -1,8 +1,16 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-C27B2C742213E5AD'
+name = "core"
+source = "path+from-root-C27B2C742213E5AD"
 
 [[package]]
-name = 'match_expressions'
-source = 'member'
-dependencies = ['core']
+name = "match_expressions"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-C27B2C742213E5AD"
+dependencies = ["core"]

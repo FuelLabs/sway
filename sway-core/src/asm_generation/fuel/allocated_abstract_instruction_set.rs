@@ -10,6 +10,7 @@ use super::{
     data_section::{DataSection, Entry},
 };
 
+use indexmap::{IndexMap, IndexSet};
 use sway_types::span::Span;
 
 use std::{
@@ -47,7 +48,7 @@ impl AllocatedAbstractInstructionSet {
             .ops
             .iter()
             .fold(
-                (HashMap::new(), HashSet::new()),
+                (IndexMap::new(), IndexSet::new()),
                 |(mut reg_sets, mut active_sets), op| {
                     let reg = match &op.opcode {
                         Either::Right(ControlFlowOp::PushAll(label)) => {
@@ -55,7 +56,7 @@ impl AllocatedAbstractInstructionSet {
                             None
                         }
                         Either::Right(ControlFlowOp::PopAll(label)) => {
-                            active_sets.remove(label);
+                            active_sets.swap_remove(label);
                             None
                         }
 
@@ -81,6 +82,28 @@ impl AllocatedAbstractInstructionSet {
             )
             .0;
 
+        fn generate_mask(regs: &[&AllocatedRegister]) -> (VirtualImmediate24, VirtualImmediate24) {
+            let mask = regs.iter().fold((0, 0), |mut accum, reg| {
+                let reg_id = reg.to_reg_id().to_u8();
+                assert!((16..64).contains(&reg_id));
+                let reg_id = reg_id - 16;
+                let (mask_ref, bit) = if reg_id < 24 {
+                    (&mut accum.0, reg_id)
+                } else {
+                    (&mut accum.1, reg_id - 24)
+                };
+                // Set bit (from the least significant side) of mask_ref.
+                *mask_ref |= 1 << bit;
+                accum
+            });
+            (
+                VirtualImmediate24::new(mask.0, Span::dummy())
+                    .expect("mask should have fit in 24b"),
+                VirtualImmediate24::new(mask.1, Span::dummy())
+                    .expect("mask should have fit in 24b"),
+            )
+        }
+
         // Now replace the PUSHA/POPA instructions with STOREs and LOADs.
         self.ops = self.ops.drain(..).fold(Vec::new(), |mut new_ops, op| {
             match &op.opcode {
@@ -93,35 +116,21 @@ impl AllocatedAbstractInstructionSet {
                         .chain([&AllocatedRegister::Constant(ConstantRegister::LocalsBase)])
                         .collect::<Vec<_>>();
 
-                    let stack_use_bytes = regs.len() as u64 * 8;
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::MOVE(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            AllocatedRegister::Constant(ConstantRegister::StackPointer),
-                        )),
-                        comment: "save base stack value".into(),
-                        owning_span: None,
-                    });
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::CFEI(
-                            VirtualImmediate24::new(stack_use_bytes, Span::dummy()).unwrap(),
-                        )),
-                        comment: "reserve space for saved registers".into(),
-                        owning_span: None,
-                    });
-
-                    regs.into_iter().enumerate().for_each(|(idx, reg)| {
-                        let store_op = AllocatedOpcode::SW(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            reg.clone(),
-                            VirtualImmediate12::new(idx as u64, Span::dummy()).unwrap(),
-                        );
+                    let (mask_l, mask_h) = generate_mask(&regs);
+                    if mask_l.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(store_op),
-                            comment: format!("save {reg}"),
+                            opcode: Either::Left(AllocatedOpcode::PSHL(mask_l)),
+                            comment: "Save registers 16..40".into(),
                             owning_span: None,
                         });
-                    })
+                    }
+                    if mask_h.value != 0 {
+                        new_ops.push(AllocatedAbstractOp {
+                            opcode: Either::Left(AllocatedOpcode::PSHH(mask_h)),
+                            comment: "Save registers 40..64".into(),
+                            owning_span: None,
+                        });
+                    }
                 }
 
                 Either::Right(ControlFlowOp::PopAll(label)) => {
@@ -133,37 +142,21 @@ impl AllocatedAbstractInstructionSet {
                         .chain([&AllocatedRegister::Constant(ConstantRegister::LocalsBase)])
                         .collect::<Vec<_>>();
 
-                    let stack_use_bytes = regs.len() as u64 * 8;
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::SUBI(
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            AllocatedRegister::Constant(ConstantRegister::StackPointer),
-                            VirtualImmediate12::new(stack_use_bytes, Span::dummy()).unwrap(),
-                        )),
-                        comment: "save base stack value".into(),
-                        owning_span: None,
-                    });
-
-                    regs.into_iter().enumerate().for_each(|(idx, reg)| {
-                        let load_op = AllocatedOpcode::LW(
-                            reg.clone(),
-                            AllocatedRegister::Constant(ConstantRegister::Scratch),
-                            VirtualImmediate12::new(idx as u64, Span::dummy()).unwrap(),
-                        );
+                    let (mask_l, mask_h) = generate_mask(&regs);
+                    if mask_h.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
-                            opcode: Either::Left(load_op),
-                            comment: format!("restore {reg}"),
+                            opcode: Either::Left(AllocatedOpcode::POPH(mask_h)),
+                            comment: "Restore registers 40..64".into(),
                             owning_span: None,
                         });
-                    });
-
-                    new_ops.push(AllocatedAbstractOp {
-                        opcode: Either::Left(AllocatedOpcode::CFSI(
-                            VirtualImmediate24::new(stack_use_bytes, Span::dummy()).unwrap(),
-                        )),
-                        comment: "recover space from saved registers".into(),
-                        owning_span: None,
-                    });
+                    }
+                    if mask_l.value != 0 {
+                        new_ops.push(AllocatedAbstractOp {
+                            opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
+                            comment: "Restore registers 16..40".into(),
+                            owning_span: None,
+                        });
+                    }
                 }
 
                 _otherwise => new_ops.push(op),
@@ -348,7 +341,7 @@ impl AllocatedAbstractInstructionSet {
                         let data_id =
                             data_section.insert_data_value(Entry::new_word(offset, None, None));
                         realized_ops.push(RealizedOp {
-                            opcode: AllocatedOpcode::LWDataId(r1, data_id),
+                            opcode: AllocatedOpcode::LoadDataId(r1, data_id),
                             owning_span,
                             comment,
                         });
@@ -413,8 +406,8 @@ impl AllocatedAbstractInstructionSet {
         match op.opcode {
             Either::Right(Label(_)) => 0,
 
-            // A special case for LWDataId which may be 1 or 2 ops, depending on the source size.
-            Either::Left(AllocatedOpcode::LWDataId(_, ref data_id)) => {
+            // A special case for LoadDataId which may be 1 or 2 ops, depending on the source size.
+            Either::Left(AllocatedOpcode::LoadDataId(_, ref data_id)) => {
                 let has_copy_type = data_section.has_copy_type(data_id).expect(
                     "Internal miscalculation in data section -- \
                         data id did not match up to any actual data",
@@ -424,6 +417,14 @@ impl AllocatedAbstractInstructionSet {
                 } else {
                     2
                 }
+            }
+
+            // cfei 0 and cfsi 0 are omitted from asm emission, don't count them for offsets
+            Either::Left(AllocatedOpcode::CFEI(ref op))
+            | Either::Left(AllocatedOpcode::CFSI(ref op))
+                if op.value == 0 =>
+            {
+                0
             }
 
             // Another special case for the blob opcode, used for testing.

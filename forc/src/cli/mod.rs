@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use self::commands::{
     addr2line, build, check, clean, completions, contract_id, init, new, parse_bytecode, plugins,
     predicate_root, template, test, update,
@@ -19,6 +17,7 @@ pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub(crate) use predicate_root::Command as PredicateRootCommand;
+use std::str::FromStr;
 pub use template::Command as TemplateCommand;
 pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
@@ -28,8 +27,23 @@ mod commands;
 mod plugin;
 pub mod shared;
 
+fn help() -> &'static str {
+    Box::leak(
+        format!(
+            "Examples:\n{}{}{}{}",
+            plugins::examples(),
+            test::examples(),
+            build::examples(),
+            check::examples(),
+        )
+        .trim_end()
+        .to_string()
+        .into_boxed_str(),
+    )
+}
+
 #[derive(Debug, Parser)]
-#[clap(name = "forc", about = "Fuel Orchestrator", version)]
+#[clap(name = "forc", about = "Fuel Orchestrator", version, after_help = help())]
 struct Opt {
     /// The command to run
     #[clap(subcommand)]
@@ -79,6 +93,28 @@ enum Forc {
     Plugin(Vec<String>),
 }
 
+impl Forc {
+    #[allow(dead_code)]
+    pub fn possible_values() -> Vec<&'static str> {
+        vec![
+            "addr2line",
+            "build",
+            "check",
+            "clean",
+            "completions",
+            "init",
+            "new",
+            "parse-bytecode",
+            "plugins",
+            "test",
+            "update",
+            "template",
+            "contract-id",
+            "predicate-root",
+        ]
+    }
+}
+
 pub async fn run_cli() -> ForcResult<()> {
     let opt = Opt::parse();
     let tracing_options = TracingSubscriberOptions {
@@ -106,7 +142,7 @@ pub async fn run_cli() -> ForcResult<()> {
         Forc::ContractId(command) => contract_id::exec(command),
         Forc::PredicateRoot(command) => predicate_root::exec(command),
         Forc::Plugin(args) => {
-            let output = plugin::execute_external_subcommand(args)?;
+            let output = plugin::execute_external_subcommand(args, opt.silent)?;
             let code = output
                 .status
                 .code()

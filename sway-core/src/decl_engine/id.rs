@@ -1,6 +1,9 @@
+use std::collections::hash_map::DefaultHasher;
+use std::hash::Hasher;
 use std::marker::PhantomData;
 use std::{fmt, hash::Hash};
 
+use crate::language::ty::TyTraitType;
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -11,8 +14,10 @@ use crate::{
     type_system::*,
 };
 
+pub type DeclIdIndexType = usize;
+
 /// An ID used to refer to an item in the [DeclEngine](super::decl_engine::DeclEngine)
-pub struct DeclId<T>(usize, PhantomData<T>);
+pub struct DeclId<T>(DeclIdIndexType, PhantomData<T>);
 
 impl<T> fmt::Debug for DeclId<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -20,9 +25,23 @@ impl<T> fmt::Debug for DeclId<T> {
     }
 }
 
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+pub struct DeclUniqueId(pub(crate) u64);
+
 impl<T> DeclId<T> {
-    pub(crate) fn inner(&self) -> usize {
+    pub(crate) fn inner(&self) -> DeclIdIndexType {
         self.0
+    }
+
+    pub fn unique_id(&self) -> DeclUniqueId
+    where
+        T: 'static,
+    {
+        let mut hasher = DefaultHasher::default();
+        std::any::TypeId::of::<T>().hash(&mut hasher);
+        self.0.hash(&mut hasher);
+
+        DeclUniqueId(hasher.finish())
     }
 }
 
@@ -78,115 +97,99 @@ impl<T> Into<usize> for DeclId<T> {
 }
 
 impl SubstTypes for DeclId<TyFunctionDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 impl SubstTypes for DeclId<TyTraitDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 impl SubstTypes for DeclId<TyTraitFn> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 impl SubstTypes for DeclId<TyImplTrait> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 impl SubstTypes for DeclId<TyStructDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 impl SubstTypes for DeclId<TyEnumDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 impl SubstTypes for DeclId<TyTypeAliasDecl> {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 
-impl ReplaceSelfType for DeclId<TyFunctionDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
+impl SubstTypes for DeclId<TyTraitType> {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTraitDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTraitFn> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyImplTrait> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyStructDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyEnumDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
-    }
-}
-impl ReplaceSelfType for DeclId<TyTypeAliasDecl> {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        let decl_engine = engines.de();
-        let mut decl = decl_engine.get(self);
-        decl.replace_self_type(engines, self_type);
-        decl_engine.replace(*self, decl);
+        let mut decl = (*decl_engine.get(self)).clone();
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(*self, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }

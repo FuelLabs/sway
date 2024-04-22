@@ -30,8 +30,12 @@ impl<'a> OccursCheck<'a> {
     /// NOTE: This implementation assumes that `other` =/ `generic`, in which
     /// case the occurs check would return `false`, as this is a valid
     /// unification.
-    pub(super) fn check(&self, generic: TypeInfo, other: &TypeInfo) -> bool {
+    pub(super) fn check(&self, generic: TypeId, other: TypeId) -> bool {
         let other_generics = other.extract_nested_generics(self.engines);
-        other_generics.contains(&self.engines.help_out(generic))
+        other_generics.contains(
+            &self
+                .engines
+                .help_out((*self.engines.te().get(generic)).clone()),
+        )
     }
 }

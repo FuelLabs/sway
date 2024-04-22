@@ -1,11 +1,13 @@
 mod e2e_vm_tests;
 mod ir_generation;
+mod reduced_std_libs;
+mod test_consistency;
 
 use anyhow::Result;
 use clap::Parser;
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
-use sway_core::BuildTarget;
+use sway_core::{BuildTarget, ExperimentalFlags};
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -38,6 +40,10 @@ struct Cli {
     #[arg(long, env = "SWAY_TEST_VERBOSE")]
     verbose: bool,
 
+    /// Compile sway code in release mode
+    #[arg(long)]
+    release: bool,
+
     /// Intended for use in `CI` to ensure test lock files are up to date
     #[arg(long)]
     locked: bool,
@@ -45,6 +51,14 @@ struct Cli {
     /// Build target.
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
+
+    /// Experimental flag for new encoding
+    #[arg(long)]
+    experimental_new_encoding: bool,
+
+    /// Update all output files
+    #[arg(long)]
+    update_output_files: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +76,9 @@ pub struct RunConfig {
     pub build_target: BuildTarget,
     pub locked: bool,
     pub verbose: bool,
+    pub release: bool,
+    pub experimental: ExperimentalFlags,
+    pub update_output_files: bool,
 }
 
 #[tokio::main]
@@ -88,8 +105,19 @@ async fn main() -> Result<()> {
     let run_config = RunConfig {
         locked: cli.locked,
         verbose: cli.verbose,
+        release: cli.release,
         build_target,
+        experimental: sway_core::ExperimentalFlags {
+            new_encoding: cli.experimental_new_encoding,
+        },
+        update_output_files: cli.update_output_files,
     };
+
+    // Check that the tests are consistent
+    test_consistency::check()?;
+
+    // Create reduced versions of the `std` library.
+    reduced_std_libs::create()?;
 
     // Run E2E tests
     e2e_vm_tests::run(&filter_config, &run_config)
@@ -99,9 +127,15 @@ async fn main() -> Result<()> {
     // Run IR tests
     if !filter_config.first_only {
         println!("\n");
-        ir_generation::run(filter_config.include.as_ref(), cli.verbose)
-            .instrument(tracing::trace_span!("IR"))
-            .await?;
+        ir_generation::run(
+            filter_config.include.as_ref(),
+            cli.verbose,
+            sway_ir::ExperimentalFlags {
+                new_encoding: run_config.experimental.new_encoding,
+            },
+        )
+        .instrument(tracing::trace_span!("IR"))
+        .await?;
     }
 
     Ok(())

@@ -3,22 +3,27 @@ use crate::{
     utils::document::{get_path_from_url, get_url_from_path, get_url_from_span},
 };
 use dashmap::DashMap;
+use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{manifest::Dependency, PackageManifestFile};
+use indexmap::IndexMap;
 use lsp_types::Url;
 use notify::RecursiveMode;
 use notify_debouncer_mini::new_debouncer;
 use parking_lot::RwLock;
 use std::{
-    collections::HashMap,
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::{atomic::AtomicBool, mpsc, Arc},
-    thread::JoinHandle,
+    sync::Arc,
     time::Duration,
 };
 use sway_types::{SourceEngine, Span};
+use sway_utils::{
+    constants::{LOCK_FILE_NAME, MANIFEST_FILE_NAME},
+    SWAY_EXTENSION,
+};
 use tempfile::Builder;
+use tokio::task::JoinHandle;
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Directory {
@@ -30,8 +35,6 @@ pub enum Directory {
 pub struct SyncWorkspace {
     pub directories: DashMap<Directory, PathBuf>,
     pub notify_join_handle: RwLock<Option<JoinHandle<()>>>,
-    // if we should shutdown the thread watching the manifest file
-    pub should_end: Arc<AtomicBool>,
 }
 
 impl SyncWorkspace {
@@ -41,7 +44,6 @@ impl SyncWorkspace {
         Self {
             directories: DashMap::new(),
             notify_join_handle: RwLock::new(None),
-            should_end: Arc::new(AtomicBool::new(false)),
         }
     }
 
@@ -195,13 +197,13 @@ impl SyncWorkspace {
                 if let Some(temp_manifest_path) = self.temp_manifest_path() {
                     edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
 
-                    let (tx, rx) = mpsc::channel();
-                    let handle = std::thread::spawn(move || {
+                    let handle = tokio::spawn(async move {
+                        let (tx, mut rx) = tokio::sync::mpsc::channel(10);
                         // Setup debouncer. No specific tickrate, max debounce time 2 seconds
                         let mut debouncer =
                             new_debouncer(Duration::from_secs(1), None, move |event| {
                                 if let Ok(e) = event {
-                                    let _ = tx.send(e);
+                                    let _ = tx.blocking_send(e);
                                 }
                             })
                             .unwrap();
@@ -211,7 +213,7 @@ impl SyncWorkspace {
                             .watch(manifest_dir.as_ref().path(), RecursiveMode::NonRecursive)
                             .unwrap();
 
-                        while let Ok(_events) = rx.recv() {
+                        while let Some(_events) = rx.recv().await {
                             // Rescan the Forc.toml and convert
                             // relative paths to absolute. Save into our temp directory.
                             edit_manifest_dependency_paths(&manifest, &temp_manifest_path);
@@ -266,7 +268,7 @@ pub(crate) fn edit_manifest_dependency_paths(
 ) {
     // Key = name of the dependancy that has been specified will a relative path
     // Value = the absolute path that should be used to overwrite the relateive path
-    let mut dependency_map: HashMap<String, PathBuf> = HashMap::new();
+    let mut dependency_map: IndexMap<String, PathBuf> = IndexMap::new();
 
     if let Some(deps) = &manifest.dependencies {
         for (name, dep) in deps.iter() {
@@ -298,20 +300,37 @@ pub(crate) fn edit_manifest_dependency_paths(
     }
 }
 
-/// Copy the contents of the current workspace folder into the target directory
+/// Copies only the specified files from the source directory to the target directory.
+/// This function targets files ending with `.sw`, and the specific files `Forc.toml` and `Forc.lock`.
+/// It returns `Ok(true)` if any relevant files were copied over, and `Ok(false)` if no such files were found.
 fn copy_dir_contents(
     src_dir: impl AsRef<Path>,
     target_dir: impl AsRef<Path>,
-) -> std::io::Result<()> {
-    fs::create_dir_all(&target_dir)?;
-    for entry in fs::read_dir(src_dir)? {
+) -> std::io::Result<bool> {
+    let mut has_relevant_files = false;
+    for entry in fs::read_dir(&src_dir)? {
         let entry = entry?;
+        let path = entry.path();
         let ty = entry.file_type()?;
         if ty.is_dir() {
-            copy_dir_contents(entry.path(), target_dir.as_ref().join(entry.file_name()))?;
-        } else {
-            fs::copy(entry.path(), target_dir.as_ref().join(entry.file_name()))?;
+            // Recursively check the directory; if it has relevant files, create the target directory
+            if copy_dir_contents(&path, target_dir.as_ref().join(entry.file_name()))? {
+                has_relevant_files = true;
+            }
+        } else if let Some(file_name_os) = path.file_name() {
+            if let Some(file_name) = file_name_os.to_str() {
+                if file_name.ends_with(&format!(".{}", SWAY_EXTENSION))
+                    || file_name == MANIFEST_FILE_NAME
+                    || file_name == LOCK_FILE_NAME
+                {
+                    if !has_relevant_files {
+                        fs::create_dir_all(&target_dir)?;
+                        has_relevant_files = true;
+                    }
+                    fs::copy(&path, target_dir.as_ref().join(file_name))?;
+                }
+            }
         }
     }
-    Ok(())
+    Ok(has_relevant_files)
 }

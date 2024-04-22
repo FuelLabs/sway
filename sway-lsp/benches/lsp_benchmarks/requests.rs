@@ -4,9 +4,12 @@ use lsp_types::{
     TextDocumentIdentifier,
 };
 use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
+use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
-    let (uri, session) = black_box(super::compile_test_project());
+    let (uri, session, documents) = Runtime::new()
+        .unwrap()
+        .block_on(async { black_box(super::compile_test_project().await) });
     let config = sway_lsp::config::Config::default();
     let keyword_docs = KeywordDocs::new();
     let position = Position::new(1717, 24);
@@ -75,7 +78,9 @@ fn benchmarks(c: &mut Criterion) {
 
     c.bench_function("code_action", |b| {
         let range = Range::new(Position::new(4, 10), Position::new(4, 10));
-        b.iter(|| capabilities::code_actions::code_actions(session.clone(), &range, &uri, &uri))
+        b.iter(|| {
+            capabilities::code_actions::code_actions(session.clone(), &range, &uri, &uri, &vec![])
+        })
     });
 
     c.bench_function("code_lens", |b| {
@@ -91,7 +96,11 @@ fn benchmarks(c: &mut Criterion) {
                 text: "\n".to_string(),
             }],
         };
-        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &session, &uri, &params))
+        b.iter(|| capabilities::on_enter::on_enter(&config.on_enter, &documents, &uri, &params))
+    });
+
+    c.bench_function("format", |b| {
+        b.iter(|| capabilities::formatting::format_text(&documents, &uri))
     });
 }
 

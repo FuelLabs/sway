@@ -28,7 +28,7 @@ First, open a new terminal and start `fuel-core` with:
 fuel-core
 ```
 
-Then open a second terminal, cd into the `sway` repo and run:
+Then open a second terminal, `cd` into the `sway` repo and run:
 
 ```sh
 cargo run --bin test
@@ -49,7 +49,7 @@ There are many ways in which you may contribute to the Sway project, some of whi
 
 - Reporting bugs
 - Adding documentation to the Sway book
-- Adding new features or bugfixes for which there is already an open issue
+- Adding new features or bug fixes for which there is already an open issue
 - Making feature requests
 
 Check out our [Help Wanted](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22), [Sway Book](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22The+Sway+Book%22) or [Good First Issue](https://github.com/FuelLabs/sway/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) issues to find a suitable task.
@@ -67,7 +67,7 @@ This is a rough outline of what a contributor's workflow looks like:
 - Run tests and make sure all tests pass.
 - If the PR contains any breaking changes, add the breaking label to your PR.
 - Push your changes to a branch in your fork of the repository and submit a pull request.
-  - Make sure mention the issue, which is created at step 1, in the commit message.
+  - Make sure to mention the issue, which is created at step 1, in the commit message.
 - Your PR will be reviewed and some changes may be requested.
   - Once you've made changes, your PR must be re-reviewed and approved.
   - If the PR becomes out of date, you can use GitHub's 'update branch' button.

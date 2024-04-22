@@ -3,7 +3,7 @@ use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
 
 abigen!(Contract(
     name = "TestRegistersContract",
-    abi = "test_projects/registers/out/debug/registers-abi.json",
+    abi = "test_projects/registers/out/release/registers-abi.json",
 ));
 
 // Compile contract, create node and deploy contract, returning TestRegistersContract contract instance
@@ -11,13 +11,13 @@ abigen!(Contract(
 //    -  Ability to return any type of Contract.
 //    -  Return a result
 async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/registers/out/debug/registers.bin",
+        "test_projects/registers/out/release/registers.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -133,9 +133,5 @@ async fn can_get_flags() {
 }
 
 fn is_within_range(n: u64) -> bool {
-    if n <= 0 || n > VM_MAX_RAM {
-        false
-    } else {
-        true
-    }
+    n > 0 && n <= VM_MAX_RAM
 }

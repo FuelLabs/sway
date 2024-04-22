@@ -4,19 +4,21 @@ use fuels::{
     types::{Bits256, SizedAsciiString},
 };
 
+pub mod try_insert;
+
 abigen!(Contract(
     name = "TestStorageMapContract",
-    abi = "test_projects/storage_map/out/debug/storage_map-abi.json",
+    abi = "test_projects/storage_map/out/release/storage_map-abi.json",
 ));
 
 async fn test_storage_map_instance() -> TestStorageMapContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await;
+    let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/storage_map/out/debug/storage_map.bin",
+        "test_projects/storage_map/out/release/storage_map.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
-    .deploy(&wallet, TxParameters::default())
+    .deploy(&wallet, TxPolicies::default())
     .await
     .unwrap();
 
@@ -99,15 +101,14 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_bool_map(key1)
                 .call()
                 .await
                 .unwrap()
-                .value,
-            true
+                .value
         );
 
         assert_eq!(
@@ -192,15 +193,14 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_u8_map(key1)
                 .call()
                 .await
                 .unwrap()
-                .value,
-            true
+                .value
         );
 
         assert_eq!(
@@ -285,7 +285,7 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_u16_map(key1)
@@ -293,7 +293,6 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -378,7 +377,7 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_u32_map(key1)
@@ -386,7 +385,6 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -471,7 +469,7 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_u64_map(key1)
@@ -479,7 +477,6 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -568,7 +565,7 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_tuple_map(key1)
@@ -576,7 +573,6 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -677,7 +673,7 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_struct_map(key1)
@@ -685,7 +681,6 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -774,7 +769,7 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_enum_map(key1)
@@ -782,7 +777,6 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -871,7 +865,7 @@ mod u64_to {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u64_to_str_map(key1)
@@ -879,7 +873,6 @@ mod u64_to {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -924,6 +917,7 @@ mod to_u64_map {
             .call()
             .await
             .unwrap();
+
         instance
             .methods()
             .insert_into_bool_to_u64_map(key2, val2)
@@ -953,15 +947,14 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_bool_to_u64_map(key1)
                 .call()
                 .await
                 .unwrap()
-                .value,
-            true
+                .value
         );
 
         assert_eq!(
@@ -1046,7 +1039,7 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u8_to_u64_map(key1)
@@ -1054,7 +1047,6 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -1139,7 +1131,7 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u16_to_u64_map(key1)
@@ -1147,7 +1139,6 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -1232,7 +1223,7 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_u32_to_u64_map(key1)
@@ -1240,7 +1231,6 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -1329,7 +1319,7 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_tuple_to_u64_map(key1)
@@ -1337,7 +1327,6 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -1390,19 +1379,19 @@ mod to_u64_map {
 
         instance
             .methods()
-            .insert_into_struct_to_u64_map(key1.clone(), val1.clone())
+            .insert_into_struct_to_u64_map(key1.clone(), val1)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_struct_to_u64_map(key2.clone(), val2.clone())
+            .insert_into_struct_to_u64_map(key2.clone(), val2)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_struct_to_u64_map(key3.clone(), val3.clone())
+            .insert_into_struct_to_u64_map(key3.clone(), val3)
             .call()
             .await
             .unwrap();
@@ -1439,7 +1428,7 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_struct_to_u64_map(key1.clone())
@@ -1447,7 +1436,6 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -1487,19 +1475,19 @@ mod to_u64_map {
 
         instance
             .methods()
-            .insert_into_enum_to_u64_map(key1.clone(), val1.clone())
+            .insert_into_enum_to_u64_map(key1.clone(), val1)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_enum_to_u64_map(key2.clone(), val2.clone())
+            .insert_into_enum_to_u64_map(key2.clone(), val2)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_enum_to_u64_map(key3.clone(), val3.clone())
+            .insert_into_enum_to_u64_map(key3.clone(), val3)
             .call()
             .await
             .unwrap();
@@ -1536,7 +1524,7 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
                 .remove_from_enum_to_u64_map(key1.clone())
@@ -1544,7 +1532,6 @@ mod to_u64_map {
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
@@ -1574,7 +1561,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1584,19 +1571,19 @@ mod to_u64_map {
 
         instance
             .methods()
-            .insert_into_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap(), val1)
+            .insert_into_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap(), val1)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_str_to_u64_map(SizedAsciiString::try_from(key2).unwrap(), val2)
+            .insert_into_str_to_u64_map(SizedAsciiString::<33>::try_from(key2).unwrap(), val2)
             .call()
             .await
             .unwrap();
         instance
             .methods()
-            .insert_into_str_to_u64_map(SizedAsciiString::try_from(key3).unwrap(), val3)
+            .insert_into_str_to_u64_map(SizedAsciiString::<33>::try_from(key3).unwrap(), val3)
             .call()
             .await
             .unwrap();
@@ -1604,7 +1591,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1614,7 +1601,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key2).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key2).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1624,7 +1611,7 @@ mod to_u64_map {
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key3).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key3).unwrap())
                 .call()
                 .await
                 .unwrap()
@@ -1633,21 +1620,20 @@ mod to_u64_map {
         );
 
         // Test `remove`
-        assert_eq!(
+        assert!(
             instance
                 .methods()
-                .remove_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .remove_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()
                 .value,
-            true
         );
 
         assert_eq!(
             instance
                 .methods()
-                .get_from_str_to_u64_map(SizedAsciiString::try_from(key1).unwrap())
+                .get_from_str_to_u64_map(SizedAsciiString::<33>::try_from(key1).unwrap())
                 .call()
                 .await
                 .unwrap()

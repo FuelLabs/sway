@@ -1,15 +1,18 @@
 //! Utility functions for cryptographic hashing.
 library;
 
+use ::alloc::alloc_bytes;
 use ::bytes::*;
 
 pub struct Hasher {
-    bytes: Bytes
+    bytes: Bytes,
 }
 
 impl Hasher {
     pub fn new() -> Self {
-        Self { bytes: Bytes::new() }
+        Self {
+            bytes: Bytes::new(),
+        }
     }
 
     /// Writes some data into this `Hasher`.
@@ -19,7 +22,11 @@ impl Hasher {
 
     pub fn sha256(self) -> b256 {
         let mut result_buffer = b256::min();
-        asm(hash: result_buffer, ptr: self.bytes.buf.ptr, bytes: self.bytes.len) {
+        asm(
+            hash: result_buffer,
+            ptr: self.bytes.ptr(),
+            bytes: self.bytes.len(),
+        ) {
             s256 hash ptr bytes;
             hash: b256
         }
@@ -27,7 +34,11 @@ impl Hasher {
 
     pub fn keccak256(self) -> b256 {
         let mut result_buffer = b256::min();
-        asm(hash: result_buffer, ptr: self.bytes.buf.ptr, bytes: self.bytes.len) {
+        asm(
+            hash: result_buffer,
+            ptr: self.bytes.ptr(),
+            bytes: self.bytes.len(),
+        ) {
             k256 hash ptr bytes;
             hash: b256
         }
@@ -40,27 +51,17 @@ impl Hasher {
         let str_size = s.len();
         let str_ptr = s.as_ptr();
 
-        let mut bytes = Bytes::with_capacity(str_size);
-        bytes.len = str_size;
-
-        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-        self.write(bytes);
+        self.write(Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)));
     }
 
-    #![inline(never)]
+    #[inline(never)]
     pub fn write_str_array<S>(ref mut self, s: S) {
         __assert_is_str_array::<S>();
         let str_size = __size_of_str_array::<S>();
         let str_ptr = __addr_of(s);
-        
-        let mut bytes = Bytes::with_capacity(str_size);
-        bytes.len = str_size;
 
-        str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-        
-        self.write(bytes);
+        self.write(Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)));
     }
-
 }
 
 pub trait Hash {
@@ -77,60 +78,84 @@ impl Hash for u8 {
 
 impl Hash for u16 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(8); // one word capacity
-        bytes.len = 2;
-
-        asm(ptr: bytes.buf.ptr(), val: self, r1) {
-            slli  r1 val i48;
+        let ptr = alloc_bytes(8); // one word capacity
+        asm(ptr: ptr, val: self, r1) {
+            slli r1 val i48;
             sw ptr r1 i0;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 2)));
     }
 }
 
 impl Hash for u32 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(8); // one word capacity
-        bytes.len = 4;
-
-        asm(ptr: bytes.buf.ptr(), val: self, r1) {
-            slli  r1 val i32;
+        let ptr = alloc_bytes(8); // one word capacity
+        asm(ptr: ptr, val: self, r1) {
+            slli r1 val i32;
             sw ptr r1 i0;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 4)));
     }
 }
 
 impl Hash for u64 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(8); // one word capacity
-        bytes.len = 8;
-
-        asm(ptr: bytes.buf.ptr(), val: self) {
+        let ptr = alloc_bytes(8); // one word capacity
+        asm(ptr: ptr, val: self) {
             sw ptr val i0;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 8)));
     }
 }
 
 impl Hash for b256 {
     fn hash(self, ref mut state: Hasher) {
-        let mut bytes = Bytes::with_capacity(32); // four word capacity
-        bytes.len = 32;
+        let ptr = alloc_bytes(32); // four word capacity
+        let (word_1, word_2, word_3, word_4) = asm(r1: self) {
+            r1: (u64, u64, u64, u64)
+        };
 
-        let (word_1, word_2, word_3, word_4) = asm(r1: self) { r1: (u64, u64, u64, u64) };
-
-        asm(ptr: bytes.buf.ptr(), val_1: word_1, val_2: word_2, val_3: word_3, val_4: word_4) {
+        asm(
+            ptr: ptr,
+            val_1: word_1,
+            val_2: word_2,
+            val_3: word_3,
+            val_4: word_4,
+        ) {
             sw ptr val_1 i0;
             sw ptr val_2 i1;
             sw ptr val_3 i2;
             sw ptr val_4 i3;
         };
 
-        state.write(bytes);
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 32)));
+    }
+}
+
+impl Hash for u256 {
+    fn hash(self, ref mut state: Hasher) {
+        let ptr = alloc_bytes(32); // four word capacity
+        let (word_1, word_2, word_3, word_4) = asm(r1: self) {
+            r1: (u64, u64, u64, u64)
+        };
+
+        asm(
+            ptr: ptr,
+            val_1: word_1,
+            val_2: word_2,
+            val_3: word_3,
+            val_4: word_4,
+        ) {
+            sw ptr val_1 i0;
+            sw ptr val_2 i1;
+            sw ptr val_3 i2;
+            sw ptr val_4 i3;
+        };
+
+        state.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, 32)));
     }
 }
 
@@ -158,15 +183,24 @@ impl Hash for str {
     }
 }
 
-impl<A, B> Hash for (A, B) where A: Hash, B: Hash  {
-    #![inline(never)]
+impl<A, B> Hash for (A, B)
+where
+    A: Hash,
+    B: Hash,
+{
+    #[inline(never)]
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
     }
 }
 
-impl<A, B, C> Hash for (A, B, C) where A: Hash, B: Hash, C: Hash {
+impl<A, B, C> Hash for (A, B, C)
+where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -174,7 +208,13 @@ impl<A, B, C> Hash for (A, B, C) where A: Hash, B: Hash, C: Hash {
     }
 }
 
-impl<A, B, C, D> Hash for (A, B, C, D) where A: Hash, B: Hash, C: Hash, D: Hash {
+impl<A, B, C, D> Hash for (A, B, C, D)
+where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+    D: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -183,7 +223,14 @@ impl<A, B, C, D> Hash for (A, B, C, D) where A: Hash, B: Hash, C: Hash, D: Hash 
     }
 }
 
-impl<A, B, C, D, E> Hash for (A, B, C, D, E) where A: Hash, B: Hash, C: Hash, D: Hash, E: Hash {
+impl<A, B, C, D, E> Hash for (A, B, C, D, E)
+where
+    A: Hash,
+    B: Hash,
+    C: Hash,
+    D: Hash,
+    E: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self.0.hash(state);
         self.1.hash(state);
@@ -193,20 +240,29 @@ impl<A, B, C, D, E> Hash for (A, B, C, D, E) where A: Hash, B: Hash, C: Hash, D:
     }
 }
 
-impl<T> Hash for [T; 1] where T: Hash {
+impl<T> Hash for [T; 1]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
     }
 }
 
-impl<T> Hash for [T; 2] where T: Hash {
+impl<T> Hash for [T; 2]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
     }
 }
 
-impl<T> Hash for [T; 3] where T: Hash {
+impl<T> Hash for [T; 3]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -214,7 +270,10 @@ impl<T> Hash for [T; 3] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 4] where T: Hash {
+impl<T> Hash for [T; 4]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -223,7 +282,10 @@ impl<T> Hash for [T; 4] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 5] where T: Hash {
+impl<T> Hash for [T; 5]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -233,7 +295,10 @@ impl<T> Hash for [T; 5] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 6] where T: Hash {
+impl<T> Hash for [T; 6]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -244,7 +309,10 @@ impl<T> Hash for [T; 6] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 7] where T: Hash {
+impl<T> Hash for [T; 7]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -256,7 +324,10 @@ impl<T> Hash for [T; 7] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 8] where T: Hash {
+impl<T> Hash for [T; 8]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -269,7 +340,10 @@ impl<T> Hash for [T; 8] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 9] where T: Hash {
+impl<T> Hash for [T; 9]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -283,7 +357,10 @@ impl<T> Hash for [T; 9] where T: Hash {
     }
 }
 
-impl<T> Hash for [T; 10] where T: Hash {
+impl<T> Hash for [T; 10]
+where
+    T: Hash,
+{
     fn hash(self, ref mut state: Hasher) {
         self[0].hash(state);
         self[1].hash(state);
@@ -309,17 +386,20 @@ impl<T> Hash for [T; 10] where T: Hash {
 /// * [b256] - The sha-256 hash of the value.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::hash::*;
 ///
 /// fn foo() {
 ///     let result = sha256("Fuel");
-///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
-#![inline(never)]
-pub fn sha256<T>(s: T) -> b256 where T: Hash {
+#[inline(never)]
+pub fn sha256<T>(s: T) -> b256
+where
+    T: Hash,
+{
     let mut hasher = Hasher::new();
     s.hash(hasher);
     hasher.sha256()
@@ -329,28 +409,26 @@ pub fn sha256<T>(s: T) -> b256 where T: Hash {
 /// This function is specific for string arrays
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::hash::*;
 ///
 /// fn foo() {
 ///     let result = sha256_str_array(__to_str_array("Fuel"));
-///     assert(result = 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
+///     assert(result == 0xa80f942f4112036dfc2da86daf6d2ef6ede3164dd56d1000eb82fa87c992450f);
 /// }
 /// ```
-#![inline(never)]
+#[inline(never)]
 pub fn sha256_str_array<S>(param: S) -> b256 {
-     __assert_is_str_array::<S>();
+    __assert_is_str_array::<S>();
     let str_size = __size_of_str_array::<S>();
     let str_ptr = __addr_of(param);
-    
-    let mut bytes = Bytes::with_capacity(str_size);
-    bytes.len = str_size;
 
-    str_ptr.copy_bytes_to(bytes.buf.ptr(), str_size);
-    
+    let ptr = alloc_bytes(str_size);
+    str_ptr.copy_bytes_to(ptr, str_size);
+
     let mut hasher = Hasher::new();
-    hasher.write(bytes);
+    hasher.write(Bytes::from(raw_slice::from_parts::<u8>(ptr, str_size)));
     hasher.sha256()
 }
 
@@ -365,17 +443,20 @@ pub fn sha256_str_array<S>(param: S) -> b256 {
 /// * [b256] - The keccak-256 hash of the value.
 ///
 /// # Examples
-/// 
+///
 /// ```sway
 /// use std::hash::keccak256;
 ///
 /// fn foo() {
 ///     let result = keccak256("Fuel");
-///     assert(result = 0x4375c8bcdc904e5f51752581202ae9ae2bb6eddf8de05d5567d9a6b0ae4789ad);
+///     assert(result == 0x4375c8bcdc904e5f51752581202ae9ae2bb6eddf8de05d5567d9a6b0ae4789ad);
 /// }
 /// ```
-#![inline(never)]
-pub fn keccak256<T>(s: T) -> b256 where T: Hash {
+#[inline(never)]
+pub fn keccak256<T>(s: T) -> b256
+where
+    T: Hash,
+{
     let mut hasher = Hasher::new();
     s.hash(hasher);
     hasher.keccak256()
@@ -459,12 +540,30 @@ fn test_hasher_sha256_u64() {
 fn test_hasher_sha256_b256() {
     use ::assert::assert;
     let mut hasher = Hasher::new();
-    0x0000000000000000000000000000000000000000000000000000000000000000.hash(hasher);
+    0x0000000000000000000000000000000000000000000000000000000000000000
+        .hash(hasher);
     let sha256 = hasher.sha256();
     assert(sha256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
 
     let mut hasher = Hasher::new();
-    0x0000000000000000000000000000000000000000000000000000000000000001.hash(hasher);
+    0x0000000000000000000000000000000000000000000000000000000000000001
+        .hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
+}
+
+#[test]
+fn test_hasher_sha256_u256() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000000_u256
+        .hash(hasher);
+    let sha256 = hasher.sha256();
+    assert(sha256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
+
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000001_u256
+        .hash(hasher);
     let sha256 = hasher.sha256();
     assert(sha256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
 }
@@ -499,4 +598,138 @@ fn test_hasher_sha256_bytes() {
     bytes.hash(hasher);
     let sha256 = hasher.sha256();
     assert(sha256 == 0x4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a);
+}
+
+#[test()]
+fn test_hasher_keccak256_str_array() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    hasher.write_str("test");
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658);
+
+    let mut hasher = Hasher::new();
+    hasher.write_str("Fastest Modular Execution Layer!");
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xab8e83e041e001bcf797c9cc7d6bc472bfdb8c736bab7999f13b7c26f48c354f);
+}
+
+#[test()]
+fn test_hasher_keccak256_u8() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u8.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    1_u8.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+}
+
+#[test()]
+fn test_hasher_keccak256_u16() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u16.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x54a8c0ab653c15bfb48b47fd011ba2b9617af01cb45cab344acd57c924d56798);
+
+    let mut hasher = Hasher::new();
+    1_u16.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x49d03a195e239b52779866b33024210fc7dc66e9c2998975c0aa45c1702549d5);
+}
+
+#[test()]
+fn test_hasher_keccak256_u32() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u32.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xe8e77626586f73b955364c7b4bbf0bb7f7685ebd40e852b164633a4acbd3244c);
+
+    let mut hasher = Hasher::new();
+    1_u32.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x51f81bcdfc324a0dff2b5bec9d92e21cbebc4d5e29d3a3d30de3e03fbeab8d7f);
+}
+
+#[test()]
+fn test_hasher_keccak256_u64() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0_u64.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x011b4d03dd8c01f1049143cf9c4c817e4b167f1d1b83e5c6f0f10d89ba1e7bce);
+
+    let mut hasher = Hasher::new();
+    1_u64.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x6c31fc15422ebad28aaf9089c306702f67540b53c7eea8b7d2941044b027100f);
+}
+
+#[test()]
+fn test_hasher_keccak256_b256() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000000
+        .hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563);
+
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000001
+        .hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6);
+}
+
+#[test]
+fn test_hasher_keccak256_u256() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000000_u256
+        .hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563);
+
+    let mut hasher = Hasher::new();
+    0x0000000000000000000000000000000000000000000000000000000000000001_u256
+        .hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6);
+}
+
+#[test()]
+fn test_hasher_keccak256_bool() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    false.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    true.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
+}
+
+#[test]
+fn test_hasher_keccak256_bytes() {
+    use ::assert::assert;
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::with_capacity(1);
+    bytes.push(0u8);
+    bytes.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a);
+
+    let mut hasher = Hasher::new();
+    let mut bytes = Bytes::with_capacity(1);
+    bytes.push(1u8);
+    bytes.hash(hasher);
+    let keccak256 = hasher.keccak256();
+    assert(keccak256 == 0x5fe7f977e71dba2ea1a68e21057beebb9be2ac30c6410aa38d4f3fbe41dcffd2);
 }

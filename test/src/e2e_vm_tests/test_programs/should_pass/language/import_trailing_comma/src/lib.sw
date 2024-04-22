@@ -1,11 +1,11 @@
 library;
 
 pub struct B {
-    b: u64,
+    pub b: u64,
 }
 pub struct C {
-    c: u64,
+    pub c: u64,
 }
 pub struct D {
-    d: u64,
+    pub d: u64,
 }

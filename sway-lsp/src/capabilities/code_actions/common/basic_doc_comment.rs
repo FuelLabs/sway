@@ -12,7 +12,7 @@ pub struct BasicDocCommentCodeAction<'a, T: Spanned> {
 impl<'a, T: Spanned> GenerateDocCodeAction<'a, T> for BasicDocCommentCodeAction<'a, T> {}
 
 impl<'a, T: Spanned> CodeAction<'a, T> for BasicDocCommentCodeAction<'a, T> {
-    fn new(ctx: CodeActionContext<'a>, decl: &'a T) -> Self {
+    fn new(ctx: &CodeActionContext<'a>, decl: &'a T) -> Self {
         Self { decl, uri: ctx.uri }
     }
 

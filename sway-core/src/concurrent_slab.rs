@@ -1,12 +1,26 @@
-use std::{fmt, sync::RwLock};
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 
-use sway_types::{Named, Spanned};
+#[derive(Debug, Clone)]
+pub struct Inner<T> {
+    pub items: Vec<Option<Arc<T>>>,
+    pub free_list: Vec<usize>,
+}
 
-use crate::{decl_engine::*, engine_threading::*, type_system::*};
+impl<T> Default for Inner<T> {
+    fn default() -> Self {
+        Self {
+            items: Default::default(),
+            free_list: Default::default(),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct ConcurrentSlab<T> {
-    inner: RwLock<Vec<T>>,
+    pub inner: RwLock<Inner<T>>,
 }
 
 impl<T> Clone for ConcurrentSlab<T>
@@ -26,12 +40,6 @@ impl<T> Default for ConcurrentSlab<T> {
         Self {
             inner: Default::default(),
         }
-    }
-}
-
-impl<T> ConcurrentSlab<T> {
-    pub fn with_slice<R>(&self, run: impl FnOnce(&[T]) -> R) -> R {
-        run(&self.inner.read().unwrap())
     }
 }
 
@@ -59,55 +67,69 @@ impl<T> ConcurrentSlab<T>
 where
     T: Clone,
 {
-    pub fn insert(&self, value: T) -> usize {
-        let mut inner = self.inner.write().unwrap();
-        let ret = inner.len();
-        inner.push(value);
-        ret
-    }
-
-    pub fn get(&self, index: usize) -> T {
+    #[allow(dead_code)]
+    pub fn len(&self) -> usize {
         let inner = self.inner.read().unwrap();
-        inner[index].clone()
+        inner.items.len()
     }
-}
 
-impl ConcurrentSlab<TypeInfo> {
-    pub fn replace(
-        &self,
-        index: TypeId,
-        prev_value: &TypeInfo,
-        new_value: TypeInfo,
-        engines: &Engines,
-    ) -> Option<TypeInfo> {
-        let index = index.index();
-        // The comparison below ends up calling functions in the slab, which
-        // can lead to deadlocks if we used a single read/write lock.
-        // So we split the operation: we do the read only operations with
-        // a single scoped read lock below, and only after the scope do
-        // we get a write lock for writing into the slab.
-        {
-            let inner = self.inner.read().unwrap();
-            let actual_prev_value = &inner[index];
-            if !actual_prev_value.eq(prev_value, engines) {
-                return Some(actual_prev_value.clone());
+    pub fn values(&self) -> Vec<Arc<T>> {
+        let inner = self.inner.read().unwrap();
+        inner.items.iter().filter_map(|x| x.clone()).collect()
+    }
+
+    pub fn insert(&self, value: T) -> usize {
+        self.insert_arc(Arc::new(value))
+    }
+
+    pub fn insert_arc(&self, value: Arc<T>) -> usize {
+        let mut inner = self.inner.write().unwrap();
+
+        if let Some(free) = inner.free_list.pop() {
+            assert!(inner.items[free].is_none());
+            inner.items[free] = Some(value);
+            free
+        } else {
+            inner.items.push(Some(value));
+            inner.items.len() - 1
+        }
+    }
+
+    pub fn replace(&self, index: usize, new_value: T) -> Option<T> {
+        let mut inner = self.inner.write().unwrap();
+        let item = inner.items.get_mut(index)?;
+        let old = item.replace(Arc::new(new_value))?;
+        Arc::into_inner(old)
+    }
+
+    pub fn get(&self, index: usize) -> Arc<T> {
+        let inner = self.inner.read().unwrap();
+        inner.items[index]
+            .as_ref()
+            .expect("invalid slab index for ConcurrentSlab::get")
+            .clone()
+    }
+
+    pub fn retain(&self, predicate: impl Fn(&usize, &mut Arc<T>) -> bool) {
+        let mut inner = self.inner.write().unwrap();
+
+        let Inner { items, free_list } = &mut *inner;
+        for (idx, item) in items.iter_mut().enumerate() {
+            if let Some(arc) = item {
+                if !predicate(&idx, arc) {
+                    free_list.push(idx);
+                    item.take();
+                }
             }
         }
-
-        let mut inner = self.inner.write().unwrap();
-        inner[index] = new_value;
-        None
     }
-}
 
-impl<T> ConcurrentSlab<T>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned,
-{
-    pub fn replace(&self, index: DeclId<T>, new_value: T) -> Option<T> {
+    pub fn clear(&self) {
         let mut inner = self.inner.write().unwrap();
-        inner[index.inner()] = new_value;
-        None
+        inner.items.clear();
+        inner.items.shrink_to(0);
+
+        inner.free_list.clear();
+        inner.free_list.shrink_to(0);
     }
 }

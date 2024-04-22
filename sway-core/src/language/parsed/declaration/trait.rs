@@ -3,15 +3,20 @@ use std::hash::{Hash, Hasher};
 use super::{ConstantDeclaration, FunctionDeclaration, FunctionParameter};
 
 use crate::{
-    decl_engine::DeclRefTrait, engine_threading::*, language::*, transform, type_system::*,
+    decl_engine::{parsed_id::ParsedDeclId, DeclRefTrait},
+    engine_threading::*,
+    language::*,
+    transform,
+    type_system::*,
 };
 use sway_error::handler::ErrorEmitted;
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
 #[derive(Debug, Clone)]
 pub enum TraitItem {
-    TraitFn(TraitFn),
-    Constant(ConstantDeclaration),
+    TraitFn(ParsedDeclId<TraitFn>),
+    Constant(ParsedDeclId<ConstantDeclaration>),
+    Type(ParsedDeclId<TraitTypeDeclaration>),
     // to handle parser recovery: Error represents an incomplete trait item
     Error(Box<[Span]>, ErrorEmitted),
 }
@@ -22,10 +27,22 @@ pub struct TraitDeclaration {
     pub(crate) type_parameters: Vec<TypeParameter>,
     pub attributes: transform::AttributesMap,
     pub interface_surface: Vec<TraitItem>,
-    pub methods: Vec<FunctionDeclaration>,
+    pub methods: Vec<ParsedDeclId<FunctionDeclaration>>,
     pub supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
     pub span: Span,
+}
+
+impl Named for TraitDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for TraitDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -42,7 +59,7 @@ impl Spanned for Supertrait {
 
 impl EqWithEngines for Supertrait {}
 impl PartialEqWithEngines for Supertrait {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let Supertrait {
             name: ln,
             decl_ref: ldr,
@@ -51,7 +68,7 @@ impl PartialEqWithEngines for Supertrait {
             name: rn,
             decl_ref: rdr,
         } = other;
-        ln == rn && ldr.eq(rdr, engines)
+        ln == rn && ldr.eq(rdr, ctx)
     }
 }
 
@@ -71,4 +88,30 @@ pub struct TraitFn {
     pub purity: Purity,
     pub parameters: Vec<FunctionParameter>,
     pub return_type: TypeArgument,
+}
+
+#[derive(Debug, Clone)]
+pub struct TraitTypeDeclaration {
+    pub name: Ident,
+    pub attributes: transform::AttributesMap,
+    pub ty_opt: Option<TypeArgument>,
+    pub span: Span,
+}
+
+impl Named for TraitTypeDeclaration {
+    fn name(&self) -> &sway_types::BaseIdent {
+        &self.name
+    }
+}
+
+impl Spanned for TraitTypeDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
+}
+
+impl DebugWithEngines for TraitTypeDeclaration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.name))
+    }
 }

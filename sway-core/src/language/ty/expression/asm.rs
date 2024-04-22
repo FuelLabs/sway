@@ -11,10 +11,10 @@ pub struct TyAsmRegisterDeclaration {
 }
 
 impl PartialEqWithEngines for TyAsmRegisterDeclaration {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
             && if let (Some(l), Some(r)) = (&self.initializer, &other.initializer) {
-                l.eq(r, engines)
+                l.eq(r, ctx)
             } else {
                 true
             }
@@ -32,17 +32,7 @@ impl HashWithEngines for TyAsmRegisterDeclaration {
 }
 
 impl SubstTypes for TyAsmRegisterDeclaration {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        if let Some(ref mut initializer) = self.initializer {
-            initializer.subst(type_mapping, engines)
-        }
-    }
-}
-
-impl ReplaceSelfType for TyAsmRegisterDeclaration {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        if let Some(ref mut initializer) = self.initializer {
-            initializer.replace_self_type(engines, self_type)
-        }
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.initializer.subst(type_mapping, engines)
     }
 }

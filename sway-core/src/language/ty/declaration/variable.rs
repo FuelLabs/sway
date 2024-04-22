@@ -1,8 +1,17 @@
 use std::hash::{Hash, Hasher};
 
+use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::Ident;
 
-use crate::{engine_threading::*, language::ty::*, type_system::*};
+use crate::{
+    engine_threading::*,
+    language::ty::*,
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
+    type_system::*,
+};
 
 #[derive(Clone, Debug)]
 pub struct TyVariableDecl {
@@ -15,15 +24,15 @@ pub struct TyVariableDecl {
 
 impl EqWithEngines for TyVariableDecl {}
 impl PartialEqWithEngines for TyVariableDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         self.name == other.name
-            && self.body.eq(&other.body, engines)
+            && self.body.eq(&other.body, ctx)
             && self.mutability == other.mutability
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
-            && self.type_ascription.eq(&other.type_ascription, engines)
+                .eq(&type_engine.get(other.return_type), ctx)
+            && self.type_ascription.eq(&other.type_ascription, ctx)
     }
 }
 
@@ -46,17 +55,30 @@ impl HashWithEngines for TyVariableDecl {
 }
 
 impl SubstTypes for TyVariableDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         self.return_type.subst(type_mapping, engines);
         self.type_ascription.subst(type_mapping, engines);
         self.body.subst(type_mapping, engines)
     }
 }
 
-impl ReplaceSelfType for TyVariableDecl {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.type_ascription.replace_self_type(engines, self_type);
-        self.body.replace_self_type(engines, self_type)
+impl TypeCheckAnalysis for TyVariableDecl {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_analyze(handler, ctx)?;
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for TyVariableDecl {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.body.type_check_finalize(handler, ctx)
     }
 }

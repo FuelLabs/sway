@@ -1,6 +1,7 @@
 use crate::{cmd, util::node_url::get_node_url};
 use anyhow::Context;
 use fuel_core_client::client::{types::TransactionStatus, FuelClient};
+use fuel_crypto::fuel_types::canonical::Deserialize;
 
 /// A command for submitting transactions to a Fuel network.
 pub async fn submit(cmd: cmd::Submit) -> anyhow::Result<()> {
@@ -35,8 +36,7 @@ pub fn read_tx(path: &std::path::Path) -> anyhow::Result<fuel_tx::Transaction> {
         serde_json::from_reader(reader)?
     } else if has_extension(path, "bin") {
         let tx_bytes = std::fs::read(path)?;
-        let (_bytes, tx) = fuel_tx::Transaction::try_from_bytes(&tx_bytes)?;
-        tx
+        fuel_tx::Transaction::from_bytes(&tx_bytes).map_err(anyhow::Error::msg)?
     } else {
         anyhow::bail!(r#"Unsupported transaction file extension, expected ".json" or ".bin""#);
     };
@@ -52,13 +52,14 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             writeln!(s, "Transaction Submitted at {:?}", submitted_at.0)?;
         }
         TransactionStatus::Success {
-            block_id,
+            block_height,
             time,
             program_state,
+            ..
         } => {
             let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Succeeded")?;
-            writeln!(s, "  Block ID:      {block_id}")?;
+            writeln!(s, "  Block ID:      {block_height}")?;
             writeln!(s, "  Time:          {utc}",)?;
             writeln!(s, "  Program State: {program_state:?}")?;
         }
@@ -66,15 +67,16 @@ pub fn fmt_status(status: &TransactionStatus, s: &mut String) -> anyhow::Result<
             writeln!(s, "Transaction Squeezed Out: {reason}")?;
         }
         TransactionStatus::Failure {
-            block_id,
+            block_height,
             time,
             reason,
             program_state,
+            ..
         } => {
             let utc = chrono::Utc.timestamp_nanos(time.to_unix());
             writeln!(s, "Transaction Failed")?;
             writeln!(s, "  Reason: {reason}")?;
-            writeln!(s, "  Block ID:      {block_id}")?;
+            writeln!(s, "  Block ID:      {block_height}")?;
             writeln!(s, "  Time:          {utc}")?;
             writeln!(s, "  Program State: {program_state:?}")?;
         }

@@ -1,7 +1,13 @@
+use std::{cmp::Ordering, fmt, hash::Hasher};
+
 use crate::{
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
+        OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
     language::{parsed::CodeBlock, *},
     type_system::TypeBinding,
-    TypeArgument, TypeInfo,
+    Engines, TypeArgument, TypeId,
 };
 use sway_error::handler::ErrorEmitted;
 use sway_types::{ident::Ident, Span, Spanned};
@@ -106,22 +112,93 @@ impl Spanned for AmbiguousSuffix {
 }
 
 #[derive(Debug, Clone)]
-pub struct QualifiedPathRootTypes {
+pub struct QualifiedPathType {
     pub ty: TypeArgument,
-    pub as_trait: TypeInfo,
+    pub as_trait: TypeId,
     pub as_trait_span: Span,
+}
+
+impl HashWithEngines for QualifiedPathType {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let QualifiedPathType {
+            ty,
+            as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = self;
+        ty.hash(state, engines);
+        engines.te().get(*as_trait).hash(state, engines);
+    }
+}
+
+impl EqWithEngines for QualifiedPathType {}
+impl PartialEqWithEngines for QualifiedPathType {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let QualifiedPathType {
+            ty,
+            as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = self;
+        ty.eq(&other.ty, ctx)
+            && ctx
+                .engines()
+                .te()
+                .get(*as_trait)
+                .eq(&ctx.engines().te().get(other.as_trait), ctx)
+    }
+}
+
+impl OrdWithEngines for QualifiedPathType {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        let QualifiedPathType {
+            ty: l_ty,
+            as_trait: l_as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = self;
+        let QualifiedPathType {
+            ty: r_ty,
+            as_trait: r_as_trait,
+            // ignored fields
+            as_trait_span: _,
+        } = other;
+        l_ty.cmp(r_ty, ctx).then_with(|| {
+            ctx.engines()
+                .te()
+                .get(*l_as_trait)
+                .cmp(&ctx.engines().te().get(*r_as_trait), ctx)
+        })
+    }
+}
+
+impl DisplayWithEngines for QualifiedPathType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "<{} as {}>",
+            engines.help_out(self.ty.clone()),
+            engines.help_out(self.as_trait)
+        )
+    }
+}
+
+impl DebugWithEngines for QualifiedPathType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{}", engines.help_out(self),)
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct AmbiguousPathExpression {
-    pub qualified_path_root: Option<QualifiedPathRootTypes>,
+    pub qualified_path_root: Option<QualifiedPathType>,
     pub call_path_binding: TypeBinding<CallPath<AmbiguousSuffix>>,
     pub args: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
-    pub call_path_binding: TypeBinding<CallPath>,
+    pub call_path_binding: TypeBinding<QualifiedCallPath>,
     /// When args is equal to Option::None then it means that the
     /// [DelineatedPathExpression] was initialized from an expression
     /// that does not end with parenthesis.
@@ -157,6 +234,11 @@ pub struct IntrinsicFunctionExpression {
 pub struct WhileLoopExpression {
     pub condition: Box<Expression>,
     pub body: CodeBlock,
+}
+
+#[derive(Debug, Clone)]
+pub struct ForLoopExpression {
+    pub desugared: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -228,10 +310,27 @@ pub enum ExpressionKind {
     /// A control flow element which loops continually until some boolean expression evaluates as
     /// `false`.
     WhileLoop(WhileLoopExpression),
+    /// A control flow element which loops between values of an iterator.
+    ForLoop(ForLoopExpression),
     Break,
     Continue,
     Reassignment(ReassignmentExpression),
+    /// An implicit return expression is different from a [Expression::Return] because
+    /// it is not a control flow item. Therefore it is a different variant.
+    ///
+    /// An implicit return expression is an [Expression] at the end of a code block which has no
+    /// semicolon, denoting that it is the [Expression] to be returned from that block.
+    ImplicitReturn(Box<Expression>),
     Return(Box<Expression>),
+    Ref(RefExpression),
+    Deref(Box<Expression>),
+}
+
+#[derive(Debug, Clone)]
+pub struct RefExpression {
+    /// True if the reference is a reference to a mutable `value`.
+    pub to_mutable_value: bool,
+    pub value: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -243,7 +342,6 @@ pub enum ReassignmentTarget {
 pub struct StructExpressionField {
     pub name: Ident,
     pub value: Expression,
-    pub(crate) span: Span,
 }
 
 impl Spanned for Expression {

@@ -22,15 +22,14 @@ fn main() -> u64 {
   X.s
 }
 
-// All integer are u64
-// check:        local u64 A
+// check:        local u8 A
 // check:        local u64 B
 // check:        local u64 C
 // check:        local u64 D
 // check:        local bool E
 // check:        local { u64 } X
 
-// check: $(a_var=$VAL) = const u64 255
+// check: $(a_var=$VAL) = const u8 255
 // check: $(b_var=$VAL) = const u64 65535
 // check: $(c_var=$VAL) = const u64 4294967295
 // check: $(d_var=$VAL) = const u64 18446744073709551615

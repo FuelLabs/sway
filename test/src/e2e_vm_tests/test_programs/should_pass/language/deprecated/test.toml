@@ -1,0 +1,4 @@
+category = "compile"
+expected_warnings = 1
+
+# check: $()deprecated struct

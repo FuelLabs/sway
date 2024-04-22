@@ -77,19 +77,6 @@ pre,
 .docblock table th {
   border-color: #5c6773;
 }
-.search-results a:hover {
-  background-color: #777;
-}
-.search-results a:focus {
-  color: #000 !important;
-  background-color: #c6afb3;
-}
-.search-results a {
-  color: #0096cf;
-}
-.search-results a div.desc {
-  color: #c5c5c5;
-}
 .content .item-info::before {
   color: #ccc;
 }
@@ -193,9 +180,8 @@ a {
 .sidebar h3 a {
   color: white;
 }
-.search-results a {
-  color: #0096cf;
-}
+
+
 body.source .example-wrap pre.sway a {
   background: #333;
 }
@@ -387,7 +373,7 @@ kbd {
   box-shadow: inset 0 -1px 0 #5c6773;
 }
 #settings-menu > a,
-#help-button > button {
+#help-button > a {
   border-color: #5c6773;
   background-color: #0f1419;
   color: #fff;
@@ -412,8 +398,8 @@ kbd {
 }
 #settings-menu > a:hover,
 #settings-menu > a:focus,
-#help-button > button:hover,
-#help-button > button:focus {
+#help-button > a:hover,
+#help-button > a:focus {
   border-color: #e0e0e0;
 }
 #theme-choices {
@@ -426,12 +412,6 @@ kbd {
 #theme-choices > button:hover,
 #theme-choices > button:focus {
   background-color: rgba(110, 110, 110, 0.33);
-}
-.search-results .result-name span.alias {
-  color: #c5c5c5;
-}
-.search-results .result-name span.grey {
-  color: #999;
 }
 #source-sidebar > .title {
   color: #fff;

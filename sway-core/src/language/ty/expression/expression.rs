@@ -1,13 +1,21 @@
 use std::{fmt, hash::Hasher};
 
-use sway_error::handler::{ErrorEmitted, Handler};
+use sway_error::{
+    handler::{ErrorEmitted, Handler},
+    warning::{CompileWarning, Warning},
+};
 use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::{ty::*, Literal},
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
+    },
+    transform::{AllowDeprecatedState, AttributeKind, AttributesMap},
     type_system::*,
     types::*,
 };
@@ -21,12 +29,12 @@ pub struct TyExpression {
 
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
-        self.expression.eq(&other.expression, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
+        self.expression.eq(&other.expression, ctx)
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .eq(&type_engine.get(other.return_type), ctx)
     }
 }
 
@@ -46,16 +54,11 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.expression.subst(type_mapping, engines);
-    }
-}
-
-impl ReplaceSelfType for TyExpression {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.return_type.replace_self_type(engines, self_type);
-        self.expression.replace_self_type(engines, self_type);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.return_type.subst(type_mapping, engines);
+            self.expression.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -65,7 +68,7 @@ impl ReplaceDecls for TyExpression {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         self.expression.replace_decls(decl_mapping, handler, ctx)
     }
 }
@@ -99,6 +102,31 @@ impl DebugWithEngines for TyExpression {
     }
 }
 
+impl TypeCheckAnalysis for TyExpression {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        self.expression.type_check_analyze(handler, ctx)
+    }
+}
+
+impl TypeCheckFinalization for TyExpression {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        let res = self.expression.type_check_finalize(handler, ctx);
+        if let TyExpressionVariant::FunctionApplication { fn_ref, .. } = &self.expression {
+            let method = ctx.engines.de().get_function(fn_ref);
+            self.return_type = method.return_type.type_id;
+        }
+        res
+    }
+}
+
 impl CollectTypesMetadata for TyExpression {
     fn collect_types_metadata(
         &self,
@@ -121,7 +149,7 @@ impl CollectTypesMetadata for TyExpression {
                 let function_decl = decl_engine.get_function(fn_ref);
 
                 ctx.call_site_push();
-                for type_parameter in function_decl.type_parameters {
+                for type_parameter in &function_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, call_path.span())
                 }
 
@@ -149,12 +177,12 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 let struct_decl = decl_engine.get_struct(struct_ref);
-                for type_parameter in struct_decl.type_parameters {
+                for type_parameter in &struct_decl.type_parameters {
                     ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                 }
-                if let TypeInfo::Struct(decl_ref) = ctx.engines.te().get(self.return_type) {
-                    let decl = decl_engine.get_struct(&decl_ref);
-                    for type_parameter in decl.type_parameters {
+                if let TypeInfo::Struct(decl_ref) = &*ctx.engines.te().get(self.return_type) {
+                    let decl = decl_engine.get_struct(decl_ref);
+                    for type_parameter in &decl.type_parameters {
                         ctx.call_site_insert(type_parameter.type_id, instantiation_span.clone());
                     }
                 }
@@ -266,7 +294,13 @@ impl CollectTypesMetadata for TyExpression {
                     res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
-            Return(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
+            ForLoop { desugared } => {
+                res.append(&mut desugared.collect_types_metadata(handler, ctx)?);
+            }
+            ImplicitReturn(exp) | Return(exp) => {
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?)
+            }
+            Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
@@ -286,120 +320,14 @@ impl CollectTypesMetadata for TyExpression {
     }
 }
 
-impl DeterministicallyAborts for TyExpression {
-    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
-        use TyExpressionVariant::*;
-        match &self.expression {
-            FunctionApplication {
-                fn_ref, arguments, ..
-            } => {
-                if !check_call_body {
-                    return false;
-                }
-                let function_decl = decl_engine.get_function(fn_ref);
-                function_decl
-                    .body
-                    .deterministically_aborts(decl_engine, check_call_body)
-                    || arguments
-                        .iter()
-                        .any(|(_, x)| x.deterministically_aborts(decl_engine, check_call_body))
-            }
-            Tuple { fields, .. } => fields
-                .iter()
-                .any(|x| x.deterministically_aborts(decl_engine, check_call_body)),
-            Array { contents, .. } => contents
-                .iter()
-                .any(|x| x.deterministically_aborts(decl_engine, check_call_body)),
-            CodeBlock(contents) => contents.deterministically_aborts(decl_engine, check_call_body),
-            LazyOperator { lhs, .. } => lhs.deterministically_aborts(decl_engine, check_call_body),
-            StructExpression { fields, .. } => fields.iter().any(|x| {
-                x.value
-                    .deterministically_aborts(decl_engine, check_call_body)
-            }),
-            EnumInstantiation { contents, .. } => contents
-                .as_ref()
-                .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
-                .unwrap_or(false),
-            AbiCast { address, .. } => {
-                address.deterministically_aborts(decl_engine, check_call_body)
-            }
-            StructFieldAccess { .. }
-            | Literal(_)
-            | StorageAccess { .. }
-            | VariableExpression { .. }
-            | ConstantExpression { .. }
-            | FunctionParameter
-            | TupleElemAccess { .. } => false,
-            IntrinsicFunction(kind) => kind.deterministically_aborts(decl_engine, check_call_body),
-            ArrayIndex { prefix, index } => {
-                prefix.deterministically_aborts(decl_engine, check_call_body)
-                    || index.deterministically_aborts(decl_engine, check_call_body)
-            }
-            AsmExpression { registers, .. } => registers.iter().any(|x| {
-                x.initializer
-                    .as_ref()
-                    .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
-                    .unwrap_or(false)
-            }),
-            MatchExp { desugared, .. } => {
-                desugared.deterministically_aborts(decl_engine, check_call_body)
-            }
-            IfExp {
-                condition,
-                then,
-                r#else,
-                ..
-            } => {
-                condition.deterministically_aborts(decl_engine, check_call_body)
-                    || (then.deterministically_aborts(decl_engine, check_call_body)
-                        && r#else
-                            .as_ref()
-                            .map(|x| x.deterministically_aborts(decl_engine, check_call_body))
-                            .unwrap_or(false))
-            }
-            AbiName(_) => false,
-            EnumTag { exp } => exp.deterministically_aborts(decl_engine, check_call_body),
-            UnsafeDowncast { exp, .. } => {
-                exp.deterministically_aborts(decl_engine, check_call_body)
-            }
-            WhileLoop { condition, body } => {
-                condition.deterministically_aborts(decl_engine, check_call_body)
-                    || body.deterministically_aborts(decl_engine, check_call_body)
-            }
-            Break => false,
-            Continue => false,
-            Reassignment(reassignment) => reassignment
-                .rhs
-                .deterministically_aborts(decl_engine, check_call_body),
-            // TODO: Is this correct?
-            // I'm not sure what this function is supposed to do exactly. It's called
-            // "deterministically_aborts" which I thought meant it checks for an abort/panic, but
-            // it's actually checking for returns.
-            //
-            // Also, is it necessary to check the expression to see if avoids the return? eg.
-            // someone could write `return break;` in a loop, which would mean the return never
-            // gets executed.
-            Return(..) => true,
-        }
-    }
-}
-
 impl TyExpression {
     pub(crate) fn error(err: ErrorEmitted, span: Span, engines: &Engines) -> TyExpression {
         let type_engine = engines.te();
         TyExpression {
             expression: TyExpressionVariant::Tuple { fields: vec![] },
-            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err)),
+            return_type: type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None),
             span,
         }
-    }
-
-    /// recurse into `self` and get any return statements -- used to validate that all returns
-    /// do indeed return the correct type
-    /// This does _not_ extract implicit return statements as those are not control flow! This is
-    /// _only_ for explicit returns.
-    pub(crate) fn gather_return_statements(&self) -> Vec<&TyExpression> {
-        self.expression.gather_return_statements()
     }
 
     /// gathers the mutability of the expressions within
@@ -413,5 +341,83 @@ impl TyExpression {
     /// Returns `self` as a literal, if possible.
     pub(crate) fn extract_literal_value(&self) -> Option<Literal> {
         self.expression.extract_literal_value()
+    }
+
+    // Checks if this expression references a deprecated item
+    // TODO: Change this fn for more deprecated checks.
+    pub(crate) fn check_deprecated(
+        &self,
+        engines: &Engines,
+        handler: &Handler,
+        allow_deprecated: &mut AllowDeprecatedState,
+    ) {
+        fn emit_warning_if_deprecated(
+            attributes: &AttributesMap,
+            span: &Span,
+            handler: &Handler,
+            message: &str,
+            allow_deprecated: &mut AllowDeprecatedState,
+        ) {
+            if allow_deprecated.is_allowed() {
+                return;
+            }
+
+            if let Some(v) = attributes
+                .get(&AttributeKind::Deprecated)
+                .and_then(|x| x.last())
+            {
+                let mut message = message.to_string();
+
+                if let Some(sway_ast::Literal::String(s)) = v
+                    .args
+                    .iter()
+                    .find(|x| x.name.as_str() == "note")
+                    .and_then(|x| x.value.as_ref())
+                {
+                    message.push_str(": ");
+                    message.push_str(s.parsed.as_str());
+                }
+
+                handler.emit_warn(CompileWarning {
+                    span: span.clone(),
+                    warning_content: Warning::UsingDeprecated { message },
+                })
+            }
+        }
+
+        match &self.expression {
+            TyExpressionVariant::StructExpression {
+                struct_ref,
+                instantiation_span,
+                ..
+            } => {
+                let s = engines.de().get(struct_ref.id());
+                emit_warning_if_deprecated(
+                    &s.attributes,
+                    instantiation_span,
+                    handler,
+                    "deprecated struct",
+                    allow_deprecated,
+                );
+            }
+            TyExpressionVariant::FunctionApplication {
+                call_path, fn_ref, ..
+            } => {
+                if let Some(TyDecl::ImplTrait(t)) = &engines.de().get(fn_ref).implementing_type {
+                    let t = &engines.de().get(&t.decl_id).implementing_for;
+                    if let TypeInfo::Struct(struct_ref) = &*engines.te().get(t.type_id) {
+                        let s = engines.de().get(struct_ref.id());
+                        emit_warning_if_deprecated(
+                            &s.attributes,
+                            &call_path.span(),
+                            handler,
+                            "deprecated struct",
+                            allow_deprecated,
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }

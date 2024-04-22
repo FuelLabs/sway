@@ -1,5 +1,6 @@
 use std::{
     cmp::Ordering,
+    fmt,
     hash::{Hash, Hasher},
 };
 
@@ -7,7 +8,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Span, Spanned};
+use sway_types::Spanned;
 
 use crate::{
     engine_threading::*,
@@ -36,14 +37,20 @@ impl HashWithEngines for TraitConstraint {
 
 impl EqWithEngines for TraitConstraint {}
 impl PartialEqWithEngines for TraitConstraint {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.trait_name == other.trait_name
-            && self.type_arguments.eq(&other.type_arguments, engines)
+            // Check if eq is already inside of a trait constraint, if it is we don't compare type arguments.
+            // This breaks the recursion when we use a where clause such as `T:MyTrait<T>`.
+            && (ctx.is_inside_trait_constraint()
+                || self.type_arguments.eq(
+                    &other.type_arguments,
+                    &(ctx.with_is_inside_trait_constraint()),
+                ))
     }
 }
 
 impl OrdWithEngines for TraitConstraint {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TraitConstraint {
             trait_name: ltn,
             type_arguments: lta,
@@ -52,7 +59,35 @@ impl OrdWithEngines for TraitConstraint {
             trait_name: rtn,
             type_arguments: rta,
         } = other;
-        ltn.cmp(rtn).then_with(|| lta.cmp(rta, engines))
+        let mut res = ltn.cmp(rtn);
+
+        // Check if cmp is already inside of a trait constraint, if it is we don't compare type arguments.
+        // This breaks the recursion when we use a where clause such as `T:MyTrait<T>`.
+        if !ctx.is_inside_trait_constraint() {
+            res = res.then_with(|| lta.cmp(rta, &ctx.with_is_inside_trait_constraint()))
+        }
+
+        res
+    }
+}
+
+impl DisplayWithEngines for TraitConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TraitConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let mut res = write!(f, "{}", self.trait_name);
+        if !self.type_arguments.is_empty() {
+            write!(f, "<")?;
+            for ty_arg in self.type_arguments.clone() {
+                write!(f, "{:?}", engines.help_out(ty_arg))?;
+            }
+            res = write!(f, ">");
+        }
+        res
     }
 }
 
@@ -63,18 +98,8 @@ impl Spanned for TraitConstraint {
 }
 
 impl SubstTypes for TraitConstraint {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-    }
-}
-
-impl ReplaceSelfType for TraitConstraint {
-    fn replace_self_type(&mut self, engines: &Engines, self_type: TypeId) {
-        self.type_arguments
-            .iter_mut()
-            .for_each(|x| x.replace_self_type(engines, self_type));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.type_arguments.subst(type_mapping, engines)
     }
 }
 
@@ -118,49 +143,37 @@ impl TraitConstraint {
         // trait constraint using a callpath directly, so we check to see if the
         // user has done this and we disallow it.
         if !self.trait_name.prefixes.is_empty() {
-            return Err(handler.emit_err(CompileError::UnimplementedWithHelp(
-                "Using module paths to define trait constraints is not supported yet.",
-                "try importing the trait with a \"use\" statement instead",
-                self.trait_name.span(),
-            )));
-        }
-
-        // Right now we aren't supporting generic traits in trait constraints
-        // because of how we type check trait constraints.
-        // Essentially type checking trait constraints with generic traits
-        // creates a chicken and an egg problem where, in order to type check
-        // the type arguments to the generic traits, we must first type check
-        // all of the type parameters, but we cannot finish type checking one
-        // type parameter until we type check the trait constraints for that
-        // type parameter. This is not an unsolvable problem, it will just
-        // require some hacking.
-        //
-        // TODO: implement a fix for the above in a future PR
-        if !self.type_arguments.is_empty() {
-            return Err(handler.emit_err(CompileError::Unimplemented(
-                "Using generic traits in trait constraints is not supported yet.",
-                Span::join_all(
-                    self.type_arguments
-                        .iter()
-                        .map(|x| x.span())
-                        .collect::<Vec<_>>(),
-                ),
-            )));
+            return Err(handler.emit_err(CompileError::Unimplemented {
+                feature: "Using module paths to define trait constraints".to_string(),
+                help: vec![
+                    // Note that eventual leading `::` will not be shown. It'a fine for now, we anyhow want to implement using module paths.
+                    format!(
+                        "Import the supertrait by using: `use {};`.",
+                        self.trait_name
+                    ),
+                    format!(
+                        "Then, in the trait constraints, just use the trait name \"{}\".",
+                        self.trait_name.suffix
+                    ),
+                ],
+                span: self.trait_name.span(),
+            }));
         }
 
         // Type check the type arguments.
         for type_argument in self.type_arguments.iter_mut() {
             type_argument.type_id = ctx
-                .resolve_type_without_self(
+                .resolve_type(
                     handler,
                     type_argument.type_id,
                     &type_argument.span,
+                    EnforceTypeArguments::Yes,
                     None,
                 )
                 .unwrap_or_else(|err| {
                     ctx.engines
                         .te()
-                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err))
+                        .insert(ctx.engines(), TypeInfo::ErrorRecovery(err), None)
                 });
         }
 
@@ -173,7 +186,8 @@ impl TraitConstraint {
         type_id: TypeId,
         trait_constraint: &TraitConstraint,
     ) -> Result<(), ErrorEmitted> {
-        let decl_engine = ctx.engines.de();
+        let engines = ctx.engines;
+        let decl_engine = engines.de();
 
         let TraitConstraint {
             trait_name,
@@ -183,13 +197,25 @@ impl TraitConstraint {
         let mut type_arguments = type_arguments.clone();
 
         match ctx
-            .namespace
-            .resolve_call_path(handler, trait_name)
+            .namespace()
+            // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
+            .resolve_call_path_typed(&Handler::default(), engines, trait_name, ctx.self_type())
             .ok()
-            .cloned()
         {
             Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
-                let mut trait_decl = decl_engine.get_trait(&decl_id);
+                let mut trait_decl = (*decl_engine.get_trait(&decl_id)).clone();
+
+                // the following essentially is needed to map `Self` to the right type
+                // during trait decl monomorphization
+                trait_decl
+                    .type_parameters
+                    .push(trait_decl.self_type.clone());
+                type_arguments.push(TypeArgument {
+                    type_id,
+                    initial_type_id: type_id,
+                    span: trait_name.span(),
+                    call_path_tree: None,
+                });
 
                 // Monomorphize the trait declaration.
                 ctx.monomorphize(
@@ -199,6 +225,10 @@ impl TraitConstraint {
                     EnforceTypeArguments::Yes,
                     &trait_name.span(),
                 )?;
+
+                // restore type parameters and type arguments
+                trait_decl.type_parameters.pop();
+                type_arguments.pop();
 
                 // Insert the interface surface and methods from this trait into
                 // the namespace.
