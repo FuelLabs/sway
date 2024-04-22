@@ -124,6 +124,35 @@ impl From<b256> for u256 {
     }
 }
 
+impl From<U128> for u256 {
+    /// Converts a `U128` to a `u256`.
+    ///
+    /// # Arguments
+    ///
+    /// * `num`: [U128] - The `U128` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The `u256` representation of the `U128` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///    let u128_value = U128::from((18446744073709551615_u64, 18446744073709551615_u64));
+    ///    let u256_value = u256::from(u128_value);
+    /// }
+    /// ```
+    fn from(num: U128) -> Self {
+        let input = (0u64, 0u64, num.upper, num.lower);
+        asm(input: input) {
+            input: u256
+        }
+    }
+}
+
 // TODO: Replace <u256 as From<T>> with u256::from when https://github.com/FuelLabs/sway/issues/5798 is resolved.
 #[test]
 fn test_u256_from_u8() {
@@ -177,5 +206,15 @@ fn test_u256_from_b256() {
     let u256_value = <u256 as From<b256>>::from(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
     assert(
         u256_value == 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_u256,
+    );
+}
+
+#[test]
+fn test_u256_from_u128() {
+    use ::assert::assert;
+
+    let u256_value = <u256 as From<U128>>::from(U128::from((18446744073709551615_u64, 18446744073709551615_u64)));
+    assert(
+        u256_value == 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff_u256,
     );
 }
