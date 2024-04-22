@@ -584,27 +584,27 @@ pub(crate) fn type_check_method_application(
                     }
                 }
                 let implementing_type_parameters =
-                    implementing_for_typeid.get_type_parameters(type_engine, decl_engine);
+                    implementing_for_typeid.get_type_parameters(engines);
                 if let Some(implementing_type_parameters) = implementing_type_parameters {
                     for p in method.type_parameters.clone() {
                         if p.is_from_parent {
-                            if let Some(type_param_index) = names_index.get(&p.name_ident) {
-                                if let Some(impl_type_param) =
+                            if let Some(impl_type_param) =
+                                names_index.get(&p.name_ident).and_then(|type_param_index| {
                                     implementing_type_parameters.get(*type_param_index)
-                                {
-                                    handler.scope(|handler| {
-                                        type_engine.unify_with_generic(
-                                            handler,
-                                            engines,
-                                            p.type_id,
-                                            impl_type_param.type_id,
-                                            &call_path.span(),
-                                            "Function type parameter does not match up with implementing type type parameter.",
-                                            None,
-                                        );
-                                        Ok(())
-                                    })?;
-                                }
+                                })
+                            {
+                                handler.scope(|handler| {
+                                    type_engine.unify_with_generic(
+                                        handler,
+                                        engines,
+                                        p.type_id,
+                                        impl_type_param.type_id,
+                                        &call_path.span(),
+                                        "Function type parameter does not match up with implementing type type parameter.",
+                                        None,
+                                    );
+                                    Ok(())
+                                })?;
                             }
                         }
                     }
