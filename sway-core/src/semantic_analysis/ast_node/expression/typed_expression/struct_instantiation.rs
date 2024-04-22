@@ -81,7 +81,7 @@ pub(crate) fn struct_instantiation(
     // find the module that the struct decl is in
     let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
     ctx.namespace()
-        .lookup_submodule_from_absolute_path(handler, &type_info_prefix)?;
+        .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
@@ -100,7 +100,7 @@ pub(crate) fn struct_instantiation(
     let struct_decl = decl_engine.get_struct(&struct_ref);
 
     let (struct_can_be_changed, is_public_struct_access) =
-        StructAccessInfo::get_info(&struct_decl, ctx.namespace()).into();
+        StructAccessInfo::get_info(engines, &struct_decl, ctx.namespace()).into();
     let struct_has_private_fields = struct_decl.has_private_fields();
     let struct_can_be_instantiated = !is_public_struct_access || !struct_has_private_fields;
     let all_fields_are_private = struct_decl.has_only_private_fields();
@@ -327,21 +327,20 @@ fn collect_struct_constructors(
     // Also, strictly speaking, we could also have public module functions that create structs,
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
-    namespace
-        .module()
-        .current_items()
-        .get_items_for_type(engines, struct_type_id)
-        .iter()
-        .filter_map(|item| match item {
-            ResolvedTraitImplItem::Parsed(_) => unreachable!(),
-            ResolvedTraitImplItem::Typed(item) => match item {
-                ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
-                _ => None,
-            },
-        })
-        .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
-        .filter(|fn_decl| {
-            matches!(fn_decl.visibility, Visibility::Public)
+    namespace.module_id(engines).read(engines, |m| {
+        m.current_items()
+            .get_items_for_type(engines, struct_type_id)
+            .iter()
+            .filter_map(|item| match item {
+                ResolvedTraitImplItem::Parsed(_) => unreachable!(),
+                ResolvedTraitImplItem::Typed(item) => match item {
+                    ty::TyTraitItem::Fn(fn_decl_id) => Some(fn_decl_id),
+                    _ => None,
+                },
+            })
+            .map(|fn_decl_id| engines.de().get_function(fn_decl_id))
+            .filter(|fn_decl| {
+                matches!(fn_decl.visibility, Visibility::Public)
                     && fn_decl
                         .is_constructor(engines, struct_type_id)
                         .unwrap_or_default()
@@ -350,18 +349,19 @@ fn collect_struct_constructors(
                     // a questionable additional effort considering that this simple heuristics will give
                     // us all the most common constructors like `default()` or `new()`.
                     && (!is_in_storage_declaration || fn_decl.parameters.is_empty())
-        })
-        .map(|fn_decl| {
-            // Removing the return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
-            format!("{}", engines.help_out((*fn_decl).clone()))
-                .rsplit_once(" -> ")
-                .unwrap()
-                .0
-                .to_string()
-        })
-        .sorted()
-        .dedup()
-        .collect_vec()
+            })
+            .map(|fn_decl| {
+                // Removing the return type from the signature by searching for last `->` will work as long as we don't have something like `Fn`.
+                format!("{}", engines.help_out((*fn_decl).clone()))
+                    .rsplit_once(" -> ")
+                    .unwrap()
+                    .0
+                    .to_string()
+            })
+            .sorted()
+            .dedup()
+            .collect_vec()
+    })
 }
 
 /// Type checks the field arguments.

@@ -6,7 +6,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Span};
 
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::CallPath,
+    engine_threading::*, language::CallPath,
     semantic_analysis::type_check_context::EnforceTypeArguments,
     semantic_analysis::TypeCheckContext, type_system::priv_prelude::*, types::*,
 };
@@ -119,11 +119,9 @@ impl TypeId {
         self.0
     }
 
-    pub(crate) fn get_type_parameters(
-        &self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> Option<Vec<TypeParameter>> {
+    pub(crate) fn get_type_parameters(&self, engines: &Engines) -> Option<Vec<TypeParameter>> {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         match &*type_engine.get(*self) {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
@@ -140,12 +138,9 @@ impl TypeId {
     /// Indicates of a given type is generic or not. Rely on whether the type is `Custom` and
     /// consider the special case where the resolved type is a struct or enum with a name that
     /// matches the name of the `Custom`.
-    pub(crate) fn is_generic_parameter(
-        self,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-        resolved_type_id: TypeId,
-    ) -> bool {
+    pub(crate) fn is_generic_parameter(self, engines: &Engines, resolved_type_id: TypeId) -> bool {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         match (&*type_engine.get(self), &*type_engine.get(resolved_type_id)) {
             (
                 TypeInfo::Custom {
@@ -595,14 +590,14 @@ impl TypeId {
         let mut found_error = false;
         let generic_trait_constraints_trait_names_and_args = ctx
             .namespace()
-            .module()
+            .module(ctx.engines())
             .current_items()
             .implemented_traits
             .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);
         for structure_trait_constraint in structure_trait_constraints {
             let structure_trait_constraint_trait_name = &structure_trait_constraint
                 .trait_name
-                .to_fullpath(ctx.namespace());
+                .to_fullpath(ctx.engines(), ctx.namespace());
             if !generic_trait_constraints_trait_names_and_args.iter().any(
                 |(trait_name, trait_args)| {
                     trait_name == structure_trait_constraint_trait_name

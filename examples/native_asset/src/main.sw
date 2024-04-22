@@ -81,7 +81,7 @@ impl NativeAsset for Contract {
 
 fn get_base_asset() {
     // ANCHOR: base_asset
-    let base_asset: AssetId = AssetId::base_asset_id();
+    let base_asset: AssetId = AssetId::base();
     // ANCHOR_END: base_asset
 }
 

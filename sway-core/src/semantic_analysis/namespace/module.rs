@@ -92,6 +92,18 @@ impl Default for Module {
 }
 
 impl Module {
+    pub fn read<R>(&self, _engines: &crate::Engines, mut f: impl FnMut(&Module) -> R) -> R {
+        f(self)
+    }
+
+    pub fn write<R>(
+        &mut self,
+        _engines: &crate::Engines,
+        mut f: impl FnMut(&mut Module) -> R,
+    ) -> R {
+        f(self)
+    }
+
     pub fn mod_path(&self) -> &ModulePath {
         self.mod_path.as_slice()
     }
@@ -222,7 +234,7 @@ impl Module {
     }
 
     /// Lookup the submodule at the given path.
-    pub fn submodule(&self, path: &ModulePath) -> Option<&Module> {
+    pub fn submodule(&self, _engines: &Engines, path: &ModulePath) -> Option<&Module> {
         let mut module = self;
         for ident in path.iter() {
             match module.submodules.get(ident.as_str()) {
@@ -234,7 +246,7 @@ impl Module {
     }
 
     /// Unique access to the submodule at the given path.
-    pub fn submodule_mut(&mut self, path: &ModulePath) -> Option<&mut Module> {
+    pub fn submodule_mut(&mut self, _engines: &Engines, path: &ModulePath) -> Option<&mut Module> {
         let mut module = self;
         for ident in path.iter() {
             match module.submodules.get_mut(ident.as_str()) {
@@ -251,9 +263,25 @@ impl Module {
     pub(crate) fn lookup_submodule(
         &self,
         handler: &Handler,
+        engines: &Engines,
         path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
-        match self.submodule(path) {
+        match self.submodule(engines, path) {
+            None => Err(handler.emit_err(module_not_found(path))),
+            Some(module) => Ok(module),
+        }
+    }
+
+    /// Lookup the submodule at the given path.
+    ///
+    /// This should be used rather than `Index` when we don't yet know whether the module exists.
+    pub(crate) fn lookup_submodule_mut(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        path: &[Ident],
+    ) -> Result<&mut Module, ErrorEmitted> {
+        match self.submodule_mut(engines, path) {
             None => Err(handler.emit_err(module_not_found(path))),
             Some(module) => Ok(module),
         }
@@ -470,11 +498,12 @@ impl Module {
             return Ok((decl, current_mod_path));
         }
 
-        self.lookup_submodule(handler, mod_path).and_then(|module| {
-            let decl =
-                self.resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
-            Ok((decl, mod_path.to_vec()))
-        })
+        self.lookup_submodule(handler, engines, mod_path)
+            .and_then(|module| {
+                let decl = self
+                    .resolve_symbol_helper(handler, engines, mod_path, symbol, module, self_type)?;
+                Ok((decl, mod_path.to_vec()))
+            })
     }
 
     fn resolve_associated_type(
@@ -618,7 +647,8 @@ impl Module {
         module: &Module,
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let true_symbol = self[mod_path]
+        let true_symbol = self
+            .lookup_submodule(handler, engines, mod_path)?
             .current_items()
             .use_aliases
             .get(symbol.as_str())
@@ -647,21 +677,6 @@ impl Module {
                 .check_symbol(true_symbol)
                 .map_err(|e| handler.emit_err(e)),
         }
-    }
-}
-
-impl<'a> std::ops::Index<&'a ModulePath> for Module {
-    type Output = Module;
-    fn index(&self, path: &'a ModulePath) -> &Self::Output {
-        self.submodule(path)
-            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
-    }
-}
-
-impl<'a> std::ops::IndexMut<&'a ModulePath> for Module {
-    fn index_mut(&mut self, path: &'a ModulePath) -> &mut Self::Output {
-        self.submodule_mut(path)
-            .unwrap_or_else(|| panic!("no module for the given path {path:?}"))
     }
 }
 

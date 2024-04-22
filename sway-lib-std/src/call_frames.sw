@@ -18,36 +18,6 @@ const FIRST_PARAMETER_OFFSET: u64 = 73;
 /// Where 74 (73 + 1) is the current offset in words from the start of the call frame.
 const SECOND_PARAMETER_OFFSET: u64 = 74;
 
-//  Accessing the current call frame
-//
-/// Get the current contract's id when called in an internal context.
-///
-/// # Additional Information
-///
-/// **_Note:_** If called in an external context, this will **not** return a contract ID.
-/// If called externally, will actually return a pointer to the transaction ID.
-///
-/// # Returns
-///
-/// * [ContractId] - The contract id of this contract.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::{call_frames::contract_id, constants::ZERO_B256, asset::mint};
-///
-/// fn foo() {
-///     let this_contract = contract_id();
-///     mint(ZERO_B256, 50);
-///     Address::from(ZERO_B256).transfer(AssetId::default(this_contract), 50);
-/// }
-/// ```
-pub fn contract_id() -> ContractId {
-    ContractId::from(asm() {
-        fp: b256
-    })
-}
-
 /// Get the `asset_id` of coins being sent from the current call frame.
 ///
 /// # Returns
@@ -57,11 +27,11 @@ pub fn contract_id() -> ContractId {
 /// # Examples
 ///
 /// ```sway
-/// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
+/// use std::call_frames::msg_asset_id;
 ///
 /// fn foo() {
 ///     let asset = msg_asset_id();
-///     assert(asset == BASE_ASSET_ID);
+///     assert(asset == AssetId::base());
 /// }
 /// ```
 pub fn msg_asset_id() -> AssetId {

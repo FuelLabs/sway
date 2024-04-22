@@ -4,7 +4,6 @@ library;
 use ::address::Address;
 use ::alias::SubId;
 use ::asset_id::AssetId;
-use ::call_frames::contract_id;
 use ::contract_id::ContractId;
 use ::error_signals::FAILED_TRANSFER_TO_ADDRESS_SIGNAL;
 use ::identity::Identity;
@@ -41,7 +40,7 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// ```
 pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
-    transfer(to, AssetId::new(contract_id(), sub_id), amount);
+    transfer(to, AssetId::new(ContractId::this(), sub_id), amount);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them
@@ -71,7 +70,7 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 /// ```
 pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
-    force_transfer_to_contract(to, AssetId::new(contract_id(), sub_id), amount);
+    force_transfer_to_contract(to, AssetId::new(ContractId::this(), sub_id), amount);
 }
 
 /// Mint `amount` coins of the current contract's `asset_id` and send them to
@@ -95,7 +94,7 @@ pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
 /// ```
 pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
     mint(sub_id, amount);
-    transfer_to_address(to, AssetId::new(contract_id(), sub_id), amount);
+    transfer_to_address(to, AssetId::new(ContractId::this(), sub_id), amount);
 }
 
 /// Mint `amount` coins of the current contract's `sub_id`. The newly minted assets are owned by the current contract.
@@ -171,13 +170,13 @@ pub fn burn(sub_id: SubId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::transfer};
+/// use std::{constants::ZERO_B256, asset::transfer};
 ///
 /// fn foo() {
 ///     let to_address = Identity::Address(Address::from(ZERO_B256));
 ///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-///     transfer(to_address, BASE_ASSET_ID, 500);
-///     transfer(to_contract_id, BASE_ASSET_ID, 500);
+///     transfer(to_address, AssetId::base(), 500);
+///     transfer(to_contract_id, AssetId::base(), 500);
 /// }
 /// ```
 pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
@@ -210,11 +209,11 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::force_transfer_to_contract};
+/// use std::{constants::ZERO_B256, asset::force_transfer_to_contract};
 ///
 /// fn foo() {
 ///     let to_contract_id = ContractId::from(ZERO_B256);
-///     force_transfer_to_contract(to_contract_id, BASE_ASSET_ID, 500);
+///     force_transfer_to_contract(to_contract_id, AssetId::base(), 500);
 /// }
 /// ```
 pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
@@ -241,11 +240,11 @@ pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::{BASE_ASSET_ID, ZERO_B256}, asset::transfer_to_address};
+/// use std::{constants::ZERO_B256, asset::transfer_to_address};
 ///
 /// fn foo() {
 ///     let to_address = Address::from(ZERO_B256);
-///     transfer_to_address(to_address, BASE_ASSET_ID, 500);
+///     transfer_to_address(to_address, AssetId::base(), 500);
 /// }
 /// ```
 pub fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {

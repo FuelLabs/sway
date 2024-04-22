@@ -12,7 +12,7 @@ use ::hash::{Hash, Hasher};
 /// It is calculated by taking the sha256 hash of the originating ContractId and a SubId.
 /// i.e. sha256((contract_id, sub_id)).
 ///
-/// An exception is the Base Asset, which is just the ZERO_B256 AssetId.
+/// An exception is the Base Asset.
 ///
 /// The SubId is used to differentiate between different assets that are created by the same contract.
 pub struct AssetId {
@@ -133,11 +133,11 @@ impl AssetId {
         }
     }
 
-    /// The base_asset_id represents the base asset of a chain.
+    /// The base asset of a chain.
     ///
     /// # Additional Information
     ///
-    /// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 AssetId.
+    /// On the Fuel network, the base asset is Ether.
     ///
     /// # Returns
     ///
@@ -149,15 +149,18 @@ impl AssetId {
     /// use std::{constants::ZERO_B256, asset::transfer};
     ///
     /// fn foo() {
-    ///     let asset_id = AssetId::base_asset_id();
+    ///     let asset_id = AssetId::base();
     ///     let amount = 100;
     ///     let recipient = Identity::ContractId(ContractId::from(ZERO_B256));
     ///
     ///     transfer(recipient, asset_id, amount);
     /// ```
-    pub fn base_asset_id() -> Self {
+    pub fn base() -> Self {
         Self {
-            bits: 0x0000000000000000000000000000000000000000000000000000000000000000,
+            bits: asm(r1) {
+                gm r1 i6;
+                r1: b256
+            },
         }
     }
 

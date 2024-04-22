@@ -236,7 +236,7 @@ fn type_check_struct(
     )?;
 
     let (struct_can_be_changed, is_public_struct_access) =
-        StructAccessInfo::get_info(&struct_decl, ctx.namespace()).into();
+        StructAccessInfo::get_info(ctx.engines(), &struct_decl, ctx.namespace()).into();
 
     let has_rest_pattern = fields
         .iter()
