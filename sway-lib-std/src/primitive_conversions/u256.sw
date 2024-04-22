@@ -1,6 +1,7 @@
 library;
 
 use ::convert::From;
+use ::u128::U128;
 
 /// Functions for casting between `u256` and other types.
 impl From<u8> for u256 {
@@ -146,7 +147,7 @@ impl From<U128> for u256 {
     /// }
     /// ```
     fn from(num: U128) -> Self {
-        let input = (0u64, 0u64, num.upper, num.lower);
+        let input = (0u64, 0u64, num.upper(), num.lower());
         asm(input: input) {
             input: u256
         }
