@@ -57,7 +57,7 @@ impl PartialEqWithEngines for TyReassignmentTarget {
         let type_engine = ctx.engines().te();
         match (self, other) {
             (TyReassignmentTarget::Deref(l), TyReassignmentTarget::Deref(r)) => {
-                (*l).eq(&*r, ctx)
+                (*l).eq(r, ctx)
             },
             (
                 TyReassignmentTarget::ElementAccess { base_name: l_name, base_type: l_type, indices: l_indices },
@@ -174,14 +174,15 @@ impl TypeCheckAnalysis for TyReassignmentTarget {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        Ok(match self {
+        match self {
             TyReassignmentTarget::Deref(exp) => exp.type_check_analyze(handler, ctx)?,
             TyReassignmentTarget::ElementAccess { indices, .. } => indices
                 .iter()
                 .map(|i| i.type_check_analyze(handler, ctx))
                 .collect::<Result<Vec<()>, _>>()
                 .map(|_| ())?
-        })
+        };
+        Ok(())
     }
 }
 
@@ -204,14 +205,15 @@ impl TypeCheckFinalization for TyReassignmentTarget {
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
-        Ok(match self {
+        match self {
             TyReassignmentTarget::Deref(exp) => exp.type_check_finalize(handler, ctx)?,
             TyReassignmentTarget::ElementAccess { indices, .. } => indices
                 .iter_mut()
                 .map(|i| i.type_check_finalize(handler, ctx))
                 .collect::<Result<Vec<()>, _>>()
                 .map(|_| ())?
-        })
+        };
+        Ok(())
     }
 }
 
@@ -376,6 +378,7 @@ impl TypeCheckFinalization for ProjectionKind {
 impl UpdateConstantExpression for ProjectionKind {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         use ProjectionKind::*;
+        #[allow(clippy::single_match)] // To keep it consistent and same looking as the above implementations.
         match self {
             ArrayIndex { index, .. } => index.update_constant_expression(engines, implementing_type),
             _ => (),

@@ -45,6 +45,28 @@ fn if_expr<T>(input: u64, left: T, right: T) where T: Eq {
     };
 
     assert_references(r_x, r_val, r_mut_x, r_mut_val, x);
+
+    if *r_mut_x == left {
+        assert_eq(x, left);
+        *r_mut_x = right;
+        assert_eq(x, right);
+    } else {
+        assert_eq(x, right);
+        *r_mut_x = left;
+        assert_eq(x, left);
+    }
+
+    if *r_mut_val == left {
+        let current_x = x;
+        *r_mut_val = right;
+        assert_eq(x, current_x);
+        assert_eq(*r_mut_val, right);
+    } else {
+        let current_x = x;
+        *r_mut_val = left;
+        assert_eq(x, current_x);
+        assert_eq(*r_mut_val, left);
+    }
 }
 
 fn assert_references<T>(r_x: &T, r_val: &T, r_mut_x: &mut T, r_mut_val: &mut T, x: T) where T: Eq {

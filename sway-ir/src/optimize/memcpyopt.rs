@@ -48,6 +48,11 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     // All load and store instructions.
     let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
     // Symbols that escape.
+    // TODO: The below code does its own logic to calculate escaping symbols.
+    //       It does not cover all escaping cases, though. E.g., contract calls, etc.
+    //       In general, the question is why it does not use `memory_utils::compute_escaped_symbols`.
+    //       My assumption is that it was written before `memory_utils::compute_escaped_symbols`
+    //       got available.
     let mut escaping_uses = FxHashSet::<Symbol>::default();
 
     for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {
@@ -78,7 +83,6 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                     instr_info_map.insert(inst, info());
                 }
             }
-            // TODO-IG!: Is this collection of escaping still needed.
             Instruction {
                 op: InstOp::PtrToInt(value, _),
                 ..
@@ -88,7 +92,6 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 }
             }
             Instruction {
-                // TODO-IG!: What about other escapes? Contract calls, ... See: memory_utils::compute_escaped_symbols.
                 op: InstOp::AsmBlock(_, args),
                 ..
             } => {
@@ -303,8 +306,8 @@ fn local_copy_prop(
         src_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
         dest_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
     ) {
-        let syms = get_referred_symbols(context, value);
-        for sym in syms {
+        let rs = get_referred_symbols(context, value);
+        for sym in rs.any() {
             if let Some(copies) = src_to_copies.get_mut(&sym) {
                 for copy in &*copies {
                     let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
@@ -521,6 +524,7 @@ fn local_copy_prop(
             ) {
                 for arg in args {
                     let max_size = get_referred_symbols(context, *arg)
+                        .any()
                         .iter()
                         .filter_map(|sym| {
                             sym.get_type(context)

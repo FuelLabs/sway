@@ -1959,7 +1959,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                 ty::TyReassignmentTarget::ElementAccess { base_name, indices, .. } => {
                     if let Some(variable_entry) = graph
                         .namespace
-                        .get_variable(&base_name)
+                        .get_variable(base_name)
                     {
                         for leaf in leaves {
                             graph.add_edge(*leaf, variable_entry.variable_decl_ix, "variable reassignment LHS".into());

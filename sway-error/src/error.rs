@@ -2185,7 +2185,7 @@ impl ToDiagnostic for CompileError {
                         ),
                     },
                     match decl_reference_rhs {
-                        Some(decl_reference_rhs) if decl_reference_rhs.as_str().starts_with("&") => Hint::help(
+                        Some(decl_reference_rhs) if decl_reference_rhs.as_str().starts_with('&') => Hint::help(
                             source_engine,
                             decl_reference_rhs.clone(),
                             format!("Consider taking here a reference to mutable value: `&mut {}`.",
@@ -2197,12 +2197,12 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![
                     format!("{} dereferenced in assignment targets must {} references to mutable values (`&mut`).",
-                        if matches!(decl_reference_name, Some(_)) {
+                        if decl_reference_name.is_some() {
                             "References"
                         } else {
                             "Reference expressions"
                         },
-                        if matches!(decl_reference_name, Some(_)) {
+                        if decl_reference_name.is_some() {
                             "be"
                         } else {
                             "result in"

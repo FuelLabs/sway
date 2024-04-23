@@ -1,5 +1,0 @@
-{
-    "rust-analyzer.linkedProjects": [
-        "./sway-ir/Cargo.toml"
-    ]
-}

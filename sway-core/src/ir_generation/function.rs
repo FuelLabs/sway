@@ -2579,7 +2579,7 @@ impl<'eng> FnCompiler<'eng> {
                 };
 
                 let (ptr, _) =
-                    self.compile_deref_up_to_ptr(context, md_mgr, &reference_exp, span_md_idx)?;
+                    self.compile_deref_up_to_ptr(context, md_mgr, reference_exp, span_md_idx)?;
 
                 return_on_termination_or_extract!(ptr)
             },

@@ -1902,7 +1902,7 @@ impl ty::TyExpression {
         let index_te = {
             let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
             let ctx = ctx
-                .with_help_text("")
+                .with_help_text("Array index must be of type \"u64\".")
                 .with_type_annotation(type_engine.insert(engines, type_info_u64, None));
 
             ty::TyExpression::type_check(handler, ctx, index)?
@@ -2129,8 +2129,11 @@ impl ty::TyExpression {
                             expr = prefix;
                         }
                         ExpressionKind::ArrayIndex(ArrayIndexExpression { prefix, index }) => {
-                            let ctx = ctx.by_ref().with_help_text("");
-                            // TODO-IG!: Shouldn't we expect `u64` here for the type? Or any number? How is it when type-checking array element access?
+                            let type_info_u64 = TypeInfo::UnsignedInteger(IntegerBits::SixtyFour);
+                            let ctx = ctx
+                                .by_ref()
+                                .with_help_text("Array index must be of type \"u64\".")
+                                .with_type_annotation(type_engine.insert(engines, type_info_u64, None));
                             let typed_index =
                                 ty::TyExpression::type_check(handler, ctx, index.as_ref().clone())
                                     .unwrap_or_else(|err| {
@@ -2169,8 +2172,6 @@ impl ty::TyExpression {
             }
         };
 
-        // type check the reassignment
-        // TODO-IG!: Add help text here like the one in variable declaration.
         let ctx = ctx.with_type_annotation(expected_rhs_type).with_help_text("");
         let rhs_span = rhs.span();
         let rhs = ty::TyExpression::type_check(handler, ctx, rhs)

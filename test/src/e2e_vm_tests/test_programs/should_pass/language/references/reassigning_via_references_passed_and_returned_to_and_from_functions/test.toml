@@ -1,0 +1,4 @@
+category = "run"
+expected_result = { action = "return", value = 42 }
+validate_abi = false
+expected_warnings = 10 # TODO-DCA: Set to zero once https://github.com/FuelLabs/sway/issues/5921 is fixed.
