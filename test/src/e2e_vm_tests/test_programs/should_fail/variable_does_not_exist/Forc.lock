@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-1C5801B8398D8ED4"
+
+[[package]]
+name = "variable_does_not_exist"
+source = "member"
+dependencies = ["core"]
