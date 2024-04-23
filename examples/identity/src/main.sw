@@ -54,4 +54,4 @@ impl IdentityExample for Contract {
 
 fn takes_address(address: Address) {}
 
-fn takes_contract_id(address: Address) {}
+fn takes_contract_id(contract_id: ContractId) {}

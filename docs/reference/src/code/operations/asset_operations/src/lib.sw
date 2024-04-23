@@ -79,7 +79,7 @@ fn transferring_to_contract() {
     let asset = AssetId::base();
     let pool = ContractId::from(address);
 
-    transfer(Identity::Address(pool), asset, amount);
+    transfer(Identity::ContractId(pool), asset, amount);
     // ANCHOR_END: force_transfer_to_contract
 }
 
