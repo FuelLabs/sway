@@ -1,7 +1,7 @@
 // ANCHOR: full_wallet
 contract;
 
-use std::{asset::transfer_to_address, call_frames::msg_asset_id, context::msg_amount,};
+use std::{asset::transfer, call_frames::msg_asset_id, context::msg_amount,};
 
 // ANCHOR: abi_import
 use wallet_abi::Wallet;
@@ -37,10 +37,10 @@ impl Wallet for Contract {
 
         storage.balance.write(current_balance - amount_to_send);
 
-        // Note: `transfer_to_address()` is not a call and thus not an
+        // Note: `transfer()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer_to_address(recipient_address, AssetId::base(), amount_to_send);
+        transfer(Identity::Address(recipient_address), AssetId::base(), amount_to_send);
     }
 }
 // ANCHOR_END: abi_impl

@@ -6,24 +6,12 @@ use std::asset::mint;
 // ANCHOR: mint_to_import
 use std::asset::mint_to;
 // ANCHOR_END: mint_to_import
-// ANCHOR: mint_to_address_import
-use std::asset::mint_to_address;
-// ANCHOR_END: mint_to_address_import
-// ANCHOR: mint_to_contract_import
-use std::asset::mint_to_contract;
-// ANCHOR_END: mint_to_contract_import
 // ANCHOR: burn_import
 use std::asset::burn;
 // ANCHOR_END: burn_import
 // ANCHOR: transfer_import
 use std::asset::transfer;
 // ANCHOR_END: transfer_import
-// ANCHOR: transfer_to_address_import
-use std::asset::transfer_to_address;
-// ANCHOR_END: transfer_to_address_import
-// ANCHOR: force_transfer_to_contract_import
-use std::asset::force_transfer_to_contract;
-// ANCHOR_END: force_transfer_to_contract_import
 
 use std::constants::ZERO_B256;
 
@@ -40,7 +28,7 @@ fn minting_to_address() {
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let user = Address::from(address);
 
-    mint_to_address(user, ZERO_B256, amount);
+    mint_to(Identity::Address(user), ZERO_B256, amount);
     // ANCHOR_END: mint_to_address
 }
 
@@ -50,7 +38,7 @@ fn minting_to_contract() {
     let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let pool = ContractId::from(address);
 
-    mint_to_contract(pool, ZERO_B256, amount);
+    mint_to(Identity::ContractId(pool), ZERO_B256, amount);
     // ANCHOR_END: mint_to_contract
 }
 
@@ -80,7 +68,7 @@ fn transferring_to_address() {
     let asset = AssetId::base();
     let user = Address::from(address);
 
-    transfer_to_address(user, asset, amount);
+    transfer(Identity::Address(user), asset, amount);
     // ANCHOR_END: transfer_to_address
 }
 
@@ -91,7 +79,7 @@ fn transferring_to_contract() {
     let asset = AssetId::base();
     let pool = ContractId::from(address);
 
-    force_transfer_to_contract(pool, asset, amount);
+    transfer(Identity::Address(pool), asset, amount);
     // ANCHOR_END: force_transfer_to_contract
 }
 

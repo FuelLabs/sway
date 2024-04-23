@@ -6,7 +6,7 @@ mod errors;
 use abi::IdentityExample;
 use errors::MyError;
 
-use std::{asset::{force_transfer_to_contract, transfer_to_address,}, constants::{ZERO_B256,},};
+use std::{asset::transfer, constants::{ZERO_B256,},};
 
 storage {
     owner: Identity = Identity::ContractId(ContractId::from(ZERO_B256)),
@@ -35,8 +35,8 @@ impl IdentityExample for Contract {
 
         // ANCHOR: different_executions
         match my_identity {
-            Identity::Address(address) => transfer_to_address(address, asset_id, amount),
-            Identity::ContractId(contract_id) => force_transfer_to_contract(contract_id, asset_id, amount),
+            Identity::Address(address) => transfer(address, asset_id, amount),
+            Identity::ContractId(contract_id) => transfer(contract_id, asset_id, amount),
         };
         // ANCHOR_END: different_executions
     }

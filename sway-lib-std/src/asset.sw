@@ -10,7 +10,7 @@ use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
 
-/// Mint `amount` coins of the current contract's `asset_id` and transfer them to `to` by calling either `force_transfer_to_contract` or `transfer_to_address`, depending on the type of `Identity`.
+/// Mint `amount` coins of the current contract's `asset_id` and transfer them to `to` by calling `transfer()`.
 ///
 /// # Additional Information
 ///
@@ -91,7 +91,7 @@ pub fn burn(sub_id: SubId, amount: u64) {
     }
 }
 
-/// Transfer `amount` coins of the type `asset_id` and send them to `to` by calling either `force_transfer_to_contract` or`transfer_to_address`, depending on the type of `Identity`.
+/// Transfer `amount` coins of the type `asset_id` and send them to `to`.
 ///
 /// # Additional Information
 ///
