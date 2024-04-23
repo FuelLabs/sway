@@ -47,40 +47,55 @@ pub(crate) fn type_check_method_application(
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
         if index == 0 {
-            args_opt_buf.push_back(ty::TyExpression::type_check(handler, ctx, arg.clone()).ok());
+            args_opt_buf.push_back((
+                ty::TyExpression::type_check(handler, ctx, arg.clone()).ok(),
+                None,
+            ));
         } else {
             // Ignore errors in method parameters
             // On the second pass we will throw the errors if they persist.
             let arg_handler = Handler::default();
             let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg.clone()).ok();
             if arg_handler.has_errors() {
-                args_opt_buf.push_back(None);
+                args_opt_buf.push_back((None, Some(arg_handler)));
             } else {
-                args_opt_buf.push_back(arg_opt);
+                args_opt_buf.push_back((arg_opt, None));
             }
         };
     }
 
     // resolve the method name to a typed function declaration and type_check
-    let (original_decl_ref, call_path_typeid) = resolve_method_name(
+    let method_result = resolve_method_name(
         handler,
         ctx.by_ref(),
         &method_name_binding,
         args_opt_buf
             .iter()
             .map(|arg| match arg {
-                Some(arg) => arg.return_type,
-                None => type_engine.insert(engines, TypeInfo::Unknown, None),
+                (Some(arg), _) => arg.return_type,
+                (None, _) => type_engine.insert(engines, TypeInfo::Unknown, None),
             })
             .collect(),
-    )?;
+    );
+
+    // In case resolve_method_name fails throw argument errors.
+    let (original_decl_ref, call_path_typeid) = if let Err(e) = method_result {
+        for (_, arg_handler) in args_opt_buf.iter() {
+            if let Some(arg_handler) = arg_handler.clone() {
+                handler.append(arg_handler);
+            }
+        }
+        return Err(e);
+    } else {
+        method_result.unwrap()
+    };
 
     let method = decl_engine.get_function(&original_decl_ref);
 
     // type check the function arguments (2nd pass)
     let mut args_buf = VecDeque::new();
     for (arg, index, arg_opt) in izip!(arguments.iter(), 0.., args_opt_buf.iter().cloned()) {
-        if let Some(arg) = arg_opt {
+        if let (Some(arg), _) = arg_opt {
             args_buf.push_back(arg);
         } else {
             let param_index = if method.is_contract_call {
