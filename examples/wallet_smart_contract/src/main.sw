@@ -40,7 +40,11 @@ impl Wallet for Contract {
         // Note: `transfer()` is not a call and thus not an
         // interaction. Regardless, this code conforms to
         // checks-effects-interactions to avoid re-entrancy.
-        transfer(Identity::Address(recipient_address), AssetId::base(), amount_to_send);
+        transfer(
+            Identity::Address(recipient_address),
+            AssetId::base(),
+            amount_to_send,
+        );
     }
 }
 // ANCHOR_END: abi_impl

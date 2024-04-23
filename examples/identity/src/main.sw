@@ -30,13 +30,10 @@ impl IdentityExample for Contract {
     }
 
     fn different_executions(my_identity: Identity) {
-        let amount = 1;
-        let asset_id = AssetId::base();
-
         // ANCHOR: different_executions
         match my_identity {
-            Identity::Address(address) => transfer(address, asset_id, amount),
-            Identity::ContractId(contract_id) => transfer(contract_id, asset_id, amount),
+            Identity::Address(address) => takes_address(address),
+            Identity::ContractId(contract_id) => takes_contract_id(contract_id),
         };
         // ANCHOR_END: different_executions
     }
@@ -54,3 +51,7 @@ impl IdentityExample for Contract {
         // ANCHOR_END: access_control_with_identity
     }
 }
+
+fn takes_address(address: Address) {}
+
+fn takes_contract_id(address: Address) {}
