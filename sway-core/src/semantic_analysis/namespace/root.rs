@@ -1,6 +1,4 @@
-use super::{
-    lexical_scope::GlobImport, module::Module, namespace::Namespace, trait_map::TraitMap, Ident,
-};
+use super::{module::Module, namespace::Namespace, trait_map::TraitMap, Ident};
 use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
@@ -61,10 +59,10 @@ impl Root {
             .implemented_traits
             .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
         for symbol_and_decl in symbols_and_decls {
-            dst_mod.current_items_mut().use_synonyms.insert(
+            dst_mod.current_items_mut().use_glob_synonyms.insert(
                 // TODO: No difference made between imported and declared items
                 symbol_and_decl.0,
-                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1),
+                (src.to_vec(), symbol_and_decl.1),
             );
         }
 
@@ -141,15 +139,13 @@ impl Root {
                 // no matter what, import it this way though.
                 let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                 let add_synonym = |name| {
-                    if let Some((_, GlobImport::No, _)) =
-                        dst_mod.current_items().use_synonyms.get(name)
-                    {
+                    if let Some((_, _)) = dst_mod.current_items().use_item_synonyms.get(name) {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
-                    dst_mod.current_items_mut().use_synonyms.insert(
+                    dst_mod.current_items_mut().use_item_synonyms.insert(
                         // TODO: No difference made between imported and declared items
                         name.clone(),
-                        (src.to_vec(), GlobImport::No, decl),
+                        (src.to_vec(), decl),
                     );
                 };
                 match alias {
@@ -227,19 +223,18 @@ impl Root {
                         // import it this way.
                         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                         let mut add_synonym = |name| {
-                            if let Some((_, GlobImport::No, _)) =
-                                dst_mod.current_items().use_synonyms.get(name)
+                            if let Some((_, _)) =
+                                dst_mod.current_items().use_item_synonyms.get(name)
                             {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
                                     name: name.into(),
                                 });
                             }
-                            dst_mod.current_items_mut().use_synonyms.insert(
+                            dst_mod.current_items_mut().use_item_synonyms.insert(
                                 // TODO: No difference made between imported and declared items
                                 name.clone(),
                                 (
                                     src.to_vec(),
-                                    GlobImport::No,
                                     TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                         enum_ref: enum_ref.clone(),
                                         variant_name: variant_name.clone(),
@@ -326,12 +321,11 @@ impl Root {
 
                         // import it this way.
                         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-                        dst_mod.current_items_mut().use_synonyms.insert(
+                        dst_mod.current_items_mut().use_glob_synonyms.insert(
                             // TODO: No difference made between imported and declared items
                             variant_name.clone(),
                             (
                                 src.to_vec(),
-                                GlobImport::Yes,
                                 TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                     enum_ref: enum_ref.clone(),
                                     variant_name: variant_name.clone(),
@@ -378,21 +372,29 @@ impl Root {
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let use_synonyms = src_mod.current_items().use_synonyms.clone();
-        let mut symbols_and_decls = src_mod
+        let use_item_synonyms = src_mod.current_items().use_item_synonyms.clone();
+        let use_glob_synonyms = src_mod.current_items().use_glob_synonyms.clone();
+        let mut glob_symbols_and_decls = src_mod
             .current_items()
-            .use_synonyms
+            .use_glob_synonyms
             .iter()
-            .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
+            .map(|(symbol, (_, decl))| (symbol.clone(), decl.clone()))
             .collect::<Vec<_>>();
+        let mut all_symbols_and_decls = src_mod
+            .current_items()
+            .use_item_synonyms
+            .iter()
+            .map(|(symbol, (_, decl))| (symbol.clone(), decl.clone()))
+            .collect::<Vec<_>>();
+        all_symbols_and_decls.append(&mut glob_symbols_and_decls);
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-                symbols_and_decls.push((symbol.clone(), decl.clone()));
+                all_symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, _, decl)) in use_synonyms {
+        for (symbol, (mod_path, decl)) in use_item_synonyms.iter().chain(use_glob_synonyms.iter()) {
             let mut is_external = false;
             let submodule = src_mod.submodule(engines, &[mod_path[0].clone()]);
             if let Some(submodule) = submodule {
@@ -401,9 +403,9 @@ impl Root {
 
             let mut path = src[..1].to_vec();
             if is_external {
-                path = mod_path;
+                path = mod_path.clone();
             } else {
-                path.extend(mod_path);
+                path.extend(mod_path.clone());
             }
 
             symbols_paths_and_decls.push((symbol, path, decl));
@@ -418,16 +420,16 @@ impl Root {
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_mod
                 .current_items_mut()
-                .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl)); // TODO: No difference made between imported and declared items
+                .use_glob_synonyms
+                .insert(symbol, (path, decl));
         };
 
-        for (symbol, decl) in symbols_and_decls {
+        for (symbol, decl) in all_symbols_and_decls {
             try_add(symbol, src.to_vec(), decl);
         }
 
         for (symbol, path, decl) in symbols_paths_and_decls {
-            try_add(symbol, path, decl);
+            try_add(symbol.clone(), path, decl.clone());
         }
 
         Ok(())
