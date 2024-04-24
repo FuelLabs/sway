@@ -5,3 +5,4 @@
 - one test was disabled
 - compile error: should_pass/language/name_resolution_after_monomorphization
 - compile error: should_pass/language/shadowing/shadowed_glob_imports (shadowing is strange)
+- compile error: should_pass/language/name_resolution_inside_intrinsics
