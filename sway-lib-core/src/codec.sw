@@ -1226,7 +1226,7 @@ impl<T> AbiEncode for [T; 0]
 where
     T: AbiEncode,
 {
-    fn abi_encode(self, ref mut buffer: Buffer) {
+    fn abi_encode(self, ref mut _buffer: Buffer) {
     }
 }
 

@@ -238,6 +238,10 @@ where
     }
 
     fn generate_abi_encode_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
+        if decl.variants.is_empty() {
+            return "".into();
+        }
+
         let enum_name = decl.call_path.suffix.as_str();
         let arms = decl
             .variants
