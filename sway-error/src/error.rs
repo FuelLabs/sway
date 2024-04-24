@@ -429,6 +429,7 @@ pub enum CompileError {
     UnconstrainedGenericParameter { ty: String, span: Span },
     #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
     TraitConstraintNotSatisfied {
+        type_id: usize, // Used to filter errors in method application type check.
         ty: String,
         trait_name: String,
         span: Span,
