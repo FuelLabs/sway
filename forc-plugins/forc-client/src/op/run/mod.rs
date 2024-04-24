@@ -240,7 +240,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_experimental_new_encoding,
         },
     }
 }

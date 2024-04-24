@@ -50,9 +50,9 @@ pub struct Command {
     /// threads available in your system.
     pub test_threads: Option<usize>,
 
+    /// Disable the "new encoding" feature
     #[clap(long)]
-    /// Experimental flag for the "new encoding" feature
-    pub experimental_new_encoding: bool,
+    pub no_experimental_new_encoding: bool,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -232,7 +232,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_experimental_new_encoding,
         },
     }
 }

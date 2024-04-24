@@ -52,9 +52,9 @@ struct Cli {
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
 
-    /// Experimental flag for new encoding
+    /// Disable the "new encoding" feature
     #[arg(long)]
-    experimental_new_encoding: bool,
+    no_experimental_new_encoding: bool,
 
     /// Update all output files
     #[arg(long)]
@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
         release: cli.release,
         build_target,
         experimental: sway_core::ExperimentalFlags {
-            new_encoding: cli.experimental_new_encoding,
+            new_encoding: !cli.no_experimental_new_encoding,
         },
         update_output_files: cli.update_output_files,
     };

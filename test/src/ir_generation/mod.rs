@@ -535,7 +535,7 @@ fn compile_core(
         disable_tests: false,
         locked: false,
         ipfs_node: None,
-        experimental_new_encoding: experimental.new_encoding,
+        no_experimental_new_encoding: !experimental.new_encoding,
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {
