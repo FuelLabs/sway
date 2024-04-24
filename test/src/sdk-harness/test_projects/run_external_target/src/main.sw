@@ -1,6 +1,6 @@
 contract;
 
-abi RunExternalTest{
+abi RunExternalTest {
     fn double_value(foo: u64) -> u64;
 }
 

@@ -24,14 +24,24 @@ async fn setup() -> (ExpectTestingContract<WalletUnlocked>, ContractId) {
 async fn test_expect_option() {
     let (instance, id) = setup().await;
 
-    instance.methods().option_test_should_not_revert().call().await.unwrap();
+    instance
+        .methods()
+        .option_test_should_not_revert()
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
 async fn test_expect_result() {
     let (instance, id) = setup().await;
 
-    instance.methods().result_test_should_not_revert().call().await.unwrap();
+    instance
+        .methods()
+        .result_test_should_not_revert()
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -39,7 +49,12 @@ async fn test_expect_result() {
 async fn test_expect_option_panic() {
     let (instance, id) = setup().await;
 
-    instance.methods().option_test_should_revert().call().await.unwrap();
+    instance
+        .methods()
+        .option_test_should_revert()
+        .call()
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -47,5 +62,10 @@ async fn test_expect_option_panic() {
 async fn test_expect_result_panic() {
     let (instance, id) = setup().await;
 
-    instance.methods().result_test_should_revert().call().await.unwrap();
+    instance
+        .methods()
+        .result_test_should_revert()
+        .call()
+        .await
+        .unwrap();
 }

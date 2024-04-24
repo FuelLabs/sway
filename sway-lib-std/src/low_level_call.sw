@@ -20,56 +20,6 @@ pub struct CallParams {
     pub gas: u64,
 }
 
-// TODO : Replace with `from` when implemented
-/// Represent a contract ID as a `Bytes`, so it can be concatenated with a payload.
-///
-/// # Additional Information
-///
-/// It is recommended to use the `call_with_function_selector` function directly, unless you know what you are doing.
-///
-/// # Arguments
-///
-/// * `contract_id`: [ContractId] - The contract ID to be represented as a `Bytes`.
-///
-/// # Returns
-///
-/// * [Bytes] - The input ContractId represented as a `Bytes`.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::low_level_call::{contract_id_to_bytes, call_with_raw_payload, CallParams};
-///
-/// fn call_with_copy_type_arg(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
-///     let mut payload = Bytes::new();
-///     payload.append(contract_id_to_bytes(target));
-///     payload.append(function_selector);
-///     payload.append(calldata);
-///
-///     call_with_raw_payload(payload, call_params);
-/// }
-/// ```
-///
-/// ```sway
-/// use std::low_level_call::{bytes::Bytes, contract_id_to_bytes, call_with_raw_payload, CallParams, ptr_as_bytes};
-///
-/// fn call_with_reference_type_arg(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams) {
-///     let mut payload = Bytes::new();
-///     payload.append(contract_id_to_bytes(target));
-///     payload.append(function_selector);
-///     payload.append(ptr_as_bytes(calldata.buf.ptr));
-///
-///     call_with_raw_payload(payload, call_params);
-/// }
-/// ```
-fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
-    let target_ptr = alloc_bytes(32);
-
-    __addr_of(contract_id).copy_bytes_to(target_ptr, 32);
-
-    Bytes::from(raw_slice::from_parts::<u8>(target_ptr, 32))
-}
-
 /// Represent a raw pointer as a `Bytes`, so it can be concatenated with a payload.
 ///
 /// # Additional Information
@@ -98,6 +48,7 @@ fn contract_id_to_bytes(contract_id: ContractId) -> Bytes {
 ///     call_with_raw_payload(payload, call_params);
 /// }
 /// ```
+#[cfg(experimental_new_encoding = false)]
 fn ptr_as_bytes(ptr: raw_ptr) -> Bytes {
     let target_ptr = alloc_bytes(8);
 
@@ -180,6 +131,7 @@ fn call_with_raw_payload(payload: Bytes, call_params: CallParams) {
 ///     call_with_raw_payload(payload, call_params);
 /// }
 /// ```
+#[cfg(experimental_new_encoding = false)]
 fn create_payload(
     target: ContractId,
     function_selector: Bytes,
@@ -200,18 +152,68 @@ fn create_payload(
         "function selector must be 8 bytes",
     );
 
-    // let mut payload = Bytes::new().append(contract_id_to_bytes(target)).append(function_selector);
-    let mut payload = Bytes::new();
-    payload.append(contract_id_to_bytes(target));
-    payload.append(function_selector);
+    let mut payload = Bytes::from(target.bits());
+    payload.append(function_selector.clone());
 
     if (single_value_type_arg) {
-        payload.append(calldata); // When calldata is copy type, just pass calldata
+        payload.append(calldata.clone()); // When calldata is copy type, just pass calldata
     } else {
         payload.append(ptr_as_bytes(calldata.ptr())); // When calldata is reference type, need to get pointer as bytes
     };
 
     payload
+}
+
+/// Encode a payload from the function selection and calldata.
+///
+/// # Additional Information
+///
+/// It is recommended to use the `call_with_function_selector` function directly, unless you know what you are doing.
+///
+/// # Arguments
+///
+/// * `target` : [ContractId] - The ContractId of the contract to be called.
+/// * `function_selector` : [Bytes] - The name of the contract function to be called.
+/// * `calldata` : [Bytes] - The encoded arguments with which to call the function.
+///
+/// # Returns
+///
+/// * [Bytes] - The encoded payload.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::low_level_call::{bytes::Bytes, create_payload, call_with_raw_payload, CallParams};
+///
+/// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams, single_value_type_arg: bool) {
+///     let payload = create_payload(target, function_selector, calldata);
+///
+///     call_with_raw_payload(payload, call_params);
+/// }
+/// ```
+#[cfg(experimental_new_encoding = true)]
+fn create_payload(
+    target: ContractId,
+    function_selector: Bytes,
+    call_data: Bytes,
+) -> Bytes {
+    /*
+    packs args according to spec (https://github.com/FuelLabs/fuel-specs/blob/master/src/vm/instruction_set.md#call-call-contract) :
+
+    bytes   type        value   description
+    32	    byte[32]    to      Contract ID to call.
+    8	    byte[8]	    param1  First parameter (function selector pointer)
+    8	    byte[8]	    param2  Second parameter (encoded arguments pointer)
+    */
+    Bytes::from(encode((
+        target,
+        asm(a: function_selector.ptr()) {
+            a: u64
+        },
+        asm(a: call_data.ptr()) {
+            a: u64
+        },
+    )))
 }
 
 /// Call a target contract with a function selector and calldata, provided as `Bytes`.
@@ -233,6 +235,7 @@ fn create_payload(
 ///     call_with_function_selector(target, function_selector, calldata, single_value_type_arg, call_params);
 /// }
 /// ```
+#[cfg(experimental_new_encoding = false)]
 pub fn call_with_function_selector(
     target: ContractId,
     function_selector: Bytes,
@@ -244,45 +247,32 @@ pub fn call_with_function_selector(
     call_with_raw_payload(payload, call_params);
 }
 
-// TO DO: Deprecate when SDK supports Bytes
-/// Call a target contract with a function selector and calldata, provided as `Vec<u8>`.
-///
-/// # Additional Information
-///
-/// It is recommended to use the `call_with_function_selector` function as this function will be deprecated in the future.
+/// Call a target contract with a function selector and calldata, provided as `Bytes`.
 ///
 /// # Arguments
 ///
 /// * `target` : [ContractId] - The ContractId of the contract to be called.
-/// * `function_selector` : [Vec<u8>] - The function selector of the function to be called, i.e. the first 8 bytes of `sha256("my_func(u64)")`.
-/// * `calldata` : [Vec<u8>] - The encoded arguments with which to call the function.
+/// * `function_selector` : [Bytes] - The function selector of the function to be called, i.e. the first 8 bytes of `sha256("my_func(u64)")`.
+/// * `calldata` : [Bytes] - The encoded arguments with which to call the function.
 /// * `single_value_type_arg` : [bool] - Whether the function being called takes a single value-type argument.
 /// * `call_params` : [CallParams] - The amount and color of coins to forward, and the gas to forward.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::low_level_call::{call_with_function_selector_vec, CallParams};
+/// use std::low_level_call::{bytes::Bytes, call_with_function_selector, CallParams};
 ///
-/// fn call_contract(target: ContractId, function_selector: Vec<u8>, calldata: Vec<u8>, call_params: CallParams, single_value_type_arg: bool) {
-///     call_with_function_selector_vec(target, function_selector, calldata, single_value_type_arg, call_params);
+/// fn call_contract(target: ContractId, function_selector: Bytes, calldata: Bytes, call_params: CallParams, single_value_type_arg: bool) {
+///     call_with_function_selector(target, function_selector, calldata, single_value_type_arg, call_params);
 /// }
 /// ```
-pub fn call_with_function_selector_vec(
+#[cfg(experimental_new_encoding = true)]
+pub fn call_with_function_selector(
     target: ContractId,
-    function_selector: Vec<u8>,
-    calldata: Vec<u8>,
-    single_value_type_arg: bool,
+    function_selector: Bytes,
+    call_data: Bytes,
     call_params: CallParams,
 ) {
-    let mut function_selector = function_selector;
-    let mut calldata = calldata;
-
-    call_with_function_selector(
-        target,
-        Bytes::from(function_selector),
-        Bytes::from(calldata),
-        single_value_type_arg,
-        call_params,
-    );
+    let payload = create_payload(target, function_selector, call_data);
+    call_with_raw_payload(payload, call_params);
 }

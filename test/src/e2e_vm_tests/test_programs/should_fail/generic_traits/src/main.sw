@@ -101,6 +101,12 @@ impl<T> Returner<T> for Self {
     }
 }
 
+impl<T> Returner<T> for _ {
+    fn return_it(self, the_value: T) -> T {
+        the_value
+    }
+}
+
 struct Data<T> {
     value: T
 }
