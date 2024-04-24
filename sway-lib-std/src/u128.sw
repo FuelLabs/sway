@@ -3,7 +3,6 @@ library;
 
 use ::assert::assert;
 use ::convert::{From, Into};
-use ::primitive_conversions::u64::*;
 use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
 use ::result::Result::{self, *};
