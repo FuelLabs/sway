@@ -2,6 +2,7 @@ library;
 
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
+use ::u128::U128;
 
 impl u16 {
     pub fn try_as_u8(self) -> Option<u8> {
