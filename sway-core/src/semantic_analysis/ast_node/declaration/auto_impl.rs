@@ -675,9 +675,12 @@ where
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
-            Err(gen_handler) => Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
-                span: Span::dummy(),
-            })),
+            Err(gen_handler) => {
+                Self::check_core_is_missing(handler, &gen_handler);
+                Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
+                    span: Span::dummy(),
+                }))
+            }
         }
     }
 
@@ -728,9 +731,25 @@ where
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
-            Err(gen_handler) => Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
+            Err(gen_handler) => {
+                Self::check_core_is_missing(handler, &gen_handler);
+                Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
+                    span: Span::dummy(),
+                }))
+            }
+        }
+    }
+
+    // Check core is missing and give a more user-friendly error message.
+    fn check_core_is_missing(handler: &Handler, gen_handler: &Handler) {
+        let encode_not_found = gen_handler.any_error(|x| match x {
+            CompileError::SymbolNotFound { .. } => true,
+            _ => false,
+        });
+        if encode_not_found {
+            handler.emit_err(CompileError::CouldNotGenerateEntryMissingCore {
                 span: Span::dummy(),
-            })),
+            });
         }
     }
 
@@ -798,9 +817,12 @@ where
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
-            Err(gen_handler) => Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
-                span: Span::dummy(),
-            })),
+            Err(gen_handler) => {
+                Self::check_core_is_missing(handler, &gen_handler);
+                Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
+                    span: Span::dummy(),
+                }))
+            }
         }
     }
 }

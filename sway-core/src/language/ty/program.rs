@@ -439,8 +439,6 @@ impl TyProgram {
             }
         }
 
-        assert!(!handler.has_errors());
-
         Ok((typed_program_kind, declarations, configurables))
     }
 

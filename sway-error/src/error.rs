@@ -889,6 +889,8 @@ pub enum CompileError {
     FallbackFnsCannotHaveParameters { span: Span },
     #[error("Could not generate the entry method. See errors above for more details.")]
     CouldNotGenerateEntry { span: Span },
+    #[error("Missing `core` in dependencies.")]
+    CouldNotGenerateEntryMissingCore { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1092,6 +1094,7 @@ impl Spanned for CompileError {
             FallbackFnsAreContractOnly { span } => span.clone(),
             FallbackFnsCannotHaveParameters { span } => span.clone(),
             CouldNotGenerateEntry { span } => span.clone(),
+            CouldNotGenerateEntryMissingCore { span } => span.clone(),
         }
     }
 }
