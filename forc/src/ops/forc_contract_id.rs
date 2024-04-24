@@ -80,7 +80,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
         experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

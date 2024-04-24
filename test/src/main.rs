@@ -54,7 +54,7 @@ struct Cli {
 
     /// Disable the "new encoding" feature
     #[arg(long)]
-    no_experimental_new_encoding: bool,
+    no_encoding_v1: bool,
 
     /// Update all output files
     #[arg(long)]
@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
         release: cli.release,
         build_target,
         experimental: sway_core::ExperimentalFlags {
-            new_encoding: !cli.no_experimental_new_encoding,
+            new_encoding: !cli.no_encoding_v1,
         },
         update_output_files: cli.update_output_files,
     };

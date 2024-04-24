@@ -57,7 +57,7 @@ pub fn main() -> Result<()> {
         &build_instructions,
         &get_doc_dir,
         sway_core::ExperimentalFlags {
-            new_encoding: !build_instructions.no_experimental_new_encoding,
+            new_encoding: !build_instructions.no_encoding_v1,
         },
     )?;
 

@@ -52,7 +52,7 @@ pub struct Command {
 
     /// Disable the "new encoding" feature
     #[clap(long)]
-    pub no_experimental_new_encoding: bool,
+    pub no_encoding_v1: bool,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -232,7 +232,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         experimental: ExperimentalFlags {
-            new_encoding: !cmd.no_experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }
