@@ -21,13 +21,6 @@ use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
-/// Is this a glob (`use foo::*;`) import?
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum GlobImport {
-    Yes,
-    No,
-}
-
 pub enum ResolvedFunctionDecl {
     Parsed(ParsedDeclId<FunctionDeclaration>),
     Typed(DeclRefFunction),
@@ -45,7 +38,8 @@ impl ResolvedFunctionDecl {
 pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
 // The `Vec<Ident>` path is absolute.
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
+pub(super) type GlobSynonyms = im::HashMap<Ident, (Vec<Ident>, ty::TyDecl)>;
+pub(super) type ItemSynonyms = im::HashMap<Ident, (Vec<Ident>, ty::TyDecl)>;
 pub(super) type UseAliases = im::HashMap<String, Ident>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
@@ -80,7 +74,11 @@ pub struct Items {
     ///
     /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
     /// path `foo::bar::Baz`.
-    pub(crate) use_synonyms: UseSynonyms,
+    ///
+    /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
+    /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
+    pub(crate) use_glob_synonyms: GlobSynonyms,
+    pub(crate) use_item_synonyms: ItemSynonyms,
     /// Represents an alternative name for an imported symbol.
     ///
     /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
@@ -289,7 +287,7 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name) {
+        if let Some((ident, (_, decl))) = self.use_item_synonyms.get_key_value(&name) {
             append_shadowing_error(
                 ident,
                 decl,
