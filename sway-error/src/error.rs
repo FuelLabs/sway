@@ -891,6 +891,8 @@ pub enum CompileError {
     CouldNotGenerateEntry { span: Span },
     #[error("Missing `core` in dependencies.")]
     CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
+    CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1095,6 +1097,7 @@ impl Spanned for CompileError {
             FallbackFnsCannotHaveParameters { span } => span.clone(),
             CouldNotGenerateEntry { span } => span.clone(),
             CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
         }
     }
 }

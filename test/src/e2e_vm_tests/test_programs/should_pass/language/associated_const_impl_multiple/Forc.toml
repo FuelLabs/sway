@@ -6,4 +6,4 @@ name = "associated_const_impl_multiple"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+core = { path = "../../../../../../../sway-lib-core" }

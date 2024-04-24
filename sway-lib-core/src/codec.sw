@@ -1222,6 +1222,15 @@ impl AbiEncode for raw_slice {
     }
 }
 
+impl<T> AbiEncode for [T; 0]
+where
+    T: AbiEncode,
+{
+    fn abi_encode(self, ref mut buffer: Buffer) {
+    }
+}
+
+
 // BEGIN ARRAY_ENCODE
 impl<T> AbiEncode for [T; 1]
 where
