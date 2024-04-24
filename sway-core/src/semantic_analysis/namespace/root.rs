@@ -374,19 +374,15 @@ impl Root {
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let use_item_synonyms = src_mod.current_items().use_item_synonyms.clone();
         let use_glob_synonyms = src_mod.current_items().use_glob_synonyms.clone();
-        let mut glob_symbols_and_decls = src_mod
-            .current_items()
-            .use_glob_synonyms
-            .iter()
-            .map(|(symbol, (_, decl))| (symbol.clone(), decl.clone()))
-            .collect::<Vec<_>>();
-        let mut all_symbols_and_decls = src_mod
-            .current_items()
-            .use_item_synonyms
-            .iter()
-            .map(|(symbol, (_, decl))| (symbol.clone(), decl.clone()))
-            .collect::<Vec<_>>();
-        all_symbols_and_decls.append(&mut glob_symbols_and_decls);
+
+        // collect all declared and reexported symbols from the source module
+        let mut all_symbols_and_decls = vec![];
+        for (symbol, (_, decl)) in src_mod.current_items().use_glob_synonyms.iter() {
+            all_symbols_and_decls.push((symbol.clone(), decl.clone()));
+        }
+        for (symbol, (_, decl)) in src_mod.current_items().use_item_synonyms.iter() {
+            all_symbols_and_decls.push((symbol.clone(), decl.clone()));
+        }
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
                 all_symbols_and_decls.push((symbol.clone(), decl.clone()));
@@ -394,21 +390,27 @@ impl Root {
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, decl)) in use_item_synonyms.iter().chain(use_glob_synonyms.iter()) {
+        let get_path = |mod_path: Vec<Ident>| {
             let mut is_external = false;
-            let submodule = src_mod.submodule(engines, &[mod_path[0].clone()]);
-            if let Some(submodule) = submodule {
+            if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
                 is_external = submodule.is_external
             };
 
             let mut path = src[..1].to_vec();
             if is_external {
-                path = mod_path.clone();
+                path = mod_path;
             } else {
-                path.extend(mod_path.clone());
+                path.extend(mod_path);
             }
 
-            symbols_paths_and_decls.push((symbol, path, decl));
+            path
+        };
+
+        for (symbol, (mod_path, decl)) in use_item_synonyms {
+            symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
+        }
+        for (symbol, (mod_path, decl)) in use_glob_synonyms {
+            symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
         }
 
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
