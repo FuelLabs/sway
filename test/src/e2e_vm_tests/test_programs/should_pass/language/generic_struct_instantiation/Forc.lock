@@ -1,0 +1,3 @@
+[[package]]
+name = "generic_struct_instantiation"
+source = "member"
