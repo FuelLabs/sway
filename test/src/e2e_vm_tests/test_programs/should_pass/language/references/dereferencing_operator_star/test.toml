@@ -2,3 +2,6 @@ category = "run"
 expected_result = { action = "return", value = 42 }
 validate_abi = false
 expected_warnings = 9
+
+expected_result_new_encoding = { action = "return_data", value = "0000000000000001" }
+

@@ -2,3 +2,6 @@ category = "run"
 expected_result = { action = "return_data", value = "0000000000000000000000000000000000000000000000000000000000000001" }
 validate_abi = true
 unsupported_profiles = ["debug"]
+
+expected_result_new_encoding = { action = "return_data", value = "0000000000000001" }
+
