@@ -8,7 +8,55 @@
 <p>Represented as two 64-bit components: <code>(upper, lower)</code>, where <code>value = (upper &lt;&lt; 64) + lower</code>.</p>
 </div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.upper" class="structfield small-section-header"><a class="anchor field" href="#structfield.upper"></a><code>upper: u64</code></span><div class="docblock"><p>The most significant 64 bits of the <code>U128</code>.</p>
 </div><span id="structfield.lower" class="structfield small-section-header"><a class="anchor field" href="#structfield.lower"></a><code>lower: u64</code></span><div class="docblock"><p>The least significant 64 bits of the <code>U128</code>.</p>
-</div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for U128</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(components: (u64, u64)) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/ops/trait.Eq.html">Eq</a> for U128</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="doc-block"><p>Evaluates if two values of the same type are not equal.</p>
+</div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(val: u8) -&gt; Self</h4></div></summary><div class="doc-block"><p>Converts a <code>u8</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u8</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u8);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(val: u16) -&gt; Self</h4></div></summary><div class="doc-block"><p>Converts a <code>u16</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u16</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u16);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(val: u32) -&gt; Self</h4></div></summary><div class="doc-block"><p>Converts a <code>u32</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u32</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u32);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for U128</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(val: u64) -&gt; Self</h4></div></summary><div class="doc-block"><p>Converts a <code>u64</code> to a <code>U128</code>.</p>
+<h1>Returns</h1>
+<ul>
+<li>[U128] - The <code>U128</code> representation of the <code>u64</code> value.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::u128::U128;
+
+fn foo() {
+    let u128_value = U128::from(0u64);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for U128</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(components: (u64, u64)) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/ops/trait.Eq.html">Eq</a> for U128</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="doc-block"><p>Evaluates if two values of the same type are not equal.</p>
 <h1>Additional Information</h1>
 <p>This function is inherited when <code>eq()</code> is implemented.</p>
 <h1>Arguments</h1>
