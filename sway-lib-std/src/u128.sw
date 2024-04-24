@@ -2,7 +2,8 @@
 library;
 
 use ::assert::assert;
-use ::convert::From;
+use ::convert::{From, Into};
+use ::primitive_conversions::u64::*;
 use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
 use ::result::Result::{self, *};
@@ -17,6 +18,102 @@ pub struct U128 {
     upper: u64,
     /// The least significant 64 bits of the `U128`.
     lower: u64,
+}
+
+impl From<u8> for U128 {
+    /// Converts a `u8` to a `U128`.
+    ///
+    /// # Returns
+    ///
+    /// * [U128] - The `U128` representation of the `u8` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let u128_value = U128::from(0u8);
+    /// }
+    /// ```
+    fn from(val: u8) -> Self {
+        Self {
+            upper: 0,
+            lower: val.into(),
+        }
+    }
+}
+
+impl From<u16> for U128 {
+    /// Converts a `u16` to a `U128`.
+    ///
+    /// # Returns
+    ///
+    /// * [U128] - The `U128` representation of the `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let u128_value = U128::from(0u16);
+    /// }
+    /// ```
+    fn from(val: u16) -> Self {
+        Self {
+            upper: 0,
+            lower: val.into(),
+        }
+    }
+}
+
+impl From<u32> for U128 {
+    /// Converts a `u32` to a `U128`.
+    ///
+    /// # Returns
+    ///
+    /// * [U128] - The `U128` representation of the `u32` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let u128_value = U128::from(0u32);
+    /// }
+    /// ```
+    fn from(val: u32) -> Self {
+        Self {
+            upper: 0,
+            lower: val.into(),
+        }
+    }
+}
+
+impl From<u64> for U128 {
+    /// Converts a `u64` to a `U128`.
+    ///
+    /// # Returns
+    ///
+    /// * [U128] - The `U128` representation of the `u64` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let u128_value = U128::from(0u64);
+    /// }
+    /// ```
+    fn from(val: u64) -> Self {
+        Self {
+            upper: 0,
+            lower: val,
+        }
+    }
 }
 
 /// The error type used for `U128` type errors.
@@ -592,4 +689,52 @@ impl Logarithm for U128 {
         let base_log2 = base.log2();
         self_log2 / base_log2
     }
+}
+
+#[test]
+fn test_u128_from_u8() {
+    let u8_1: u8 = 0u8;
+    let u8_2: u8 = 255u8;
+
+    let u128_1 = <U128 as From<u8>>::from(u8_1);
+    let u128_2 = <U128 as From<u8>>::from(u8_2);
+
+    assert(u128_1.as_u64().unwrap() == 0u64);
+    assert(u128_2.as_u64().unwrap() == 255u64);
+}
+
+#[test]
+fn test_u128_from_u16() {
+    let u16_1: u16 = 0u16;
+    let u16_2: u16 = 65535u16;
+
+    let u128_1 = <U128 as From<u16>>::from(u16_1);
+    let u128_2 = <U128 as From<u16>>::from(u16_2);
+
+    assert(u128_1.as_u64().unwrap() == 0u64);
+    assert(u128_2.as_u64().unwrap() == 65535u64);
+}
+
+#[test]
+fn test_u128_from_u32() {
+    let u32_1: u32 = 0u32;
+    let u32_2: u32 = 4294967295u32;
+
+    let u128_1 = <U128 as From<u32>>::from(u32_1);
+    let u128_2 = <U128 as From<u32>>::from(u32_2);
+
+    assert(u128_1.as_u64().unwrap() == 0u64);
+    assert(u128_2.as_u64().unwrap() == 4294967295u64);
+}
+
+#[test]
+fn test_u128_from_u64() {
+    let u64_1: u64 = 0u64;
+    let u64_2: u64 = 18446744073709551615u64;
+
+    let u128_1 = <U128 as From<u64>>::from(u64_1);
+    let u128_2 = <U128 as From<u64>>::from(u64_2);
+
+    assert(u128_1.as_u64().unwrap() == 0u64);
+    assert(u128_2.as_u64().unwrap() == 18446744073709551615u64);
 }
