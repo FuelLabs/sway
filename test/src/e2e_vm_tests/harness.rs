@@ -82,7 +82,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
-        no_encoding_v1: !run_config.experimental.new_encoding,
+        no_encoding_v1: !dbg!(run_config.experimental.new_encoding),
         ..Default::default()
     })
     .await
