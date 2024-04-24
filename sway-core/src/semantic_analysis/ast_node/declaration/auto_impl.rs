@@ -9,7 +9,6 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     Engines, TypeId, TypeInfo, TypeParameter,
 };
-use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -555,7 +554,7 @@ where
             TypeInfo::RawUntypedPtr => "raw_ptr".into(),
             TypeInfo::RawUntypedSlice => "raw_slice".into(),
             TypeInfo::Alias { name, .. } => name.to_string(),
-            x => return None,
+            _ => return None,
         };
 
         Some(name)
@@ -676,12 +675,9 @@ where
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
-            Err(gen_handler) => {
-                handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
-                    span: Span::dummy(),
-                }))
-            }
+            Err(gen_handler) => Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
+                span: Span::dummy(),
+            })),
         }
     }
 
@@ -732,12 +728,9 @@ where
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
-            Err(gen_handler) => {
-                handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
-                    span: Span::dummy(),
-                }))
-            }
+            Err(gen_handler) => Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
+                span: Span::dummy(),
+            })),
         }
     }
 
@@ -805,12 +798,9 @@ where
 
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
-            Err(gen_handler) => {
-                handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
-                    span: Span::dummy(),
-                }))
-            }
+            Err(gen_handler) => Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
+                span: Span::dummy(),
+            })),
         }
     }
 }

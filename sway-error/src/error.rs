@@ -887,7 +887,7 @@ pub enum CompileError {
     FallbackFnsAreContractOnly { span: Span },
     #[error("Fallback functions cannot have parameters")]
     FallbackFnsCannotHaveParameters { span: Span },
-    #[error("Could not generate the entry method because one of the arguments does not implement AbiEncode/AbiDecode")]
+    #[error("Could not generate the entry method. See errors above for more details.")]
     CouldNotGenerateEntry { span: Span },
 }
 
