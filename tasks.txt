@@ -1,0 +1,7 @@
+- ABI Super traits
+- Better error message when the type used in the ABI is unknown/error
+- Better error message when main has impurity attributes
+- ContractCall intrinsic interaction effect was not setup correctly
+- one test was disabled
+- compile error: should_pass/language/name_resolution_after_monomorphization
+- compile error: should_pass/language/shadowing/shadowed_glob_imports (shadowing is strange)
