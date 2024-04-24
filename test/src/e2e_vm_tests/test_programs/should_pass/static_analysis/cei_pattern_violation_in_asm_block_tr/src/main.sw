@@ -18,6 +18,6 @@ impl TestAbi for Contract {
         let asset = AssetId::from(address);
         let pool = ContractId::from(address);
         // `transfer` uses `tr` asm instruction for ContractId
-        transger(Identity::ContractId(pool), asset, amount);
+        transfer(Identity::ContractId(pool), asset, amount);
     }
 }
