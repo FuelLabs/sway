@@ -6,3 +6,7 @@
 - compile error: should_pass/language/name_resolution_after_monomorphization
 - compile error: should_pass/language/shadowing/shadowed_glob_imports (shadowing is strange)
 - compile error: should_pass/language/name_resolution_inside_intrinsics
+- new warnings: should_pass/dca/contract/superabi_contract_calls
+- new warning: should_pass/dca/contract/abi_fn_params
+    I think the new warning is correct
+- vanished warnings: should_pass/dca/unused_fields 

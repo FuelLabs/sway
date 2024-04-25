@@ -1,3 +1,8 @@
 [[package]]
-name = 'impl_trait_single'
-source = 'member'
+name = "core"
+source = "path+from-root-A818362830D98604"
+
+[[package]]
+name = "impl_trait_single"
+source = "member"
+dependencies = ["core"]
