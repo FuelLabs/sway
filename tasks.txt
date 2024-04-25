@@ -1,20 +1,36 @@
+New features
 - ABI Super traits
 - AbiEncode buffer dynamic sizing
-- Better error message when the type used in the ABI is unknown/error
-- Better error message when main has impurity attributes
-- ContractCall intrinsic interaction effect was not setup correctly
-- one test was disabled
-- compile error: should_pass/language/name_resolution_after_monomorphization
-- compile error: should_pass/language/shadowing/shadowed_glob_imports (shadowing is strange)
-- compile error: should_pass/language/name_resolution_inside_intrinsics
-- new warnings: should_pass/dca/contract/superabi_contract_calls
-- new warning: should_pass/dca/contract/abi_fn_params
-    I think the new warning is correct
-- vanished warnings: should_pass/dca/unused_fields 
-- disabled: should_pass/language/name_resolution_after_monomorphization 
-- disabled: should_pass/language/shadowing/shadowed_glob_imports 
-- disabled: should_pass/language/name_resolution_inside_intrinsics
 
-- std lib call frames methods changed a little bit
-- run external_proxy not working. I am assuming is the LDC bug. the String "double_value" has the correct length, but crazy data
-- increase_buffer_if_needed does not work as method
+Bugs Fixed
+- ContractCall intrinsic interaction effect was not setup correctly
+
+Fixing warnings and error messages
+- Better error message when the core-lib is not in Forc.toml when needed
+- Better error message when the type used in the ABI is unknown/error
+- Dont warn impurity attributes on the "__entry" fn
+- Dont warn CEI on the "__entry" fn
+
+Test Disabled
+- should_pass/language/name_resolution_after_monomorphization
+- should_pass/language/shadowing/shadowed_glob_imports
+- should_pass/language/name_resolution_inside_intrinsics
+- run sdk-harness/external_proxy not working. I am assuming is the LDC bug. the String "double_value" has the correct length, but some crazy data
+
+Test generating more warnings than before
+- should_pass/dca/contract/superabi_contract_calls
+    Case here is that trait for ABI are generating two fn. One prefixed __contract_entry and another normal. One of them is not beign called.
+- should_pass/dca/contract/abi_fn_params
+    I think the new warning is correct
+
+Test with less warnings than before
+- should_pass/dca/unused_fields (auto-impl is making all fields being used. so no dead code warn is being generated)
+
+Changes to std-lib
+- some call frames methods changed a little bit
+- predicate_data also changed
+
+ICE
+- increase_buffer_if_needed impl is a little bit strange because does not work as method. it gives a strange ICE
+
+

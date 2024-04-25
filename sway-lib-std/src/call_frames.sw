@@ -126,9 +126,9 @@ pub fn called_method() -> str {
 }
 
 /// Get the called arguments from the current call frame.
-pub fn called_args<T>() -> T 
+pub fn called_args<T>() -> T
 where
-    T: AbiDecode
+    T: AbiDecode,
 {
     use core::codec::decode_second_param;
     decode_second_param::<T>()

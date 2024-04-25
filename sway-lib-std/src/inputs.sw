@@ -257,7 +257,7 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 /// ```
 pub fn input_predicate_data<T>(index: u64) -> T
 where
-    T: AbiDecode
+    T: AbiDecode,
 {
     use core::codec::decode_predicate_data_by_index;
     decode_predicate_data_by_index::<T>(index)
