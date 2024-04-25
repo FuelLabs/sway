@@ -643,9 +643,8 @@ impl Root {
             }
         }
         if let Some(decl) = decl_opt {
-            let decl = self.resolve_associated_item(
-                handler, engines, module, symbol, decl, None, self_type,
-            )?;
+            let decl = self
+                .resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
             return Ok((decl, current_mod_path));
         }
 
@@ -657,7 +656,7 @@ impl Root {
                 Ok((decl, mod_path.to_vec()))
             })
     }
- 
+
     #[allow(clippy::too_many_arguments)]
     fn resolve_associated_type(
         &self,
