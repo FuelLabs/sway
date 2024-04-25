@@ -10,16 +10,24 @@ pub struct Buffer {
 
 enum IncreaseBuffer {
     None: (),
-    NewBuffer: (raw_ptr, u64) // ptr, capacity
+    NewBuffer: (raw_ptr, u64), // ptr, capacity
 }
 
-fn increase_buffer_if_needed(current_ptr: raw_ptr, current_cap: u64, needed_capacity: u64) -> IncreaseBuffer {
+fn increase_buffer_if_needed(
+    current_ptr: raw_ptr,
+    current_cap: u64,
+    needed_capacity: u64,
+) -> IncreaseBuffer {
     if current_cap <= needed_capacity {
         // smallest buffer that is a multiple of the current one 
         // that fits the needed capacity
         let factor = needed_capacity / current_cap;
         let new_cap = current_cap * (factor + 1);
-        let new_ptr = asm(current_ptr: current_ptr, current_cap: current_cap, new_cap: new_cap) {
+        let new_ptr = asm(
+            current_ptr: current_ptr,
+            current_cap: current_cap,
+            new_cap: new_cap,
+        ) {
             aloc new_cap;
             mcp hp current_ptr current_cap;
             hp: raw_ptr
@@ -28,7 +36,6 @@ fn increase_buffer_if_needed(current_ptr: raw_ptr, current_cap: u64, needed_capa
     } else {
         IncreaseBuffer::None
     }
-
 }
 
 impl Buffer {
@@ -48,7 +55,7 @@ impl Buffer {
     /// when needed.
     pub fn push_byte(ref mut self, val: u8) {
         let count = 1u64;
-        
+
         match increase_buffer_if_needed(self.buffer, self.cap, self.size + count) {
             IncreaseBuffer::None => {},
             IncreaseBuffer::NewBuffer((new_buffer, new_cap)) => {
@@ -68,7 +75,7 @@ impl Buffer {
     /// when needed.
     pub fn push_u64(ref mut self, val: u64) {
         let count = 8u64;
-        
+
         match increase_buffer_if_needed(self.buffer, self.cap, self.size + count) {
             IncreaseBuffer::None => {},
             IncreaseBuffer::NewBuffer((new_buffer, new_cap)) => {
@@ -76,7 +83,7 @@ impl Buffer {
                 self.cap = new_cap;
             }
         }
-        
+
         let ptr = self.buffer.add::<u8>(self.size);
         asm(ptr: ptr, val: val) {
             sw ptr val i0;
@@ -1267,10 +1274,8 @@ impl<T> AbiEncode for [T; 0]
 where
     T: AbiEncode,
 {
-    fn abi_encode(self, ref mut _buffer: Buffer) {
-    }
+    fn abi_encode(self, ref mut _buffer: Buffer) {}
 }
-
 
 // BEGIN ARRAY_ENCODE
 impl<T> AbiEncode for [T; 1]
