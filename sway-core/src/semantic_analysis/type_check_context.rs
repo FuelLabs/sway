@@ -572,10 +572,11 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace()
-                        .module(engines)
+			.root
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
+			    self.namespace().module(engines),
                             root_type_id,
                             None,
                             &qualified_call_path.clone().to_call_path(handler)?,
@@ -782,7 +783,6 @@ impl<'a> TypeCheckContext<'a> {
         let (decl, mod_path) = self
             .namespace()
             .root
-            .module
             .resolve_call_path_and_mod_path(
                 handler,
                 self.engines,
@@ -887,10 +887,10 @@ impl<'a> TypeCheckContext<'a> {
 
             self.namespace()
                 .root
-                .module
                 .resolve_call_path_and_root_type_id(
                     handler,
                     self.engines,
+		    &self.namespace().root.module,
                     root_type_id,
                     as_trait_opt,
                     &qualified_call_path.call_path,

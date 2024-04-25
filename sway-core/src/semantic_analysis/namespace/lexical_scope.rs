@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-use super::{module::ResolvedDeclaration, TraitMap};
+use super::{root::ResolvedDeclaration, TraitMap};
 
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
