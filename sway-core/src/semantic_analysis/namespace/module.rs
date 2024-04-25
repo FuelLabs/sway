@@ -1,19 +1,15 @@
 use crate::{
     engine_threading::Engines,
-    language::{
-        parsed::*,
-        ty,
-        Visibility,
-    },
+    language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     transform::to_parsed_lang,
-    Ident, Namespace
+    Ident, Namespace,
 };
 
 use super::{
     lexical_scope::{Items, LexicalScope, SymbolMap},
     root::Root,
-    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf
+    LexicalScopeId, ModuleName, ModulePath, ModulePathBuf,
 };
 
 use sway_ast::ItemConst;

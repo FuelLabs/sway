@@ -1,16 +1,13 @@
 use super::{
-    module::Module,
-    namespace::Namespace,
-    trait_map::TraitMap,
-    Ident, ResolvedTraitImplItem
+    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
 };
 use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
     language::{
-	CallPath,
-	parsed::*,
-	ty::{self, TyDecl, TyTraitItem}
+        parsed::*,
+        ty::{self, TyDecl, TyTraitItem},
+        CallPath,
     },
     namespace::ModulePath,
     TypeId, TypeInfo,
@@ -50,7 +47,6 @@ pub struct Root {
 }
 
 impl Root {
-
     ////// IMPORT //////
 
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
@@ -529,11 +525,12 @@ impl Root {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn resolve_call_path_and_root_type_id(
         &self,
         handler: &Handler,
         engines: &Engines,
-	module: &Module,
+        module: &Module,
         root_type_id: TypeId,
         mut as_trait: Option<CallPath>,
         call_path: &CallPath,
@@ -548,7 +545,7 @@ impl Root {
                 decl_opt = Some(self.resolve_associated_type_from_type_id(
                     handler,
                     engines,
-		    module,
+                    module,
                     ident,
                     type_id,
                     as_trait.clone(),
@@ -559,7 +556,7 @@ impl Root {
                 decl_opt = Some(self.resolve_associated_type(
                     handler,
                     engines,
-		    module,
+                    module,
                     ident,
                     decl,
                     as_trait.clone(),
@@ -572,7 +569,7 @@ impl Root {
             let decl = self.resolve_associated_type_from_type_id(
                 handler,
                 engines,
-		module,
+                module,
                 &call_path.suffix,
                 type_id,
                 as_trait,
@@ -584,7 +581,7 @@ impl Root {
             let decl = self.resolve_associated_item(
                 handler,
                 engines,
-		module,
+                module,
                 &call_path.suffix,
                 decl,
                 as_trait,
@@ -628,9 +625,9 @@ impl Root {
         let mut decl_opt = None;
         for ident in mod_path.iter() {
             if let Some(decl) = decl_opt {
-                decl_opt = Some(
-                    self.resolve_associated_type(handler, engines, &module, ident, decl, None, self_type)?,
-                );
+                decl_opt = Some(self.resolve_associated_type(
+                    handler, engines, module, ident, decl, None, self_type,
+                )?);
             } else {
                 match module.submodules.get(ident.as_str()) {
                     Some(ns) => {
@@ -638,36 +635,35 @@ impl Root {
                         current_mod_path.push(ident.clone());
                     }
                     None => {
-                        decl_opt = Some(self.resolve_symbol_helper(
-                            handler,
-                            engines,
-                            ident,
-                            module,
-                            self_type,
-                        )?);
+                        decl_opt = Some(
+                            self.resolve_symbol_helper(handler, engines, ident, module, self_type)?,
+                        );
                     }
                 }
             }
         }
         if let Some(decl) = decl_opt {
-            let decl =
-                self.resolve_associated_item(handler, engines, &module, symbol, decl, None, self_type)?;
+            let decl = self.resolve_associated_item(
+                handler, engines, module, symbol, decl, None, self_type,
+            )?;
             return Ok((decl, current_mod_path));
         }
 
-        self.module.lookup_submodule(handler, engines, mod_path)
+        self.module
+            .lookup_submodule(handler, engines, mod_path)
             .and_then(|module| {
-                let decl = self
-                    .resolve_symbol_helper(handler, engines, symbol, module, self_type)?;
+                let decl =
+                    self.resolve_symbol_helper(handler, engines, symbol, module, self_type)?;
                 Ok((decl, mod_path.to_vec()))
             })
     }
-
+ 
+    #[allow(clippy::too_many_arguments)]
     fn resolve_associated_type(
         &self,
         handler: &Handler,
         engines: &Engines,
-	module: &Module,
+        module: &Module,
         symbol: &Ident,
         decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
@@ -678,7 +674,7 @@ impl Root {
         self.resolve_associated_type_from_type_id(
             handler,
             engines,
-	    module,
+            module,
             symbol,
             engines
                 .te()
@@ -688,11 +684,12 @@ impl Root {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn resolve_associated_item(
         &self,
         handler: &Handler,
         engines: &Engines,
-	module: &Module,
+        module: &Module,
         symbol: &Ident,
         decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
@@ -703,7 +700,7 @@ impl Root {
         self.resolve_associated_item_from_type_id(
             handler,
             engines,
-	    module,
+            module,
             symbol,
             engines
                 .te()
@@ -747,11 +744,12 @@ impl Root {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn resolve_associated_type_from_type_id(
         &self,
         handler: &Handler,
         engines: &Engines,
-	module: &Module,
+        module: &Module,
         symbol: &Ident,
         type_id: TypeId,
         as_trait: Option<CallPath>,
@@ -763,11 +761,12 @@ impl Root {
         Ok(item_decl)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn resolve_associated_item_from_type_id(
         &self,
         handler: &Handler,
         engines: &Engines,
-	module: &Module,
+        module: &Module,
         symbol: &Ident,
         type_id: TypeId,
         as_trait: Option<CallPath>,
