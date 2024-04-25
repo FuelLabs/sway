@@ -530,7 +530,7 @@ impl Root {
         &self,
         handler: &Handler,
         engines: &Engines,
-        module: &Module,
+	module: &Module,
         root_type_id: TypeId,
         mut as_trait: Option<CallPath>,
         call_path: &CallPath,
@@ -545,7 +545,7 @@ impl Root {
                 decl_opt = Some(self.resolve_associated_type_from_type_id(
                     handler,
                     engines,
-                    module,
+		    module,
                     ident,
                     type_id,
                     as_trait.clone(),
@@ -569,7 +569,7 @@ impl Root {
             let decl = self.resolve_associated_type_from_type_id(
                 handler,
                 engines,
-                module,
+		module,
                 &call_path.suffix,
                 type_id,
                 as_trait,
@@ -581,7 +581,7 @@ impl Root {
             let decl = self.resolve_associated_item(
                 handler,
                 engines,
-                module,
+		module,
                 &call_path.suffix,
                 decl,
                 as_trait,
@@ -662,7 +662,7 @@ impl Root {
         &self,
         handler: &Handler,
         engines: &Engines,
-        module: &Module,
+	module: &Module,
         symbol: &Ident,
         decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
@@ -673,7 +673,7 @@ impl Root {
         self.resolve_associated_type_from_type_id(
             handler,
             engines,
-            module,
+	    module,
             symbol,
             engines
                 .te()
@@ -688,7 +688,7 @@ impl Root {
         &self,
         handler: &Handler,
         engines: &Engines,
-        module: &Module,
+	module: &Module,
         symbol: &Ident,
         decl: ResolvedDeclaration,
         as_trait: Option<CallPath>,
@@ -699,7 +699,7 @@ impl Root {
         self.resolve_associated_item_from_type_id(
             handler,
             engines,
-            module,
+	    module,
             symbol,
             engines
                 .te()
@@ -748,7 +748,7 @@ impl Root {
         &self,
         handler: &Handler,
         engines: &Engines,
-        module: &Module,
+	module: &Module,
         symbol: &Ident,
         type_id: TypeId,
         as_trait: Option<CallPath>,
@@ -765,7 +765,7 @@ impl Root {
         &self,
         handler: &Handler,
         engines: &Engines,
-        module: &Module,
+	module: &Module,
         symbol: &Ident,
         type_id: TypeId,
         as_trait: Option<CallPath>,
