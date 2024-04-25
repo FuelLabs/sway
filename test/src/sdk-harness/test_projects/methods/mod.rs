@@ -13,7 +13,7 @@ async fn run_methods_test() {
     let result = instance
         .methods()
         .test_function()
-        .with_tx_policies(TxPolicies::default().with_script_gas_limit(1250))
+        .with_tx_policies(TxPolicies::default().with_script_gas_limit(1329))
         .call()
         .await
         .unwrap();

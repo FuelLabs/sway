@@ -115,19 +115,23 @@ pub fn first_param() -> u64 {
 ///     assert(param != 0);
 /// }
 /// ```
-pub fn second_param<T>() -> T {
-    if __size_of::<T>() == 1 {
-        let v = frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<u64>();
-        return asm(v: v) {
-            v: T
-        };
-    }
+pub fn second_param() -> u64 {
+    frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read()
+}
 
-    if !is_reference_type::<T>() {
-        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<T>()
-    } else {
-        frame_ptr().add::<u64>(SECOND_PARAMETER_OFFSET).read::<raw_ptr>().read::<T>()
-    }
+/// Get the called method name from the current call frame.
+pub fn called_method() -> str {
+    use core::codec::decode_first_param;
+    decode_first_param::<str>()
+}
+
+/// Get the called arguments from the current call frame.
+pub fn called_args<T>() -> T 
+where
+    T: AbiDecode
+{
+    use core::codec::decode_second_param;
+    decode_second_param::<T>()
 }
 
 //  Accessing arbitrary call frames by pointer

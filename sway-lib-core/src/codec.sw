@@ -8,6 +8,29 @@ pub struct Buffer {
     size: u64,
 }
 
+enum IncreaseBuffer {
+    None: (),
+    NewBuffer: (raw_ptr, u64) // ptr, capacity
+}
+
+fn increase_buffer_if_needed(current_ptr: raw_ptr, current_cap: u64, needed_capacity: u64) -> IncreaseBuffer {
+    if current_cap <= needed_capacity {
+        // smallest buffer that is a multiple of the current one 
+        // that fits the needed capacity
+        let factor = needed_capacity / current_cap;
+        let new_cap = current_cap * (factor + 1);
+        let new_ptr = asm(current_ptr: current_ptr, current_cap: current_cap, new_cap: new_cap) {
+            aloc new_cap;
+            mcp hp current_ptr current_cap;
+            hp: raw_ptr
+        };
+        IncreaseBuffer::NewBuffer((new_ptr, new_cap))
+    } else {
+        IncreaseBuffer::None
+    }
+
+}
+
 impl Buffer {
     pub fn new() -> Self {
         let cap = 1024;
@@ -21,30 +44,44 @@ impl Buffer {
         }
     }
 
+    /// Push a byte into the buffer, increasing its size
+    /// when needed.
     pub fn push_byte(ref mut self, val: u8) {
-        let count = 1;
-        if self.cap >= self.size + count {
-            let ptr = self.buffer.add::<u8>(self.size);
-            asm(ptr: ptr, val: val) {
-                sb ptr val i0;
-            };
-            self.size += count;
-        } else {
-            __revert(123456789);
+        let count = 1u64;
+        
+        match increase_buffer_if_needed(self.buffer, self.cap, self.size + count) {
+            IncreaseBuffer::None => {},
+            IncreaseBuffer::NewBuffer((new_buffer, new_cap)) => {
+                self.buffer = new_buffer;
+                self.cap = new_cap;
+            }
         }
+
+        let ptr = self.buffer.add::<u8>(self.size);
+        asm(ptr: ptr, val: val) {
+            sb ptr val i0;
+        };
+        self.size += count;
     }
 
+    /// Push a u64 into the buffer, increasing its size
+    /// when needed.
     pub fn push_u64(ref mut self, val: u64) {
-        let count = 8;
-        if self.cap >= self.size + count {
-            let ptr = self.buffer.add::<u8>(self.size);
-            asm(ptr: ptr, val: val) {
-                sw ptr val i0;
-            };
-            self.size += count;
-        } else {
-            __revert(123456789);
+        let count = 8u64;
+        
+        match increase_buffer_if_needed(self.buffer, self.cap, self.size + count) {
+            IncreaseBuffer::None => {},
+            IncreaseBuffer::NewBuffer((new_buffer, new_cap)) => {
+                self.buffer = new_buffer;
+                self.cap = new_cap;
+            }
         }
+        
+        let ptr = self.buffer.add::<u8>(self.size);
+        asm(ptr: ptr, val: val) {
+            sw ptr val i0;
+        };
+        self.size += count;
     }
 }
 
@@ -111,6 +148,10 @@ impl BufferReader {
             gm r1 i3; // GET_VERIFYING_PREDICATE
             r1: u64
         };
+        Self::from_predicate_data_by_index(predicate_index)
+    }
+
+    pub fn from_predicate_data_by_index(predicate_index: u64) -> BufferReader {
         match __gtf::<u8>(predicate_index, 0x200) { // GTF_INPUT_TYPE
             0u8 => {
                 let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
@@ -5576,6 +5617,14 @@ where
     T: AbiDecode,
 {
     let mut buffer = BufferReader::from_predicate_data();
+    T::abi_decode(buffer)
+}
+
+pub fn decode_predicate_data_by_index<T>(index: u64) -> T
+where
+    T: AbiDecode,
+{
+    let mut buffer = BufferReader::from_predicate_data_by_index(index);
     T::abi_decode(buffer)
 }
 

@@ -1,4 +1,5 @@
 - ABI Super traits
+- AbiEncode buffer dynamic sizing
 - Better error message when the type used in the ABI is unknown/error
 - Better error message when main has impurity attributes
 - ContractCall intrinsic interaction effect was not setup correctly
@@ -13,3 +14,7 @@
 - disabled: should_pass/language/name_resolution_after_monomorphization 
 - disabled: should_pass/language/shadowing/shadowed_glob_imports 
 - disabled: should_pass/language/name_resolution_inside_intrinsics
+
+- std lib call frames methods changed a little bit
+- run external_proxy not working. I am assuming is the LDC bug. the String "double_value" has the correct length, but crazy data
+- increase_buffer_if_needed does not work as method
