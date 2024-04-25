@@ -34,8 +34,8 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.24.2", default-features = false }
-fuel-core-types = { version = "0.24.2", default-features = false }
+fuel-core-client = { version = "0.24.3", default-features = false }
+fuel-core-types = { version = "0.24.3", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
 fuel-asm = "0.48.0"
