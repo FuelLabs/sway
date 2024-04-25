@@ -1,10 +1,6 @@
 use crate::{
     engine_threading::Engines,
-    language::{
-        parsed::*,
-        ty,
-        Visibility,
-    },
+    language::{parsed::*, ty, Visibility},
     semantic_analysis::*,
     transform::to_parsed_lang,
     Ident, Namespace,
