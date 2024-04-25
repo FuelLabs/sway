@@ -175,7 +175,7 @@ pub(super) async fn run(
     let engines = Engines::default();
     let build_target = BuildTarget::default();
     let mut core_lib = compile_core(build_target, &engines, experimental);
-    
+
     // Create new initial namespace for every test by reusing the precompiled
     // standard libraries. The namespace, thus its root module, must have the
     // name set.
@@ -232,7 +232,7 @@ pub(super) async fn run(
                 ).with_experimental(sway_core::ExperimentalFlags {
                     new_encoding: experimental.new_encoding
                 });
-                
+
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.with_include_tests(true);
 
