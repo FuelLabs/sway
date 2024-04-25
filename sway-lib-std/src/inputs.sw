@@ -7,7 +7,6 @@ use ::alloc::alloc_bytes;
 use ::assert::assert;
 use ::asset_id::AssetId;
 use ::bytes::Bytes;
-use ::constants::BASE_ASSET_ID;
 use ::contract_id::ContractId;
 use ::option::Option::{self, *};
 use ::revert::revert;
@@ -256,11 +255,12 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 ///     assert(input_predicate_data == 100);
 /// }
 /// ```
-pub fn input_predicate_data<T>(index: u64) -> T {
-    match input_predicate_data_pointer(index) {
-        Some(d) => d.read::<T>(),
-        None => revert(0),
-    }
+pub fn input_predicate_data<T>(index: u64) -> T
+where
+    T: AbiDecode,
+{
+    use core::codec::decode_predicate_data_by_index;
+    decode_predicate_data_by_index::<T>(index)
 }
 
 /// Gets the AssetId of the input at `index`.
@@ -276,17 +276,17 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::BASE_ASSET_ID, inputs::input_asset_id};
+/// use std::inputs::input_asset_id;
 ///
 /// fn foo() {
 ///     let input_asset_id = input_asset_id(0);
-///     assert(input_asset_id.unwrap() == BASE_ASSET_ID);
+///     assert(input_asset_id.unwrap() == AssetId::base());
 /// }
 /// ```
 pub fn input_asset_id(index: u64) -> Option<AssetId> {
     match input_type(index) {
         Input::Coin => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
-        Input::Message => Some(BASE_ASSET_ID),
+        Input::Message => Some(AssetId::base()),
         Input::Contract => None,
     }
 }

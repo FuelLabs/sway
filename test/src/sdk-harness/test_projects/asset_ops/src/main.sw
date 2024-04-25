@@ -33,12 +33,12 @@ impl TestFuelCoin for Contract {
 
     fn force_transfer_coins(coins: u64, asset_id: b256, target: ContractId) {
         let asset_id = AssetId::from(asset_id);
-        force_transfer_to_contract(target, asset_id, coins);
+        transfer(Identity::ContractId(target), asset_id, coins);
     }
 
     fn transfer_coins_to_address(coins: u64, asset_id: b256, to: Address) {
         let asset_id = AssetId::from(asset_id);
-        transfer_to_address(to, asset_id, coins);
+        transfer(Identity::Address(to), asset_id, coins);
     }
 
     fn get_balance(asset_id: b256, target: ContractId) -> u64 {
@@ -47,11 +47,11 @@ impl TestFuelCoin for Contract {
     }
 
     fn mint_and_send_to_contract(amount: u64, to: ContractId, sub_id: b256) {
-        mint_to_contract(to, sub_id, amount);
+        mint_to(Identity::ContractId(to), sub_id, amount);
     }
 
     fn mint_and_send_to_address(amount: u64, to: Address, sub_id: b256) {
-        mint_to_address(to, sub_id, amount);
+        mint_to(Identity::Address(to), sub_id, amount);
     }
 
     fn generic_mint_to(amount: u64, to: Identity, sub_id: b256) {

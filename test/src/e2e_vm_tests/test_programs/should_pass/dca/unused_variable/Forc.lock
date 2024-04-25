@@ -1,3 +1,8 @@
 [[package]]
-name = 'unused_variable'
-source = 'member'
+name = "core"
+source = "path+from-root-1ADB9F465ACA9240"
+
+[[package]]
+name = "unused_variable"
+source = "member"
+dependencies = ["core"]

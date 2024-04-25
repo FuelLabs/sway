@@ -312,7 +312,20 @@ impl CallPath {
             let mut is_absolute = false;
 
             if let Some(use_synonym) = namespace.module_id(engines).read(engines, |m| {
-                m.current_items().use_synonyms.get(&self.suffix).cloned()
+                if m.current_items()
+                    .use_item_synonyms
+                    .contains_key(&self.suffix)
+                {
+                    m.current_items()
+                        .use_item_synonyms
+                        .get(&self.suffix)
+                        .cloned()
+                } else {
+                    m.current_items()
+                        .use_glob_synonyms
+                        .get(&self.suffix)
+                        .cloned()
+                }
             }) {
                 synonym_prefixes = use_synonym.0.clone();
                 is_absolute = true;

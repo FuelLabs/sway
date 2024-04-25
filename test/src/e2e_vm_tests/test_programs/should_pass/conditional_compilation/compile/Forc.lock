@@ -1,3 +1,8 @@
 [[package]]
 name = "compile"
 source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-562067C9B9733E2A"

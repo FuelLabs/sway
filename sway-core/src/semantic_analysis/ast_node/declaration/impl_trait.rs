@@ -813,6 +813,7 @@ fn type_check_trait_implementation(
                             name: Ident::new_with_override("Self".into(), Span::dummy()),
                             trait_constraints: VecSet(vec![]),
                             parent: None,
+                            is_from_type_parameter: false,
                         },
                         None,
                     ),

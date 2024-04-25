@@ -45,6 +45,7 @@ fn generic_enum_resolution() {
             name: generic_name.clone(),
             trait_constraints: VecSet(Vec::new()),
             parent: None,
+            is_from_type_parameter: false,
         },
         None,
     );

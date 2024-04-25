@@ -1,6 +1,7 @@
 // Add test modules here:
 
 mod abi_impl_methods_callable;
+mod asset_id;
 mod asset_ops;
 mod auth;
 mod block;
@@ -18,7 +19,6 @@ mod generics_in_abi;
 mod hashing;
 mod logging;
 mod low_level_call;
-mod low_level_call_bytes;
 mod messages;
 mod methods;
 mod option_field_order;

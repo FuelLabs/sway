@@ -383,11 +383,13 @@ impl<'a> UnifyCheck<'a> {
                             name: ln,
                             trait_constraints: ltc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                         UnknownGeneric {
                             name: rn,
                             trait_constraints: rtc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                     ) => ln == rn && rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
                     // any type can be coerced into a generic,
@@ -450,11 +452,13 @@ impl<'a> UnifyCheck<'a> {
                             name: _,
                             trait_constraints: ltc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                         UnknownGeneric {
                             name: _,
                             trait_constraints: rtc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                     ) => rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
 
@@ -498,11 +502,13 @@ impl<'a> UnifyCheck<'a> {
                         name: rn,
                         trait_constraints: rtc,
                         parent: _,
+                        is_from_type_parameter: _,
                     },
                     TypeInfo::UnknownGeneric {
                         name: en,
                         trait_constraints: etc,
                         parent: _,
+                        is_from_type_parameter: _,
                     },
                 ) => {
                     rn.as_str() == en.as_str()
