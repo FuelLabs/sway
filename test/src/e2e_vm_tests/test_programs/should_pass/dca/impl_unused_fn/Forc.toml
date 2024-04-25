@@ -6,4 +6,4 @@ name = "impl_unused_fn"
 implicit-std = false
 
 [dependencies]
-core = { path = "../../../../../../sway-lib-core" }
+core = { path = "../../../../../../../sway-lib-core" }
