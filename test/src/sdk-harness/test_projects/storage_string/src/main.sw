@@ -27,11 +27,8 @@ impl MyContract for Contract {
 
     #[storage(read)]
     fn get_string() -> Bytes {
-        __log(1);
         match storage.stored_string.read_slice() {
             Option::Some(string) => {
-                __log(2);
-                __log(string);
                 string.as_bytes()
             },
             Option::None => Bytes::new(),
