@@ -14,6 +14,7 @@ abi RunExternalTest {
 
 impl RunExternalTest for Contract {
     fn double_value(_foo: u64) -> u64 {
+        __log(1);
         run_external(TARGET)
     }
 

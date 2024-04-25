@@ -1,3 +1,4 @@
 category = "run"
 expected_result = { action = "revert", value = 0 }
+expected_result_new_encoding = { action = "revert", value = 0 }
 validate_abi = false

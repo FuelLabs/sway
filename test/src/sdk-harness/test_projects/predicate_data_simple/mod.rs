@@ -131,7 +131,7 @@ async fn valid_predicate_data_simple() {
         .unwrap();
 
     let receiver_address =
-        Address::from_str("0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c")
+        Address::from_str("0xd926978a28a565531a06cbf5fab5402d6ee2021e5a5dce2d2f7c61e5521be109")
             .unwrap();
     let (predicate_code, predicate_address, wallet, amount_to_predicate, asset_id) = setup().await;
 

@@ -304,7 +304,10 @@ dependencies = ["std"]
 [[package]]
 name = "storage_string"
 source = "member"
-dependencies = ["std"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "storage_vec_nested"

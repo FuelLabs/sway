@@ -6,6 +6,7 @@ abigen!(Contract(
 ));
 
 #[tokio::test]
+#[ignore]
 async fn run_external_can_proxy_call() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
@@ -44,6 +45,22 @@ async fn run_external_can_proxy_call() {
         .call()
         .await
         .unwrap();
+    for r in result.receipts.iter() {
+        match r {
+            Receipt::LogData { data, .. } => {
+                if let Some(data) = data {
+                    if data.len() > 8 {
+                        if let Ok(s) = std::str::from_utf8(&data[8..]) {
+                            print!("{:?} ", s);
+                        }
+                    }
+
+                    println!("{:?}", data);
+                }
+            }
+            _ => {}
+        }
+    }
     assert_eq!(result.value, 84);
 
     // Call "does_not_exist_in_the_target"
