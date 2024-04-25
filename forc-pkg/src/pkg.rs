@@ -2829,14 +2829,18 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
-    0 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
-    1 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
-    2 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
-    2 -> 1 \[ \]
-    2 -> 0 \[ \]
-    0 -> 1 \[ \]
+    0 \[ label = "core" shape = box URL = "some-prefix::/home/xunilrj/github/sway/sway-lib-core/Forc.toml"\]
+    1 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
+    2 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
+    3 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
+    3 -> 2 \[ \]
+    3 -> 0 \[ \]
+    3 -> 1 \[ \]
+    1 -> 2 \[ \]
+    1 -> 0 \[ \]
 \}
 "#).unwrap();
+        dbg!(&result);
         assert!(!re.find(result.as_str()).unwrap().is_empty());
     }
 
@@ -2845,12 +2849,15 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
-    0 [ label = "test_contract" shape = box ]
-    1 [ label = "test_lib" shape = box ]
-    2 [ label = "test_script" shape = box ]
-    2 -> 1 [ ]
-    2 -> 0 [ ]
-    0 -> 1 [ ]
+    0 [ label = "core" shape = box ]
+    1 [ label = "test_contract" shape = box ]
+    2 [ label = "test_lib" shape = box ]
+    3 [ label = "test_script" shape = box ]
+    3 -> 2 [ ]
+    3 -> 0 [ ]
+    3 -> 1 [ ]
+    1 -> 2 [ ]
+    1 -> 0 [ ]
 }
 "#;
         assert_eq!(expected, result);

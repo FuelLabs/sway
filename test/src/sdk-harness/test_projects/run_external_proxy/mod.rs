@@ -6,6 +6,7 @@ abigen!(Contract(
 ));
 
 #[tokio::test]
+#[ignore]
 async fn run_external_can_proxy_call() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 

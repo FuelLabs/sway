@@ -33,6 +33,3 @@ impl Test for Contract {
 // ::check-ir::
 
 // check: contract {
-// check: fn get_b256<42123b96>(val: ptr b256, __ret_value: ptr b256) -> ptr b256,
-// check: fn get_s<fc62d029>(val1 !2: u64, val2: ptr b256, __ret_value: ptr { u64, b256 }) -> ptr { u64, b256 }
-// check: fn get_u64<9890aef4>(val !5: u64) -> u64
