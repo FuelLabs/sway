@@ -104,7 +104,7 @@ fn test_b256_from_u256() {
 }
 
 #[test]
-fn test_u256_from_tuple() {
+fn test_b256_from_tuple() {
     use ::assert::assert;
 
     let b256_value = <b256 as From<(u64, u64, u64, u64)>>::from((1, 2, 3, 4));
