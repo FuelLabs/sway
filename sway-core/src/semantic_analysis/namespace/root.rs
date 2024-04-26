@@ -82,10 +82,10 @@ impl Root {
             .implemented_traits
             .extend(implemented_traits, engines);
         for symbol_and_decl in symbols_and_decls {
-            dst_mod.current_items_mut().use_glob_synonyms.insert(
-                symbol_and_decl.0,
-                (src.to_vec(), symbol_and_decl.1),
-            );
+            dst_mod
+                .current_items_mut()
+                .use_glob_synonyms
+                .insert(symbol_and_decl.0, (src.to_vec(), symbol_and_decl.1));
         }
 
         Ok(())
@@ -167,17 +167,19 @@ impl Root {
                 };
                 match alias {
                     Some(alias) => {
-			check_name_clash(&alias);
-			dst_mod.current_items_mut().use_item_synonyms.insert(
-			    alias.clone(),
-                            (Some(item.clone()), src.to_vec(), decl))
-                    },
-		    None => {
-			check_name_clash(&item);
-			dst_mod.current_items_mut().use_item_synonyms.insert(
-			    item.clone(),
-                            (None, src.to_vec(), decl))
-		    }
+                        check_name_clash(&alias);
+                        dst_mod
+                            .current_items_mut()
+                            .use_item_synonyms
+                            .insert(alias.clone(), (Some(item.clone()), src.to_vec(), decl))
+                    }
+                    None => {
+                        check_name_clash(item);
+                        dst_mod
+                            .current_items_mut()
+                            .use_item_synonyms
+                            .insert(item.clone(), (None, src.to_vec(), decl))
+                    }
                 };
             }
             None => {
@@ -244,8 +246,7 @@ impl Root {
                         // import it this way.
                         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                         let check_name_clash = |name| {
-                            if dst_mod.current_items().use_item_synonyms.contains_key(name)
-                            {
+                            if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
                                     name: name.into(),
                                 });
@@ -253,35 +254,35 @@ impl Root {
                         };
                         match alias {
                             Some(alias) => {
-				check_name_clash(&alias);
-				dst_mod.current_items_mut().use_item_synonyms.insert(
+                                check_name_clash(&alias);
+                                dst_mod.current_items_mut().use_item_synonyms.insert(
                                     alias.clone(),
                                     (
-					Some(variant_name.clone()),
-					src.to_vec(),
-					TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                        Some(variant_name.clone()),
+                                        src.to_vec(),
+                                        TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                             enum_ref: enum_ref.clone(),
                                             variant_name: variant_name.clone(),
                                             variant_decl_span: variant_decl.span.clone(),
-					}),
+                                        }),
                                     ),
-				);
-                            },
+                                );
+                            }
                             None => {
-				check_name_clash(&variant_name);
-				dst_mod.current_items_mut().use_item_synonyms.insert(
+                                check_name_clash(variant_name);
+                                dst_mod.current_items_mut().use_item_synonyms.insert(
                                     variant_name.clone(),
                                     (
-					None,
-					src.to_vec(),
-					TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                        None,
+                                        src.to_vec(),
+                                        TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                             enum_ref: enum_ref.clone(),
                                             variant_name: variant_name.clone(),
                                             variant_decl_span: variant_decl.span.clone(),
-					}),
+                                        }),
                                     ),
-				);
-			    }
+                                );
+                            }
                         };
                     } else {
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
@@ -640,9 +641,7 @@ impl Root {
                         current_mod_path.push(ident.clone());
                     }
                     None => {
-                        decl_opt = Some(
-                            self.resolve_symbol_helper(handler, ident, module)?,
-                        );
+                        decl_opt = Some(self.resolve_symbol_helper(handler, ident, module)?);
                     }
                 }
             }
@@ -656,8 +655,7 @@ impl Root {
         self.module
             .lookup_submodule(handler, engines, mod_path)
             .and_then(|module| {
-                let decl =
-                    self.resolve_symbol_helper(handler, symbol, module)?;
+                let decl = self.resolve_symbol_helper(handler, symbol, module)?;
                 Ok((decl, mod_path.to_vec()))
             })
     }
@@ -815,8 +813,7 @@ impl Root {
             return Ok(ResolvedDeclaration::Typed(decl.clone()));
         }
         // Check item imports
-        if let Some((_, _, decl)) = module.current_items().use_item_synonyms.get(symbol)
-        {
+        if let Some((_, _, decl)) = module.current_items().use_item_synonyms.get(symbol) {
             return Ok(ResolvedDeclaration::Typed(decl.clone()));
         }
         // Check glob imports

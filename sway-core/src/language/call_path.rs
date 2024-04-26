@@ -312,23 +312,23 @@ impl CallPath {
             let mut is_absolute = false;
 
             if let Some(mod_path) = namespace.module_id(engines).read(engines, |m| {
-		if let Some((_, path, _)) = m.current_items()
+                if let Some((_, path, _)) = m
+                    .current_items()
                     .use_item_synonyms
                     .get(&self.suffix)
                     .cloned()
-		{
-		    Some(path)
-                }
-		else if let Some((path, _)) = m.current_items()
+                {
+                    Some(path)
+                } else if let Some((path, _)) = m
+                    .current_items()
                     .use_glob_synonyms
                     .get(&self.suffix)
                     .cloned()
-		{
-		    Some(path)
-		}
-		else {
-		    None
-		}
+                {
+                    Some(path)
+                } else {
+                    None
+                }
             }) {
                 synonym_prefixes = mod_path.clone();
                 is_absolute = true;
