@@ -56,6 +56,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     //       In general, the question is why it does not use `memory_utils::compute_escaped_symbols`.
     //       My assumption is that it was written before `memory_utils::compute_escaped_symbols`
     //       got available.
+    //       See: https://github.com/FuelLabs/sway/issues/5924
     let mut escaping_uses = FxHashSet::<Symbol>::default();
 
     for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {

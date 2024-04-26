@@ -88,6 +88,7 @@ impl ReferredSymbols {
     //       checked access to either complete or incomplete symbols.
     //       This is a temporary convenience method until
     //       we decide case by case how to deal with incomplete set of symbols.
+    //       See: https://github.com/FuelLabs/sway/issues/5924
     pub fn any(self) -> FxIndexSet<Symbol> {
         match self {
             ReferredSymbols::Complete(symbols) | ReferredSymbols::Incomplete(symbols) => symbols,
