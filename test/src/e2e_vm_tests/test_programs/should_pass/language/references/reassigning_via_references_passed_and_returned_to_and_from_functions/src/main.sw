@@ -143,7 +143,7 @@ fn reference_to_generic() {
 
 #[inline(always)]
 fn reference_to_generic_test<T>()
-    where T: TestInstance + Eq
+    where T: AbiEncode + TestInstance + Eq
 {
     let mut x = T::new();
     let mut y = T::new();
@@ -186,7 +186,7 @@ fn reference_to_generic_not_inlined() {
 }
 
 fn generic_ref<T>(r_mut: &mut T, r_r_mut: & &mut T, r_r_r_mut: &mut & & mut T, old_value: T, new_value: T) -> (&mut T, & &mut T, &mut & &mut T)
-    where T: Eq
+    where T: AbiEncode + Eq
 {
     assert_eq(*r_mut, old_value);
     assert_eq(**r_r_mut, old_value);

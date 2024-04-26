@@ -206,6 +206,12 @@ impl TestInstance for raw_ptr {
     }
 }
 
+impl AbiEncode for raw_ptr {
+    fn abi_encode(self, ref mut buffer: Buffer) {
+        buffer.push_u64(asm(p: self) { p: u64 });
+    }
+}
+
 impl TestInstance for raw_slice {
     fn new() -> Self {
         let null_ptr = asm() { zero: raw_ptr };

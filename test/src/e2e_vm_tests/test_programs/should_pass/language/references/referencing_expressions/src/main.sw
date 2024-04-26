@@ -21,7 +21,7 @@ impl Eq for [Struct; 3] {
 // TODO-IG: Add tests for other expressions.
 
 #[inline(always)]
-fn if_expr<T>(input: u64, left: T, right: T) where T: Eq {
+fn if_expr<T>(input: u64, left: T, right: T) where T: AbiEncode + Eq {
     let mut x = if input > 42 {
         left
     } else {
@@ -97,7 +97,7 @@ fn assert_references<T>(r_x: &T, r_val: &T, r_mut_x: &mut T, r_mut_val: &mut T, 
 }
 
 #[inline(never)]
-fn if_expr_not_inlined<T>(input: u64, left: T, right: T) where T: Eq {
+fn if_expr_not_inlined<T>(input: u64, left: T, right: T) where T: AbiEncode + Eq {
     if_expr(input, left, right)
 }
 

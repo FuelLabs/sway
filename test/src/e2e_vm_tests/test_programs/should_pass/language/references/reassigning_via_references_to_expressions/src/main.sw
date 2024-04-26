@@ -15,7 +15,7 @@ const USE_NON_MUT_REF_MUT_PARAMETER: u8 = 2;
 // All tests are arranged in a way that the value requested via `to_use`
 // parameter is changed from `T::new()` to `T::different()`.
 // This function asserts that only the requested change is properly done.
-fn check_changes<T>(to_use: u8, local: T, non_mut_ref_mut: T) where T: TestInstance + Eq {
+fn check_changes<T>(to_use: u8, local: T, non_mut_ref_mut: T) where T: AbiEncode + TestInstance + Eq {
     if to_use == USE_LOCAL_VARIABLE {
         assert_eq(local, T::different());
         assert_eq(non_mut_ref_mut, T::new());
@@ -29,7 +29,7 @@ fn check_changes<T>(to_use: u8, local: T, non_mut_ref_mut: T) where T: TestInsta
 }
 
 #[inline(always)]
-fn if_expr<T>(to_use: u8, r_m: &mut T) where T: TestInstance + Eq {
+fn if_expr<T>(to_use: u8, r_m: &mut T) where T: AbiEncode + TestInstance + Eq {
     let mut x = T::new();
 
     assert_eq(*r_m, T::new());
@@ -48,7 +48,7 @@ fn if_expr<T>(to_use: u8, r_m: &mut T) where T: TestInstance + Eq {
 }
 
 #[inline(always)]
-fn test_if_expr<T>(to_use: u8) where T: TestInstance + Eq {
+fn test_if_expr<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
     let mut t = T::new();
     if_expr(to_use, &mut t);
 
@@ -58,22 +58,22 @@ fn test_if_expr<T>(to_use: u8) where T: TestInstance + Eq {
 }
 
 #[inline(never)]
-fn test_if_expr_not_inlined<T>(to_use: u8) where T: TestInstance + Eq {
+fn test_if_expr_not_inlined<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
     test_if_expr::<T>(to_use)
 }
 
 #[inline(always)]
-fn inlined_function<T>(r_m: &mut T) -> &mut T where T: TestInstance + Eq {
+fn inlined_function<T>(r_m: &mut T) -> &mut T where T: AbiEncode + TestInstance + Eq {
     r_m
 }
 
 #[inline(never)]
-fn non_inlined_function<T>(r_m: &mut T) -> &mut T where T: TestInstance + Eq {
+fn non_inlined_function<T>(r_m: &mut T) -> &mut T where T: AbiEncode + TestInstance + Eq {
     r_m
 }
 
 #[inline(always)]
-fn function_call<T>(to_use: u8, r_m: &mut T) where T: TestInstance + Eq {
+fn function_call<T>(to_use: u8, r_m: &mut T) where T: AbiEncode + TestInstance + Eq {
     let mut x = T::new();
 
     assert_eq(*r_m, T::new());
@@ -108,7 +108,7 @@ fn function_call<T>(to_use: u8, r_m: &mut T) where T: TestInstance + Eq {
 }
 
 #[inline(always)]
-fn test_function_call<T>(to_use: u8) where T: TestInstance + Eq {
+fn test_function_call<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
     let mut t = T::new();
     function_call(to_use, &mut t);
 
@@ -118,7 +118,7 @@ fn test_function_call<T>(to_use: u8) where T: TestInstance + Eq {
 }
 
 #[inline(never)]
-fn test_function_call_not_inlined<T>(to_use: u8) where T: TestInstance + Eq {
+fn test_function_call_not_inlined<T>(to_use: u8) where T: AbiEncode + TestInstance + Eq {
     test_function_call::<T>(to_use)
 }
 
