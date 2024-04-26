@@ -160,7 +160,7 @@ jobs:
         env:
           PACKAGE_NAMES: "fuel-core-client" # multiple packages can be specified delimeted with `,`.
         run: |
-          ./scripts/check-sdk-harness-version.sh
+          .github/workflows/scripts/check-sdk-harness-version.sh
 
   build-mdbook:
     runs-on: buildjet-8vcpu-ubuntu-2204
