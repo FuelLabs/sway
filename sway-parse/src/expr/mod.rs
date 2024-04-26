@@ -288,12 +288,13 @@ fn parse_reassignment(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Exp
             Ok(assignable) => assignable,
             Err(expr) => {
                 let span = expr.span();
-                return Err(
-                    parser.emit_error_with_span(ParseErrorKind::UnassignableExpression {
+                return Err(parser.emit_error_with_span(
+                    ParseErrorKind::UnassignableExpression {
                         erroneous_expression_kind: expr.friendly_name(),
                         erroneous_expression_span: span,
-                    }, expr_span)
-                );
+                    },
+                    expr_span,
+                ));
             }
         };
         let expr = Box::new(parse_reassignment(parser, ctx.not_statement())?);

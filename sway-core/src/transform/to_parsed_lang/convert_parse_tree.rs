@@ -13,7 +13,18 @@ use crate::{
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
-    assignable::ElementAccess, attribute::Annotated, expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant}, ty::TyTupleDescriptor, AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents, CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction, Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType, MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType, PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot, Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause
+    assignable::ElementAccess,
+    attribute::Annotated,
+    expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
+    ty::TyTupleDescriptor,
+    AbiCastArgs, AngleBrackets, AsmBlock, Assignable, AttributeDecl, Braces, CodeBlockContents,
+    CommaToken, DoubleColonToken, Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor,
+    FnArg, FnArgs, FnSignature, GenericArgs, GenericParams, IfCondition, IfExpr, Instruction,
+    Intrinsic, Item, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemKind,
+    ItemStorage, ItemStruct, ItemTrait, ItemTraitItem, ItemTypeAlias, ItemUse, LitInt, LitIntType,
+    MatchBranchKind, Module, ModuleKind, Parens, PathExpr, PathExprSegment, PathType,
+    PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
+    Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
 };
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
@@ -4260,8 +4271,13 @@ fn assignable_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = assignable.span();
     let expression = match assignable {
-        Assignable::ElementAccess(element_access) => element_access_to_expression(context, handler, engines, element_access, span)?,
-        Assignable::Deref { star_token: _, expr } => Expression {
+        Assignable::ElementAccess(element_access) => {
+            element_access_to_expression(context, handler, engines, element_access, span)?
+        }
+        Assignable::Deref {
+            star_token: _,
+            expr,
+        } => Expression {
             kind: ExpressionKind::Deref(Box::new(expr_to_expression(
                 context, handler, engines, *expr,
             )?)),
@@ -4278,7 +4294,7 @@ fn assignable_to_expression(
         element_access: ElementAccess,
         span: Span,
     ) -> Result<Expression, ErrorEmitted> {
-         let expression = match element_access {
+        let expression = match element_access {
             ElementAccess::Var(name) => Expression {
                 kind: ExpressionKind::Variable(name),
                 span,
@@ -4286,7 +4302,11 @@ fn assignable_to_expression(
             ElementAccess::Index { target, arg } => Expression {
                 kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
                     prefix: Box::new(element_access_to_expression(
-                        context, handler, engines, *target, span.clone()
+                        context,
+                        handler,
+                        engines,
+                        *target,
+                        span.clone(),
                     )?),
                     index: Box::new(expr_to_expression(
                         context,
@@ -4329,7 +4349,11 @@ fn assignable_to_expression(
                     _ => Expression {
                         kind: ExpressionKind::Subfield(SubfieldExpression {
                             prefix: Box::new(element_access_to_expression(
-                                context, handler, engines, *target, span.clone()
+                                context,
+                                handler,
+                                engines,
+                                *target,
+                                span.clone(),
                             )?),
                             field_to_access: name,
                         }),
@@ -4346,14 +4370,19 @@ fn assignable_to_expression(
                 let index = match usize::try_from(field) {
                     Ok(index) => index,
                     Err(..) => {
-                        let error = ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
+                        let error =
+                            ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
                         return Err(handler.emit_err(error.into()));
                     }
                 };
                 Expression {
                     kind: ExpressionKind::TupleIndex(TupleIndexExpression {
                         prefix: Box::new(element_access_to_expression(
-                            context, handler, engines, *target, span.clone()
+                            context,
+                            handler,
+                            engines,
+                            *target,
+                            span.clone(),
                         )?),
                         index,
                         index_span: field_span,
@@ -4374,12 +4403,10 @@ fn assignable_to_reassignment_target(
     assignable: Assignable,
 ) -> Result<ReassignmentTarget, ErrorEmitted> {
     let expression = assignable_to_expression(context, handler, engines, assignable)?;
-    Ok(
-        match expression.kind {
-            ExpressionKind::Deref(_) => ReassignmentTarget::Deref(Box::new(expression)),
-            _ => ReassignmentTarget::ElementAccess(Box::new(expression)),
-        }
-    )
+    Ok(match expression.kind {
+        ExpressionKind::Deref(_) => ReassignmentTarget::Deref(Box::new(expression)),
+        _ => ReassignmentTarget::ElementAccess(Box::new(expression)),
+    })
 }
 
 fn generic_args_to_type_arguments(

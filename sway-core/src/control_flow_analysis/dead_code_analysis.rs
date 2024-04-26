@@ -4,7 +4,8 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{
-            self, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl
+            self, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl, TraitDecl, TyAstNode,
+            TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
         CallPath, Visibility,
     },
@@ -1956,13 +1957,16 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
         }
         Reassignment(typed_reassignment) => {
             match &typed_reassignment.lhs {
-                ty::TyReassignmentTarget::ElementAccess { base_name, indices, .. } => {
-                    if let Some(variable_entry) = graph
-                        .namespace
-                        .get_variable(base_name)
-                    {
+                ty::TyReassignmentTarget::ElementAccess {
+                    base_name, indices, ..
+                } => {
+                    if let Some(variable_entry) = graph.namespace.get_variable(base_name) {
                         for leaf in leaves {
-                            graph.add_edge(*leaf, variable_entry.variable_decl_ix, "variable reassignment LHS".into());
+                            graph.add_edge(
+                                *leaf,
+                                variable_entry.variable_decl_ix,
+                                "variable reassignment LHS".into(),
+                            );
                         }
                     };
 
@@ -1981,7 +1985,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                             )?;
                         }
                     }
-                },
+                }
                 ty::TyReassignmentTarget::Deref(exp) => {
                     connect_expression(
                         engines,
@@ -1994,7 +1998,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                         exp.span.clone(),
                         options,
                     )?;
-                },
+                }
             };
 
             connect_expression(

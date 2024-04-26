@@ -121,7 +121,9 @@ pub enum CompileError {
         duplicate: Span,
         duplicate_is_struct_field: bool,
     },
-    #[error("Assignment to an immutable variable. Variable \"{decl_name} is not declared as mutable.")]
+    #[error(
+        "Assignment to an immutable variable. Variable \"{decl_name} is not declared as mutable."
+    )]
     AssignmentToNonMutableVariable {
         /// Variable name pointing to the name in the variable declaration.
         decl_name: Ident,

@@ -22,7 +22,10 @@ use crate::{
     decl_engine::*,
     language::{
         parsed::*,
-        ty::{self, GetDeclIdent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant, TyImplItem, TyReassignmentTarget, VariableMutability},
+        ty::{
+            self, GetDeclIdent, TyCodeBlock, TyDecl, TyExpression, TyExpressionVariant, TyImplItem,
+            TyReassignmentTarget, VariableMutability,
+        },
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -2001,62 +2004,102 @@ impl ty::TyExpression {
 
         let (lhs, expected_rhs_type) = match lhs {
             ReassignmentTarget::Deref(dereference_exp) => {
-                let internal_compiler_error = || Result::<Self, _>::Err(handler.emit_err(CompileError::Internal(
+                let internal_compiler_error = || {
+                    Result::<Self, _>::Err(handler.emit_err(CompileError::Internal(
                         "Left-hand side of the reassignment must be dereferencing.",
-                        dereference_exp.span.clone()
-                    )));
+                        dereference_exp.span.clone(),
+                    )))
+                };
 
-                let Expression { kind: ExpressionKind::Deref(reference_exp), .. } = *dereference_exp else {
+                let Expression {
+                    kind: ExpressionKind::Deref(reference_exp),
+                    ..
+                } = *dereference_exp
+                else {
                     return internal_compiler_error();
                 };
 
                 let reference_exp_span = reference_exp.span();
-                let deref_exp = Self::type_check_deref(handler, ctx.by_ref(), reference_exp, reference_exp_span.clone())?;
+                let deref_exp = Self::type_check_deref(
+                    handler,
+                    ctx.by_ref(),
+                    reference_exp,
+                    reference_exp_span.clone(),
+                )?;
 
-                let TyExpression { expression: TyExpressionVariant::Deref(reference_exp), .. } = &deref_exp else {
+                let TyExpression {
+                    expression: TyExpressionVariant::Deref(reference_exp),
+                    ..
+                } = &deref_exp
+                else {
                     return internal_compiler_error();
                 };
 
-                let TypeInfo::Ref { to_mutable_value, .. } = *type_engine.get(reference_exp.return_type) else {
+                let TypeInfo::Ref {
+                    to_mutable_value, ..
+                } = *type_engine.get(reference_exp.return_type)
+                else {
                     return internal_compiler_error();
                 };
 
                 if !to_mutable_value {
-                    let (decl_reference_name, decl_reference_rhs, decl_reference_type) = match &reference_exp.expression {
-                        TyExpressionVariant::VariableExpression { name, ..} => {
-                            let var_decl = ctx.namespace().resolve_symbol_typed(
-                                handler,
-                                engines,
-                                name,
-                                ctx.self_type(),
-                            )?;
+                    let (decl_reference_name, decl_reference_rhs, decl_reference_type) =
+                        match &reference_exp.expression {
+                            TyExpressionVariant::VariableExpression { name, .. } => {
+                                let var_decl = ctx.namespace().resolve_symbol_typed(
+                                    handler,
+                                    engines,
+                                    name,
+                                    ctx.self_type(),
+                                )?;
 
-                            let TyDecl::VariableDecl(var_decl) = var_decl else {
-                                return Err(handler.emit_err(CompileError::Internal(
-                                    "Dereferenced expression must be a variable.",
-                                    reference_exp_span
-                                )));
+                                let TyDecl::VariableDecl(var_decl) = var_decl else {
+                                    return Err(handler.emit_err(CompileError::Internal(
+                                        "Dereferenced expression must be a variable.",
+                                        reference_exp_span,
+                                    )));
+                                };
 
-                            };
+                                let reference_type = engines
+                                    .help_out(
+                                        type_engine.get_unaliased_type_id(var_decl.return_type),
+                                    )
+                                    .to_string();
 
-                            let reference_type = engines.help_out(type_engine.get_unaliased_type_id(var_decl.return_type)).to_string();
+                                (
+                                    Some(var_decl.name),
+                                    Some(var_decl.body.span),
+                                    reference_type,
+                                )
+                            }
+                            _ => (
+                                None,
+                                None,
+                                engines
+                                    .help_out(
+                                        type_engine
+                                            .get_unaliased_type_id(reference_exp.return_type),
+                                    )
+                                    .to_string(),
+                            ),
+                        };
 
-                            (Some(var_decl.name), Some(var_decl.body.span), reference_type)
-                        },
-                        _ => (None, None, engines.help_out(type_engine.get_unaliased_type_id(reference_exp.return_type)).to_string()),
-                    };
-
-                    return Err(handler.emit_err(CompileError::AssignmentViaNonMutableReference {
-                        decl_reference_name,
-                        decl_reference_rhs,
-                        decl_reference_type,
-                        span: reference_exp_span
-                    }));
+                    return Err(
+                        handler.emit_err(CompileError::AssignmentViaNonMutableReference {
+                            decl_reference_name,
+                            decl_reference_rhs,
+                            decl_reference_type,
+                            span: reference_exp_span,
+                        }),
+                    );
                 }
 
                 let expected_rhs_type = deref_exp.return_type;
-                (TyReassignmentTarget::Deref(Box::new(deref_exp)), expected_rhs_type)
-            },
+                (
+                    TyReassignmentTarget::Deref(Box::new(deref_exp)),
+                    expected_rhs_type,
+                )
+            }
             ReassignmentTarget::ElementAccess(path) => {
                 let lhs_span = path.span.clone();
                 let mut expr = path;
@@ -2089,7 +2132,8 @@ impl ty::TyExpression {
                                     break (name, variable_decl.body.return_type);
                                 }
                                 TyDecl::ConstantDecl(constant_decl) => {
-                                    let constant_decl = engines.de().get_constant(&constant_decl.decl_id);
+                                    let constant_decl =
+                                        engines.de().get_constant(&constant_decl.decl_id);
                                     return Err(handler.emit_err(
                                         CompileError::AssignmentToConstantOrConfigurable {
                                             decl_name: constant_decl.name().clone(),
@@ -2103,10 +2147,10 @@ impl ty::TyExpression {
                                         CompileError::DeclAssignmentTargetCannotBeAssignedTo {
                                             decl_name: decl.get_decl_ident(),
                                             decl_friendly_type_name: decl.friendly_type_name(),
-                                            lhs_span
-                                        }
+                                            lhs_span,
+                                        },
                                     ));
-                                },
+                                }
                             }
                         }
                         ExpressionKind::Subfield(SubfieldExpression {
@@ -2133,7 +2177,11 @@ impl ty::TyExpression {
                             let ctx = ctx
                                 .by_ref()
                                 .with_help_text("Array index must be of type \"u64\".")
-                                .with_type_annotation(type_engine.insert(engines, type_info_u64, None));
+                                .with_type_annotation(type_engine.insert(
+                                    engines,
+                                    type_info_u64,
+                                    None,
+                                ));
                             let typed_index =
                                 ty::TyExpression::type_check(handler, ctx, index.as_ref().clone())
                                     .unwrap_or_else(|err| {
@@ -2154,33 +2202,40 @@ impl ty::TyExpression {
                 };
 
                 let indices = indices.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) = ctx
-                    .namespace()
-                    .module_id(engines)
-                    .read(engines, |m| {
-                        m.current_items()
-                            .find_subfield_type(
-                                handler,
-                                ctx.engines(),
-                                ctx.namespace(),
-                                &base_name,
-                                &indices,
-                            )
+                let (ty_of_field, _ty_of_parent) =
+                    ctx.namespace().module_id(engines).read(engines, |m| {
+                        m.current_items().find_subfield_type(
+                            handler,
+                            ctx.engines(),
+                            ctx.namespace(),
+                            &base_name,
+                            &indices,
+                        )
                     })?;
 
-                (TyReassignmentTarget::ElementAccess { base_name, base_type, indices }, ty_of_field)
+                (
+                    TyReassignmentTarget::ElementAccess {
+                        base_name,
+                        base_type,
+                        indices,
+                    },
+                    ty_of_field,
+                )
             }
         };
 
-        let ctx = ctx.with_type_annotation(expected_rhs_type).with_help_text("");
+        let ctx = ctx
+            .with_type_annotation(expected_rhs_type)
+            .with_help_text("");
         let rhs_span = rhs.span();
         let rhs = ty::TyExpression::type_check(handler, ctx, rhs)
             .unwrap_or_else(|err| ty::TyExpression::error(err, rhs_span, engines));
 
         Ok(ty::TyExpression {
-            expression: ty::TyExpressionVariant::Reassignment(Box::new(
-                ty::TyReassignment { lhs, rhs },
-            )),
+            expression: ty::TyExpressionVariant::Reassignment(Box::new(ty::TyReassignment {
+                lhs,
+                rhs,
+            })),
             return_type: type_engine.insert(engines, TypeInfo::Tuple(Vec::new()), None),
             span,
         })
@@ -2612,7 +2667,7 @@ mod tests {
             ),
             ExperimentalFlags {
                 new_encoding: false,
-            }
+            },
         )
     }
 
@@ -2759,7 +2814,7 @@ mod tests {
             ),
             ExperimentalFlags {
                 new_encoding: false,
-            }
+            },
         );
         let (errors, warnings) = handler.consume();
         assert!(comp_res.is_ok());

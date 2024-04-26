@@ -26,7 +26,7 @@ pub struct TyReassignment {
 
 #[derive(Clone, Debug)]
 pub enum TyReassignmentTarget {
-    /// An [TyExpression] representing a single variable or a path 
+    /// An [TyExpression] representing a single variable or a path
     /// to a part of an aggregate.
     /// E.g.:
     ///  - `my_variable`
@@ -56,22 +56,24 @@ impl PartialEqWithEngines for TyReassignmentTarget {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let type_engine = ctx.engines().te();
         match (self, other) {
-            (TyReassignmentTarget::Deref(l), TyReassignmentTarget::Deref(r)) => {
-                (*l).eq(r, ctx)
-            },
+            (TyReassignmentTarget::Deref(l), TyReassignmentTarget::Deref(r)) => (*l).eq(r, ctx),
             (
-                TyReassignmentTarget::ElementAccess { base_name: l_name, base_type: l_type, indices: l_indices },
-                TyReassignmentTarget::ElementAccess { base_name: r_name, base_type: r_type, indices: r_indices }
+                TyReassignmentTarget::ElementAccess {
+                    base_name: l_name,
+                    base_type: l_type,
+                    indices: l_indices,
+                },
+                TyReassignmentTarget::ElementAccess {
+                    base_name: r_name,
+                    base_type: r_type,
+                    indices: r_indices,
+                },
             ) => {
-                l_name == r_name &&
-                (
-                    l_type == r_type ||
-                    type_engine
-                        .get(*l_type)
-                        .eq(&type_engine.get(*r_type), ctx)
-                ) &&
-                l_indices.eq(r_indices, ctx)
-            },
+                l_name == r_name
+                    && (l_type == r_type
+                        || type_engine.get(*l_type).eq(&type_engine.get(*r_type), ctx))
+                    && l_indices.eq(r_indices, ctx)
+            }
             _ => false,
         }
     }
@@ -89,21 +91,22 @@ impl HashWithEngines for TyReassignmentTarget {
         let type_engine = engines.te();
         match self {
             TyReassignmentTarget::Deref(exp) => exp.hash(state, engines),
-            TyReassignmentTarget::ElementAccess { base_name, base_type, indices } => {
+            TyReassignmentTarget::ElementAccess {
+                base_name,
+                base_type,
+                indices,
+            } => {
                 base_name.hash(state);
                 type_engine.get(*base_type).hash(state, engines);
                 indices.hash(state, engines);
-            },
+            }
         };
     }
 }
 
 impl HashWithEngines for TyReassignment {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let TyReassignment {
-            lhs,
-            rhs
-        } = self;
+        let TyReassignment { lhs, rhs } = self;
 
         lhs.hash(state, engines);
         rhs.hash(state, engines);
@@ -180,7 +183,7 @@ impl TypeCheckAnalysis for TyReassignmentTarget {
                 .iter()
                 .map(|i| i.type_check_analyze(handler, ctx))
                 .collect::<Result<Vec<()>, _>>()
-                .map(|_| ())?
+                .map(|_| ())?,
         };
         Ok(())
     }
@@ -211,7 +214,7 @@ impl TypeCheckFinalization for TyReassignmentTarget {
                 .iter_mut()
                 .map(|i| i.type_check_finalize(handler, ctx))
                 .collect::<Result<Vec<()>, _>>()
-                .map(|_| ())?
+                .map(|_| ())?,
         };
         Ok(())
     }
@@ -233,9 +236,13 @@ impl TypeCheckFinalization for TyReassignment {
 impl UpdateConstantExpression for TyReassignmentTarget {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         match self {
-            TyReassignmentTarget::Deref(exp) => exp.update_constant_expression(engines, implementing_type),
+            TyReassignmentTarget::Deref(exp) => {
+                exp.update_constant_expression(engines, implementing_type)
+            }
             TyReassignmentTarget::ElementAccess { indices, .. } => {
-                indices.iter_mut().for_each(|i| i.update_constant_expression(engines, implementing_type));
+                indices
+                    .iter_mut()
+                    .for_each(|i| i.update_constant_expression(engines, implementing_type));
             }
         };
     }
@@ -378,9 +385,12 @@ impl TypeCheckFinalization for ProjectionKind {
 impl UpdateConstantExpression for ProjectionKind {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
         use ProjectionKind::*;
-        #[allow(clippy::single_match)] // To keep it consistent and same looking as the above implementations.
+        #[allow(clippy::single_match)]
+        // To keep it consistent and same looking as the above implementations.
         match self {
-            ArrayIndex { index, .. } => index.update_constant_expression(engines, implementing_type),
+            ArrayIndex { index, .. } => {
+                index.update_constant_expression(engines, implementing_type)
+            }
             _ => (),
         }
     }

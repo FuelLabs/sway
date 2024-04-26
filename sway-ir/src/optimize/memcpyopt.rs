@@ -6,7 +6,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_gep_symbol, get_referred_symbol, get_gep_referred_symbols, get_referred_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols, Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME
+    get_gep_referred_symbols, get_gep_symbol, get_referred_symbol, get_referred_symbols,
+    memory_utils, AnalysisResults, Block, Context, EscapedSymbols, Function, InstOp, Instruction,
+    IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value, ValueDatum,
+    ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";

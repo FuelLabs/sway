@@ -1473,7 +1473,11 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::Reassignment(reassignment) => {
                 let target = match &reassignment.lhs {
                     TyReassignmentTarget::Deref(exp) => format!("{:?}", engines.help_out(exp)),
-                    TyReassignmentTarget::ElementAccess { base_name, base_type: _, indices } => {
+                    TyReassignmentTarget::ElementAccess {
+                        base_name,
+                        base_type: _,
+                        indices,
+                    } => {
                         let mut target = base_name.to_string();
                         for index in indices {
                             match index {
@@ -1494,7 +1498,10 @@ impl DebugWithEngines for TyExpressionVariant {
                     }
                 };
 
-                format!("reassignment to {target} = {:?}", engines.help_out(&reassignment.rhs))
+                format!(
+                    "reassignment to {target} = {:?}",
+                    engines.help_out(&reassignment.rhs)
+                )
             }
             TyExpressionVariant::ImplicitReturn(exp) => {
                 format!("implicit return {:?}", engines.help_out(&**exp))

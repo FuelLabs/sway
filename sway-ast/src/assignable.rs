@@ -20,7 +20,7 @@ pub enum Assignable {
     Deref {
         star_token: StarToken,
         expr: Box<Expr>,
-    }
+    },
 }
 
 #[derive(Clone, Debug, Serialize)]

@@ -335,7 +335,7 @@ pub struct RefExpression {
 
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
-    /// An [Expression] representing a single variable or a path 
+    /// An [Expression] representing a single variable or a path
     /// to a part of an aggregate.
     /// E.g.:
     ///  - `my_variable`

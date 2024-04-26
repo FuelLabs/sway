@@ -59,7 +59,9 @@ impl Symbol {
 pub fn get_gep_referred_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
     match get_symbols(context, val, true) {
         ReferredSymbols::Complete(symbols) => symbols,
-        _ => unreachable!("In the case of GEP access, the set of returned symbols is always complete."),
+        _ => unreachable!(
+            "In the case of GEP access, the set of returned symbols is always complete."
+        ),
     }
 }
 
@@ -88,8 +90,7 @@ impl ReferredSymbols {
     //       we decide case by case how to deal with incomplete set of symbols.
     pub fn any(self) -> FxIndexSet<Symbol> {
         match self {
-            ReferredSymbols::Complete(symbols)
-            | ReferredSymbols::Incomplete(symbols) => symbols,
+            ReferredSymbols::Complete(symbols) | ReferredSymbols::Incomplete(symbols) => symbols,
         }
     }
 }
@@ -136,7 +137,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
         visited: &mut FxHashSet<Value>,
         val: Value,
         gep_only: bool,
-        is_complete: &mut bool
+        is_complete: &mut bool,
     ) {
         fn get_argument_symbols(
             context: &Context,
@@ -144,7 +145,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
             visited: &mut FxHashSet<Value>,
             arg: BlockArgument,
             gep_only: bool,
-            is_complete: &mut bool
+            is_complete: &mut bool,
         ) {
             if arg.block.get_label(context) == "entry" {
                 symbols.insert(Symbol::Arg(arg));
@@ -152,7 +153,9 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
                 arg.block
                     .pred_iter(context)
                     .map(|pred| arg.get_val_coming_from(context, pred).unwrap())
-                    .for_each(|v| get_symbols_rec(context, symbols, visited, v, gep_only, is_complete))
+                    .for_each(|v| {
+                        get_symbols_rec(context, symbols, visited, v, gep_only, is_complete)
+                    })
             }
         }
 
@@ -179,41 +182,67 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
             ValueDatum::Instruction(Instruction {
                 op: InstOp::IntToPtr(int_value, _),
                 ..
-            }) if !gep_only => { // Ignore this path if only GEP chain is requested.
+            }) if !gep_only => {
+                // Ignore this path if only GEP chain is requested.
                 match context.values[int_value.0].value {
                     ValueDatum::Instruction(Instruction {
                         op: InstOp::Load(loaded_from),
                         ..
-                    }) => get_symbols_rec(context, symbols, visited, loaded_from, gep_only, is_complete),
+                    }) => get_symbols_rec(
+                        context,
+                        symbols,
+                        visited,
+                        loaded_from,
+                        gep_only,
+                        is_complete,
+                    ),
                     ValueDatum::Instruction(Instruction {
                         op: InstOp::PtrToInt(ptr_value, _),
                         ..
-                    }) => get_symbols_rec(context, symbols, visited, ptr_value, gep_only, is_complete),
-                    ValueDatum::Argument(arg) => get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete),
+                    }) => {
+                        get_symbols_rec(context, symbols, visited, ptr_value, gep_only, is_complete)
+                    }
+                    ValueDatum::Argument(arg) => {
+                        get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete)
+                    }
                     // In other cases, e.g., getting the integer address from an unsafe pointer
                     // arithmetic, or as a function result, etc. we bail out and mark the
                     // collection as not being guaranteed to be a complete set of all referred symbols.
                     _ => {
                         *is_complete = false;
-                    },
+                    }
                 }
             }
             // In case of converting pointer to int for references and raw pointers,
             // we consider the pointed symbols to be reachable from the `ptr_value`.
-            ValueDatum::Instruction(Instruction { op: InstOp::PtrToInt(ptr_value, _), .. },) if !gep_only => get_symbols_rec(context, symbols, visited, ptr_value, gep_only, is_complete),
-            ValueDatum::Argument(arg) => get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete),
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::PtrToInt(ptr_value, _),
+                ..
+            }) if !gep_only => {
+                get_symbols_rec(context, symbols, visited, ptr_value, gep_only, is_complete)
+            }
+            ValueDatum::Argument(arg) => {
+                get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete)
+            }
             _ if !gep_only => {
                 // Same as above, we cannot track the value up the chain and cannot guarantee
                 // that the value is not coming from some of the symbols.
                 *is_complete = false;
-            },
+            }
             // In the case of GEP only access, the returned set is always complete.
             _ => (),
         }
     }
 
     let mut is_complete = true;
-    get_symbols_rec(context, &mut symbols, &mut visited, val, gep_only, &mut is_complete);
+    get_symbols_rec(
+        context,
+        &mut symbols,
+        &mut visited,
+        val,
+        gep_only,
+        &mut is_complete,
+    );
 
     if is_complete {
         ReferredSymbols::Complete(symbols)
@@ -251,9 +280,12 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
     let mut result = FxHashSet::default();
 
     let add_from_val = |result: &mut FxHashSet<Symbol>, val: &Value| {
-        get_referred_symbols(context, *val).any().iter().for_each(|s| {
-            result.insert(*s);
-        });
+        get_referred_symbols(context, *val)
+            .any()
+            .iter()
+            .for_each(|s| {
+                result.insert(*s);
+            });
     };
 
     for (_block, inst) in function.instruction_iter(context) {

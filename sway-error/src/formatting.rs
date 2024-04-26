@@ -2,7 +2,9 @@
 //! diagnostic messages.
 
 use std::{
-    borrow::Cow, cmp, fmt::{self, Display}
+    borrow::Cow,
+    cmp,
+    fmt::{self, Display},
 };
 
 use sway_types::{SourceEngine, SourceId};
@@ -231,14 +233,16 @@ pub(crate) fn singular_plural<'a>(count: usize, singular: &'a str, plural: &'a s
 /// some_lib::Struct<A, B> -> Struct<A, B>
 pub(crate) fn call_path_suffix_with_args(call_path: &String) -> Cow<String> {
     match call_path.rfind(':') {
-        Some(index) if index < call_path.len() - 1 => Cow::Owned(call_path.split_at(index + 1).1.to_string()),
+        Some(index) if index < call_path.len() - 1 => {
+            Cow::Owned(call_path.split_at(index + 1).1.to_string())
+        }
         _ => Cow::Borrowed(call_path),
     }
 }
- 
+
 /// Returns indefinite article "a" or "an" that corresponds to the `word`,
 /// or an empty string if the indefinite article do not fit to the word.
-/// 
+///
 /// Note that the function does not recognize plurals and assumes that the
 /// `word` is in singular.
 ///
@@ -266,9 +270,9 @@ pub(crate) fn ascii_sentence_case(text: &String) -> Cow<String> {
 /// Returns the first line in `text`, up to the first `\n` if the `text` contains
 /// multiple lines, and optionally adds ellipses "..." to the end of the line
 /// if `with_ellipses` is true.
-/// 
+///
 /// If the `text` is a single-line string, returns the original `text`.
-/// 
+///
 /// Suitable for showing just the first line of a piece of code.
 /// E.g., if `text` is:
 ///   if x {
@@ -283,12 +287,6 @@ pub(crate) fn first_line(text: &str, with_ellipses: bool) -> Cow<str> {
         Cow::Borrowed(text)
     } else {
         let index_of_new_line = text.find('\n').unwrap();
-        Cow::Owned(
-            text[..index_of_new_line].to_string() + if with_ellipses {
-                "..."
-            } else {
-                ""
-            }
-        )
+        Cow::Owned(text[..index_of_new_line].to_string() + if with_ellipses { "..." } else { "" })
     }
 }

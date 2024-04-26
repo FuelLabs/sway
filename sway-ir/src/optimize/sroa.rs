@@ -3,9 +3,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    combine_indices, compute_escaped_symbols, get_loaded_ptr_values, get_stored_ptr_values,
-    get_gep_referred_symbols, pointee_size, AnalysisResults, Constant, ConstantValue, Context, Function, InstOp,
-    IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
+    combine_indices, compute_escaped_symbols, get_gep_referred_symbols, get_loaded_ptr_values,
+    get_stored_ptr_values, pointee_size, AnalysisResults, Constant, ConstantValue, Context,
+    Function, InstOp, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value,
 };
 
 pub const SROA_NAME: &str = "sroa";
@@ -424,8 +424,8 @@ fn profitability(context: &Context, function: Function, candidates: &mut FxHashS
         } = inst.get_instruction(context).unwrap().op
         {
             if pointee_size(context, dst_val_ptr) > 200 {
-                for sym in
-                    get_gep_referred_symbols(context, dst_val_ptr).union(&get_gep_referred_symbols(context, src_val_ptr))
+                for sym in get_gep_referred_symbols(context, dst_val_ptr)
+                    .union(&get_gep_referred_symbols(context, src_val_ptr))
                 {
                     candidates.remove(sym);
                 }
