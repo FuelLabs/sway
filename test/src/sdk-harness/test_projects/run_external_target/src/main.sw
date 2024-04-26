@@ -6,6 +6,7 @@ abi RunExternalTest {
 
 impl RunExternalTest for Contract {
     fn double_value(foo: u64) -> u64 {
+        __log(2);
         foo * 2
     }
 }
@@ -13,6 +14,10 @@ impl RunExternalTest for Contract {
 #[fallback]
 fn fallback() -> u64 {
     use std::call_frames::*;
-    let foo = second_param::<u64>();
+    __log(3);
+    __log(called_method());
+    __log("double_value");
+    __log(called_method() == "double_value");
+    let foo = called_args::<u64>();
     foo * 3
 }

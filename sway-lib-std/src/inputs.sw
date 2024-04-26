@@ -255,11 +255,12 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 ///     assert(input_predicate_data == 100);
 /// }
 /// ```
-pub fn input_predicate_data<T>(index: u64) -> T {
-    match input_predicate_data_pointer(index) {
-        Some(d) => d.read::<T>(),
-        None => revert(0),
-    }
+pub fn input_predicate_data<T>(index: u64) -> T
+where
+    T: AbiDecode,
+{
+    use core::codec::decode_predicate_data_by_index;
+    decode_predicate_data_by_index::<T>(index)
 }
 
 /// Gets the AssetId of the input at `index`.

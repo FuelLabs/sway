@@ -1,14 +1,8 @@
 category = "run"
 expected_result = { action = "return", value = 8193 }
+expected_result_new_encoding = { action = "return_data", value = "0000000000002001" }
 validate_abi = true
 expected_warnings = 26
-
-#check: $()pub struct S { x : u64, y : u64, }
-#nextln: $()This struct field is never accessed.
-
-#check: $()pub struct S { x : u64, y : u64, }
-#nextln: $()This struct field is never accessed.
-#nextln: $()pub enum Enum
 
 #check: $()pub enum Enum
 #nextln: $()This enum is never used.

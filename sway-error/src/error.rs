@@ -488,6 +488,7 @@ pub enum CompileError {
     UnconstrainedGenericParameter { ty: String, span: Span },
     #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
     TraitConstraintNotSatisfied {
+        type_id: usize, // Used to filter errors in method application type check.
         ty: String,
         trait_name: String,
         span: Span,
@@ -945,8 +946,12 @@ pub enum CompileError {
     FallbackFnsAreContractOnly { span: Span },
     #[error("Fallback functions cannot have parameters")]
     FallbackFnsCannotHaveParameters { span: Span },
-    #[error("Could not generate the entry method because one of the arguments does not implement AbiEncode/AbiDecode")]
+    #[error("Could not generate the entry method. See errors above for more details.")]
     CouldNotGenerateEntry { span: Span },
+    #[error("Missing `core` in dependencies.")]
+    CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
+    CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1153,6 +1158,8 @@ impl Spanned for CompileError {
             FallbackFnsAreContractOnly { span } => span.clone(),
             FallbackFnsCannotHaveParameters { span } => span.clone(),
             CouldNotGenerateEntry { span } => span.clone(),
+            CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
         }
     }
 }
