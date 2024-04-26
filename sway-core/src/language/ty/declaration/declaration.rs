@@ -779,7 +779,7 @@ impl TyDecl {
             TypeAliasDecl(_) => "type alias",
         }
     }
-    
+
     pub fn friendly_type_name_with_acronym(&self) -> &'static str {
         match self.friendly_type_name() {
             "abi" => "ABI",

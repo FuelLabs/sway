@@ -2146,7 +2146,8 @@ impl ty::TyExpression {
                                     return Err(handler.emit_err(
                                         CompileError::DeclAssignmentTargetCannotBeAssignedTo {
                                             decl_name: decl.get_decl_ident(),
-                                            decl_friendly_type_name: decl.friendly_type_name_with_acronym(),
+                                            decl_friendly_type_name: decl
+                                                .friendly_type_name_with_acronym(),
                                             lhs_span,
                                         },
                                     ));
