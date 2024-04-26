@@ -550,7 +550,7 @@ impl ty::TyExpression {
             Some(a) => {
                 let err = handler.emit_err(CompileError::NotAVariable {
                     name: name.clone(),
-                    what_it_is: a.friendly_type_name(),
+                    what_it_is: a.friendly_type_name_with_acronym(),
                     span,
                 });
                 ty::TyExpression::error(err, name.span(), engines)
@@ -1641,7 +1641,7 @@ impl ty::TyExpression {
                     _ => {
                         return Err(handler.emit_err(CompileError::NotAnAbi {
                             span: abi_name.span(),
-                            actually_is: abi.friendly_type_name(),
+                            actually_is: abi.friendly_type_name_with_acronym(),
                         }));
                     }
                 };
@@ -1675,7 +1675,7 @@ impl ty::TyExpression {
             a => {
                 return Err(handler.emit_err(CompileError::NotAnAbi {
                     span: abi_name.span(),
-                    actually_is: a.friendly_type_name(),
+                    actually_is: a.friendly_type_name_with_acronym(),
                 }));
             }
         };
@@ -2146,7 +2146,7 @@ impl ty::TyExpression {
                                     return Err(handler.emit_err(
                                         CompileError::DeclAssignmentTargetCannotBeAssignedTo {
                                             decl_name: decl.get_decl_ident(),
-                                            decl_friendly_type_name: decl.friendly_type_name(),
+                                            decl_friendly_type_name: decl.friendly_type_name_with_acronym(),
                                             lhs_span,
                                         },
                                     ));

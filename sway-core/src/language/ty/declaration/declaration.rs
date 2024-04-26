@@ -752,8 +752,14 @@ impl TyDecl {
         }
     }
 
-    /// Friendly type name string used for error reporting,
+    /// Friendly type name string used for various reporting,
     /// which consists of the type name of the declaration AST node.
+    ///
+    /// Note that all friendly type names are lowercase.
+    /// This is also the case for acronyms like ABI.
+    /// For contexts in which acronyms need to be uppercase, like
+    /// e.g., error reporting, use `friendly_type_name_with_acronym`
+    /// instead.
     pub fn friendly_type_name(&self) -> &'static str {
         use TyDecl::*;
         match self {
@@ -766,11 +772,18 @@ impl TyDecl {
             EnumDecl(_) => "enum",
             EnumVariantDecl(_) => "enum variant",
             ImplTrait(_) => "impl trait",
-            AbiDecl(_) => "ABI",
+            AbiDecl(_) => "abi",
             GenericTypeForFunctionScope(_) => "generic type parameter",
             ErrorRecovery(_, _) => "error",
             StorageDecl(_) => "contract storage",
             TypeAliasDecl(_) => "type alias",
+        }
+    }
+    
+    pub fn friendly_type_name_with_acronym(&self) -> &'static str {
+        match self.friendly_type_name() {
+            "abi" => "ABI",
+            friendly_name => friendly_name,
         }
     }
 
