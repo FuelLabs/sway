@@ -5,7 +5,7 @@ use contract_with_type_aliases_abi::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x9d76ecbf446c30ef659efd1157d67d156de02b1e6c2ac2f9c744125571efa229;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xe76956a072778977582fc3abae7701bcee170d6573fa4197df6243f726e6f7cb;
+const CONTRACT_ID = 0xbd2ab800338002ff56708e5ca457e678a714b25b93031bcd0e7a352212c0affc;
 
 fn main() {
     let caller = abi(MyContract, CONTRACT_ID);
