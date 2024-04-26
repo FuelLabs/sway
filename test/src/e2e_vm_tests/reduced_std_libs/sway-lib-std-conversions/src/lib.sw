@@ -12,6 +12,7 @@ pub mod alloc;
 pub mod iterator;
 pub mod vec;
 pub mod bytes;
+pub mod u128;
 pub mod primitive_conversions;
 pub mod array_conversions;
 pub mod bytes_conversions;
