@@ -191,7 +191,7 @@ pub struct RealizedAbstractInstructionSet {
 }
 
 impl RealizedAbstractInstructionSet {
-    pub(crate) fn to_allocated_ops(self) -> Vec<AllocatedOp> {
+    pub(crate) fn allocated_ops(self) -> Vec<AllocatedOp> {
         self.ops
             .into_iter()
             .map(
