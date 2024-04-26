@@ -141,6 +141,45 @@ jobs:
       - name: Run the formatter against all sway projects and fail if any of them panic
         run: scripts/formatter/forc-fmt-check-panic.sh
 
+  check-sdk-harness-test-suite-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install toml-cli
+        run: cargo install toml-cli
+
+      - name: Read and compare versions
+        env:
+          PACKAGE_NAMES: "fuel-core-client, fuel-core"
+          PATH1: "./test/Cargo.toml"
+          PATH2: "./test/src/sdk-harness/Cargo.toml"
+        run: |
+          IFS=',' read -ra PACKAGES <<< "$PACKAGE_NAMES"
+          mismatch=0
+          for PACKAGE in "${PACKAGES[@]}"; do
+            VERSION_FIRST=$(toml get ${{ env.PATH1 }} "dependencies.$PACKAGE.version")
+            VERSION_SECOND=$(toml get ${{ env.PATH2 }} "dependencies.$PACKAGE.version")
+            echo "$PACKAGE Version - First: $VERSION_FIRST, Second: $VERSION_SECOND"
+            if [ "$VERSION_FIRST" != "$VERSION_SECOND" ]; then
+              echo "Version mismatch for $PACKAGE: First: $VERSION_FIRST, Second: $VERSION_SECOND"
+              mismatch=1
+            fi
+          done
+          if [ $mismatch -ne 0 ]; then
+            echo "Version mismatch between fuel-core used in sdk-harness and test suite, this will cause problems if two versions are incompatible or it might simply cause invalid/outdated test suite.
+            If you are bumping fuel-core versions used in sway repo, please also use same version in sdk-harness."
+            exit 1
+          else
+            echo "All specified package versions match."
+
   build-mdbook:
     runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
