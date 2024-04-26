@@ -1164,6 +1164,10 @@ impl TypeInfo {
         matches!(self, TypeInfo::Array(_, _))
     }
 
+    pub fn is_contract(&self) -> bool {
+        matches!(self, TypeInfo::Contract)
+    }
+
     pub fn is_struct(&self) -> bool {
         matches!(self, TypeInfo::Struct(_))
     }

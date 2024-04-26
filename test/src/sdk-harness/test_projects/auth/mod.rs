@@ -123,7 +123,7 @@ async fn can_get_predicate_address() {
 
     // Setup Predciate
     let hex_predicate_address: &str =
-        "0xbe3bb2b74e46443274836cfb0097ebf5a27d50b20da10df2ebf9cfe7cd61260b";
+        "0x01e9cb3d189e429b8c25dd7e96bbc01d36b02a51dd05874eab7142a04516aeb1";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);

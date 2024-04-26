@@ -10,15 +10,11 @@ use ::identity::Identity;
 use ::revert::revert;
 use ::outputs::{Output, output_amount, output_count, output_type};
 
-/// Mint `amount` coins of the current contract's `asset_id` and transfer them
-/// to `to` by calling either `force_transfer_to_contract` or
-/// `transfer_to_address`, depending on the type of `Identity`.
+/// Mint `amount` coins of the current contract's `asset_id` and transfer them to `to` by calling `transfer()`.
 ///
 /// # Additional Information
 ///
-/// If the `to` Identity is a contract, this will transfer coins to the contract even with no way to retrieve them
-/// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-/// the **_PERMANENT LOSS OF COINS_** if not used with care.
+/// If the `to` Identity is a contract, this will transfer coins to the contract even with no way to retrieve them (i.e: no withdrawal functionality on the receiving contract), possibly leading to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// # Arguments
 ///
@@ -43,60 +39,6 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
     transfer(to, AssetId::new(ContractId::this(), sub_id), amount);
 }
 
-/// Mint `amount` coins of the current contract's `asset_id` and send them
-/// UNCONDITIONALLY to the contract at `to`.
-///
-/// # Additional Information
-///
-/// This will transfer coins to a contract even with no way to retrieve them
-/// (i.e: no withdrawal functionality on the receiving contract), possibly leading to
-/// the **_PERMANENT LOSS OF COINS_** if not used with care.
-///
-/// # Arguments
-///
-/// * `to`: [ContractId] - The recipient contract.
-/// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
-/// * `amount`: [u64] - The amount of coins to mint.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::{constants::ZERO_B256, asset::mint_to_contract};
-///
-/// fn foo() {
-///     let to = ContractId::from(ZERO_B256);
-///     mint_to_contract(to, ZERO_B256, 500);
-/// }
-/// ```
-pub fn mint_to_contract(to: ContractId, sub_id: SubId, amount: u64) {
-    mint(sub_id, amount);
-    force_transfer_to_contract(to, AssetId::new(ContractId::this(), sub_id), amount);
-}
-
-/// Mint `amount` coins of the current contract's `asset_id` and send them to
-/// the Address `to`.
-///
-/// # Arguments
-///
-/// * `to`: [Address] - The recipient address.
-/// * `sub_id`: [SubId] - The sub identifier of the asset which to mint.
-/// * `amount`: [u64] - The amount of coins to mint.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::{constants::ZERO_B256, asset::mint_to_address};
-///
-/// fn foo() {
-///     let to = Address::from(ZERO_B256);
-///     mint_to_address(to, ZERO_B256, 500);
-/// }
-/// ```
-pub fn mint_to_address(to: Address, sub_id: SubId, amount: u64) {
-    mint(sub_id, amount);
-    transfer_to_address(to, AssetId::new(ContractId::this(), sub_id), amount);
-}
-
 /// Mint `amount` coins of the current contract's `sub_id`. The newly minted assets are owned by the current contract.
 ///
 /// # Arguments
@@ -119,7 +61,11 @@ pub fn mint(sub_id: SubId, amount: u64) {
     }
 }
 
-/// Burn `amount` coins of the current contract's `sub_id`. Burns them from the balance of the current contract.
+/// Burn `amount` coins of the current contract's `sub_id`. This function burns them from the balance of the current contract.
+///
+/// # Additional Information
+///
+/// To burn coins, they must be sent or owned by the contract in the transaction this function is called.
 ///
 /// # Arguments
 ///
@@ -145,15 +91,11 @@ pub fn burn(sub_id: SubId, amount: u64) {
     }
 }
 
-/// Transfer `amount` coins of the type `asset_id` and send them
-/// to `to` by calling either `force_transfer_to_contract` or
-/// `transfer_to_address`, depending on the type of `Identity`.
+/// Transfer `amount` coins of the type `asset_id` and send them to `to`.
 ///
 /// # Additional Information
 ///
-/// If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them
-/// (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// to the **_PERMANENT LOSS OF COINS_** if not used with care.
+/// If the `to` Identity is a contract this may transfer coins to the contract even with no way to retrieve them (i.e. no withdrawal functionality on receiving contract), possibly leading to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// # Arguments
 ///
@@ -186,14 +128,11 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
     };
 }
 
-/// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to
-/// the contract at `to`.
+/// UNCONDITIONAL transfer of `amount` coins of type `asset_id` to the contract at `to`.
 ///
 /// # Additional Information
 ///
-/// This will transfer coins to a contract even with no way to retrieve them
-/// (i.e. no withdrawal functionality on receiving contract), possibly leading
-/// to the **_PERMANENT LOSS OF COINS_** if not used with care.
+/// This will transfer coins to a contract even with no way to retrieve them (i.e. no withdrawal functionality on receiving contract), possibly leading to the **_PERMANENT LOSS OF COINS_** if not used with care.
 ///
 /// # Arguments
 ///
@@ -216,14 +155,13 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 ///     force_transfer_to_contract(to_contract_id, AssetId::base(), 500);
 /// }
 /// ```
-pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
+fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
     asm(r1: amount, r2: asset_id, r3: to.bits()) {
         tr r3 r1 r2;
     }
 }
 
-/// Transfer `amount` coins of type `asset_id` and send them to
-/// the address `to`.
+/// Transfer `amount` coins of type `asset_id` and send them to the address `to`.
 ///
 /// # Arguments
 ///
@@ -247,7 +185,7 @@ pub fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64
 ///     transfer_to_address(to_address, AssetId::base(), 500);
 /// }
 /// ```
-pub fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
+fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
     // maintain a manual index as we only have `while` loops in sway atm:
     let mut index = 0;
 

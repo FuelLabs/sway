@@ -7,14 +7,14 @@ use std::constants::DEFAULT_SUB_ID;
 use test_fuel_coin_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const FUEL_COIN_CONTRACT_ID = 0x27447d931b1c2c0eaf94aa9ffd1c1ea09298ee23a632937accdac91947a502a0;
+const FUEL_COIN_CONTRACT_ID = 0x9e84e7e3006c94d5e23545829dbc926f50f90c6809c6e599ecddbf9a119e8104;
 #[cfg(experimental_new_encoding = true)]
-const FUEL_COIN_CONTRACT_ID = 0xecd6eeff9cfd449b038e8b9d5025b7f58eb7959af26b1d84636aab641ecf8ebf;
+const FUEL_COIN_CONTRACT_ID = 0xce6ae40e4e24b52d0f6046923b4ac59ed6899a8f590c86994def3e200f9ea7ec;
 
 #[cfg(experimental_new_encoding = false)]
 const BALANCE_CONTRACT_ID = 0x3b8cb681056f61a41e138b8884d7e3bb9332fbd7a8e38e3e0b0ada766cabfa4e;
 #[cfg(experimental_new_encoding = true)]
-const BALANCE_CONTRACT_ID = 0xf14fd5b5d028dd6c0db49803f886deb2b1dc87de092857795d77c8a04a0926ad;
+const BALANCE_CONTRACT_ID = 0xdcd79a58e8c7f562009109211e8855c023eb91d3d387ba9477e505e6a6643893;
 
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;
