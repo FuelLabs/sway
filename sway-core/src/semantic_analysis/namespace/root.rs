@@ -80,10 +80,9 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
+            .extend(implemented_traits, engines);
         for symbol_and_decl in symbols_and_decls {
             dst_mod.current_items_mut().use_glob_synonyms.insert(
-                // TODO: No difference made between imported and declared items
                 symbol_and_decl.0,
                 (src.to_vec(), symbol_and_decl.1),
             );
@@ -161,25 +160,24 @@ impl Root {
                 }
                 // no matter what, import it this way though.
                 let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-                let add_synonym = |name| {
-                    if let Some((_, _)) = dst_mod.current_items().use_item_synonyms.get(name) {
+                let check_name_clash = |name| {
+                    if let Some((_, _, _)) = dst_mod.current_items().use_item_synonyms.get(name) {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
-                    dst_mod.current_items_mut().use_item_synonyms.insert(
-                        // TODO: No difference made between imported and declared items
-                        name.clone(),
-                        (src.to_vec(), decl),
-                    );
                 };
                 match alias {
                     Some(alias) => {
-                        add_synonym(&alias);
-                        dst_mod
-                            .current_items_mut()
-                            .use_aliases
-                            .insert(alias.as_str().to_string(), item.clone()); // TODO: No difference made between imported and declared items
-                    }
-                    None => add_synonym(item),
+			check_name_clash(&alias);
+			dst_mod.current_items_mut().use_item_synonyms.insert(
+			    alias.clone(),
+                            (Some(item.clone()), src.to_vec(), decl))
+                    },
+		    None => {
+			check_name_clash(&item);
+			dst_mod.current_items_mut().use_item_synonyms.insert(
+			    item.clone(),
+                            (None, src.to_vec(), decl))
+		    }
                 };
             }
             None => {
@@ -194,7 +192,7 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(impls_to_insert, engines); // TODO: No difference made between imported and declared items
+            .extend(impls_to_insert, engines);
 
         Ok(())
     }
@@ -245,37 +243,45 @@ impl Root {
                     {
                         // import it this way.
                         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-                        let mut add_synonym = |name| {
-                            if let Some((_, _)) =
-                                dst_mod.current_items().use_item_synonyms.get(name)
+                        let check_name_clash = |name| {
+                            if dst_mod.current_items().use_item_synonyms.contains_key(name)
                             {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
                                     name: name.into(),
                                 });
                             }
-                            dst_mod.current_items_mut().use_item_synonyms.insert(
-                                // TODO: No difference made between imported and declared items
-                                name.clone(),
-                                (
-                                    src.to_vec(),
-                                    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                        enum_ref: enum_ref.clone(),
-                                        variant_name: variant_name.clone(),
-                                        variant_decl_span: variant_decl.span.clone(),
-                                    }),
-                                ),
-                            );
                         };
                         match alias {
                             Some(alias) => {
-                                add_synonym(&alias);
-                                dst_mod
-                                    .current_items_mut()
-                                    .use_aliases
-                                    .insert(alias.as_str().to_string(), variant_name.clone());
-                                // TODO: No difference made between imported and declared items
-                            }
-                            None => add_synonym(variant_name),
+				check_name_clash(&alias);
+				dst_mod.current_items_mut().use_item_synonyms.insert(
+                                    alias.clone(),
+                                    (
+					Some(variant_name.clone()),
+					src.to_vec(),
+					TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                            enum_ref: enum_ref.clone(),
+                                            variant_name: variant_name.clone(),
+                                            variant_decl_span: variant_decl.span.clone(),
+					}),
+                                    ),
+				);
+                            },
+                            None => {
+				check_name_clash(&variant_name);
+				dst_mod.current_items_mut().use_item_synonyms.insert(
+                                    variant_name.clone(),
+                                    (
+					None,
+					src.to_vec(),
+					TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                            enum_ref: enum_ref.clone(),
+                                            variant_name: variant_name.clone(),
+                                            variant_decl_span: variant_decl.span.clone(),
+					}),
+                                    ),
+				);
+			    }
                         };
                     } else {
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
@@ -345,7 +351,6 @@ impl Root {
                         // import it this way.
                         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                         dst_mod.current_items_mut().use_glob_synonyms.insert(
-                            // TODO: No difference made between imported and declared items
                             variant_name.clone(),
                             (
                                 src.to_vec(),
@@ -403,7 +408,7 @@ impl Root {
         for (symbol, (_, decl)) in src_mod.current_items().use_glob_synonyms.iter() {
             all_symbols_and_decls.push((symbol.clone(), decl.clone()));
         }
-        for (symbol, (_, decl)) in src_mod.current_items().use_item_synonyms.iter() {
+        for (symbol, (_, _, decl)) in src_mod.current_items().use_item_synonyms.iter() {
             all_symbols_and_decls.push((symbol.clone(), decl.clone()));
         }
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
@@ -429,7 +434,7 @@ impl Root {
             path
         };
 
-        for (symbol, (mod_path, decl)) in use_item_synonyms {
+        for (symbol, (_, mod_path, decl)) in use_item_synonyms {
             symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
         }
         for (symbol, (mod_path, decl)) in use_glob_synonyms {
@@ -440,7 +445,7 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
+            .extend(implemented_traits, engines);
 
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_mod
@@ -636,7 +641,7 @@ impl Root {
                     }
                     None => {
                         decl_opt = Some(
-                            self.resolve_symbol_helper(handler, engines, ident, module, self_type)?,
+                            self.resolve_symbol_helper(handler, ident, module)?,
                         );
                     }
                 }
@@ -652,7 +657,7 @@ impl Root {
             .lookup_submodule(handler, engines, mod_path)
             .and_then(|module| {
                 let decl =
-                    self.resolve_symbol_helper(handler, engines, symbol, module, self_type)?;
+                    self.resolve_symbol_helper(handler, symbol, module)?;
                 Ok((decl, mod_path.to_vec()))
             })
     }
@@ -802,28 +807,17 @@ impl Root {
     fn resolve_symbol_helper(
         &self,
         handler: &Handler,
-        engines: &Engines,
         symbol: &Ident,
         module: &Module,
-        self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        let true_symbol = module
-            .current_items()
-            .use_aliases
-            .get(symbol.as_str())
-            .unwrap_or(symbol);
         // Check locally declared items. Any name clash with imports will have already been reported as an error.
-        if let Some(decl) = module.current_items().symbols.get(true_symbol) {
+        if let Some(decl) = module.current_items().symbols.get(symbol) {
             return Ok(ResolvedDeclaration::Typed(decl.clone()));
         }
         // Check item imports
-        if let Some((_, decl @ ty::TyDecl::EnumVariantDecl { .. })) =
-            module.current_items().use_item_synonyms.get(symbol)
+        if let Some((_, _, decl)) = module.current_items().use_item_synonyms.get(symbol)
         {
             return Ok(ResolvedDeclaration::Typed(decl.clone()));
-        }
-        if let Some((src_path, _)) = module.current_items().use_item_synonyms.get(symbol) {
-            return self.resolve_symbol(handler, engines, src_path, true_symbol, self_type);
         }
         // Check glob imports
         if let Some((_, decl)) = module.current_items().use_glob_synonyms.get(symbol) {

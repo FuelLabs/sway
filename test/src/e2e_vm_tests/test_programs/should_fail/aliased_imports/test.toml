@@ -1,0 +1,15 @@
+category = "fail"
+
+# check: $()error
+# check: $()Could not find symbol "Bar" in this scope.
+
+# check: $()error
+# check: $()Could not find symbol "Bar" in this scope.
+
+# check: $()error
+# check: $()Unknown type name "Bar".
+
+# check: $()error
+# check: $()This expression has type "{unknown}", which is not a struct or a reference to a struct.
+
+# check: $()Aborting due to 4 errors

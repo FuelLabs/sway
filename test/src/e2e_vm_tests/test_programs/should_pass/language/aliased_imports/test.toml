@@ -1,4 +1,3 @@
 category = "run"
-expected_result = { action = "return", value = 42 }
-expected_result_new_encoding = { action = "return_data", value = "000000000000002A" }
+expected_result = { action = "return", value = 234 }
 validate_abi = true
