@@ -82,7 +82,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
-        experimental_new_encoding: run_config.experimental.new_encoding,
+        no_encoding_v1: !dbg!(run_config.experimental.new_encoding),
         ..Default::default()
     })
     .await
@@ -125,7 +125,7 @@ pub(crate) async fn runs_on_node(
             },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
-            experimental_new_encoding: run_config.experimental.new_encoding,
+            no_encoding_v1: !run_config.experimental.new_encoding,
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {

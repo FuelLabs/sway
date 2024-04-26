@@ -131,7 +131,7 @@ impl ModuleDepGraph {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing module dep analysis graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting module dep analysis graph to path {graph_path:?}\n{error}"
                     );
                 }
             }
@@ -329,22 +329,24 @@ impl ty::TyModule {
                 (TreeType::Predicate, true) => {
                     let mut fn_generator =
                         auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
-                    let node = fn_generator.generate_predicate_entry(
+                    if let Ok(node) = fn_generator.generate_predicate_entry(
                         engines,
                         main_decl.as_ref().unwrap(),
                         handler,
-                    )?;
-                    all_nodes.push(node)
+                    ) {
+                        all_nodes.push(node)
+                    }
                 }
                 (TreeType::Script, true) => {
                     let mut fn_generator =
                         auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
-                    let node = fn_generator.generate_script_entry(
+                    if let Ok(node) = fn_generator.generate_script_entry(
                         engines,
                         main_decl.as_ref().unwrap(),
                         handler,
-                    )?;
-                    all_nodes.push(node)
+                    ) {
+                        all_nodes.push(node)
+                    }
                 }
                 (TreeType::Contract, _) => {
                     // collect all contract methods
@@ -357,14 +359,15 @@ impl ty::TyModule {
 
                     let mut fn_generator =
                         auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
-                    let node = fn_generator.generate_contract_entry(
+                    if let Ok(node) = fn_generator.generate_contract_entry(
                         engines,
                         parsed.span.source_id().map(|x| x.module_id()),
                         &contract_fns,
                         fallback_fn,
                         handler,
-                    )?;
-                    all_nodes.push(node)
+                    ) {
+                        all_nodes.push(node)
+                    }
                 }
                 _ => {}
             }

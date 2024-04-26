@@ -1,3 +1,8 @@
 [[package]]
-name = 'contract_c'
-source = 'member'
+name = "contract_c"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-3C8F523D3E6B5411"

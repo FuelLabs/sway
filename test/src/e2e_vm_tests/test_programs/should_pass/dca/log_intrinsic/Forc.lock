@@ -1,3 +1,8 @@
 [[package]]
+name = "core"
+source = "path+from-root-DC820D9F5813B84D"
+
+[[package]]
 name = "log_intrinsic"
 source = "member"
+dependencies = ["core"]

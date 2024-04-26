@@ -1,3 +1,8 @@
 [[package]]
-name = 'unused_struct_field_tuple'
-source = 'member'
+name = "core"
+source = "path+from-root-194AE30716E4BDEF"
+
+[[package]]
+name = "unused_struct_field_tuple"
+source = "member"
+dependencies = ["core"]
