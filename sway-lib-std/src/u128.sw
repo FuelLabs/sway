@@ -38,7 +38,7 @@ impl From<u8> for U128 {
     fn from(val: u8) -> Self {
         Self {
             upper: 0,
-            lower: val.into(),
+            lower: val.as_u64(),
         }
     }
 }
@@ -62,7 +62,7 @@ impl From<u16> for U128 {
     fn from(val: u16) -> Self {
         Self {
             upper: 0,
-            lower: val.into(),
+            lower: val.as_u64(),
         }
     }
 }
@@ -86,7 +86,7 @@ impl From<u32> for U128 {
     fn from(val: u32) -> Self {
         Self {
             upper: 0,
-            lower: val.into(),
+            lower: val.as_u64(),
         }
     }
 }
