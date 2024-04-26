@@ -9,12 +9,12 @@ use test_fuel_coin_abi::*;
 #[cfg(experimental_new_encoding = false)]
 const FUEL_COIN_CONTRACT_ID = 0x27447d931b1c2c0eaf94aa9ffd1c1ea09298ee23a632937accdac91947a502a0;
 #[cfg(experimental_new_encoding = true)]
-const FUEL_COIN_CONTRACT_ID = 0xce28916d1aafcab28b0495481b514632c7f908e4915e6152c77290b78bc99353;
+const FUEL_COIN_CONTRACT_ID = 0xecd6eeff9cfd449b038e8b9d5025b7f58eb7959af26b1d84636aab641ecf8ebf;
 
 #[cfg(experimental_new_encoding = false)]
 const BALANCE_CONTRACT_ID = 0x3b8cb681056f61a41e138b8884d7e3bb9332fbd7a8e38e3e0b0ada766cabfa4e;
 #[cfg(experimental_new_encoding = true)]
-const BALANCE_CONTRACT_ID = 0xdf3aecbed3bde3772553ed1ea84411a114aff5c31b90b0d7f13c6e4e74cb804a;
+const BALANCE_CONTRACT_ID = 0xf14fd5b5d028dd6c0db49803f886deb2b1dc87de092857795d77c8a04a0926ad;
 
 fn main() -> bool {
     let default_gas = 1_000_000_000_000;

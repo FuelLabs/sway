@@ -5,7 +5,7 @@ use nested_struct_args_abi::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xc615be7b48402210cbec3bc1667ab5a8093d449d5d8d1fdcc26e6f18e7942ea9;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x7bd6ebe7187a3051d68cba2737f150821e2774bb209c56432ef4494b8dd358db;
+const CONTRACT_ID = 0x9d00e98f60e2f09550861b1ddfbf26d999171696d161ba1df36fc2fd10e73097;
 
 fn main() -> bool {
     let caller = abi(NestedStructArgs, CONTRACT_ID);
