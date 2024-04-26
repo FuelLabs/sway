@@ -2521,14 +2521,16 @@ impl<'eng> FnCompiler<'eng> {
                                 let struct_decl = self.engines.de().get_struct(decl_ref);
 
                                 match struct_decl.get_field_index_and_type(idx_name) {
-                                    None => return Err(CompileError::InternalOwned(
-                                        format!(
+                                    None => {
+                                        return Err(CompileError::InternalOwned(
+                                            format!(
                                             "Unknown field name \"{idx_name}\" for struct \"{}\" \
                                                     in reassignment.",
                                             struct_decl.call_path.suffix.as_str(),
                                         ),
-                                        idx_name.span(),
-                                    )),
+                                            idx_name.span(),
+                                        ))
+                                    }
                                     Some((field_idx, field_type_id)) => {
                                         cur_type_id = field_type_id;
                                         gep_indices
