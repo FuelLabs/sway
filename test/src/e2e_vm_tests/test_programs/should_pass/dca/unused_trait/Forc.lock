@@ -1,3 +1,8 @@
 [[package]]
-name = 'unused_trait'
-source = 'member'
+name = "core"
+source = "path+from-root-1F61DBB338364380"
+
+[[package]]
+name = "unused_trait"
+source = "member"
+dependencies = ["core"]

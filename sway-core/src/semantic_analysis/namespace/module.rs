@@ -653,30 +653,28 @@ impl Module {
             .use_aliases
             .get(symbol.as_str())
             .unwrap_or(symbol);
-        match module.current_items().use_synonyms.get(symbol) {
-            Some((_, _, decl @ ty::TyDecl::EnumVariantDecl { .. })) => {
-                Ok(ResolvedDeclaration::Typed(decl.clone()))
-            }
-            Some((src_path, _, _)) if mod_path != src_path => {
-                // If the symbol is imported, before resolving to it,
-                // we need to check if there is a local symbol withing the module with
-                // the same name, and if yes resolve to the local symbol, because it
-                // shadows the import.
-                // Note that we can have two situations here:
-                // - glob-import, in which case the local symbol simply shadows the glob-imported one.
-                // - non-glob import, in which case we will already have a name clash reported
-                //   as an error, but still have to resolve to the local module symbol
-                //   if it exists.
-                match module.current_items().symbols.get(true_symbol) {
-                    Some(decl) => Ok(ResolvedDeclaration::Typed(decl.clone())),
-                    None => self.resolve_symbol(handler, engines, src_path, true_symbol, self_type),
-                }
-            }
-            _ => module
-                .current_items()
-                .check_symbol(true_symbol)
-                .map_err(|e| handler.emit_err(e)),
+        // Check locally declared items. Any name clash with imports will have already been reported as an error.
+        if let Some(decl) = module.current_items().symbols.get(true_symbol) {
+            return Ok(ResolvedDeclaration::Typed(decl.clone()));
         }
+        // Check item imports
+        if let Some((_, decl @ ty::TyDecl::EnumVariantDecl { .. })) =
+            module.current_items().use_item_synonyms.get(symbol)
+        {
+            return Ok(ResolvedDeclaration::Typed(decl.clone()));
+        }
+        if let Some((src_path, _)) = module.current_items().use_item_synonyms.get(symbol) {
+            return self.resolve_symbol(handler, engines, src_path, true_symbol, self_type);
+        }
+        // Check glob imports
+        if let Some((_, decl)) = module.current_items().use_glob_synonyms.get(symbol) {
+            return Ok(ResolvedDeclaration::Typed(decl.clone()));
+        }
+        // Symbol not found
+        Err(handler.emit_err(CompileError::SymbolNotFound {
+            name: symbol.clone(),
+            span: symbol.span(),
+        }))
     }
 }
 

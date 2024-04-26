@@ -29,9 +29,9 @@ pub struct Command {
     #[clap(flatten)]
     pub salt: Salt,
 
+    /// Disable the "new encoding" feature
     #[clap(long)]
-    /// Experimental flag for the "new encoding" feature
-    pub experimental_new_encoding: bool,
+    pub no_encoding_v1: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {

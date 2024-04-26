@@ -247,7 +247,7 @@ impl TypeCheckAnalysisContext<'_> {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing type check analysis graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting type check analysis graph to path {graph_path:?}\n{error}"
                     );
                 }
             }

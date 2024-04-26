@@ -84,6 +84,10 @@ fn analyze_contract(engines: &Engines, ast_nodes: &[ty::TyAstNode]) -> Vec<Compi
     let decl_engine = engines.de();
     let mut warnings: Vec<CompileWarning> = vec![];
     for fn_decl in contract_entry_points(decl_engine, ast_nodes) {
+        // no need to analyze the entry fn
+        if fn_decl.name.as_str() == "__entry" {
+            continue;
+        }
         analyze_code_block(engines, &fn_decl.body, &fn_decl.name, &mut warnings);
     }
     warnings
@@ -608,10 +612,12 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
+        ContractCall => HashSet::from([Effect::Interaction]),
         Revert | JmpMem | IsReferenceType | IsStrArray | SizeOfType | SizeOfVal | SizeOfStr
-        | ContractCall | ContractRet | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf
-        | AddrOf | Log | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd
-        | PtrSub | Not => HashSet::new(),
+        | ContractRet | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf | AddrOf | Log | Add
+        | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => {
+            HashSet::new()
+        }
     }
 }
 
