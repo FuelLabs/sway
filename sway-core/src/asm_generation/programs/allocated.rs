@@ -14,7 +14,7 @@ impl AllocatedProgram {
 
         let (realized_ops, mut label_offsets) =
             abstract_ops.realize_labels(&mut self.data_section)?;
-        let ops = realized_ops.pad_to_even();
+        let ops = realized_ops.to_allocated_ops();
 
         // Collect the entry point offsets.
         let entries = self
