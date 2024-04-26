@@ -95,12 +95,15 @@ pub(crate) fn check_function_purity(
         });
     };
     let warn = |span, purity: Purity| {
-        handler.emit_warn(CompileWarning {
-            warning_content: Warning::DeadStorageDeclarationForFunction {
-                unneeded_attrib: purity.to_attribute_syntax(),
-            },
-            span,
-        });
+        // Do not warn on generated code
+        if span != Span::dummy() {
+            handler.emit_warn(CompileWarning {
+                warning_content: Warning::DeadStorageDeclarationForFunction {
+                    unneeded_attrib: purity.to_attribute_syntax(),
+                },
+                span,
+            });
+        }
     };
 
     match (attributed_purity, reads, writes) {

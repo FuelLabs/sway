@@ -44,7 +44,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         tests: cmd.tests,
         member_filter: Default::default(),
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

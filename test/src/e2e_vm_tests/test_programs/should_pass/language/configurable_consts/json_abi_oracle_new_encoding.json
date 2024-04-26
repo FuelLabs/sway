@@ -1,0 +1,205 @@
+{
+  "configurables": [
+    {
+      "configurableType": {
+        "name": "",
+        "type": 4,
+        "typeArguments": null
+      },
+      "name": "C0",
+      "offset": 4812
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": null
+      },
+      "name": "C1",
+      "offset": 4828
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      },
+      "name": "C2",
+      "offset": 4844
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 7,
+        "typeArguments": []
+      },
+      "name": "C3",
+      "offset": 4876
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 5,
+        "typeArguments": []
+      },
+      "name": "C4",
+      "offset": 4892
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 5,
+        "typeArguments": []
+      },
+      "name": "C5",
+      "offset": 4908
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": null
+      },
+      "name": "C6",
+      "offset": 4924
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "name": "C7",
+      "offset": 4940
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      },
+      "name": "C7_2",
+      "offset": 5012
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": null
+      },
+      "name": "C9",
+      "offset": 4988
+    }
+  ],
+  "encoding": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 8,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 4]",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 9,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 4]",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "type": 8,
+          "typeArguments": null
+        },
+        {
+          "name": "B",
+          "type": 4,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum MyEnum",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[4]",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "x",
+          "type": 8,
+          "typeArguments": null
+        },
+        {
+          "name": "y",
+          "type": 4,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct MyStruct",
+      "typeId": 7,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 8,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 9,
+      "typeParameters": null
+    }
+  ]
+}

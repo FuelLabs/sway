@@ -628,7 +628,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     // Be mindful that this can explode exponentially the number of tests
     // that run because one expansion expands on top of another
     let mut tests = tests;
-    let expansions = ["new_encoding"];
+    let expansions: [&str; 0] = [];
     for expansion in expansions {
         tests = tests
             .into_iter()

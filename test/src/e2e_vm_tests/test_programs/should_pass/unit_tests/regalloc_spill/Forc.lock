@@ -1,3 +1,8 @@
 [[package]]
-name = 'regalloc_spill'
-source = 'member'
+name = "core"
+source = "path+from-root-DDF45F91DE834B1C"
+
+[[package]]
+name = "regalloc_spill"
+source = "member"
+dependencies = ["core"]

@@ -1,3 +1,8 @@
 [[package]]
-name = 'associated_type_parameter'
-source = 'member'
+name = "associated_type_parameter"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-B1A2C6E5C902781E"

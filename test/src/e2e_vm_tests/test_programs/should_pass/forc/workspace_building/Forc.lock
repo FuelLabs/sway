@@ -1,14 +1,24 @@
 [[package]]
-name = 'test_contract'
-source = 'member'
-dependencies = ['test_lib']
+name = "core"
+source = "path+from-root-4D4735C41181917E"
 
 [[package]]
-name = 'test_lib'
-source = 'member'
+name = "test_contract"
+source = "member"
+dependencies = [
+    "core",
+    "test_lib",
+]
 
 [[package]]
-name = 'test_script'
-source = 'member'
-dependencies = ['test_lib']
-contract-dependencies = ['test_contract']
+name = "test_lib"
+source = "member"
+
+[[package]]
+name = "test_script"
+source = "member"
+dependencies = [
+    "core",
+    "test_lib",
+]
+contract-dependencies = ["test_contract"]
