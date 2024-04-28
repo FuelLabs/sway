@@ -104,9 +104,7 @@ mod tests {
             .encode_arguments(&values)
             .unwrap()
             .resolve(test_data_offset);
-        let expected_bytes = vec![
-            2u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        ];
+        let expected_bytes = vec![2u8, 1u8];
         assert_eq!(encoded_bytes, expected_bytes);
     }
 
