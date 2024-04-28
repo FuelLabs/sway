@@ -12,6 +12,7 @@ pub mod alloc;
 pub mod iterator;
 pub mod vec;
 pub mod bytes;
+pub mod registers;
 pub mod flags;
 pub mod math;
 pub mod u128;
