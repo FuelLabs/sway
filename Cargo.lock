@@ -2246,6 +2246,7 @@ dependencies = [
  "fuel-abi-types",
  "fuel-tx",
  "fuel-vm",
+ "fuels-core",
  "rand",
  "rayon",
  "sway-core",
