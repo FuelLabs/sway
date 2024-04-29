@@ -155,12 +155,12 @@ fn main() {}
 
 #[test]
 fn test_fn() {
-	let a = 10;
-	log(a);
-	let b = 30;
-	log(b);
-	assert_eq(a, 10)
-	assert_eq(b, 30)
+let a = 10;
+    log(a);
+    let b = 30;
+    log(b);
+    assert_eq(a, 10)
+    assert_eq(b, 30)
 }
 ```
 
@@ -185,7 +185,7 @@ Decoded log value: 10, log rb: 0
 Decoded log value: 30, log rb: 1
 ```
 
-As it can be seen, the values are human readable and easier to understand which makes debugging much more easier. 
+As it can be seen, the values are human readable and easier to understand which makes debugging much more easier.
 
 **Note**: This is an experimental feature and we are actively working on reporting variable names next to their values.
 <!-- unit_test_log::example::end -->
