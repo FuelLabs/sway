@@ -37,6 +37,32 @@ impl From<u256> for b256 {
     }
 }
 
+impl From<(u64, u64, u64, u64)> for b256 {
+    /// Casts a tuple of 4 `u64` values to a `b256`.
+    ///
+    /// # Arguments
+    ///
+    /// * `nums`: (u64, u64, u64, u64) - The tuple of `u64` values to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The `b256` representation of the tuple of `u64` values.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// fn foo() {
+    ///    let b256_value = b256::from((1, 2, 3, 4));
+    /// }
+    /// ```
+    fn from(nums: (u64, u64, u64, u64)) -> Self {
+        asm(nums: nums) {
+            nums: b256
+        }
+    }
+}
+
 #[test]
 fn test_b256_try_from_bytes() {
     use ::assert::assert;
@@ -75,4 +101,14 @@ fn test_b256_from_u256() {
     let val = 0x0000000000000000000000000000000000000000000000000000000000000000_u256;
     let res = b256::from(val);
     assert(res == 0x0000000000000000000000000000000000000000000000000000000000000000);
+}
+
+#[test]
+fn test_b256_from_tuple() {
+    use ::assert::assert;
+
+    let b256_value = <b256 as From<(u64, u64, u64, u64)>>::from((1, 2, 3, 4));
+    assert(
+        b256_value == 0x0000000000000001000000000000000200000000000000030000000000000004,
+    );
 }
