@@ -45,11 +45,11 @@ fuel-tx = "0.48.0"
 fuel-vm = "0.48.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.57.0"
-fuels-accounts = "0.57.0"
+fuels-core = "0.58.0"
+fuels-accounts = "0.58.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.6.0"
+forc-wallet = "0.6.1"
 
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = "0.4.0"
