@@ -68,7 +68,7 @@ pub struct TestPrintOpts {
     pub print_logs: bool,
     /// Decode logs and show decoded log information in human readable format alongside the raw
     /// logs.
-    #[clap(long = "decode", short = 'l')]
+    #[clap(long = "decode", short = 'd')]
     pub decode_logs: bool,
 }
 
