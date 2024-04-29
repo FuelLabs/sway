@@ -591,6 +591,8 @@ impl TestContext {
                         }
                     }
 
+                    let expected_decoded_test_logs = expected_decoded_test_logs.unwrap_or_default();
+
                     if !failed.is_empty() {
                         println!("FAILED!! output:\n{}", output);
                         panic!(
@@ -598,7 +600,7 @@ impl TestContext {
                             failed.len(),
                             failed.into_iter().collect::<String>()
                         );
-                    } else if expected_decoded_test_logs.as_ref() != Some(&decoded_logs) {
+                    } else if expected_decoded_test_logs != decoded_logs {
                         println!("FAILED!! output:\n{}", output);
                         panic!(
                             "For {name}\ncollected decoded logs: {:?}\nexpected decoded logs: {:?}",
