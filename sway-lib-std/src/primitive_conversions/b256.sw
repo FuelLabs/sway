@@ -81,6 +81,7 @@ impl From<(u64, u64, u64, u64)> for b256 {
     /// # Examples
     ///
     /// ```sway
+    ///
     /// fn foo() {
     ///    let b256_value = b256::from((1, 2, 3, 4));
     /// }
