@@ -141,3 +141,51 @@ By default, `forc test` will use all the available threads in your system. To re
 ```console
 forc test --test-threads 1
 ```
+
+## Logs Inside Tests
+
+<!-- This section should explain how log decoding works with Sway unit tests -->
+<!-- unit_test_log::example::start -->
+Forc has some capacity to help decode logs returned from the unit tests. You can use this feature to decode raw logs into a human readable format.
+
+```sway
+script;
+
+fn main() {}
+
+#[test]
+fn test_fn() {
+	let a = 10;
+	log(a);
+	let b = 30;
+	log(b);
+	assert_eq(a, 10)
+	assert_eq(b, 30)
+}
+```
+
+The example shown above is logging two different variables, `a` and `b` and their values are `10` and `30`, respectively. Without log decoding printed log for this test with `forc test --logs` (`--logs` flag is required to see the logs for this example since the test is passing. Logs are silenced by default in passing tests, and can be enabled using the `--logs` flag.):
+
+```console
+Finished debug [unoptimized + fuel] target(s) in 5.23s
+      Bytecode hash: 0x1cb1edc031691c5c08b50fd0f07b02431848ab81b325b72eb3fd233c67d6b548
+   Running 1 test, filtered 0 tests
+      test test_fn ... ok (38.875µs, 232 gas)
+[{"LogData":{"data":"000000000000000a","digest":"8d85f8467240628a94819b26bee26e3a9b2804334c63482deacec8d64ab4e1e7","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11032,"ptr":67107840,"ra":0,"rb":0}},{"LogData":{"data":"000000000000001e","digest":"48a97e421546f8d4cae1cf88c51a459a8c10a88442eed63643dd263cef880c1c","id":"0000000000000000000000000000000000000000000000000000000000000000","is":10368,"len":8,"pc":11516,"ptr":67106816,"ra":0,"rb":1}}]
+```
+
+This is not very easy to understand, it is possible to decode these logs with `--decode` flag, executing `forc test --logs --decode`:
+
+```console
+Finished debug [unoptimized + fuel] target(s) in 5.23s
+      Bytecode hash: 0x1cb1edc031691c5c08b50fd0f07b02431848ab81b325b72eb3fd233c67d6b548
+   Running 1 test, filtered 0 tests
+      test test_fn ... ok (38.875µs, 232 gas)
+Decoded log value: 10, log rb: 0
+Decoded log value: 30, log rb: 1
+```
+
+As it can be seen, the values are human readable and easier to understand which makes debugging much more easier. 
+
+**Note**: This is an experimental feature and we are actively working on reporting variable names next to their values.
+<!-- unit_test_log::example::end -->
