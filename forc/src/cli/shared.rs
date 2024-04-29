@@ -78,6 +78,9 @@ pub struct Print {
     /// optimisations.
     #[clap(long)]
     pub intermediate_asm: bool,
+    /// Print the bytecode. This is the final output of the compiler.
+    #[clap(long)]
+    pub bytecode: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     #[clap(long)]
     pub ir: bool,

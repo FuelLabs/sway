@@ -7,6 +7,7 @@ use super::{
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
+use crate::BuildConfig;
 
 use etk_asm::asm::Assembler;
 use sway_error::error::CompileError;
@@ -54,6 +55,7 @@ impl FinalizedAsm {
         handler: &Handler,
         source_map: &mut SourceMap,
         source_engine: &SourceEngine,
+        build_config: &BuildConfig,
     ) -> Result<CompiledBytecode, ErrorEmitted> {
         match &self.program_section {
             InstructionSet::Fuel { ops } => Ok(to_bytecode_mut(
@@ -61,6 +63,7 @@ impl FinalizedAsm {
                 &mut self.data_section,
                 source_map,
                 source_engine,
+                build_config,
             )),
             InstructionSet::Evm { ops } => {
                 let mut assembler = Assembler::new();
@@ -101,6 +104,7 @@ fn to_bytecode_mut(
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
+    build_config: &BuildConfig,
 ) -> CompiledBytecode {
     fn op_size_in_bytes(data_section: &DataSection, item: &AllocatedOp) -> u64 {
         match &item.opcode {
@@ -142,6 +146,10 @@ fn to_bytecode_mut(
 
     let mut buf = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
 
+    if build_config.print_bytecode {
+        println!(";; --- START OF TARGET BYTECODE ---\n");
+    }
+
     let mut half_word_ix = 0;
     let mut offset_from_instr_start = 0;
     for op in ops.iter() {
@@ -155,6 +163,9 @@ fn to_bytecode_mut(
 
         match fuel_op {
             Either::Right(data) => {
+                if build_config.print_bytecode {
+                    println!("{:?}", data);
+                }
                 // Static assert to ensure that we're only dealing with DataSectionOffsetPlaceholder,
                 // a one-word (8 bytes) data within the code. No other uses are known.
                 let _: [u8; 8] = data;
@@ -163,6 +174,9 @@ fn to_bytecode_mut(
             }
             Either::Left(ops) => {
                 for op in ops {
+                    if build_config.print_bytecode {
+                        println!("{:?}", op);
+                    }
                     if let Some(span) = &span {
                         source_map.insert(source_engine, half_word_ix, span);
                     }
@@ -172,6 +186,11 @@ fn to_bytecode_mut(
             }
         }
     }
+    if build_config.print_bytecode {
+        println!("{}", data_section);
+        println!(";; --- END OF TARGET BYTECODE ---\n");
+    }
+
     assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
     assert_eq!(buf.len(), offset_to_data_section_in_bytes as usize);
 

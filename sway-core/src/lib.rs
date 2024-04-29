@@ -791,7 +791,7 @@ pub fn compile_to_asm(
     engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Root,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
     package_name: &str,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let ast_res = compile_to_ast(
@@ -799,11 +799,11 @@ pub fn compile_to_asm(
         engines,
         input,
         initial_namespace,
-        Some(&build_config),
+        Some(build_config),
         package_name,
         None,
     )?;
-    ast_to_asm(handler, engines, &ast_res, &build_config)
+    ast_to_asm(handler, engines, &ast_res, build_config)
 }
 
 /// Given an AST compilation result, try compiling to a `CompiledAsm`,
@@ -952,7 +952,7 @@ pub fn compile_to_bytecode(
     engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Root,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
@@ -964,7 +964,7 @@ pub fn compile_to_bytecode(
         build_config,
         package_name,
     )?;
-    asm_to_bytecode(handler, asm_res, source_map, engines.se())
+    asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
@@ -973,8 +973,11 @@ pub fn asm_to_bytecode(
     mut asm: CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
+    build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let compiled_bytecode = asm.0.to_bytecode_mut(handler, source_map, source_engine)?;
+    let compiled_bytecode =
+        asm.0
+            .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
     Ok(compiled_bytecode)
 }
 
