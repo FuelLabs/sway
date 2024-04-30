@@ -357,7 +357,10 @@ impl Parse for ReassignmentExpression {
     fn parse(&self, ctx: &ParseContext) {
         self.rhs.parse(ctx);
         match &self.lhs {
-            ReassignmentTarget::VariableExpression(exp) => {
+            ReassignmentTarget::ElementAccess(exp) => {
+                exp.parse(ctx);
+            }
+            ReassignmentTarget::Deref(exp) => {
                 exp.parse(ctx);
             }
         }
