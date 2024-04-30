@@ -729,7 +729,7 @@ impl TyDecl {
         }
     }
 
-    /// friendly name string used for error reporting,
+    /// Friendly name string used for error reporting,
     /// which consists of the identifier for the declaration.
     pub fn friendly_name(&self, engines: &Engines) -> String {
         let decl_engine = engines.de();
@@ -752,8 +752,14 @@ impl TyDecl {
         }
     }
 
-    /// friendly type name string used for error reporting,
+    /// Friendly type name string used for various reporting,
     /// which consists of the type name of the declaration AST node.
+    ///
+    /// Note that all friendly type names are lowercase.
+    /// This is also the case for acronyms like ABI.
+    /// For contexts in which acronyms need to be uppercase, like
+    /// e.g., error reporting, use `friendly_type_name_with_acronym`
+    /// instead.
     pub fn friendly_type_name(&self) -> &'static str {
         use TyDecl::*;
         match self {
@@ -774,7 +780,14 @@ impl TyDecl {
         }
     }
 
-    /// name string used in `forc doc` file path generation that mirrors `cargo doc`.
+    pub fn friendly_type_name_with_acronym(&self) -> &'static str {
+        match self.friendly_type_name() {
+            "abi" => "ABI",
+            friendly_name => friendly_name,
+        }
+    }
+
+    /// Name string used in `forc doc` file path generation that mirrors `cargo doc`.
     pub fn doc_name(&self) -> &'static str {
         use TyDecl::*;
         match self {

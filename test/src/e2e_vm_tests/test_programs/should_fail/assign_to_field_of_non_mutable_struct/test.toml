@@ -1,3 +1,9 @@
 category = "fail"
 
-# check: $()Assignment to immutable variable. Variable thing is not declared as mutable.
+#check: $()Immutable variables cannot be assigned to
+#check: $()let thing: S = S { x: 0 };
+#nextln: $()Variable "thing" is declared here as immutable.
+#check: $()thing.x = 23;
+#nextln: $()This expression cannot be assigned to, because "thing" is an immutable variable.
+#check: $()Consider declaring "thing" as mutable.
+

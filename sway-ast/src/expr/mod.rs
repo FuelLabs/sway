@@ -1,6 +1,6 @@
 use sway_error::handler::ErrorEmitted;
 
-use crate::{priv_prelude::*, PathExprSegment};
+use crate::{assignable::ElementAccess, priv_prelude::*, PathExprSegment};
 
 pub mod asm;
 pub mod op_code;
@@ -446,56 +446,59 @@ impl Spanned for ExprStructField {
 }
 
 impl Expr {
+    /// Returns the resulting [Assignable] if the `self` is a
+    /// valid [Assignable], or an error containing the [Expr]
+    /// which causes the `self` to be an invalid [Assignable].
+    ///
+    /// In case of an error, the returned [Expr] can be `self`
+    /// or any subexpression of `self` that is not allowed
+    /// in assignment targets.
     pub fn try_into_assignable(self) -> Result<Assignable, Expr> {
+        if let Expr::Deref { star_token, expr } = self {
+            Ok(Assignable::Deref { star_token, expr })
+        } else {
+            Ok(Assignable::ElementAccess(self.try_into_element_access()?))
+        }
+    }
+
+    fn try_into_element_access(self) -> Result<ElementAccess, Expr> {
         match self {
             Expr::Path(path_expr) => match path_expr.try_into_ident() {
-                Ok(name) => Ok(Assignable::Var(name)),
+                Ok(name) => Ok(ElementAccess::Var(name)),
                 Err(path_expr) => Err(Expr::Path(path_expr)),
             },
-            Expr::Index { target, arg } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::Index {
+            Expr::Index { target, arg } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::Index {
                     target: Box::new(target),
                     arg,
                 }),
-                Err(target) => Err(Expr::Index {
-                    target: Box::new(target),
-                    arg,
-                }),
+                error => error,
             },
             Expr::FieldProjection {
                 target,
                 dot_token,
                 name,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::FieldProjection {
+            } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::FieldProjection {
                     target: Box::new(target),
                     dot_token,
                     name,
                 }),
-                Err(target) => Err(Expr::FieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    name,
-                }),
+                error => error,
             },
             Expr::TupleFieldProjection {
                 target,
                 dot_token,
                 field,
                 field_span,
-            } => match target.try_into_assignable() {
-                Ok(target) => Ok(Assignable::TupleFieldProjection {
+            } => match target.try_into_element_access() {
+                Ok(target) => Ok(ElementAccess::TupleFieldProjection {
                     target: Box::new(target),
                     dot_token,
                     field,
                     field_span,
                 }),
-                Err(target) => Err(Expr::TupleFieldProjection {
-                    target: Box::new(target),
-                    dot_token,
-                    field,
-                    field_span,
-                }),
+                error => error,
             },
             expr => Err(expr),
         }
@@ -548,6 +551,57 @@ impl Expr {
             | Expr::Reassignment { .. }
             | Expr::Break { .. }
             | Expr::Continue { .. } => false,
+        }
+    }
+
+    /// Friendly [Expr] name string used for error reporting,
+    pub fn friendly_name(&self) -> &'static str {
+        match self {
+            Expr::Error(_, _) => "error",
+            Expr::Path(_) => "path",
+            Expr::Literal(_) => "literal",
+            Expr::AbiCast { .. } => "ABI cast",
+            Expr::Struct { .. } => "struct instantiation",
+            Expr::Tuple(_) => "tuple",
+            Expr::Parens(_) => "parentheses", // Note the plural!
+            Expr::Block(_) => "block",
+            Expr::Array(_) => "array",
+            Expr::Asm(_) => "assembly block",
+            Expr::Return { .. } => "return",
+            Expr::If(_) => "if expression",
+            Expr::Match { .. } => "match expression",
+            Expr::While { .. } => "while loop",
+            Expr::For { .. } => "for loop",
+            Expr::FuncApp { .. } => "function call",
+            Expr::Index { .. } => "array element access",
+            Expr::MethodCall { .. } => "method call",
+            Expr::FieldProjection { .. } => "struct field access",
+            Expr::TupleFieldProjection { .. } => "tuple element access",
+            Expr::Ref { .. } => "referencing",
+            Expr::Deref { .. } => "dereferencing",
+            Expr::Not { .. } => "negation",
+            Expr::Mul { .. } => "multiplication",
+            Expr::Div { .. } => "division",
+            Expr::Pow { .. } => "power operation",
+            Expr::Modulo { .. } => "modulo operation",
+            Expr::Add { .. } => "addition",
+            Expr::Sub { .. } => "subtraction",
+            Expr::Shl { .. } => "left shift",
+            Expr::Shr { .. } => "right shift",
+            Expr::BitAnd { .. } => "bitwise and",
+            Expr::BitXor { .. } => "bitwise xor",
+            Expr::BitOr { .. } => "bitwise or",
+            Expr::Equal { .. } => "equality",
+            Expr::NotEqual { .. } => "non equality",
+            Expr::LessThan { .. } => "less than operation",
+            Expr::GreaterThan { .. } => "greater than operation",
+            Expr::LessThanEq { .. } => "less than or equal operation",
+            Expr::GreaterThanEq { .. } => "greater than or equal operation",
+            Expr::LogicalAnd { .. } => "logical and",
+            Expr::LogicalOr { .. } => "logical or",
+            Expr::Reassignment { .. } => "reassignment",
+            Expr::Break { .. } => "break",
+            Expr::Continue { .. } => "continue",
         }
     }
 }

@@ -1138,6 +1138,7 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::Numeric // TODO-IG: Should Ptr and Ref also be a copy type?
+                | TypeInfo::Never
         ) || self.is_unit()
     }
 
