@@ -167,7 +167,7 @@ pub enum CompileError {
         /// The complete left-hand side of the assignment.
         lhs_span: Span,
     },
-    #[error("This reference is not a reference to mutable value (`&mut`).")]
+    #[error("This reference is not a reference to a mutable value (`&mut`).")]
     AssignmentViaNonMutableReference {
         /// Name of the reference, if the left-hand side of the assignment is a reference variable,
         /// pointing to the name in the reference variable declaration.
@@ -199,7 +199,7 @@ pub enum CompileError {
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
     RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
-    #[error("Reference to mutable value cannot reference a constant.")]
+    #[error("Reference to a mutable value cannot reference a constant.")]
     RefMutCannotReferenceConstant {
         /// Constant, as accessed in code. E.g.:
         ///  - `MY_CONST`
@@ -208,7 +208,7 @@ pub enum CompileError {
         constant: String,
         span: Span,
     },
-    #[error("Reference to mutable value cannot reference an immutable variable.")]
+    #[error("Reference to a mutable value cannot reference an immutable variable.")]
     RefMutCannotReferenceImmutableVariable {
         /// Variable name pointing to the name in the variable declaration.
         decl_name: Ident,
@@ -2154,14 +2154,14 @@ impl ToDiagnostic for CompileError {
                 help: vec![],
             },
             AssignmentViaNonMutableReference { decl_reference_name, decl_reference_rhs, decl_reference_type, span } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Reference is not a reference to mutable value (`&mut`)".to_string())),
+                reason: Some(Reason::new(code(1), "Reference is not a reference to a mutable value (`&mut`)".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    // This reference expression is not a reference to mutable value (`&mut`).
+                    // This reference expression is not a reference to a mutable value (`&mut`).
                     //  or
-                    // Reference "ref_xyz" is not a reference to mutable value (`&mut`).
-                    format!("{} is not a reference to mutable value (`&mut`).",
+                    // Reference "ref_xyz" is not a reference to a mutable value (`&mut`).
+                    format!("{} is not a reference to a mutable value (`&mut`).",
                         match decl_reference_name {
                             Some(decl_reference_name) => format!("Reference \"{decl_reference_name}\""),
                             _ => "This reference expression".to_string(),
@@ -2197,7 +2197,7 @@ impl ToDiagnostic for CompileError {
                         Some(decl_reference_rhs) if decl_reference_rhs.as_str().starts_with('&') => Hint::help(
                             source_engine,
                             decl_reference_rhs.clone(),
-                            format!("Consider taking here a reference to mutable value: `&mut {}`.",
+                            format!("Consider taking here a reference to a mutable value: `&mut {}`.",
                                 first_line(decl_reference_rhs.as_str()[1..].trim(), true)
                             )
                         ),
@@ -2390,8 +2390,8 @@ impl ToDiagnostic for CompileError {
                             format!("{}  or arbitrary combinations of those.", Indent::Single),
                             format!("{}  E.g., `mut_var` or `mut_struct.field` or `mut_array[x + y].field.1`.", Indent::Single),
                             Diagnostic::help_empty_line(),
-                            format!("{}- Dereferencing of an arbitrary expression that results in a", Indent::Single),
-                            format!("{}  reference to mutable value.", Indent::Single),
+                            format!("{}- Dereferencing of an arbitrary expression that results", Indent::Single),
+                            format!("{}  in a reference to a mutable value.", Indent::Single),
                             format!("{}  E.g., `*ref_to_mutable_value` or `*max_mut(&mut x, &mut y)`.", Indent::Single),
                         ]
                     },

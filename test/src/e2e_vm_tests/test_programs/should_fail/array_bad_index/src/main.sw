@@ -18,7 +18,11 @@ fn main() {
 
     array[0u32] = 0;
 
+    // Enough vertical space, so that the below line
+    // does not appear in the output of the above error.
+
     array[0u64] = 0;
+
 
     array[true] = 0;
 
@@ -33,7 +37,13 @@ fn main() {
     poke(array[0u8]);
     poke(array[0u16]);
     poke(array[0u32]);
+
+
+
     poke(array[0u64]);
+
+
+
     poke(array[true]);
     poke(array[()]);
     poke(array["test"]);

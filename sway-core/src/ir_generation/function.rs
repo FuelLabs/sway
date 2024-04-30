@@ -2565,8 +2565,8 @@ impl<'eng> FnCompiler<'eng> {
                     }
 
                     // Using the type of the RHS for the GEP, rather than the final inner type of the
-                    // aggregate, but getting the later is a bit of a pain, though the `scan` above knew it.
-                    // Realistically the program is type checked and they should be the same.
+                    // aggregate, but getting the latter is a bit of a pain, though the `scan` above knew it.
+                    // The program is type checked and the IR types on the LHS and RHS are the same.
                     let field_type = rhs.get_type(context).ok_or_else(|| {
                         CompileError::Internal(
                             "Failed to determine type of reassignment.",
@@ -2814,7 +2814,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let elem_type = array_type.get_array_elem_type(context).ok_or_else(|| {
             CompileError::Internal(
-                "Array type has already confirmed to be an array. Getting element type can't fail.",
+                "Array type is already confirmed as an array. Getting the element type can't fail.",
                 array_expr.span.clone(),
             )
         })?;

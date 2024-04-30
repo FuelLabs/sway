@@ -21,6 +21,8 @@ category = "fail"
 #nextln: $()found:    u32.
 #nextln: $()help: Array index must be of type "u64".
 
+#not: $()array[0u64] = 0;
+
 #check: $()error
 #check: $()array[true] = 0;
 #nextln: $()Mismatched types.
@@ -78,6 +80,8 @@ category = "fail"
 #nextln: $()expected: u64
 #nextln: $()found:    u32.
 #nextln: $()help: Array index must be of type "u64".
+
+#not: $()poke(array[0u64]);
 
 #check: $()error
 #check: $()poke(array[true]);

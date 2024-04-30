@@ -38,7 +38,7 @@ pub fn mem_copy_opt(
 
 fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Result<bool, IrError> {
     struct InstInfo {
-        // The block in which an instruction is
+        // The block containing the instruction.
         block: Block,
         // Relative (use only for comparison) position of instruction in `block`.
         pos: usize,

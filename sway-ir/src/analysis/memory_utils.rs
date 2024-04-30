@@ -130,8 +130,6 @@ pub fn get_referred_symbols(context: &Context, val: Value) -> ReferredSymbols {
 /// are returned. Otherwise, the result also contains [Symbol]s reachable
 /// via referencing (`&`) and dereferencing (`*`).
 fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols {
-    let mut visited = FxHashSet::default();
-    let mut symbols = IndexSet::default();
     fn get_symbols_rec(
         context: &Context,
         symbols: &mut FxIndexSet<Symbol>,
@@ -235,7 +233,10 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
         }
     }
 
+    let mut visited = FxHashSet::default();
+    let mut symbols = IndexSet::default();
     let mut is_complete = true;
+
     get_symbols_rec(
         context,
         &mut symbols,

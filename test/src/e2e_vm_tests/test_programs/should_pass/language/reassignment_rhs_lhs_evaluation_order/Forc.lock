@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-DB0AC437AEFB8078"
+
+[[package]]
+name = "reassignment_rhs_lhs_evaluation_order"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-DB0AC437AEFB8078"
+dependencies = ["core"]
