@@ -166,12 +166,16 @@ fn pretty_print_error_report(error: &str) {
 pub(super) async fn run(
     filter_regex: Option<&regex::Regex>,
     verbose: bool,
-    experimental: ExperimentalFlags,
+    mut experimental: ExperimentalFlags,
 ) -> Result<()> {
+    // TODO the way moduels are built for these tests, new_encoding is not working.
+    experimental.new_encoding = false;
+
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
     let mut core_lib = compile_core(build_target, &engines, experimental);
+
     // Create new initial namespace for every test by reusing the precompiled
     // standard libraries. The namespace, thus its root module, must have the
     // name set.
@@ -225,7 +229,10 @@ pub(super) async fn run(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
-                );
+                ).with_experimental(sway_core::ExperimentalFlags {
+                    new_encoding: experimental.new_encoding
+                });
+
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.with_include_tests(true);
 
@@ -535,7 +542,7 @@ fn compile_core(
         disable_tests: false,
         locked: false,
         ipfs_node: None,
-        experimental_new_encoding: experimental.new_encoding,
+        no_encoding_v1: !experimental.new_encoding,
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {

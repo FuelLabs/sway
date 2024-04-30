@@ -247,16 +247,6 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
-name = "run_external_proxy"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "run_external_target"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
 name = "script_bytecode"
 source = "member"
 dependencies = ["std"]
@@ -304,7 +294,10 @@ dependencies = ["std"]
 [[package]]
 name = "storage_string"
 source = "member"
-dependencies = ["std"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "storage_vec_nested"

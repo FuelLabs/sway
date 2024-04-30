@@ -1,10 +1,5 @@
 script;
 
-enum Result<T, E> {
-  Ok: T,
-  Err: E,
-}
-
 // should return 5
 fn main() -> u64 {
   let result_a = Result::Ok::<u64, bool>(5u64);

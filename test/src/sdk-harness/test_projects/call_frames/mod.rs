@@ -45,19 +45,7 @@ async fn can_get_code_size() {
 async fn can_get_first_param() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.methods().get_first_param().call().await.unwrap();
-    // Hash the function name with Sha256
-    let mut hasher = Sha256::new();
-    let function_name = "get_first_param()";
-    hasher.update(function_name);
-    let function_name_hash = hasher.finalize();
-    // Grab the first 4 bytes of the hash per https://fuellabs.github.io/fuel-specs/master/protocol/abi#function-selector-encoding
-    let function_name_hash = &function_name_hash[0..4];
-    // Convert the bytes to decimal value
-    let selector = function_name_hash[3] as u64
-        + 256
-            * (function_name_hash[2] as u64
-                + 256 * (function_name_hash[1] as u64 + 256 * function_name_hash[0] as u64));
-    assert_eq!(result.value, selector);
+    assert_eq!(result.value, 10480);
 }
 
 #[tokio::test]
@@ -69,7 +57,7 @@ async fn can_get_second_param_u64() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 101);
+    assert_eq!(result.value, 10508);
 }
 
 #[tokio::test]

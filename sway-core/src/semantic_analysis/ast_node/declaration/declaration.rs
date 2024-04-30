@@ -278,20 +278,12 @@ impl TyDecl {
                         Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                     };
 
-                // if this ImplTrait implements a trait and not an ABI,
-                // we insert its methods into the context
-                // otherwise, if it implements an ABI,
-                // we insert its methods with a prefix
-                let emp_vec = vec![];
-                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) =
-                    ctx.namespace().resolve_call_path_typed(
-                        &Handler::default(),
-                        engines,
-                        &impl_trait.trait_name,
-                        ctx.self_type(),
-                    ) {
-                    &impl_trait.items
-                } else {
+                // Insert prefixed symbols when implementing_for is Contract
+                let is_contract = engines
+                    .te()
+                    .get(impl_trait.implementing_for.type_id)
+                    .is_contract();
+                if is_contract {
                     for i in &impl_trait.items {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
@@ -314,8 +306,22 @@ impl TyDecl {
                             });
                         }
                     }
+                }
 
-                    &emp_vec
+                // Choose which items are going to be visible depending if this is an abi impl
+                // or trait impl
+                let t = ctx.namespace().resolve_call_path_typed(
+                    &Handler::default(),
+                    engines,
+                    &impl_trait.trait_name,
+                    ctx.self_type(),
+                );
+
+                let empty_vec = vec![];
+                let impl_trait_items = if let Ok(ty::TyDecl::TraitDecl { .. }) = t {
+                    &impl_trait.items
+                } else {
+                    &empty_vec
                 };
 
                 ctx.insert_trait_implementation(

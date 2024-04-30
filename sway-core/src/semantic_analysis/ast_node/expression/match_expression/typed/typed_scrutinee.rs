@@ -197,7 +197,7 @@ fn type_check_variable(
                 span,
             }
         }
-        // Variable isn't a constant, so so we turn it into a [ty::TyScrutinee::Variable].
+        // Variable isn't a constant, so we turn it into a [ty::TyScrutinee::Variable].
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
             type_id: type_engine.insert(ctx.engines(), TypeInfo::Unknown, None),

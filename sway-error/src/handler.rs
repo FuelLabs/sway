@@ -48,6 +48,10 @@ impl Handler {
         !self.inner.borrow().errors.is_empty()
     }
 
+    pub fn find_error(&self, f: impl FnMut(&&CompileError) -> bool) -> Option<CompileError> {
+        self.inner.borrow().errors.iter().find(f).cloned()
+    }
+
     pub fn has_warnings(&self) -> bool {
         !self.inner.borrow().warnings.is_empty()
     }

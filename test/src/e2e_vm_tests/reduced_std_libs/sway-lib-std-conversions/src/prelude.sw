@@ -15,6 +15,9 @@ use ::revert::{require, revert};
 // Convert
 use ::convert::From;
 
+/// U128
+use ::u128::*;
+
 // Primitive conversions
 use ::primitive_conversions::*;
 
