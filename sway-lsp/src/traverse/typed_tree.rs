@@ -79,8 +79,8 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::FunctionDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TraitDecl(decl) => decl.parse(ctx),
             ty::TyDecl::StructDecl(decl) => decl.parse(ctx),
-            ty::TyDecl::EnumDecl(decl) => collect_enum(ctx, &decl.decl_id, self),
-            ty::TyDecl::EnumVariantDecl(decl) => collect_enum(ctx, decl.enum_ref.id(), self),
+            ty::TyDecl::EnumDecl(decl) => collect_enum(ctx, decl.decl_id, self),
+            ty::TyDecl::EnumVariantDecl(decl) => collect_enum(ctx, *decl.enum_ref.id(), self),
             ty::TyDecl::ImplTrait(decl) => decl.parse(ctx),
             ty::TyDecl::AbiDecl(decl) => decl.parse(ctx),
             ty::TyDecl::GenericTypeForFunctionScope(decl) => decl.parse(ctx),
@@ -1163,7 +1163,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
                                 .symbols()
                                 .get(&abi_call_path.call_path.suffix)
                         })
-                        .and_then(|decl| decl.get_decl_ident())
+                        .and_then(sway_core::language::ty::GetDeclIdent::get_decl_ident)
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -1341,7 +1341,7 @@ fn collect_trait_constraint(
             .namespace
             .submodule(ctx.engines, &trait_name.prefixes)
             .and_then(|module| module.current_items().symbols().get(&trait_name.suffix))
-            .and_then(|decl| decl.get_decl_ident())
+            .and_then(sway_core::language::ty::GetDeclIdent::get_decl_ident)
         {
             token.type_def = Some(TypeDefinition::Ident(trait_def_ident));
         }
@@ -1366,8 +1366,8 @@ fn collect_supertrait(ctx: &ParseContext, supertrait: &Supertrait) {
     }
 }
 
-fn collect_enum(ctx: &ParseContext, decl_id: &DeclId<ty::TyEnumDecl>, declaration: &ty::TyDecl) {
-    let enum_decl = ctx.engines.de().get_enum(decl_id);
+fn collect_enum(ctx: &ParseContext, decl_id: DeclId<ty::TyEnumDecl>, declaration: &ty::TyDecl) {
+    let enum_decl = ctx.engines.de().get_enum(&decl_id);
     if let Some(mut token) = ctx
         .tokens
         .try_get_mut_with_retry(&ctx.ident(&enum_decl.call_path.suffix))
@@ -1400,6 +1400,6 @@ fn collect_qualified_path_root(
             qualified_path_root.as_trait,
             &TypedAstToken::Ident(Ident::new(qualified_path_root.as_trait_span.clone())),
             qualified_path_root.as_trait_span,
-        )
+        );
     }
 }

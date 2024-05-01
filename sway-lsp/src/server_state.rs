@@ -256,7 +256,7 @@ impl ServerState {
         }
     }
 
-    pub async fn shutdown_server(&self) -> jsonrpc::Result<()> {
+    pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
         tracing::info!("Shutting Down the Sway Language Server");
 
         // Drain pending compilation requests
@@ -283,7 +283,7 @@ impl ServerState {
         workspace_uri: Url,
         session: Arc<Session>,
     ) {
-        let diagnostics = self.diagnostics(&uri, session.clone()).await;
+        let diagnostics = self.diagnostics(&uri, session.clone());
         // Note: Even if the computed diagnostics vec is empty, we still have to push the empty Vec
         // in order to clear former diagnostics. Newly pushed diagnostics always replace previously pushed diagnostics.
         if let Some(client) = self.client.as_ref() {
@@ -293,7 +293,7 @@ impl ServerState {
         }
     }
 
-    async fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
+    fn diagnostics(&self, uri: &Url, session: Arc<Session>) -> Vec<Diagnostic> {
         let mut diagnostics_to_publish = vec![];
         let config = &self.config.read();
         let tokens = session.token_map().tokens_for_file(uri);

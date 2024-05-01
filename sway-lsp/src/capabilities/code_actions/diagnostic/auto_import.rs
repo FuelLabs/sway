@@ -283,7 +283,7 @@ fn get_text_edit_fallback(
         );
     TextEdit {
         range: Range::new(Position::new(range_line, 0), Position::new(range_line, 0)),
-        new_text: format!("\nuse {};\n", call_path),
+        new_text: format!("\nuse {call_path};\n"),
     }
 }
 

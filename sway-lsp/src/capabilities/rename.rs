@@ -17,7 +17,7 @@ const RAW_IDENTIFIER: &str = "r#";
 pub fn rename(
     session: Arc<Session>,
     new_name: String,
-    url: Url,
+    url: &Url,
     position: Position,
 ) -> Result<WorkspaceEdit, LanguageServerError> {
     // Make sure the new name is not a keyword or a literal int type
@@ -89,7 +89,7 @@ pub fn rename(
                 existing.append(&mut v);
                 // Sort the TextEdits by their range in reverse order so the client applies edits
                 // from the end of the document to the beginning, preventing issues with offset changes.
-                existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start))
+                existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start));
             })
             .or_insert(v);
         map
@@ -99,7 +99,7 @@ pub fn rename(
 
 pub fn prepare_rename(
     session: Arc<Session>,
-    url: Url,
+    url: &Url,
     position: Position,
 ) -> Result<PrepareRenameResponse, LanguageServerError> {
     let t = session
@@ -174,7 +174,7 @@ fn trait_interface_idents<'a>(
 ) -> Vec<TokenIdent> {
     interface_surface
         .iter()
-        .flat_map(|item| match item {
+        .filter_map(|item| match item {
             ty::TyTraitInterfaceItem::TraitFn(fn_decl) => Some(TokenIdent::new(fn_decl.name(), se)),
             _ => None,
         })

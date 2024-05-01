@@ -87,7 +87,7 @@ impl<'a> HoverLinkContents<'a> {
         };
     }
 
-    /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
+    /// Adds all implementations of the given [`TyTraitDecl`] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
         if let Some(namespace) = self.session.namespace() {
             let call_path =
@@ -100,7 +100,7 @@ impl<'a> HoverLinkContents<'a> {
         }
     }
 
-    /// Adds implementations of the given type to the list of implementations using the [TyDecl].
+    /// Adds implementations of the given type to the list of implementations using the [`TyDecl`].
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace
@@ -111,13 +111,13 @@ impl<'a> HoverLinkContents<'a> {
         }
     }
 
-    /// Adds implementations of the given type to the list of implementations using the [TypeId].
-    pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: &TypeId) {
+    /// Adds implementations of the given type to the list of implementations using the [`TypeId`].
+    pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: TypeId) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace
                 .module(self.engines)
                 .current_items()
-                .get_impl_spans_for_type(self.engines, type_id);
+                .get_impl_spans_for_type(self.engines, &type_id);
             self.add_implementations(decl_span, impl_spans);
         }
     }
@@ -128,7 +128,7 @@ impl<'a> HoverLinkContents<'a> {
         let mut all_spans = vec![decl_span.clone()];
         all_spans.append(&mut impl_spans);
         all_spans.dedup();
-        all_spans.iter().for_each(|span| {
+        for span in &all_spans {
             let span_result = self
                 .session
                 .sync
@@ -136,6 +136,6 @@ impl<'a> HoverLinkContents<'a> {
             if let Ok(span) = span_result {
                 self.implementations.push(span);
             }
-        });
+        }
     }
 }

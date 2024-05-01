@@ -32,7 +32,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn shutdown(&self) -> Result<()> {
-        self.shutdown_server().await
+        self.shutdown_server()
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {

@@ -763,7 +763,7 @@ impl Parse for ParsedDeclId<EnumDeclaration> {
             ),
         );
         adaptive_iter(&enum_decl.type_parameters, |type_param| {
-            type_param.parse(ctx)
+            type_param.parse(ctx);
         });
         adaptive_iter(&enum_decl.variants, |variant| variant.parse(ctx));
         enum_decl.attributes.parse(ctx);

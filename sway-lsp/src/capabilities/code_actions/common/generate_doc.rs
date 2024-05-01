@@ -28,7 +28,7 @@ pub(crate) trait GenerateDocCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
 
     /// Formats a vector of lines into a doc comment [String].
     fn format_lines(&self, lines: Vec<String>) -> String {
-        lines.iter().fold("".to_string(), |output, line| {
+        lines.iter().fold(String::new(), |output, line| {
             format!("{}{}/// {}\n", output, self.indentation(), line)
         })
     }

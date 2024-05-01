@@ -130,7 +130,7 @@ pub async fn handle_hover(
             Ok(capabilities::hover::hover_data(
                 session,
                 &state.keyword_docs,
-                uri,
+                &uri,
                 position,
             ))
         }
@@ -150,7 +150,7 @@ pub async fn handle_prepare_rename(
         .await
     {
         Ok((uri, session)) => {
-            match capabilities::rename::prepare_rename(session, uri, params.position) {
+            match capabilities::rename::prepare_rename(session, &uri, params.position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -176,7 +176,7 @@ pub async fn handle_rename(
         Ok((uri, session)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            match capabilities::rename::rename(session, new_name, uri, position) {
+            match capabilities::rename::rename(session, new_name, &uri, position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -203,7 +203,7 @@ pub async fn handle_document_highlight(
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session, uri, position,
+                session, &uri, position,
             ))
         }
         Err(err) => {

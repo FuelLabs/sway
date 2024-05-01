@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 pub fn get_highlights(
     session: Arc<Session>,
-    url: Url,
+    url: &Url,
     position: Position,
 ) -> Option<Vec<DocumentHighlight>> {
     session.token_ranges(&url, position).map(|ranges| {

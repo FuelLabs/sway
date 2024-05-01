@@ -228,7 +228,7 @@ impl std::hash::Hash for TokenIdent {
     }
 }
 
-/// Check if the given method is a [core::ops] application desugared from short-hand syntax like / + * - etc.
+/// Check if the given method is a [`core::ops`] application desugared from short-hand syntax like / + * - etc.
 pub fn desugared_op(prefixes: &[Ident]) -> bool {
     let prefix0 = prefixes.first().map(|ident| ident.as_str());
     let prefix1 = prefixes.get(1).map(|ident| ident.as_str());

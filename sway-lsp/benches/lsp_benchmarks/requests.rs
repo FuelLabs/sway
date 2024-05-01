@@ -37,13 +37,11 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("hover", |b| {
-        b.iter(|| {
-            capabilities::hover::hover_data(session.clone(), &keyword_docs, uri.clone(), position)
-        })
+        b.iter(|| capabilities::hover::hover_data(session.clone(), &keyword_docs, &uri, position))
     });
 
     c.bench_function("highlight", |b| {
-        b.iter(|| capabilities::highlight::get_highlights(session.clone(), uri.clone(), position))
+        b.iter(|| capabilities::highlight::get_highlights(session.clone(), &uri, position))
     });
 
     c.bench_function("goto_definition", |b| {
@@ -62,7 +60,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("prepare_rename", |b| {
-        b.iter(|| capabilities::rename::prepare_rename(session.clone(), uri.clone(), position))
+        b.iter(|| capabilities::rename::prepare_rename(session.clone(), &uri, position))
     });
 
     c.bench_function("rename", |b| {
@@ -70,7 +68,7 @@ fn benchmarks(c: &mut Criterion) {
             capabilities::rename::rename(
                 session.clone(),
                 "new_token_name".to_string(),
-                uri.clone(),
+                &uri,
                 position,
             )
         })
