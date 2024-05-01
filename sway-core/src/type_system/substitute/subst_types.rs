@@ -66,11 +66,11 @@ impl<T: SubstTypes> SubstTypes for Vec<T> {
 
 #[macro_export]
 macro_rules! has_changes {
-    ($($stmts:expr);* ;) => {{
-        let mut has_change = $crate::type_system::HasChanges::No;
+    ($($stmt:expr);* ;) => {{
+        let mut has_changes = $crate::type_system::HasChanges::No;
         $(
-            has_change = $stmts | has_change;
+            has_changes = $stmt | has_changes;
         )*
-        has_change
+        has_changes
     }};
 }

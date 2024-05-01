@@ -24,26 +24,28 @@ impl Eq for S {
 
 // TODO-IG: Extend with `mut` parameters once declaring `mut` parameters is implemented.
 
+// TODO-IG: Extend with `&` and `&mut` parameters once proper referencing of copy type parameters is implemented.
+
 // TODO-IG: Uncomment once proper referencing of copy type parameters is implemented.
-//#[inline(always)]
-//Fn u8_parameter(p: u8) {
+// #[inline(always)]
+// fn u8_parameter(p: u8) {
 //    let r_p_1 = &p;
 //    let r_p_2 = &p;
-//    
+   
 //    let p_ptr = asm(r: &p) { r: raw_ptr };
 //    let r_p_1_ptr = asm(r: r_p_1) { r: raw_ptr };
 //    let r_p_2_ptr = asm(r: r_p_2) { r: raw_ptr };
-//
+
 //    assert(p_ptr == r_p_1_ptr);
 //    assert(p_ptr == r_p_2_ptr);
-//
+
 //    assert(p_ptr.read::<u8>() == p);
-//}
-//
-//#[inline(never)]
-//Fn u8_parameter_not_inlined(p: u8) {
+// }
+
+// #[inline(never)]
+// fn u8_parameter_not_inlined(p: u8) {
 //    u8_parameter(p)
-//}
+// }
 
 impl Eq for [u64;2] {
     fn eq(self, other: Self) -> bool {
@@ -244,7 +246,7 @@ fn generic_parameter_not_inlined() {
 
 #[inline(never)]
 fn test_all_inlined() {
-    //u8_parameter(123u8);
+    // u8_parameter(123u8);
     array_parameter([111u64, 222u64]);
     empty_struct_parameter(EmptyStruct { });
     struct_parameter(S { x: 123u8 });
@@ -255,7 +257,7 @@ fn test_all_inlined() {
 
 #[inline(never)]
 fn test_not_inlined() {
-    //u8_parameter_not_inlined(123u8);
+    // u8_parameter_not_inlined(123u8);
     array_parameter_not_inlined([111u64, 222u64]);
     empty_struct_parameter_not_inlined(EmptyStruct { });
     struct_parameter_not_inlined(S { x: 123u8 });

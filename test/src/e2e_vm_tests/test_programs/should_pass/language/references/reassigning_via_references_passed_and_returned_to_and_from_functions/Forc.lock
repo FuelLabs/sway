@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-789914A5CBC0F1A9"
+
+[[package]]
+name = "reassigning_via_references_passed_and_returned_to_and_from_functions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-789914A5CBC0F1A9"
+dependencies = ["core"]

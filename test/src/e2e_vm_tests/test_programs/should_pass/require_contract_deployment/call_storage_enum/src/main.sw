@@ -3,9 +3,9 @@ script;
 use storage_enum_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x1ce765336fbb4c4558c7f5753fad01a8549521b03e82bc94048fa512750b9554;
+const CONTRACT_ID = 0x0436d54f976e2dee0d77c81abc0d32cc7be985d8e0c97eeba27acd1caffdcea1;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xee8e809af7ce3de220e1b0468c7c062413ee855abce4223b7187a385cd93f5f8;
+const CONTRACT_ID = 0x028e88f07ba7bf51d0b5d2e3cda7ccea35f8bdf788defa74ddb34841f074fcfd;
 
 fn main() -> u64 {
     let caller = abi(StorageEnum, CONTRACT_ID);

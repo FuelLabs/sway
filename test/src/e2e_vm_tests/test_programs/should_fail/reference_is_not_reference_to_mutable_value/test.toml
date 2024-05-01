@@ -1,0 +1,34 @@
+category = "fail"
+
+#check: $()Reference is not a reference to a mutable value (`&mut`)
+#check: $()let r_array_1 = &array;
+#nextln: $()Reference "r_array_1" is declared here as a reference to immutable value.
+#nextln: $()This expression has type "&[u64; 3]" instead of "&mut [u64; 3]".
+#nextln: $()Consider taking here a reference to a mutable value: `&mut array`.
+#check: $()*r_array_1 = [2, 3, 4];
+#nextln: $()Reference "r_array_1" is not a reference to a mutable value (`&mut`).
+#check: $()References dereferenced in assignment targets must be references to mutable values (`&mut`).
+
+#check: $()Reference is not a reference to a mutable value (`&mut`)
+#check: $()let r_array_2 = r_array_1;
+#nextln: $()Reference "r_array_2" is declared here as a reference to immutable value.
+#nextln: $()This expression has type "&[u64; 3]" instead of "&mut [u64; 3]".
+#not: $()Consider taking here a reference to a mutable value
+#check: $()*r_array_2 = [2, 3, 4];
+#nextln: $()Reference "r_array_2" is not a reference to a mutable value (`&mut`).
+#check: $()References dereferenced in assignment targets must be references to mutable values (`&mut`).
+
+#check: $()Reference is not a reference to a mutable value (`&mut`)
+#check: $()let r_array_3 = &get_array(
+#nextln: $()Reference "r_array_3" is declared here as a reference to immutable value.
+#check: $()This expression has type "&[u64; 3]" instead of "&mut [u64; 3]".
+#nextln: $()Consider taking here a reference to a mutable value: `&mut get_array(...`.
+#check: $()*r_array_3 = [2, 3, 4];
+#nextln: $()Reference "r_array_3" is not a reference to a mutable value (`&mut`).
+#check: $()References dereferenced in assignment targets must be references to mutable values (`&mut`).
+
+#check: $()Reference is not a reference to a mutable value (`&mut`)
+#check: $()*&array = [2, 3, 4];
+#nextln: $()This reference expression is not a reference to a mutable value (`&mut`).
+#nextln: $()It has type "&[u64; 3]" instead of "&mut [u64; 3]".
+#check: $()Reference expressions dereferenced in assignment targets must result in references to mutable values (`&mut`).

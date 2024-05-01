@@ -8,9 +8,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbols, memory_utils, AnalysisResults, Context, EscapedSymbols, Function, InstOp,
-    Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_gep_referred_symbols, get_referred_symbols, memory_utils, AnalysisResults, Context,
+    EscapedSymbols, Function, InstOp, Instruction, IrError, LocalVar, Module, Pass, PassMutability,
+    ReferredSymbols, ScopedPass, Symbol, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -58,17 +58,21 @@ fn is_removable_store(
         InstOp::MemCopyBytes { dst_val_ptr, .. }
         | InstOp::MemCopyVal { dst_val_ptr, .. }
         | InstOp::Store { dst_val_ptr, .. } => {
-            let syms = get_symbols(context, dst_val_ptr);
-            syms.iter().all(|sym| {
-                !escaped_symbols.contains(sym)
-                    && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
-            })
+            let syms = get_referred_symbols(context, dst_val_ptr);
+            match syms {
+                ReferredSymbols::Complete(syms) => syms.iter().all(|sym| {
+                    !escaped_symbols.contains(sym)
+                        && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
+                }),
+                // We cannot guarantee that the destination is not used.
+                ReferredSymbols::Incomplete(_) => false,
+            }
         }
         _ => false,
     }
 }
 
-/// Perform dead code (if any) elimination and return true if function modified.
+/// Perform dead code (if any) elimination and return true if function is modified.
 pub fn dce(
     context: &mut Context,
     analyses: &AnalysisResults,
@@ -83,10 +87,10 @@ pub fn dce(
     let mut stores_of_sym: HashMap<Symbol, Vec<Value>> = HashMap::new();
 
     // Every argument is assumed to be loaded from (from the caller),
-    // so stores to it shouldn't be deliminated.
+    // so stores to it shouldn't be eliminated.
     for sym in function
         .args_iter(context)
-        .flat_map(|arg| get_symbols(context, arg.1))
+        .flat_map(|arg| get_gep_referred_symbols(context, arg.1))
     {
         num_symbol_uses
             .entry(sym)
