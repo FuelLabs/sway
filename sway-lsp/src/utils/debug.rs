@@ -52,7 +52,7 @@ fn warning_from_ident(ident: &TokenIdent) -> Diagnostic {
     Diagnostic {
         range: ident.range,
         severity: Some(DiagnosticSeverity::WARNING),
-        message: "".to_string(),
+        message: String::new(),
         ..Default::default()
     }
 }
@@ -62,9 +62,8 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::U8(_) => "u8".into(),
         Literal::U16(_) => "u16".into(),
         Literal::U32(_) => "u32".into(),
-        Literal::U64(_) => "u64".into(),
+        Literal::U64(_) | Literal::Numeric(_) => "u64".into(),
         Literal::U256(_) => "u256".into(),
-        Literal::Numeric(_) => "u64".into(),
         Literal::String(len) => format!("str[{}]", len.as_str().len()),
         Literal::Boolean(_) => "bool".into(),
         Literal::B256(_) => "b256".into(),
@@ -118,5 +117,5 @@ pub(crate) fn print_decl_engine_types(
             ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
             ty::TyAstNodeContent::Error(_, _) => "error".to_string(),
         })
-        .fold("".to_string(), |output, s| format!("{output}{s}\n"))
+        .fold(String::new(), |output, s| format!("{output}{s}\n"))
 }
