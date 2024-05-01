@@ -572,10 +572,11 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace()
-                        .module(engines)
+                        .root
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
+                            self.namespace().module(engines),
                             root_type_id,
                             None,
                             &qualified_call_path.clone().to_call_path(handler)?,
@@ -779,17 +780,13 @@ impl<'a> TypeCheckContext<'a> {
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let engines = self.engines;
-        let (decl, mod_path) = self
-            .namespace()
-            .root
-            .module
-            .resolve_call_path_and_mod_path(
-                handler,
-                self.engines,
-                mod_path,
-                call_path,
-                self.self_type,
-            )?;
+        let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
+            handler,
+            self.engines,
+            mod_path,
+            call_path,
+            self.self_type,
+        )?;
         let decl = decl.expect_typed();
 
         // In case there is no mod path we don't need to check visibility
@@ -887,10 +884,10 @@ impl<'a> TypeCheckContext<'a> {
 
             self.namespace()
                 .root
-                .module
                 .resolve_call_path_and_root_type_id(
                     handler,
                     self.engines,
+                    &self.namespace().root.module,
                     root_type_id,
                     as_trait_opt,
                     &qualified_call_path.call_path,

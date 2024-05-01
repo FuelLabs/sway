@@ -4,8 +4,8 @@ use crate::{
 };
 
 use super::{
-    module::{Module, ResolvedDeclaration},
-    root::Root,
+    module::Module,
+    root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
     ModulePath, ModulePathBuf,
@@ -203,7 +203,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_symbol(handler, engines, mod_path, symbol, self_type)
     }
 
@@ -216,7 +215,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
@@ -253,7 +251,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
