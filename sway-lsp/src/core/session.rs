@@ -151,7 +151,7 @@ impl Session {
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         self.token_map
-            .token_at_position(&uri, position)
+            .token_at_position(uri, position)
             .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
             .and_then(|decl_ident| {
                 decl_ident.path.and_then(|path| {

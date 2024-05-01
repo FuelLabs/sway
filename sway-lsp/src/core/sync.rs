@@ -248,7 +248,7 @@ pub(crate) fn is_path_in_temp_workspace(uri: &Url) -> bool {
     uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
 }
 
-fn convert_url(uri: &Url, from: &PathBuf, to: &PathBuf) -> Result<Url, DirectoryError> {
+fn convert_url(uri: &Url, from: &Path, to: &PathBuf) -> Result<Url, DirectoryError> {
     let path = from.join(
         PathBuf::from(uri.path())
             .strip_prefix(to)
