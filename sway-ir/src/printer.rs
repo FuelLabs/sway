@@ -88,7 +88,7 @@ impl Doc {
 
 /// Pretty-print a whole [`Context`] to a string.
 ///
-/// The ouput from this function must always be suitable for [`crate::parser::parse`].
+/// The output from this function must always be suitable for [crate::parser::parse].
 pub fn to_string(context: &Context) -> String {
     let mut md_namer = MetadataNamer::default();
     context

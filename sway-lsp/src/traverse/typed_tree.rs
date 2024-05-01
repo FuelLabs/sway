@@ -11,7 +11,7 @@ use sway_core::{
     decl_engine::{id::DeclId, InterfaceDeclId},
     language::{
         parsed::{ImportType, QualifiedPathType, Supertrait},
-        ty::{self, GetDeclIdent, TyModule, TyProgram, TySubmodule},
+        ty::{self, GetDeclIdent, TyModule, TyProgram, TyReassignmentTarget, TySubmodule},
         CallPathTree,
     },
     type_system::TypeArgument,
@@ -1048,30 +1048,37 @@ impl Parse for ty::TyStructScrutineeField {
 impl Parse for ty::TyReassignment {
     fn parse(&self, ctx: &ParseContext) {
         self.rhs.parse(ctx);
-        if let Some(mut token) = ctx
-            .tokens
-            .try_get_mut_with_retry(&ctx.ident(&self.lhs_base_name))
-        {
-            token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
-        }
-        adaptive_iter(&self.lhs_indices, |proj_kind| {
-            if let ty::ProjectionKind::StructField { name } = proj_kind {
-                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
+        match &self.lhs {
+            TyReassignmentTarget::Deref(exp) => exp.parse(ctx),
+            TyReassignmentTarget::ElementAccess {
+                base_name,
+                base_type,
+                indices,
+            } => {
+                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(base_name)) {
                     token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
-                    if let Some(struct_decl) = &ctx
-                        .tokens
-                        .struct_declaration_of_type_id(ctx.engines, &self.lhs_type)
-                    {
-                        struct_decl.fields.iter().for_each(|decl_field| {
-                            if &decl_field.name == name {
-                                token.type_def =
-                                    Some(TypeDefinition::Ident(decl_field.name.clone()));
-                            }
-                        });
-                    }
                 }
+                adaptive_iter(indices, |proj_kind| {
+                    if let ty::ProjectionKind::StructField { name } = proj_kind {
+                        if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name))
+                        {
+                            token.typed = Some(TypedAstToken::TypedReassignment(self.clone()));
+                            if let Some(struct_decl) = &ctx
+                                .tokens
+                                .struct_declaration_of_type_id(ctx.engines, base_type)
+                            {
+                                struct_decl.fields.iter().for_each(|decl_field| {
+                                    if &decl_field.name == name {
+                                        token.type_def =
+                                            Some(TypeDefinition::Ident(decl_field.name.clone()));
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
             }
-        });
+        }
     }
 }
 

@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-A0FF837F10263FC2"
+
+[[package]]
+name = "reassigning_via_references_to_expressions"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-A0FF837F10263FC2"
+dependencies = ["core"]
