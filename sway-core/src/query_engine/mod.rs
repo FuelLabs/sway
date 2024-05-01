@@ -5,7 +5,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
+use sway_types::SourceId;
 
+use crate::language::ty::TyAstNode;
 use crate::Programs;
 
 pub type ModulePath = Arc<PathBuf>;
@@ -46,11 +48,22 @@ pub struct ProgramsCacheEntry {
 
 pub type ProgramsCacheMap = HashMap<ModulePath, ProgramsCacheEntry>;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
     parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
+    nodes_cache: RwLock<HashMap<u64, TyAstNode>>,
+}
+
+impl Clone for QueryEngine {
+    fn clone(&self) -> Self {
+        Self {
+            parse_module_cache: self.parse_module_cache.clone(),
+            programs_cache: self.programs_cache.clone(),
+            nodes_cache: RwLock::new(self.nodes_cache.read().unwrap().clone()),
+        }
+    }
 }
 
 impl QueryEngine {
@@ -78,5 +91,23 @@ impl QueryEngine {
     pub fn insert_programs_cache_entry(&self, entry: ProgramsCacheEntry) {
         let mut cache = self.programs_cache.write().unwrap();
         cache.insert(entry.path.clone(), entry);
+    }
+
+    pub fn get_node_cache_entry(&self, hash: u64) -> Option<TyAstNode> {
+        let cache = self.nodes_cache.read().unwrap();
+        cache.get(&hash).cloned()
+    }
+
+    pub fn insert_node_cache_entry(&self, hash: u64, node: TyAstNode) {
+        let mut cache = self.nodes_cache.write().unwrap();
+        cache.insert(hash, node);
+    }
+
+    pub fn clear_module(&self, source_id: SourceId) {
+        let mut cache = self.nodes_cache.write().unwrap();
+        cache.retain(|_, n| match n.span.source_id() {
+            Some(id) => *id != source_id,
+            None => true,
+        });
     }
 }

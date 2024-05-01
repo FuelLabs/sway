@@ -125,7 +125,7 @@ impl Session {
         let path = self.sync.temp_dir()?;
         let module_id = { engines.se().get_module_id(&path) };
         if let Some(module_id) = module_id {
-            engines.clear_module(&module_id);
+            engines.clear_package(&module_id);
         }
         Ok(())
     }

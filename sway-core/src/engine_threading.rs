@@ -4,11 +4,9 @@ use crate::{
     type_system::TypeEngine,
 };
 use std::{
-    cmp::Ordering,
-    fmt,
-    hash::{BuildHasher, Hash, Hasher},
+    cmp::Ordering, collections::BTreeSet, fmt, hash::{BuildHasher, Hash, Hasher}
 };
-use sway_types::SourceEngine;
+use sway_types::{SourceEngine, SourceId};
 
 #[derive(Clone, Debug, Default)]
 pub struct Engines {
@@ -42,10 +40,15 @@ impl Engines {
 
     /// Removes all data associated with `module_id` from the declaration and type engines.
     /// It is intended to be used during garbage collection to remove any data that is no longer needed.
-    pub fn clear_module(&mut self, module_id: &sway_types::ModuleId) {
-        self.type_engine.clear_module(module_id);
-        self.decl_engine.clear_module(module_id);
-        self.parsed_decl_engine.clear_module(module_id);
+    pub fn clear_package(&mut self, module_id: &sway_types::ModuleId) {
+        let modules = self.se().get_source_ids_from_module_id(module_id).unwrap();
+        self.clear_modules(&modules);
+    }
+
+    pub fn clear_modules(&mut self, modules: &BTreeSet<SourceId>) {
+        self.type_engine.clear_modules(modules); 
+        self.decl_engine.clear_modules(modules);
+        self.parsed_decl_engine.clear_modules(modules);
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
-    fs,
+    fs, hash::{DefaultHasher, Hash, Hasher},
 };
 
 use graph_cycles::Cycles;
@@ -273,6 +273,7 @@ impl ty::TyModule {
             ..
         } = parsed;
 
+        let now = std::time::Instant::now();
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
             .iter()
@@ -281,6 +282,7 @@ impl ty::TyModule {
                     .iter()
                     .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
                     .unwrap();
+                eprintln!("Type checking submodule: {:?}", name);
                 Ok((
                     name.clone(),
                     ty::TySubmodule::type_check(
@@ -294,6 +296,7 @@ impl ty::TyModule {
                 ))
             })
             .collect::<Result<Vec<_>, _>>();
+        eprintln!("All Submodules took: {:?}", now.elapsed());
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
@@ -447,6 +450,30 @@ impl ty::TyModule {
                 }
                 _ => false,
             };
+            
+            // TODO: HANDLE source id == None case!
+            // let source_id = node.span.source_id().unwrap();
+            // let path = engines.se().get_path(source_id);
+            // let mut hasher = DefaultHasher::new();
+            // node.span.hash(&mut hasher);
+            // let hash = hasher.finish();
+            // //eprintln!("Hash {:?} | Type checking node: {:?} {:?}", hash, node.clone().span.str(), path);
+
+            // let node = match engines.qe().get_node_cache_entry(hash) {
+            //     Some(n) => {
+            //         eprintln!("using cached node");
+            //         n
+            //     },
+            //     None => {
+            //         eprintln!("type checking node");
+            //         let Ok(node) = ty::TyAstNode::type_check(handler, ctx.by_ref(), node) else {
+            //             continue;
+            //         };
+            //         engines.qe().insert_node_cache_entry(hash, node.clone());
+            //         node                
+            //     }
+            // };
+
 
             let Ok(node) = ty::TyAstNode::type_check(handler, ctx.by_ref(), node) else {
                 continue;

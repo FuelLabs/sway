@@ -5,8 +5,8 @@ use crate::{
     type_system::priv_prelude::*,
 };
 use core::fmt::Write;
-use hashbrown::{hash_map::RawEntryMut, HashMap};
-use std::sync::{Arc, RwLock};
+use hashbrown::{hash_map::RawEntryMut, HashMap, HashSet};
+use std::{collections::BTreeSet, sync::{Arc, RwLock}};
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -67,7 +67,7 @@ impl TypeEngine {
     }
 
     /// Removes all data associated with `module_id` from the type engine.
-    pub fn clear_module(&mut self, module_id: &ModuleId) {
+    pub fn clear_package(&mut self, module_id: &ModuleId) {
         self.slab.retain(|_, tsi| match tsi.source_id {
             Some(source_id) => &source_id.module_id() != module_id,
             None => true,
@@ -77,6 +77,20 @@ impl TypeEngine {
             .unwrap()
             .retain(|tsi, _| match tsi.source_id {
                 Some(source_id) => &source_id.module_id() != module_id,
+                None => true,
+            });
+    }
+
+    pub fn clear_modules(&mut self, source_ids: &BTreeSet<SourceId>) {
+        self.slab.retain(|_, tsi| match tsi.source_id {
+            Some(source_id) => !source_ids.contains(&source_id),
+            None => true,
+        });
+        self.id_map
+            .write()
+            .unwrap()
+            .retain(|tsi, _| match tsi.source_id {
+                Some(source_id) => !source_ids.contains(&source_id),
                 None => true,
             });
     }
