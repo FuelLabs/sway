@@ -1,7 +1,10 @@
 [[package]]
 name = "associated_type_container_in_library"
 source = "member"
-dependencies = ["std"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "core"

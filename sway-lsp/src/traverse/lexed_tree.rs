@@ -4,12 +4,12 @@ use crate::{
 };
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use sway_ast::{
-    expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
-    Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
-    IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
-    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTypeAlias, ItemUse,
-    MatchBranchKind, ModuleKind, Pattern, PatternStructField, Statement, StatementLet,
-    StorageField, TraitType, Ty, TypeField, UseTree,
+    assignable::ElementAccess, expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable,
+    CodeBlockContents, ConfigurableField, Expr, ExprArrayDescriptor, ExprStructField,
+    ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
+    ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemImplItem, ItemKind, ItemStorage,
+    ItemStruct, ItemTrait, ItemTypeAlias, ItemUse, MatchBranchKind, ModuleKind, Pattern,
+    PatternStructField, Statement, StatementLet, StorageField, TraitType, Ty, TypeField, UseTree,
 };
 use sway_core::language::{lexed::LexedProgram, HasSubmodules};
 use sway_types::{Ident, Span, Spanned};
@@ -735,18 +735,27 @@ impl Parse for TyTupleDescriptor {
     }
 }
 
-impl Parse for Assignable {
+impl Parse for ElementAccess {
     fn parse(&self, ctx: &ParseContext) {
         match self {
-            Assignable::Index { target, arg } => {
+            ElementAccess::Index { target, arg } => {
                 target.parse(ctx);
                 arg.get().parse(ctx)
             }
-            Assignable::FieldProjection { target, .. }
-            | Assignable::TupleFieldProjection { target, .. } => {
+            ElementAccess::FieldProjection { target, .. }
+            | ElementAccess::TupleFieldProjection { target, .. } => {
                 target.parse(ctx);
             }
             _ => {}
+        }
+    }
+}
+
+impl Parse for Assignable {
+    fn parse(&self, ctx: &ParseContext) {
+        match self {
+            Assignable::ElementAccess(element_access) => element_access.parse(ctx),
+            Assignable::Deref { expr, .. } => expr.parse(ctx),
         }
     }
 }

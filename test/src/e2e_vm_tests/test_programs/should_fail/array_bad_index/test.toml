@@ -1,6 +1,119 @@
 category = "fail"
 
-# check: ary[false]
-# nextln: $()Mismatched types.
-# nextln: $()expected: u64
-# nextln: $()found:    bool.
+#check: $()error
+#check: $()array[0u8] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    u8.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()array[0u16] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    u16.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()array[0u32] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    u32.
+#nextln: $()help: Array index must be of type "u64".
+
+#not: $()array[0u64] = 0;
+
+#check: $()error
+#check: $()array[true] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    bool.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()array[()] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    ().
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()array["test"] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    str.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()array[S { x: 0 }] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    S.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()array[E::X(0)] = 0;
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    E.
+#nextln: $()help: Array index must be of type "u64".
+
+#---------------------------------------------------
+
+#check: $()error
+#check: $()poke(array[0u8]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    u8.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()poke(array[0u16]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    u16.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()poke(array[0u32]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    u32.
+#nextln: $()help: Array index must be of type "u64".
+
+#not: $()poke(array[0u64]);
+
+#check: $()error
+#check: $()poke(array[true]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    bool.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()poke(array[()]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    ().
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()poke(array["test"]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    str.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()poke(array[S { x: 0 }]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    S.
+#nextln: $()help: Array index must be of type "u64".
+
+#check: $()error
+#check: $()poke(array[E::X(0)]);
+#nextln: $()Mismatched types.
+#nextln: $()expected: u64
+#nextln: $()found:    E.
+#nextln: $()help: Array index must be of type "u64".

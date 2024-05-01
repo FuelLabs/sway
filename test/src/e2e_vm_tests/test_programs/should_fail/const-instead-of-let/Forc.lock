@@ -1,7 +1,10 @@
 [[package]]
 name = "const-instead-of-let"
 source = "member"
-dependencies = ["std"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "core"

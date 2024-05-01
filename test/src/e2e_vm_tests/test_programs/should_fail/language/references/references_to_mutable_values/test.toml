@@ -2,7 +2,7 @@ category = "fail"
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()fn function(f_x: u8) {
-#nextln: $()"f_x" is declared here as immutable.
+#nextln: $()Variable "f_x" is declared here as immutable.
 #nextln: $()let _ = &mut f_x;
 #nextln: $()"f_x" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "f_x", by returning it from a block: `&mut { f_x }`.
@@ -31,7 +31,7 @@ category = "fail"
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()let a = 123;
-#nextln: $()"a" is declared here as immutable.
+#nextln: $()Variable "a" is declared here as immutable.
 #check: $()let _ = &mut a;
 #nextln: $()"a" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "a", by returning it from a block: `&mut { a }`.
@@ -40,56 +40,56 @@ category = "fail"
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()let S { x } = S { x: 0 };
-#nextln: $()"x" is declared here as immutable.
+#nextln: $()Variable "x" is declared here as immutable.
 #check: $()let _ = &mut x;
 #nextln: $()"x" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "x", by returning it from a block: `&mut { x }`.
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()let S { x: x } = S { x: 0 };
-#nextln: $()"x" is declared here as immutable.
+#nextln: $()Variable "x" is declared here as immutable.
 #check: $()let _ = &mut x;
 #nextln: $()"x" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "x", by returning it from a block: `&mut { x }`.
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()let S { x: x_1 } = S { x: 0 };
-#nextln: $()"x_1" is declared here as immutable.
+#nextln: $()Variable "x_1" is declared here as immutable.
 #check: $()let _ = &mut x_1;
 #nextln: $()"x_1" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "x_1", by returning it from a block: `&mut { x_1 }`.
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()S { x } => {
-#nextln: $()"x" is declared here as immutable.
+#nextln: $()Variable "x" is declared here as immutable.
 #check: $()let _ = &mut x;
 #nextln: $()"x" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "x", by returning it from a block: `&mut { x }`.
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()S { x: x } => {
-#nextln: $()"x" is declared here as immutable.
+#nextln: $()Variable "x" is declared here as immutable.
 #check: $()let _ = &mut x;
 #nextln: $()"x" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "x", by returning it from a block: `&mut { x }`.
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()S { x: x_1 } => {
-#nextln: $()"x_1" is declared here as immutable.
+#nextln: $()Variable "x_1" is declared here as immutable.
 #check: $()let _ = &mut x_1;
 #nextln: $()"x_1" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "x_1", by returning it from a block: `&mut { x_1 }`.
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()if let S { x } = s {
-#nextln: $()"x" is declared here as immutable.
+#nextln: $()Variable "x" is declared here as immutable.
 #check: $()let _ = &mut x;
 #nextln: $()"x" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "x", by returning it from a block: `&mut { x }`.
 
 #check: $()References to mutable values cannot reference immutable variables
 #check: $()for n in vec.iter() {
-#nextln: $()"n" is declared here as immutable.
+#nextln: $()Variable "n" is declared here as immutable.
 #check: $()let _ = &mut n;
 #nextln: $()"n" is an immutable variable. `&mut` cannot reference immutable variables.
 #check: $()- referencing a mutable copy of "n", by returning it from a block: `&mut { n }`.

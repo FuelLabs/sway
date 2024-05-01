@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "reassignment_rhs_lhs_evaluation_order"
+
+[dependencies]
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

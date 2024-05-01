@@ -6,7 +6,7 @@ use std::{
     auth::AuthError,
     call_frames::msg_asset_id,
     context::msg_amount,
-    asset::transfer_to_address,
+    asset::transfer,
 };
 
 use wallet_abi::Wallet;
@@ -37,6 +37,6 @@ impl Wallet for Contract {
 
         storage.balance.write(current_balance - amount_to_send);
 
-        transfer_to_address(amount_to_send, AssetId::base(), recipient_address);
+        transfer(Identity::Address(recipient_address), amount_to_send, AssetId::base());
     }
 }

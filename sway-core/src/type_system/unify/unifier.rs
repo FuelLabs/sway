@@ -183,11 +183,13 @@ impl<'a> Unifier<'a> {
                     name: rn,
                     trait_constraints: rtc,
                     parent: _,
+                    is_from_type_parameter: _,
                 },
                 UnknownGeneric {
                     name: en,
                     trait_constraints: etc,
                     parent: _,
+                    is_from_type_parameter: _,
                 },
             ) if rn.as_str() == en.as_str()
                 && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines)) => {}

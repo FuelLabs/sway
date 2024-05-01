@@ -98,7 +98,7 @@ pub async fn handle_did_change_text_document(
         .await?;
     state
         .documents
-        .write_changes_to_file(&uri, params.content_changes)
+        .write_changes_to_file(&uri, &params.content_changes)
         .await?;
 
     let file_versions = file_versions(

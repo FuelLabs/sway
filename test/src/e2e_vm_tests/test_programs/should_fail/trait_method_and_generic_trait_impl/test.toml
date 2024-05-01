@@ -1,7 +1,7 @@
 category = "fail"
 
-# check: $()my_struct_1.foo(my_struct_2);
+# check: $()let _ = my_struct_1.foo(my_struct_2);
 # nextln: $()Trait "MyTrait" is not implemented for type "u64".
 
-# check: $()my_struct_1.bar(my_struct_2);
+# check: $()let _ = my_struct_1.bar(my_struct_2);
 # nextln: $()Trait "MyTrait" is not implemented for type "u64".
