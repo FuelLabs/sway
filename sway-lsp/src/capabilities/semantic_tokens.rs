@@ -175,9 +175,8 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
     match kind {
         SymbolKind::Field => SemanticTokenType::PROPERTY,
         SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
-        SymbolKind::Variable => SemanticTokenType::VARIABLE,
+        SymbolKind::Variable | SymbolKind::Const => SemanticTokenType::VARIABLE,
         SymbolKind::Function | SymbolKind::Intrinsic => SemanticTokenType::FUNCTION,
-        SymbolKind::Const => SemanticTokenType::VARIABLE,
         SymbolKind::Struct => SemanticTokenType::STRUCT,
         SymbolKind::Enum => SemanticTokenType::ENUM,
         SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,

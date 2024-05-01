@@ -56,7 +56,7 @@ impl SyncWorkspace {
             .and_then(|manifest_path| PackageManifestFile::from_dir(manifest_path).ok())
         {
             if let Some(temp_manifest_path) = &self.temp_manifest_path() {
-                edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+                edit_manifest_dependency_paths(&manifest, temp_manifest_path);
             }
         }
         Ok(())
@@ -120,20 +120,14 @@ impl SyncWorkspace {
         Ok(())
     }
 
-    /// Check if the current path is part of the users workspace.
-    /// Returns false if the path is from a dependancy
-    pub(crate) fn is_path_in_temp_workspace(&self, uri: &Url) -> bool {
-        uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
-    }
-
     /// Convert the Url path from the client to point to the same file in our temp folder
     pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
-        self.convert_url(uri, self.temp_dir()?, self.manifest_dir()?)
+        convert_url(uri, &self.temp_dir()?, &self.manifest_dir()?)
     }
 
     /// Convert the [Url] path from the temp folder to point to the same file in the users workspace.
     pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
-        self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
+        convert_url(uri, &self.manifest_dir()?, &self.temp_dir()?)
     }
 
     /// If it is a path to a temp directory, convert the path in the [Span] to the same file in the user's
@@ -144,8 +138,8 @@ impl SyncWorkspace {
         span: &Span,
     ) -> Result<Span, DirectoryError> {
         let url = get_url_from_span(source_engine, span)?;
-        if self.is_path_in_temp_workspace(&url) {
-            let converted_url = self.convert_url(&url, self.manifest_dir()?, self.temp_dir()?)?;
+        if is_path_in_temp_workspace(&url) {
+            let converted_url = convert_url(&url, &self.manifest_dir()?, &self.temp_dir()?)?;
             let converted_path = get_path_from_url(&converted_url)?;
             let source_id = source_engine.get_source_id(&converted_path);
             let converted_span = Span::new(
@@ -168,7 +162,7 @@ impl SyncWorkspace {
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
     /// Otherwise, pass through if it points to a dependency path
     pub(crate) fn to_workspace_url(&self, url: Url) -> Option<Url> {
-        if self.is_path_in_temp_workspace(&url) {
+        if is_path_in_temp_workspace(&url) {
             Some(self.temp_to_workspace_url(&url).ok()?)
         } else {
             Some(url)
@@ -246,15 +240,21 @@ impl SyncWorkspace {
             .map(|item| item.value().clone())
             .ok_or(DirectoryError::TempDirNotFound)
     }
+}
 
-    fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
-        let path = from.join(
-            PathBuf::from(uri.path())
-                .strip_prefix(to)
-                .map_err(DirectoryError::StripPrefixError)?,
-        );
-        get_url_from_path(&path)
-    }
+/// Check if the current path is part of the users workspace.
+/// Returns false if the path is from a dependancy
+pub(crate) fn is_path_in_temp_workspace(uri: &Url) -> bool {
+    uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
+}
+
+fn convert_url(uri: &Url, from: &PathBuf, to: &PathBuf) -> Result<Url, DirectoryError> {
+    let path = from.join(
+        PathBuf::from(uri.path())
+            .strip_prefix(to)
+            .map_err(DirectoryError::StripPrefixError)?,
+    );
+    get_url_from_path(&path)
 }
 
 /// Deserialize the manifest file and loop through the dependancies.
@@ -271,7 +271,7 @@ pub(crate) fn edit_manifest_dependency_paths(
     let mut dependency_map: IndexMap<String, PathBuf> = IndexMap::new();
 
     if let Some(deps) = &manifest.dependencies {
-        for (name, dep) in deps.iter() {
+        for (name, dep) in deps {
             if let Dependency::Detailed(details) = dep {
                 if details.path.is_some() {
                     if let Some(abs_path) = manifest.dep_path(name) {
@@ -319,7 +319,7 @@ fn copy_dir_contents(
             }
         } else if let Some(file_name_os) = path.file_name() {
             if let Some(file_name) = file_name_os.to_str() {
-                if file_name.ends_with(&format!(".{}", SWAY_EXTENSION))
+                if file_name.ends_with(&format!(".{SWAY_EXTENSION}"))
                     || file_name == MANIFEST_FILE_NAME
                     || file_name == LOCK_FILE_NAME
                 {

@@ -23,7 +23,7 @@ use tracing::metadata::LevelFilter;
 
 pub fn handle_initialize(
     state: &ServerState,
-    params: lsp_types::InitializeParams,
+    params: &lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
         let mut config = state.config.write();
@@ -84,7 +84,7 @@ pub async fn handle_goto_definition(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(uri, position))
+            Ok(session.token_definition_response(&uri, position))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());

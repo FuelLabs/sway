@@ -147,7 +147,7 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
-        uri: Url,
+        uri: &Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         self.token_map
@@ -278,7 +278,7 @@ pub fn traverse(
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     session.token_map.clear();
     session.metrics.clear();
-    let mut diagnostics: CompileResults = (Default::default(), Default::default());
+    let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -310,7 +310,7 @@ pub fn traverse(
         // Convert the source_id to a path so we can use the manifest path to get the module_id.
         // This is used to store the metrics for the module.
         if let Some(source_id) = lexed.root.tree.span().source_id() {
-            let path = engines.se().get_path(&source_id);
+            let path = engines.se().get_path(source_id);
             let module_id = module_id_from_path(&path, engines)?;
             session.metrics.insert(module_id, metrics);
         }

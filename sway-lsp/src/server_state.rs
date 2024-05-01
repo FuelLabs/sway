@@ -50,7 +50,7 @@ impl Default for ServerState {
         let (cb_tx, cb_rx) = crossbeam_channel::bounded(1);
         let state = ServerState {
             client: None,
-            config: Arc::new(RwLock::new(Default::default())),
+            config: Arc::new(RwLock::new(Config::default())),
             keyword_docs: Arc::new(KeywordDocs::new()),
             sessions: Arc::new(DashMap::new()),
             documents: Documents::new(),
@@ -157,7 +157,7 @@ impl ServerState {
                             session.clone(),
                             experimental,
                         ) {
-                            Ok(_) => {
+                            Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
                                 // Find the module id from the path
                                 match session::module_id_from_path(&path, &engines_clone) {
@@ -223,8 +223,8 @@ impl ServerState {
                     .output()
                     .expect("Failed to execute ps command");
 
-                if String::from_utf8_lossy(&output.stdout).contains(&format!("{} ", client_pid)) {
-                    tracing::trace!("Client Heartbeat: still running ({})", client_pid);
+                if String::from_utf8_lossy(&output.stdout).contains(&format!("{client_pid} ")) {
+                    tracing::trace!("Client Heartbeat: still running ({client_pid})");
                 } else {
                     std::process::exit(0);
                 }
@@ -303,10 +303,10 @@ impl ServerState {
             // and instead show the either the parsed or typed tokens as warnings.
             // This is useful for debugging the lsp parser.
             Warnings::Parsed => {
-                diagnostics_to_publish = debug::generate_warnings_for_parsed_tokens(tokens)
+                diagnostics_to_publish = debug::generate_warnings_for_parsed_tokens(tokens);
             }
             Warnings::Typed => {
-                diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens)
+                diagnostics_to_publish = debug::generate_warnings_for_typed_tokens(tokens);
             }
             Warnings::Default => {
                 if let Some(diagnostics) =
@@ -357,17 +357,16 @@ impl ServerState {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = match self.sessions.try_get(&manifest_dir).try_unwrap() {
-            Some(item) => item.value().clone(),
-            None => {
-                // If no session can be found, then we need to call init and inserst a new session into the map
-                self.init_session(uri).await?;
-                self.sessions
-                    .try_get(&manifest_dir)
-                    .try_unwrap()
-                    .map(|item| item.value().clone())
-                    .expect("no session found even though it was just inserted into the map")
-            }
+        let session = if let Some(item) = self.sessions.try_get(&manifest_dir).try_unwrap() {
+            item.value().clone()
+        } else {
+            // If no session can be found, then we need to call init and inserst a new session into the map
+            self.init_session(uri).await?;
+            self.sessions
+                .try_get(&manifest_dir)
+                .try_unwrap()
+                .map(|item| item.value().clone())
+                .expect("no session found even though it was just inserted into the map")
         };
         Ok(session)
     }

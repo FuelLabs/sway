@@ -38,7 +38,7 @@ pub fn rename(
     // Get the token at the current cursor position
     let t = session
         .token_map()
-        .token_at_position(&url, position)
+        .token_at_position(url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let token = t.value();
 
@@ -52,7 +52,7 @@ pub fn rename(
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
     let map_of_changes: HashMap<Url, Vec<TextEdit>> = (if token.kind == SymbolKind::Function {
-        find_all_methods_for_decl(&session, &session.engines.read(), &url, position)?
+        find_all_methods_for_decl(&session, &session.engines.read(), url, position)?
     } else {
         // otherwise, just find all references of the token in the token map
         session
@@ -104,7 +104,7 @@ pub fn prepare_rename(
 ) -> Result<PrepareRenameResponse, LanguageServerError> {
     let t = session
         .token_map()
-        .token_at_position(&url, position)
+        .token_at_position(url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let (ident, token) = t.pair();
 

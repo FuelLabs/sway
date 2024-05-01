@@ -94,7 +94,7 @@ impl Parse for ty::TyDecl {
 
 impl Parse for ty::TySideEffect {
     fn parse(&self, ctx: &ParseContext) {
-        use ty::TySideEffectVariant::*;
+        use ty::TySideEffectVariant::{IncludeStatement, UseStatement};
         match &self.side_effect {
             UseStatement(
                 use_statement @ ty::TyUseStatement {
@@ -130,7 +130,7 @@ impl Parse for ty::TySideEffect {
                                 .namespace
                                 .submodule(ctx.engines, call_path)
                                 .and_then(|module| module.current_items().symbols().get(item))
-                                .and_then(|decl| decl.get_decl_ident())
+                                .and_then(GetDeclIdent::get_decl_ident)
                             {
                                 // Update the symbol kind to match the declarations symbol kind
                                 if let Some(decl) =
@@ -446,7 +446,7 @@ impl Parse for ty::TyExpression {
                         .namespace
                         .submodule(ctx.engines, &abi_name.prefixes)
                         .and_then(|module| module.current_items().symbols().get(&abi_name.suffix))
-                        .and_then(|decl| decl.get_decl_ident())
+                        .and_then(GetDeclIdent::get_decl_ident)
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -555,16 +555,15 @@ impl Parse for ty::TyExpression {
             ty::TyExpressionVariant::ForLoop { desugared, .. } => {
                 desugared.parse(ctx);
             }
-            ty::TyExpressionVariant::Break => (),
-            ty::TyExpressionVariant::Continue => (),
+            ty::TyExpressionVariant::Break | ty::TyExpressionVariant::Continue => (),
             ty::TyExpressionVariant::Reassignment(reassignment) => {
                 reassignment.parse(ctx);
             }
-            ty::TyExpressionVariant::ImplicitReturn(exp) | ty::TyExpressionVariant::Return(exp) => {
-                exp.parse(ctx)
-            }
-            ty::TyExpressionVariant::Ref(exp) | ty::TyExpressionVariant::Deref(exp) => {
-                exp.parse(ctx)
+            ty::TyExpressionVariant::ImplicitReturn(exp)
+            | ty::TyExpressionVariant::Return(exp)
+            | ty::TyExpressionVariant::Ref(exp)
+            | ty::TyExpressionVariant::Deref(exp) => {
+                exp.parse(ctx);
             }
         }
     }
@@ -960,7 +959,9 @@ impl Parse for ty::TyIntrinsicFunctionKind {
 
 impl Parse for ty::TyScrutinee {
     fn parse(&self, ctx: &ParseContext) {
-        use ty::TyScrutineeVariant::*;
+        use ty::TyScrutineeVariant::{
+            CatchAll, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple, Variable,
+        };
         match &self.variant {
             CatchAll => {}
             Constant(name, _, const_decl) => {

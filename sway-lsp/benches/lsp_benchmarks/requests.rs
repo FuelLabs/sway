@@ -45,7 +45,7 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("goto_definition", |b| {
-        b.iter(|| session.token_definition_response(uri.clone(), position))
+        b.iter(|| session.token_definition_response(&uri, position))
     });
 
     c.bench_function("inlay_hints", |b| {

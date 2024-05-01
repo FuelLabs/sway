@@ -41,7 +41,7 @@ pub(crate) trait GenerateDocCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
         type_id: TypeId,
     ) -> String {
         let name_string = match name {
-            Some(name) => format!("`{}`: ", name),
+            Some(name) => format!("`{name}`: "),
             None => String::new(),
         };
         let type_string = match engines.te().get(type_id).is_unit() {

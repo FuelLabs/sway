@@ -167,7 +167,7 @@ impl Documents {
         uri: &Url,
         changes: &[TextDocumentContentChangeEvent],
     ) -> Result<(), LanguageServerError> {
-        let src = self.update_text_document(uri, &changes).ok_or_else(|| {
+        let src = self.update_text_document(uri, changes).ok_or_else(|| {
             DocumentError::DocumentNotFound {
                 path: uri.path().to_string(),
             }
@@ -210,7 +210,7 @@ impl Documents {
         self.try_get_mut(url.path())
             .try_unwrap()
             .map(|mut document| {
-                for change in changes.iter() {
+                for change in changes {
                     document.apply_change(change);
                 }
                 document.get_text()

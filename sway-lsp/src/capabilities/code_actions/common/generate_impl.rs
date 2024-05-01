@@ -38,11 +38,11 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
     ) -> String {
         let for_string = match for_name {
             Some(name) => format!(" for {name}"),
-            None => "".to_string(),
+            None => String::new(),
         };
         let type_param_string = match type_params {
             Some(params) => format!("<{params}>"),
-            None => "".to_string(),
+            None => String::new(),
         };
         format!(
             "\nimpl{} {}{}{} {{{}}}\n",
@@ -75,10 +75,7 @@ pub(crate) trait GenerateImplCodeAction<'a, T: Spanned>: CodeAction<'a, T> {
             })
             .collect::<Vec<String>>()
             .join("\n");
-        let attribute_padding = match attr_string.len() > 1 {
-            true => "\n",
-            false => "",
-        };
+        let attribute_padding = if attr_string.len() > 1 { "\n" } else { "" };
         format!("{attr_string}{attribute_padding}")
     }
 

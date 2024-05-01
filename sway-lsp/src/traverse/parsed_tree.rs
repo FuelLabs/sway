@@ -340,10 +340,9 @@ impl Parse for Expression {
             ExpressionKind::Reassignment(reassignment) => {
                 reassignment.parse(ctx);
             }
-            ExpressionKind::ImplicitReturn(expr) | ExpressionKind::Return(expr) => {
-                expr.parse(ctx);
-            }
-            ExpressionKind::Ref(RefExpression { value: expr, .. })
+            ExpressionKind::ImplicitReturn(expr)
+            | ExpressionKind::Return(expr)
+            | ExpressionKind::Ref(RefExpression { value: expr, .. })
             | ExpressionKind::Deref(expr) => {
                 expr.parse(ctx);
             }
@@ -357,10 +356,7 @@ impl Parse for ReassignmentExpression {
     fn parse(&self, ctx: &ParseContext) {
         self.rhs.parse(ctx);
         match &self.lhs {
-            ReassignmentTarget::ElementAccess(exp) => {
-                exp.parse(ctx);
-            }
-            ReassignmentTarget::Deref(exp) => {
+            ReassignmentTarget::ElementAccess(exp) | ReassignmentTarget::Deref(exp) => {
                 exp.parse(ctx);
             }
         }
@@ -378,7 +374,7 @@ impl Parse for IntrinsicFunctionExpression {
         );
         adaptive_iter(&self.arguments, |arg| arg.parse(ctx));
         adaptive_iter(&self.kind_binding.type_arguments.to_vec(), |type_arg| {
-            type_arg.parse(ctx)
+            type_arg.parse(ctx);
         });
     }
 }
@@ -419,7 +415,7 @@ impl Parse for DelineatedPathExpression {
             ),
         );
         adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
-            type_arg.parse(ctx)
+            type_arg.parse(ctx);
         });
         if let Some(args_vec) = args.as_ref() {
             adaptive_iter(args_vec, |exp| exp.parse(ctx));
@@ -456,7 +452,7 @@ impl Parse for AmbiguousPathExpression {
             ),
         );
         adaptive_iter(&call_path_binding.type_arguments.to_vec(), |type_arg| {
-            type_arg.parse(ctx)
+            type_arg.parse(ctx);
         });
         adaptive_iter(args, |exp| exp.parse(ctx));
         collect_qualified_path_root(ctx, qualified_path_root.clone().map(Box::new));
@@ -746,7 +742,7 @@ impl Parse for ParsedDeclId<StructDeclaration> {
         );
         adaptive_iter(&struct_decl.fields, |field| field.parse(ctx));
         adaptive_iter(&struct_decl.type_parameters, |type_param| {
-            type_param.parse(ctx)
+            type_param.parse(ctx);
         });
         struct_decl.attributes.parse(ctx);
     }
@@ -788,7 +784,7 @@ impl Parse for ParsedDeclId<ImplTrait> {
         );
         impl_trait.implementing_for.parse(ctx);
         adaptive_iter(&impl_trait.impl_type_parameters, |type_param| {
-            type_param.parse(ctx)
+            type_param.parse(ctx);
         });
         adaptive_iter(&impl_trait.items, |item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
@@ -819,7 +815,7 @@ impl Parse for ParsedDeclId<ImplSelf> {
             }
         }
         adaptive_iter(&impl_self.impl_type_parameters, |type_param| {
-            type_param.parse(ctx)
+            type_param.parse(ctx);
         });
         adaptive_iter(&impl_self.items, |item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
@@ -1098,7 +1094,7 @@ fn collect_call_path_tree(
         token.clone(),
     );
     adaptive_iter(&tree.children, |child| {
-        collect_call_path_tree(ctx, child, token, tokens)
+        collect_call_path_tree(ctx, child, token, tokens);
     });
 }
 
@@ -1112,7 +1108,7 @@ fn collect_qualified_path_root(
             ctx,
             &ctx.engines.te().get(qualified_path_root.as_trait),
             Some(&qualified_path_root.as_trait_span),
-        )
+        );
     }
 }
 

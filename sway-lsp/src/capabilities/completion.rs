@@ -32,7 +32,7 @@ fn completion_items_for_type_id(
     let type_info = engines.te().get(type_id);
     if let TypeInfo::Struct(decl_ref) = &*type_info {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
-        for field in struct_decl.fields.iter() {
+        for field in &struct_decl.fields {
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::FIELD),
                 label: field.name.as_str().to_string(),

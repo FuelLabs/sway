@@ -7,7 +7,7 @@ pub fn get_highlights(
     url: &Url,
     position: Position,
 ) -> Option<Vec<DocumentHighlight>> {
-    session.token_ranges(&url, position).map(|ranges| {
+    session.token_ranges(url, position).map(|ranges| {
         ranges
             .into_iter()
             .map(|range| DocumentHighlight { range, kind: None })
