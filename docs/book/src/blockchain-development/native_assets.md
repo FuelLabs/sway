@@ -14,15 +14,15 @@ On the FuelVM, _all_ assets are native and the process for sending _any_ native 
 
 While you would still need a smart contract to handle the minting and burning of assets, the sending and receiving of these assets can be done independently of the asset contract.
 
-Just like the EVM however, Fuel has a standard that describes a standard API for Native Assets using the Sway Language. The ERC-20 equvalient for the Sway Language is the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md).
+Just like the EVM however, Fuel has a standard that describes a standard API for Native Assets using the Sway Language. The ERC-20 equivalent for the Sway Language is the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md).
 
 > **NOTE** It is important to note that Fuel does not have tokens.
 
 ### ERC-721 vs Native Asset
 
-On the EVM, an ERC-721 token or NFT is a contract that contains multiple tokens which are non-funigble with one another.
+On the EVM, an ERC-721 token or NFT is a contract that contains multiple tokens which are non-fungible with one another.
 
-On the FuelVM, the ERC-721 equivalent is a Native Asset where each asset has a supply of one. This is defined in the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md#non-fungible-asset-restrictions) under the Non-Fungible Asset Restrictions. 
+On the FuelVM, the ERC-721 equivalent is a Native Asset where each asset has a supply of one. This is defined in the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md#non-fungible-asset-restrictions) under the Non-Fungible Asset Restrictions.
 
 In practice, this means all NFTs are treated the same as any other Native Asset on Fuel. When writing Sway code, no additional cases for handling non-fungible and fungible assets are required.
 

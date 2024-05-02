@@ -1,6 +1,6 @@
 # Sway Applications
 
-The [Sway-Applications](https://github.com/FuelLabs/sway-applications) Repository contains end-to-end example applications that are written in Sway in order to demonstrate what can be built. 
+The [Sway-Applications](https://github.com/FuelLabs/sway-applications) Repository contains end-to-end example applications that are written in Sway in order to demonstrate what can be built.
 
 ## Asset Management
 
@@ -9,7 +9,7 @@ The [Sway-Applications](https://github.com/FuelLabs/sway-applications) Repositor
 - [Non-Fungible Native Asset (NFT)](https://github.com/FuelLabs/sway-applications/tree/master/NFT) is an asset contract which provides unique collectibles, identified and differentiated by IDs, where assets contain metadata giving them distinctive characteristics.
 - [Fractional Non-Fungible Token (F-NFT)](https://github.com/FuelLabs/sway-applications/tree/master/fractional-NFT) is a token contract which issues shares or partial ownership upon locking an NFT into a vault.
 - [Timelock](https://github.com/FuelLabs/sway-applications/tree/master/timelock) is a contract which restricts the execution of a transaction to a specified time range.
-- [Native Asset]([./native-asset](https://github.com/FuelLabs/sway-applications/tree/master/native-asset)) is a basic asset contract that enables the use of Native Assets on Fuel using existing standards and libraries.
+- [Native Asset](https://github.com/FuelLabs/sway-applications/tree/master/native-asset) is a basic asset contract that enables the use of Native Assets on Fuel using existing standards and libraries.
 
 ## Decentralized Finance
 

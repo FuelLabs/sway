@@ -65,7 +65,7 @@
   - [Features](./lsp/features.md)
   - [Troubleshooting](./lsp/troubleshooting.md)
 - [Sway Reference](./reference/index.md)
-  - [Sway Libraries](./introduction/sway_libs.md)
+  - [Sway Libraries](./reference/sway_libs.md)
   - [Compiler Intrinsics](./reference/compiler_intrinsics.md)
   - [Attributes](./reference/attributes.md)
   - [Style Guide](./reference/style_guide.md)
