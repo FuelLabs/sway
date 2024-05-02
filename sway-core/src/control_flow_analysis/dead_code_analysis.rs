@@ -58,12 +58,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 decl.visibility == Visibility::Public || decl.is_test() || decl.is_fallback()
             }
             TyAstNode {
-                content:
-                    TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })),
+                content: TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl { decl_id })),
                 ..
             } => decl_engine.get_trait(decl_id).visibility.is_public(),
             TyAstNode {
@@ -2253,10 +2248,10 @@ fn construct_dead_code_warning_from_node(
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDecl::TraitDecl(ty::TraitDecl { name, .. })),
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get(decl_id).name.span(),
             warning_content: Warning::DeadTrait,
         },
         ty::TyAstNode {
