@@ -38,7 +38,7 @@ impl ResolvedFunctionDecl {
 pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
 type SourceIdent = Ident;
-pub(super) type GlobSynonyms = im::HashMap<Ident, (ModulePathBuf, ty::TyDecl)>;
+pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ty::TyDecl)>>;
 pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
@@ -75,6 +75,12 @@ pub struct Items {
     /// path `foo::bar::Baz`.
     ///
     /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
+    ///
+    /// When star importing from multiple modules the same name may be imported more than once. This
+    /// is not an error, but it is an error to use the name without a module path. To represent
+    /// this, use_glob_synonyms maps identifiers to a vector of (module path, type declaration)
+    /// tuples.
+    ///
     /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
     ///
     /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
@@ -302,6 +308,21 @@ impl Items {
         Ok(())
     }
 
+    // Insert a symbol into use_glob_synonyms if the symbol has not yet been inserted
+    pub(crate) fn insert_glob_use_symbol(&mut self, symbol: Ident, src_path: ModulePathBuf, decl: &ty::TyDecl) {
+	if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
+	    // Name already bound. Check if the name is already imported from src_path
+	    if !cur_decls.iter().any(|(path, _)| path == &src_path) {
+		// Insert additional src_path for name
+		cur_decls.push((src_path.to_vec(), decl.clone()));
+	    }
+	} else {
+	    let mut new_vec = Vec::<(ModulePathBuf, ty::TyDecl)>::new();
+	    new_vec.push((src_path.to_vec(), decl.clone()));
+	    self.use_glob_synonyms.insert(symbol, new_vec);
+	}
+    }
+    
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {
         self.symbols
             .get(name)

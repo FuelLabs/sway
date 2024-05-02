@@ -54,7 +54,7 @@ pub struct Module {
     ///
     /// When this is the root module, this is equal to `[]`. When this is a
     /// submodule of the root called "foo", this would be equal to `[foo]`.
-    pub(crate) mod_path: ModulePathBuf,
+    pub mod_path: ModulePathBuf,
 }
 
 impl Default for Module {

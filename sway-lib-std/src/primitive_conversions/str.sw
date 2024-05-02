@@ -35,6 +35,8 @@ impl str {
 fn str_slice_to_str_array() {
     use ::assert::*;
     use core::str::*;
+    // TODO: This line is necessary because of https://github.com/FuelLabs/sway/issues/5498
+    use core::str::from_str_array;
 
     let a = "abcd";
     let b: str[4] = a.try_as_str_array().unwrap();
