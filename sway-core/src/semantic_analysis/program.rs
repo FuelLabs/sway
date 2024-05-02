@@ -14,8 +14,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Module};
 
 use super::{
-    collection_context::SymbolCollectionContext, TypeCheckAnalysis, TypeCheckAnalysisContext,
-    TypeCheckFinalization, TypeCheckFinalizationContext,
+    symbol_collection_context::SymbolCollectionContext, TypeCheckAnalysis,
+    TypeCheckAnalysisContext, TypeCheckFinalization, TypeCheckFinalizationContext,
 };
 
 impl TyProgram {
