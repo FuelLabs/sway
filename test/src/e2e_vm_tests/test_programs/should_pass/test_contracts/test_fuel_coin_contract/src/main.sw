@@ -1,6 +1,6 @@
 contract;
 
-use std::{constants::ZERO_B256, asset::{burn, force_transfer_to_contract, mint}};
+use std::{constants::ZERO_B256, asset::{burn, transfer, mint}};
 use test_fuel_coin_abi::*;
 
 impl TestFuelCoin for Contract {
@@ -14,6 +14,6 @@ impl TestFuelCoin for Contract {
     }
 
     fn force_transfer(coins: u64, asset_id: AssetId, c_id: ContractId) {
-        force_transfer_to_contract(c_id, asset_id, coins)
+        transfer(Identity::ContractId(c_id), asset_id, coins)
     }
 }

@@ -13,18 +13,14 @@ async fn call_script(script_data: Vec<u8>) -> Result<Vec<Receipt>> {
         .await
         .unwrap();
 
-    let mut tx = ScriptTransactionBuilder::prepare_transfer(
-        wallet_coins,
-        vec![],
-        TxPolicies::default(),
-        provider.network_info().await.unwrap(),
-    )
-    .with_script(std::fs::read(
-        "test_projects/script_data/out/release/script_data.bin",
-    )?)
-    .with_script_data(script_data);
+    let mut tx =
+        ScriptTransactionBuilder::prepare_transfer(wallet_coins, vec![], Default::default())
+            .with_script(std::fs::read(
+                "test_projects/script_data/out/release/script_data.bin",
+            )?)
+            .with_script_data(script_data);
 
-    wallet.sign_transaction(&mut tx);
+    tx.add_signer(wallet.clone()).unwrap();
 
     let tx = tx.build(provider).await?;
 

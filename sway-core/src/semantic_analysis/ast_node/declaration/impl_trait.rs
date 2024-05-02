@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::Arc,
+    vec,
 };
 
 use sway_error::{
@@ -87,7 +88,11 @@ impl TyImplTrait {
                 // check to see if this type is supported in impl blocks
                 type_engine
                     .get(implementing_for.type_id)
-                    .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
+                    .expect_is_supported_in_impl_blocks_self(
+                        handler,
+                        Some(&trait_name.suffix),
+                        &implementing_for.span,
+                    )?;
 
                 // check for unconstrained type parameters
                 check_for_unconstrained_type_parameters(
@@ -332,7 +337,11 @@ impl TyImplTrait {
                 // check to see if this type is supported in impl blocks
                 type_engine
                     .get(implementing_for.type_id)
-                    .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
+                    .expect_is_supported_in_impl_blocks_self(
+                        handler,
+                        None,
+                        &implementing_for.span,
+                    )?;
 
                 // check for unconstrained type parameters
                 check_for_unconstrained_type_parameters(
@@ -628,20 +637,22 @@ fn type_check_trait_implementation(
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
     ctx.namespace_mut()
-        .module_mut()
-        .current_items_mut()
-        .implemented_traits
-        .check_if_trait_constraints_are_satisfied_for_type(
-            handler,
-            implementing_for,
-            &trait_supertraits
-                .iter()
-                .map(|x| x.into())
-                .collect::<Vec<_>>(),
-            block_span,
-            engines,
-            TryInsertingTraitImplOnFailure::Yes,
-        )?;
+        .module_mut(engines)
+        .write(engines, |m| {
+            m.current_items_mut()
+                .implemented_traits
+                .check_if_trait_constraints_are_satisfied_for_type(
+                    handler,
+                    implementing_for,
+                    &trait_supertraits
+                        .iter()
+                        .map(|x| x.into())
+                        .collect::<Vec<_>>(),
+                    block_span,
+                    engines,
+                    TryInsertingTraitImplOnFailure::Yes,
+                )
+        })?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
         type_arg.type_id.check_type_parameter_bounds(
@@ -802,6 +813,7 @@ fn type_check_trait_implementation(
                             name: Ident::new_with_override("Self".into(), Span::dummy()),
                             trait_constraints: VecSet(vec![]),
                             parent: None,
+                            is_from_type_parameter: false,
                         },
                         None,
                     ),
@@ -1448,11 +1460,22 @@ fn handle_supertraits(
             // using a callpath directly, so we check to see if the user has done
             // this and we disallow it.
             if !supertrait.name.prefixes.is_empty() {
-                handler.emit_err(CompileError::UnimplementedWithHelp(
-                    "Using module paths to define supertraits is not supported yet.",
-                    "try importing the trait with a \"use\" statement instead",
-                    supertrait.span(),
-                ));
+                handler.emit_err(CompileError::Unimplemented {
+                    feature: "Using module paths to define supertraits".to_string(),
+                    help: vec![
+                        // Note that eventual leading `::` will not be shown. It'a fine for now, we anyhow want to implement using module paths.
+                        format!(
+                            "Import the supertrait by using: `use {};`.",
+                            supertrait.name
+                        ),
+                        format!(
+                            "Then, in the list of supertraits, just use the trait name \"{}\".",
+                            supertrait.name.suffix
+                        ),
+                    ],
+                    span: supertrait.span(),
+                });
+
                 continue;
             }
 
@@ -1473,10 +1496,12 @@ fn handle_supertraits(
                     // Right now we don't parse type arguments for supertraits, so
                     // we should give this error message to users.
                     if !trait_decl.type_parameters.is_empty() {
-                        handler.emit_err(CompileError::Unimplemented(
-                            "Using generic traits as supertraits is not supported yet.",
-                            supertrait.name.span(),
-                        ));
+                        handler.emit_err(CompileError::Unimplemented {
+                            feature: "Using generic traits as supertraits".to_string(),
+                            help: vec![],
+                            span: supertrait.span(),
+                        });
+
                         continue;
                     }
 

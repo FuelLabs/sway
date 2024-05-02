@@ -43,9 +43,9 @@ use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME,
-    MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME, SIMPLIFYCFG_NAME,
-    SROA_NAME,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_MODULE_NAME,
+    MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME,
+    SIMPLIFYCFG_NAME, SROA_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -644,7 +644,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        typed_program.root.namespace.module(),
+        typed_program.root.namespace.module(engines),
     ) {
         handler.emit_err(e);
     }
@@ -890,6 +890,10 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         OptLevel::Opt0 => {
             // Inlining is necessary until #4899 is resolved.
             pass_group.append_pass(INLINE_MODULE_NAME);
+
+            // Do DCE so other optimizations run faster.
+            pass_group.append_pass(FUNC_DCE_NAME);
+            pass_group.append_pass(DCE_NAME);
         }
     }
 
@@ -939,28 +943,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     let final_asm = compile_ir_to_asm(handler, &ir, Some(build_config))?;
 
     Ok(final_asm)
-}
-
-/// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
-#[allow(clippy::too_many_arguments)]
-pub fn compile_to_bytecode(
-    handler: &Handler,
-    engines: &Engines,
-    input: Arc<str>,
-    initial_namespace: namespace::Root,
-    build_config: BuildConfig,
-    source_map: &mut SourceMap,
-    package_name: &str,
-) -> Result<CompiledBytecode, ErrorEmitted> {
-    let asm_res = compile_to_asm(
-        handler,
-        engines,
-        input,
-        initial_namespace,
-        build_config,
-        package_name,
-    )?;
-    asm_to_bytecode(handler, asm_res, source_map, engines.se())
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.

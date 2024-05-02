@@ -1,3 +1,8 @@
 [[package]]
-name = 'cei_pattern_violation_in_asm_block_read'
-source = 'member'
+name = "cei_pattern_violation_in_asm_block_read"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-32137B93369C5D83"

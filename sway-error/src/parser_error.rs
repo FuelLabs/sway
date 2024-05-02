@@ -17,7 +17,17 @@ pub enum ParseErrorKind {
     #[error("Unexpected token in statement.")]
     UnexpectedTokenInStatement,
     #[error("This expression cannot be assigned to.")]
-    UnassignableExpression,
+    UnassignableExpression {
+        /// The friendly name of the kind of the expression
+        /// that makes the overall expression unassignable.
+        /// E.g., "function call", or "struct instantiation".
+        erroneous_expression_kind: &'static str,
+        /// [Span] that points to either the whole left-hand
+        /// side of the reassignment, or to a [Span] of an
+        /// erroneous nested expression, if only a part of
+        /// the assignment target expression is erroneous.
+        erroneous_expression_span: Span,
+    },
     #[error("Unexpected token after array index.")]
     UnexpectedTokenAfterArrayIndex,
     #[error("Invalid literal to use as a field name.")]

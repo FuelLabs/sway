@@ -409,7 +409,7 @@ fn match_constant(
             expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
                 const_decl: Box::new(const_decl),
-                call_path: Some(CallPath::from(name).to_fullpath(ctx.namespace())),
+                call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
             },
             return_type,
             span,

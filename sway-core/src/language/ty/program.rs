@@ -44,6 +44,18 @@ fn get_type_not_allowed_error(
     })
 }
 
+fn check_no_ref_main(engines: &Engines, handler: &Handler, main_function: &DeclId<TyFunctionDecl>) {
+    let main_function = engines.de().get_function(main_function);
+    for param in &main_function.parameters {
+        if param.is_reference && param.is_mutable {
+            handler.emit_err(CompileError::RefMutableNotAllowedInMain {
+                param_name: param.name.clone(),
+                span: param.name.span(),
+            });
+        }
+    }
+}
+
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
@@ -237,7 +249,11 @@ impl TyProgram {
 
                 TyProgramKind::Contract {
                     entry_function: if experimental.new_encoding {
-                        assert!(entries.len() == 1);
+                        if entries.len() != 1 {
+                            return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                                span: Span::dummy(),
+                            }));
+                        }
                         Some(entries[0])
                     } else {
                         None
@@ -276,8 +292,15 @@ impl TyProgram {
                     return Err(last_error.unwrap());
                 }
 
+                // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
+                check_no_ref_main(engines, handler, &mains[0]);
+
                 let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
-                    assert!(entries.len() == 1);
+                    if entries.len() != 1 {
+                        return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                            span: Span::dummy(),
+                        }));
+                    }
                     (entries[0], mains[0])
                 } else {
                     assert!(entries.is_empty());
@@ -318,8 +341,15 @@ impl TyProgram {
                     return Err(last_error.unwrap());
                 }
 
+                // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
+                check_no_ref_main(engines, handler, &mains[0]);
+
                 let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
-                    assert!(entries.len() == 1);
+                    if entries.len() != 1 {
+                        return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                            span: Span::dummy(),
+                        }));
+                    }
                     (entries[0], mains[0])
                 } else {
                     assert!(entries.is_empty());
@@ -379,23 +409,6 @@ impl TyProgram {
                 }
             }
         };
-
-        // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
-        match &typed_program_kind {
-            TyProgramKind::Script { main_function, .. }
-            | TyProgramKind::Predicate { main_function, .. } => {
-                let main_function = decl_engine.get_function(main_function);
-                for param in &main_function.parameters {
-                    if param.is_reference && param.is_mutable {
-                        handler.emit_err(CompileError::RefMutableNotAllowedInMain {
-                            param_name: param.name.clone(),
-                            span: param.name.span(),
-                        });
-                    }
-                }
-            }
-            _ => (),
-        }
 
         //configurables and constant cannot be str slice
         for c in configurables.iter() {

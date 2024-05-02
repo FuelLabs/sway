@@ -184,10 +184,11 @@ fn type_check_variable(
             let literal = match value.extract_literal_value() {
                 Some(value) => value,
                 None => {
-                    return Err(handler.emit_err(CompileError::Unimplemented(
-                        "constant values of this type are not supported yet",
+                    return Err(handler.emit_err(CompileError::Unimplemented {
+                        feature: "Supporting constant values of this type in patterns".to_string(),
+                        help: vec![],
                         span,
-                    )));
+                    }));
                 }
             };
             ty::TyScrutinee {
@@ -196,7 +197,7 @@ fn type_check_variable(
                 span,
             }
         }
-        // Variable isn't a constant, so so we turn it into a [ty::TyScrutinee::Variable].
+        // Variable isn't a constant, so we turn it into a [ty::TyScrutinee::Variable].
         _ => ty::TyScrutinee {
             variant: ty::TyScrutineeVariant::Variable(name),
             type_id: type_engine.insert(ctx.engines(), TypeInfo::Unknown, None),
@@ -235,7 +236,7 @@ fn type_check_struct(
     )?;
 
     let (struct_can_be_changed, is_public_struct_access) =
-        StructAccessInfo::get_info(&struct_decl, ctx.namespace()).into();
+        StructAccessInfo::get_info(ctx.engines(), &struct_decl, ctx.namespace()).into();
 
     let has_rest_pattern = fields
         .iter()

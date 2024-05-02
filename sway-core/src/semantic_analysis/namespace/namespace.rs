@@ -4,8 +4,8 @@ use crate::{
 };
 
 use super::{
-    module::{Module, ResolvedDeclaration},
-    root::Root,
+    module::Module,
+    root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
     ModulePath, ModulePathBuf,
@@ -47,6 +47,13 @@ pub struct Namespace {
 }
 
 impl Namespace {
+    pub fn module_id(&self, engines: &Engines) -> &Module {
+        self.root
+            .module
+            .submodule(engines, &self.mod_path)
+            .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
+    }
+
     /// Initialise the namespace at its root from the given initial namespace.
     pub fn init_root(root: Root) -> Self {
         let mod_path = vec![];
@@ -85,21 +92,28 @@ impl Namespace {
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module(&self) -> &Module {
-        &self.root.module[&self.mod_path]
+    pub fn module(&self, engines: &Engines) -> &Module {
+        self.root
+            .module
+            .lookup_submodule(&Handler::default(), engines, &self.mod_path)
+            .unwrap()
     }
 
     /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module_mut(&mut self) -> &mut Module {
-        &mut self.root.module[&self.mod_path]
+    pub fn module_mut(&mut self, engines: &Engines) -> &mut Module {
+        self.root
+            .module
+            .lookup_submodule_mut(&Handler::default(), engines, &self.mod_path)
+            .unwrap()
     }
 
     pub fn lookup_submodule_from_absolute_path(
         &self,
         handler: &Handler,
+        engines: &Engines,
         path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
-        self.root.module.lookup_submodule(handler, path)
+        self.root.module.lookup_submodule(handler, engines, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
@@ -115,6 +129,7 @@ impl Namespace {
     /// the `true_if_same` is returned.
     pub(crate) fn module_is_submodule_of(
         &self,
+        _engines: &Engines,
         absolute_module_path: &ModulePath,
         true_if_same: bool,
     ) -> bool {
@@ -188,7 +203,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_symbol(handler, engines, mod_path, symbol, self_type)
     }
 
@@ -201,7 +215,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
@@ -238,7 +251,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
@@ -250,12 +262,13 @@ impl Namespace {
     /// finishing with the dependency.
     pub(crate) fn enter_submodule(
         &mut self,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.module_mut()
+        self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
             .or_insert(init);
@@ -267,7 +280,7 @@ impl Namespace {
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
         // self.module() now refers to a different module, so refetch
-        let new_module = self.module_mut();
+        let new_module = self.module_mut(engines);
         new_module.name = Some(mod_name);
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
@@ -281,6 +294,7 @@ impl Namespace {
     /// Pushes a new submodule to the namespace's module hierarchy.
     pub fn push_new_submodule(
         &mut self,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
@@ -291,7 +305,7 @@ impl Namespace {
             span: Some(module_span),
             ..Default::default()
         };
-        self.module_mut()
+        self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
             .or_insert(module);

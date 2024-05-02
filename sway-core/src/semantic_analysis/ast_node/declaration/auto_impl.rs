@@ -9,7 +9,6 @@ use crate::{
     semantic_analysis::TypeCheckContext,
     Engines, TypeId, TypeInfo, TypeParameter,
 };
-use itertools::Itertools;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -186,31 +185,39 @@ where
         code
     }
 
-    fn generate_abi_decode_struct_body(&self, engines: &Engines, decl: &TyStructDecl) -> String {
+    fn generate_abi_decode_struct_body(
+        &self,
+        engines: &Engines,
+        decl: &TyStructDecl,
+    ) -> Option<String> {
         let mut code = String::new();
         for f in decl.fields.iter() {
             code.push_str(&format!(
                 "{field_name}: buffer.decode::<{field_type_name}>(),",
                 field_name = f.name.as_str(),
-                field_type_name = Self::generate_type(engines, f.type_argument.type_id),
+                field_type_name = Self::generate_type(engines, f.type_argument.type_id)?,
             ));
         }
 
-        format!("Self {{ {code} }}")
+        Some(format!("Self {{ {code} }}"))
     }
 
-    fn generate_abi_decode_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
+    fn generate_abi_decode_enum_body(
+        &self,
+        engines: &Engines,
+        decl: &TyEnumDecl,
+    ) -> Option<String> {
         let enum_name = decl.call_path.suffix.as_str();
         let arms = decl.variants.iter()
             .map(|x| {
                 let name = x.name.as_str();
-                match &*engines.te().get(x.type_argument.type_id) {
+                Some(match &*engines.te().get(x.type_argument.type_id) {
                     // unit
                     TypeInfo::Tuple(fiels) if fiels.is_empty() => {
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
                     },
                     _ => {
-                        let variant_type_name = Self::generate_type(engines, x.type_argument.type_id);
+                        let variant_type_name = Self::generate_type(engines, x.type_argument.type_id)?;
                         format!("{tag_value} => {enum_name}::{variant_name}(buffer.decode::<{variant_type}>()), \n", 
                             tag_value = x.tag,
                             enum_name = enum_name,
@@ -218,19 +225,23 @@ where
                             variant_type = variant_type_name
                         )
                     }
-                }
+                })
             })
-        .collect::<String>();
+        .collect::<Option<String>>()?;
 
         use std::fmt::Write;
         let mut code = String::new();
         writeln!(&mut code, "let variant: u64 = buffer.decode::<u64>();").unwrap();
         writeln!(&mut code, "match variant {{ {arms} _ => __revert(0), }}").unwrap();
 
-        code
+        Some(code)
     }
 
     fn generate_abi_encode_enum_body(&self, engines: &Engines, decl: &TyEnumDecl) -> String {
+        if decl.variants.is_empty() {
+            return "".into();
+        }
+
         let enum_name = decl.call_path.suffix.as_str();
         let arms = decl
             .variants
@@ -391,10 +402,10 @@ where
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
-    ) -> (Option<TyAstNode>, Option<TyAstNode>) {
-        if matches!(self.ctx.namespace.root().module.name.as_ref(), Some(x) if x.as_str() == "core")
+    ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
+        if matches!(self.ctx.namespace.root().module.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
         {
-            return (None, None);
+            return Some((None, None));
         }
 
         let implementing_for_decl_ref = decl.get_struct_decl_ref().unwrap();
@@ -415,22 +426,22 @@ where
         let abi_decode_code = self.generate_abi_decode_code(
             struct_decl.name(),
             &struct_decl.type_parameters,
-            abi_decode_body,
+            abi_decode_body?,
         );
         let abi_decode_node =
             self.parse_impl_trait_to_ty_ast_node(engines, module_id, &abi_decode_code);
 
-        (abi_encode_node.ok(), abi_decode_node.ok())
+        Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
 
     fn auto_impl_enum(
         &mut self,
         engines: &Engines,
         decl: &TyDecl,
-    ) -> (Option<TyAstNode>, Option<TyAstNode>) {
-        if matches!(self.ctx.namespace.root().module.name.as_ref(), Some(x) if x.as_str() == "core")
+    ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
+        if matches!(self.ctx.namespace.root().module.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
         {
-            return (None, None);
+            return Some((None, None));
         }
 
         let enum_decl_ref = decl.get_enum_decl_ref().unwrap();
@@ -451,12 +462,12 @@ where
         let abi_decode_code = self.generate_abi_decode_code(
             enum_decl.name(),
             &enum_decl.type_parameters,
-            abi_decode_body,
+            abi_decode_body?,
         );
         let abi_decode_node =
             self.parse_impl_trait_to_ty_ast_node(engines, module_id, &abi_decode_code);
 
-        (abi_encode_node.ok(), abi_decode_node.ok())
+        Some((abi_encode_node.ok(), abi_decode_node.ok()))
     }
 
     pub fn generate(
@@ -465,14 +476,14 @@ where
         decl: &ty::TyDecl,
     ) -> (Option<TyAstNode>, Option<TyAstNode>) {
         match decl {
-            TyDecl::StructDecl(_) => self.auto_impl_struct(engines, decl),
-            TyDecl::EnumDecl(_) => self.auto_impl_enum(engines, decl),
+            TyDecl::StructDecl(_) => self.auto_impl_struct(engines, decl).unwrap_or((None, None)),
+            TyDecl::EnumDecl(_) => self.auto_impl_enum(engines, decl).unwrap_or((None, None)),
             _ => (None, None),
         }
     }
 
-    fn generate_type(engines: &Engines, type_id: TypeId) -> String {
-        match &*engines.te().get(type_id) {
+    fn generate_type(engines: &Engines, type_id: TypeId) -> Option<String> {
+        let name = match &*engines.te().get(type_id) {
             TypeInfo::UnknownGeneric { name, .. } => name.to_string(),
             TypeInfo::Placeholder(type_param) => type_param.name_ident.to_string(),
             TypeInfo::StringSlice => "str".into(),
@@ -492,12 +503,12 @@ where
             } => call_path.call_path.suffix.to_string(),
             TypeInfo::Tuple(fields) => {
                 if fields.is_empty() {
-                    return "()".into();
+                    return Some("()".into());
                 }
                 let field_strs = fields
                     .iter()
                     .map(|field| Self::generate_type(engines, field.type_id))
-                    .collect::<Vec<_>>();
+                    .collect::<Option<Vec<String>>>()?;
                 format!("({},)", field_strs.join(", "))
             }
             TypeInfo::B256 => "b256".into(),
@@ -508,6 +519,7 @@ where
                     .type_parameters
                     .iter()
                     .map(|x| Self::generate_type(engines, x.type_id))
+                    .collect::<Option<Vec<String>>>()?
                     .join(", ");
 
                 let type_parameters = if !type_parameters.is_empty() {
@@ -525,6 +537,7 @@ where
                     .type_parameters
                     .iter()
                     .map(|x| Self::generate_type(engines, x.type_id))
+                    .collect::<Option<Vec<String>>>()?
                     .join(", ");
 
                 let type_parameters = if !type_parameters.is_empty() {
@@ -538,15 +551,17 @@ where
             TypeInfo::Array(elem_ty, count) => {
                 format!(
                     "[{}; {}]",
-                    Self::generate_type(engines, elem_ty.type_id),
+                    Self::generate_type(engines, elem_ty.type_id)?,
                     count.val()
                 )
             }
             TypeInfo::RawUntypedPtr => "raw_ptr".into(),
             TypeInfo::RawUntypedSlice => "raw_slice".into(),
             TypeInfo::Alias { name, .. } => name.to_string(),
-            _ => todo!(),
-        }
+            _ => return None,
+        };
+
+        Some(name)
     }
 
     pub(crate) fn generate_contract_entry(
@@ -575,13 +590,18 @@ where
                 }
             }
 
-            let args_types = itertools::intersperse(
-                decl.parameters
-                    .iter()
-                    .map(|x| Self::generate_type(engines, x.type_argument.type_id)),
-                ", ".into(),
-            )
-            .collect::<String>();
+            let Some(args_types) = decl
+                .parameters
+                .iter()
+                .map(|x| Self::generate_type(engines, x.type_argument.type_id))
+                .collect::<Option<Vec<String>>>()
+            else {
+                let err = handler.emit_err(CompileError::UnknownType {
+                    span: Span::dummy(),
+                });
+                return Err(err);
+            };
+            let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
 
             let args_types = if args_types.is_empty() {
                 "()".into()
@@ -598,7 +618,12 @@ where
             )
             .collect::<String>();
 
-            let return_type = Self::generate_type(engines, decl.return_type.type_id);
+            let Some(return_type) = Self::generate_type(engines, decl.return_type.type_id) else {
+                let err = handler.emit_err(CompileError::UnknownType {
+                    span: Span::dummy(),
+                });
+                return Err(err);
+            };
 
             let method_name = decl.name.as_str();
 
@@ -626,7 +651,13 @@ where
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);
-            let return_type = Self::generate_type(engines, fallback_fn.return_type.type_id);
+            let Some(return_type) = Self::generate_type(engines, fallback_fn.return_type.type_id)
+            else {
+                let err = handler.emit_err(CompileError::UnknownType {
+                    span: Span::dummy(),
+                });
+                return Err(err);
+            };
             let method_name = fallback_fn.name.as_str();
 
             format!("let result: raw_slice = encode::<{return_type}>({method_name}()); __contract_ret(result.ptr(), result.len::<u8>());")
@@ -649,8 +680,9 @@ where
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
-                handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                Self::check_impl_is_missing(handler, &gen_handler);
+                Self::check_core_is_missing(handler, &gen_handler);
+                Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
                     span: Span::dummy(),
                 }))
             }
@@ -665,13 +697,18 @@ where
     ) -> Result<TyAstNode, ErrorEmitted> {
         let module_id = decl.span.source_id().map(|sid| sid.module_id());
 
-        let args_types = itertools::intersperse(
-            decl.parameters
-                .iter()
-                .map(|x| Self::generate_type(engines, x.type_argument.type_id)),
-            ", ".into(),
-        )
-        .collect::<String>();
+        let Some(args_types) = decl
+            .parameters
+            .iter()
+            .map(|x| Self::generate_type(engines, x.type_argument.type_id))
+            .collect::<Option<Vec<String>>>()
+        else {
+            let err = handler.emit_err(CompileError::UnknownType {
+                span: Span::dummy(),
+            });
+            return Err(err);
+        };
+        let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
 
         let expanded_args = itertools::intersperse(
             decl.parameters
@@ -700,11 +737,44 @@ where
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
-                handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                Self::check_impl_is_missing(handler, &gen_handler);
+                Self::check_core_is_missing(handler, &gen_handler);
+                Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
                     span: Span::dummy(),
                 }))
             }
+        }
+    }
+
+    // Check core is missing and give a more user-friendly error message.
+    fn check_core_is_missing(handler: &Handler, gen_handler: &Handler) {
+        let encode_not_found = gen_handler
+            .find_error(|x| matches!(x, CompileError::SymbolNotFound { .. }))
+            .is_some();
+        if encode_not_found {
+            handler.emit_err(CompileError::CouldNotGenerateEntryMissingCore {
+                span: Span::dummy(),
+            });
+        }
+    }
+
+    // Check cannot encode or decode type
+    fn check_impl_is_missing(handler: &Handler, gen_handler: &Handler) {
+        let constraint_not_satisfied = gen_handler.find_error(|x| {
+            matches!(x, CompileError::TraitConstraintNotSatisfied { trait_name, .. }
+                if trait_name == "AbiEncode" || trait_name == "AbiDecode" && {
+                true
+            })
+        });
+        if let Some(constraint_not_satisfied) = constraint_not_satisfied {
+            let ty = match constraint_not_satisfied {
+                CompileError::TraitConstraintNotSatisfied { ty, .. } => ty,
+                _ => unreachable!(),
+            };
+            handler.emit_err(CompileError::CouldNotGenerateEntryMissingImpl {
+                ty,
+                span: Span::dummy(),
+            });
         }
     }
 
@@ -716,14 +786,18 @@ where
     ) -> Result<TyAstNode, ErrorEmitted> {
         let module_id = decl.span.source_id().map(|sid| sid.module_id());
 
-        let args_types = itertools::intersperse(
-            decl.parameters
-                .iter()
-                .map(|x| Self::generate_type(engines, x.type_argument.type_id)),
-            ", ".into(),
-        )
-        .collect::<String>();
-
+        let Some(args_types) = decl
+            .parameters
+            .iter()
+            .map(|x| Self::generate_type(engines, x.type_argument.type_id))
+            .collect::<Option<Vec<String>>>()
+        else {
+            let err = handler.emit_err(CompileError::UnknownType {
+                span: Span::dummy(),
+            });
+            return Err(err);
+        };
+        let args_types = itertools::intersperse(args_types, ", ".into()).collect::<String>();
         let args_types = if args_types.is_empty() {
             "()".into()
         } else {
@@ -739,7 +813,12 @@ where
         )
         .collect::<String>();
 
-        let return_type = Self::generate_type(engines, decl.return_type.type_id);
+        let Some(return_type) = Self::generate_type(engines, decl.return_type.type_id) else {
+            let err = handler.emit_err(CompileError::UnknownType {
+                span: Span::dummy(),
+            });
+            return Err(err);
+        };
 
         let code = if args_types == "()" {
             format!(
@@ -764,8 +843,9 @@ where
         match entry_fn {
             Ok(entry_fn) => Ok(entry_fn),
             Err(gen_handler) => {
-                handler.append(gen_handler);
-                Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                Self::check_core_is_missing(handler, &gen_handler);
+                Self::check_impl_is_missing(handler, &gen_handler);
+                Err(gen_handler.emit_err(CompileError::CouldNotGenerateEntry {
                     span: Span::dummy(),
                 }))
             }
