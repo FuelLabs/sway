@@ -16,7 +16,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::Spanned;
+use sway_types::{Named, Spanned};
 use sway_utils::iter_prefixes;
 
 pub enum ResolvedDeclaration {
@@ -712,11 +712,14 @@ impl Root {
         match decl {
             ResolvedDeclaration::Parsed(_decl) => todo!(),
             ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
-                    struct_decl.name.clone(),
-                    struct_decl.decl_id,
-                    struct_decl.name.span(),
-                )),
+                ty::TyDecl::StructDecl(struct_ty_decl) => {
+                    let struct_decl = engines.de().get_struct(&struct_ty_decl.decl_id);
+                    TypeInfo::Struct(DeclRef::new(
+                        struct_decl.name().clone(),
+                        struct_ty_decl.decl_id,
+                        struct_decl.span().clone(),
+                    ))
+                }
                 ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
                     enum_decl.name.clone(),
                     enum_decl.decl_id,

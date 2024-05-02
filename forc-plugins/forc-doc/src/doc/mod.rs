@@ -14,7 +14,7 @@ use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
     Engines,
 };
-use sway_types::{BaseIdent, Spanned};
+use sway_types::{BaseIdent, Named, Spanned};
 
 mod descriptor;
 pub mod module;
@@ -77,10 +77,11 @@ impl Documentation {
             let mut impl_vec: Vec<DocImplTrait> = Vec::new();
 
             match doc.item_body.ty_decl {
-                TyDecl::StructDecl(ref struct_decl) => {
+                TyDecl::StructDecl(ref decl) => {
                     for (impl_trait, module_info) in impl_traits.iter_mut() {
-                        if struct_decl.name.as_str() == impl_trait.implementing_for.span.as_str()
-                            && struct_decl.name.as_str()
+                        let struct_decl = decl_engine.get_struct(&decl.decl_id);
+                        if struct_decl.name().as_str() == impl_trait.implementing_for.span.as_str()
+                            && struct_decl.name().as_str()
                                 != impl_trait.trait_name.suffix.span().as_str()
                         {
                             let module_info_override = if let Some(decl_module_info) =
