@@ -945,28 +945,6 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     Ok(final_asm)
 }
 
-/// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
-#[allow(clippy::too_many_arguments)]
-pub fn compile_to_bytecode(
-    handler: &Handler,
-    engines: &Engines,
-    input: Arc<str>,
-    initial_namespace: namespace::Root,
-    build_config: BuildConfig,
-    source_map: &mut SourceMap,
-    package_name: &str,
-) -> Result<CompiledBytecode, ErrorEmitted> {
-    let asm_res = compile_to_asm(
-        handler,
-        engines,
-        input,
-        initial_namespace,
-        build_config,
-        package_name,
-    )?;
-    asm_to_bytecode(handler, asm_res, source_map, engines.se())
-}
-
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,
