@@ -29,6 +29,7 @@ forc-tracing = { version = "0.56.0", path = "../forc-tracing" }
 forc-util = { version = "0.56.0", path = "../forc-util" }
 fs_extra = "1.2"
 fuel-asm = { workspace = true }
+fuels-core = { workspace = true }
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.73"
