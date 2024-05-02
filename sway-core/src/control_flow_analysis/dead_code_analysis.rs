@@ -51,11 +51,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
         TreeType::Contract | TreeType::Library { .. } => match node {
             TyAstNode {
                 content:
-                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })),
+                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })),
                 ..
             } => {
                 let decl = decl_engine.get_function(decl_id);
@@ -2230,12 +2226,11 @@ fn construct_dead_code_warning_from_node(
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl {
-                    name,
-                    ..
+                    decl_id,
                 })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get(decl_id).name.span(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
         ty::TyAstNode {

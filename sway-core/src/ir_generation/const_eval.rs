@@ -1211,7 +1211,13 @@ mod tests {
             .declarations
             .iter()
             .find_map(|x| match x {
-                ty::TyDecl::FunctionDecl(x) if x.name.as_str() == "f" => Some(x),
+                ty::TyDecl::FunctionDecl(x) => {
+                    if engines.de().get_function(&x.decl_id).name.as_str() == "f" {
+                        Some(x)
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
             })
             .expect("An function named `f` was not found.");

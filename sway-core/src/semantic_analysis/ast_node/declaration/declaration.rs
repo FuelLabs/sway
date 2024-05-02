@@ -292,11 +292,7 @@ impl TyDecl {
                                         "__contract_entry_{}",
                                         decl.name.clone()
                                     )),
-                                    TyDecl::FunctionDecl(FunctionDecl {
-                                        name: decl.name.clone(),
-                                        decl_id: *f.id(),
-                                        decl_span: f.span(),
-                                    }),
+                                    TyDecl::FunctionDecl(FunctionDecl { decl_id: *f.id() }),
                                     ConstShadowingMode::ItemStyle,
                                     GenericShadowingMode::Allow,
                                 )

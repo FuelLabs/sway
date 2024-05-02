@@ -49,9 +49,7 @@ pub struct TraitTypeDecl {
 
 #[derive(Clone, Debug)]
 pub struct FunctionDecl {
-    pub name: Ident,
     pub decl_id: DeclId<TyFunctionDecl>,
-    pub decl_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -127,17 +125,9 @@ impl PartialEqWithEngines for TyDecl {
                 TyDecl::ConstantDecl(ConstantDecl { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
-                TyDecl::FunctionDecl(FunctionDecl {
-                    name: ln,
-                    decl_id: lid,
-                    ..
-                }),
-                TyDecl::FunctionDecl(FunctionDecl {
-                    name: rn,
-                    decl_id: rid,
-                    ..
-                }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
+                TyDecl::FunctionDecl(FunctionDecl { decl_id: lid, .. }),
+                TyDecl::FunctionDecl(FunctionDecl { decl_id: rid, .. }),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::TraitDecl(TraitDecl {
                     name: ln,
@@ -326,9 +316,11 @@ impl SpannedWithEngines for TyDecl {
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
                 engines.de().get_type(decl_id).span.clone()
             }
+            TyDecl::FunctionDecl(FunctionDecl { decl_id }) => {
+                engines.de().get_function(decl_id).span.clone()
+            }
             TyDecl::VariableDecl(decl) => decl.name.span(),
-            TyDecl::FunctionDecl(FunctionDecl { decl_span, .. })
-            | TyDecl::TraitDecl(TraitDecl { decl_span, .. })
+            TyDecl::TraitDecl(TraitDecl { decl_span, .. })
             | TyDecl::ImplTrait(ImplTrait { decl_span, .. })
             | TyDecl::StorageDecl(StorageDecl { decl_span, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. })
@@ -379,8 +371,10 @@ impl DisplayWithEngines for TyDecl {
                     builder.push_str(&engines.help_out(body).to_string());
                     builder
                 }
-                TyDecl::FunctionDecl(FunctionDecl { name, .. })
-                | TyDecl::TraitDecl(TraitDecl { name, .. })
+                TyDecl::FunctionDecl(FunctionDecl { decl_id }) => {
+                    engines.de().get(decl_id).name.as_str().into()
+                }
+                TyDecl::TraitDecl(TraitDecl { name, .. })
                 | TyDecl::StructDecl(StructDecl { name, .. })
                 | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
                 | TyDecl::ImplTrait(ImplTrait { name, .. })
@@ -426,8 +420,10 @@ impl DebugWithEngines for TyDecl {
                     builder.push_str(format!("{:?}", engines.help_out(body)).as_str());
                     builder
                 }
-                TyDecl::FunctionDecl(FunctionDecl { name, .. })
-                | TyDecl::TraitDecl(TraitDecl { name, .. })
+                TyDecl::FunctionDecl(FunctionDecl { decl_id }) => {
+                    engines.de().get(decl_id).name.as_str().into()
+                }
+                TyDecl::TraitDecl(TraitDecl { name, .. })
                 | TyDecl::StructDecl(StructDecl { name, .. })
                 | TyDecl::EnumDecl(EnumDecl { name, .. }) => name.as_str().into(),
                 _ => String::new(),
@@ -493,9 +489,11 @@ impl GetDeclIdent for TyDecl {
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
                 Some(engines.de().get_type(decl_id).name().clone())
             }
+            TyDecl::FunctionDecl(FunctionDecl { decl_id }) => {
+                Some(engines.de().get(decl_id).name.clone())
+            }
             TyDecl::VariableDecl(decl) => Some(decl.name.clone()),
-            TyDecl::FunctionDecl(FunctionDecl { name, .. })
-            | TyDecl::TraitDecl(TraitDecl { name, .. })
+            TyDecl::TraitDecl(TraitDecl { name, .. })
             | TyDecl::ImplTrait(ImplTrait { name, .. })
             | TyDecl::AbiDecl(AbiDecl { name, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
@@ -591,11 +589,10 @@ impl TyDecl {
         engines: &Engines,
     ) -> Result<DeclRefFunction, ErrorEmitted> {
         match self {
-            TyDecl::FunctionDecl(FunctionDecl {
-                name,
-                decl_id,
-                decl_span,
-            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+            TyDecl::FunctionDecl(FunctionDecl { decl_id }) => {
+                let decl = engines.de().get(decl_id);
+                Ok(DeclRef::new(decl.name.clone(), *decl_id, decl.span.clone()))
+            }
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAFunction {
                 actually: decl.friendly_type_name().to_string(),
@@ -864,9 +861,7 @@ impl From<DeclRef<DeclId<TyEnumDecl>>> for TyDecl {
 impl From<DeclRef<DeclId<TyFunctionDecl>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyFunctionDecl>>) -> Self {
         TyDecl::FunctionDecl(FunctionDecl {
-            name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            decl_span: decl_ref.decl_span().clone(),
         })
     }
 }
