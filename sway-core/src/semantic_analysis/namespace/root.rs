@@ -83,23 +83,7 @@ impl Root {
             .extend(implemented_traits, engines);
 
 	symbols_and_decls.iter().for_each(|(symbol, decl)| {
-	    if symbol.as_str() == "from_str_array" //&&
-//		src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::") == "core::str" &&
-//		dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::") == "primitive_conversions::str"
-	    {
-		// This special case is due to the illlegal paths mentioned in
-		// https://github.com/FuelLabs/sway/issues/5498
-		// from_str_array should only be imported from core::str, but the str module
-		// erroneously gets added as a direct submodule to the root module, and then gets
-		// reexported by the core prelude both from core::str and str.
-		// The correct behavior is to only import from core::str, so until the issue gets
-		// resolved we ignore the import from str here
-		println!("star importing from path {} into {}",
-			 src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-			 dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"));
-//		return;
-	    }
-	    dst_mod.current_items_mut().insert_glob_use_symbol(symbol.clone(), src.to_vec(), decl)
+	    dst_mod.current_items_mut().insert_glob_use_symbol(engines, symbol.clone(), src.to_vec(), decl)
 	});
 	
 
@@ -374,6 +358,7 @@ impl Root {
 			    .lookup_submodule_mut(handler, engines, dst)?
 			    .current_items_mut()
 			    .insert_glob_use_symbol(
+				engines,
 				variant_name.clone(), src.to_vec(), &decl
                                 );
                     }
@@ -421,43 +406,43 @@ impl Root {
         // collect all declared and reexported symbols from the source module
         let mut all_symbols_and_decls = vec![];
         for (symbol, decls) in src_mod.current_items().use_glob_synonyms.iter() {
-	    decls.iter().for_each(|(decl_path, decl)| {
-		if symbol.as_str() == "from_str_array" {
-		    println!("star importing from path {} glob reexported at {} into {}",
-			     decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
-		};
-		all_symbols_and_decls.push((symbol.clone(), decl_path.clone(), decl.clone()))
+	    decls.iter().for_each(|(_, decl)| {
+//		if symbol.as_str() == "from_str_array" {
+//		    println!("star importing from path {} glob reexported at {} into {}",
+//			     decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+//			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+//			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
+//		};
+		all_symbols_and_decls.push((symbol.clone(), decl.clone()))
 	    });
         }
-        for (symbol, (_, decl_path, decl)) in src_mod.current_items().use_item_synonyms.iter() {
-	    if symbol.as_str() == "from_str_array" {
-		println!("star importing from path {} item reexported at {} into {}",
-			 decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-			 src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-			 dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
-	    };
-            all_symbols_and_decls.push((symbol.clone(), decl_path.clone(), decl.clone()));
+        for (symbol, (_, _, decl)) in src_mod.current_items().use_item_synonyms.iter() {
+//	    if symbol.as_str() == "from_str_array" {
+//		println!("star importing from path {} item reexported at {} into {}",
+//			 decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+//			 src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+//			 dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
+//	    };
+            all_symbols_and_decls.push((symbol.clone(), decl.clone()));
         }
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-		if symbol.as_str() == "from_str_array" {
-		    println!("star importing (decl item) from path {} into {}",
-			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
-		};
-                all_symbols_and_decls.push((symbol.clone(), src.to_vec(), decl.clone()));
+//		if symbol.as_str() == "from_str_array" {f
+//		    println!("star importing (decl item) from path {} into {}",
+//			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+//			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
+//		};
+                all_symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (_, mod_path, decl)) in use_item_synonyms {
-            symbols_paths_and_decls.push((symbol, mod_path, decl));
+        for (symbol, (_, _, decl)) in use_item_synonyms {
+            symbols_paths_and_decls.push((symbol, decl));
         }
         for (symbol, decls) in use_glob_synonyms {
-	    decls.iter().for_each(|(mod_path, decl)| 
-				  symbols_paths_and_decls.push((symbol.clone(), mod_path.to_vec(), decl.clone())));
+	    decls.iter().for_each(|(_, decl)| 
+				  symbols_paths_and_decls.push((symbol.clone(), decl.clone())));
         }
 
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
@@ -469,15 +454,15 @@ impl Root {
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
 	    dst_mod
 		.current_items_mut()
-		.insert_glob_use_symbol(symbol, path, &decl);
+		.insert_glob_use_symbol(engines, symbol, path, &decl);
         };
 
-        for (symbol, src_path, decl) in all_symbols_and_decls {
-            try_add(symbol.clone(), src_path, decl);
+        for (symbol, decl) in all_symbols_and_decls {
+            try_add(symbol.clone(), src.to_vec(), decl);
         }
 
-        for (symbol, path, decl) in symbols_paths_and_decls {
-            try_add(symbol.clone(), path, decl);
+        for (symbol, decl) in symbols_paths_and_decls {
+            try_add(symbol.clone(), src.to_vec(), decl);
         }
 
         Ok(())

@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, *},
-    engine_threading::Engines,
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext,},
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
@@ -309,11 +309,12 @@ impl Items {
     }
 
     // Insert a symbol into use_glob_synonyms if the symbol has not yet been inserted
-    pub(crate) fn insert_glob_use_symbol(&mut self, symbol: Ident, src_path: ModulePathBuf, decl: &ty::TyDecl) {
+    pub(crate) fn insert_glob_use_symbol(&mut self, engines: &Engines, symbol: Ident, src_path: ModulePathBuf, decl: &ty::TyDecl) {
 	if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
-	    // Name already bound. Check if the name is already imported from src_path
-	    if !cur_decls.iter().any(|(path, _)| path == &src_path) {
-		// Insert additional src_path for name
+	    let ctx = PartialEqWithEnginesContext::new(engines);
+	    // Name already bound. Check if the decl is already imported
+	    if !cur_decls.iter().any(|(_, cur_decl)| cur_decl.eq(decl, &ctx)) {
+		// Insert additional declaration for symbol
 		cur_decls.push((src_path.to_vec(), decl.clone()));
 	    }
 	} else {

@@ -192,6 +192,18 @@ impl PartialEqWithEngines for TyDecl {
                 }),
             ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
+                TyDecl::EnumVariantDecl(EnumVariantDecl {
+		    enum_ref: l_enum,
+                    variant_name: ln,
+                    ..
+                }),
+                TyDecl::EnumVariantDecl(EnumVariantDecl {
+		    enum_ref: r_enum,
+                    variant_name: rn,
+                    ..
+                }),
+            ) => ln == rn && decl_engine.get_enum(l_enum).eq(&decl_engine.get_enum(r_enum), ctx),
+            (
                 TyDecl::ImplTrait(ImplTrait {
                     name: ln,
                     decl_id: lid,
