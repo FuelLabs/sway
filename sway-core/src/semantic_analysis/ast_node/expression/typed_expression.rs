@@ -1065,7 +1065,7 @@ impl ty::TyExpression {
                     handler,
                     ctx.engines,
                     ctx.namespace(),
-                    checkee.clone(),
+                    &checkee,
                     &storage_fields,
                     storage_keyword_span.clone(),
                 )

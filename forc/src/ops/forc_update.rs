@@ -20,7 +20,7 @@ use tracing::info;
 ///
 /// Use the `--package <package-name>` flag to update only a specific package throughout the
 /// dependency graph.
-pub async fn update(command: UpdateCommand) -> Result<()> {
+pub fn update(command: UpdateCommand) -> Result<()> {
     let UpdateCommand {
         path,
         check,

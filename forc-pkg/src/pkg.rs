@@ -1636,7 +1636,7 @@ pub fn dependency_namespace(
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
-                    .map(|dep| contract_id(dep.bytecode.clone(), dep.storage_slots.clone(), &salt))
+                    .map(|dep| contract_id(&dep.bytecode, dep.storage_slots.clone(), &salt))
                     // On `check` we don't compile contracts, so we use a placeholder.
                     .unwrap_or_default();
                 // Construct namespace with contract id
@@ -2238,7 +2238,7 @@ fn print_pkg_summary_header(built_pkg: &BuiltPackage) {
 
 /// Returns the ContractId of a built_package contract with specified `salt`.
 pub fn contract_id(
-    bytecode: Vec<u8>,
+    bytecode: &[u8],
     mut storage_slots: Vec<StorageSlot>,
     salt: &fuel_tx::Salt,
 ) -> ContractId {
@@ -2397,8 +2397,8 @@ pub fn build(
             } else {
                 // `forc-test` interpreter deployments are done with zeroed salt.
                 let contract_id = contract_id(
-                    compiled_without_tests.bytecode.bytes.clone(),
-                    compiled_without_tests.storage_slots,
+                    &compiled_without_tests.bytecode.bytes,
+                    compiled_without_tests.storage_slots.clone(),
                     &fuel_tx::Salt::zeroed(),
                 );
                 // We finally set the contract ID value here to use for compilation later if tests are enabled.

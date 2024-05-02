@@ -47,7 +47,7 @@ pub(super) fn create_tuple_aggregate(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,
-    fields: Vec<TypeId>,
+    fields: &[TypeId],
 ) -> Result<Type, CompileError> {
     let field_types = fields
         .into_iter()

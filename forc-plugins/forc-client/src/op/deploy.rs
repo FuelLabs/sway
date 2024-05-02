@@ -71,7 +71,7 @@ type ContractSaltMap = BTreeMap<String, Salt>;
 /// Takes the contract member salt inputs passed via the --salt option, validates them against
 /// the manifests and returns a ContractSaltMap (BTreeMap of contract names to salts).
 fn validate_and_parse_salts<'a>(
-    salt_args: Vec<String>,
+    salt_args: &[String],
     manifests: impl Iterator<Item = &'a PackageManifestFile>,
 ) -> Result<ContractSaltMap> {
     let mut contract_salt_map = BTreeMap::default();
@@ -131,7 +131,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
     };
 
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs = built_pkgs(&curr_dir, build_opts)?;
+    let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
 
     if built_pkgs.is_empty() {
         println_warning("No deployable contracts found in the current directory.");
@@ -143,7 +143,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         // If we're building >1 package, we must parse the salt as a pair of strings, ie. contract_name:0x00...
         if built_pkgs.len() > 1 {
             let map = validate_and_parse_salts(
-                salt_input.clone(),
+                &salt_input,
                 built_pkgs.iter().map(|b| &b.descriptor.manifest_file),
             )?;
 
@@ -179,7 +179,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         if pkg
             .descriptor
             .manifest_file
-            .check_program_type(vec![TreeType::Contract])
+            .check_program_type(&vec![TreeType::Contract])
             .is_ok()
         {
             let salt = match (&contract_salt_map, command.default_salt) {

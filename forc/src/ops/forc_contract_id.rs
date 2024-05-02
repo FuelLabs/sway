@@ -38,7 +38,7 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
         let name = &pinned_contract.name;
         let storage_slots = built_contract.storage_slots.clone();
         let contract_id =
-            pkg::contract_id(built_contract.bytecode.bytes.clone(), storage_slots, &salt);
+            pkg::contract_id(&built_contract.bytecode.bytes, storage_slots, &salt);
         println_green(&format!(" {name}"));
         info!("      Contract id: 0x{contract_id}");
     }
