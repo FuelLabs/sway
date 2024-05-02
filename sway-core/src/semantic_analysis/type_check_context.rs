@@ -536,6 +536,7 @@ impl<'a> TypeCheckContext<'a> {
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name,
                 item,
                 const_shadowing_mode,

@@ -84,11 +84,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
             } => true,
             TyAstNode {
                 content:
-                    TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })),
+                    TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl { decl_id })),
                 ..
             } => {
                 let decl = decl_engine.get_constant(decl_id);
@@ -2271,12 +2267,11 @@ fn construct_dead_code_warning_from_node(
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                    name,
-                    ..
+                    decl_id,
                 })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get_constant(decl_id).name().span(),
             warning_content: Warning::DeadDeclaration,
         },
         ty::TyAstNode {

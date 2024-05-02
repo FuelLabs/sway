@@ -27,7 +27,7 @@ use sway_ir::{
     value::Value,
     InstOp, Instruction, Type, TypeContent,
 };
-use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
+use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Named, Span};
 use sway_utils::mapped_stack::MappedStack;
 
 enum ConstEvalError {
@@ -716,12 +716,12 @@ fn const_eval_codeblock(
                     })
                     .flatten()
                 {
-                    known_consts.push(const_decl.name.clone(), constant);
-                    bindings.push(const_decl.name.clone());
+                    known_consts.push(ty_const_decl.name().clone(), constant);
+                    bindings.push(ty_const_decl.name().clone());
                     Ok(None)
                 } else {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: const_decl.decl_span.clone(),
+                        span: ty_const_decl.span.clone(),
                     })
                 }
             }

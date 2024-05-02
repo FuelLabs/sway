@@ -158,11 +158,8 @@ impl TyProgram {
                                             abi_entries.push(*method_ref.id());
                                         }
                                         TyImplItem::Constant(const_ref) => {
-                                            let const_decl = decl_engine.get_constant(const_ref);
                                             declarations.push(TyDecl::ConstantDecl(ConstantDecl {
-                                                name: const_decl.name().clone(),
                                                 decl_id: *const_ref.id(),
-                                                decl_span: const_decl.span.clone(),
                                             }));
                                         }
                                         TyImplItem::Type(type_ref) => {

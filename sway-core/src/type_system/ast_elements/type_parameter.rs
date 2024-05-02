@@ -184,6 +184,7 @@ impl TypeParameter {
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name_a,
                 type_parameter_decl.clone(),
                 const_shadowing_mode,
@@ -195,6 +196,7 @@ impl TypeParameter {
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name_b,
                 type_parameter_decl,
                 const_shadowing_mode,

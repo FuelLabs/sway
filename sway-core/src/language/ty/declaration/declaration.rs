@@ -7,7 +7,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::*,
@@ -39,9 +39,7 @@ pub enum TyDecl {
 
 #[derive(Clone, Debug)]
 pub struct ConstantDecl {
-    pub name: Ident,
     pub decl_id: DeclId<TyConstantDecl>,
-    pub decl_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -127,17 +125,9 @@ impl PartialEqWithEngines for TyDecl {
         match (self, other) {
             (TyDecl::VariableDecl(x), TyDecl::VariableDecl(y)) => x.eq(y, ctx),
             (
-                TyDecl::ConstantDecl(ConstantDecl {
-                    name: ln,
-                    decl_id: lid,
-                    ..
-                }),
-                TyDecl::ConstantDecl(ConstantDecl {
-                    name: rn,
-                    decl_id: rid,
-                    ..
-                }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
+                TyDecl::ConstantDecl(ConstantDecl { decl_id: lid, .. }),
+                TyDecl::ConstantDecl(ConstantDecl { decl_id: rid, .. }),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::FunctionDecl(FunctionDecl {
                     name: ln,
@@ -329,13 +319,16 @@ impl SubstTypes for TyDecl {
 }
 
 impl SpannedWithEngines for TyDecl {
-    fn span(&self, _engines: &Engines) -> Span {
+    fn span(&self, engines: &Engines) -> Span {
         match self {
+            TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
+                let const_decl = engines.de().get(decl_id);
+                const_decl.span.clone()
+            }
             TyDecl::VariableDecl(decl) => decl.name.span(),
             TyDecl::FunctionDecl(FunctionDecl { decl_span, .. })
             | TyDecl::TraitDecl(TraitDecl { decl_span, .. })
             | TyDecl::ImplTrait(ImplTrait { decl_span, .. })
-            | TyDecl::ConstantDecl(ConstantDecl { decl_span, .. })
             | TyDecl::TraitTypeDecl(TraitTypeDecl { decl_span, .. })
             | TyDecl::StorageDecl(StorageDecl { decl_span, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. })
@@ -492,12 +485,14 @@ impl CollectTypesMetadata for TyDecl {
 }
 
 impl GetDeclIdent for TyDecl {
-    fn get_decl_ident(&self, _engines: &Engines) -> Option<Ident> {
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident> {
         match self {
+            TyDecl::ConstantDecl(ConstantDecl { decl_id }) => {
+                Some(engines.de().get_constant(decl_id).name().clone())
+            }
             TyDecl::VariableDecl(decl) => Some(decl.name.clone()),
             TyDecl::FunctionDecl(FunctionDecl { name, .. })
             | TyDecl::TraitDecl(TraitDecl { name, .. })
-            | TyDecl::ConstantDecl(ConstantDecl { name, .. })
             | TyDecl::ImplTrait(ImplTrait { name, .. })
             | TyDecl::AbiDecl(AbiDecl { name, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
@@ -656,11 +651,14 @@ impl TyDecl {
         engines: &Engines,
     ) -> Result<DeclRef<DeclId<TyConstantDecl>>, ErrorEmitted> {
         match self {
-            TyDecl::ConstantDecl(ConstantDecl {
-                name,
-                decl_id,
-                decl_span,
-            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+            TyDecl::ConstantDecl(ConstantDecl { decl_id }) => {
+                let const_decl = engines.de().get_constant(decl_id);
+                Ok(DeclRef::new(
+                    const_decl.name().clone(),
+                    *decl_id,
+                    const_decl.span.clone(),
+                ))
+            }
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAConstant {
                 actually: decl.friendly_type_name().to_string(),
@@ -848,9 +846,7 @@ impl From<DeclRef<DeclId<TyTraitType>>> for TyDecl {
 impl From<DeclRef<DeclId<TyConstantDecl>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyConstantDecl>>) -> Self {
         TyDecl::ConstantDecl(ConstantDecl {
-            name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            decl_span: decl_ref.decl_span().clone(),
         })
     }
 }

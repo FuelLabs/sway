@@ -149,11 +149,13 @@ impl Items {
     pub(crate) fn insert_symbol(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
+        let decl_engine = engines.de();
         let append_shadowing_error =
             |ident: &Ident,
              decl: &ty::TyDecl,
@@ -186,7 +188,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
@@ -208,7 +210,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
