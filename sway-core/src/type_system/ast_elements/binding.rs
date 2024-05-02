@@ -111,6 +111,12 @@ impl TypeArgs {
         }
     }
 
+    pub fn as_slice(&self) -> &[TypeArgument] {
+        match self {
+            TypeArgs::Regular(vec) | TypeArgs::Prefix(vec) => vec,
+        }
+    }
+
     pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,

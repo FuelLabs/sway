@@ -29,7 +29,7 @@ impl ty::TyIntrinsicFunctionKind {
             type_arguments,
             ..
         } = kind_binding;
-        let type_arguments = type_arguments.to_vec();
+        let type_arguments = type_arguments.as_slice();
         match kind {
             Intrinsic::SizeOfVal => {
                 type_check_size_of_val(handler, ctx, kind, arguments, type_arguments, span)
@@ -104,7 +104,7 @@ fn type_check_not(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    _type_arguments: Vec<TypeArgument>,
+    _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -157,7 +157,7 @@ fn type_check_size_of_val(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    _type_arguments: Vec<TypeArgument>,
+    _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -196,7 +196,7 @@ fn type_check_size_of_type(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -258,7 +258,7 @@ fn type_check_is_reference_type(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     _arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -311,7 +311,7 @@ fn type_check_assert_is_str_array(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     _arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -484,7 +484,7 @@ fn type_check_gtf(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -720,7 +720,7 @@ fn type_check_state_store_word(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -815,7 +815,7 @@ fn type_check_state_quad(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -963,7 +963,7 @@ fn type_check_arith_binary_op(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1011,7 +1011,7 @@ fn type_check_bitwise_binary_op(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1079,7 +1079,7 @@ fn type_check_shift_binary_op(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let engines = ctx.engines();
@@ -1150,7 +1150,7 @@ fn type_check_revert(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1198,7 +1198,7 @@ fn type_check_jmp_mem(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1243,7 +1243,7 @@ fn type_check_ptr_ops(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1335,7 +1335,7 @@ fn type_check_smo(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1436,7 +1436,7 @@ fn type_check_contract_ret(
     mut ctx: TypeCheckContext,
     _kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    _type_arguments: Vec<TypeArgument>,
+    _type_arguments: &[TypeArgument],
     _span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -1477,7 +1477,7 @@ fn type_check_contract_call(
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
     arguments: &[Expression],
-    type_arguments: Vec<TypeArgument>,
+    type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
