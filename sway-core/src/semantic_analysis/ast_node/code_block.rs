@@ -15,7 +15,7 @@ impl ty::TyCodeBlock {
                 .contents
                 .iter()
                 .filter_map(|node| {
-                    ty::TyAstNode::type_check(handler, ctx.by_ref(), node.clone()).ok()
+                    ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok()
                 })
                 .collect::<Vec<ty::TyAstNode>>();
 

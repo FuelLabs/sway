@@ -42,7 +42,7 @@ impl ty::TyAstNode {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        node: AstNode,
+        node: &AstNode,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
@@ -179,7 +179,7 @@ impl ty::TyAstNode {
                 }
                 AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
             },
-            span: node.span,
+            span: node.span.clone(),
         };
 
         if let ty::TyAstNode {

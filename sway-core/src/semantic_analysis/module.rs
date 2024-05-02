@@ -302,7 +302,7 @@ impl ty::TyModule {
             tree.root_nodes.clone(),
         )?;
 
-        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes)?;
+        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), &ordered_nodes)?;
 
         let submodules = submodules_res?;
 
@@ -427,7 +427,7 @@ impl ty::TyModule {
     fn type_check_nodes(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        nodes: Vec<AstNode>,
+        nodes: &[AstNode],
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let engines = ctx.engines();
         let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
