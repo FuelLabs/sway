@@ -1484,14 +1484,18 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
-        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, vec![])
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(
+            type_id,
+            trait_name,
+            &vec![],
+        )
     }
 
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         &self,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.

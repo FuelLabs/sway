@@ -37,8 +37,7 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
             .unwrap_or_else(fuel_tx::Salt::zeroed);
         let name = &pinned_contract.name;
         let storage_slots = built_contract.storage_slots.clone();
-        let contract_id =
-            pkg::contract_id(&built_contract.bytecode.bytes, storage_slots, &salt);
+        let contract_id = pkg::contract_id(&built_contract.bytecode.bytes, storage_slots, &salt);
         println_green(&format!(" {name}"));
         info!("      Contract id: 0x{contract_id}");
     }

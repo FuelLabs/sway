@@ -21,7 +21,7 @@ impl ty::TyIntrinsicFunctionKind {
         handler: &Handler,
         ctx: TypeCheckContext,
         kind_binding: TypeBinding<Intrinsic>,
-        arguments: Vec<Expression>,
+        arguments: &[Expression],
         span: Span,
     ) -> Result<(Self, TypeId), ErrorEmitted> {
         let TypeBinding {
@@ -82,7 +82,7 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_ptr_ops(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
-            Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
+            Intrinsic::Not => type_check_not(handler, ctx, kind, &arguments, type_arguments, span),
             Intrinsic::JmpMem => {
                 type_check_jmp_mem(handler, ctx, kind, arguments, type_arguments, span)
             }
@@ -103,7 +103,7 @@ fn type_check_not(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     _type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -156,7 +156,7 @@ fn type_check_size_of_val(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     _type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -195,7 +195,7 @@ fn type_check_size_of_type(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -257,7 +257,7 @@ fn type_check_is_reference_type(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    _arguments: Vec<Expression>,
+    _arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -310,7 +310,7 @@ fn type_check_assert_is_str_array(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    _arguments: Vec<Expression>,
+    _arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -360,7 +360,7 @@ fn type_check_to_str_array(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -419,7 +419,7 @@ fn type_check_cmp(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -483,7 +483,7 @@ fn type_check_gtf(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -561,7 +561,7 @@ fn type_check_addr_of(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -608,7 +608,7 @@ fn type_check_state_clear(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -669,7 +669,7 @@ fn type_check_state_load_word(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -719,7 +719,7 @@ fn type_check_state_store_word(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -814,7 +814,7 @@ fn type_check_state_quad(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -903,7 +903,7 @@ fn type_check_log(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -962,7 +962,7 @@ fn type_check_arith_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1010,7 +1010,7 @@ fn type_check_bitwise_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1078,7 +1078,7 @@ fn type_check_shift_binary_op(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1149,7 +1149,7 @@ fn type_check_revert(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1197,7 +1197,7 @@ fn type_check_jmp_mem(
     handler: &Handler,
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1242,7 +1242,7 @@ fn type_check_ptr_ops(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1334,7 +1334,7 @@ fn type_check_smo(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1435,7 +1435,7 @@ fn type_check_contract_ret(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     _kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     _type_arguments: Vec<TypeArgument>,
     _span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
@@ -1476,7 +1476,7 @@ fn type_check_contract_call(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     type_arguments: Vec<TypeArgument>,
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {

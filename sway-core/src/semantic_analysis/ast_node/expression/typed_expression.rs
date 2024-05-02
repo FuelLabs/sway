@@ -350,7 +350,7 @@ impl ty::TyExpression {
             }
             ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
                 kind_binding,
-                arguments,
+                ref arguments,
                 ..
             }) => Self::type_check_intrinsic_function(
                 handler,
@@ -1925,14 +1925,14 @@ impl ty::TyExpression {
         handler: &Handler,
         ctx: TypeCheckContext,
         kind_binding: TypeBinding<Intrinsic>,
-        arguments: Vec<Expression>,
+        arguments: &[Expression],
         span: Span,
     ) -> Result<Self, ErrorEmitted> {
         let (intrinsic_function, return_type) = ty::TyIntrinsicFunctionKind::type_check(
             handler,
             ctx,
             kind_binding,
-            arguments,
+            &arguments,
             span.clone(),
         )?;
         let exp = ty::TyExpression {

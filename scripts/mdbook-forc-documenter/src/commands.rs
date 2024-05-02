@@ -32,7 +32,9 @@ pub fn possible_forc_commands() -> Vec<String> {
 pub fn get_contents_from_commands(commands: &[String]) -> HashMap<String, String> {
     let mut contents: HashMap<String, String> = HashMap::new();
     for command in commands {
-        let Ok(result) = generate_documentation(command) else { continue };
+        let Ok(result) = generate_documentation(command) else {
+            continue;
+        };
         contents.insert("forc ".to_owned() + command, result);
     }
     contents

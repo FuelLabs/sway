@@ -275,12 +275,8 @@ fn analyze_expression(
         IntrinsicFunction(intrinsic) => {
             let intr_effs = effects_of_intrinsic(&intrinsic.kind);
             // assuming left-to-right arguments evaluation
-            let args_effs = analyze_expressions(
-                engines,
-                intrinsic.arguments.iter(),
-                block_name,
-                warnings,
-            );
+            let args_effs =
+                analyze_expressions(engines, intrinsic.arguments.iter(), block_name, warnings);
             if args_effs.contains(&Effect::Interaction) {
                 // TODO: interaction span has to be more precise and point to an argument which performs interaction
                 warn_after_interaction(&intr_effs, &expr.span, &expr.span, block_name, warnings)
