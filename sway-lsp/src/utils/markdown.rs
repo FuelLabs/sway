@@ -61,7 +61,7 @@ fn is_sway_fence(s: &str) -> bool {
     for token in tokens {
         match token {
             "should_panic" | "no_run" | "ignore" | "allow_fail" => {
-                seen_sway_tags = !seen_other_tags
+                seen_sway_tags = !seen_other_tags;
             }
             "sway" => seen_sway_tags = true,
             "test_harness" | "compile_fail" => seen_sway_tags = !seen_other_tags || seen_sway_tags,
