@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclEngineInsertArc, DeclId},
@@ -91,9 +91,10 @@ impl ty::TyAbiDecl {
                             if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
                                 &superabi_impl_method.implementing_type
                             {
+                                let abi_decl = engines.de().get_abi(&abi_decl.decl_id);
                                 handler.emit_err(CompileError::AbiShadowsSuperAbiMethod {
                                     span: method_name.span(),
-                                    superabi: abi_decl.name.clone(),
+                                    superabi: abi_decl.name().clone(),
                                 });
                             }
                         }
@@ -273,11 +274,12 @@ impl ty::TyAbiDecl {
                                     // to place it into Bottom we will encounter
                                     // the same method from Top in both Left and Right
                                     if self_decl_id != abi_decl.decl_id {
+                                        let abi_decl = engines.de().get_abi(&abi_decl.decl_id);
                                         handler.emit_err(
                                             CompileError::ConflictingSuperAbiMethods {
                                                 span: subabi_span.clone(),
                                                 method_name: method.name.to_string(),
-                                                superabi1: abi_decl.name.to_string(),
+                                                superabi1: abi_decl.name().to_string(),
                                                 superabi2: self.name.to_string(),
                                             },
                                         );
@@ -343,10 +345,11 @@ impl ty::TyAbiDecl {
                             {
                                 // allow the diamond superABI hierarchy
                                 if self_decl_id != abi_decl.decl_id {
+                                    let abi_decl = engines.de().get_abi(&abi_decl.decl_id);
                                     handler.emit_err(CompileError::ConflictingSuperAbiMethods {
                                         span: subabi_span.clone(),
                                         method_name: method.name.to_string(),
-                                        superabi1: abi_decl.name.to_string(),
+                                        superabi1: abi_decl.name().to_string(),
                                         superabi2: self.name.to_string(),
                                     });
                                 }

@@ -1628,11 +1628,10 @@ impl ty::TyExpression {
             ctx.self_type(),
         )?;
         let abi_ref = match abi {
-            ty::TyDecl::AbiDecl(ty::AbiDecl {
-                name,
-                decl_id,
-                decl_span,
-            }) => DeclRef::new(name, decl_id, decl_span),
+            ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id }) => {
+                let abi_decl = engines.de().get(&decl_id);
+                DeclRef::new(abi_decl.name().clone(), decl_id, abi_decl.span.clone())
+            }
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);

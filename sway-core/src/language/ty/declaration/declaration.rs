@@ -81,9 +81,7 @@ pub struct ImplTrait {
 
 #[derive(Clone, Debug)]
 pub struct AbiDecl {
-    pub name: Ident,
     pub decl_id: DeclId<TyAbiDecl>,
-    pub decl_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -137,17 +135,9 @@ impl PartialEqWithEngines for TyDecl {
                 TyDecl::ImplTrait(ImplTrait { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
-                TyDecl::AbiDecl(AbiDecl {
-                    name: ln,
-                    decl_id: lid,
-                    ..
-                }),
-                TyDecl::AbiDecl(AbiDecl {
-                    name: rn,
-                    decl_id: rid,
-                    ..
-                }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
+                TyDecl::AbiDecl(AbiDecl { decl_id: lid, .. }),
+                TyDecl::AbiDecl(AbiDecl { decl_id: rid, .. }),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::StorageDecl(StorageDecl { decl_id: lid, .. }),
                 TyDecl::StorageDecl(StorageDecl { decl_id: rid, .. }),
@@ -289,10 +279,10 @@ impl SpannedWithEngines for TyDecl {
             TyDecl::ImplTrait(ImplTrait { decl_id }) => {
                 engines.de().get_impl_trait(decl_id).span.clone()
             }
+            TyDecl::AbiDecl(AbiDecl { decl_id }) => engines.de().get_abi(decl_id).span.clone(),
             TyDecl::VariableDecl(decl) => decl.name.span(),
             TyDecl::StorageDecl(StorageDecl { decl_span, .. })
-            | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. })
-            | TyDecl::AbiDecl(AbiDecl { decl_span, .. }) => decl_span.clone(),
+            | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. }) => decl_span.clone(),
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 variant_decl_span, ..
             }) => variant_decl_span.clone(),
@@ -484,9 +474,9 @@ impl GetDeclIdent for TyDecl {
             TyDecl::ImplTrait(ImplTrait { decl_id }) => {
                 Some(engines.de().get(decl_id).name().clone())
             }
+            TyDecl::AbiDecl(AbiDecl { decl_id }) => Some(engines.de().get(decl_id).name().clone()),
             TyDecl::VariableDecl(decl) => Some(decl.name.clone()),
-            TyDecl::AbiDecl(AbiDecl { name, .. })
-            | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
+            TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
             | TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. }) => {
                 Some(name.clone())
             }
@@ -624,11 +614,14 @@ impl TyDecl {
         engines: &Engines,
     ) -> Result<DeclRef<DeclId<TyAbiDecl>>, ErrorEmitted> {
         match self {
-            TyDecl::AbiDecl(AbiDecl {
-                name,
-                decl_id,
-                decl_span,
-            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+            TyDecl::AbiDecl(AbiDecl { decl_id }) => {
+                let abi_decl = engines.de().get_abi(decl_id);
+                Ok(DeclRef::new(
+                    abi_decl.name().clone(),
+                    *decl_id,
+                    abi_decl.span.clone(),
+                ))
+            }
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAnAbi {
                 actually: decl.friendly_type_name().to_string(),
@@ -893,9 +886,7 @@ impl From<DeclRef<DeclId<TyStructDecl>>> for TyDecl {
 impl From<DeclRef<DeclId<TyAbiDecl>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyAbiDecl>>) -> Self {
         TyDecl::AbiDecl(AbiDecl {
-            name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            decl_span: decl_ref.decl_span().clone(),
         })
     }
 }
