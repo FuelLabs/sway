@@ -621,7 +621,7 @@ fn find_repo_with_tag(
         let current_head = repo_index.head_with_time.0;
         if let Reference::Tag(curr_repo_tag) = repo_index.git_reference {
             if curr_repo_tag == tag {
-                found_local_repo = Some((repo_dir_path, current_head))
+                found_local_repo = Some((repo_dir_path, current_head));
             }
         }
         Ok(())
