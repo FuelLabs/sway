@@ -244,9 +244,13 @@ pub(crate) fn compile_constant_expression_to_constant(
         // Special case functions because the span in `const_expr` is to the inlined function
         // definition, rather than the actual call site.
         ty::TyExpressionVariant::FunctionApplication { call_path, .. } => {
-            Err(CompileError::NonConstantDeclValue {
-                span: call_path.span(),
-            })
+            let span = call_path.span();
+            let span = if span == Span::dummy() {
+                const_expr.span.clone()
+            } else {
+                span
+            };
+            Err(CompileError::NonConstantDeclValue { span })
         }
         _otherwise => Err(CompileError::NonConstantDeclValue {
             span: const_expr.span.clone(),

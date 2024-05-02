@@ -6,3 +6,4 @@ license = "Apache-2.0"
 name = "storage_in_script"
 
 [dependencies]
+core = { path = "../../../../../../sway-lib-core" }

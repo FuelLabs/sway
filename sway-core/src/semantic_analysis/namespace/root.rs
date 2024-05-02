@@ -1,11 +1,16 @@
 use super::{
-    lexical_scope::GlobImport, module::Module, namespace::Namespace, trait_map::TraitMap, Ident,
+    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
 };
 use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
-    language::ty::{self, TyDecl},
+    language::{
+        parsed::*,
+        ty::{self, TyDecl, TyTraitItem},
+        CallPath,
+    },
     namespace::ModulePath,
+    TypeId, TypeInfo,
 };
 use sway_error::{
     error::CompileError,
@@ -13,6 +18,20 @@ use sway_error::{
 };
 use sway_types::Spanned;
 use sway_utils::iter_prefixes;
+
+pub enum ResolvedDeclaration {
+    Parsed(Declaration),
+    Typed(ty::TyDecl),
+}
+
+impl ResolvedDeclaration {
+    pub fn expect_typed(self) -> ty::TyDecl {
+        match self {
+            ResolvedDeclaration::Parsed(_) => panic!(),
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+}
 
 /// The root module, from which all other modules can be accessed.
 ///
@@ -28,6 +47,8 @@ pub struct Root {
 }
 
 impl Root {
+    ////// IMPORT //////
+
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
     /// `dst` module.
     ///
@@ -59,13 +80,12 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
+            .extend(implemented_traits, engines);
         for symbol_and_decl in symbols_and_decls {
-            dst_mod.current_items_mut().use_synonyms.insert(
-                // TODO: No difference made between imported and declared items
-                symbol_and_decl.0,
-                (src.to_vec(), GlobImport::Yes, symbol_and_decl.1),
-            );
+            dst_mod
+                .current_items_mut()
+                .use_glob_synonyms
+                .insert(symbol_and_decl.0, (src.to_vec(), symbol_and_decl.1));
         }
 
         Ok(())
@@ -140,27 +160,26 @@ impl Root {
                 }
                 // no matter what, import it this way though.
                 let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-                let add_synonym = |name| {
-                    if let Some((_, GlobImport::No, _)) =
-                        dst_mod.current_items().use_synonyms.get(name)
-                    {
+                let check_name_clash = |name| {
+                    if let Some((_, _, _)) = dst_mod.current_items().use_item_synonyms.get(name) {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
-                    dst_mod.current_items_mut().use_synonyms.insert(
-                        // TODO: No difference made between imported and declared items
-                        name.clone(),
-                        (src.to_vec(), GlobImport::No, decl),
-                    );
                 };
                 match alias {
                     Some(alias) => {
-                        add_synonym(&alias);
+                        check_name_clash(&alias);
                         dst_mod
                             .current_items_mut()
-                            .use_aliases
-                            .insert(alias.as_str().to_string(), item.clone()); // TODO: No difference made between imported and declared items
+                            .use_item_synonyms
+                            .insert(alias.clone(), (Some(item.clone()), src.to_vec(), decl))
                     }
-                    None => add_synonym(item),
+                    None => {
+                        check_name_clash(item);
+                        dst_mod
+                            .current_items_mut()
+                            .use_item_synonyms
+                            .insert(item.clone(), (None, src.to_vec(), decl))
+                    }
                 };
             }
             None => {
@@ -175,7 +194,7 @@ impl Root {
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(impls_to_insert, engines); // TODO: No difference made between imported and declared items
+            .extend(impls_to_insert, engines);
 
         Ok(())
     }
@@ -226,38 +245,44 @@ impl Root {
                     {
                         // import it this way.
                         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-                        let mut add_synonym = |name| {
-                            if let Some((_, GlobImport::No, _)) =
-                                dst_mod.current_items().use_synonyms.get(name)
-                            {
+                        let check_name_clash = |name| {
+                            if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
                                     name: name.into(),
                                 });
                             }
-                            dst_mod.current_items_mut().use_synonyms.insert(
-                                // TODO: No difference made between imported and declared items
-                                name.clone(),
-                                (
-                                    src.to_vec(),
-                                    GlobImport::No,
-                                    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                        enum_ref: enum_ref.clone(),
-                                        variant_name: variant_name.clone(),
-                                        variant_decl_span: variant_decl.span.clone(),
-                                    }),
-                                ),
-                            );
                         };
                         match alias {
                             Some(alias) => {
-                                add_synonym(&alias);
-                                dst_mod
-                                    .current_items_mut()
-                                    .use_aliases
-                                    .insert(alias.as_str().to_string(), variant_name.clone());
-                                // TODO: No difference made between imported and declared items
+                                check_name_clash(&alias);
+                                dst_mod.current_items_mut().use_item_synonyms.insert(
+                                    alias.clone(),
+                                    (
+                                        Some(variant_name.clone()),
+                                        src.to_vec(),
+                                        TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                            enum_ref: enum_ref.clone(),
+                                            variant_name: variant_name.clone(),
+                                            variant_decl_span: variant_decl.span.clone(),
+                                        }),
+                                    ),
+                                );
                             }
-                            None => add_synonym(variant_name),
+                            None => {
+                                check_name_clash(variant_name);
+                                dst_mod.current_items_mut().use_item_synonyms.insert(
+                                    variant_name.clone(),
+                                    (
+                                        None,
+                                        src.to_vec(),
+                                        TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                            enum_ref: enum_ref.clone(),
+                                            variant_name: variant_name.clone(),
+                                            variant_decl_span: variant_decl.span.clone(),
+                                        }),
+                                    ),
+                                );
+                            }
                         };
                     } else {
                         return Err(handler.emit_err(CompileError::SymbolNotFound {
@@ -326,12 +351,10 @@ impl Root {
 
                         // import it this way.
                         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-                        dst_mod.current_items_mut().use_synonyms.insert(
-                            // TODO: No difference made between imported and declared items
+                        dst_mod.current_items_mut().use_glob_synonyms.insert(
                             variant_name.clone(),
                             (
                                 src.to_vec(),
-                                GlobImport::Yes,
                                 TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
                                     enum_ref: enum_ref.clone(),
                                     variant_name: variant_name.clone(),
@@ -378,24 +401,27 @@ impl Root {
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let use_synonyms = src_mod.current_items().use_synonyms.clone();
-        let mut symbols_and_decls = src_mod
-            .current_items()
-            .use_synonyms
-            .iter()
-            .map(|(symbol, (_, _, decl))| (symbol.clone(), decl.clone()))
-            .collect::<Vec<_>>();
+        let use_item_synonyms = src_mod.current_items().use_item_synonyms.clone();
+        let use_glob_synonyms = src_mod.current_items().use_glob_synonyms.clone();
+
+        // collect all declared and reexported symbols from the source module
+        let mut all_symbols_and_decls = vec![];
+        for (symbol, (_, decl)) in src_mod.current_items().use_glob_synonyms.iter() {
+            all_symbols_and_decls.push((symbol.clone(), decl.clone()));
+        }
+        for (symbol, (_, _, decl)) in src_mod.current_items().use_item_synonyms.iter() {
+            all_symbols_and_decls.push((symbol.clone(), decl.clone()));
+        }
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-                symbols_and_decls.push((symbol.clone(), decl.clone()));
+                all_symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (mod_path, _, decl)) in use_synonyms {
+        let get_path = |mod_path: Vec<Ident>| {
             let mut is_external = false;
-            let submodule = src_mod.submodule(engines, &[mod_path[0].clone()]);
-            if let Some(submodule) = submodule {
+            if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
                 is_external = submodule.is_external
             };
 
@@ -406,28 +432,35 @@ impl Root {
                 path.extend(mod_path);
             }
 
-            symbols_paths_and_decls.push((symbol, path, decl));
+            path
+        };
+
+        for (symbol, (_, mod_path, decl)) in use_item_synonyms {
+            symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
+        }
+        for (symbol, (mod_path, decl)) in use_glob_synonyms {
+            symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
         }
 
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
         dst_mod
             .current_items_mut()
             .implemented_traits
-            .extend(implemented_traits, engines); // TODO: No difference made between imported and declared items
+            .extend(implemented_traits, engines);
 
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
             dst_mod
                 .current_items_mut()
-                .use_synonyms
-                .insert(symbol, (path, GlobImport::Yes, decl)); // TODO: No difference made between imported and declared items
+                .use_glob_synonyms
+                .insert(symbol, (path, decl));
         };
 
-        for (symbol, decl) in symbols_and_decls {
+        for (symbol, decl) in all_symbols_and_decls {
             try_add(symbol, src.to_vec(), decl);
         }
 
         for (symbol, path, decl) in symbols_paths_and_decls {
-            try_add(symbol, path, decl);
+            try_add(symbol.clone(), path, decl.clone());
         }
 
         Ok(())
@@ -455,6 +488,343 @@ impl Root {
             }
         }
         Ok(())
+    }
+
+    ////// NAME RESOLUTION //////
+
+    /// Resolve a symbol that is potentially prefixed with some path, e.g. `foo::bar::symbol`.
+    ///
+    /// This is short-hand for concatenating the `mod_path` with the `call_path`'s prefixes and
+    /// then calling `resolve_symbol` with the resulting path and call_path's suffix.
+    pub(crate) fn resolve_call_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &ModulePath,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let (decl, _) =
+            self.resolve_call_path_and_mod_path(handler, engines, mod_path, call_path, self_type)?;
+        Ok(decl)
+    }
+
+    pub(crate) fn resolve_call_path_and_mod_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &ModulePath,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+        let symbol_path: Vec<_> = mod_path
+            .iter()
+            .chain(&call_path.prefixes)
+            .cloned()
+            .collect();
+        self.resolve_symbol_and_mod_path(
+            handler,
+            engines,
+            &symbol_path,
+            &call_path.suffix,
+            self_type,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn resolve_call_path_and_root_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        module: &Module,
+        root_type_id: TypeId,
+        mut as_trait: Option<CallPath>,
+        call_path: &CallPath,
+        self_type: Option<TypeId>,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        // This block tries to resolve associated types
+        let mut decl_opt = None;
+        let mut type_id_opt = Some(root_type_id);
+        for ident in call_path.prefixes.iter() {
+            if let Some(type_id) = type_id_opt {
+                type_id_opt = None;
+                decl_opt = Some(self.resolve_associated_type_from_type_id(
+                    handler,
+                    engines,
+                    module,
+                    ident,
+                    type_id,
+                    as_trait.clone(),
+                    self_type,
+                )?);
+                as_trait = None;
+            } else if let Some(decl) = decl_opt {
+                decl_opt = Some(self.resolve_associated_type(
+                    handler,
+                    engines,
+                    module,
+                    ident,
+                    decl,
+                    as_trait.clone(),
+                    self_type,
+                )?);
+                as_trait = None;
+            }
+        }
+        if let Some(type_id) = type_id_opt {
+            let decl = self.resolve_associated_type_from_type_id(
+                handler,
+                engines,
+                module,
+                &call_path.suffix,
+                type_id,
+                as_trait,
+                self_type,
+            )?;
+            return Ok(decl);
+        }
+        if let Some(decl) = decl_opt {
+            let decl = self.resolve_associated_item(
+                handler,
+                engines,
+                module,
+                &call_path.suffix,
+                decl,
+                as_trait,
+                self_type,
+            )?;
+            Ok(decl)
+        } else {
+            Err(handler.emit_err(CompileError::Internal("Unexpected error", call_path.span())))
+        }
+    }
+
+    /// Given a path to a module and the identifier of a symbol within that module, resolve its
+    /// declaration.
+    ///
+    /// If the symbol is within the given module's namespace via import, we recursively traverse
+    /// imports until we find the original declaration.
+    pub(crate) fn resolve_symbol(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &ModulePath,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let (decl, _) =
+            self.resolve_symbol_and_mod_path(handler, engines, mod_path, symbol, self_type)?;
+        Ok(decl)
+    }
+
+    fn resolve_symbol_and_mod_path(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        mod_path: &ModulePath,
+        symbol: &Ident,
+        self_type: Option<TypeId>,
+    ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
+        // This block tries to resolve associated types
+        let mut module = &self.module;
+        let mut current_mod_path = vec![];
+        let mut decl_opt = None;
+        for ident in mod_path.iter() {
+            if let Some(decl) = decl_opt {
+                decl_opt = Some(self.resolve_associated_type(
+                    handler, engines, module, ident, decl, None, self_type,
+                )?);
+            } else {
+                match module.submodules.get(ident.as_str()) {
+                    Some(ns) => {
+                        module = ns;
+                        current_mod_path.push(ident.clone());
+                    }
+                    None => {
+                        decl_opt = Some(self.resolve_symbol_helper(handler, ident, module)?);
+                    }
+                }
+            }
+        }
+        if let Some(decl) = decl_opt {
+            let decl = self
+                .resolve_associated_item(handler, engines, module, symbol, decl, None, self_type)?;
+            return Ok((decl, current_mod_path));
+        }
+
+        self.module
+            .lookup_submodule(handler, engines, mod_path)
+            .and_then(|module| {
+                let decl = self.resolve_symbol_helper(handler, symbol, module)?;
+                Ok((decl, mod_path.to_vec()))
+            })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_associated_type(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        module: &Module,
+        symbol: &Ident,
+        decl: ResolvedDeclaration,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+
+        self.resolve_associated_type_from_type_id(
+            handler,
+            engines,
+            module,
+            symbol,
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
+            as_trait,
+            self_type,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_associated_item(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        module: &Module,
+        symbol: &Ident,
+        decl: ResolvedDeclaration,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+
+        self.resolve_associated_item_from_type_id(
+            handler,
+            engines,
+            module,
+            symbol,
+            engines
+                .te()
+                .insert(engines, type_info, symbol.span().source_id()),
+            as_trait,
+            self_type,
+        )
+    }
+
+    fn decl_to_type_info(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        symbol: &Ident,
+        decl: ResolvedDeclaration,
+    ) -> Result<TypeInfo, ErrorEmitted> {
+        match decl {
+            ResolvedDeclaration::Parsed(_decl) => todo!(),
+            ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
+                ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
+                    struct_decl.name.clone(),
+                    struct_decl.decl_id,
+                    struct_decl.name.span(),
+                )),
+                ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
+                    enum_decl.name.clone(),
+                    enum_decl.decl_id,
+                    enum_decl.name.span(),
+                )),
+                ty::TyDecl::TraitTypeDecl(type_decl) => {
+                    let type_decl = engines.de().get_type(&type_decl.decl_id);
+                    (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
+                }
+                _ => {
+                    return Err(handler.emit_err(CompileError::SymbolNotFound {
+                        name: symbol.clone(),
+                        span: symbol.span(),
+                    }))
+                }
+            }),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_associated_type_from_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        module: &Module,
+        symbol: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let item_decl = self.resolve_associated_item_from_type_id(
+            handler, engines, module, symbol, type_id, as_trait, self_type,
+        )?;
+        Ok(item_decl)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn resolve_associated_item_from_type_id(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        module: &Module,
+        symbol: &Ident,
+        type_id: TypeId,
+        as_trait: Option<CallPath>,
+        self_type: Option<TypeId>,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let type_id = if engines.te().get(type_id).is_self_type() {
+            if let Some(self_type) = self_type {
+                self_type
+            } else {
+                return Err(handler.emit_err(CompileError::Internal(
+                    "Self type not provided.",
+                    symbol.span(),
+                )));
+            }
+        } else {
+            type_id
+        };
+        let item_ref = module
+            .current_items()
+            .implemented_traits
+            .get_trait_item_for_type(handler, engines, symbol, type_id, as_trait)?;
+        match item_ref {
+            ResolvedTraitImplItem::Parsed(_item) => todo!(),
+            ResolvedTraitImplItem::Typed(item) => match item {
+                TyTraitItem::Fn(fn_ref) => Ok(ResolvedDeclaration::Typed(fn_ref.into())),
+                TyTraitItem::Constant(const_ref) => {
+                    Ok(ResolvedDeclaration::Typed(const_ref.into()))
+                }
+                TyTraitItem::Type(type_ref) => Ok(ResolvedDeclaration::Typed(type_ref.into())),
+            },
+        }
+    }
+
+    fn resolve_symbol_helper(
+        &self,
+        handler: &Handler,
+        symbol: &Ident,
+        module: &Module,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        // Check locally declared items. Any name clash with imports will have already been reported as an error.
+        if let Some(decl) = module.current_items().symbols.get(symbol) {
+            return Ok(ResolvedDeclaration::Typed(decl.clone()));
+        }
+        // Check item imports
+        if let Some((_, _, decl)) = module.current_items().use_item_synonyms.get(symbol) {
+            return Ok(ResolvedDeclaration::Typed(decl.clone()));
+        }
+        // Check glob imports
+        if let Some((_, decl)) = module.current_items().use_glob_synonyms.get(symbol) {
+            return Ok(ResolvedDeclaration::Typed(decl.clone()));
+        }
+        // Symbol not found
+        Err(handler.emit_err(CompileError::SymbolNotFound {
+            name: symbol.clone(),
+            span: symbol.span(),
+        }))
     }
 }
 

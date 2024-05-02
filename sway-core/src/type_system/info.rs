@@ -1138,6 +1138,7 @@ impl TypeInfo {
                 | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
                 | TypeInfo::RawUntypedPtr
                 | TypeInfo::Numeric // TODO-IG: Should Ptr and Ref also be a copy type?
+                | TypeInfo::Never
         ) || self.is_unit()
     }
 
@@ -1162,6 +1163,10 @@ impl TypeInfo {
 
     pub fn is_array(&self) -> bool {
         matches!(self, TypeInfo::Array(_, _))
+    }
+
+    pub fn is_contract(&self) -> bool {
+        matches!(self, TypeInfo::Contract)
     }
 
     pub fn is_struct(&self) -> bool {

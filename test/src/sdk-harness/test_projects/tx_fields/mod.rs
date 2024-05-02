@@ -269,7 +269,7 @@ mod tx {
     async fn can_get_script_data_length() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
         // TODO make this programmatic.
-        let script_data_length = 80;
+        let script_data_length = 121;
 
         let result = contract_instance
             .methods()
@@ -314,7 +314,10 @@ mod tx {
             .unwrap();
 
         assert_eq!(tx_inputs.len() as u64, 2u64);
-        assert_eq!(receipts[1].val().unwrap(), tx_inputs.len() as u64);
+        assert_eq!(
+            receipts[1].data(),
+            Some((tx_inputs.len() as u64).to_be_bytes().as_slice())
+        );
     }
 
     #[tokio::test]
@@ -361,7 +364,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(response.value, 10984);
+        assert_eq!(response.value, 11024);
     }
 
     #[tokio::test]
@@ -581,8 +584,7 @@ mod inputs {
                 .unwrap()
                 .take_receipts_checked(None)
                 .unwrap();
-
-            assert_eq!(receipts[1].val().unwrap(), 1);
+            assert_eq!(receipts[1].data(), Some(&[1u8][..]));
         }
 
         mod message {
@@ -742,7 +744,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 3);
+                assert_eq!(receipts[1].data(), Some(&[0, 3][..]));
             }
 
             #[tokio::test]
@@ -777,7 +779,8 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), predicate_bytecode.len() as u64);
+                let len = predicate_bytecode.len() as u16;
+                assert_eq!(receipts[1].data(), Some(len.to_be_bytes().as_slice()));
             }
 
             #[tokio::test]
@@ -811,7 +814,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 0);
+                assert_eq!(receipts[1].data(), Some(0u16.to_le_bytes().as_slice()));
             }
 
             #[tokio::test]
@@ -847,7 +850,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 1);
+                assert_eq!(receipts[1].data(), Some(&[1][..]));
             }
 
             #[tokio::test]
@@ -880,7 +883,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 1);
+                assert_eq!(receipts[1].data(), Some(1u8.to_le_bytes().as_slice()));
             }
         }
     }

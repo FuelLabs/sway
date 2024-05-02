@@ -6,3 +6,4 @@ license = "Apache-2.0"
 name = "illegal_break"
 
 [dependencies]
+core = { path = "../../../../../../sway-lib-core" }

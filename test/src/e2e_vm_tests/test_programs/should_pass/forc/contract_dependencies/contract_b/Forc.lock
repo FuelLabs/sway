@@ -1,8 +1,14 @@
 [[package]]
-name = 'contract_b'
-source = 'member'
-contract-dependencies = ['contract_c']
+name = "contract_b"
+source = "member"
+dependencies = ["core"]
+contract-dependencies = ["contract_c"]
 
 [[package]]
-name = 'contract_c'
-source = 'path+from-root-A309856C1410AE80'
+name = "contract_c"
+source = "path+from-root-A309856C1410AE80"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-A309856C1410AE80"

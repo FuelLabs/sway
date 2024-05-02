@@ -1,3 +1,8 @@
 [[package]]
-name = 'associated_const_impl_self_order'
-source = 'member'
+name = "associated_const_impl_self_order"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-F5ACA883B083BA7B"

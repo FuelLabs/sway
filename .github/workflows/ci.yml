@@ -141,6 +141,27 @@ jobs:
       - name: Run the formatter against all sway projects and fail if any of them panic
         run: scripts/formatter/forc-fmt-check-panic.sh
 
+  check-sdk-harness-test-suite-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install toml-cli
+        run: cargo install toml-cli
+
+      - name: Read and compare versions
+        env:
+          PACKAGE_NAMES: "fuel-core-client" # multiple packages can be specified delimeted with `,`.
+        run: |
+          .github/workflows/scripts/check-sdk-harness-version.sh
+
   build-mdbook:
     runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
@@ -353,7 +374,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (EVM)
-        run: cargo run --locked --release --bin test -- --target evm --locked
+        run: cargo run --locked --release --bin test -- --target evm --locked --no-encoding-v1
 
   cargo-run-e2e-test-midenvm:
     runs-on: ubuntu-latest
@@ -365,7 +386,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (EVM)
-        run: cargo run --locked --release --bin test -- --target midenvm --locked
+        run: cargo run --locked --release --bin test -- --target midenvm --locked --no-encoding-v1
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
