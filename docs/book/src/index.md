@@ -50,7 +50,7 @@ You can find example applications built with Sway in the [Sway Applications repo
 
 **Q: What is the standard library?**
 
-The [standard library](./introduction/standard_library.md), also refered to as the `std-lib`, is a library that offers core functions and helpers for developing in Sway. The standard library has it's own [reference documentation](https://fuellabs.github.io/sway/master/std/) that has detailed information about each module in the `std-lib`.
+The [standard library](./introduction/standard_library.md), also referred to as the `std-lib`, is a library that offers core functions and helpers for developing in Sway. The standard library has it's own [reference documentation](https://fuellabs.github.io/sway/master/std/) that has detailed information about each module in the `std-lib`.
 
 **Q: What are Sway standards?**
 
@@ -58,11 +58,11 @@ Similar to ERC standards for Ethereum and Solidity, Sway has it's own SRC standa
 
 **Q: How can I make a token?**
 
-Sway has mulitple native assets. To mint a new native asset, check out the [native assets](./blockchain-development/native_assets.md) page.
+Sway has multiple native assets. To mint a new native asset, check out the [native assets](./blockchain-development/native_assets.md) page.
 
 **Q: How can I make an NFT?**
 
-You can find an example of an NFT contract in Sway in the [Sway Applicatons repo](https://github.com/FuelLabs/sway-applications/tree/master/NFT).
+You can find an example of an NFT contract in Sway in the [Sway Applications repo](https://github.com/FuelLabs/sway-applications/tree/master/NFT).
 
 **Q: How can I test Sway code?**
 
