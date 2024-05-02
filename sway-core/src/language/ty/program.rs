@@ -163,12 +163,9 @@ impl TyProgram {
                                             }));
                                         }
                                         TyImplItem::Type(type_ref) => {
-                                            let type_decl = decl_engine.get_type(type_ref);
                                             declarations.push(TyDecl::TraitTypeDecl(
                                                 TraitTypeDecl {
-                                                    name: type_decl.name().clone(),
                                                     decl_id: *type_ref.id(),
-                                                    decl_span: type_decl.span.clone(),
                                                 },
                                             ));
                                         }
