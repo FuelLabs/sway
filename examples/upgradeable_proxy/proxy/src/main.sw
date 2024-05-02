@@ -14,7 +14,6 @@ abi Proxy {
 #[namespace(my_storage_namespace)]
 storage {
     target_contract: Option<ContractId> = None,
-    value: u64 = 0,
 }
 
 impl Proxy for Contract {

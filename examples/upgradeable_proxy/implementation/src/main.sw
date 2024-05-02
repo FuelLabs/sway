@@ -8,6 +8,7 @@ abi Implementation {
 // ANCHOR: target
 storage {
     value: u64 = 0,
+    // to stay compatible, this has to stay the same in the next version
 }
 
 impl Implementation for Contract {

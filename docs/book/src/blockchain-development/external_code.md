@@ -21,6 +21,8 @@ The contract has two functions:
 - `double_input` reads the `target_contract` from storage and uses it to run external code. If the `target_contract` has a function with the same name (`double_input`), the code in the external `double_input` function will run.
 In this case, the function will return a `u64`.
 
+Notice in the `Proxy` example above, the storage block has a `namespace` attribute. Using this attribute is considered a best practice for all proxy contracts in Sway, because it will prevent storage collisions with the implementation contract, as the implementation contract has access to both storage contexts.
+
 Below is what an implementation contract could look like for this:
 
 ```sway
@@ -38,14 +40,10 @@ First, to use `run_external`, the ABI of the external contract is not required. 
 ### Upgradeable Contract Storage
 
 Second, the storage context of the proxy contract is retained for the loaded code.
-This means that in the examples above, if someone calls the `double_input` function on the proxy contract, the `value` variable will be updated in the proxy contract's storage.
+This means that in the examples above, the `value` variable gets updated in the storage for the *proxy* contract.
 
-If the proxy contract were to use a normal contract call to call `double_input`, then the `value` variable in the implementation contract would updated, and would not change in the proxy contract.
-
-Notice in the `Proxy` example above, there are a couple of unique things happening in the storage block in order for this to work:
-
-1. The storage block has a `namespace` attribute. Using this attribute is considered a best practice for all proxy contracts in Sway, because it will prevent storage collisions with the implementation contract, as the implementation contract has access to both storage contexts.
-2. The storage variables must exist in both contracts. The example above would break if the proxy contract did not also have a `value` variable declared in a storage block. The proxy and implementation contracts can have unique storage variables, but you cannot modify a storage variable that only exists in an implementation contract from a proxy contract.
+This means that if you were to read the `value` variable by directly calling the implementation contract, you would get a different result than if you read it through the proxy contract.
+The proxy contract essentially adopts the code in the implementation as its own.
 
 ## Fallback functions
 
@@ -71,4 +69,4 @@ In this case, the `does_not_exist_in_the_target` function will return `_foo * 3`
 Some limitations of `run_external` function are:
 
 - It can only be used with other contracts. Scripts, predicates, and library code cannot be run externally.
-- You cannot run an external function that accesses a storage variable that only exists in the external implementation.
+- If you change the implementation contract, you must maintain the same order of previous storage variables and types, as this is what has been stored in the proxy stoarge.
