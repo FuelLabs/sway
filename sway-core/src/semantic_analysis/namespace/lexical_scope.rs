@@ -37,10 +37,9 @@ impl ResolvedFunctionDecl {
 
 pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
-// The `Vec<Ident>` path is absolute.
-pub(super) type GlobSynonyms = im::HashMap<Ident, (Vec<Ident>, ty::TyDecl)>;
-pub(super) type ItemSynonyms = im::HashMap<Ident, (Vec<Ident>, ty::TyDecl)>;
-pub(super) type UseAliases = im::HashMap<String, Ident>;
+type SourceIdent = Ident;
+pub(super) type GlobSynonyms = im::HashMap<Ident, (ModulePathBuf, ty::TyDecl)>;
+pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -77,13 +76,11 @@ pub struct Items {
     ///
     /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
     /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
+    ///
+    /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
+    /// as the optional source identifier for error reporting purposes.
     pub(crate) use_glob_synonyms: GlobSynonyms,
     pub(crate) use_item_synonyms: ItemSynonyms,
-    /// Represents an alternative name for an imported symbol.
-    ///
-    /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
-    /// alias for `bar`.
-    pub(crate) use_aliases: UseAliases,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
 }
@@ -287,12 +284,14 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, decl))) = self.use_item_synonyms.get_key_value(&name) {
+        if let Some((ident, (imported_ident, _, decl))) =
+            self.use_item_synonyms.get_key_value(&name)
+        {
             append_shadowing_error(
                 ident,
                 decl,
                 true,
-                self.use_aliases.get(&name.to_string()).is_some(),
+                imported_ident.is_some(),
                 &item,
                 const_shadowing_mode,
             );
