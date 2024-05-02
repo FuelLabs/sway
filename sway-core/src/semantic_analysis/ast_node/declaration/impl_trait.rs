@@ -818,7 +818,7 @@ fn type_check_trait_implementation(
                         None,
                     ),
                 };
-                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
                     vec![type_engine.insert(
                         engines,
                         old_type_decl_info1,
@@ -826,7 +826,7 @@ fn type_check_trait_implementation(
                     )],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
-                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
                     vec![type_engine.insert(
                         engines,
                         old_type_decl_info2,
@@ -910,7 +910,7 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    type_mapping.extend(trait_type_mapping);
+    type_mapping.extend(&trait_type_mapping);
 
     interface_item_refs.extend(supertrait_interface_item_refs);
     impld_item_refs.extend(supertrait_impld_item_refs);

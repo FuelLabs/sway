@@ -119,10 +119,7 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             })
         })
         .or_else(|| {
-            options.silent.and_then(|silent| match silent {
-                true => Some(LevelFilter::OFF),
-                _ => None,
-            })
+            options.silent.and_then(|silent| if silent { Some(LevelFilter::OFF) } else { None })
         });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()

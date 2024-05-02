@@ -19,7 +19,7 @@ use crate::{
         TypeCheckContext,
     },
     type_system::priv_prelude::*,
-    types::*,
+    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
 };
 
 #[derive(Debug, Clone)]
@@ -64,7 +64,7 @@ impl OrdWithEngines for TraitConstraint {
         // Check if cmp is already inside of a trait constraint, if it is we don't compare type arguments.
         // This breaks the recursion when we use a where clause such as `T:MyTrait<T>`.
         if !ctx.is_inside_trait_constraint() {
-            res = res.then_with(|| lta.cmp(rta, &ctx.with_is_inside_trait_constraint()))
+            res = res.then_with(|| lta.cmp(rta, &ctx.with_is_inside_trait_constraint()));
         }
 
         res
@@ -120,7 +120,7 @@ impl CollectTypesMetadata for TraitConstraint {
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut res = vec![];
         handler.scope(|handler| {
-            for type_arg in self.type_arguments.iter() {
+            for type_arg in &self.type_arguments {
                 res.extend(
                     match type_arg.type_id.collect_types_metadata(handler, ctx) {
                         Ok(res) => res,
@@ -161,7 +161,7 @@ impl TraitConstraint {
         }
 
         // Type check the type arguments.
-        for type_argument in self.type_arguments.iter_mut() {
+        for type_argument in &mut self.type_arguments {
             type_argument.type_id = ctx
                 .resolve_type(
                     handler,
