@@ -31,83 +31,43 @@ abi MyContract {
 impl MyContract for Contract {
     fn bool_test(input: Vec<bool>) -> [bool; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u8_test(input: Vec<u8>) -> [u8; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u16_test(input: Vec<u16>) -> [u16; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u32_test(input: Vec<u32>) -> [u32; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn u64_test(input: Vec<u64>) -> [u64; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn b256_test(input: Vec<b256>) -> [b256; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn struct_test(input: Vec<MyStruct>) -> [MyStruct; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn enum_test(input: Vec<MyEnum>) -> [MyEnum; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn array_test(input: Vec<[Address; 2]>) -> [[Address; 2]; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn string_test(input: Vec<str[4]>) -> [str[4]; 3] {
         assert(input.len() >= 3);
-        [
-            input.get(0).unwrap(),
-            input.get(1).unwrap(),
-            input.get(2).unwrap(),
-        ]
+        [input.get(0).unwrap(), input.get(1).unwrap(), input.get(2).unwrap()]
     }
     fn vec_in_vec_test(input: Vec<Vec<u64>>) -> [u64; 9] {
         assert(input.len() >= 3);

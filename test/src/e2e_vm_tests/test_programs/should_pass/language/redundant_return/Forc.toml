@@ -6,3 +6,4 @@ license = "Apache-2.0"
 name = "redundant_return"
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

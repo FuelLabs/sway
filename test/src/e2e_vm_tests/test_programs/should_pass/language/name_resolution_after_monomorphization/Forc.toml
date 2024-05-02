@@ -6,3 +6,4 @@ name = "name_resolution_after_monomorphization"
 implicit-std = false
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

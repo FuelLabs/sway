@@ -1,3 +1,8 @@
 [[package]]
-name = 'shadowed_glob_imports'
-source = 'member'
+name = "core"
+source = "path+from-root-CC27AB1D954FF5C9"
+
+[[package]]
+name = "shadowed_glob_imports"
+source = "member"
+dependencies = ["core"]

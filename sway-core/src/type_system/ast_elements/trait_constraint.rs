@@ -143,11 +143,21 @@ impl TraitConstraint {
         // trait constraint using a callpath directly, so we check to see if the
         // user has done this and we disallow it.
         if !self.trait_name.prefixes.is_empty() {
-            return Err(handler.emit_err(CompileError::UnimplementedWithHelp(
-                "Using module paths to define trait constraints is not supported yet.",
-                "try importing the trait with a \"use\" statement instead",
-                self.trait_name.span(),
-            )));
+            return Err(handler.emit_err(CompileError::Unimplemented {
+                feature: "Using module paths to define trait constraints".to_string(),
+                help: vec![
+                    // Note that eventual leading `::` will not be shown. It'a fine for now, we anyhow want to implement using module paths.
+                    format!(
+                        "Import the supertrait by using: `use {};`.",
+                        self.trait_name
+                    ),
+                    format!(
+                        "Then, in the trait constraints, just use the trait name \"{}\".",
+                        self.trait_name.suffix
+                    ),
+                ],
+                span: self.trait_name.span(),
+            }));
         }
 
         // Type check the type arguments.

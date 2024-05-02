@@ -149,6 +149,7 @@ impl TypeParameter {
                 name: name.clone(),
                 trait_constraints: VecSet(vec![]),
                 parent: None,
+                is_from_type_parameter: true,
             },
             span.source_id(),
         );
@@ -176,9 +177,10 @@ impl TypeParameter {
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
         let const_shadowing_mode = ctx.const_shadowing_mode();
         let generic_shadowing_mode = ctx.generic_shadowing_mode();
+        let engines = ctx.engines();
         let _ = ctx
             .namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -189,7 +191,7 @@ impl TypeParameter {
             );
         let _ = ctx
             .namespace_mut()
-            .module_mut()
+            .module_mut(engines)
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -305,6 +307,7 @@ impl TypeParameter {
             name: _,
             trait_constraints: _,
             parent,
+            is_from_type_parameter: _,
         } = &*type_engine.get(type_id)
         {
             *parent
@@ -320,6 +323,7 @@ impl TypeParameter {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
                 parent,
+                is_from_type_parameter: true,
             },
             name_ident.span().source_id(),
         );
@@ -365,6 +369,7 @@ impl TypeParameter {
             name: _,
             trait_constraints: _,
             parent,
+            is_from_type_parameter: _,
         } = &*type_engine.get(type_parameter.type_id)
         {
             *parent
@@ -380,6 +385,7 @@ impl TypeParameter {
                     name: type_parameter.name_ident.clone(),
                     trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
                     parent,
+                    is_from_type_parameter: true,
                 }
                 .into(),
                 source_id: type_parameter.name_ident.span().source_id().cloned(),
@@ -439,7 +445,7 @@ impl TypeParameter {
 
             let sy = ctx
                 .namespace()
-                .module()
+                .module(ctx.engines())
                 .current_items()
                 .symbols
                 .get(name_ident)
@@ -454,6 +460,7 @@ impl TypeParameter {
                         name,
                         trait_constraints,
                         parent,
+                        is_from_type_parameter,
                     } = &*ctx.engines().te().get(*type_id)
                     {
                         if parent.is_some() {
@@ -467,6 +474,7 @@ impl TypeParameter {
                                     name: name.clone(),
                                     trait_constraints: trait_constraints.clone(),
                                     parent: Some(*parent_type_id),
+                                    is_from_type_parameter: *is_from_type_parameter,
                                 }
                                 .into(),
                                 source_id: name.span().source_id().cloned(),
@@ -521,7 +529,7 @@ impl TypeParameter {
                 // Check to see if the trait constraints are satisfied.
                 match ctx
                     .namespace_mut()
-                    .module_mut()
+                    .module_mut(engines)
                     .current_items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
@@ -636,7 +644,9 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace());
+                        let import_path = trait_decl
+                            .call_path
+                            .to_import_path(ctx.engines(), ctx.namespace());
                         if import_path == trait_decl.call_path {
                             // If external library.
                             import_path.to_string()

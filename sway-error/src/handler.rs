@@ -48,6 +48,10 @@ impl Handler {
         !self.inner.borrow().errors.is_empty()
     }
 
+    pub fn find_error(&self, f: impl FnMut(&&CompileError) -> bool) -> Option<CompileError> {
+        self.inner.borrow().errors.iter().find(f).cloned()
+    }
+
     pub fn has_warnings(&self) -> bool {
         !self.inner.borrow().warnings.is_empty()
     }
@@ -89,6 +93,18 @@ impl Handler {
         let mut inner = self.inner.borrow_mut();
         inner.errors = dedup_unsorted(inner.errors.clone());
         inner.warnings = dedup_unsorted(inner.warnings.clone());
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` for which `f(&e)` returns `false`.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
+    pub fn retain_err<F>(&self, f: F)
+    where
+        F: FnMut(&CompileError) -> bool,
+    {
+        self.inner.borrow_mut().errors.retain(f)
     }
 }
 

@@ -2,13 +2,10 @@ contract;
 
 use std::{
     asset::{
-        mint_to_address,
-        transfer_to_address,
+        mint_to,
+        transfer,
     },
-    call_frames::{
-        contract_id,
-        msg_asset_id,
-    },
+    call_frames::msg_asset_id,
     constants::DEFAULT_SUB_ID,
     context::msg_amount,
     hash::*,
@@ -30,7 +27,7 @@ impl LiquidityPool for Contract {
         let amount_to_mint = msg_amount() * 2;
 
         // Mint some LP assets based upon the amount of the base asset.
-        mint_to_address(recipient, DEFAULT_SUB_ID, amount_to_mint);
+        mint_to(Identity::Address(recipient), DEFAULT_SUB_ID, amount_to_mint);
     }
 
     fn withdraw(recipient: Address) {
@@ -42,6 +39,6 @@ impl LiquidityPool for Contract {
         let amount_to_transfer = msg_amount() / 2;
 
         // Transfer base asset to recipient.
-        transfer_to_address(recipient, BASE_ASSET, amount_to_transfer);
+        transfer(Identity::Address(recipient), BASE_ASSET, amount_to_transfer);
     }
 }

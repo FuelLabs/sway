@@ -13,6 +13,7 @@ use crate::{
 use indexmap::IndexMap;
 use itertools::Itertools;
 use sway_ast::{
+    assignable::ElementAccess,
     attribute::Annotated,
     expr::{LoopControlFlow, ReassignmentOp, ReassignmentOpVariant},
     ty::TyTupleDescriptor,
@@ -25,9 +26,9 @@ use sway_ast::{
     PathTypeSegment, Pattern, PatternStructField, PubToken, Punctuated, QualifiedPathRoot,
     Statement, StatementLet, Submodule, TraitType, Traits, Ty, TypeField, UseTree, WhereClause,
 };
-use sway_error::convert_parse_tree_error::ConvertParseTreeError;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_error::warning::{CompileWarning, Warning};
+use sway_error::{convert_parse_tree_error::ConvertParseTreeError, error::CompileError};
 use sway_types::{
     constants::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
@@ -285,7 +286,7 @@ fn item_use_to_use_statements(
     // This is not the case for `use foo;`, which is currently not supported
     for use_stmt in ret.iter() {
         if use_stmt.call_path.is_empty() {
-            let error = ConvertParseTreeError::ImportsWithoutItemsNotSupports {
+            let error = ConvertParseTreeError::ImportsWithoutItemsNotSupported {
                 span: use_stmt.span.clone(),
             };
             return Err(handler.emit_err(error.into()));
@@ -4020,12 +4021,51 @@ fn pattern_to_scrutinee(
             span: underscore_token.span(),
         },
         Pattern::Var {
-            reference, name, ..
+            reference,
+            mutable,
+            name,
         } => {
-            if reference.is_some() {
-                let error = ConvertParseTreeError::RefPatternsNotSupportedHere { span };
-                return Err(handler.emit_err(error.into()));
+            let unsupported_ref_mut = match (reference, mutable) {
+                (Some(reference), Some(mutable)) => Some((
+                    "ref mut",
+                    vec![
+                        "If you want to change the matched value, or some of its parts, consider using the matched value".to_string(),
+                        format!("directly in the block, instead of the pattern variable \"{name}\"."),
+                    ],
+                    Span::join(reference.span(), mutable.span())
+                )),
+                (Some(reference), None) => Some((
+                    "ref",
+                    vec![
+                        "If you want to avoid copying the matched value, or some of its parts, consider using the matched value".to_string(),
+                        format!("directly in the block, instead of the pattern variable \"{name}\"."),
+                    ],
+                    reference.span()
+                )),
+                (None, Some(mutable)) => Some((
+                    "mut",
+                    vec![
+                        format!("If you want change the value of the pattern variable \"{name}\", consider declaring its mutable copy within the block:"),
+                        format!("  let mut {name} = {name};"),
+                        format!("Note that the pattern variable \"{name}\" already contains a copy of the matched value, or some of its parts,"),
+                        format!("and that the original matched value will not be affected when changing the mutable \"{name}\"."),
+                        " ".to_string(),
+                        "Alternatively, if you want to change the matched value, or some of its parts, consider using the matched value".to_string(),
+                        format!("directly in the block, instead of the pattern variable \"{name}\"."),
+                    ],
+                    mutable.span()
+                )),
+                _ => None,
+            };
+
+            if let Some((msg, help, span)) = unsupported_ref_mut {
+                return Err(handler.emit_err(CompileError::Unimplemented {
+                    feature: format!("Using `{msg}` in pattern variables"),
+                    help,
+                    span,
+                }));
             }
+
             Scrutinee::Variable { name, span }
         }
         Pattern::AmbiguousSingleIdent(ident) => Scrutinee::AmbiguousSingleIdent(ident),
@@ -4231,90 +4271,129 @@ fn assignable_to_expression(
 ) -> Result<Expression, ErrorEmitted> {
     let span = assignable.span();
     let expression = match assignable {
-        Assignable::Var(name) => Expression {
-            kind: ExpressionKind::Variable(name),
-            span,
-        },
-        Assignable::Index { target, arg } => Expression {
-            kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
-                prefix: Box::new(assignable_to_expression(
-                    context, handler, engines, *target,
-                )?),
-                index: Box::new(expr_to_expression(
-                    context,
-                    handler,
-                    engines,
-                    *arg.into_inner(),
-                )?),
-            }),
-            span,
-        },
-        Assignable::FieldProjection { target, name, .. } => {
-            let mut idents = vec![&name];
-            let mut base = &*target;
-            let (storage_access_field_names_opt, storage_name_opt) = loop {
-                match base {
-                    Assignable::FieldProjection { target, name, .. } => {
-                        idents.push(name);
-                        base = target;
-                    }
-                    Assignable::Var(name) => {
-                        if name.as_str() == "storage" {
-                            break (Some(idents), Some(name.clone()));
-                        }
-                        break (None, None);
-                    }
-                    _ => break (None, None),
-                }
-            };
-            match (storage_access_field_names_opt, storage_name_opt) {
-                (Some(field_names), Some(storage_name)) => {
-                    let field_names = field_names.into_iter().rev().cloned().collect();
-                    Expression {
-                        kind: ExpressionKind::StorageAccess(StorageAccessExpression {
-                            field_names,
-                            storage_keyword_span: storage_name.span(),
-                        }),
-                        span,
-                    }
-                }
-                _ => Expression {
-                    kind: ExpressionKind::Subfield(SubfieldExpression {
-                        prefix: Box::new(assignable_to_expression(
-                            context, handler, engines, *target,
-                        )?),
-                        field_to_access: name,
-                    }),
-                    span,
-                },
-            }
+        Assignable::ElementAccess(element_access) => {
+            element_access_to_expression(context, handler, engines, element_access, span)?
         }
-        Assignable::TupleFieldProjection {
-            target,
-            field,
-            field_span,
-            ..
-        } => {
-            let index = match usize::try_from(field) {
-                Ok(index) => index,
-                Err(..) => {
-                    let error = ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
-                    return Err(handler.emit_err(error.into()));
-                }
-            };
-            Expression {
-                kind: ExpressionKind::TupleIndex(TupleIndexExpression {
-                    prefix: Box::new(assignable_to_expression(
-                        context, handler, engines, *target,
+        Assignable::Deref {
+            star_token: _,
+            expr,
+        } => Expression {
+            kind: ExpressionKind::Deref(Box::new(expr_to_expression(
+                context, handler, engines, *expr,
+            )?)),
+            span,
+        },
+    };
+
+    return Ok(expression);
+
+    fn element_access_to_expression(
+        context: &mut Context,
+        handler: &Handler,
+        engines: &Engines,
+        element_access: ElementAccess,
+        span: Span,
+    ) -> Result<Expression, ErrorEmitted> {
+        let expression = match element_access {
+            ElementAccess::Var(name) => Expression {
+                kind: ExpressionKind::Variable(name),
+                span,
+            },
+            ElementAccess::Index { target, arg } => Expression {
+                kind: ExpressionKind::ArrayIndex(ArrayIndexExpression {
+                    prefix: Box::new(element_access_to_expression(
+                        context,
+                        handler,
+                        engines,
+                        *target,
+                        span.clone(),
                     )?),
-                    index,
-                    index_span: field_span,
+                    index: Box::new(expr_to_expression(
+                        context,
+                        handler,
+                        engines,
+                        *arg.into_inner(),
+                    )?),
                 }),
                 span,
+            },
+            ElementAccess::FieldProjection { target, name, .. } => {
+                let mut idents = vec![&name];
+                let mut base = &*target;
+                let (storage_access_field_names_opt, storage_name_opt) = loop {
+                    match base {
+                        ElementAccess::FieldProjection { target, name, .. } => {
+                            idents.push(name);
+                            base = target;
+                        }
+                        ElementAccess::Var(name) => {
+                            if name.as_str() == "storage" {
+                                break (Some(idents), Some(name.clone()));
+                            }
+                            break (None, None);
+                        }
+                        _ => break (None, None),
+                    }
+                };
+                match (storage_access_field_names_opt, storage_name_opt) {
+                    (Some(field_names), Some(storage_name)) => {
+                        let field_names = field_names.into_iter().rev().cloned().collect();
+                        Expression {
+                            kind: ExpressionKind::StorageAccess(StorageAccessExpression {
+                                field_names,
+                                storage_keyword_span: storage_name.span(),
+                            }),
+                            span,
+                        }
+                    }
+                    _ => Expression {
+                        kind: ExpressionKind::Subfield(SubfieldExpression {
+                            prefix: Box::new(element_access_to_expression(
+                                context,
+                                handler,
+                                engines,
+                                *target,
+                                span.clone(),
+                            )?),
+                            field_to_access: name,
+                        }),
+                        span,
+                    },
+                }
             }
-        }
-    };
-    Ok(expression)
+            ElementAccess::TupleFieldProjection {
+                target,
+                field,
+                field_span,
+                ..
+            } => {
+                let index = match usize::try_from(field) {
+                    Ok(index) => index,
+                    Err(..) => {
+                        let error =
+                            ConvertParseTreeError::TupleIndexOutOfRange { span: field_span };
+                        return Err(handler.emit_err(error.into()));
+                    }
+                };
+                Expression {
+                    kind: ExpressionKind::TupleIndex(TupleIndexExpression {
+                        prefix: Box::new(element_access_to_expression(
+                            context,
+                            handler,
+                            engines,
+                            *target,
+                            span.clone(),
+                        )?),
+                        index,
+                        index_span: field_span,
+                    }),
+                    span,
+                }
+            }
+        };
+
+        Ok(expression)
+    }
 }
 
 fn assignable_to_reassignment_target(
@@ -4323,22 +4402,11 @@ fn assignable_to_reassignment_target(
     engines: &Engines,
     assignable: Assignable,
 ) -> Result<ReassignmentTarget, ErrorEmitted> {
-    let mut idents = Vec::new();
-    let mut base = &assignable;
-
-    loop {
-        match base {
-            Assignable::FieldProjection { target, name, .. } => {
-                idents.push(name);
-                base = target;
-            }
-            Assignable::Var(_) => break,
-            Assignable::Index { .. } => break,
-            Assignable::TupleFieldProjection { .. } => break,
-        }
-    }
     let expression = assignable_to_expression(context, handler, engines, assignable)?;
-    Ok(ReassignmentTarget::VariableExpression(Box::new(expression)))
+    Ok(match expression.kind {
+        ExpressionKind::Deref(_) => ReassignmentTarget::Deref(Box::new(expression)),
+        _ => ReassignmentTarget::ElementAccess(Box::new(expression)),
+    })
 }
 
 fn generic_args_to_type_arguments(

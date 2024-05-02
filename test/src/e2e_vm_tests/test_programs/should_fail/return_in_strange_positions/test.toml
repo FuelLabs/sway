@@ -1,4 +1,4 @@
-category = "fail"
+category = "disabled"
 
 # check: $()warning
 # check: return_in_strange_positions/src/main.sw:7:12

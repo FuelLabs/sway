@@ -1,3 +1,8 @@
 [[package]]
-name = 'configurables_are_not_const'
-source = 'member'
+name = "configurables_are_not_const"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-96EE05F4B3FB2E76"

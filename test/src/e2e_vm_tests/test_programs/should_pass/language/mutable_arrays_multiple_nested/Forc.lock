@@ -1,3 +1,8 @@
 [[package]]
-name = 'mutable_arrays_multiple_nested'
-source = 'member'
+name = "core"
+source = "path+from-root-98BABA35232F89AE"
+
+[[package]]
+name = "mutable_arrays_multiple_nested"
+source = "member"
+dependencies = ["core"]

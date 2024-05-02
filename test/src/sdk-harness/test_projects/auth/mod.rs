@@ -123,11 +123,13 @@ async fn can_get_predicate_address() {
 
     // Setup Predciate
     let hex_predicate_address: &str =
-        "0x066b2dd4e1e3731e79ab9a4c771fdbf35406600618e044a500acc4d81709de71";
+        "0x01e9cb3d189e429b8c25dd7e96bbc01d36b02a51dd05874eab7142a04516aeb1";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
-    let predicate_data = AuthPredicateEncoder::encode_data(predicate_bech32_address);
+    let predicate_data = AuthPredicateEncoder::default()
+        .encode_data(predicate_bech32_address)
+        .unwrap();
     let predicate: Predicate =
         Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
             .unwrap()
@@ -201,7 +203,9 @@ async fn when_incorrect_predicate_address_passed() {
         "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
-    let predicate_data = AuthPredicateEncoder::encode_data(Bech32Address::from(predicate_address));
+    let predicate_data = AuthPredicateEncoder::default()
+        .encode_data(Bech32Address::from(predicate_address))
+        .unwrap();
     let predicate: Predicate =
         Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
             .unwrap()

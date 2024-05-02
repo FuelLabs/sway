@@ -1,5 +1,5 @@
 //! This module handles the process of iterating through the typed AST and doing an analysis.
-//! At the moment we compute an dependency graph between typed nodes.
+//! At the moment, we compute a dependency graph between typed nodes.
 
 use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
@@ -86,7 +86,7 @@ impl TypeCheckAnalysisContext<'_> {
     /// This functions either gets an existing node in the graph, or creates a new
     /// node corresponding to the passed function declaration node.
     /// The function will try to find a non-monomorphized declaration node id so that
-    /// future acesses always normalize to the same node id.
+    /// future accesses always normalize to the same node id.
     #[allow(clippy::map_entry)]
     pub fn get_or_create_node_for_fn_decl(
         &mut self,
@@ -247,7 +247,7 @@ impl TypeCheckAnalysisContext<'_> {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing type check analysis graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting type check analysis graph to path {graph_path:?}\n{error}"
                     );
                 }
             }

@@ -5,9 +5,8 @@ mod wallet_abi;
 use std::{
     auth::AuthError,
     call_frames::msg_asset_id,
-    constants::BASE_ASSET_ID,
     context::msg_amount,
-    asset::transfer_to_address,
+    asset::transfer,
 };
 
 use wallet_abi::Wallet;
@@ -20,7 +19,7 @@ storage {
 impl Wallet for Contract {
     #[payable, storage(read, write)]
     fn receive_funds() {
-        if msg_asset_id() == BASE_ASSET_ID {
+        if msg_asset_id() == AssetId::base() {
             storage.balance.write(storage.balance.read() + msg_amount());
         }
     }
@@ -38,6 +37,6 @@ impl Wallet for Contract {
 
         storage.balance.write(current_balance - amount_to_send);
 
-        transfer_to_address(amount_to_send, BASE_ASSET_ID, recipient_address);
+        transfer(Identity::Address(recipient_address), amount_to_send, AssetId::base());
     }
 }

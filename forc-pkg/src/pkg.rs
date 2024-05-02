@@ -59,7 +59,7 @@ type GraphIx = u32;
 type Node = Pinned;
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Edge {
-    /// The name specified on the left hand side of the `=` in a depenedency declaration under
+    /// The name specified on the left hand side of the `=` in a dependency declaration under
     /// `[dependencies]` or `[contract-dependencies]` within a forc manifest.
     ///
     /// The name of a dependency may differ from the package name in the case that the dependency's
@@ -604,7 +604,7 @@ impl BuildPlan {
         )
     }
 
-    /// Create a new build plan for the project by fetching and pinning all dependenies.
+    /// Create a new build plan for the project by fetching and pinning all dependencies.
     ///
     /// To account for an existing lock file, use `from_lock_and_manifest` instead.
     pub fn from_manifests(
@@ -1618,9 +1618,11 @@ pub fn dependency_namespace(
         namespace::Module::default()
     };
 
-    root_module.is_external = true;
-    root_module.name = name;
-    root_module.visibility = Visibility::Public;
+    root_module.write(engines, |root_module| {
+        root_module.is_external = true;
+        root_module.name = name.clone();
+        root_module.visibility = Visibility::Public;
+    });
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1632,7 +1634,8 @@ pub fn dependency_namespace(
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
-                .expect("no namespace module"),
+                .expect("no namespace module")
+                .read(engines, |m| m.clone()),
             DepKind::Contract { salt } => {
                 let dep_contract_id = compiled_contract_deps
                     .get(&dep_node)
@@ -1643,16 +1646,16 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut ns = namespace::Module::default_with_contract_id(
+                let mut module = namespace::Module::default_with_contract_id(
                     engines,
                     name.clone(),
                     contract_id_value,
                     experimental,
                 )?;
-                ns.is_external = true;
-                ns.name = name;
-                ns.visibility = Visibility::Public;
-                ns
+                module.is_external = true;
+                module.name = name;
+                module.visibility = Visibility::Public;
+                module
             }
         };
         root_module.insert_submodule(dep_name, dep_namespace);
@@ -1850,8 +1853,7 @@ pub fn compile(
                         program: typed_program,
                         abi_with_callpaths: profile.json_abi_with_callpaths,
                     },
-                    engines.te(),
-                    engines.de(),
+                    engines,
                     &mut types,
                     profile
                         .experimental
@@ -2461,9 +2463,10 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            let mut root_module = compiled.root_module;
-            root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
-            lib_namespace_map.insert(node, root_module);
+            compiled.root_module.write(&engines, |root_module| {
+                root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
+            });
+            lib_namespace_map.insert(node, compiled.root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
 
@@ -2713,7 +2716,11 @@ pub fn check(
         match programs.typed.as_ref() {
             Ok(typed_program) => {
                 if let TreeType::Library = typed_program.kind.tree_type() {
-                    let mut module = typed_program.root.namespace.module().clone();
+                    let mut module = typed_program
+                        .root
+                        .namespace
+                        .module_id(engines)
+                        .read(engines, |m| m.clone());
                     module.name = Some(Ident::new_no_span(pkg.name.clone()));
                     module.span = Some(
                         Span::new(
@@ -2822,14 +2829,18 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(Some("some-prefix::".to_string()));
         let re = Regex::new(r#"digraph \{
-    0 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
-    1 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
-    2 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
-    2 -> 1 \[ \]
-    2 -> 0 \[ \]
-    0 -> 1 \[ \]
+    0 \[ label = "core" shape = box URL = "some-prefix::[[:ascii:]]+/sway-lib-core/Forc.toml"\]
+    1 \[ label = "test_contract" shape = box URL = "some-prefix::/[[:ascii:]]+/test_contract/Forc.toml"\]
+    2 \[ label = "test_lib" shape = box URL = "some-prefix::/[[:ascii:]]+/test_lib/Forc.toml"\]
+    3 \[ label = "test_script" shape = box URL = "some-prefix::/[[:ascii:]]+/test_script/Forc.toml"\]
+    3 -> 2 \[ \]
+    3 -> 0 \[ \]
+    3 -> 1 \[ \]
+    1 -> 2 \[ \]
+    1 -> 0 \[ \]
 \}
 "#).unwrap();
+        dbg!(&result);
         assert!(!re.find(result.as_str()).unwrap().is_empty());
     }
 
@@ -2838,12 +2849,15 @@ mod test {
         let build_plan = setup_build_plan();
         let result = build_plan.visualize(None);
         let expected = r#"digraph {
-    0 [ label = "test_contract" shape = box ]
-    1 [ label = "test_lib" shape = box ]
-    2 [ label = "test_script" shape = box ]
-    2 -> 1 [ ]
-    2 -> 0 [ ]
-    0 -> 1 [ ]
+    0 [ label = "core" shape = box ]
+    1 [ label = "test_contract" shape = box ]
+    2 [ label = "test_lib" shape = box ]
+    3 [ label = "test_script" shape = box ]
+    3 -> 2 [ ]
+    3 -> 0 [ ]
+    3 -> 1 [ ]
+    1 -> 2 [ ]
+    1 -> 0 [ ]
 }
 "#;
         assert_eq!(expected, result);

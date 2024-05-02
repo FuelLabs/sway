@@ -117,7 +117,7 @@ impl ExperimentalStorageTest for Contract {
 
         // Thes combinations of keys are not set
         assert(storage.nested_map_2.get((2, 0)).get(_0001).get(1).try_read().is_none());
-        assert(storage.nested_map_2.get((1, 1)).get(_0002 ).get(0).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0002).get(0).try_read().is_none());
         assert(storage.nested_map_2.get((1, 1)).get(_0001).get(2).try_read().is_none());
     }
 
@@ -156,10 +156,18 @@ impl ExperimentalStorageTest for Contract {
 
         // Thes combinations of keys are not set
         assert(storage.nested_map_3.get(2).get(m2).get(1).try_read().is_none());
-        assert(storage.nested_map_3.get(1).get(M {
-            u: ZERO_B256,
-            v: 3,
-        }).get(1).try_read().is_none());
+        assert(
+            storage
+                .nested_map_3
+                .get(1)
+                .get(M {
+                    u: ZERO_B256,
+                    v: 3,
+                })
+                .get(1)
+                .try_read()
+                .is_none(),
+        );
         assert(storage.nested_map_3.get(1).get(m2).get(2).try_read().is_none());
     }
 }

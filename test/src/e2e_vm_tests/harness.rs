@@ -9,7 +9,7 @@ use forc_pkg::{
     manifest::build_profile::ExperimentalFlags, BuildProfile, Built, BuiltPackage, PrintOpts,
 };
 use fuel_tx::TransactionBuilder;
-use fuel_vm::fuel_tx;
+use fuel_vm::fuel_tx::{self, consensus_parameters::ConsensusParametersV1};
 use fuel_vm::interpreter::Interpreter;
 use fuel_vm::prelude::*;
 use fuel_vm::{checked_transaction::builder::TransactionBuilderExt, interpreter::NotSupportedEcal};
@@ -82,7 +82,7 @@ pub(crate) async fn deploy_contract(file_name: &str, run_config: &RunConfig) -> 
             true => BuildProfile::RELEASE.to_string(),
             false => BuildProfile::DEBUG.to_string(),
         },
-        experimental_new_encoding: run_config.experimental.new_encoding,
+        no_encoding_v1: !dbg!(run_config.experimental.new_encoding),
         ..Default::default()
     })
     .await
@@ -125,7 +125,7 @@ pub(crate) async fn runs_on_node(
             },
             contract: Some(contracts),
             signing_key: Some(SecretKey::from_str(SECRET_KEY).unwrap()),
-            experimental_new_encoding: run_config.experimental.new_encoding,
+            no_encoding_v1: !run_config.experimental.new_encoding,
             ..Default::default()
         };
         run(command).await.map(|ran_scripts| {
@@ -158,15 +158,17 @@ pub(crate) fn runs_in_vm(
             let maturity = 1.into();
             let script_data = script_data.unwrap_or_default();
             let block_height = (u32::MAX >> 1).into();
-            let params = ConsensusParameters {
-                // The default max length is 1MB which isn't enough for the bigger tests.
-                script_params: ScriptParameters {
-                    max_script_length: 64 * 1024 * 1024,
-                    ..Default::default()
-                },
+            // The default max length is 1MB which isn't enough for the bigger tests.
+            let max_size = 64 * 1024 * 1024;
+            let script_params = ScriptParameters::DEFAULT
+                .with_max_script_length(max_size)
+                .with_max_script_data_length(max_size);
+            let tx_params = TxParameters::DEFAULT.with_max_size(max_size);
+            let params = ConsensusParameters::V1(ConsensusParametersV1 {
+                script_params,
+                tx_params,
                 ..Default::default()
-            };
-
+            });
             let mut tb = TransactionBuilder::script(script.bytecode.bytes, script_data);
 
             tb.with_params(params)
@@ -194,7 +196,7 @@ pub(crate) fn runs_in_vm(
             let max_gas =
                 tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
             // Increase `script_gas_limit` to the maximum allowed value.
-            tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+            tb.script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
 
             let tx = tb
                 .finalize_checked(block_height)

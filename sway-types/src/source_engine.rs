@@ -108,6 +108,15 @@ impl SourceEngine {
         self.path_to_module_map.read().unwrap().get(path).cloned()
     }
 
+    /// Returns the [PathBuf] associated with the provided [ModuleId], if it exists in the path_to_module_map.
+    pub fn get_path_from_module_id(&self, module_id: &ModuleId) -> Option<PathBuf> {
+        let path_to_module_map = self.path_to_module_map.read().unwrap();
+        path_to_module_map
+            .iter()
+            .find(|(_, &id)| id == *module_id)
+            .map(|(path, _)| path.clone())
+    }
+
     /// This function provides the file name (with extension) corresponding to a specified source ID.
     pub fn get_file_name(&self, source_id: &SourceId) -> Option<String> {
         self.get_path(source_id)
