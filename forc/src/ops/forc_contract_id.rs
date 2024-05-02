@@ -41,6 +41,7 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
         let contract_id =
             pkg::contract_id(built_contract.bytecode.bytes.clone(), storage_slots, &salt);
         println_green(&format!(" {name}"));
+        //check if --bech32 flag is present in command
         if command.bech32
         {
             let contract_id_bech32 = Bech32ContractId::from(contract_id);
