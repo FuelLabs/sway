@@ -10,7 +10,7 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
-        collection_context::SymbolCollectionContext, type_check_context::EnforceTypeArguments,
+        symbol_collection_context::SymbolCollectionContext, type_check_context::EnforceTypeArguments,
         ConstShadowingMode, GenericShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
     },
