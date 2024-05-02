@@ -1,6 +1,7 @@
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
     decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
@@ -344,7 +345,7 @@ where
         } else {
             *self.ctx.namespace = namespace;
             Ok(TyAstNode {
-                span: decl.span(),
+                span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
         }
@@ -391,7 +392,7 @@ where
         } else {
             *self.ctx.namespace = namespace;
             Ok(TyAstNode {
-                span: decl.span(),
+                span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
         }

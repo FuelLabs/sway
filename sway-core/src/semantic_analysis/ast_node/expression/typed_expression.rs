@@ -1654,7 +1654,7 @@ impl ty::TyExpression {
                             abi_name,
                             ctx.self_type(),
                         )?;
-                        unknown_decl.to_abi_ref(handler)?
+                        unknown_decl.to_abi_ref(handler, engines)?
                     }
                     AbiName::Deferred => {
                         return Ok(ty::TyExpression {

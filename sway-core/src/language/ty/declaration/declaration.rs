@@ -328,8 +328,8 @@ impl SubstTypes for TyDecl {
     }
 }
 
-impl Spanned for TyDecl {
-    fn span(&self) -> Span {
+impl SpannedWithEngines for TyDecl {
+    fn span(&self, _engines: &Engines) -> Span {
         match self {
             TyDecl::VariableDecl(decl) => decl.name.span(),
             TyDecl::FunctionDecl(FunctionDecl { decl_span, .. })
@@ -544,13 +544,13 @@ impl TyDecl {
                 TypeInfo::Enum(r) => Ok(r.clone()),
                 _ => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
                     actually: self.friendly_type_name().to_string(),
-                    span: self.span(),
+                    span: self.span(engines),
                 })),
             },
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
                 actually: decl.friendly_type_name().to_string(),
-                span: decl.span(),
+                span: decl.span(engines),
             })),
         }
     }
@@ -580,7 +580,7 @@ impl TyDecl {
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
                 actually: decl.friendly_type_name().to_string(),
-                span: decl.span(),
+                span: decl.span(engines),
             })),
         }
     }
@@ -588,7 +588,11 @@ impl TyDecl {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyFunctionDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][FunctionDecl] variant.
-    pub(crate) fn to_fn_ref(&self, handler: &Handler) -> Result<DeclRefFunction, ErrorEmitted> {
+    pub(crate) fn to_fn_ref(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<DeclRefFunction, ErrorEmitted> {
         match self {
             TyDecl::FunctionDecl(FunctionDecl {
                 name,
@@ -598,7 +602,7 @@ impl TyDecl {
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAFunction {
                 actually: decl.friendly_type_name().to_string(),
-                span: decl.span(),
+                span: decl.span(engines),
             })),
         }
     }
@@ -609,13 +613,14 @@ impl TyDecl {
     pub(crate) fn expect_variable(
         &self,
         handler: &Handler,
+        engines: &Engines,
     ) -> Result<&TyVariableDecl, ErrorEmitted> {
         match self {
             TyDecl::VariableDecl(decl) => Ok(decl),
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAVariable {
                 actually: decl.friendly_type_name().to_string(),
-                span: decl.span(),
+                span: decl.span(engines),
             })),
         }
     }
@@ -626,6 +631,7 @@ impl TyDecl {
     pub(crate) fn to_abi_ref(
         &self,
         handler: &Handler,
+        engines: &Engines,
     ) -> Result<DeclRef<DeclId<TyAbiDecl>>, ErrorEmitted> {
         match self {
             TyDecl::AbiDecl(AbiDecl {
@@ -636,7 +642,7 @@ impl TyDecl {
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAnAbi {
                 actually: decl.friendly_type_name().to_string(),
-                span: decl.span(),
+                span: decl.span(engines),
             })),
         }
     }
@@ -647,6 +653,7 @@ impl TyDecl {
     pub(crate) fn to_const_ref(
         &self,
         handler: &Handler,
+        engines: &Engines,
     ) -> Result<DeclRef<DeclId<TyConstantDecl>>, ErrorEmitted> {
         match self {
             TyDecl::ConstantDecl(ConstantDecl {
@@ -657,7 +664,7 @@ impl TyDecl {
             TyDecl::ErrorRecovery(_, err) => Err(*err),
             decl => Err(handler.emit_err(CompileError::DeclIsNotAConstant {
                 actually: decl.friendly_type_name().to_string(),
-                span: decl.span(),
+                span: decl.span(engines),
             })),
         }
     }
@@ -787,7 +794,7 @@ impl TyDecl {
             }) => *type_id,
             decl => {
                 return Err(handler.emit_err(CompileError::NotAType {
-                    span: decl.span(),
+                    span: decl.span(engines),
                     name: engines.help_out(decl).to_string(),
                     actually_is: decl.friendly_type_name(),
                 }));

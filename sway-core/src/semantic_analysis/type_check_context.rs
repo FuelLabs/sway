@@ -530,7 +530,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
-        let engines = self.engines;
+        let engines = self.engines();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()

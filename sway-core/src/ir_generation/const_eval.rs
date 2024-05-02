@@ -702,7 +702,7 @@ fn const_eval_codeblock(
                     Ok(None)
                 } else {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: decl.span().clone(),
+                        span: decl.span(lookup.engines).clone(),
                     })
                 }
             }
