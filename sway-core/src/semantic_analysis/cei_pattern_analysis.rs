@@ -249,7 +249,7 @@ fn analyze_expression(
             // we run CEI violation analysis as if the arguments form a code block
             let args_effs = analyze_expressions(
                 engines,
-                arguments.iter().map(|(_, e)| e).collect(),
+                arguments.iter().map(|(_, e)| e),
                 block_name,
                 warnings,
             );
@@ -277,7 +277,7 @@ fn analyze_expression(
             // assuming left-to-right arguments evaluation
             let args_effs = analyze_expressions(
                 engines,
-                intrinsic.arguments.iter().collect(),
+                intrinsic.arguments.iter(),
                 block_name,
                 warnings,
             );
@@ -293,13 +293,13 @@ fn analyze_expression(
             contents: exprs,
         } => {
             // assuming left-to-right fields/elements evaluation
-            analyze_expressions(engines, exprs.iter().collect(), block_name, warnings)
+            analyze_expressions(engines, exprs.iter(), block_name, warnings)
         }
         StructExpression { fields, .. } => {
             // assuming left-to-right fields evaluation
             analyze_expressions(
                 engines,
-                fields.iter().map(|e| &e.value).collect(),
+                fields.iter().map(|e| &e.value),
                 block_name,
                 warnings,
             )
@@ -353,8 +353,7 @@ fn analyze_expression(
         } => {
             let init_exprs = registers
                 .iter()
-                .filter_map(|rdecl| rdecl.initializer.as_ref())
-                .collect();
+                .filter_map(|rdecl| rdecl.initializer.as_ref());
             let init_effs = analyze_expressions(engines, init_exprs, block_name, warnings);
             let asmblock_effs = analyze_asm_block(body, block_name, warnings);
             if init_effs.contains(&Effect::Interaction) {
@@ -390,9 +389,9 @@ fn analyze_two_expressions(
 // Analyze a sequence of expressions
 // TODO: analyze_expressions, analyze_codeblock and analyze_asm_block (see below) are very similar in structure
 //       looks like the algorithm implementation should be generalized
-fn analyze_expressions(
+fn analyze_expressions<'a>(
     engines: &Engines,
-    expressions: Vec<&ty::TyExpression>,
+    expressions: impl Iterator<Item = &'a ty::TyExpression>,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
 ) -> HashSet<Effect> {
