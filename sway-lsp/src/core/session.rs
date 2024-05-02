@@ -81,7 +81,7 @@ impl Session {
             token_map: TokenMap::new(),
             runnables: DashMap::new(),
             metrics: DashMap::new(),
-            compiled_program: RwLock::new(Default::default()),
+            compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
             sync: SyncWorkspace::new(),
             diagnostics: Arc::new(RwLock::new(DiagnosticMap::new())),
@@ -147,11 +147,11 @@ impl Session {
 
     pub fn token_definition_response(
         &self,
-        uri: Url,
+        uri: &Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
         self.token_map
-            .token_at_position(&uri, position)
+            .token_at_position(uri, position)
             .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
             .and_then(|decl_ident| {
                 decl_ident.path.and_then(|path| {
@@ -208,7 +208,7 @@ impl Session {
         let tokens = self.token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
-            .map(|url| capabilities::document_symbol::to_symbol_information(tokens, url))
+            .map(|url| capabilities::document_symbol::to_symbol_information(tokens, &url))
     }
 
     /// Populate [Documents] with sway files found in the workspace.
@@ -278,7 +278,7 @@ pub fn traverse(
 ) -> Result<Option<CompileResults>, LanguageServerError> {
     session.token_map.clear();
     session.metrics.clear();
-    let mut diagnostics: CompileResults = (Default::default(), Default::default());
+    let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
@@ -309,9 +309,8 @@ pub fn traverse(
 
         // Convert the source_id to a path so we can use the manifest path to get the module_id.
         // This is used to store the metrics for the module.
-        let source_id = lexed.root.tree.span().source_id().cloned();
-        if let Some(source_id) = source_id {
-            let path = engines.se().get_path(&source_id);
+        if let Some(source_id) = lexed.root.tree.span().source_id() {
+            let path = engines.se().get_path(source_id);
             let module_id = module_id_from_path(&path, engines)?;
             session.metrics.insert(module_id, metrics);
         }
@@ -344,7 +343,7 @@ pub fn traverse(
             let typed_tree = TypedTree::new(&ctx);
             typed_tree.collect_module_spans(typed_program);
             parse_ast_to_typed_tokens(typed_program, &ctx, |node, _ctx| {
-                typed_tree.traverse_node(node)
+                typed_tree.traverse_node(node);
             });
 
             let compiled_program = &mut *session.compiled_program.write();
@@ -354,11 +353,11 @@ pub fn traverse(
         } else {
             // Collect tokens from dependencies and the standard library prelude.
             parse_ast_to_tokens(&parsed, &ctx, |an, ctx| {
-                dependency::collect_parsed_declaration(an, ctx)
+                dependency::collect_parsed_declaration(an, ctx);
             });
 
             parse_ast_to_typed_tokens(typed_program, &ctx, |node, ctx| {
-                dependency::collect_typed_declaration(node, ctx)
+                dependency::collect_typed_declaration(node, ctx);
             });
         }
     }

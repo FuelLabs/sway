@@ -3,7 +3,6 @@ library;
 
 use ::assert::assert;
 use ::convert::{From, Into};
-use ::primitive_conversions::u64::*;
 use ::flags::{disable_panic_on_overflow, set_flags};
 use ::math::*;
 use ::result::Result::{self, *};
@@ -39,7 +38,7 @@ impl From<u8> for U128 {
     fn from(val: u8) -> Self {
         Self {
             upper: 0,
-            lower: val.into(),
+            lower: val.as_u64(),
         }
     }
 }
@@ -63,7 +62,7 @@ impl From<u16> for U128 {
     fn from(val: u16) -> Self {
         Self {
             upper: 0,
-            lower: val.into(),
+            lower: val.as_u64(),
         }
     }
 }
@@ -87,7 +86,7 @@ impl From<u32> for U128 {
     fn from(val: u32) -> Self {
         Self {
             upper: 0,
-            lower: val.into(),
+            lower: val.as_u64(),
         }
     }
 }

@@ -60,7 +60,7 @@ impl AbiImplCodeAction<'_> {
         let type_engine = self.engines.te();
         // Unit is the implicit return type for ABI functions.
         if type_engine.get(function_decl.return_type.type_id).is_unit() {
-            String::from("")
+            String::new()
         } else {
             format!(" -> {}", function_decl.return_type.span.as_str())
         }
@@ -79,26 +79,26 @@ impl AbiImplCodeAction<'_> {
                             let function_decl = decl_engine.get_trait_fn(function_decl_ref);
                             self.fn_signature_string(
                                 function_decl.name.to_string(),
-                                self.params_string(&function_decl.parameters),
+                                params_string(&function_decl.parameters),
                                 &function_decl.attributes,
                                 self.return_type_string(&function_decl),
                                 None,
                             )
                         }
-                        ty::TyTraitInterfaceItem::Constant(_) => unreachable!(),
-                        ty::TyTraitInterfaceItem::Type(_) => unreachable!(),
+                        ty::TyTraitInterfaceItem::Constant(_)
+                        | ty::TyTraitInterfaceItem::Type(_) => unreachable!(),
                     }
                 })
                 .collect::<Vec<String>>()
                 .join("\n")
         )
     }
+}
 
-    fn params_string(&self, params: &[TyFunctionParameter]) -> String {
-        params
-            .iter()
-            .map(|param| format!("{}: {}", param.name, param.type_argument.span.as_str()))
-            .collect::<Vec<String>>()
-            .join(", ")
-    }
+fn params_string(params: &[TyFunctionParameter]) -> String {
+    params
+        .iter()
+        .map(|param| format!("{}: {}", param.name, param.type_argument.span.as_str()))
+        .collect::<Vec<String>>()
+        .join(", ")
 }

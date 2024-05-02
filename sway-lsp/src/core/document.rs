@@ -62,13 +62,12 @@ impl TextDocument {
         let text_bytes = change_text.as_bytes();
         let text_end_byte_index = text_bytes.len();
 
-        let range = match change.range {
-            Some(range) => range,
-            None => {
-                let start = self.byte_to_position(0);
-                let end = self.byte_to_position(text_end_byte_index);
-                Range { start, end }
-            }
+        let range = if let Some(range) = change.range {
+            range
+        } else {
+            let start = self.byte_to_position(0);
+            let end = self.byte_to_position(text_end_byte_index);
+            Range { start, end }
         };
 
         let start_index = self.position_to_index(range.start);
@@ -166,7 +165,7 @@ impl Documents {
     pub async fn write_changes_to_file(
         &self,
         uri: &Url,
-        changes: Vec<TextDocumentContentChangeEvent>,
+        changes: &[TextDocumentContentChangeEvent],
     ) -> Result<(), LanguageServerError> {
         let src = self.update_text_document(uri, changes).ok_or_else(|| {
             DocumentError::DocumentNotFound {
@@ -206,14 +205,14 @@ impl Documents {
     pub fn update_text_document(
         &self,
         url: &Url,
-        changes: Vec<TextDocumentContentChangeEvent>,
+        changes: &[TextDocumentContentChangeEvent],
     ) -> Option<String> {
         self.try_get_mut(url.path())
             .try_unwrap()
             .map(|mut document| {
-                changes.iter().for_each(|change| {
+                for change in changes {
                     document.apply_change(change);
-                });
+                }
                 document.get_text()
             })
     }

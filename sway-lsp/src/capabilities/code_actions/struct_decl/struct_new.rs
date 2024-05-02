@@ -48,7 +48,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
     }
 
     fn new_text(&self) -> String {
-        let params = self.params_string(&self.decl.fields);
+        let params = StructNewCodeAction::params_string(&self.decl.fields);
         let new_fn = self.fn_signature_string(
             "new".to_string(),
             params,
@@ -140,7 +140,7 @@ impl StructNewCodeAction<'_> {
         " -> Self".to_string()
     }
 
-    fn params_string(&self, params: &[TyStructField]) -> String {
+    fn params_string(params: &[TyStructField]) -> String {
         params
             .iter()
             .map(|field| format!("{}: {}", field.name, field.type_argument.span.as_str()))
