@@ -492,7 +492,7 @@ impl CollectTypesMetadata for TyDecl {
 }
 
 impl GetDeclIdent for TyDecl {
-    fn get_decl_ident(&self) -> Option<Ident> {
+    fn get_decl_ident(&self, _engines: &Engines) -> Option<Ident> {
         match self {
             TyDecl::VariableDecl(decl) => Some(decl.name.clone()),
             TyDecl::FunctionDecl(FunctionDecl { name, .. })
@@ -674,13 +674,13 @@ impl TyDecl {
                 let implementing_for_type_id = &*implementing_for_type_id_arc;
                 format!(
                     "{} for {:?}",
-                    self.get_decl_ident()
+                    self.get_decl_ident(engines)
                         .map_or(String::from(""), |f| f.as_str().to_string()),
                     engines.help_out(implementing_for_type_id)
                 )
             }
             _ => self
-                .get_decl_ident()
+                .get_decl_ident(engines)
                 .map_or(String::from(""), |f| f.as_str().to_string()),
         }
     }
