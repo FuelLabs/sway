@@ -33,7 +33,7 @@ dependencies = [
 [[package]]
 name = "break_and_continue"
 source = "member"
-dependencies = ["core path+from-root-70EE78029FACCEF1"]
+dependencies = ["core"]
 
 [[package]]
 name = "cei_analysis"
@@ -59,10 +59,6 @@ dependencies = [
 [[package]]
 name = "core"
 source = "path+from-root-70EE78029FACCEF1"
-
-[[package]]
-name = "core"
-source = "path+from-root-9889F771D40C5D34"
 
 [[package]]
 name = "counter"
@@ -94,6 +90,14 @@ dependencies = [
 
 [[package]]
 name = "identity"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "implementation"
 source = "member"
 dependencies = [
     "core",
@@ -173,6 +177,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "proxy"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
 name = "result"
 source = "member"
 dependencies = [
@@ -191,7 +203,7 @@ dependencies = [
 [[package]]
 name = "std"
 source = "path+from-root-70EE78029FACCEF1"
-dependencies = ["core path+from-root-70EE78029FACCEF1"]
+dependencies = ["core"]
 
 [[package]]
 name = "storage_example"

@@ -69,4 +69,4 @@ In this case, the `does_not_exist_in_the_target` function will return `_foo * 3`
 Some limitations of `run_external` function are:
 
 - It can only be used with other contracts. Scripts, predicates, and library code cannot be run externally.
-- If you change the implementation contract, you must maintain the same order of previous storage variables and types, as this is what has been stored in the proxy stoarge.
+- If you change the implementation contract, you must maintain the same order of previous storage variables and types, as this is what has been stored in the proxy storage.
