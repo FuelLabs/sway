@@ -24,7 +24,7 @@ use crate::{
 };
 
 use super::{
-    collection_context::SymbolCollectionContext,
+    symbol_collection_context::SymbolCollectionContext,
     declaration::auto_impl::{self, EncodingAutoImplContext},
 };
 
