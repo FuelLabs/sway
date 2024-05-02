@@ -69,7 +69,7 @@ macro_rules! immediate_ident_opt (
 macro_rules! get_span (
     ($start:expr, ()) => { $start };
     ($start:expr, ($arg_name:ident,)) => {
-        Span::join($start, $arg_name.span().clone())
+        Span::join($start, &$arg_name.span())
     };
     ($start:expr, ($arg_name_head:ident, $($arg_name:ident,)*)) => {{
         let _ = $arg_name_head;

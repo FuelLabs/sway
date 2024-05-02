@@ -1618,7 +1618,7 @@ impl<'a> TypeCheckContext<'a> {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(Span::join)
+                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
                 Err(handler.emit_err(make_type_arity_mismatch_error(
                     value.name().clone(),
@@ -1631,7 +1631,7 @@ impl<'a> TypeCheckContext<'a> {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(Span::join)
+                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
                 // a trait decl is passed the self type parameter and the corresponding argument
                 // but it would be confusing for the user if the error reporting mechanism

@@ -1245,7 +1245,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
             continue;
         };
 
-        param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
+        param_to_edit.trait_constraints_span = Span::join(ty_name.span(), &bounds.span());
 
         param_to_edit
             .trait_constraints
@@ -1345,7 +1345,7 @@ fn fn_args_to_function_parameters(
                 (None, None) => Span::dummy(),
                 (None, Some(mutable)) => mutable.span(),
                 (Some(reference), None) => reference.span(),
-                (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+                (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
             };
             let type_id = engines.te().insert(
                 engines,
@@ -1742,7 +1742,7 @@ fn method_call_fields_to_method_application_expression(
 
     let span = match &*type_arguments {
         [] => method_name.span(),
-        [.., last] => Span::join(method_name.span(), last.span.clone()),
+        [.., last] => Span::join(method_name.span(), &last.span),
     };
 
     let method_name_binding = TypeBinding {
@@ -1783,7 +1783,7 @@ fn expr_func_app_to_expression_kind(
     func: Box<Expr>,
     args: Parens<Punctuated<Expr, CommaToken>>,
 ) -> Result<ExpressionKind, ErrorEmitted> {
-    let span = Span::join(func.span(), args.span());
+    let span = Span::join(func.span(), &args.span());
 
     // For now, the callee has to be a path to a function.
     let PathExpr {
@@ -1840,7 +1840,7 @@ fn expr_func_app_to_expression_kind(
         .collect::<Result<_, _>>()?;
 
     let name_args_span = |start, end: Option<_>| match end {
-        Some(end) => Span::join(start, end),
+        Some(end) => Span::join(start, &end),
         None => start,
     };
 
@@ -1910,7 +1910,7 @@ fn expr_func_app_to_expression_kind(
                 is_absolute,
             };
             let span = match type_arguments_span {
-                Some(span) => Span::join(call_path.span(), span),
+                Some(span) => Span::join(call_path.span(), &span),
                 None => call_path.span(),
             };
             let call_path_binding = TypeBinding {
@@ -2599,7 +2599,7 @@ fn fn_arg_to_function_parameter(
         (None, None) => Span::dummy(),
         (None, Some(mutable)) => mutable.span(),
         (Some(reference), None) => reference.span(),
-        (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+        (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
     };
     let function_parameter = FunctionParameter {
         name,
@@ -2846,7 +2846,7 @@ fn if_expr_to_expression(
             let mut branches = vec![MatchBranch {
                 scrutinee,
                 result: then_block.clone(),
-                span: Span::join(scrutinee_span, then_block_span),
+                span: Span::join(scrutinee_span, &then_block_span),
             }];
             branches.push(match else_block {
                 Some(else_block) => {
@@ -4032,7 +4032,7 @@ fn pattern_to_scrutinee(
                         "If you want to change the matched value, or some of its parts, consider using the matched value".to_string(),
                         format!("directly in the block, instead of the pattern variable \"{name}\"."),
                     ],
-                    Span::join(reference.span(), mutable.span())
+                    Span::join(reference.span(), &mutable.span())
                 )),
                 (Some(reference), None) => Some((
                     "ref",

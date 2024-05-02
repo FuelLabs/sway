@@ -399,7 +399,7 @@ impl<'a> Peeker<'a> {
             TokenTree::Punct(Punct { span, .. }) => span,
             _ => unreachable!(),
         };
-        let span = Span::join(span_start.clone(), span_end.clone());
+        let span = Span::join(span_start.clone(), &span_end);
         *self.num_tokens = punct_kinds.len();
         Ok(span)
     }
