@@ -36,9 +36,9 @@ fn bad_variants_project_my_enum_b(e : b::MyEnum) -> u64 {
 // Error: MyEnum is ambiguous
 fn bad_enum_project_my_enum_b(e : MyEnum) -> u64 {
     match e {
-	// Error - MyEnum::A and MyEnum::B are ambiguous
+	// Error - MyEnum::A and MyEnum::B are ambiguous - not reported because of signature error
 	MyEnum::A(val)
-	| MyEnum::B(val) => val, // BUG: This resolves to b::MyEnum.
+	| MyEnum::B(val) => val,
     }
 }
 
@@ -46,29 +46,27 @@ fn bad_variants_project_my_enum_variants(e : MyEnumVariants) -> u64 {
     match e {
 	// Error - E is ambiguous
 	D(val)
-	| E(val) => val, // BUG: This resolves to d::MyOtherEnumVariants::E
+	| E(val) => val,
     }
 }
 
 fn main() {
-    let my_struct_a = MyStruct { a : 0 }; // Error - MyStruct is ambiguous // BUG: MyStruct resolves to b::MyStruct
-    let my_struct_b = MyStruct { b : 3 }; // Error - MyStruct is ambiguous // BUG: MyStruct resolves to b::MyStruct
+    let my_struct_a = MyStruct { a : 0 }; // Error - MyStruct is ambiguous
+    let my_struct_b = MyStruct { b : 3 }; // Error - MyStruct is ambiguous
     let my_struct_b_wrong_field = b::MyStruct { a : 6 }; // Error - b::MyStruct does not contain field a
 
     let my_enum_a_variant = A(100); // Error - A is not in scope
-    let my_enum_a_enum_variant = MyEnum::A(101); // Error - MyEnum is ambiguous // BUG: Resolves to b::MyEnum::A
+    let my_enum_a_enum_variant = MyEnum::A(101); // Error - MyEnum is ambiguous
     let my_enum_b_variant = B(104); // Error - B is not in scope
-    let my_enum_b_enum_variant = MyEnum::B(105); // Error - MyEnum is ambiguous // BUG: Resolves to b::MyEnum::B
+    let my_enum_b_enum_variant = MyEnum::B(105); // Error - MyEnum is ambiguous
     let my_enum_a_wrong_variant = b::MyEnum::B(108); // Error - b::MyEnum does not contain variant B
 
     let my_enum_function_wrong_type = project_my_enum_b(my_enum_a_enum_variant_relative); // Error - wrong MyEnum // BUG: project_my_enum_b not imported
-    let my_enum_local_function_1 = bad_variants_project_my_enum_b(my_enum_b_enum_variant_relative); // Legal
-    let my_enum_local_function_2 = bad_enum_project_my_enum_b(my_enum_b_enum_variant_relative); // Legal
 
-    let c_struct = C { b: 200 }; // Error - C is ambiguous // BUG: Resolves to b::MyOtherEnum::C
-    let c_variant = C(203); // Error - C is ambiguous // BUG: Resolves to b::MyOtherEnum::C
+    let c_struct = C { b: 200 }; // Error - C is ambiguous
+    let c_variant = C(203); // Error - C is ambiguous
 
-    let variants_e = E (304); // Error - E is ambiguous // BUG: Resolves to d::MyOtherEnumVariants::E
-    let variants_function_1 = bad_variants_project_my_enum_variants(variants_d); // Legal
-    let variants_function_1 = bad_variants_project_my_enum_variants(variants_e) // Error - wrong argument type
+    let variants_e = E (304); // Error - E is ambiguous
+    let variants_e_legal = MyOtherEnumVariants::E(305); // Legal
+    let variants_function_2 = bad_variants_project_my_enum_variants(variants_e_legal); // Error - wrong argument type
 }
