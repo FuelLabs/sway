@@ -32,7 +32,7 @@ We applied the philosophy of performance, control, and safety and interpreted it
 
 **Q: I don't know Rust or Solidity. Can I still learn Sway?**
 
-Yes! If you are familiar the basics of programming, blockchain, and using a terminal you can build with Sway.
+Yes! If you are familiar with the basics of programming, blockchain, and using a terminal you can build with Sway.
 
 **Q: What can I build with Sway?**
 
