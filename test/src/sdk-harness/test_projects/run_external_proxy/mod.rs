@@ -1,4 +1,7 @@
-use fuels::prelude::*;
+use fuels::{
+    prelude::*,
+    types::{Bits256, ContractId},
+};
 
 abigen!(Contract(
     name = "RunExternalProxyContract",
@@ -33,6 +36,38 @@ async fn run_external_can_proxy_call() {
     .unwrap();
 
     let instance = RunExternalProxyContract::new(id.clone(), wallet);
+
+    // Call "large_value"
+    // Will call run_external_proxy::large_value
+    // that will call run_external_target::large_value
+    // and return the value doubled.
+    let result = instance
+        .methods()
+        .large_value()
+        .with_contract_ids(&[target_id.clone().into()])
+        .call()
+        .await
+        .unwrap();
+    for r in result.receipts.iter() {
+        match r {
+            Receipt::LogData { data, .. } => {
+                if let Some(data) = data {
+                    if data.len() > 8 {
+                        if let Ok(s) = std::str::from_utf8(&data[8..]) {
+                            print!("{:?} ", s);
+                        }
+                    }
+
+                    println!("{:?}", data);
+                }
+            }
+            _ => {}
+        }
+    }
+    let expected_large =
+        Bits256::from_hex_str("0x00000000000000000000000059F2f1fCfE2474fD5F0b9BA1E73ca90b143Eb8d0")
+            .unwrap();
+    assert_eq!(result.value, expected_large);
 
     // Call "double_value"
     // Will call run_external_proxy::double_value
