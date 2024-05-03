@@ -12,7 +12,7 @@ pub enum MyOtherEnum {
     C: u64,
 }
 
-fn project_my_enum_b(e : MyEnum) -> u64 {
+pub fn project_my_enum_b(e : MyEnum) -> u64 {
     match e {
 	MyEnum::A(val) => val,
     }
