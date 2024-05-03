@@ -54,7 +54,7 @@ impl ty::TyConstantDecl {
             expression's type.",
             );
 
-        let value = match value {
+        let value = match &value {
             Some(value) => {
                 let result = ty::TyExpression::type_check(handler, ctx.by_ref(), value);
 

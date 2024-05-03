@@ -124,7 +124,7 @@ fn type_check_arguments(
                     .by_ref()
                     .with_help_text(UNIFY_ARGS_HELP_TEXT)
                     .with_type_annotation(param.type_argument.type_id);
-                ty::TyExpression::type_check(handler, ctx, arg.clone())
+                ty::TyExpression::type_check(handler, ctx, &arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
             .collect();

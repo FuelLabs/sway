@@ -49,7 +49,7 @@ pub(crate) fn type_check_method_application(
         // Ignore errors in method parameters
         // On the second pass we will throw the errors if they persist.
         let arg_handler = Handler::default();
-        let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg.clone()).ok();
+        let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, &arg).ok();
         let has_errors = arg_handler.has_errors();
         if index == 0 {
             // We want to emit errors in the self parameter and ignore TraitConstraintNotSatisfied with Placeholder
@@ -129,7 +129,7 @@ pub(crate) fn type_check_method_application(
                         .type_id,
                 );
             args_buf.push_back(
-                ty::TyExpression::type_check(handler, ctx, arg.clone())
+                ty::TyExpression::type_check(handler, ctx, &arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
             );
         }
@@ -205,7 +205,7 @@ pub(crate) fn type_check_method_application(
                         .with_type_annotation(type_annotation);
                     contract_call_params_map.insert(
                         param.name.to_string(),
-                        ty::TyExpression::type_check(handler, ctx, param.value).unwrap_or_else(
+                        ty::TyExpression::type_check(handler, ctx, &param.value).unwrap_or_else(
                             |err| ty::TyExpression::error(err, span.clone(), engines),
                         ),
                     );
@@ -539,7 +539,7 @@ pub(crate) fn type_check_method_application(
             asset_id_expr,
             gas_expr,
         );
-        let mut expr = TyExpression::type_check(handler, ctx.by_ref(), contract_call)?;
+        let mut expr = TyExpression::type_check(handler, ctx.by_ref(), &contract_call)?;
 
         // We need to "fix" contract_id here because it was created with zero
         // given that we only have it as TyExpression, therefore can only use it after we type_check

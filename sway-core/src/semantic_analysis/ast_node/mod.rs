@@ -173,7 +173,7 @@ impl ty::TyAstNode {
                                 ));
                         }
                     }
-                    let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
+                    let inner = ty::TyExpression::type_check(handler, ctx, &expr)
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
                 }
