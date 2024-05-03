@@ -22,7 +22,7 @@ pub(crate) fn instantiate_enum(
     mut ctx: TypeCheckContext,
     enum_ref: DeclRefEnum,
     enum_variant_name: Ident,
-    args_opt: Option<Vec<Expression>>,
+    args_opt: Option<&[Expression]>,
     call_path_binding: TypeBinding<CallPath>,
     call_path_decl: ty::TyDecl,
 ) -> Result<ty::TyExpression, ErrorEmitted> {

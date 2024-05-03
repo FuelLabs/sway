@@ -30,7 +30,7 @@ pub(crate) fn type_check_method_application(
     mut ctx: TypeCheckContext,
     mut method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -527,13 +527,14 @@ pub(crate) fn type_check_method_application(
                 span: Span::dummy(),
             });
 
+        let args = old_arguments.into_iter().skip(1).cloned().collect();
         let contract_call = call_contract_call(
             &mut ctx,
             span,
             method.return_type.type_id,
             string_slice_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
-            old_arguments.into_iter().skip(1).collect(),
+            args,
             arguments.iter().map(|x| x.1.return_type).collect(),
             coins_expr,
             asset_id_expr,

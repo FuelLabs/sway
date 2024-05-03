@@ -18,7 +18,7 @@ pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
     function_decl_ref: DeclRefFunction,
     call_path_binding: TypeBinding<CallPath>,
-    arguments: Option<Vec<Expression>>,
+    arguments: Option<&[Expression]>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let decl_engine = ctx.engines.de();
@@ -102,7 +102,7 @@ pub(crate) fn instantiate_function_application(
 fn type_check_arguments(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    arguments: Vec<parsed::Expression>,
+    arguments: &[parsed::Expression],
     parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<ty::TyExpression>, ErrorEmitted> {
     let engines = ctx.engines();

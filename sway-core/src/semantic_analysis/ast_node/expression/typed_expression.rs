@@ -194,7 +194,7 @@ impl ty::TyExpression {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
-                    arguments,
+                    ref arguments,
                 } = *function_application_expression.clone();
                 Self::type_check_function_application(
                     handler,
@@ -263,7 +263,7 @@ impl ty::TyExpression {
                 let MethodApplicationExpression {
                     method_name_binding,
                     contract_call_params,
-                    arguments,
+                    ref arguments,
                 } = *method_application_expression.clone();
                 type_check_method_application(
                     handler,
@@ -292,7 +292,7 @@ impl ty::TyExpression {
             ExpressionKind::AmbiguousPathExpression(e) => {
                 let AmbiguousPathExpression {
                     call_path_binding,
-                    args,
+                    ref args,
                     qualified_path_root,
                 } = *e.clone();
                 Self::type_check_ambiguous_path(
@@ -314,7 +314,7 @@ impl ty::TyExpression {
                     ctx.by_ref(),
                     call_path_binding,
                     span,
-                    args,
+                    args.as_deref(),
                 )
             }
             ExpressionKind::AbiCast(abi_cast_expression) => {
@@ -569,7 +569,7 @@ impl ty::TyExpression {
         handler: &Handler,
         mut ctx: TypeCheckContext,
         mut call_path_binding: TypeBinding<CallPath>,
-        arguments: Vec<Expression>,
+        arguments: &[Expression],
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         // Grab the fn declaration.
@@ -1161,7 +1161,7 @@ impl ty::TyExpression {
             span: path_span,
         }: TypeBinding<CallPath<AmbiguousSuffix>>,
         span: Span,
-        args: Vec<Expression>,
+        args: &[Expression],
         qualified_path_root: Option<QualifiedPathType>,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = ctx.engines;
@@ -1273,7 +1273,7 @@ impl ty::TyExpression {
                     handler,
                     ctx.by_ref(),
                     call_path_binding,
-                    args,
+                    &args,
                     span,
                 );
             }
@@ -1381,7 +1381,7 @@ impl ty::TyExpression {
         mut ctx: TypeCheckContext,
         unknown_call_path_binding: TypeBinding<QualifiedCallPath>,
         span: Span,
-        args: Option<Vec<Expression>>,
+        args: Option<&[Expression]>,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         // The first step is to determine if the call path refers to a module,
         // enum, function or constant.
@@ -1502,7 +1502,7 @@ impl ty::TyExpression {
                     ctx,
                     fn_ref,
                     call_path_binding,
-                    args,
+                    args.as_deref(),
                     span,
                 )?
             }
