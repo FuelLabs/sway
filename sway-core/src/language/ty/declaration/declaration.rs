@@ -64,9 +64,7 @@ pub struct StructDecl {
 
 #[derive(Clone, Debug)]
 pub struct EnumDecl {
-    pub name: Ident,
     pub decl_id: DeclId<TyEnumDecl>,
-    pub decl_span: Span,
 }
 
 #[derive(Clone, Debug)]
@@ -133,17 +131,9 @@ impl PartialEqWithEngines for TyDecl {
                 TyDecl::StructDecl(StructDecl { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
-                TyDecl::EnumDecl(EnumDecl {
-                    name: ln,
-                    decl_id: lid,
-                    ..
-                }),
-                TyDecl::EnumDecl(EnumDecl {
-                    name: rn,
-                    decl_id: rid,
-                    ..
-                }),
-            ) => ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
+                TyDecl::EnumDecl(EnumDecl { decl_id: lid, .. }),
+                TyDecl::EnumDecl(EnumDecl { decl_id: rid, .. }),
+            ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::ImplTrait(ImplTrait {
                     name: ln,
@@ -305,12 +295,12 @@ impl SpannedWithEngines for TyDecl {
             TyDecl::StructDecl(StructDecl { decl_id }) => {
                 engines.de().get_struct(decl_id).span.clone()
             }
+            TyDecl::EnumDecl(EnumDecl { decl_id }) => engines.de().get_enum(decl_id).span.clone(),
             TyDecl::VariableDecl(decl) => decl.name.span(),
             TyDecl::ImplTrait(ImplTrait { decl_span, .. })
             | TyDecl::StorageDecl(StorageDecl { decl_span, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { decl_span, .. })
-            | TyDecl::AbiDecl(AbiDecl { decl_span, .. })
-            | TyDecl::EnumDecl(EnumDecl { decl_span, .. }) => decl_span.clone(),
+            | TyDecl::AbiDecl(AbiDecl { decl_span, .. }) => decl_span.clone(),
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 variant_decl_span, ..
             }) => variant_decl_span.clone(),
@@ -364,9 +354,11 @@ impl DisplayWithEngines for TyDecl {
                 TyDecl::StructDecl(StructDecl { decl_id }) => {
                     engines.de().get(decl_id).name().as_str().into()
                 }
+                TyDecl::EnumDecl(EnumDecl { decl_id }) => {
+                    engines.de().get(decl_id).name().as_str().into()
+                }
                 TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
-                | TyDecl::ImplTrait(ImplTrait { name, .. })
-                | TyDecl::EnumDecl(EnumDecl { name, .. }) => name.as_str().into(),
+                | TyDecl::ImplTrait(ImplTrait { name, .. }) => name.as_str().into(),
                 _ => String::new(),
             }
         )
@@ -417,7 +409,9 @@ impl DebugWithEngines for TyDecl {
                 TyDecl::StructDecl(StructDecl { decl_id }) => {
                     engines.de().get(decl_id).name().as_str().into()
                 }
-                TyDecl::EnumDecl(EnumDecl { name, .. }) => name.as_str().into(),
+                TyDecl::EnumDecl(EnumDecl { decl_id }) => {
+                    engines.de().get(decl_id).name().as_str().into()
+                }
                 _ => String::new(),
             }
         )
@@ -490,12 +484,16 @@ impl GetDeclIdent for TyDecl {
             TyDecl::StructDecl(StructDecl { decl_id }) => {
                 Some(engines.de().get(decl_id).name().clone())
             }
+            TyDecl::EnumDecl(EnumDecl { decl_id }) => {
+                Some(engines.de().get(decl_id).name().clone())
+            }
             TyDecl::VariableDecl(decl) => Some(decl.name.clone()),
             TyDecl::ImplTrait(ImplTrait { name, .. })
             | TyDecl::AbiDecl(AbiDecl { name, .. })
             | TyDecl::TypeAliasDecl(TypeAliasDecl { name, .. })
-            | TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. })
-            | TyDecl::EnumDecl(EnumDecl { name, .. }) => Some(name.clone()),
+            | TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope { name, .. }) => {
+                Some(name.clone())
+            }
             TyDecl::EnumVariantDecl(EnumVariantDecl { variant_name, .. }) => {
                 Some(variant_name.clone())
             }
@@ -515,11 +513,14 @@ impl TyDecl {
         engines: &Engines,
     ) -> Result<DeclRefEnum, ErrorEmitted> {
         match self {
-            TyDecl::EnumDecl(EnumDecl {
-                name,
-                decl_id,
-                decl_span,
-            }) => Ok(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
+            TyDecl::EnumDecl(EnumDecl { decl_id }) => {
+                let enum_decl = engines.de().get_enum(decl_id);
+                Ok(DeclRef::new(
+                    enum_decl.name().clone(),
+                    *decl_id,
+                    enum_decl.span.clone(),
+                ))
+            }
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
                 let alias_decl = engines.de().get_type_alias(decl_id);
                 let TyTypeAliasDecl { ty, span, .. } = &*alias_decl;
@@ -765,15 +766,18 @@ impl TyDecl {
                     decl.name().span().source_id(),
                 )
             }
-            TyDecl::EnumDecl(EnumDecl {
-                name,
-                decl_id,
-                decl_span,
-            }) => type_engine.insert(
-                engines,
-                TypeInfo::Enum(DeclRef::new(name.clone(), *decl_id, decl_span.clone())),
-                name.span().source_id(),
-            ),
+            TyDecl::EnumDecl(EnumDecl { decl_id }) => {
+                let decl = decl_engine.get_enum(decl_id);
+                type_engine.insert(
+                    engines,
+                    TypeInfo::Enum(DeclRef::new(
+                        decl.name().clone(),
+                        *decl_id,
+                        decl.span.clone(),
+                    )),
+                    decl.name().span().source_id(),
+                )
+            }
             TyDecl::StorageDecl(StorageDecl { decl_id, .. }) => {
                 let storage_decl = decl_engine.get_storage(decl_id);
                 type_engine.insert(
@@ -853,9 +857,7 @@ impl From<DeclRef<DeclId<TyConstantDecl>>> for TyDecl {
 impl From<DeclRef<DeclId<TyEnumDecl>>> for TyDecl {
     fn from(decl_ref: DeclRef<DeclId<TyEnumDecl>>) -> Self {
         TyDecl::EnumDecl(EnumDecl {
-            name: decl_ref.name().clone(),
             decl_id: *decl_ref.id(),
-            decl_span: decl_ref.decl_span().clone(),
         })
     }
 }
