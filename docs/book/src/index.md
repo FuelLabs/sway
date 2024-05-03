@@ -26,13 +26,13 @@ Sway aims to take the best of Rust, and leave out everything that doesn't make s
 
 From Rust, we took the prioritizations of performance, control, and safety. In Rust, this means the borrow checker, safe parallelism (send and sync), annotated unsafety, etc., mainly to save the programmer from referencing freed memory, shared mutable state, and undesirable memory management.
 
-This is great for a general-purpose language model. Sway, however, is not general purpose. Sway targets a blockchain VM environment, where execution is not indefinite, and memory allocation and management are less concerned. Instead, we need to optimize for gas costs and contract-level safety.
+This is great for a general-purpose language model. Sway, however, is not general purpose. Sway targets a blockchain VM environment, where execution is not indefinite, and memory allocation and management are less of a concern. Instead, we need to optimize for gas costs and contract-level safety.
 
 We applied the philosophy of performance, control, and safety and interpreted it in this new context. This is where Sway gets compile time checks of state mutability, namespacing of state variables, static analysis passes, and gas optimization.
 
 **Q: I don't know Rust or Solidity. Can I still learn Sway?**
 
-Yes! If you are familiar the basics of programming, blockchain, and using a terminal you can build with Sway.
+Yes! If you are familiar with the basics of programming, blockchain, and using a terminal you can build with Sway.
 
 **Q: What can I build with Sway?**
 
@@ -70,7 +70,7 @@ Sway provides [unit testing](./testing/unit-testing.md), so you can test your Sw
 
 **Q: How can I deploy a contract?**
 
-You can use the `forc deploy` command to deploy a contract. For a detailed guide on how to deploy a contract, refer to the the [quickstart guide](https://docs.fuel.network/docs/intro/quickstart-contract/).
+You can use the `forc deploy` command to deploy a contract. For a detailed guide on how to deploy a contract, refer to the [quickstart guide](https://docs.fuel.network/docs/intro/quickstart-contract/).
 
 **Q: Is there a way to convert Solidity code to Sway?**
 
