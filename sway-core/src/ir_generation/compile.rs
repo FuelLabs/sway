@@ -263,7 +263,13 @@ pub(crate) fn compile_constants(
     }
 
     for submodule_ns in module_ns.submodules().values() {
-        compile_constants(engines, context, md_mgr, module, submodule_ns)?;
+        compile_constants(
+            engines,
+            context,
+            md_mgr,
+            module,
+            &submodule_ns.read().unwrap(),
+        )?;
     }
 
     Ok(())

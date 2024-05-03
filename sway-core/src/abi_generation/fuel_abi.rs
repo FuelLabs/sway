@@ -734,6 +734,8 @@ fn call_path_display(ctx: &mut AbiContext, engines: &Engines, call_path: &CallPa
                 .root
                 .namespace
                 .module_id(engines)
+                .read()
+                .unwrap()
                 .read(engines, |m| m.name.clone())
             {
                 if prefix.as_str() == root_name.as_str() {

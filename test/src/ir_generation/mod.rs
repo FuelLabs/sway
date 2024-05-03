@@ -2,7 +2,7 @@ use std::{
     fs,
     ops::Not,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use anyhow::Result;
@@ -560,6 +560,8 @@ fn compile_core(
                 .root
                 .namespace
                 .module(engines)
+                .read()
+                .unwrap()
                 .submodules()
                 .into_iter()
                 .fold(
@@ -572,7 +574,7 @@ fn compile_core(
 
             // Create a module for std and insert the core module.
             let mut std_module = namespace::Module::default();
-            std_module.insert_submodule("core".to_owned(), core_module);
+            std_module.insert_submodule("core".to_owned(), Arc::new(RwLock::new(core_module)));
             std_module
         }
         _ => {

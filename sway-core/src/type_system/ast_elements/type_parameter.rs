@@ -180,7 +180,9 @@ impl TypeParameter {
         let engines = ctx.engines();
         let _ = ctx
             .namespace_mut()
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -191,7 +193,9 @@ impl TypeParameter {
             );
         let _ = ctx
             .namespace_mut()
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -443,15 +447,16 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx
+            match ctx
                 .namespace()
                 .module(ctx.engines())
+                .read()
+                .unwrap()
                 .current_items()
                 .symbols
                 .get(name_ident)
-                .unwrap();
-
-            match sy {
+                .unwrap()
+            {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                     type_id: parent_type_id,
                     ..
@@ -529,7 +534,9 @@ impl TypeParameter {
                 // Check to see if the trait constraints are satisfied.
                 match ctx
                     .namespace_mut()
-                    .module_mut(engines)
+                    .module(engines)
+                    .write()
+                    .unwrap()
                     .current_items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(

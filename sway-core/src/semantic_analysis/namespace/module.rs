@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use crate::{
     engine_threading::Engines,
     language::{parsed::*, ty, Visibility},
@@ -35,7 +37,7 @@ pub struct Module {
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
-    pub(crate) submodules: im::OrdMap<ModuleName, Module>,
+    pub(crate) submodules: im::OrdMap<ModuleName, Arc<RwLock<Module>>>,
     /// Keeps all lexical scopes associated with this module.
     pub lexical_scopes: Vec<LexicalScope>,
     /// Current lexical scope id in the lexical scope hierarchy stack.
@@ -205,38 +207,38 @@ impl Module {
     }
 
     /// Immutable access to this module's submodules.
-    pub fn submodules(&self) -> &im::OrdMap<ModuleName, Module> {
+    pub fn submodules(&self) -> &im::OrdMap<ModuleName, Arc<RwLock<Module>>> {
         &self.submodules
     }
 
     /// Insert a submodule into this `Module`.
-    pub fn insert_submodule(&mut self, name: String, submodule: Module) {
+    pub fn insert_submodule(&mut self, name: String, submodule: Arc<RwLock<Module>>) {
         self.submodules.insert(name, submodule);
     }
 
     /// Lookup the submodule at the given path.
-    pub fn submodule(&self, _engines: &Engines, path: &ModulePath) -> Option<&Module> {
-        let mut module = self;
+    pub fn submodule(&self, _engines: &Engines, path: &ModulePath) -> Option<Arc<RwLock<Module>>> {
+        let mut module = None;
         for ident in path.iter() {
-            match module.submodules.get(ident.as_str()) {
-                Some(ns) => module = ns,
+            module = match self.submodules.get(ident.as_str()) {
+                Some(ns) => Some(ns.clone()),
                 None => return None,
-            }
+            };
         }
-        Some(module)
+        module
     }
 
-    /// Unique access to the submodule at the given path.
-    pub fn submodule_mut(&mut self, _engines: &Engines, path: &ModulePath) -> Option<&mut Module> {
-        let mut module = self;
-        for ident in path.iter() {
-            match module.submodules.get_mut(ident.as_str()) {
-                Some(ns) => module = ns,
-                None => return None,
-            }
-        }
-        Some(module)
-    }
+    // /// Unique access to the submodule at the given path.
+    // pub fn submodule_mut(&mut self, _engines: &Engines, path: &ModulePath) -> Option<&mut Module> {
+    //     let mut module = self;
+    //     for ident in path.iter() {
+    //         match module.submodules.get_mut(ident.as_str()) {
+    //             Some(ns) => module = &mut ns.write().unwrap(),
+    //             None => return None,
+    //         }
+    //     }
+    //     Some(module)
+    // }
 
     /// Lookup the submodule at the given path.
     ///
@@ -246,27 +248,27 @@ impl Module {
         handler: &Handler,
         engines: &Engines,
         path: &[Ident],
-    ) -> Result<&Module, ErrorEmitted> {
+    ) -> Result<Arc<RwLock<Module>>, ErrorEmitted> {
         match self.submodule(engines, path) {
             None => Err(handler.emit_err(module_not_found(path))),
             Some(module) => Ok(module),
         }
     }
 
-    /// Lookup the submodule at the given path.
-    ///
-    /// This should be used rather than `Index` when we don't yet know whether the module exists.
-    pub(crate) fn lookup_submodule_mut(
-        &mut self,
-        handler: &Handler,
-        engines: &Engines,
-        path: &[Ident],
-    ) -> Result<&mut Module, ErrorEmitted> {
-        match self.submodule_mut(engines, path) {
-            None => Err(handler.emit_err(module_not_found(path))),
-            Some(module) => Ok(module),
-        }
-    }
+    // /// Lookup the submodule at the given path.
+    // ///
+    // /// This should be used rather than `Index` when we don't yet know whether the module exists.
+    // pub(crate) fn lookup_submodule_mut(
+    //     &mut self,
+    //     handler: &Handler,
+    //     engines: &Engines,
+    //     path: &[Ident],
+    // ) -> Result<&mut Module, ErrorEmitted> {
+    //     match self.submodule_mut(engines, path) {
+    //         None => Err(handler.emit_err(module_not_found(path))),
+    //         Some(module) => Ok(module),
+    //     }
+    // }
 
     /// Returns the current lexical scope associated with this module.
     fn current_lexical_scope(&self) -> &LexicalScope {

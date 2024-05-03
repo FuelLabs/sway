@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use crate::{
     language::{ty, CallPath, Visibility},
     Engines, Ident, TypeId,
@@ -47,7 +49,7 @@ pub struct Namespace {
 }
 
 impl Namespace {
-    pub fn module_id(&self, engines: &Engines) -> &Module {
+    pub fn module_id(&self, engines: &Engines) -> Arc<RwLock<Module>> {
         self.root
             .module
             .submodule(engines, &self.mod_path)
@@ -92,27 +94,27 @@ impl Namespace {
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module(&self, engines: &Engines) -> &Module {
+    pub fn module(&self, engines: &Engines) -> Arc<RwLock<Module>> {
         self.root
             .module
             .lookup_submodule(&Handler::default(), engines, &self.mod_path)
             .unwrap()
     }
 
-    /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module_mut(&mut self, engines: &Engines) -> &mut Module {
-        self.root
-            .module
-            .lookup_submodule_mut(&Handler::default(), engines, &self.mod_path)
-            .unwrap()
-    }
+    // /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
+    // pub fn module_mut(&mut self, engines: &Engines) -> &mut Module {
+    //     self.root
+    //         .module
+    //         .lookup_submodule_mut(&Handler::default(), engines, &self.mod_path)
+    //         .unwrap()
+    // }
 
     pub fn lookup_submodule_from_absolute_path(
         &self,
         handler: &Handler,
         engines: &Engines,
         path: &[Ident],
-    ) -> Result<&Module, ErrorEmitted> {
+    ) -> Result<Arc<RwLock<Module>>, ErrorEmitted> {
         self.root.module.lookup_submodule(handler, engines, path)
     }
 
@@ -268,10 +270,12 @@ impl Namespace {
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.module_mut(engines)
+        self.module(engines)
+            .write()
+            .unwrap()
             .submodules
             .entry(mod_name.to_string())
-            .or_insert(init);
+            .or_insert(Arc::new(RwLock::new(init)));
         let submod_path: Vec<_> = self
             .mod_path
             .iter()
@@ -280,7 +284,8 @@ impl Namespace {
             .collect();
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
         // self.module() now refers to a different module, so refetch
-        let new_module = self.module_mut(engines);
+        let binding = self.module(engines);
+        let mut new_module = binding.write().unwrap();
         new_module.name = Some(mod_name);
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
@@ -305,10 +310,12 @@ impl Namespace {
             span: Some(module_span),
             ..Default::default()
         };
-        self.module_mut(engines)
+        self.module(engines)
+            .write()
+            .unwrap()
             .submodules
             .entry(mod_name.to_string())
-            .or_insert(module);
+            .or_insert(Arc::new(RwLock::new(module)));
         self.mod_path.push(mod_name);
     }
 

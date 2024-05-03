@@ -637,7 +637,9 @@ fn type_check_trait_implementation(
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
     ctx.namespace_mut()
-        .module_mut(engines)
+        .module(engines)
+        .write()
+        .unwrap()
         .write(engines, |m| {
             m.current_items_mut()
                 .implemented_traits

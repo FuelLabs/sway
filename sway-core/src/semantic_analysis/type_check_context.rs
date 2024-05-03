@@ -532,7 +532,9 @@ impl<'a> TypeCheckContext<'a> {
         let generic_shadowing_mode = self.generic_shadowing_mode;
         let engines = self.engines;
         self.namespace_mut()
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -576,7 +578,7 @@ impl<'a> TypeCheckContext<'a> {
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
-                            self.namespace().module(engines),
+                            &self.namespace().module(engines).read().unwrap(),
                             root_type_id,
                             None,
                             &qualified_call_path.clone().to_call_path(handler)?,
@@ -805,7 +807,7 @@ impl<'a> TypeCheckContext<'a> {
             let module = self
                 .namespace()
                 .lookup_submodule_from_absolute_path(handler, engines, prefix)?;
-            if module.visibility.is_private() {
+            if module.read().unwrap().visibility.is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
                     span: prefix_last.span(),
@@ -1049,6 +1051,8 @@ impl<'a> TypeCheckContext<'a> {
 
         // grab the local items from the local module
         let local_items = local_module
+            .read()
+            .unwrap()
             .current_items()
             .get_items_for_type(self.engines, type_id);
 
@@ -1075,6 +1079,8 @@ impl<'a> TypeCheckContext<'a> {
 
         // grab the items from where the type is declared
         let mut type_items = type_module
+            .write()
+            .unwrap()
             .current_items()
             .get_items_for_type(self.engines, type_id);
 
@@ -1462,7 +1468,9 @@ impl<'a> TypeCheckContext<'a> {
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
             .collect::<Vec<_>>();
         self.namespace_mut()
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .current_items_mut()
             .implemented_traits
             .insert(
@@ -1499,6 +1507,8 @@ impl<'a> TypeCheckContext<'a> {
 
         self.namespace()
             .module(self.engines())
+            .read()
+            .unwrap()
             .current_items()
             .implemented_traits
             .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
@@ -1685,7 +1695,9 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
         self.namespace_mut()
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .current_items_mut()
             .implemented_traits
             .insert_for_type(engines, type_id);
@@ -1700,7 +1712,9 @@ impl<'a> TypeCheckContext<'a> {
         let engines = self.engines;
 
         self.namespace_mut()
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .current_items_mut()
             .implemented_traits
             .check_if_trait_constraints_are_satisfied_for_type(

@@ -187,7 +187,13 @@ impl Session {
             let program = compiled_program.typed.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
-                program.root.namespace.module(&engines).current_items(),
+                &program
+                    .root
+                    .namespace
+                    .module(&engines)
+                    .read()
+                    .unwrap()
+                    .current_items(),
                 &engines,
                 ident_to_complete,
                 &fn_decl,
@@ -326,7 +332,7 @@ pub fn traverse(
         let ctx = ParseContext::new(
             &session.token_map,
             engines,
-            typed_program.root.namespace.module(engines),
+            typed_program.root.namespace.module(engines).clone(),
         );
 
         // The final element in the results is the main program.

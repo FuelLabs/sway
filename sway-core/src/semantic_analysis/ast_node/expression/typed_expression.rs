@@ -1048,19 +1048,30 @@ impl ty::TyExpression {
         if !ctx
             .namespace()
             .module_id(engines)
+            .read()
+            .unwrap()
             .read(engines, |m| m.current_items().has_storage_declared())
         {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
-        let storage_fields = ctx.namespace().module_id(engines).read(engines, |m| {
-            m.current_items()
-                .get_storage_field_descriptors(handler, decl_engine)
-        })?;
+        let storage_fields =
+            ctx.namespace()
+                .module_id(engines)
+                .read()
+                .unwrap()
+                .read(engines, |m| {
+                    m.current_items()
+                        .get_storage_field_descriptors(handler, decl_engine)
+                })?;
 
         // Do all namespace checking here!
-        let (storage_access, mut access_type) =
-            ctx.namespace().module_id(engines).read(engines, |m| {
+        let (storage_access, mut access_type) = ctx
+            .namespace()
+            .module_id(engines)
+            .read()
+            .unwrap()
+            .read(engines, |m| {
                 m.current_items().apply_storage_load(
                     handler,
                     ctx.engines,
@@ -1289,6 +1300,8 @@ impl ty::TyExpression {
             let h = Handler::default();
             ctx.namespace()
                 .module_id(engines)
+                .read()
+                .unwrap()
                 .read(engines, |m| m.lookup_submodule(&h, engines, &path).is_err())
         };
 
@@ -1409,6 +1422,8 @@ impl ty::TyExpression {
                 let call_path_binding = unknown_call_path_binding.clone();
                 ctx.namespace()
                     .module_id(ctx.engines())
+                    .read()
+                    .unwrap()
                     .read(ctx.engines(), |m| {
                         m.lookup_submodule(
                             &module_probe_handler,
@@ -2203,8 +2218,12 @@ impl ty::TyExpression {
                 };
 
                 let indices = indices.into_iter().rev().collect::<Vec<_>>();
-                let (ty_of_field, _ty_of_parent) =
-                    ctx.namespace().module_id(engines).read(engines, |m| {
+                let (ty_of_field, _ty_of_parent) = ctx
+                    .namespace()
+                    .module_id(engines)
+                    .read()
+                    .unwrap()
+                    .read(engines, |m| {
                         m.current_items().find_subfield_type(
                             handler,
                             ctx.engines(),

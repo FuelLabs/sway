@@ -21,6 +21,7 @@ use petgraph::{
     Directed, Direction,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::RwLock;
 use std::{
     collections::{hash_map, BTreeSet, HashMap, HashSet},
     fmt,
@@ -1658,7 +1659,7 @@ pub fn dependency_namespace(
                 module
             }
         };
-        root_module.insert_submodule(dep_name, dep_namespace);
+        root_module.insert_submodule(dep_name, Arc::new(RwLock::new(dep_namespace)));
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1669,7 +1670,10 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
+            root_module.insert_submodule(
+                CORE.to_string(),
+                Arc::new(RwLock::new(core_namespace.clone())),
+            );
         }
     }
 
@@ -2720,6 +2724,8 @@ pub fn check(
                         .root
                         .namespace
                         .module_id(engines)
+                        .read()
+                        .unwrap()
                         .read(engines, |m| m.clone());
                     module.name = Some(Ident::new_no_span(pkg.name.clone()));
                     module.span = Some(

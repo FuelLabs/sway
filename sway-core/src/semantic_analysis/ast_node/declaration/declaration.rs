@@ -287,23 +287,26 @@ impl TyDecl {
                     for i in &impl_trait.items {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
-                            let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
-                                m.current_items_mut().insert_symbol(
-                                    handler,
-                                    Ident::new_no_span(format!(
-                                        "__contract_entry_{}",
-                                        decl.name.clone()
-                                    )),
-                                    TyDecl::FunctionDecl(FunctionDecl {
-                                        name: decl.name.clone(),
-                                        decl_id: *f.id(),
-                                        subst_list: Template::default(),
-                                        decl_span: f.span(),
-                                    }),
-                                    ConstShadowingMode::ItemStyle,
-                                    GenericShadowingMode::Allow,
-                                )
-                            });
+                            let _ = ctx.namespace.module(ctx.engines()).write().unwrap().write(
+                                engines,
+                                |m| {
+                                    m.current_items_mut().insert_symbol(
+                                        handler,
+                                        Ident::new_no_span(format!(
+                                            "__contract_entry_{}",
+                                            decl.name.clone()
+                                        )),
+                                        TyDecl::FunctionDecl(FunctionDecl {
+                                            name: decl.name.clone(),
+                                            decl_id: *f.id(),
+                                            subst_list: Template::default(),
+                                            decl_span: f.span(),
+                                        }),
+                                        ConstShadowingMode::ItemStyle,
+                                        GenericShadowingMode::Allow,
+                                    )
+                                },
+                            );
                         }
                     }
                 }
@@ -490,7 +493,9 @@ impl TyDecl {
 
                 // declarations are not allowed
                 ctx.namespace_mut()
-                    .module_mut(engines)
+                    .module(engines)
+                    .write()
+                    .unwrap()
                     .write(engines, |m| {
                         m.current_items_mut()
                             .set_storage_declaration(handler, decl_ref.clone())

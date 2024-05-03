@@ -1,5 +1,6 @@
 use crate::core::{token::TokenIdent, token_map::TokenMap};
 use rayon_cond::CondIterator;
+use std::sync::{Arc, RwLock};
 use sway_core::{namespace::Module, Engines};
 
 pub(crate) mod dependency;
@@ -10,11 +11,11 @@ pub(crate) mod typed_tree;
 pub struct ParseContext<'a> {
     tokens: &'a TokenMap,
     pub engines: &'a Engines,
-    namespace: &'a Module,
+    namespace: Arc<RwLock<Module>>,
 }
 
 impl<'a> ParseContext<'a> {
-    pub fn new(tokens: &'a TokenMap, engines: &'a Engines, namespace: &'a Module) -> Self {
+    pub fn new(tokens: &'a TokenMap, engines: &'a Engines, namespace: Arc<RwLock<Module>>) -> Self {
         Self {
             tokens,
             engines,

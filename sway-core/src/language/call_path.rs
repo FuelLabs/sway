@@ -311,32 +311,40 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(mod_path) = namespace.module_id(engines).read(engines, |m| {
-                if let Some((_, path, _)) = m
-                    .current_items()
-                    .use_item_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    Some(path)
-                } else if let Some((path, _)) = m
-                    .current_items()
-                    .use_glob_synonyms
-                    .get(&self.suffix)
-                    .cloned()
-                {
-                    Some(path)
-                } else {
-                    None
-                }
-            }) {
+            if let Some(mod_path) =
+                namespace
+                    .module_id(engines)
+                    .read()
+                    .unwrap()
+                    .read(engines, |m| {
+                        if let Some((_, path, _)) = m
+                            .current_items()
+                            .use_item_synonyms
+                            .get(&self.suffix)
+                            .cloned()
+                        {
+                            Some(path)
+                        } else if let Some((path, _)) = m
+                            .current_items()
+                            .use_glob_synonyms
+                            .get(&self.suffix)
+                            .cloned()
+                        {
+                            Some(path)
+                        } else {
+                            None
+                        }
+                    })
+            {
                 synonym_prefixes = mod_path.clone();
                 is_absolute = true;
                 let submodule = namespace
                     .module(engines)
+                    .read()
+                    .unwrap()
                     .submodule(engines, &[mod_path[0].clone()]);
                 if let Some(submodule) = submodule {
-                    is_external = submodule.read(engines, |m| m.is_external);
+                    is_external = submodule.read().unwrap().read(engines, |m| m.is_external);
                 }
             }
 
@@ -363,6 +371,8 @@ impl CallPath {
             }
         } else if let Some(m) = namespace
             .module(engines)
+            .read()
+            .unwrap()
             .submodule(engines, &[self.prefixes[0].clone()])
         {
             // If some prefixes are already present, attempt to complete the path by adding the
@@ -370,7 +380,7 @@ impl CallPath {
             //
             // If the path starts with an external module (i.e. a module that is imported in
             // `Forc.toml`), then do not change it since it's a complete path already.
-            if m.read(engines, |m| m.is_external) {
+            if m.read().unwrap().read(engines, |m| m.is_external) {
                 CallPath {
                     prefixes: self.prefixes.clone(),
                     suffix: self.suffix.clone(),

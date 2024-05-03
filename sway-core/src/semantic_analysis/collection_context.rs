@@ -21,16 +21,20 @@ impl SymbolCollectionContext {
 
     /// Scope the `CollectionContext` with a new lexical scope.
     pub fn scoped<T>(
-        mut self,
+        self,
         engines: &Engines,
         with_scoped_ctx: impl FnOnce(SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
         self.namespace
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .write(engines, |m| m.push_new_lexical_scope());
         let ret = with_scoped_ctx(self.clone());
         self.namespace
-            .module_mut(engines)
+            .module(engines)
+            .write()
+            .unwrap()
             .write(engines, |m| m.pop_lexical_scope());
         ret
     }
@@ -64,9 +68,13 @@ impl SymbolCollectionContext {
         name: Ident,
         item: Declaration,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.module_mut(engines).write(engines, |m| {
-            m.current_items_mut()
-                .insert_parsed_symbol(name.clone(), item.clone())
-        })
+        self.namespace
+            .module(engines)
+            .write()
+            .unwrap()
+            .write(engines, |m| {
+                m.current_items_mut()
+                    .insert_parsed_symbol(name.clone(), item.clone())
+            })
     }
 }
