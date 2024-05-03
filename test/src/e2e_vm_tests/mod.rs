@@ -293,7 +293,7 @@ impl TestContext {
 
         match category {
             TestCategory::Runs => {
-                let expected_result = expected_result.unwrap();
+                let expected_result = expected_result.expect("No expected result found. This is likely because test.toml is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry");
 
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
