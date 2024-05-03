@@ -34,7 +34,7 @@ pub struct Namespace {
     ///
     /// This is passed through type-checking in order to initialise the namespace of each submodule
     /// within the project.
-    init: Module,
+    init: Arc<RwLock<Module>>,
     /// The `root` of the project namespace.
     ///
     /// From the root, the entirety of the project's namespace can always be accessed.
@@ -52,6 +52,8 @@ impl Namespace {
     pub fn module_id(&self, engines: &Engines) -> Arc<RwLock<Module>> {
         self.root
             .module
+            .read()
+            .unwrap()
             .submodule(engines, &self.mod_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
     }
@@ -84,19 +86,21 @@ impl Namespace {
         &self.root
     }
 
-    pub fn root_module(&self) -> &Module {
-        &self.root.module
+    pub fn root_module(&self) -> Arc<RwLock<Module>> {
+        self.root.module.clone()
     }
 
     /// The name of the root module
-    pub fn root_module_name(&self) -> &Option<Ident> {
-        &self.root.module.name
+    pub fn root_module_name(&self) -> Option<Ident> {
+        self.root.module.read().unwrap().name.clone()
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
     pub fn module(&self, engines: &Engines) -> Arc<RwLock<Module>> {
         self.root
             .module
+            .read()
+            .unwrap()
             .lookup_submodule(&Handler::default(), engines, &self.mod_path)
             .unwrap()
     }
@@ -115,7 +119,11 @@ impl Namespace {
         engines: &Engines,
         path: &[Ident],
     ) -> Result<Arc<RwLock<Module>>, ErrorEmitted> {
-        self.root.module.lookup_submodule(handler, engines, path)
+        self.root
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
@@ -137,7 +145,8 @@ impl Namespace {
     ) -> bool {
         // `mod_path` does not contain the root name, so we have to separately check
         // that the root name is equal to the module package name.
-        let root_name = match &self.root.module.name {
+        let module = self.root.module.read().unwrap();
+        let root_name = match &module.name {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
@@ -171,7 +180,8 @@ impl Namespace {
     /// Returns true if the module given by the `absolute_module_path` is external
     /// to the current package. External modules are imported in the `Forc.toml` file.
     pub(crate) fn module_is_external(&self, absolute_module_path: &ModulePath) -> bool {
-        let root_name = match &self.root.module.name {
+        let module = self.root.module.read().unwrap();
+        let root_name = match &module.name {
             Some(name) => name,
             None => panic!("Root module must always have a name."),
         };
@@ -191,6 +201,8 @@ impl Namespace {
     ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
         self.root
             .module
+            .read()
+            .unwrap()
             .current_items()
             .implemented_traits
             .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
@@ -275,7 +287,7 @@ impl Namespace {
             .unwrap()
             .submodules
             .entry(mod_name.to_string())
-            .or_insert(Arc::new(RwLock::new(init)));
+            .or_insert(init.clone());
         let submod_path: Vec<_> = self
             .mod_path
             .iter()

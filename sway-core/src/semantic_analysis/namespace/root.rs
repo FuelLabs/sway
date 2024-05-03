@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use super::{
     module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
 };
@@ -43,7 +45,7 @@ impl ResolvedDeclaration {
 /// that canonical path to look up the symbol declaration.
 #[derive(Clone, Debug)]
 pub struct Root {
-    pub(crate) module: Module,
+    pub(crate) module: Arc<RwLock<Module>>,
 }
 
 impl Root {
@@ -66,7 +68,11 @@ impl Root {
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod
             .read()
@@ -81,7 +87,11 @@ impl Root {
             }
         }
 
-        let dst_mod = self.module.lookup_submodule(handler, engines, dst)?;
+        let dst_mod = self
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, dst)?;
         dst_mod
             .write()
             .unwrap()
@@ -133,7 +143,11 @@ impl Root {
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, src)?;
         let mut impls_to_insert = TraitMap::default();
         match src_mod
             .read()
@@ -179,7 +193,11 @@ impl Root {
                     );
                 }
                 // no matter what, import it this way though.
-                let dst_mod = self.module.lookup_submodule(handler, engines, dst)?;
+                let dst_mod = self
+                    .module
+                    .write()
+                    .unwrap()
+                    .lookup_submodule(handler, engines, dst)?;
                 let check_name_clash = |name| {
                     if let Some((_, _, _)) = dst_mod
                         .write()
@@ -220,7 +238,11 @@ impl Root {
             }
         };
 
-        let dst_mod = self.module.lookup_submodule(handler, engines, dst)?;
+        let dst_mod = self
+            .module
+            .write()
+            .unwrap()
+            .lookup_submodule(handler, engines, dst)?;
         dst_mod
             .write()
             .unwrap()
@@ -249,7 +271,11 @@ impl Root {
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, src)?;
         match src_mod
             .read()
             .unwrap()
@@ -283,7 +309,11 @@ impl Root {
                         enum_decl.variants.iter().find(|v| v.name == *variant_name)
                     {
                         // import it this way.
-                        let dst_mod = self.module.lookup_submodule(handler, engines, dst)?;
+                        let dst_mod = self
+                            .module
+                            .read()
+                            .unwrap()
+                            .lookup_submodule(handler, engines, dst)?;
                         let check_name_clash = |name| {
                             if dst_mod
                                 .write()
@@ -378,7 +408,11 @@ impl Root {
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, src)?;
         match src_mod
             .read()
             .unwrap()
@@ -412,7 +446,11 @@ impl Root {
                         let variant_name = &variant_decl.name;
 
                         // import it this way.
-                        let dst_mod = self.module.lookup_submodule(handler, engines, dst)?;
+                        let dst_mod = self
+                            .module
+                            .read()
+                            .unwrap()
+                            .lookup_submodule(handler, engines, dst)?;
                         dst_mod
                             .write()
                             .unwrap()
@@ -465,7 +503,11 @@ impl Root {
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod
             .read()
@@ -540,7 +582,11 @@ impl Root {
             symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
         }
 
-        let dst_mod = self.module.lookup_submodule(handler, engines, dst)?;
+        let dst_mod = self
+            .module
+            .read()
+            .unwrap()
+            .lookup_submodule(handler, engines, dst)?;
         dst_mod
             .write()
             .unwrap()
@@ -574,12 +620,17 @@ impl Root {
         engines: &Engines,
         src: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let dst = self.module.mod_path();
+        let module = self.module.read().unwrap();
+        let dst = module.mod_path();
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
             // we don't check the first prefix because direct children are always accessible
             for prefix in iter_prefixes(src).skip(1) {
-                let module = self.module.lookup_submodule(handler, engines, prefix)?;
+                let module = self
+                    .module
+                    .read()
+                    .unwrap()
+                    .lookup_submodule(handler, engines, prefix)?;
                 if module.read().unwrap().visibility.is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
@@ -728,7 +779,8 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
         // This block tries to resolve associated types
-        let mut module = None;
+        let mut module = self.module.clone();
+        let current_module = module.clone();
         let mut current_mod_path = vec![];
         let mut decl_opt = None;
         for ident in mod_path.iter() {
@@ -736,50 +788,49 @@ impl Root {
                 decl_opt = Some(self.resolve_associated_type(
                     handler,
                     engines,
-                    &self.module,
+                    &module.read().unwrap(),
                     ident,
                     decl,
                     None,
                     self_type,
                 )?);
             } else {
-                match self.module.submodules.get(ident.as_str()) {
+                match current_module
+                    .read()
+                    .unwrap()
+                    .submodules
+                    .get(ident.as_str())
+                {
                     Some(ns) => {
-                        module = Some(ns);
+                        module = ns.clone();
                         current_mod_path.push(ident.clone());
                     }
                     None => {
-                        decl_opt =
-                            Some(self.resolve_symbol_helper(handler, ident, &self.module)?);
+                        decl_opt = Some(self.resolve_symbol_helper(
+                            handler,
+                            ident,
+                            &module.read().unwrap(),
+                        )?);
                     }
                 }
             }
         }
         if let Some(decl) = decl_opt {
-            let decl = match module {
-                Some(module) => self.resolve_associated_item(
-                    handler,
-                    engines,
-                    &module.read().unwrap(),
-                    symbol,
-                    decl,
-                    None,
-                    self_type,
-                )?,
-                None => self.resolve_associated_item(
-                    handler,
-                    engines,
-                    &self.module,
-                    symbol,
-                    decl,
-                    None,
-                    self_type,
-                )?,
-            };
+            let decl = self.resolve_associated_item(
+                handler,
+                engines,
+                &module.read().unwrap(),
+                symbol,
+                decl,
+                None,
+                self_type,
+            )?;
             return Ok((decl, current_mod_path));
         }
 
         self.module
+            .read()
+            .unwrap()
             .lookup_submodule(handler, engines, mod_path)
             .and_then(|module| {
                 let decl = self.resolve_symbol_helper(handler, symbol, &module.read().unwrap())?;
@@ -955,8 +1006,8 @@ impl Root {
     }
 }
 
-impl From<Module> for Root {
-    fn from(module: Module) -> Self {
+impl From<Arc<RwLock<Module>>> for Root {
+    fn from(module: Arc<RwLock<Module>>) -> Self {
         Root { module }
     }
 }

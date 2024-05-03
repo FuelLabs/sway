@@ -32,6 +32,7 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
+use sway_core::namespace::Root;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -1609,17 +1610,17 @@ pub fn dependency_namespace(
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
     let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::Module::default_with_contract_id(
+        Arc::new(RwLock::new(namespace::Module::default_with_contract_id(
             engines,
             name.clone(),
             contract_id_value,
             experimental,
-        )?
+        )?))
     } else {
-        namespace::Module::default()
+        Arc::new(RwLock::new(namespace::Module::default()))
     };
 
-    root_module.write(engines, |root_module| {
+    root_module.write().unwrap().write(engines, |root_module| {
         root_module.is_external = true;
         root_module.name = name.clone();
         root_module.visibility = Visibility::Public;
@@ -1659,7 +1660,10 @@ pub fn dependency_namespace(
                 module
             }
         };
-        root_module.insert_submodule(dep_name, Arc::new(RwLock::new(dep_namespace)));
+        root_module
+            .write()
+            .unwrap()
+            .insert_submodule(dep_name, Arc::new(RwLock::new(dep_namespace)));
         let dep = &graph[dep_node];
         if dep.name == CORE {
             core_added = true;
@@ -1670,14 +1674,15 @@ pub fn dependency_namespace(
     if !core_added {
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
-            root_module.insert_submodule(
+            root_module.write().unwrap().insert_submodule(
                 CORE.to_string(),
                 Arc::new(RwLock::new(core_namespace.clone())),
             );
         }
     }
 
-    let mut root = namespace::Root::from(root_module);
+    let mut root = namespace::Root::from(root_module.clone());
+    //let mut root = Root { module: root_module.clone() };
 
     let _ = root.star_import_with_reexports(
         &Handler::default(),
@@ -1954,7 +1959,7 @@ pub fn compile(
         storage_slots,
         tree_type,
         bytecode,
-        root_module: namespace.root_module().clone(),
+        root_module: namespace.root_module().read().unwrap().clone(),
         warnings,
         metrics,
     };

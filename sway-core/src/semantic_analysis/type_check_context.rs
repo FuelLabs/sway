@@ -889,7 +889,7 @@ impl<'a> TypeCheckContext<'a> {
                 .resolve_call_path_and_root_type_id(
                     handler,
                     self.engines,
-                    &self.namespace().root.module,
+                    &self.namespace().root.module.read().unwrap(),
                     root_type_id,
                     as_trait_opt,
                     &qualified_call_path.call_path,

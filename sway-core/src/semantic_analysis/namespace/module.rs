@@ -177,12 +177,12 @@ impl Module {
             content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
             span: const_item_span.clone(),
         };
-        let root = Root::from(Module::default());
+        let root = Root::from(Arc::new(RwLock::new(Module::default())));
         let mut ns = Namespace::init_root(root);
         // This is pretty hacky but that's okay because of this code is being removed pretty soon
-        ns.root.module.name = ns_name;
-        ns.root.module.is_external = true;
-        ns.root.module.visibility = Visibility::Public;
+        ns.root.module.write().unwrap().name = ns_name;
+        ns.root.module.write().unwrap().is_external = true;
+        ns.root.module.write().unwrap().visibility = Visibility::Public;
         let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
         let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
         // get the decl out of the typed node:
@@ -213,13 +213,19 @@ impl Module {
 
     /// Insert a submodule into this `Module`.
     pub fn insert_submodule(&mut self, name: String, submodule: Arc<RwLock<Module>>) {
+        eprintln!("insert_submodule: {:?}", name);
         self.submodules.insert(name, submodule);
     }
 
     /// Lookup the submodule at the given path.
     pub fn submodule(&self, _engines: &Engines, path: &ModulePath) -> Option<Arc<RwLock<Module>>> {
         let mut module = Some(Arc::new(RwLock::new(self.clone())));
+        eprintln!("submodule keys len: {:?}", self.submodules.keys().len());
+        for k in self.submodules.keys() {
+            eprintln!("submodule key: {:?}", k);
+        }
         for ident in path.iter() {
+            eprintln!("submodule ident: {:?}", ident.as_str());
             module = match self.submodules.get(ident.as_str()) {
                 Some(ns) => Some(ns.clone()),
                 None => return None,
@@ -249,6 +255,7 @@ impl Module {
         engines: &Engines,
         path: &[Ident],
     ) -> Result<Arc<RwLock<Module>>, ErrorEmitted> {
+        eprintln!("lookup_submodule: {:?}", path);
         match self.submodule(engines, path) {
             None => Err(handler.emit_err(module_not_found(path))),
             Some(module) => Ok(module),
@@ -323,7 +330,7 @@ impl Module {
 
 impl From<Root> for Module {
     fn from(root: Root) -> Self {
-        root.module
+        root.module.read().unwrap().clone()
     }
 }
 

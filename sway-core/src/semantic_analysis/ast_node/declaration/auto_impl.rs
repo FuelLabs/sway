@@ -403,7 +403,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if matches!(self.ctx.namespace.root().module.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
+        if matches!(self.ctx.namespace.root().module.read().unwrap().read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
         {
             return Some((None, None));
         }
@@ -439,7 +439,7 @@ where
         engines: &Engines,
         decl: &TyDecl,
     ) -> Option<(Option<TyAstNode>, Option<TyAstNode>)> {
-        if matches!(self.ctx.namespace.root().module.read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
+        if matches!(self.ctx.namespace.root().module.read().unwrap().read(engines, |m| m.name.clone()).as_ref(), Some(x) if x.as_str() == "core")
         {
             return Some((None, None));
         }
