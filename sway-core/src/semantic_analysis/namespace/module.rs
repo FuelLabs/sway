@@ -218,7 +218,7 @@ impl Module {
 
     /// Lookup the submodule at the given path.
     pub fn submodule(&self, _engines: &Engines, path: &ModulePath) -> Option<Arc<RwLock<Module>>> {
-        let mut module = None;
+        let mut module = Some(Arc::new(RwLock::new(self.clone())));
         for ident in path.iter() {
             module = match self.submodules.get(ident.as_str()) {
                 Some(ns) => Some(ns.clone()),
