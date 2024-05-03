@@ -460,7 +460,7 @@ fn warn_after_interaction(
     let state_effects = ast_node_effects.difference(&interaction_singleton);
     for eff in state_effects {
         warnings.push(CompileWarning {
-            span: Span::join(interaction_span.clone(), &effect_span),
+            span: Span::join(interaction_span.clone(), effect_span),
             warning_content: Warning::EffectAfterInteraction {
                 effect: eff.to_string(),
                 effect_in_suggestion: Effect::to_suggestion(eff),

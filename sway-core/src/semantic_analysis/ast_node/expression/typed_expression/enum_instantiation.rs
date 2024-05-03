@@ -147,7 +147,7 @@ pub(crate) fn instantiate_enum(
             //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
             //          not treated as an error in the `type_check()`'s result.
             let typed_expr = handler
-                .scope(|handler| ty::TyExpression::type_check(handler, enum_ctx, &single_expr))?;
+                .scope(|handler| ty::TyExpression::type_check(handler, enum_ctx, single_expr))?;
 
             // Create the resulting enum type based on the enum we have instantiated.
             // Note that we clone the `enum_ref` but the unification we do below will

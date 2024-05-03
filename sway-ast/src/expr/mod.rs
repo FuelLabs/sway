@@ -241,7 +241,7 @@ impl Spanned for Expr {
             Expr::FieldProjection { target, name, .. } => Span::join(target.span(), &name.span()),
             Expr::TupleFieldProjection {
                 target, field_span, ..
-            } => Span::join(target.span(), &field_span),
+            } => Span::join(target.span(), field_span),
             Expr::Ref {
                 ampersand_token,
                 expr,

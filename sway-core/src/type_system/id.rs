@@ -456,10 +456,10 @@ impl TypeId {
         inner_types
     }
 
-    pub(crate) fn extract_nested_generics<'a>(
+    pub(crate) fn extract_nested_generics(
         self,
-        engines: &'a Engines,
-    ) -> HashSet<WithEngines<'a, TypeInfo>> {
+        engines: &Engines,
+    ) -> HashSet<WithEngines<'_, TypeInfo>> {
         let nested_types = self.extract_nested_types(engines);
         HashSet::from_iter(nested_types.into_iter().filter_map(|x| match x {
             TypeInfo::UnknownGeneric { .. } => Some(WithEngines::new(x, engines)),

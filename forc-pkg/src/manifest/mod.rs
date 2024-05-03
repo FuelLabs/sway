@@ -350,7 +350,7 @@ impl PackageManifestFile {
         if !expected_types.contains(&parsed_type) {
             bail!(wrong_program_type(
                 &self.project.name,
-                &expected_types,
+                expected_types,
                 parsed_type
             ));
         } else {

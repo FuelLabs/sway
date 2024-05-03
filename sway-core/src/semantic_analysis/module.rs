@@ -430,7 +430,7 @@ impl ty::TyModule {
         nodes: &[AstNode],
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let engines = ctx.engines();
-        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
+        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
 

@@ -791,7 +791,7 @@ pub fn compile_to_asm(
         engines,
         input,
         initial_namespace,
-        Some(&build_config),
+        Some(build_config),
         package_name,
         None,
     )?;

@@ -499,7 +499,7 @@ impl BuiltPackage {
 
         let program_abi_stem = format!("{pkg_name}-abi");
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
-        self.write_json_abi(&json_abi_path, &minify)?;
+        self.write_json_abi(&json_abi_path, minify)?;
 
         debug!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
         // Additional ops required depending on the program type
@@ -616,13 +616,7 @@ impl BuildPlan {
         validate_version(manifests)?;
         let mut graph = Graph::default();
         let mut manifest_map = ManifestMap::default();
-        fetch_graph(
-            manifests,
-            offline,
-            &ipfs_node,
-            &mut graph,
-            &mut manifest_map,
-        )?;
+        fetch_graph(manifests, offline, ipfs_node, &mut graph, &mut manifest_map)?;
         // Validate the graph, since we constructed the graph from scratch the paths will not be a
         // problem but the version check is still needed
         validate_graph(&graph, manifests)?;
@@ -695,13 +689,7 @@ impl BuildPlan {
         let mut manifest_map = graph_to_manifest_map(manifests, &graph)?;
 
         // Attempt to fetch the remainder of the graph.
-        let _added = fetch_graph(
-            manifests,
-            offline,
-            &ipfs_node,
-            &mut graph,
-            &mut manifest_map,
-        )?;
+        let _added = fetch_graph(manifests, offline, ipfs_node, &mut graph, &mut manifest_map)?;
 
         // Determine the compilation order.
         let compilation_order = compilation_order(&graph)?;
@@ -1963,7 +1951,7 @@ impl PkgEntry {
     fn from_finalized_entry(finalized_entry: &FinalizedEntry, engines: &Engines) -> Result<Self> {
         let pkg_entry_kind = match &finalized_entry.test_decl_ref {
             Some(test_decl_ref) => {
-                let pkg_test_entry = PkgTestEntry::from_decl(&test_decl_ref, engines)?;
+                let pkg_test_entry = PkgTestEntry::from_decl(test_decl_ref, engines)?;
                 PkgEntryKind::Test(pkg_test_entry)
             }
             None => PkgEntryKind::Main,
@@ -2145,7 +2133,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         .as_ref()
         .map_or_else(|| current_dir, PathBuf::from);
 
-    let build_plan = BuildPlan::from_build_opts(&build_options)?;
+    let build_plan = BuildPlan::from_build_opts(build_options)?;
     let graph = build_plan.graph();
     let manifest_map = build_plan.manifest_map();
 
@@ -2156,7 +2144,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         .find(|&pkg_manifest| pkg_manifest.dir() == path);
     let build_profiles: HashMap<String, BuildProfile> = build_plan.build_profiles().collect();
     // Get the selected build profile using build options
-    let build_profile = build_profile_from_opts(&build_profiles, &build_options)?;
+    let build_profile = build_profile_from_opts(&build_profiles, build_options)?;
     // If this is a workspace we want to have all members in the output.
     let outputs = match curr_manifest {
         Some(pkg_manifest) => std::iter::once(
@@ -2206,7 +2194,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         if let Some(outfile) = &debug_outfile {
             built_package.write_debug_info(outfile.as_ref())?;
         }
-        built_package.write_output(&minify, &pkg_manifest.project.name, &output_dir)?;
+        built_package.write_output(minify, &pkg_manifest.project.name, &output_dir)?;
         built_workspace.push(Arc::new(built_package));
     }
 

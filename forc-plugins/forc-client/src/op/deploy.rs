@@ -143,7 +143,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         // If we're building >1 package, we must parse the salt as a pair of strings, ie. contract_name:0x00...
         if built_pkgs.len() > 1 {
             let map = validate_and_parse_salts(
-                &salt_input,
+                salt_input,
                 built_pkgs.iter().map(|b| &b.descriptor.manifest_file),
             )?;
 
@@ -179,7 +179,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         if pkg
             .descriptor
             .manifest_file
-            .check_program_type(&vec![TreeType::Contract])
+            .check_program_type(&[TreeType::Contract])
             .is_ok()
         {
             let salt = match (&contract_salt_map, command.default_salt) {
@@ -412,7 +412,7 @@ mod test {
             format!("2 salts provided for contract '{first_name}':\n  {salt}\n  {salt}");
 
         assert_eq!(
-            validate_and_parse_salts(&vec![salt_str.clone(), salt_str], manifests.values())
+            validate_and_parse_salts(&[salt_str.clone(), salt_str], manifests.values())
                 .unwrap_err()
                 .to_string(),
             err_message,
@@ -428,7 +428,7 @@ mod test {
             "Invalid salt provided - salt must be in the form <CONTRACT_NAME>:<SALT> when deploying a workspace";
 
         assert_eq!(
-            validate_and_parse_salts(&vec![salt_str.to_string()], manifests.values())
+            validate_and_parse_salts(&[salt_str.to_string()], manifests.values())
                 .unwrap_err()
                 .to_string(),
             err_message,
@@ -447,7 +447,7 @@ mod test {
             You declared: '0x0000000000000000000000000000000000000000000000000000000000000001'\n";
 
         assert_eq!(
-            validate_and_parse_salts(&vec![salt_str.to_string()], manifests.values())
+            validate_and_parse_salts(&[salt_str.to_string()], manifests.values())
                 .unwrap_err()
                 .to_string(),
             err_message,

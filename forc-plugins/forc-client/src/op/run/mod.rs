@@ -53,7 +53,7 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
         if built
             .descriptor
             .manifest_file
-            .check_program_type(&vec![TreeType::Script])
+            .check_program_type(&[TreeType::Script])
             .is_ok()
         {
             let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;

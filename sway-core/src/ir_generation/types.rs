@@ -50,8 +50,8 @@ pub(super) fn create_tuple_aggregate(
     fields: &[TypeId],
 ) -> Result<Type, CompileError> {
     let field_types = fields
-        .into_iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, &ty_id))
+        .iter()
+        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, ty_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Type::new_struct(context, field_types))

@@ -231,7 +231,7 @@ impl TypeParameter {
             // This is required because a trait constraint may use other type parameters.
             // Ex: `struct Struct2<A, B> where A : MyAdd<B>`
             for type_param in &new_type_params {
-                TypeParameter::type_check_trait_constraints(handler, ctx.by_ref(), &type_param)?;
+                TypeParameter::type_check_trait_constraints(handler, ctx.by_ref(), type_param)?;
             }
 
             Ok(new_type_params)

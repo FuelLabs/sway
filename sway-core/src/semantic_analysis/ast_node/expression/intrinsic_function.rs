@@ -82,7 +82,7 @@ impl ty::TyIntrinsicFunctionKind {
                 type_check_ptr_ops(handler, ctx, kind, arguments, type_arguments, span)
             }
             Intrinsic::Smo => type_check_smo(handler, ctx, kind, arguments, type_arguments, span),
-            Intrinsic::Not => type_check_not(handler, ctx, kind, &arguments, type_arguments, span),
+            Intrinsic::Not => type_check_not(handler, ctx, kind, arguments, type_arguments, span),
             Intrinsic::JmpMem => {
                 type_check_jmp_mem(handler, ctx, kind, arguments, type_arguments, span)
             }
@@ -1449,7 +1449,7 @@ fn type_check_contract_ret(
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-            ty::TyExpression::type_check(handler, ctx, &x)
+            ty::TyExpression::type_check(handler, ctx, x)
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -1500,7 +1500,7 @@ fn type_check_contract_call(
                 .by_ref()
                 .with_help_text("")
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-            ty::TyExpression::type_check(handler, ctx, &x)
+            ty::TyExpression::type_check(handler, ctx, x)
         })
         .collect::<Result<Vec<_>, _>>()?;
 

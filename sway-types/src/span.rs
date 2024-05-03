@@ -22,7 +22,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn line_col(&self) -> LineCol {
-        assert!(!(self.pos > self.input.len()), "position out of bounds");
+        assert!(self.pos <= self.input.len(), "position out of bounds");
 
         // This is performance critical, so we use bytecount instead of a naive implementation.
         let newlines_up_to_pos = bytecount::count(&self.input.as_bytes()[..self.pos], b'\n');

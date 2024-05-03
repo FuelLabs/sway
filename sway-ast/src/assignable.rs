@@ -62,7 +62,7 @@ impl Spanned for ElementAccess {
             }
             ElementAccess::TupleFieldProjection {
                 target, field_span, ..
-            } => Span::join(target.span(), &field_span),
+            } => Span::join(target.span(), field_span),
         }
     }
 }
