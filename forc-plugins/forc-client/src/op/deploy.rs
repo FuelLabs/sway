@@ -394,7 +394,7 @@ mod test {
                 salt.parse::<Salt>().unwrap(),
             );
 
-            let got = validate_and_parse_salts(salt_strs.clone(), manifests.values()).unwrap();
+            let got = validate_and_parse_salts(&salt_strs, manifests.values()).unwrap();
             assert_eq!(got.len(), index + 1);
             assert_eq!(got, expected);
         }
@@ -412,7 +412,7 @@ mod test {
             format!("2 salts provided for contract '{first_name}':\n  {salt}\n  {salt}");
 
         assert_eq!(
-            validate_and_parse_salts(vec![salt_str.clone(), salt_str], manifests.values())
+            validate_and_parse_salts(&vec![salt_str.clone(), salt_str], manifests.values())
                 .unwrap_err()
                 .to_string(),
             err_message,
@@ -428,7 +428,7 @@ mod test {
             "Invalid salt provided - salt must be in the form <CONTRACT_NAME>:<SALT> when deploying a workspace";
 
         assert_eq!(
-            validate_and_parse_salts(vec![salt_str.to_string()], manifests.values())
+            validate_and_parse_salts(&vec![salt_str.to_string()], manifests.values())
                 .unwrap_err()
                 .to_string(),
             err_message,
@@ -447,7 +447,7 @@ mod test {
             You declared: '0x0000000000000000000000000000000000000000000000000000000000000001'\n";
 
         assert_eq!(
-            validate_and_parse_salts(vec![salt_str.to_string()], manifests.values())
+            validate_and_parse_salts(&vec![salt_str.to_string()], manifests.values())
                 .unwrap_err()
                 .to_string(),
             err_message,

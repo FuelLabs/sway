@@ -2633,7 +2633,7 @@ mod tests {
     fn do_type_check(
         handler: &Handler,
         engines: &Engines,
-        expr: Expression,
+        expr: &Expression,
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -2646,7 +2646,7 @@ mod tests {
 
     fn do_type_check_for_boolx2(
         handler: &Handler,
-        expr: Expression,
+        expr: &Expression,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
         let engines = Engines::default();
         do_type_check(
@@ -2693,7 +2693,7 @@ mod tests {
         };
 
         let handler = Handler::default();
-        let _comp_res = do_type_check_for_boolx2(&handler, expr);
+        let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
 
         assert!(errors.len() == 1);
@@ -2727,7 +2727,7 @@ mod tests {
         };
 
         let handler = Handler::default();
-        let _comp_res = do_type_check_for_boolx2(&handler, expr);
+        let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
 
         assert!(errors.len() == 2);
@@ -2772,7 +2772,7 @@ mod tests {
         };
 
         let handler = Handler::default();
-        let _comp_res = do_type_check_for_boolx2(&handler, expr);
+        let _comp_res = do_type_check_for_boolx2(&handler, &expr);
         let (errors, _warnings) = handler.consume();
         assert!(errors.len() == 1);
         assert!(matches!(&errors[0],
@@ -2799,7 +2799,7 @@ mod tests {
         let comp_res = do_type_check(
             &handler,
             &engines,
-            expr,
+            &expr,
             engines.te().insert(
                 &engines,
                 TypeInfo::Array(
