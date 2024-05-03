@@ -527,7 +527,7 @@ pub(crate) fn type_check_method_application(
                 span: Span::dummy(),
             });
 
-        let args = old_arguments.into_iter().skip(1).cloned().collect();
+        let args = old_arguments.iter().skip(1).cloned().collect();
         let contract_call = call_contract_call(
             &mut ctx,
             span,

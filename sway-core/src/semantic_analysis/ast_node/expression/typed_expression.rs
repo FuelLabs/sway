@@ -242,13 +242,13 @@ impl ty::TyExpression {
             ExpressionKind::Asm(asm) => {
                 Self::type_check_asm_expression(handler, ctx.by_ref(), *asm.clone(), span)
             }
-            ExpressionKind::Struct(struct_expression) => {
-                let StructExpression {
-                    call_path_binding,
-                    fields,
-                } = *struct_expression.clone();
-                struct_instantiation(handler, ctx.by_ref(), call_path_binding, fields, span)
-            }
+            ExpressionKind::Struct(struct_expression) => struct_instantiation(
+                handler,
+                ctx.by_ref(),
+                struct_expression.call_path_binding.clone(),
+                &struct_expression.fields,
+                span,
+            ),
             ExpressionKind::Subfield(SubfieldExpression {
                 prefix,
                 field_to_access,
@@ -1273,7 +1273,7 @@ impl ty::TyExpression {
                     handler,
                     ctx.by_ref(),
                     call_path_binding,
-                    &args,
+                    args,
                     span,
                 );
             }
@@ -1502,7 +1502,7 @@ impl ty::TyExpression {
                     ctx,
                     fn_ref,
                     call_path_binding,
-                    args.as_deref(),
+                    args,
                     span,
                 )?
             }

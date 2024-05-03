@@ -117,14 +117,14 @@ fn type_check_arguments(
 
     handler.scope(|handler| {
         let typed_arguments = arguments
-            .into_iter()
+            .iter()
             .zip(parameters)
             .map(|(arg, param)| {
                 let ctx = ctx
                     .by_ref()
                     .with_help_text(UNIFY_ARGS_HELP_TEXT)
                     .with_type_annotation(param.type_argument.type_id);
-                ty::TyExpression::type_check(handler, ctx, &arg)
+                ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
             .collect();

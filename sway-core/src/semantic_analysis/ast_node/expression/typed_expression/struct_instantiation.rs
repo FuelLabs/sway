@@ -27,7 +27,7 @@ pub(crate) fn struct_instantiation(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     mut call_path_binding: TypeBinding<CallPath>,
-    fields: Vec<StructExpressionField>,
+    fields: &[StructExpressionField],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -245,7 +245,7 @@ pub(crate) fn struct_instantiation(
         handler,
         ctx.by_ref(),
         &struct_name,
-        &fields,
+        fields,
         &type_check_struct_decl.fields,
         &span,
         &struct_decl_span,
