@@ -86,7 +86,7 @@ impl DapServer {
             &member_manifests,
             false,
             false,
-            Default::default(),
+            &Default::default(),
         )
         .map_err(|err| AdapterError::BuildFailed {
             reason: format!("build plan: {:?}", err),

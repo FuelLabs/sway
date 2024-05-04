@@ -129,7 +129,7 @@ impl<'a> std::ops::Not for &'a U256 {
 
     fn not(self) -> Self::Output {
         let mut bytes = self.to_be_bytes();
-        for b in bytes.iter_mut() {
+        for b in &mut bytes {
             *b = !*b;
         }
         U256(BigUint::from_bytes_be(&bytes))

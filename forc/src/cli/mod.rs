@@ -137,12 +137,12 @@ pub async fn run_cli() -> ForcResult<()> {
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Plugins(command) => plugins::exec(command),
         Forc::Test(command) => test::exec(command),
-        Forc::Update(command) => update::exec(command).await,
+        Forc::Update(command) => update::exec(command),
         Forc::Template(command) => template::exec(command),
         Forc::ContractId(command) => contract_id::exec(command),
         Forc::PredicateRoot(command) => predicate_root::exec(command),
         Forc::Plugin(args) => {
-            let output = plugin::execute_external_subcommand(args, opt.silent)?;
+            let output = plugin::execute_external_subcommand(&args, opt.silent)?;
             let code = output
                 .status
                 .code()

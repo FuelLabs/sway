@@ -14,9 +14,7 @@ impl ty::TyCodeBlock {
             let evaluated_contents = code_block
                 .contents
                 .iter()
-                .filter_map(|node| {
-                    ty::TyAstNode::type_check(handler, ctx.by_ref(), node.clone()).ok()
-                })
+                .filter_map(|node| ty::TyAstNode::type_check(handler, ctx.by_ref(), node).ok())
                 .collect::<Vec<ty::TyAstNode>>();
 
             Ok(ty::TyCodeBlock {
