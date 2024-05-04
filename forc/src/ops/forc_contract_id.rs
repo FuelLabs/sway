@@ -2,10 +2,10 @@ use crate::cli::ContractIdCommand;
 use anyhow::{bail, Result};
 use forc_pkg::{self as pkg, build_with_options};
 use forc_tracing::println_green;
+use fuels_core::types::bech32::Bech32ContractId;
 use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::{fuel_prelude::fuel_tx, BuildTarget};
 use tracing::info;
-use fuels_core::types::bech32::Bech32ContractId;
 
 pub fn contract_id(command: ContractIdCommand) -> Result<()> {
     let build_options = build_opts_from_cmd(&command);
@@ -42,12 +42,10 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
             pkg::contract_id(built_contract.bytecode.bytes.clone(), storage_slots, &salt);
         println_green(&format!(" {name}"));
         //check if --bech32 flag is present in command
-        if command.bech32
-        {
+        if command.bech32 {
             let contract_id_bech32 = Bech32ContractId::from(contract_id);
             info!("      Contract id: {contract_id_bech32}");
-        }
-        else {
+        } else {
             info!("      Contract id: 0x{contract_id}");
         }
     }
