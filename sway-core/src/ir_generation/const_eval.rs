@@ -424,7 +424,7 @@ fn const_eval_typed_expr(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                field_typs,
+                &field_typs,
             )
             .map_or(None, |tuple_ty| {
                 Some(Constant::new_struct(

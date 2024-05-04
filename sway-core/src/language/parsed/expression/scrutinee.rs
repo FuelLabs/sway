@@ -73,7 +73,11 @@ impl Spanned for Scrutinee {
             Scrutinee::StructScrutinee { span, .. } => span.clone(),
             Scrutinee::EnumScrutinee { span, .. } => span.clone(),
             Scrutinee::Tuple { span, .. } => span.clone(),
-            Scrutinee::Error { spans, .. } => spans.iter().cloned().reduce(Span::join).unwrap(),
+            Scrutinee::Error { spans, .. } => spans
+                .iter()
+                .cloned()
+                .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
+                .unwrap(),
         }
     }
 }

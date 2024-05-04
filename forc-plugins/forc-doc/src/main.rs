@@ -215,7 +215,7 @@ pub fn compile_html(
         &member_manifests,
         build_instructions.locked,
         build_instructions.offline,
-        ipfs_node,
+        &ipfs_node,
     )?;
 
     let engines = Engines::default();

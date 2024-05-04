@@ -147,8 +147,8 @@ fn convert_resolved_type(
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::get_unit(context)
             } else {
-                let new_fields = fields.iter().map(|x| x.type_id).collect();
-                create_tuple_aggregate(type_engine, decl_engine, context, new_fields)?
+                let new_fields: Vec<_> = fields.iter().map(|x| x.type_id).collect();
+                create_tuple_aggregate(type_engine, decl_engine, context, &new_fields)?
             }
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),
