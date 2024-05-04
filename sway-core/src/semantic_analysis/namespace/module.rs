@@ -1,3 +1,5 @@
+use std::cell::{Ref, RefMut};
+
 use crate::{
     engine_threading::Engines,
     language::{parsed::*, ty, Visibility},
@@ -200,7 +202,7 @@ impl Module {
         compiled_constants.insert(name, typed_decl);
 
         let mut ret = Self::default();
-        ret.current_lexical_scope_mut().items.symbols = compiled_constants;
+        ret.current_lexical_scope_mut().items.borrow_mut().symbols = compiled_constants;
         Ok(ret)
     }
 
@@ -283,13 +285,13 @@ impl Module {
     }
 
     /// The collection of items declared by this module's current lexical scope.
-    pub fn current_items(&self) -> &Items {
-        &self.current_lexical_scope().items
+    pub fn current_items<'s>(&'s self) -> Ref<'s, Items> {
+        self.current_lexical_scope().items.borrow()
     }
 
     /// The mutable collection of items declared by this module's curent lexical scope.
-    pub fn current_items_mut(&mut self) -> &mut Items {
-        &mut self.current_lexical_scope_mut().items
+    pub fn current_items_mut<'s>(&'s mut self) -> RefMut<'s, Items> {
+        self.current_lexical_scope_mut().items.borrow_mut()
     }
 
     pub fn current_lexical_scope_id(&self) -> LexicalScopeId {

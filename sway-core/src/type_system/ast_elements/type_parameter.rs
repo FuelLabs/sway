@@ -443,15 +443,13 @@ impl TypeParameter {
         if *is_from_parent {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
-            let sy = ctx
-                .namespace()
-                .module(ctx.engines())
-                .current_items()
-                .symbols
-                .get(name_ident)
-                .unwrap();
-
-            match sy {
+            match ctx
+            .namespace()
+            .module(ctx.engines())
+            .current_items()
+            .symbols
+            .get(name_ident)
+            .unwrap() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                     type_id: parent_type_id,
                     ..

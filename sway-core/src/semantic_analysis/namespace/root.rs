@@ -124,9 +124,10 @@ impl Root {
 
         let decl_engine = engines.de();
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         let mut impls_to_insert = TraitMap::default();
-        match src_mod.current_items().symbols.get(item).cloned() {
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let decl = src_mod.current_items().symbols.get(item).cloned();
+        match decl {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
@@ -218,7 +219,8 @@ impl Root {
         let decl_engine = engines.de();
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
-        match src_mod.current_items().symbols.get(enum_name).cloned() {
+        let decl = src_mod.current_items().symbols.get(enum_name).cloned(); 
+        match decl {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
@@ -324,7 +326,8 @@ impl Root {
         let decl_engine = engines.de();
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
-        match src_mod.current_items().symbols.get(enum_name).cloned() {
+        let decl = src_mod.current_items().symbols.get(enum_name).cloned();
+        match decl {
             Some(decl) => {
                 if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
