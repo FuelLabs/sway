@@ -151,6 +151,18 @@ fn did_open() {
 }
 
 #[test]
+fn did_open_fluid_libraries() {
+    run_async!({
+        let now = std::time::Instant::now();
+        let server = ServerState::default();
+        let _ = open(&server, PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/user_projects/fluid-protocol/libraries").join("src/interface.sw")).await;
+        eprintln!("Elapsed time: {:?}", now.elapsed());
+        let _ = server.shutdown_server();
+    });
+}
+
+
+#[test]
 fn did_change() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
