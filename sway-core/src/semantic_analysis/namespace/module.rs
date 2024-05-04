@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefMut};
+use std::sync::{RwLockReadGuard, RwLockWriteGuard};
 
 use crate::{
     engine_threading::Engines,
@@ -202,7 +202,11 @@ impl Module {
         compiled_constants.insert(name, typed_decl);
 
         let mut ret = Self::default();
-        ret.current_lexical_scope_mut().items.borrow_mut().symbols = compiled_constants;
+        ret.current_lexical_scope_mut()
+            .items
+            .write()
+            .unwrap()
+            .symbols = compiled_constants;
         Ok(ret)
     }
 
@@ -285,13 +289,13 @@ impl Module {
     }
 
     /// The collection of items declared by this module's current lexical scope.
-    pub fn current_items<'s>(&'s self) -> Ref<'s, Items> {
-        self.current_lexical_scope().items.borrow()
+    pub fn current_items<'s>(&'s self) -> RwLockReadGuard<'s, Items> {
+        self.current_lexical_scope().items.read().unwrap()
     }
 
     /// The mutable collection of items declared by this module's curent lexical scope.
-    pub fn current_items_mut<'s>(&'s mut self) -> RefMut<'s, Items> {
-        self.current_lexical_scope_mut().items.borrow_mut()
+    pub fn current_items_mut<'s>(&'s mut self) -> RwLockWriteGuard<'s, Items> {
+        self.current_lexical_scope_mut().items.write().unwrap()
     }
 
     pub fn current_lexical_scope_id(&self) -> LexicalScopeId {

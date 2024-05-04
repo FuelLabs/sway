@@ -129,8 +129,10 @@ impl Parse for ty::TySideEffect {
                             if let Some(decl_ident) = ctx
                                 .namespace
                                 .submodule(ctx.engines, call_path)
-                                .and_then(|module| module.current_items().symbols().get(item))
-                                .and_then(GetDeclIdent::get_decl_ident)
+                                .and_then(|module| {
+                                    module.current_items().symbols().get(item).cloned()
+                                })
+                                .and_then(|d| d.get_decl_ident())
                             {
                                 // Update the symbol kind to match the declarations symbol kind
                                 if let Some(decl) =
@@ -445,8 +447,14 @@ impl Parse for ty::TyExpression {
                     if let Some(abi_def_ident) = ctx
                         .namespace
                         .submodule(ctx.engines, &abi_name.prefixes)
-                        .and_then(|module| module.current_items().symbols().get(&abi_name.suffix))
-                        .and_then(GetDeclIdent::get_decl_ident)
+                        .and_then(|module| {
+                            module
+                                .current_items()
+                                .symbols()
+                                .get(&abi_name.suffix)
+                                .cloned()
+                        })
+                        .and_then(|d| d.get_decl_ident())
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -1163,8 +1171,9 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
                                 .current_items()
                                 .symbols()
                                 .get(&abi_call_path.call_path.suffix)
+                                .cloned()
                         })
-                        .and_then(GetDeclIdent::get_decl_ident)
+                        .and_then(|d| d.get_decl_ident())
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -1341,8 +1350,14 @@ fn collect_trait_constraint(
         if let Some(trait_def_ident) = ctx
             .namespace
             .submodule(ctx.engines, &trait_name.prefixes)
-            .and_then(|module| module.current_items().symbols().get(&trait_name.suffix))
-            .and_then(GetDeclIdent::get_decl_ident)
+            .and_then(|module| {
+                module
+                    .current_items()
+                    .symbols()
+                    .get(&trait_name.suffix)
+                    .cloned()
+            })
+            .and_then(|d| d.get_decl_ident())
         {
             token.type_def = Some(TypeDefinition::Ident(trait_def_ident));
         }

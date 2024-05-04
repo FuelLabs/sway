@@ -187,7 +187,7 @@ impl Session {
             let program = compiled_program.typed.clone()?;
             let engines = self.engines.read();
             return Some(capabilities::completion::to_completion_items(
-                program.root.namespace.module(&engines).current_items(),
+                &program.root.namespace.module(&engines).current_items(),
                 &engines,
                 ident_to_complete,
                 &fn_decl,

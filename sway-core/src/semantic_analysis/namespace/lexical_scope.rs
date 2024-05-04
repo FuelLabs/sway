@@ -19,7 +19,7 @@ use sway_error::{
 };
 use sway_types::{span::Span, Spanned};
 
-use std::{cell::RefCell, sync::Arc};
+use std::sync::{Arc, RwLock};
 
 pub enum ResolvedFunctionDecl {
     Parsed(ParsedDeclId<FunctionDeclaration>),
@@ -54,7 +54,7 @@ pub type LexicalScopePath = Vec<LexicalScopeId>;
 #[derive(Clone, Debug, Default)]
 pub struct LexicalScope {
     /// The set of symbols, implementations, synonyms and aliases present within this scope.
-    pub items: Arc<RefCell<Items>>,
+    pub items: Arc<RwLock<Items>>,
     /// The set of available scopes defined inside this scope's hierarchy.
     pub children: Vec<LexicalScopeId>,
     /// The parent scope associated with this scope. Will be None for a root scope.

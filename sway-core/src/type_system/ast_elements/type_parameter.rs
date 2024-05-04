@@ -444,12 +444,13 @@ impl TypeParameter {
             ctx = ctx.with_generic_shadowing_mode(GenericShadowingMode::Allow);
 
             match ctx
-            .namespace()
-            .module(ctx.engines())
-            .current_items()
-            .symbols
-            .get(name_ident)
-            .unwrap() {
+                .namespace()
+                .module(ctx.engines())
+                .current_items()
+                .symbols
+                .get(name_ident)
+                .unwrap()
+            {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                     type_id: parent_type_id,
                     ..
