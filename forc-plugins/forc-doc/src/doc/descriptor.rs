@@ -2,7 +2,10 @@
 use crate::{
     doc::{module::ModuleInfo, Document},
     render::{
-        item::{components::*, context::*},
+        item::{
+            components::*,
+            context::{Context, ContextType, ItemContext},
+        },
         util::format::{code_block::trim_fn_body, docstring::DocStrings},
     },
 };
@@ -129,7 +132,7 @@ impl Descriptor {
                                 trait_decl
                                     .interface_surface
                                     .into_iter()
-                                    .flat_map(|item| match item {
+                                    .filter_map(|item| match item {
                                         TyTraitInterfaceItem::TraitFn(fn_decl) => Some(fn_decl),
                                         _ => None,
                                     })
