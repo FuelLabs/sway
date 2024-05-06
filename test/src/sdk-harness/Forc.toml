@@ -6,8 +6,8 @@ members = [
   "test_projects/block",
   "test_projects/call_frames",
   # TODO Uncomment these when SDK supports encoding V1 for configurables
-  # "test_projects/configurables_in_contract",
-  # "test_projects/configurables_in_script",
+  "test_projects/configurables_in_contract",
+  "test_projects/configurables_in_script",
   "test_projects/context",
   "test_projects/contract_bytecode",
   "test_projects/ec_recover",

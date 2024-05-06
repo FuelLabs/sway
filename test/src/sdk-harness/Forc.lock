@@ -79,6 +79,16 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "configurables_in_contract"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "configurables_in_script"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "context"
 source = "member"
 dependencies = [
