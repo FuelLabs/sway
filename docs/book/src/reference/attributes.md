@@ -11,55 +11,50 @@ The `#[allow(...)]` attribute overrides checks so that violations will go unrepo
 
 ## Doc
 
-The `#[doc(..)]` attribute specifies documentation.
-
-Line doc comments beginning with exactly three slashes `///`, are interpreted as a special syntax for doc attributes. That is, they are equivalent to writing `#[doc("...")]` around the body of the comment, i.e., `/// Foo` turns into `#[doc("Foo")]`
-
-Line comments beginning with `//!` are doc comments that apply to the module of the source file they are in. That is, they are equivalent to writing `#![doc("...")]` around the body of the comment. `//!` module level doc comments should be at the top of Sway files.
-
-Documentation can be generated from doc attributes using `forc doc`.
+- `#[doc(..)]` or /// are used for documentation comments
+- `///` Foo is equivalent to `#[doc("Foo")]`
+- `//!` is used for module-level documentation comments
+- `//!` module-level doc comments should be at the top of Sway files
+- Documentation can be generated using `forc doc`
 
 ## Inline
 
-The inline attribute suggests that a copy of the attributed function should be placed in the caller, rather than generating code to call the function where it is defined.
-
-> **Note**: The Sway compiler automatically inlines functions based on internal heuristics. Incorrectly inlining functions can make the program slower, so this attribute should be used with care.
-
-The `#[inline(never)]` attribute *suggests* that an inline expansion should never be performed.
-
-The `#[inline(always)]` attribute *suggests* that an inline expansion should always be performed.
-
-> **Note**: `#[inline(..)]` in every form is a hint, with no *requirements*
- on the language to place a copy of the attributed function in the caller.
+-  The inline attribute suggests that a copy of the attributed function should be placed in the caller, rather than generating code to call the function where it is defined.
+- The Sway compiler automatically inlines functions based on internal heuristics.
+- Incorrectly inlining functions can make the program slower, so this attribute should be used with care.
+- `#[inline(never)]` attribute suggests that an inline expansion should never be performed.
+- `#[inline(always)]` attribute suggests that an inline expansion should always be performed.
+- `#[inline(..)]` in every form is a hint, with no requirements on the language to place a copy of the attributed function in the caller.
 
 ## Payable
 
-The lack of `#[payable]` implies the method is non-payable. When calling an ABI method that is non-payable, the compiler emits an error if the amount of coins forwarded with the call is not guaranteed to be zero. Note that this is strictly a compile-time check and does not incur any runtime cost.
+- Lack of `#[payable]` implies the method is non-payable
+- Compiler emits an error if a non-payable method is called with a non-zero amount
+- This is a compile-time check and does not incur any runtime cost
 
 ## Storage
 
-In Sway, functions are pure by default but can be opted into impurity via the `storage` function attribute. The `storage` attribute may take `read` and/or `write` arguments indicating which type of access the function requires.
-
-The `#[storage(read)]` attribute indicates that a function requires read access to the storage.
-
-The `#[storage(write)]` attribute indicates that a function requires write access to the storage.
-
-More details in [Purity](../blockchain-development/purity.md).
+- Functions are pure by default
+- `#[storage(read)]` indicates the function requires read access to storage
+- `#[storage(write)]` indicates the function requires write access to storage
+- Impurity can be opted into using the `storage` function attribute
+- `storage` attribute may take `read `and/or `write` arguments
 
 ## Test
 
-The `#[test]` attribute marks a function to be executed as a test.
-
-The `#[test(should_revert)]` attribute marks a function to be executed as a test that should revert.
+- `#[test]` marks a function as a test case
+- `#[test(should_revert)]` marks a test case that should revert
 
 More details in [Unit Testing](../testing/unit-testing.md).
 
 ## Deprecated
 
-The `#[deprecated]` attribute marks an item as deprecated and makes the compiler emit a warning for every usage of the deprecated item. This warning can be disabled using `#[allow(deprecated)]`.
-
-It is possible to improve the warning message with `#[deprecated(note = "your message")]`
+ - `#[deprecated]` marks an item as deprecated
+Compiler emits a warning for every usage of the deprecated item
+- Warning can be disabled using `#[allow(deprecated)]`
+- Custom deprecation message can be provided with `#[deprecated(note = "...")]`
 
 ## Fallback
 
-The `#[fallback]` attribute makes the compiler use the marked function as the contract call fallback function, which means that, when a contract is called, and the contract selection fails, the fallback function will be called instead.
+- `#[fallback]` marks a function as the contract's fallback function
+- The fallback function is called when a contract is called, and the contract selection fails
