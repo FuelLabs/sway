@@ -80,7 +80,7 @@ impl TyScrutinee {
                 struct_name,
                 fields,
                 span,
-            } => type_check_struct(handler, ctx, struct_name.suffix, fields, span),
+            } => type_check_struct(handler, ctx, struct_name.suffix, &fields, span),
             Scrutinee::EnumScrutinee {
                 call_path,
                 value,
@@ -212,7 +212,7 @@ fn type_check_struct(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     struct_name: Ident,
-    fields: Vec<StructScrutineeField>,
+    fields: &[StructScrutineeField],
     span: Span,
 ) -> Result<ty::TyScrutinee, ErrorEmitted> {
     let engines = ctx.engines;

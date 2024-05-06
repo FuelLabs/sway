@@ -174,7 +174,7 @@ fn test_u32_try_from_u256() {
 }
 
 #[test]
-fn test_u32_try_from_U128() {
+fn test_u32_try_from_u128() {
     use ::assert::assert;
 
     let u128_1: U128 = U128::new();

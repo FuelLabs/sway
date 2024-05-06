@@ -339,13 +339,13 @@ impl PackageManifestFile {
 
         parse_res.map_err(|_| {
             let (errors, _warnings) = handler.consume();
-            parsing_failed(&self.project.name, errors)
+            parsing_failed(&self.project.name, &errors)
         })
     }
 
     /// Given the current directory and expected program type,
     /// determines whether the correct program type is present.
-    pub fn check_program_type(&self, expected_types: Vec<TreeType>) -> Result<()> {
+    pub fn check_program_type(&self, expected_types: &[TreeType]) -> Result<()> {
         let parsed_type = self.program_type()?;
         if !expected_types.contains(&parsed_type) {
             bail!(wrong_program_type(
@@ -934,7 +934,7 @@ impl WorkspaceManifest {
     /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
     pub fn validate(&self, path: &Path) -> Result<()> {
         let mut pkg_name_to_paths: HashMap<String, Vec<PathBuf>> = HashMap::new();
-        for member in self.workspace.members.iter() {
+        for member in &self.workspace.members {
             let member_path = path.join(member).join("Forc.toml");
             if !member_path.exists() {
                 bail!(
