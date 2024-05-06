@@ -284,19 +284,3 @@ const DOC_DIR_NAME: &str = "doc";
 fn get_doc_dir(_build_instructions: &Command) -> String {
     DOC_DIR_NAME.into()
 }
-
-#[test]
-fn test_lib_std() {
-    let path = Path::new("./../../sway-lib-std");
-    let mut build_instructions = Command::default();
-    build_instructions.manifest_path = Some(path.to_str().unwrap().to_string());
-    println!("Building docs for {:?}", build_instructions.manifest_path);
-    let res = compile_html(
-        &build_instructions,
-        &get_doc_dir,
-        sway_core::ExperimentalFlags {
-            new_encoding: !build_instructions.no_encoding_v1,
-        },
-    );
-    println!("{:?}", res);
-}

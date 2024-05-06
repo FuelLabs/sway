@@ -1,8 +1,7 @@
 use crate::doc::{Document, Documentation};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, fs, path::Path};
 
 const JS_SEARCH_FILE_NAME: &str = "search.js";
 

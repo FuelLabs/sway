@@ -35,13 +35,11 @@ impl Documentation {
         document_private_items: bool,
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
-        let namespace = &typed_program.root.namespace;
-        let decl_engine = engines.de();
         let mut docs = Documentation::default();
         let mut impl_traits: Vec<(TyImplTrait, ModuleInfo)> = Vec::new();
         let module_info = ModuleInfo::from_ty_module(vec![project_name.to_owned()], None);
         Documentation::from_ty_module(
-            decl_engine,
+            engines.de(),
             &module_info,
             &typed_program.root,
             &mut docs,
@@ -56,7 +54,7 @@ impl Documentation {
             let module_prefix =
                 ModuleInfo::from_ty_module(vec![project_name.to_owned()], attributes);
             Documentation::from_ty_submodule(
-                decl_engine,
+                engines.de(),
                 typed_submodule,
                 &mut docs,
                 &mut impl_traits,
@@ -93,8 +91,9 @@ impl Documentation {
                             {
                                 Some(decl_module_info.module_prefixes.clone())
                             } else {
-                                impl_trait.trait_name =
-                                    impl_trait.trait_name.to_fullpath(engines, namespace);
+                                impl_trait.trait_name = impl_trait
+                                    .trait_name
+                                    .to_fullpath(engines, &typed_program.root.namespace);
                                 None
                             };
 
