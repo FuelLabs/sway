@@ -24,6 +24,8 @@ pub struct BuildProfile {
     #[serde(default)]
     pub print_intermediate_asm: bool,
     #[serde(default)]
+    pub print_bytecode: bool,
+    #[serde(default)]
     pub terse: bool,
     #[serde(default)]
     pub time_phases: bool,
@@ -57,6 +59,7 @@ impl BuildProfile {
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
+            print_bytecode: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
@@ -80,6 +83,7 @@ impl BuildProfile {
             print_ir: false,
             print_finalized_asm: false,
             print_intermediate_asm: false,
+            print_bytecode: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
@@ -133,6 +137,7 @@ mod tests {
             print_ir: true,
             print_finalized_asm: true,
             print_intermediate_asm: true,
+            print_bytecode: true,
             terse: true,
             time_phases: true,
             metrics_outfile: Some("metrics_outfile".into()),
