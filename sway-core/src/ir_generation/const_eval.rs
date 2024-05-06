@@ -1,7 +1,4 @@
-use std::{
-    intrinsics::unreachable,
-    ops::{BitAnd, BitOr, BitXor, Not, Rem},
-};
+use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
     engine_threading::*,
@@ -911,7 +908,7 @@ fn as_encode_buffer(buffer: &Constant) -> Option<(&Vec<u8>, u64)> {
             };
             Some((slice, len))
         }
-        _ => return None,
+        _ => None,
     }
 }
 
@@ -1377,7 +1374,7 @@ fn const_eval_intrinsic(
                     Ok(Some(to_encode_buffer(lookup, bytes, len)))
                 }
                 _ => {
-                    return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: intrinsic.span.clone(),
                     })
                 }

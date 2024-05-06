@@ -1857,7 +1857,7 @@ impl<'eng> FnCompiler<'eng> {
                             Some(new_len_ident),
                         )
                     }
-                    _ => return Err(CompileError::EncodingUnsupportedType),
+                    _ => return Err(CompileError::EncodingUnsupportedType { span }),
                 };
 
                 let buffer = self.compile_to_encode_buffer(context, ptr, cap, new_len)?;
