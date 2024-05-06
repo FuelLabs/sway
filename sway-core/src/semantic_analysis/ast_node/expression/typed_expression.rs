@@ -1626,11 +1626,10 @@ impl ty::TyExpression {
             ctx.self_type(),
         )?;
         let abi_ref = match abi {
-            ty::TyDecl::AbiDecl(ty::AbiDecl {
-                name,
-                decl_id,
-                decl_span,
-            }) => DeclRef::new(name, decl_id, decl_span),
+            ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id }) => {
+                let abi_decl = engines.de().get(&decl_id);
+                DeclRef::new(abi_decl.name().clone(), decl_id, abi_decl.span.clone())
+            }
             ty::TyDecl::VariableDecl(ref decl) => {
                 let ty::TyVariableDecl { body: expr, .. } = &**decl;
                 let ret_ty = type_engine.get(expr.return_type);
@@ -1652,7 +1651,7 @@ impl ty::TyExpression {
                             abi_name,
                             ctx.self_type(),
                         )?;
-                        unknown_decl.to_abi_ref(handler)?
+                        unknown_decl.to_abi_ref(handler, engines)?
                     }
                     AbiName::Deferred => {
                         return Ok(ty::TyExpression {
@@ -2143,7 +2142,7 @@ impl ty::TyExpression {
                                 decl => {
                                     return Err(handler.emit_err(
                                         CompileError::DeclAssignmentTargetCannotBeAssignedTo {
-                                            decl_name: decl.get_decl_ident(),
+                                            decl_name: decl.get_decl_ident(ctx.engines),
                                             decl_friendly_type_name: decl
                                                 .friendly_type_name_with_acronym(),
                                             lhs_span,

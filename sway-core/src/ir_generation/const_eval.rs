@@ -27,7 +27,7 @@ use sway_ir::{
     value::Value,
     InstOp, Instruction, Type, TypeContent,
 };
-use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Span};
+use sway_types::{ident::Ident, integer_bits::IntegerBits, span::Spanned, Named, Span};
 use sway_utils::mapped_stack::MappedStack;
 
 enum ConstEvalError {
@@ -702,7 +702,7 @@ fn const_eval_codeblock(
                     Ok(None)
                 } else {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: decl.span().clone(),
+                        span: decl.span(lookup.engines).clone(),
                     })
                 }
             }
@@ -716,12 +716,12 @@ fn const_eval_codeblock(
                     })
                     .flatten()
                 {
-                    known_consts.push(const_decl.name.clone(), constant);
-                    bindings.push(const_decl.name.clone());
+                    known_consts.push(ty_const_decl.name().clone(), constant);
+                    bindings.push(ty_const_decl.name().clone());
                     Ok(None)
                 } else {
                     Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: const_decl.decl_span.clone(),
+                        span: ty_const_decl.span.clone(),
                     })
                 }
             }
@@ -1211,7 +1211,13 @@ mod tests {
             .declarations
             .iter()
             .find_map(|x| match x {
-                ty::TyDecl::FunctionDecl(x) if x.name.as_str() == "f" => Some(x),
+                ty::TyDecl::FunctionDecl(x) => {
+                    if engines.de().get_function(&x.decl_id).name.as_str() == "f" {
+                        Some(x)
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
             })
             .expect("An function named `f` was not found.");
