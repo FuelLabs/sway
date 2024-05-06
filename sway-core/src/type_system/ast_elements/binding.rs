@@ -238,7 +238,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a fn declaration.
-        let fn_ref = unknown_decl.to_fn_ref(handler)?;
+        let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
         match self.type_arguments {
@@ -381,7 +381,7 @@ impl TypeBinding<QualifiedCallPath> {
             ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok(const_ref)
     }
@@ -404,7 +404,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok((const_ref, None, None))
     }

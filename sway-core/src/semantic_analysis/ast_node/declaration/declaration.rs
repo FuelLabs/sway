@@ -2,9 +2,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Named, Spanned};
 
 use crate::{
-    decl_engine::{
-        DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType, Template,
-    },
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
         parsed,
         ty::{self, FunctionDecl, TyDecl},
@@ -243,16 +241,13 @@ impl TyDecl {
                         )
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                name: supertrait_name,
                                 decl_id: supertrait_decl_id,
-                                subst_list: _,
-                                decl_span: supertrait_decl_span,
                             }) = supertrait_decl
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
-                                    supertrait_name,
+                                    engines.de().get(&supertrait_decl_id).name.clone(),
                                     supertrait_decl_id,
-                                    supertrait_decl_span,
+                                    engines.de().get(&supertrait_decl_id).span.clone(),
                                 ));
                             }
                         });
@@ -289,16 +284,12 @@ impl TyDecl {
                             let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
                                 m.current_items_mut().insert_symbol(
                                     handler,
+                                    engines,
                                     Ident::new_no_span(format!(
                                         "__contract_entry_{}",
                                         decl.name.clone()
                                     )),
-                                    TyDecl::FunctionDecl(FunctionDecl {
-                                        name: decl.name.clone(),
-                                        decl_id: *f.id(),
-                                        subst_list: Template::default(),
-                                        decl_span: f.span(),
-                                    }),
+                                    TyDecl::FunctionDecl(FunctionDecl { decl_id: *f.id() }),
                                     ConstShadowingMode::ItemStyle,
                                     GenericShadowingMode::Allow,
                                 )
@@ -414,16 +405,13 @@ impl TyDecl {
                         )
                         .map(|supertrait_decl| {
                             if let ty::TyDecl::TraitDecl(ty::TraitDecl {
-                                name: supertrait_name,
                                 decl_id: supertrait_decl_id,
-                                subst_list: _,
-                                decl_span: supertrait_decl_span,
                             }) = supertrait_decl
                             {
                                 supertrait.decl_ref = Some(DeclRef::new(
-                                    supertrait_name,
+                                    engines.de().get(&supertrait_decl_id).name.clone(),
                                     supertrait_decl_id,
-                                    supertrait_decl_span,
+                                    engines.de().get(&supertrait_decl_id).span.clone(),
                                 ));
                             }
                         });

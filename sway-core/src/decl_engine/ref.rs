@@ -62,10 +62,6 @@ pub struct DeclRef<I> {
     /// The index into the [DeclEngine].
     id: I,
 
-    /// The type substitution list to apply to the `id` field for type
-    /// monomorphization.
-    subst_list: SubstList,
-
     /// The [Span] of the entire declaration.
     decl_span: Span,
 }
@@ -75,7 +71,6 @@ impl<I> DeclRef<I> {
         DeclRef {
             name,
             id,
-            subst_list: SubstList::new(),
             decl_span,
         }
     }
@@ -86,10 +81,6 @@ impl<I> DeclRef<I> {
 
     pub fn id(&self) -> &I {
         &self.id
-    }
-
-    pub(crate) fn subst_list(&self) -> &SubstList {
-        &self.subst_list
     }
 
     pub fn decl_span(&self) -> &Span {
@@ -183,7 +174,6 @@ where
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
             // temporarily omitted
-            subst_list: _,
         } = self;
         let DeclRef {
             name: rn,
@@ -192,7 +182,6 @@ where
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
             // temporarily omitted
-            subst_list: _,
         } = other;
         ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
     }
@@ -211,8 +200,6 @@ where
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             decl_span: _,
-            // temporarily omitted
-            subst_list: _,
         } = self;
         name.hash(state);
         decl_engine.get(id).hash(state, engines);

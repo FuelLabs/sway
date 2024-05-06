@@ -13,6 +13,7 @@ print-dca-graph-url-format = "print_dca_graph_url_format"
 print-ir = true
 print-finalized-asm = true
 print-intermediate-asm = true
+print-bytecode = true
 terse = true
 time-phases = true
 metrics-outfile = "metrics_outfile"

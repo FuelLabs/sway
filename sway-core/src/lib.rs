@@ -937,14 +937,39 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     Ok(final_asm)
 }
 
+/// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.
+#[allow(clippy::too_many_arguments)]
+pub fn compile_to_bytecode(
+    handler: &Handler,
+    engines: &Engines,
+    input: Arc<str>,
+    initial_namespace: namespace::Root,
+    build_config: &BuildConfig,
+    source_map: &mut SourceMap,
+    package_name: &str,
+) -> Result<CompiledBytecode, ErrorEmitted> {
+    let asm_res = compile_to_asm(
+        handler,
+        engines,
+        input,
+        initial_namespace,
+        build_config,
+        package_name,
+    )?;
+    asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
+}
+
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
 pub fn asm_to_bytecode(
     handler: &Handler,
     mut asm: CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
+    build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let compiled_bytecode = asm.0.to_bytecode_mut(handler, source_map, source_engine)?;
+    let compiled_bytecode =
+        asm.0
+            .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
     Ok(compiled_bytecode)
 }
 
@@ -983,7 +1008,7 @@ fn dead_code_analysis<'a>(
     program: &ty::TyProgram,
 ) -> Result<ControlFlowGraph<'a>, ErrorEmitted> {
     let decl_engine = engines.de();
-    let mut dead_code_graph = ControlFlowGraph::default();
+    let mut dead_code_graph = ControlFlowGraph::new(engines.clone());
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(
         handler,
