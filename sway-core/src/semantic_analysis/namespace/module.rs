@@ -182,7 +182,7 @@ impl Module {
         ns.root.module.is_external = true;
         ns.root.module.visibility = Visibility::Public;
         let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
-        let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, ast_node).unwrap();
+        let typed_node = ty::TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
         // get the decl out of the typed node:
         // we know as an invariant this must be a const decl, as we hardcoded a const decl in
         // the above `format!`.  if it isn't we report an
@@ -329,7 +329,7 @@ fn module_not_found(path: &[Ident]) -> CompileError {
     CompileError::ModuleNotFound {
         span: path.iter().fold(path[0].span(), |acc, this_one| {
             if acc.source_id() == this_one.span().source_id() {
-                Span::join(acc, this_one.span())
+                Span::join(acc, &this_one.span())
             } else {
                 acc
             }

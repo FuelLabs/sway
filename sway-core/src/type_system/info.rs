@@ -1,6 +1,9 @@
 use crate::{
     decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
-    engine_threading::*,
+    engine_threading::{
+        DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
+        OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
     language::{ty, CallPath, QualifiedCallPath},
     type_system::priv_prelude::*,
     Ident,
@@ -606,7 +609,7 @@ impl DisplayWithEngines for TypeInfo {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -614,7 +617,7 @@ impl DisplayWithEngines for TypeInfo {
                 let decl = engines.de().get_struct(decl_ref);
                 print_inner_types(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -653,7 +656,12 @@ impl DisplayWithEngines for TypeInfo {
 
 impl DebugWithEngines for TypeInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
-        use TypeInfo::*;
+        use TypeInfo::{
+            Alias, Array, Boolean, Contract, ContractCaller, Custom, Enum, ErrorRecovery, Never,
+            Numeric, Placeholder, Ptr, RawUntypedPtr, RawUntypedSlice, Ref, Slice, Storage,
+            StringArray, StringSlice, Struct, TraitType, Tuple, TypeParam, Unknown, UnknownGeneric,
+            UnsignedInteger, B256,
+        };
         let s = match self {
             Unknown => "unknown".into(),
             Never => "!".into(),
@@ -676,7 +684,7 @@ impl DebugWithEngines for TypeInfo {
                 type_arguments,
                 ..
             } => {
-                let mut s = "".to_string();
+                let mut s = String::new();
                 if let Some(type_arguments) = type_arguments {
                     if !type_arguments.is_empty() {
                         s = format!(
@@ -706,7 +714,7 @@ impl DebugWithEngines for TypeInfo {
                 let decl = engines.de().get_enum(decl_ref);
                 print_inner_types_debug(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -714,7 +722,7 @@ impl DebugWithEngines for TypeInfo {
                 let decl = engines.de().get_struct(decl_ref);
                 print_inner_types_debug(
                     engines,
-                    decl.call_path.suffix.as_str().to_string(),
+                    decl.call_path.suffix.as_str(),
                     decl.type_parameters.iter().map(|x| x.type_id),
                 )
             }
@@ -722,10 +730,10 @@ impl DebugWithEngines for TypeInfo {
                 format!(
                     "contract caller {} ( {} )",
                     abi_name,
-                    address
-                        .as_ref()
-                        .map(|address| address.span.as_str().to_string())
-                        .unwrap_or_else(|| "None".into())
+                    address.as_ref().map_or_else(
+                        || "None".into(),
+                        |address| address.span.as_str().to_string()
+                    )
                 )
             }
             Array(elem_ty, count) => {
@@ -843,11 +851,14 @@ impl TypeInfo {
     ) -> Result<String, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
-        use TypeInfo::*;
+        use TypeInfo::{
+            Alias, Array, Boolean, Enum, RawUntypedPtr, RawUntypedSlice, StringArray, Struct,
+            Tuple, UnsignedInteger, B256,
+        };
         let name = match self {
             StringArray(len) => format!("str[{}]", len.val()),
             UnsignedInteger(bits) => {
-                use IntegerBits::*;
+                use IntegerBits::{Eight, Sixteen, SixtyFour, ThirtyTwo, V256};
                 match bits {
                     Eight => "u8",
                     Sixteen => "u16",
@@ -1052,7 +1063,7 @@ impl TypeInfo {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
                 let mut found_unit_variant = false;
-                for variant_type in decl.variants.iter() {
+                for variant_type in &decl.variants {
                     let type_info = type_engine.get(variant_type.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         continue;
@@ -1068,7 +1079,7 @@ impl TypeInfo {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
                 let mut all_zero_sized = true;
-                for field in decl.fields.iter() {
+                for field in &decl.fields {
                     let type_info = type_engine.get(field.type_argument.type_id);
                     if type_info.is_uninhabited(type_engine, decl_engine) {
                         return true;
@@ -1519,7 +1530,7 @@ impl TypeInfo {
 
 fn print_inner_types(
     engines: &Engines,
-    name: String,
+    name: &str,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
     let inner_types = inner_types
@@ -1529,7 +1540,7 @@ fn print_inner_types(
         "{}{}",
         name,
         if inner_types.is_empty() {
-            "".into()
+            String::new()
         } else {
             format!("<{}>", inner_types.join(", "))
         }
@@ -1538,7 +1549,7 @@ fn print_inner_types(
 
 fn print_inner_types_debug(
     engines: &Engines,
-    name: String,
+    name: &str,
     inner_types: impl Iterator<Item = TypeId>,
 ) -> String {
     let inner_types = inner_types
@@ -1548,7 +1559,7 @@ fn print_inner_types_debug(
         "{}{}",
         name,
         if inner_types.is_empty() {
-            "".into()
+            String::new()
         } else {
             format!("<{}>", inner_types.join(", "))
         }

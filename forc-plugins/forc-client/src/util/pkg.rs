@@ -4,7 +4,7 @@ use forc_pkg::{self as pkg, manifest::ManifestFile, BuildOpts, BuildPlan};
 use pkg::{build_with_options, BuiltPackage};
 use std::{collections::HashMap, path::Path, sync::Arc};
 
-pub(crate) fn built_pkgs(path: &Path, build_opts: BuildOpts) -> Result<Vec<Arc<BuiltPackage>>> {
+pub(crate) fn built_pkgs(path: &Path, build_opts: &BuildOpts) -> Result<Vec<Arc<BuiltPackage>>> {
     let manifest_file = ManifestFile::from_dir(path)?;
     let lock_path = manifest_file.lock_path()?;
     let build_plan = BuildPlan::from_lock_and_manifests(
@@ -12,7 +12,7 @@ pub(crate) fn built_pkgs(path: &Path, build_opts: BuildOpts) -> Result<Vec<Arc<B
         &manifest_file.member_manifests()?,
         build_opts.pkg.locked,
         build_opts.pkg.offline,
-        build_opts.pkg.ipfs_node.clone(),
+        &build_opts.pkg.ipfs_node,
     )?;
     let graph = build_plan.graph();
     let built = build_with_options(build_opts)?;

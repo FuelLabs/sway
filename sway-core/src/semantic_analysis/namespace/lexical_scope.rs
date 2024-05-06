@@ -102,7 +102,7 @@ impl Items {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
-        fields: Vec<Ident>,
+        fields: &[Ident],
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
@@ -155,11 +155,13 @@ impl Items {
     pub(crate) fn insert_symbol(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
+        let decl_engine = engines.de();
         let append_shadowing_error =
             |ident: &Ident,
              decl: &ty::TyDecl,
@@ -192,7 +194,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
@@ -214,7 +216,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
@@ -478,8 +480,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = field_type_id;
                     symbol_span = field_name.span().clone();
-                    full_span_for_error =
-                        Span::join(full_span_for_error, field_name.span().clone());
+                    full_span_for_error = Span::join(full_span_for_error, &field_name.span());
                 }
                 (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
@@ -502,7 +503,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = *field_type;
                     symbol_span = index_span.clone();
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (
                     TypeInfo::Array(elem_ty, _),
@@ -518,7 +519,7 @@ impl Items {
                     // we would need to bring the full span of the index all the way from
                     // the parsing stage. An effort that doesn't pay off at the moment.
                     // TODO: Include the closing square bracket into the error span.
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {

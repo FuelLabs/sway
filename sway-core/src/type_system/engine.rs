@@ -130,7 +130,7 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) {
-        self.unify_helper(
+        Self::unify_helper(
             handler,
             engines,
             received,
@@ -160,7 +160,7 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) {
-        self.unify_helper(
+        Self::unify_helper(
             handler,
             engines,
             received,
@@ -190,7 +190,7 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) {
-        self.unify_helper(
+        Self::unify_helper(
             handler,
             engines,
             received,
@@ -204,7 +204,6 @@ impl TypeEngine {
 
     #[allow(clippy::too_many_arguments)]
     fn unify_helper(
-        &self,
         handler: &Handler,
         engines: &Engines,
         received: TypeId,
@@ -324,12 +323,12 @@ impl TypeEngine {
 
         match &&*self.get(type_id) {
             TypeInfo::Enum(decl_ref) => {
-                for variant_type in decl_engine.get_enum(decl_ref).variants.iter() {
+                for variant_type in &decl_engine.get_enum(decl_ref).variants {
                     self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::Struct(decl_ref) => {
-                for field in decl_engine.get_struct(decl_ref).fields.iter() {
+                for field in &decl_engine.get_struct(decl_ref).fields {
                     self.decay_numeric(handler, engines, field.type_argument.type_id, span)?;
                 }
             }
@@ -339,7 +338,7 @@ impl TypeEngine {
                 }
             }
             TypeInfo::Array(elem_ty, _length) => {
-                self.decay_numeric(handler, engines, elem_ty.type_id, span)?
+                self.decay_numeric(handler, engines, elem_ty.type_id, span)?;
             }
             TypeInfo::Ptr(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
             TypeInfo::Slice(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,

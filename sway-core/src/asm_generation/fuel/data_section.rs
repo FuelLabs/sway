@@ -252,8 +252,8 @@ impl DataSection {
     /// static values that have a length longer than one word.
     /// This method appends pointers to the end of the data section (thus, not altering the data
     /// offsets of previous data).
-    /// `pointer_value` is in _bytes_ and refers to the offset from instruction start to the data
-    /// in question.
+    /// `pointer_value` is in _bytes_ and refers to the offset from instruction start or
+    /// relative to the current (load) instruction.
     pub(crate) fn append_pointer(&mut self, pointer_value: u64) -> DataId {
         // The 'pointer' is just a literal 64 bit address.
         self.insert_data_value(Entry::new_word(pointer_value, None, None))

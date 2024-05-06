@@ -3,8 +3,7 @@ use crate::{
         allocated_abstract_instruction_set::AllocatedAbstractInstructionSet, register_allocator,
     },
     asm_lang::{
-        allocated_ops::{AllocatedOp, AllocatedOpcode},
-        Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,
+        allocated_ops::AllocatedOp, Op, OrganizationalOp, RealizedOp, VirtualOp, VirtualRegister,
     },
 };
 
@@ -192,9 +191,8 @@ pub struct RealizedAbstractInstructionSet {
 }
 
 impl RealizedAbstractInstructionSet {
-    pub(crate) fn pad_to_even(self) -> Vec<AllocatedOp> {
-        let mut ops = self
-            .ops
+    pub(crate) fn allocated_ops(self) -> Vec<AllocatedOp> {
+        self.ops
             .into_iter()
             .map(
                 |RealizedOp {
@@ -209,16 +207,6 @@ impl RealizedAbstractInstructionSet {
                     }
                 },
             )
-            .collect::<Vec<_>>();
-
-        if ops.len() & 1 != 0 {
-            ops.push(AllocatedOp {
-                opcode: AllocatedOpcode::NOOP,
-                comment: "word-alignment of data section".into(),
-                owning_span: None,
-            });
-        }
-
-        ops
+            .collect::<Vec<_>>()
     }
 }

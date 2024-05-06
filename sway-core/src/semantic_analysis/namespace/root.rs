@@ -16,7 +16,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::Spanned;
+use sway_types::{Named, Spanned};
 use sway_utils::iter_prefixes;
 
 pub enum ResolvedDeclaration {
@@ -145,7 +145,7 @@ impl Root {
                     );
                 }
                 // if this is a trait, import its implementations
-                let decl_span = decl.span();
+                let decl_span = decl.span(engines);
                 if let TyDecl::TraitDecl(_) = &decl {
                     // TODO: we only import local impls from the source namespace
                     // this is okay for now but we'll need to device some mechanism to collect all available trait impls
@@ -226,12 +226,7 @@ impl Root {
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),
@@ -332,12 +327,7 @@ impl Root {
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl {
-                    decl_id,
-                    subst_list: _,
-                    ..
-                }) = decl
-                {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),
@@ -724,16 +714,22 @@ impl Root {
         match decl {
             ResolvedDeclaration::Parsed(_decl) => todo!(),
             ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_decl) => TypeInfo::Struct(DeclRef::new(
-                    struct_decl.name.clone(),
-                    struct_decl.decl_id,
-                    struct_decl.name.span(),
-                )),
-                ty::TyDecl::EnumDecl(enum_decl) => TypeInfo::Enum(DeclRef::new(
-                    enum_decl.name.clone(),
-                    enum_decl.decl_id,
-                    enum_decl.name.span(),
-                )),
+                ty::TyDecl::StructDecl(struct_ty_decl) => {
+                    let struct_decl = engines.de().get_struct(&struct_ty_decl.decl_id);
+                    TypeInfo::Struct(DeclRef::new(
+                        struct_decl.name().clone(),
+                        struct_ty_decl.decl_id,
+                        struct_decl.span().clone(),
+                    ))
+                }
+                ty::TyDecl::EnumDecl(enum_ty_decl) => {
+                    let enum_decl = engines.de().get_enum(&enum_ty_decl.decl_id);
+                    TypeInfo::Enum(DeclRef::new(
+                        enum_decl.name().clone(),
+                        enum_ty_decl.decl_id,
+                        enum_decl.span().clone(),
+                    ))
+                }
                 ty::TyDecl::TraitTypeDecl(type_decl) => {
                     let type_decl = engines.de().get_type(&type_decl.decl_id);
                     (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()
