@@ -962,6 +962,8 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingCore { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
+    #[error("Type not supported with __encode_buffer_append.")]
+    EncodingUnsupportedType { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {

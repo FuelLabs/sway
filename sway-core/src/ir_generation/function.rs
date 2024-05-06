@@ -1857,7 +1857,7 @@ impl<'eng> FnCompiler<'eng> {
                             Some(new_len_ident),
                         )
                     }
-                    x => todo!("{x:?}"),
+                    _ => return Err(CompileError::EncodingUnsupportedType),
                 };
 
                 let buffer = self.compile_to_encode_buffer(context, ptr, cap, new_len)?;
@@ -2914,16 +2914,12 @@ impl<'eng> FnCompiler<'eng> {
     ) -> Result<TerminatorValue, CompileError> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
-        // `is_configurable` should be `false` here.
         let ty::TyConstantDecl {
             call_path,
             value,
             is_configurable,
             ..
         } = ast_const_decl;
-
-        // TODO comment above is wrong
-        // assert!(!is_configurable);
 
         if let Some(value) = value {
             // Corner case: If compilation of the expression fails (e.g., because it is not

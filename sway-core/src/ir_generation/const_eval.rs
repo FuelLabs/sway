@@ -1,4 +1,7 @@
-use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
+use std::{
+    intrinsics::unreachable,
+    ops::{BitAnd, BitOr, BitXor, Not, Rem},
+};
 
 use crate::{
     engine_threading::*,
@@ -728,21 +731,21 @@ fn const_eval_typed_expr(
             return Err(ConstEvalError::CompileError);
         }
         ty::TyExpressionVariant::EnumTag { exp } => {
-            match const_eval_typed_expr(lookup, known_consts, exp, allow_configurables)? {
-                Some(v) => match v.value {
-                    ConstantValue::Struct(fields) => Some(fields[0].clone()),
-                    _ => todo!(),
-                },
-                None => todo!(),
+            let value = const_eval_typed_expr(lookup, known_consts, exp, allow_configurables)?
+                .map(|x| x.value);
+            if let Some(ConstantValue::Struct(fields)) = value {
+                Some(fields[0].clone())
+            } else {
+                return Err(ConstEvalError::CompileError);
             }
         }
         ty::TyExpressionVariant::UnsafeDowncast { exp, .. } => {
-            match const_eval_typed_expr(lookup, known_consts, exp, allow_configurables)? {
-                Some(v) => match v.value {
-                    ConstantValue::Struct(fields) => Some(fields[1].clone()),
-                    _ => todo!(),
-                },
-                None => todo!(),
+            let value = const_eval_typed_expr(lookup, known_consts, exp, allow_configurables)?
+                .map(|x| x.value);
+            if let Some(ConstantValue::Struct(fields)) = value {
+                Some(fields[1].clone())
+            } else {
+                return Err(ConstEvalError::CompileError);
             }
         }
         ty::TyExpressionVariant::WhileLoop {
@@ -752,6 +755,7 @@ fn const_eval_typed_expr(
                 const_eval_typed_expr(lookup, known_consts, condition, allow_configurables)?;
             match condition.map(|x| x.value) {
                 Some(ConstantValue::Bool(true)) => {
+                    // Break and continue are not implemented, so there is need for flow control here
                     let _ = const_eval_codeblock(lookup, known_consts, body, allow_configurables)?;
                 }
                 _ => break None,
@@ -899,15 +903,15 @@ fn as_encode_buffer(buffer: &Constant) -> Option<(&Vec<u8>, u64)> {
         ConstantValue::Struct(fields) => {
             let slice = match &fields[0].value {
                 ConstantValue::RawUntypedSlice(bytes) => bytes,
-                _ => todo!(),
+                _ => return None,
             };
             let len = match fields[1].value {
                 ConstantValue::Uint(v) => v,
-                _ => todo!(),
+                _ => return None,
             };
             Some((slice, len))
         }
-        _ => todo!(),
+        _ => return None,
     }
 }
 
@@ -1340,7 +1344,11 @@ fn const_eval_intrinsic(
                             bytes.extend(v.to_be_bytes());
                             len += 8;
                         }
-                        _ => todo!(),
+                        _ => {
+                            return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                                span: intrinsic.span.clone(),
+                            });
+                        }
                     };
                     Ok(Some(to_encode_buffer(lookup, bytes, len)))
                 }
@@ -1368,7 +1376,11 @@ fn const_eval_intrinsic(
 
                     Ok(Some(to_encode_buffer(lookup, bytes, len)))
                 }
-                x => todo!("{x:?}"),
+                _ => {
+                    return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    })
+                }
             }
         }
         Intrinsic::EncodeBufferAsRawSlice => {

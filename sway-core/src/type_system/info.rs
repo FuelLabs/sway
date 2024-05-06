@@ -1545,7 +1545,8 @@ impl TypeInfo {
     /// Calculate the needed buffer for "abi encoding" the self type. If "inside" this
     /// type there is a custom AbiEncode impl, we cannot calculate the buffer buffer.
     pub fn abi_encode_size_hint(&self, engines: &Engines) -> AbiEncodeSizeHint {
-        // TODO we need to check if this type has a custom AbiEncode impl or not.
+        // TODO we need to check if this type has a custom AbiEncode impl or not
+        // https://github.com/FuelLabs/sway/issues/5727
         // if has_custom_abi_encode_impl {
         //     AbiEncodeSizeHint::CustomImpl
         // }
@@ -1556,7 +1557,9 @@ impl TypeInfo {
             TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => AbiEncodeSizeHint::Exact(2),
             TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => AbiEncodeSizeHint::Exact(4),
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => AbiEncodeSizeHint::Exact(8),
-            // TODO: This is problematic
+            // TODO: We should not be receiving Numeric here. All uints
+            // should be correctly typed here.
+            // https://github.com/FuelLabs/sway/issues/5727
             TypeInfo::Numeric => AbiEncodeSizeHint::Exact(8),
             TypeInfo::UnsignedInteger(IntegerBits::V256) => AbiEncodeSizeHint::Exact(32),
             TypeInfo::B256 => AbiEncodeSizeHint::Exact(32),
