@@ -1,7 +1,6 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
-    decl_engine::DeclEngineGet,
     engine_threading::*,
     language::{
         ty::{self, TyConstantDecl, TyIntrinsicFunctionKind},
