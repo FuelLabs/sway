@@ -336,7 +336,7 @@ impl Block {
                     if old_succ == *true_block {
                         modified = true;
                         *true_block = new_succ;
-                        *true_opds = new_params.clone();
+                        true_opds.clone_from(&new_params);
                     }
                     if old_succ == *false_block {
                         modified = true;

@@ -1,7 +1,6 @@
 use std::ops::{BitAnd, BitOr, BitXor, Not, Rem};
 
 use crate::{
-    asm_generation::abi,
     decl_engine::DeclEngineGet,
     engine_threading::*,
     language::{
