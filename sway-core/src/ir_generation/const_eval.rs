@@ -1373,11 +1373,9 @@ fn const_eval_intrinsic(
 
                     Ok(Some(to_encode_buffer(lookup, bytes, len)))
                 }
-                _ => {
-                    Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: intrinsic.span.clone(),
-                    })
-                }
+                _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    span: intrinsic.span.clone(),
+                }),
             }
         }
         Intrinsic::EncodeBufferAsRawSlice => {
