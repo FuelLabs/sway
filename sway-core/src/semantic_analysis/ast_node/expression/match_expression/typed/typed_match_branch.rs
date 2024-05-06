@@ -117,7 +117,7 @@ impl ty::TyMatchBranch {
                     type_annotation,
                     None,
                 ));
-                ty::TyExpression::type_check(handler, branch_ctx, result)?
+                ty::TyExpression::type_check(handler, branch_ctx, &result)?
             };
 
             // Check if return type is Never if it is we don't unify as it would replace the Unknown annotation with Never.

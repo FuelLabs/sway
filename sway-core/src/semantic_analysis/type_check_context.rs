@@ -1481,14 +1481,14 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
-        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, vec![])
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, &[])
     }
 
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         &self,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
@@ -1615,7 +1615,7 @@ impl<'a> TypeCheckContext<'a> {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(Span::join)
+                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
                 Err(handler.emit_err(make_type_arity_mismatch_error(
                     value.name().clone(),
@@ -1628,7 +1628,7 @@ impl<'a> TypeCheckContext<'a> {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(Span::join)
+                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
                 // a trait decl is passed the self type parameter and the corresponding argument
                 // but it would be confusing for the user if the error reporting mechanism

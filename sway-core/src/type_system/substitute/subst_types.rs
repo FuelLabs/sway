@@ -1,4 +1,4 @@
-use crate::{engine_threading::*, type_system::priv_prelude::*};
+use crate::{engine_threading::Engines, type_system::priv_prelude::*};
 
 #[derive(Default)]
 pub enum HasChanges {
@@ -28,10 +28,10 @@ pub trait SubstTypes {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges;
 
     fn subst(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
-        if !type_mapping.is_empty() {
-            self.subst_inner(type_mapping, engines)
-        } else {
+        if type_mapping.is_empty() {
             HasChanges::No
+        } else {
+            self.subst_inner(type_mapping, engines)
         }
     }
 }

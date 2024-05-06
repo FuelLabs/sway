@@ -2,8 +2,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
+    decl_engine::{DeclEngineInsert, DeclId, DeclRef},
+    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
@@ -111,6 +111,12 @@ impl TypeArgs {
         }
     }
 
+    pub fn as_slice(&self) -> &[TypeArgument] {
+        match self {
+            TypeArgs::Regular(vec) | TypeArgs::Prefix(vec) => vec,
+        }
+    }
+
     pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,
@@ -121,7 +127,7 @@ impl TypeArgs {
 
 impl Spanned for TypeArgs {
     fn span(&self) -> Span {
-        Span::join_all(self.to_vec().iter().map(|t| t.span()))
+        Span::join_all(self.to_vec().iter().map(sway_types::Spanned::span))
     }
 }
 

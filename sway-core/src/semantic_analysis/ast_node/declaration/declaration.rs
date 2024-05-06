@@ -120,8 +120,7 @@ impl TyDecl {
                         "Variable declaration's type annotation does not match up \
                         with the assigned expression's type.",
                     );
-                let result =
-                    ty::TyExpression::type_check(handler, ctx.by_ref(), var_decl.body.clone());
+                let result = ty::TyExpression::type_check(handler, ctx.by_ref(), &var_decl.body);
                 let body = result.unwrap_or_else(|err| {
                     ty::TyExpression::error(err, var_decl.name.span(), engines)
                 });
@@ -456,7 +455,7 @@ impl TyDecl {
                         .with_type_annotation(type_argument.type_id)
                         .with_storage_declaration();
                     let initializer =
-                        ty::TyExpression::type_check(handler, ctx.by_ref(), initializer)?;
+                        ty::TyExpression::type_check(handler, ctx.by_ref(), &initializer)?;
 
                     fields_buf.push(ty::TyStorageField {
                         name,
