@@ -63,7 +63,6 @@ impl Documentation {
             )?;
         }
         let trait_decls = docs
-            .0
             .iter()
             .filter_map(|d| {
                 (d.item_header.friendly_name == "trait").then_some((
@@ -82,7 +81,7 @@ impl Documentation {
             match doc.item_body.ty_decl {
                 TyDecl::StructDecl(ref decl) => {
                     for (impl_trait, module_info) in impl_traits.iter_mut() {
-                        let struct_decl = decl_engine.get_struct(&decl.decl_id);
+                        let struct_decl = engines.de().get_struct(&decl.decl_id);
                         if struct_decl.name().as_str() == impl_trait.implementing_for.span.as_str()
                             && struct_decl.name().as_str()
                                 != impl_trait.trait_name.suffix.span().as_str()
