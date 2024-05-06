@@ -1174,6 +1174,7 @@ impl Spanned for CompileError {
             CouldNotGenerateEntryMissingCore { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
+            EncodingUnsupportedType { span } => span.clone(),
         }
     }
 }
