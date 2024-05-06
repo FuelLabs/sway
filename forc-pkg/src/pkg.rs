@@ -1596,12 +1596,7 @@ pub fn dependency_namespace(
     let node_idx = &graph[node];
     let name = Some(Ident::new_no_span(node_idx.name.clone()));
     let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::Module::default_with_contract_id(
-            engines,
-            name.clone(),
-            contract_id_value,
-            experimental,
-        )?
+        namespace::default_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
     } else {
         namespace::Module::default()
     };
@@ -1634,7 +1629,7 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Some(Ident::new_no_span(node_idx.name.clone()));
-                let mut module = namespace::Module::default_with_contract_id(
+                let mut module = namespace::default_with_contract_id(
                     engines,
                     name.clone(),
                     contract_id_value,
