@@ -2499,8 +2499,6 @@ fn configurable_field_to_constant_declaration(
 
     let type_ascription = ty_to_type_argument(context, handler, engines, configurable_field.ty)?;
 
-    dbg!(engines.help_out(&type_ascription));
-
     let value = expr_to_expression(context, handler, engines, configurable_field.initializer)?;
     let value = if context.experimental.new_encoding {
         let call_encode =

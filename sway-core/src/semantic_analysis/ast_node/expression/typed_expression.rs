@@ -596,7 +596,7 @@ impl ty::TyExpression {
                                 .clone()]),
                             span: name_span.clone(),
                         },
-                        vec![as_slice],
+                        &[as_slice],
                         name_span.clone(),
                     );
                     r.unwrap_or_else(|_| panic!("{:?}", handler))

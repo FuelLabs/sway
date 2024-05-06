@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclRefEnum, DeclRefStruct},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclRefEnum, DeclRefStruct},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
         OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,

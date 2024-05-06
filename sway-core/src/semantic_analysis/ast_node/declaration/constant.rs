@@ -61,7 +61,7 @@ impl ty::TyConstantDecl {
                 .with_help_text("Configurables must evaluate to slices.");
 
             let value = value.map(|value| {
-                ty::TyExpression::type_check(handler, ctx.by_ref(), value)
+                ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
             });
 

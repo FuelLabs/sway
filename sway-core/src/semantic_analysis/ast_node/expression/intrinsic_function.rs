@@ -109,8 +109,8 @@ fn type_check_encode_as_raw_slice(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
-    _type_arguments: Vec<TypeArgument>,
+    arguments: &[Expression],
+    _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -121,7 +121,7 @@ fn type_check_encode_as_raw_slice(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?
+        ty::TyExpression::type_check(handler, ctx, &arguments[0].clone())?
     };
 
     let return_type = type_engine.insert(engines, TypeInfo::RawUntypedSlice, None);
@@ -138,8 +138,8 @@ fn type_check_encode_as_raw_slice(
 fn type_check_encode_buffer_empty(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
-    _type_arguments: Vec<TypeArgument>,
+    arguments: &[Expression],
+    _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     assert!(arguments.is_empty());
@@ -170,8 +170,8 @@ fn type_check_encode_append(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
-    arguments: Vec<Expression>,
-    _type_arguments: Vec<TypeArgument>,
+    arguments: &[Expression],
+    _type_arguments: &[TypeArgument],
     span: Span,
 ) -> Result<(ty::TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -182,7 +182,7 @@ fn type_check_encode_append(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        ty::TyExpression::type_check(handler, ctx, arguments[0].clone())?
+        ty::TyExpression::type_check(handler, ctx, &arguments[0].clone())?
     };
     let return_type = buffer_expr.return_type;
 
@@ -191,7 +191,7 @@ fn type_check_encode_append(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        ty::TyExpression::type_check(handler, ctx, arguments[1].clone())?
+        ty::TyExpression::type_check(handler, ctx, &arguments[1].clone())?
     };
 
     let kind = ty::TyIntrinsicFunctionKind {
