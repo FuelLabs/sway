@@ -1,3 +1,4 @@
+mod contract_helpers;
 mod lexical_scope;
 mod module;
 #[allow(clippy::module_inception)]
@@ -6,6 +7,7 @@ mod root;
 mod submodule_namespace;
 mod trait_map;
 
+pub use contract_helpers::*;
 pub use lexical_scope::{Items, LexicalScope, LexicalScopeId, LexicalScopePath};
 pub use module::Module;
 pub use namespace::Namespace;
