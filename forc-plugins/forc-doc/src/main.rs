@@ -146,7 +146,7 @@ fn build_docs(
         raw_docs.clone(),
         RenderPlan::new(no_deps, document_private_items, engines),
         root_attributes,
-        ty_program.kind,
+        &ty_program.kind,
         forc_version,
     )?;
 
@@ -161,14 +161,12 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
     for doc in rendered_docs.0 {
         let mut doc_path = doc_path.to_path_buf();
         for prefix in doc.module_info.module_prefixes {
-            doc_path.push(prefix)
+            doc_path.push(prefix);
         }
-
         fs::create_dir_all(&doc_path)?;
         doc_path.push(doc.html_filename);
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
-
     Ok(())
 }
 
@@ -184,9 +182,7 @@ pub fn compile_html(
         std::env::current_dir()?
     };
     let manifest = ManifestFile::from_dir(dir)?;
-    let pkg_manifest = if let ManifestFile::Package(pkg_manifest) = &manifest {
-        pkg_manifest
-    } else {
+    let ManifestFile::Package(pkg_manifest) = &manifest else {
         bail!("forc-doc does not support workspaces.")
     };
 
@@ -231,48 +227,16 @@ pub fn compile_html(
         experimental,
     )?;
 
-    let raw_docs = if !build_instructions.no_deps {
-        let order = plan.compilation_order();
-        let graph = plan.graph();
-        let manifest_map = plan.manifest_map();
-        let mut raw_docs = Documentation(Vec::new());
-
-        for (node, (compile_result, _handler)) in order.iter().zip(compile_results) {
-            let id = &graph[*node].id();
-
-            if let Some(pkg_manifest_file) = manifest_map.get(id) {
-                let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
-                let ty_program = match compile_result.and_then(|programs| programs.typed.ok()) {
-                    Some(ty_program) => ty_program,
-                    _ => bail!(
-                        "documentation could not be built from manifest located at '{}'",
-                        pkg_manifest_file.path().display()
-                    ),
-                };
-                let program_info = ProgramInfo {
-                    ty_program,
-                    engines: &engines,
-                    manifest: &manifest_file,
-                    pkg_manifest: pkg_manifest_file,
-                };
-
-                raw_docs
-                    .0
-                    .extend(build_docs(program_info, &doc_path, build_instructions)?.0);
-            }
-        }
-        raw_docs
-    } else {
-        let ty_program = match compile_results
+    let raw_docs = if build_instructions.no_deps {
+        let Some(ty_program) = compile_results
             .pop()
             .and_then(|(programs, _handler)| programs)
             .and_then(|p| p.typed.ok())
-        {
-            Some(ty_program) => ty_program,
-            _ => bail!(
+        else {
+            bail! {
                 "documentation could not be built from manifest located at '{}'",
                 pkg_manifest.path().display()
-            ),
+            }
         };
         let program_info = ProgramInfo {
             ty_program,
@@ -281,8 +245,37 @@ pub fn compile_html(
             pkg_manifest,
         };
         build_docs(program_info, &doc_path, build_instructions)?
+    } else {
+        let order = plan.compilation_order();
+        let graph = plan.graph();
+        let manifest_map = plan.manifest_map();
+        let mut raw_docs = Documentation(Vec::new());
+
+        for (node, (compile_result, _handler)) in order.iter().zip(compile_results) {
+            let id = &graph[*node].id();
+            if let Some(pkg_manifest_file) = manifest_map.get(id) {
+                let manifest_file = ManifestFile::from_dir(pkg_manifest_file.path())?;
+                let Some(ty_program) = compile_result.and_then(|programs| programs.typed.ok())
+                else {
+                    bail!(
+                        "documentation could not be built from manifest located at '{}'",
+                        pkg_manifest_file.path().display()
+                    )
+                };
+                let program_info = ProgramInfo {
+                    ty_program,
+                    engines: &engines,
+                    manifest: &manifest_file,
+                    pkg_manifest: pkg_manifest_file,
+                };
+                raw_docs
+                    .0
+                    .extend(build_docs(program_info, &doc_path, build_instructions)?.0);
+            }
+        }
+        raw_docs
     };
-    write_search_index(&doc_path, raw_docs)?;
+    write_search_index(&doc_path, &raw_docs)?;
 
     Ok((doc_path, pkg_manifest.to_owned()))
 }
