@@ -266,6 +266,8 @@ pub struct PrintOpts {
     /// This is the state of the ASM prior to performing register allocation and other ASM
     /// optimisations.
     pub intermediate_asm: bool,
+    /// Print the bytecode. This is the final output of the compiler.
+    pub bytecode: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: bool,
     /// Output build errors and warnings in reverse order.
@@ -1554,6 +1556,7 @@ pub fn sway_build_config(
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .with_print_finalized_asm(build_profile.print_finalized_asm)
     .with_print_intermediate_asm(build_profile.print_intermediate_asm)
+    .with_print_bytecode(build_profile.print_bytecode)
     .with_print_ir(build_profile.print_ir)
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
@@ -1893,8 +1896,8 @@ pub fn compile(
     let bc_res = time_expr!(
         "compile asm to bytecode",
         "compile_asm_to_bytecode",
-        sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se()),
-        Some(sway_build_config),
+        sway_core::asm_to_bytecode(&handler, asm, source_map, engines.se(), &sway_build_config),
+        Some(sway_build_config.clone()),
         metrics
     );
 
@@ -2079,6 +2082,7 @@ fn build_profile_from_opts(
     }
     profile.print_ir |= print.ir;
     profile.print_finalized_asm |= print.finalized_asm;
+    profile.print_bytecode |= print.bytecode;
     profile.print_intermediate_asm |= print.intermediate_asm;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;

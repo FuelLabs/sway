@@ -297,7 +297,9 @@ pub(crate) fn type_check_method_application(
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,
                     _ => {
-                        let variable_decl = unknown_decl.expect_variable(handler).cloned()?;
+                        let variable_decl = unknown_decl
+                            .expect_variable(handler, ctx.engines())
+                            .cloned()?;
                         variable_decl.mutability.is_mutable()
                     }
                 };

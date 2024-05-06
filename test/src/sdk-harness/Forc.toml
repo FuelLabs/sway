@@ -27,9 +27,8 @@ members = [
   "test_projects/registers",
   "test_projects/result_in_abi",
   "test_projects/result_option_expect",
-  # Disabled until LDC is stabilized
-  # "test_projects/run_external_proxy",
-  # "test_projects/run_external_target",
+  "test_projects/run_external_proxy",
+  "test_projects/run_external_target",
   "test_projects/script_bytecode",
   "test_projects/script_data",
   "test_projects/storage",
