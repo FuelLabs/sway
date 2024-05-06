@@ -1503,6 +1503,11 @@ mod tests {
         assert_is_constant(true, "enum Color { Blue: u64 }", "Color::Blue(1)");
         assert_is_constant(true, "struct Person { age: u64 }", "Person { age: 1 }");
         assert_is_constant(true, "struct Person { age: u64 }", "Person { age: 1 }.age");
+        assert_is_constant(
+            true,
+            "struct Person { age: u64 }",
+            "Person { age: { let mut x = 0; x = 1; 1} }",
+        );
         assert_is_constant(true, "", "if true { 1 } else { 0 }");
         assert_is_constant(true, "", "(0,1).0");
         assert_is_constant(true, "", "[0,1][0]");
@@ -1557,11 +1562,7 @@ mod tests {
             "struct Person { age: u64 }",
             "Person { age: { return 1; 1} }",
         );
-        assert_is_constant(
-            false,
-            "struct Person { age: u64 }",
-            "Person { age: { let mut x = 0; x = 1; 1} }",
-        );
+
         // At the moment this is not constant because of the "return"
         assert_is_constant(false, "fn id(x: u64) -> u64 { return x; }", "id(1)");
         assert_is_constant(false, "", "[0,1][2]");
