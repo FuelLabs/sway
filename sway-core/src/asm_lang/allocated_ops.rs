@@ -523,6 +523,7 @@ impl AllocatedOp {
     pub(crate) fn to_fuel_asm(
         &self,
         offset_to_data_section: u64,
+        offset_from_instr_start: u64,
         data_section: &mut DataSection,
     ) -> Either<Vec<fuel_asm::Instruction>, DoubleWideData> {
         use AllocatedOpcode::*;
@@ -677,7 +678,13 @@ impl AllocatedOp {
                 return Either::Right(offset_to_data_section.to_be_bytes())
             }
             LoadDataId(a, b) => {
-                return Either::Left(realize_load(a, b, data_section, offset_to_data_section))
+                return Either::Left(realize_load(
+                    a,
+                    b,
+                    data_section,
+                    offset_to_data_section,
+                    offset_from_instr_start,
+                ))
             }
             Undefined => unreachable!("Sway cannot generate undefined ASM opcodes"),
         }])
@@ -693,6 +700,7 @@ fn realize_load(
     data_id: &DataId,
     data_section: &mut DataSection,
     offset_to_data_section: u64,
+    offset_from_instr_start: u64,
 ) -> Vec<fuel_asm::Instruction> {
     // if this data is larger than a word, instead of loading the data directly
     // into the register, we want to load a pointer to the data into the register
@@ -723,13 +731,14 @@ fn realize_load(
     };
 
     if !has_copy_type {
-        // load the pointer itself into the register
-        // `offset_to_data_section` is in bytes. We want a byte
-        // address here
-        let pointer_offset_from_instruction_start = offset_to_data_section + offset_bytes;
+        // load the pointer itself into the register. `offset_to_data_section` is in bytes.
+        // The -4 is because $pc is added in the *next* instruction.
+        let pointer_offset_from_current_instr =
+            offset_to_data_section - offset_from_instr_start + offset_bytes - 4;
+
         // insert the pointer as bytes as a new data section entry at the end of the data
-        let data_id_for_pointer =
-            data_section.append_pointer(pointer_offset_from_instruction_start);
+        let data_id_for_pointer = data_section.append_pointer(pointer_offset_from_current_instr);
+
         // now load the pointer we just created into the `dest`ination
         let mut buf = Vec::with_capacity(2);
         buf.append(&mut realize_load(
@@ -737,13 +746,14 @@ fn realize_load(
             &data_id_for_pointer,
             data_section,
             offset_to_data_section,
+            offset_from_instr_start,
         ));
-        // add $is to the pointer since it is relative to the data section
+        // add $pc to the pointer since it is relative to the current instruction.
         buf.push(
             fuel_asm::op::ADD::new(
                 dest.to_reg_id(),
                 dest.to_reg_id(),
-                ConstantRegister::InstructionStart.to_reg_id(),
+                ConstantRegister::ProgramCounter.to_reg_id(),
             )
             .into(),
         );
