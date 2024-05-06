@@ -1008,7 +1008,7 @@ fn dead_code_analysis<'a>(
     program: &ty::TyProgram,
 ) -> Result<ControlFlowGraph<'a>, ErrorEmitted> {
     let decl_engine = engines.de();
-    let mut dead_code_graph = ControlFlowGraph::default();
+    let mut dead_code_graph = ControlFlowGraph::new(engines.clone());
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(
         handler,

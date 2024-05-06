@@ -320,7 +320,8 @@ impl ty::TyModule {
         if ctx.experimental.new_encoding {
             let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
-                    (decl.name.as_str() == "main").then(|| engines.de().get(&decl.decl_id))
+                    let fn_decl = engines.de().get_function(&decl.decl_id);
+                    (fn_decl.name.as_str() == "main").then_some(fn_decl)
                 }
                 _ => None,
             });

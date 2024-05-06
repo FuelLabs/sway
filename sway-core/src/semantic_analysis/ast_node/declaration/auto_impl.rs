@@ -1,6 +1,7 @@
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
     decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
@@ -344,7 +345,7 @@ where
         } else {
             *self.ctx.namespace = namespace;
             Ok(TyAstNode {
-                span: decl.span(),
+                span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
         }
@@ -391,7 +392,7 @@ where
         } else {
             *self.ctx.namespace = namespace;
             Ok(TyAstNode {
-                span: decl.span(),
+                span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
         }
@@ -408,7 +409,7 @@ where
             return Some((None, None));
         }
 
-        let implementing_for_decl_ref = decl.get_struct_decl_ref().unwrap();
+        let implementing_for_decl_ref = decl.to_struct_ref(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
 
         let module_id = struct_decl.span().source_id().map(|sid| sid.module_id());
@@ -444,7 +445,7 @@ where
             return Some((None, None));
         }
 
-        let enum_decl_ref = decl.get_enum_decl_ref().unwrap();
+        let enum_decl_ref = decl.to_enum_ref(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(enum_decl_ref.id());
 
         let module_id = enum_decl.span().source_id().map(|sid| sid.module_id());

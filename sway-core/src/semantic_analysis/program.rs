@@ -104,11 +104,7 @@ impl TyProgram {
 
                 // Expecting at most a single storage declaration
                 match storage_decl {
-                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })) => {
+                    Some(ty::TyDecl::StorageDecl(ty::StorageDecl { decl_id, .. })) => {
                         let decl = decl_engine.get_storage(decl_id);
                         let mut storage_slots = decl.get_initialized_storage_slots(
                             handler, engines, context, md_mgr, module,

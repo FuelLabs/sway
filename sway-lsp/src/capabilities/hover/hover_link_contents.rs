@@ -4,6 +4,7 @@ use crate::{
 };
 use std::sync::Arc;
 use sway_core::{
+    engine_threading::SpannedWithEngines,
     language::{
         ty::{TyDecl, TyTraitDecl},
         CallPath,
@@ -107,7 +108,7 @@ impl<'a> HoverLinkContents<'a> {
                 .module(self.engines)
                 .current_items()
                 .get_impl_spans_for_decl(self.engines, ty_decl);
-            self.add_implementations(&ty_decl.span(), impl_spans);
+            self.add_implementations(&ty_decl.span(self.engines), impl_spans);
         }
     }
 
