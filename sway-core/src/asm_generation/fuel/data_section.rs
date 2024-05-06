@@ -60,7 +60,6 @@ impl Entry {
         name: Option<String>,
         padding: Option<Padding>,
     ) -> Entry {
-        dbg!(&name, &bytes);
         Entry {
             padding: padding.unwrap_or(Padding::default_for_byte_array(&bytes)),
             value: Datum::Slice(bytes),
