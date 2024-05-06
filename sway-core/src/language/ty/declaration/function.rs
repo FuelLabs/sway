@@ -546,6 +546,27 @@ pub struct TyFunctionSig {
     pub parameters: Vec<TypeId>,
 }
 
+impl DisplayWithEngines for TyFunctionSig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TyFunctionSig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(
+            f,
+            "fn({}) -> {}",
+            self.parameters
+                .iter()
+                .map(|p| format!("{}", engines.help_out(p)))
+                .collect::<Vec<_>>()
+                .join(", "),
+            engines.help_out(self.return_type),
+        )
+    }
+}
+
 impl TyFunctionSig {
     pub fn from_fn_decl(fn_decl: &TyFunctionDecl) -> Self {
         Self {
@@ -556,5 +577,25 @@ impl TyFunctionSig {
                 .map(|p| p.type_argument.type_id)
                 .collect::<Vec<_>>(),
         }
+    }
+
+    pub fn is_concrete(&self, engines: &Engines) -> bool {
+        self.return_type.is_concrete(engines)
+            && self.parameters.iter().all(|p| p.is_concrete(engines))
+    }
+
+    /// Returns a String representing the function.
+    /// When the function is monomorphized the returned String is unique.
+    /// Two monomorphized functions that generate the same String can be assumed to be the same.
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        format!(
+            "fn({}) -> {}",
+            self.parameters
+                .iter()
+                .map(|p| p.get_type_str(engines))
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type.get_type_str(engines),
+        )
     }
 }

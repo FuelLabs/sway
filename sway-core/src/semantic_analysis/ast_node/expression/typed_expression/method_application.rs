@@ -5,7 +5,7 @@ use crate::{
     },
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyExpression},
+        ty::{self, TyDecl, TyExpression, TyFunctionSig},
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
@@ -20,7 +20,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{constants, integer_bits::IntegerBits, BaseIdent};
+use sway_types::{constants, integer_bits::IntegerBits, BaseIdent, IdentUnique};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
 use sway_types::{Ident, Span};
 
@@ -83,12 +83,13 @@ pub(crate) fn type_check_method_application(
             .collect(),
     )?;
 
-    let fn_ref = monomorphize_method(
+    let mut fn_ref = monomorphize_method(
         handler,
         ctx.by_ref(),
         original_decl_ref.clone(),
         method_name_binding.type_arguments.to_vec_mut(),
     )?;
+
     let mut method = (*decl_engine.get_function(&fn_ref)).clone();
 
     // unify method return type with current ctx.type_annotation().
@@ -631,47 +632,73 @@ pub(crate) fn type_check_method_application(
         }
     }
 
-    // This handles the case of substituting the generic blanket type by call_path_typeid.
-    if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
-        let t = &engines.de().get(&t.decl_id).implementing_for;
-        if let TypeInfo::Custom {
-            qualified_call_path,
-            type_arguments: _,
-            root_type_id: _,
-        } = &*type_engine.get(t.initial_type_id)
-        {
-            for p in method.type_parameters.clone() {
-                if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
-                    let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
-                        vec![t.initial_type_id],
-                        vec![call_path_typeid],
-                    );
-                    method.subst(&type_subst, engines);
+    let mut method_return_type_id = method.return_type.type_id;
+
+    let method_ident: IdentUnique = method.name.clone().into();
+    let method_sig = TyFunctionSig::from_fn_decl(&method);
+
+    if let Some(cached_fn_ref) =
+        ctx.engines()
+            .qe()
+            .get_function(engines, method_ident.clone(), method_sig.clone())
+    {
+        fn_ref = cached_fn_ref;
+    } else {
+        // This handles the case of substituting the generic blanket type by call_path_typeid.
+        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+            let t = &engines.de().get(&t.decl_id).implementing_for;
+            if let TypeInfo::Custom {
+                qualified_call_path,
+                type_arguments: _,
+                root_type_id: _,
+            } = &*type_engine.get(t.initial_type_id)
+            {
+                for p in method.type_parameters.clone() {
+                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                        let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
+                            vec![t.initial_type_id],
+                            vec![call_path_typeid],
+                        );
+                        method.subst(&type_subst, engines);
+                    }
                 }
             }
         }
-    }
 
-    // Handle the trait constraints. This includes checking to see if the trait
-    // constraints are satisfied and replacing old decl ids based on the
-    // constraint with new decl ids based on the new type.
-    let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-        handler,
-        ctx.by_ref(),
-        &method.type_parameters,
-        method.name.as_str(),
-        &call_path.span(),
-    )
-    .ok();
+        // Handle the trait constraints. This includes checking to see if the trait
+        // constraints are satisfied and replacing old decl ids based on the
+        // constraint with new decl ids based on the new type.
+        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+            handler,
+            ctx.by_ref(),
+            &method.type_parameters,
+            method.name.as_str(),
+            &call_path.span(),
+        )
+        .ok();
 
-    if let Some(decl_mapping) = decl_mapping {
-        if !ctx.defer_monomorphization() {
-            method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+        if let Some(decl_mapping) = decl_mapping {
+            if !ctx.defer_monomorphization() {
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            }
+        }
+
+        let are_type_parameters_concrete = method
+            .type_parameters
+            .iter()
+            .all(|p| p.type_id.is_concrete(engines));
+
+        let method_sig = TyFunctionSig::from_fn_decl(&method);
+
+        method_return_type_id = method.return_type.type_id;
+        decl_engine.replace(*fn_ref.id(), method.clone());
+
+        if method_sig.is_concrete(engines) && are_type_parameters_concrete {
+            ctx.engines()
+                .qe()
+                .insert_function(engines, method_ident, method_sig, fn_ref.clone());
         }
     }
-
-    let method_return_type_id = method.return_type.type_id;
-    decl_engine.replace(*fn_ref.id(), method);
 
     let fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
