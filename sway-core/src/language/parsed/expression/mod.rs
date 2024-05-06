@@ -104,7 +104,7 @@ pub struct AmbiguousSuffix {
 impl Spanned for AmbiguousSuffix {
     fn span(&self) -> Span {
         if let Some(before) = &self.before {
-            Span::join(before.span(), self.suffix.span())
+            Span::join(before.span(), &self.suffix.span())
         } else {
             self.suffix.span()
         }
