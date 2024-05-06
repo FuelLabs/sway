@@ -21,7 +21,7 @@ pub(crate) trait UnconstrainedTypeParameters {
         type_parameters: &'a [TypeParameter],
     ) -> Vec<&'a TypeParameter> {
         let mut unconstrained = vec![];
-        for type_param in type_parameters.iter() {
+        for type_param in type_parameters {
             if self.type_parameter_is_unconstrained(engines, type_param) {
                 unconstrained.push(type_param);
             }
@@ -35,7 +35,7 @@ pub(crate) trait UnconstrainedTypeParameters {
         type_parameters: &'a [TypeParameter],
     ) -> Vec<&'a TypeParameter> {
         let mut constrained = vec![];
-        for type_param in type_parameters.iter() {
+        for type_param in type_parameters {
             if self.type_parameter_is_constrained(engines, type_param) {
                 constrained.push(type_param);
             }

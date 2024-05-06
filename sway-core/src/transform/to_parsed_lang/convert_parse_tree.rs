@@ -230,7 +230,7 @@ pub fn item_to_ast_nodes(
             handler,
             engines,
             item_configurable,
-            attributes,
+            &attributes,
         )?
         .into_iter()
         .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
@@ -402,14 +402,14 @@ fn item_struct_to_struct_declaration(
 
     // Make sure each struct field is declared once
     let mut names_of_fields = std::collections::HashSet::new();
-    fields.iter().for_each(|v| {
+    for v in &fields {
         if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStructField {
                 name: v.name.clone(),
                 span: v.name.span(),
             });
         }
-    });
+    }
 
     if let Some(emitted) = emit_all(handler, errors) {
         return Err(emitted);
@@ -471,14 +471,14 @@ fn item_enum_to_enum_declaration(
 
     // Make sure each enum variant is declared once
     let mut names_of_variants = std::collections::HashSet::new();
-    variants.iter().for_each(|v| {
+    for v in variants.iter() {
         if !names_of_variants.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateEnumVariant {
                 name: v.name.clone(),
                 span: v.name.span(),
             });
         }
-    });
+    }
 
     if let Some(emitted) = emit_all(handler, errors) {
         return Err(emitted);
@@ -800,7 +800,7 @@ fn path_type_to_call_path_and_type_arguments(
     path_type: PathType,
 ) -> Result<(QualifiedCallPath, Vec<TypeArgument>), ErrorEmitted> {
     let root_opt = path_type.root_opt.clone();
-    let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type)?;
+    let (prefixes, suffix) = path_type_to_prefixes_and_suffix(context, handler, path_type.clone())?;
 
     let (is_absolute, qualified_path) =
         path_root_opt_to_bool_and_qualified_path_root(context, handler, engines, root_opt)?;
@@ -1025,14 +1025,14 @@ fn item_storage_to_storage_declaration(
 
     // Make sure each storage field is declared once
     let mut names_of_fields = std::collections::HashSet::new();
-    fields.iter().for_each(|v| {
+    for v in fields.iter() {
         if !names_of_fields.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateStorageField {
                 name: v.name.clone(),
                 span: v.name.span(),
             });
         }
-    });
+    }
 
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -1053,7 +1053,7 @@ fn item_configurable_to_constant_declarations(
     handler: &Handler,
     engines: &Engines,
     item_configurable: ItemConfigurable,
-    _attributes: AttributesMap,
+    _attributes: &AttributesMap,
 ) -> Result<Vec<ParsedDeclId<ConstantDeclaration>>, ErrorEmitted> {
     let mut errors = Vec::new();
 
@@ -1245,7 +1245,7 @@ fn generic_params_opt_to_type_parameters_with_parent(
             continue;
         };
 
-        param_to_edit.trait_constraints_span = Span::join(ty_name.span(), bounds.span());
+        param_to_edit.trait_constraints_span = Span::join(ty_name.span(), &bounds.span());
 
         param_to_edit
             .trait_constraints
@@ -1345,7 +1345,7 @@ fn fn_args_to_function_parameters(
                 (None, None) => Span::dummy(),
                 (None, Some(mutable)) => mutable.span(),
                 (Some(reference), None) => reference.span(),
-                (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+                (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
             };
             let type_id = engines.te().insert(
                 engines,
@@ -1742,7 +1742,7 @@ fn method_call_fields_to_method_application_expression(
 
     let span = match &*type_arguments {
         [] => method_name.span(),
-        [.., last] => Span::join(method_name.span(), last.span.clone()),
+        [.., last] => Span::join(method_name.span(), &last.span),
     };
 
     let method_name_binding = TypeBinding {
@@ -1783,7 +1783,7 @@ fn expr_func_app_to_expression_kind(
     func: Box<Expr>,
     args: Parens<Punctuated<Expr, CommaToken>>,
 ) -> Result<ExpressionKind, ErrorEmitted> {
-    let span = Span::join(func.span(), args.span());
+    let span = Span::join(func.span(), &args.span());
 
     // For now, the callee has to be a path to a function.
     let PathExpr {
@@ -1840,7 +1840,7 @@ fn expr_func_app_to_expression_kind(
         .collect::<Result<_, _>>()?;
 
     let name_args_span = |start, end: Option<_>| match end {
-        Some(end) => Span::join(start, end),
+        Some(end) => Span::join(start, &end),
         None => start,
     };
 
@@ -1910,7 +1910,7 @@ fn expr_func_app_to_expression_kind(
                 is_absolute,
             };
             let span = match type_arguments_span {
-                Some(span) => Span::join(call_path.span(), span),
+                Some(span) => Span::join(call_path.span(), &span),
                 None => call_path.span(),
             };
             let call_path_binding = TypeBinding {
@@ -2102,7 +2102,7 @@ fn expr_to_expression(
             context,
             handler,
             engines,
-            value_pattern,
+            &value_pattern,
             iterator,
             block,
             span,
@@ -2599,7 +2599,7 @@ fn fn_arg_to_function_parameter(
         (None, None) => Span::dummy(),
         (None, Some(mutable)) => mutable.span(),
         (Some(reference), None) => reference.span(),
-        (Some(reference), Some(mutable)) => Span::join(reference.span(), mutable.span()),
+        (Some(reference), Some(mutable)) => Span::join(reference.span(), &mutable.span()),
     };
     let function_parameter = FunctionParameter {
         name,
@@ -2722,7 +2722,7 @@ fn path_expr_segment_to_ident_or_type_argument(
 ) -> Result<(Ident, Vec<TypeArgument>), ErrorEmitted> {
     let type_args = match generics_opt {
         Some((_, x)) => generic_args_to_type_arguments(context, handler, engines, x)?,
-        None => Default::default(),
+        None => Vec::default(),
     };
     Ok((name, type_args))
 }
@@ -2846,7 +2846,7 @@ fn if_expr_to_expression(
             let mut branches = vec![MatchBranch {
                 scrutinee,
                 result: then_block.clone(),
-                span: Span::join(scrutinee_span, then_block_span),
+                span: Span::join(scrutinee_span, &then_block_span),
             }];
             branches.push(match else_block {
                 Some(else_block) => {
@@ -2956,7 +2956,7 @@ fn for_expr_to_expression(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
-    value_pattern: Pattern,
+    value_pattern: &Pattern,
     iterator: Box<Expr>,
     block: Braces<CodeBlockContents>,
     span: Span,
@@ -3238,7 +3238,7 @@ fn literal_to_literal(
                 full_span.src().clone(),
                 full_span.start() + 1,
                 full_span.end() - 1,
-                full_span.source_id().cloned(),
+                full_span.source_id().copied(),
             )
             .unwrap();
             Literal::String(inner_span)
@@ -3584,7 +3584,7 @@ fn asm_block_to_asm_expression(
         asm_block_contents
             .instructions
             .into_iter()
-            .map(|(instruction, _semicolon_token)| instruction_to_asm_op(instruction))
+            .map(|(instruction, _semicolon_token)| instruction_to_asm_op(&instruction))
             .collect()
     };
     Ok(Box::new(AsmExpression {
@@ -3752,7 +3752,7 @@ fn statement_let_to_ast_nodes_unfold(
 
             // for all of the fields of the struct destructuring on the LHS,
             // recursively create variable declarations
-            for pattern_struct_field in fields.into_inner().into_iter() {
+            for pattern_struct_field in fields.into_inner() {
                 let (field, recursive_pattern) = match pattern_struct_field {
                     PatternStructField::Field {
                         field_name,
@@ -3975,7 +3975,7 @@ fn asm_register_declaration_to_asm_register_declaration(
     })
 }
 
-fn instruction_to_asm_op(instruction: Instruction) -> AsmOp {
+fn instruction_to_asm_op(instruction: &Instruction) -> AsmOp {
     AsmOp {
         op_name: instruction.op_code_ident(),
         op_args: instruction.register_arg_idents(),
@@ -4032,7 +4032,7 @@ fn pattern_to_scrutinee(
                         "If you want to change the matched value, or some of its parts, consider using the matched value".to_string(),
                         format!("directly in the block, instead of the pattern variable \"{name}\"."),
                     ],
-                    Span::join(reference.span(), mutable.span())
+                    Span::join(reference.span(), &mutable.span())
                 )),
                 (Some(reference), None) => Some((
                     "ref",
@@ -4168,7 +4168,7 @@ fn ty_to_type_parameter(
                 type_id: unknown_type,
                 initial_type_id: unknown_type,
                 name_ident: underscore_token.into(),
-                trait_constraints: Default::default(),
+                trait_constraints: Vec::default(),
                 trait_constraints_span: Span::dummy(),
                 is_from_parent: false,
             });
@@ -4433,7 +4433,7 @@ fn ty_tuple_descriptor_to_type_arguments(
         TyTupleDescriptor::Nil => vec![],
         TyTupleDescriptor::Cons { head, tail, .. } => {
             let mut type_arguments = vec![ty_to_type_argument(context, handler, engines, *head)?];
-            for ty in tail.into_iter() {
+            for ty in tail {
                 type_arguments.push(ty_to_type_argument(context, handler, engines, ty)?);
             }
             type_arguments
@@ -4509,7 +4509,8 @@ fn path_type_to_type_info(
                 };
                 let abi_name = match generic_ty {
                     Ty::Path(path_type) => {
-                        let call_path = path_type_to_call_path(context, handler, path_type)?;
+                        let call_path =
+                            path_type_to_call_path(context, handler, path_type.clone())?;
                         AbiName::Known(call_path)
                     }
                     Ty::Infer { .. } => AbiName::Deferred,
@@ -4588,7 +4589,7 @@ fn item_attrs_to_map(
                     warning_content: Warning::UnrecognizedAttribute {
                         attrib_name: attr.name.clone(),
                     },
-                })
+                });
             }
 
             let args = attr
@@ -4657,7 +4658,7 @@ fn item_attrs_to_map(
                         expected_min_len,
                         expected_max_len,
                     },
-                })
+                });
             }
 
             // check attribute argument value
