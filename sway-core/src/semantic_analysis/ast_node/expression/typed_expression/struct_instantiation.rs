@@ -27,7 +27,7 @@ pub(crate) fn struct_instantiation(
     handler: &Handler,
     mut ctx: TypeCheckContext,
     mut call_path_binding: TypeBinding<CallPath>,
-    fields: Vec<StructExpressionField>,
+    fields: &[StructExpressionField],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -245,7 +245,7 @@ pub(crate) fn struct_instantiation(
         handler,
         ctx.by_ref(),
         &struct_name,
-        &fields,
+        fields,
         &type_check_struct_decl.fields,
         &span,
         &struct_decl_span,
@@ -396,9 +396,8 @@ fn type_check_field_arguments(
                     // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
                     //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
                     //          not treated as an error in the `type_check()`'s result.
-                    let typed_expr = handler.scope(|handler| {
-                        ty::TyExpression::type_check(handler, ctx, field.value.clone())
-                    });
+                    let typed_expr = handler
+                        .scope(|handler| ty::TyExpression::type_check(handler, ctx, &field.value));
 
                     let value = match typed_expr {
                         Ok(res) => res,

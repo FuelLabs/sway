@@ -43,7 +43,7 @@ impl Spanned for TyStorageAccess {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
-                Span::join(acc, field.span.clone())
+                Span::join(acc, &field.span)
             })
     }
 }

@@ -982,7 +982,7 @@ impl TraitMap {
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: &[TypeArgument],
     ) -> Vec<ResolvedTraitImplItem> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
@@ -1027,7 +1027,7 @@ impl TraitMap {
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
         self.get_items_for_type_and_trait_name_and_trait_type_arguments(
             engines,

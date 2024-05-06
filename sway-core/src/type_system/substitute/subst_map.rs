@@ -1,6 +1,8 @@
 use crate::{
     decl_engine::{DeclEngine, DeclEngineInsert},
-    engine_threading::*,
+    engine_threading::{
+        DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
     type_system::priv_prelude::*,
 };
 use std::{collections::BTreeMap, fmt};
@@ -307,7 +309,7 @@ impl TypeSubstMap {
         TypeSubstMap { mapping }
     }
 
-    pub(crate) fn extend(&mut self, subst_map: TypeSubstMap) {
+    pub(crate) fn extend(&mut self, subst_map: &TypeSubstMap) {
         self.mapping.extend(subst_map.mapping.iter());
     }
 
@@ -343,13 +345,13 @@ impl TypeSubstMap {
             TypeInfo::Struct(decl_ref) => {
                 let mut decl = (*decl_engine.get_struct(&decl_ref)).clone();
                 let mut need_to_create_new = false;
-                for field in decl.fields.iter_mut() {
+                for field in &mut decl.fields {
                     if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
                         need_to_create_new = true;
                         field.type_argument.type_id = type_id;
                     }
                 }
-                for type_param in decl.type_parameters.iter_mut() {
+                for type_param in &mut decl.type_parameters {
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -370,14 +372,14 @@ impl TypeSubstMap {
                 let mut decl = (*decl_engine.get_enum(&decl_ref)).clone();
                 let mut need_to_create_new = false;
 
-                for variant in decl.variants.iter_mut() {
+                for variant in &mut decl.variants {
                     if let Some(type_id) = self.find_match(variant.type_argument.type_id, engines) {
                         need_to_create_new = true;
                         variant.type_argument.type_id = type_id;
                     }
                 }
 
-                for type_param in decl.type_parameters.iter_mut() {
+                for type_param in &mut decl.type_parameters {
                     if let Some(type_id) = self.find_match(type_param.type_id, engines) {
                         need_to_create_new = true;
                         type_param.type_id = type_id;
@@ -433,7 +435,7 @@ impl TypeSubstMap {
                         if let Some(type_id) = self.find_match(field.type_argument.type_id, engines)
                         {
                             need_to_create_new = true;
-                            source_id = field.span.source_id().cloned();
+                            source_id = field.span.source_id().copied();
                             field.type_argument.type_id = type_id;
                         }
                         field.clone()
@@ -508,7 +510,7 @@ fn iter_for_match(
     type_info: &TypeInfo,
 ) -> Option<TypeId> {
     let type_engine = engines.te();
-    for (source_type, dest_type) in type_mapping.mapping.iter() {
+    for (source_type, dest_type) in &type_mapping.mapping {
         if type_engine
             .get(*source_type)
             .eq(type_info, &PartialEqWithEnginesContext::new(engines))
