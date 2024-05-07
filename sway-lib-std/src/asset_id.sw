@@ -2,7 +2,7 @@ library;
 
 use ::alias::SubId;
 use ::contract_id::ContractId;
-use ::convert::{From, Into};
+use ::convert::From;
 use ::hash::{Hash, Hasher};
 
 /// An AssetId is used for interacting with an asset on the network.
@@ -251,7 +251,8 @@ fn test_asset_id_from_b256() {
 #[test]
 fn test_asset_id_into_b256() {
     use ::assert::assert;
-    
+    use ::convert::Into;
+
     let asset = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = asset.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);

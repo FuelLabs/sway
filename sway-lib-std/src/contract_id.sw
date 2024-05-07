@@ -1,7 +1,7 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::convert::{From, Into};
+use ::convert::From;
 use ::hash::{Hash, Hasher};
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
@@ -137,7 +137,8 @@ fn test_contract_id_from_b256() {
 #[test]
 fn test_contract_id_into_b256() {
     use ::assert::assert;
-    
+    use ::convert::Into;
+
     let contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = contract_id.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
