@@ -37,12 +37,12 @@ use sway_core::language::ty::{
 /// }
 /// ```
 #[derive(Clone, Debug)]
-pub(crate) struct Context {
+pub struct Context {
     module_info: ModuleInfo,
     context_type: ContextType,
 }
 impl Context {
-    pub(crate) fn new(module_info: ModuleInfo, context_type: ContextType) -> Self {
+    pub fn new(module_info: ModuleInfo, context_type: ContextType) -> Self {
         Self {
             module_info,
             context_type,
@@ -265,23 +265,23 @@ impl Renderable for Context {
     }
 }
 #[derive(Debug, Clone)]
-pub(crate) struct DocImplTrait {
-    pub(crate) impl_for_module: ModuleInfo,
-    pub(crate) impl_trait: TyImplTrait,
-    pub(crate) module_info_override: Option<Vec<String>>,
+pub struct DocImplTrait {
+    pub impl_for_module: ModuleInfo,
+    pub impl_trait: TyImplTrait,
+    pub module_info_override: Option<Vec<String>>,
 }
 #[derive(Clone, Debug)]
 /// The context section of an item that appears in the page [ItemBody].
-pub(crate) struct ItemContext {
+pub struct ItemContext {
     /// [Context] can be fields on a struct, variants of an enum, etc.
-    pub(crate) context_opt: Option<Context>,
+    pub context_opt: Option<Context>,
     /// The traits implemented for this type.
-    pub(crate) impl_traits: Option<Vec<DocImplTrait>>,
+    pub impl_traits: Option<Vec<DocImplTrait>>,
     // TODO: All other Implementation types, eg
     // implementations on foreign types, method implementations, etc.
 }
 impl ItemContext {
-    pub(crate) fn to_doclinks(&self) -> DocLinks {
+    pub fn to_doclinks(&self) -> DocLinks {
         let mut links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
         if let Some(context) = &self.context_opt {
             match context.context_type.clone() {
@@ -596,7 +596,7 @@ impl Renderable for TyTraitItem {
 #[derive(Clone, Debug)]
 /// Represents the type of [Context] for item declarations that have
 /// fields, variants or methods, and acts as a wrapper for those values for rendering.
-pub(crate) enum ContextType {
+pub enum ContextType {
     /// Stores the fields on a struct to be rendered.
     StructFields(Vec<TyStructField>),
     /// Stores the fields in storage to be rendered.

@@ -9,9 +9,9 @@ pub(crate) type ModulePrefixes = Vec<String>;
 
 /// Information about a Sway module.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct ModuleInfo {
+pub struct ModuleInfo {
     /// The preceding module names, used in navigating between modules.
-    pub(crate) module_prefixes: ModulePrefixes,
+    pub module_prefixes: ModulePrefixes,
     /// Doc attributes of a module.
     /// Renders into the module level docstrings.
     ///
