@@ -401,17 +401,6 @@ impl Root {
 
         // collect all declared and reexported symbols from the source module
         let mut all_symbols_and_decls = vec![];
-        for (symbol, decls) in src_mod.current_items().use_glob_synonyms.iter() {
-            decls.iter().for_each(|(_, decl)| {
-                //		if symbol.as_str() == "from_str_array" {
-                //		    println!("star importing from path {} glob reexported at {} into {}",
-                //			     decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-                //			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-                //			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
-                //		};
-                all_symbols_and_decls.push((symbol.clone(), decl.clone()))
-            });
-        }
         for (symbol, (_, _, decl)) in src_mod.current_items().use_item_synonyms.iter() {
             //	    if symbol.as_str() == "from_str_array" {
             //		println!("star importing from path {} item reexported at {} into {}",
@@ -430,6 +419,17 @@ impl Root {
                 //		};
                 all_symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
+        }
+        for (symbol, decls) in src_mod.current_items().use_glob_synonyms.iter() {
+            decls.iter().for_each(|(_, decl)| {
+                //		if symbol.as_str() == "from_str_array" {
+                //		    println!("star importing from path {} glob reexported at {} into {}",
+                //			     decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+                //			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+                //			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
+                //		};
+                all_symbols_and_decls.push((symbol.clone(), decl.clone()))
+            });
         }
 
         let mut symbols_paths_and_decls = vec![];
