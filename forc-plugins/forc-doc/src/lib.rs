@@ -54,7 +54,7 @@ pub struct ProgramInfo<'a> {
 
 pub fn compile_html(
     build_instructions: &Command,
-    get_doc_dir: &dyn Fn(&Command) -> String,
+    // get_doc_dir: &dyn Fn(&Command) -> String,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(PathBuf, Box<PackageManifestFile>)> {
     // get manifest directory
@@ -70,7 +70,7 @@ pub fn compile_html(
 
     // create doc path
     let out_path = default_output_directory(manifest.dir());
-    let doc_dir = get_doc_dir(build_instructions);
+    let doc_dir = get_doc_dir();
     let doc_path = out_path.join(doc_dir);
     if doc_path.exists() {
         std::fs::remove_dir_all(&doc_path)?;
@@ -226,4 +226,9 @@ fn write_content(rendered_docs: RenderedDocumentation, doc_path: &Path) -> Resul
         fs::write(&doc_path, doc.file_contents.0.as_bytes())?;
     }
     Ok(())
+}
+
+const DOC_DIR_NAME: &str = "doc";
+pub fn get_doc_dir() -> String {
+    DOC_DIR_NAME.into()
 }

@@ -12,7 +12,6 @@ pub fn main() -> Result<()> {
 
     let (doc_path, pkg_manifest) = compile_html(
         &build_instructions,
-        &get_doc_dir,
         sway_core::ExperimentalFlags {
             new_encoding: !build_instructions.no_encoding_v1,
         },
@@ -57,11 +56,5 @@ pub fn main() -> Result<()> {
             }
         }
     }
-
     Ok(())
-}
-
-const DOC_DIR_NAME: &str = "doc";
-fn get_doc_dir(_build_instructions: &Command) -> String {
-    DOC_DIR_NAME.into()
 }
