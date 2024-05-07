@@ -635,7 +635,7 @@ fn ensure_field_projection_no_generics(
     generic_args: &Option<(DoubleColonToken, GenericArgs)>,
 ) {
     if let Some((dct, generic_args)) = generic_args {
-        let span = Span::join(dct.span(), generic_args.span());
+        let span = Span::join(dct.span(), &generic_args.span());
         parser.emit_error_with_span(ParseErrorKind::FieldProjectionWithGenericArgs, span);
     }
 }

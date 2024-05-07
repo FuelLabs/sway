@@ -19,7 +19,7 @@ pub type Item = Annotated<ItemKind>;
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self.attribute_list.first() {
-            Some(attr0) => Span::join(attr0.span(), self.value.span()),
+            Some(attr0) => Span::join(attr0.span(), &self.value.span()),
             None => self.value.span(),
         }
     }
@@ -79,7 +79,7 @@ impl Spanned for TypeField {
             None => self.name.span(),
         };
         let end = self.ty.span();
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -103,7 +103,7 @@ pub struct FnArg {
 
 impl Spanned for FnArg {
     fn span(&self) -> Span {
-        Span::join(self.pattern.span(), self.ty.span())
+        Span::join(self.pattern.span(), &self.ty.span())
     }
 }
 
@@ -131,7 +131,7 @@ impl Spanned for FnSignature {
                 None => self.arguments.span(),
             },
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -151,6 +151,6 @@ impl Spanned for TraitType {
             Some(ty_opt) => ty_opt.span(),
             None => self.name.span(),
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }

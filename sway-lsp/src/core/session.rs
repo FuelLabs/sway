@@ -180,7 +180,7 @@ impl Session {
         let engines = self.engines.read();
         let fn_tokens =
             self.token_map
-                .tokens_at_position(engines.se(), uri, shifted_position, Some(true));
+                .tokens_at_position(&engines, uri, shifted_position, Some(true));
         let fn_token = fn_tokens.first()?.value();
         let compiled_program = &*self.compiled_program.read();
         if let Some(TypedAstToken::TypedFunctionDeclaration(fn_decl)) = fn_token.typed.clone() {
@@ -243,7 +243,7 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
-    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, ipfs_node)
+    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
         .map_err(LanguageServerError::BuildPlanFailed)
 }
 

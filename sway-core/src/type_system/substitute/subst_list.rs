@@ -4,7 +4,13 @@ use std::{
     vec::IntoIter,
 };
 
-use crate::{engine_threading::*, type_system::priv_prelude::*};
+use crate::{
+    engine_threading::{
+        Engines, EqWithEngines, HashWithEngines, OrdWithEngines, OrdWithEnginesContext,
+        PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    type_system::priv_prelude::*,
+};
 
 /// A list of types that serve as the list of type params for type substitution.
 /// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an

@@ -219,7 +219,7 @@ impl Lock {
                     .map_err(|e| anyhow!("failed to parse dependency \"{}\": {}", dep_line, e))?;
                 let dep_node = pkg_to_node
                     .get(dep_key)
-                    .cloned()
+                    .copied()
                     .ok_or_else(|| anyhow!("found dep {} without node entry in graph", dep_key))?;
                 let dep_name = dep_name.unwrap_or(&graph[dep_node].name).to_string();
                 let dep_kind = match dep_kind {
@@ -337,8 +337,8 @@ fn parse_pkg_dep_line(pkg_dep_line: &str) -> anyhow::Result<ParsedPkgLine> {
 }
 
 pub fn print_diff(member_names: &HashSet<String>, diff: &Diff) {
-    print_removed_pkgs(member_names, diff.removed.iter().cloned());
-    print_added_pkgs(member_names, diff.added.iter().cloned());
+    print_removed_pkgs(member_names, diff.removed.iter().copied());
+    print_added_pkgs(member_names, diff.added.iter().copied());
 }
 
 pub fn print_removed_pkgs<'a, I>(member_names: &HashSet<String>, removed: I)
@@ -349,7 +349,7 @@ where
         if !member_names.contains(&pkg.name) {
             let src = match pkg.source.starts_with(source::git::Pinned::PREFIX) {
                 true => format!(" {}", pkg.source),
-                false => "".to_string(),
+                false => String::new(),
             };
             tracing::info!(
                 "  {} {}{src}",

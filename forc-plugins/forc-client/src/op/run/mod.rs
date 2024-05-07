@@ -48,12 +48,12 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs_with_manifest = built_pkgs(&curr_dir, build_opts)?;
+    let built_pkgs_with_manifest = built_pkgs(&curr_dir, &build_opts)?;
     for built in built_pkgs_with_manifest {
         if built
             .descriptor
             .manifest_file
-            .check_program_type(vec![TreeType::Script])
+            .check_program_type(&[TreeType::Script])
             .is_ok()
         {
             let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
@@ -222,6 +222,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             finalized_asm: cmd.print.finalized_asm,
             intermediate_asm: cmd.print.intermediate_asm,
+            bytecode: cmd.print.bytecode,
             ir: cmd.print.ir,
             reverse_order: cmd.print.reverse_order,
         },

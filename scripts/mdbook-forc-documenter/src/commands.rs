@@ -31,15 +31,12 @@ pub fn possible_forc_commands() -> Vec<String> {
 
 pub fn get_contents_from_commands(commands: &[String]) -> HashMap<String, String> {
     let mut contents: HashMap<String, String> = HashMap::new();
-
     for command in commands {
-        let result = match generate_documentation(command) {
-            Ok(output) => output,
-            Err(_) => continue,
+        let Ok(result) = generate_documentation(command) else {
+            continue;
         };
         contents.insert("forc ".to_owned() + command, result);
     }
-
     contents
 }
 
@@ -71,7 +68,7 @@ fn generate_documentation(subcommand: &str) -> Result<String> {
         } else if index == 1 {
             formatted_line.push_str(line);
         } else {
-            formatted_line.push_str(&format_line(line, has_parsed_subcommand_header))
+            formatted_line.push_str(&format_line(line, has_parsed_subcommand_header));
         }
 
         result.push_str(&formatted_line);

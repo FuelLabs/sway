@@ -4,23 +4,28 @@ use crate::{
     render::{
         item::{components::*, context::DocImplTrait},
         link::DocLink,
-        util::format::docstring::*,
+        util::format::docstring::{create_preview, DocStrings},
     },
 };
 use anyhow::Result;
-use std::{collections::HashMap, option::Option};
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    option::Option,
+};
 use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
     Engines,
 };
-use sway_types::{BaseIdent, Spanned};
+use sway_types::{BaseIdent, Named, Spanned};
 
 mod descriptor;
 pub mod module;
 
 #[derive(Default, Clone)]
 pub(crate) struct Documentation(pub(crate) Vec<Document>);
+
 impl Documentation {
     /// Gather [Documentation] from the [TyProgram].
     pub(crate) fn from_ty_program(
@@ -30,14 +35,12 @@ impl Documentation {
         document_private_items: bool,
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
-        let namespace = &typed_program.root.namespace;
-        let decl_engine = engines.de();
-        let mut docs: Documentation = Default::default();
+        let mut docs = Documentation::default();
         let mut impl_traits: Vec<(TyImplTrait, ModuleInfo)> = Vec::new();
         let module_info = ModuleInfo::from_ty_module(vec![project_name.to_owned()], None);
         Documentation::from_ty_module(
-            decl_engine,
-            module_info,
+            engines.de(),
+            &module_info,
             &typed_program.root,
             &mut docs,
             &mut impl_traits,
@@ -51,7 +54,7 @@ impl Documentation {
             let module_prefix =
                 ModuleInfo::from_ty_module(vec![project_name.to_owned()], attributes);
             Documentation::from_ty_submodule(
-                decl_engine,
+                engines.de(),
                 typed_submodule,
                 &mut docs,
                 &mut impl_traits,
@@ -60,7 +63,6 @@ impl Documentation {
             )?;
         }
         let trait_decls = docs
-            .0
             .iter()
             .filter_map(|d| {
                 (d.item_header.friendly_name == "trait").then_some((
@@ -73,23 +75,25 @@ impl Documentation {
         // match for the spans to add the impl_traits to their corresponding doc:
         // currently this compares the spans as str, but this needs to change
         // to compare the actual types
-        for doc in &mut docs.0 {
+        for doc in docs.iter_mut() {
             let mut impl_vec: Vec<DocImplTrait> = Vec::new();
 
             match doc.item_body.ty_decl {
-                TyDecl::StructDecl(ref struct_decl) => {
+                TyDecl::StructDecl(ref decl) => {
                     for (impl_trait, module_info) in impl_traits.iter_mut() {
-                        if struct_decl.name.as_str() == impl_trait.implementing_for.span.as_str()
-                            && struct_decl.name.as_str()
+                        let struct_decl = engines.de().get_struct(&decl.decl_id);
+                        if struct_decl.name().as_str() == impl_trait.implementing_for.span.as_str()
+                            && struct_decl.name().as_str()
                                 != impl_trait.trait_name.suffix.span().as_str()
                         {
                             let module_info_override = if let Some(decl_module_info) =
                                 trait_decls.get(&impl_trait.trait_name.suffix)
                             {
-                                Some(decl_module_info.module_prefixes.to_owned())
+                                Some(decl_module_info.module_prefixes.clone())
                             } else {
-                                impl_trait.trait_name =
-                                    impl_trait.trait_name.to_fullpath(engines, namespace);
+                                impl_trait.trait_name = impl_trait
+                                    .trait_name
+                                    .to_fullpath(engines, &typed_program.root.namespace);
                                 None
                             };
 
@@ -113,7 +117,7 @@ impl Documentation {
     }
     fn from_ty_module(
         decl_engine: &DeclEngine,
-        module_info: ModuleInfo,
+        module_info: &ModuleInfo,
         ty_module: &TyModule,
         docs: &mut Documentation,
         impl_traits: &mut Vec<(TyImplTrait, ModuleInfo)>,
@@ -125,7 +129,7 @@ impl Documentation {
                     impl_traits.push((
                         (*decl_engine.get_impl_trait(&impl_trait.decl_id)).clone(),
                         module_info.clone(),
-                    ))
+                    ));
                 } else {
                     let desc = Descriptor::from_typed_decl(
                         decl_engine,
@@ -135,7 +139,7 @@ impl Documentation {
                     )?;
 
                     if let Descriptor::Documentable(doc) = desc {
-                        docs.0.push(doc)
+                        docs.push(doc);
                     }
                 }
             }
@@ -157,7 +161,7 @@ impl Documentation {
             .push(typed_submodule.mod_name_span.as_str().to_owned());
         Documentation::from_ty_module(
             decl_engine,
-            module_info.clone(),
+            &module_info.clone(),
             &typed_submodule.module,
             docs,
             impl_traits,
@@ -217,5 +221,18 @@ impl Document {
     }
     pub(crate) fn preview_opt(&self) -> Option<String> {
         create_preview(self.raw_attributes.clone())
+    }
+}
+
+impl Deref for Documentation {
+    type Target = Vec<Document>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Documentation {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

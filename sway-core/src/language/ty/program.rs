@@ -96,12 +96,7 @@ impl TyProgram {
 
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                    name,
-                    decl_id,
-                    subst_list,
-                    decl_span,
-                })) => {
+                TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })) => {
                     let func = decl_engine.get_function(decl_id);
 
                     match func.kind {
@@ -117,12 +112,7 @@ impl TyProgram {
                         });
                     }
 
-                    declarations.push(TyDecl::FunctionDecl(FunctionDecl {
-                        name: name.clone(),
-                        decl_id: *decl_id,
-                        subst_list: subst_list.clone(),
-                        decl_span: decl_span.clone(),
-                    }));
+                    declarations.push(TyDecl::FunctionDecl(FunctionDecl { decl_id: *decl_id }));
                 }
                 TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
                     decl_id,
@@ -160,20 +150,14 @@ impl TyProgram {
                                             abi_entries.push(*method_ref.id());
                                         }
                                         TyImplItem::Constant(const_ref) => {
-                                            let const_decl = decl_engine.get_constant(const_ref);
                                             declarations.push(TyDecl::ConstantDecl(ConstantDecl {
-                                                name: const_decl.name().clone(),
                                                 decl_id: *const_ref.id(),
-                                                decl_span: const_decl.span.clone(),
                                             }));
                                         }
                                         TyImplItem::Type(type_ref) => {
-                                            let type_decl = decl_engine.get_type(type_ref);
                                             declarations.push(TyDecl::TraitTypeDecl(
                                                 TraitTypeDecl {
-                                                    name: type_decl.name().clone(),
                                                     decl_id: *type_ref.id(),
-                                                    decl_span: type_decl.span.clone(),
                                                 },
                                             ));
                                         }
@@ -205,10 +189,10 @@ impl TyProgram {
                 .iter()
                 .find(|decl| matches!(decl, TyDecl::StorageDecl { .. }));
 
-            if let Some(TyDecl::StorageDecl(StorageDecl { decl_span, .. })) = storage_decl {
+            if let Some(TyDecl::StorageDecl(StorageDecl { decl_id })) = storage_decl {
                 handler.emit_err(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span: decl_span.clone(),
+                    span: engines.de().get(decl_id).span.clone(),
                 });
             }
         }
@@ -218,11 +202,7 @@ impl TyProgram {
             parsed::TreeType::Contract => {
                 // Types containing raw_ptr are not allowed in storage (e.g Vec)
                 for decl in declarations.iter() {
-                    if let TyDecl::StorageDecl(StorageDecl {
-                        decl_id,
-                        decl_span: _,
-                    }) = decl
-                    {
+                    if let TyDecl::StorageDecl(StorageDecl { decl_id }) = decl {
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
                             if let Some(error) = get_type_not_allowed_error(
