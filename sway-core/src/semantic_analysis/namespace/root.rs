@@ -82,10 +82,14 @@ impl Root {
             .implemented_traits
             .extend(implemented_traits, engines);
 
-	symbols_and_decls.iter().for_each(|(symbol, decl)| {
-	    dst_mod.current_items_mut().insert_glob_use_symbol(engines, symbol.clone(), src.to_vec(), decl)
-	});
-	
+        symbols_and_decls.iter().for_each(|(symbol, decl)| {
+            dst_mod.current_items_mut().insert_glob_use_symbol(
+                engines,
+                symbol.clone(),
+                src.to_vec(),
+                decl,
+            )
+        });
 
         Ok(())
     }
@@ -337,20 +341,22 @@ impl Root {
 
                     for variant_decl in enum_decl.variants.iter() {
                         let variant_name = &variant_decl.name;
-			let decl = TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                    enum_ref: enum_ref.clone(),
-                                    variant_name: variant_name.clone(),
-                                    variant_decl_span: variant_decl.span.clone(),
-				});
-			
+                        let decl = TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                            enum_ref: enum_ref.clone(),
+                            variant_name: variant_name.clone(),
+                            variant_decl_span: variant_decl.span.clone(),
+                        });
+
                         // import it this way.
-			self.module
-			    .lookup_submodule_mut(handler, engines, dst)?
-			    .current_items_mut()
-			    .insert_glob_use_symbol(
-				engines,
-				variant_name.clone(), src.to_vec(), &decl
-                                );
+                        self.module
+                            .lookup_submodule_mut(handler, engines, dst)?
+                            .current_items_mut()
+                            .insert_glob_use_symbol(
+                                engines,
+                                variant_name.clone(),
+                                src.to_vec(),
+                                &decl,
+                            );
                     }
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(
@@ -396,32 +402,32 @@ impl Root {
         // collect all declared and reexported symbols from the source module
         let mut all_symbols_and_decls = vec![];
         for (symbol, decls) in src_mod.current_items().use_glob_synonyms.iter() {
-	    decls.iter().for_each(|(_, decl)| {
-//		if symbol.as_str() == "from_str_array" {
-//		    println!("star importing from path {} glob reexported at {} into {}",
-//			     decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-//			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-//			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
-//		};
-		all_symbols_and_decls.push((symbol.clone(), decl.clone()))
-	    });
+            decls.iter().for_each(|(_, decl)| {
+                //		if symbol.as_str() == "from_str_array" {
+                //		    println!("star importing from path {} glob reexported at {} into {}",
+                //			     decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+                //			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+                //			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
+                //		};
+                all_symbols_and_decls.push((symbol.clone(), decl.clone()))
+            });
         }
         for (symbol, (_, _, decl)) in src_mod.current_items().use_item_synonyms.iter() {
-//	    if symbol.as_str() == "from_str_array" {
-//		println!("star importing from path {} item reexported at {} into {}",
-//			 decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-//			 src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-//			 dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
-//	    };
+            //	    if symbol.as_str() == "from_str_array" {
+            //		println!("star importing from path {} item reexported at {} into {}",
+            //			 decl_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+            //			 src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+            //			 dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
+            //	    };
             all_symbols_and_decls.push((symbol.clone(), decl.clone()));
         }
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
             if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-//		if symbol.as_str() == "from_str_array" {f
-//		    println!("star importing (decl item) from path {} into {}",
-//			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-//			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
-//		};
+                //		if symbol.as_str() == "from_str_array" {f
+                //		    println!("star importing (decl item) from path {} into {}",
+                //			     src.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
+                //			     dst.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"))
+                //		};
                 all_symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -432,23 +438,28 @@ impl Root {
             if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
                 is_external = submodule.is_external
             };
-	    
+
             let mut path = src[..1].to_vec();
             if is_external {
                 path = mod_path;
             } else {
                 path.extend(mod_path);
             }
-	    
+
             path
         };
-	
-	for (symbol, (_, mod_path, decl)) in use_item_synonyms {
+
+        for (symbol, (_, mod_path, decl)) in use_item_synonyms {
             symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
         }
         for (symbol, decls) in use_glob_synonyms {
-	    decls.iter().for_each(|(mod_path, decl)| 
-				  symbols_paths_and_decls.push((symbol.clone(), get_path(mod_path.clone()), decl.clone())));
+            decls.iter().for_each(|(mod_path, decl)| {
+                symbols_paths_and_decls.push((
+                    symbol.clone(),
+                    get_path(mod_path.clone()),
+                    decl.clone(),
+                ))
+            });
         }
 
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
@@ -458,9 +469,9 @@ impl Root {
             .extend(implemented_traits, engines);
 
         let mut try_add = |symbol, path, decl: ty::TyDecl| {
-	    dst_mod
-		.current_items_mut()
-		.insert_glob_use_symbol(engines, symbol, path, &decl);
+            dst_mod
+                .current_items_mut()
+                .insert_glob_use_symbol(engines, symbol, path, &decl);
         };
 
         for (symbol, decl) in all_symbols_and_decls {
@@ -832,23 +843,32 @@ impl Root {
         }
         // Check glob imports
         if let Some(decls) = module.current_items().use_glob_synonyms.get(symbol) {
-	    if decls.len() == 1 {
-		return Ok(ResolvedDeclaration::Typed(decls[0].1.clone()));
-	    }
-	    else if decls.len() == 0 {
+            if decls.len() == 1 {
+                return Ok(ResolvedDeclaration::Typed(decls[0].1.clone()));
+            } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
                     "The name {symbol} was bound in a star import, but no corresponding module paths were found",
                     symbol.span(),
                 )));
-	    } else {
-		// Symbol not found
-		return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
-		    name: symbol.clone(),
-		    path_1: decls[0].0.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-		    path_2: decls[1].0.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"),
-		    span: symbol.span(),
-		}))
-	    }
+            } else {
+                // Symbol not found
+                return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
+                    name: symbol.clone(),
+                    path_1: decls[0]
+                        .0
+                        .iter()
+                        .map(|x| x.as_str())
+                        .collect::<Vec<_>>()
+                        .join("::"),
+                    path_2: decls[1]
+                        .0
+                        .iter()
+                        .map(|x| x.as_str())
+                        .collect::<Vec<_>>()
+                        .join("::"),
+                    span: symbol.span(),
+                }));
+            }
         }
         // Symbol not found
         Err(handler.emit_err(CompileError::SymbolNotFound {

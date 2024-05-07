@@ -427,7 +427,12 @@ pub enum CompileError {
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
     #[error("Found multiple bindings for \"{name}\" in this scope: {path_1}::{name} and {path_2}::{name} are both valid.")]
-    SymbolWithMultipleBindings { name: Ident, path_1 : String, path_2: String, span: Span },
+    SymbolWithMultipleBindings {
+        name: Ident,
+        path_1: String,
+        path_2: String,
+        span: Span,
+    },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
     #[error("Module \"{name}\" is private.")]

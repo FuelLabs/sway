@@ -285,7 +285,7 @@ impl Namespace {
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
         new_module.is_external = false;
-	new_module.mod_path = submod_path;
+        new_module.mod_path = submod_path;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,

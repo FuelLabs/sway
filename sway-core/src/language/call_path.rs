@@ -325,12 +325,11 @@ impl CallPath {
                     .get(&self.suffix)
                     .cloned()
                 {
-		    if paths_and_decls.len() == 1 {
-			Some(paths_and_decls[0].0.clone())
-		    }
-		    else {
-			None
-		    }
+                    if paths_and_decls.len() == 1 {
+                        Some(paths_and_decls[0].0.clone())
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
