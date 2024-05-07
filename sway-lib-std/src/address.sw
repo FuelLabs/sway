@@ -1,7 +1,7 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::convert::From;
+use ::convert::{From, Into};
 use ::hash::{Hash, Hasher};
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
@@ -78,7 +78,7 @@ impl From<Address> for b256 {
     ///
     /// fn foo() {
     ///     let address = Address::from(ZERO_B256);
-    ///     let b256_data = address.into();
+    ///     let b256_data: b256 = address.into();
     ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
@@ -92,4 +92,21 @@ impl Hash for Address {
         let Address { bits } = self;
         bits.hash(state);
     }
+}
+
+#[test]
+fn test_address_from_b256() {
+    use ::assert::assert;
+
+    let my_address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(my_address.bits() == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_address_into_b256() {
+    use ::assert::assert;
+
+    let address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_data: b256 = address.into();
+    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
 }
