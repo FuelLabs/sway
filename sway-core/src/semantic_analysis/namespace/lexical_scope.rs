@@ -330,7 +330,9 @@ impl Items {
             let ctx = PartialEqWithEnginesContext::new(engines);
             match cur_decls
                 .iter()
-                .position(|(_, cur_decl)| cur_decl.eq_with_enum_variants(decl, &ctx))
+                .position(|(cur_path, cur_decl)| cur_decl.eq_with_enum_variants(decl, &ctx)
+			  || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
+			       && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std")))
             {
                 Some(index) => {
                     // The name is already bound to this decl, but
