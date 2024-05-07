@@ -427,12 +427,28 @@ impl Root {
         }
 
         let mut symbols_paths_and_decls = vec![];
-        for (symbol, (_, _, decl)) in use_item_synonyms {
-            symbols_paths_and_decls.push((symbol, decl));
+        let get_path = |mod_path: Vec<Ident>| {
+            let mut is_external = false;
+            if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
+                is_external = submodule.is_external
+            };
+	    
+            let mut path = src[..1].to_vec();
+            if is_external {
+                path = mod_path;
+            } else {
+                path.extend(mod_path);
+            }
+	    
+            path
+        };
+	
+	for (symbol, (_, mod_path, decl)) in use_item_synonyms {
+            symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
         }
         for (symbol, decls) in use_glob_synonyms {
-	    decls.iter().for_each(|(_, decl)| 
-				  symbols_paths_and_decls.push((symbol.clone(), decl.clone())));
+	    decls.iter().for_each(|(mod_path, decl)| 
+				  symbols_paths_and_decls.push((symbol.clone(), get_path(mod_path.clone()), decl.clone())));
         }
 
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
@@ -451,8 +467,8 @@ impl Root {
             try_add(symbol.clone(), src.to_vec(), decl);
         }
 
-        for (symbol, decl) in symbols_paths_and_decls {
-            try_add(symbol.clone(), src.to_vec(), decl);
+        for (symbol, path, decl) in symbols_paths_and_decls {
+            try_add(symbol.clone(), path, decl);
         }
 
         Ok(())
