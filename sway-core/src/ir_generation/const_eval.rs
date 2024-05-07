@@ -173,7 +173,7 @@ pub(crate) fn compile_const_decl(
                     } else {
                         let const_val = if env.context.experimental.new_encoding {
                             // This expression must be `encode(something)`.
-                            // We want the someting here
+                            // We want the something here
                             let value_type = match &value.expression {
                                 ty::TyExpressionVariant::FunctionApplication {
                                     arguments, ..
@@ -747,17 +747,28 @@ fn const_eval_typed_expr(
         }
         ty::TyExpressionVariant::WhileLoop {
             condition, body, ..
-        } => loop {
-            let condition =
-                const_eval_typed_expr(lookup, known_consts, condition, allow_configurables)?;
-            match condition.map(|x| x.value) {
-                Some(ConstantValue::Bool(true)) => {
-                    // Break and continue are not implemented, so there is need for flow control here
-                    let _ = const_eval_codeblock(lookup, known_consts, body, allow_configurables)?;
+        } => {
+            // Arbitrary limit of iterations to avoid infinite loops like
+            // while true {}
+            let mut limit = 1_000_000;
+
+            while limit >= 0 {
+                limit -= 1;
+
+                let condition =
+                    const_eval_typed_expr(lookup, known_consts, condition, allow_configurables)?;
+                match condition.map(|x| x.value) {
+                    Some(ConstantValue::Bool(true)) => {
+                        // Break and continue are not implemented, so there is need for flow control here
+                        let _ =
+                            const_eval_codeblock(lookup, known_consts, body, allow_configurables)?;
+                    }
+                    _ => break,
                 }
-                _ => break None,
             }
-        },
+
+            None
+        }
         ty::TyExpressionVariant::Reassignment(r) => {
             let rhs =
                 const_eval_typed_expr(lookup, known_consts, &r.rhs, allow_configurables)?.unwrap();
@@ -1313,7 +1324,6 @@ fn const_eval_intrinsic(
                 span: intrinsic.span.clone(),
             })
         }
-        // Buffer starts ((ptr, 1024), 0)
         Intrinsic::EncodeBufferEmpty => Ok(Some(to_encode_buffer(lookup, vec![], 0))),
         Intrinsic::EncodeBufferAppend => {
             assert!(args.len() == 2);

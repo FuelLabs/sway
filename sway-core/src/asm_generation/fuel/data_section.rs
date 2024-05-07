@@ -102,21 +102,21 @@ impl Entry {
         // Not an enum, no more special handling required.
         match &constant.value {
             ConstantValue::Undef | ConstantValue::Unit => Entry::new_byte(0, name, padding),
-            ConstantValue::Bool(b) => Entry::new_byte(u8::from(*b), name, padding),
-            ConstantValue::Uint(u) => {
+            ConstantValue::Bool(value) => Entry::new_byte(u8::from(*value), name, padding),
+            ConstantValue::Uint(value) => {
                 if constant.ty.is_uint8(context) {
-                    Entry::new_byte(*u as u8, name, padding)
+                    Entry::new_byte(*value as u8, name, padding)
                 } else {
-                    Entry::new_word(*u, name, padding)
+                    Entry::new_word(*value, name, padding)
                 }
             }
-            ConstantValue::U256(u) => {
-                Entry::new_byte_array(u.to_be_bytes().to_vec(), name, padding)
+            ConstantValue::U256(value) => {
+                Entry::new_byte_array(value.to_be_bytes().to_vec(), name, padding)
             }
-            ConstantValue::B256(bs) => {
-                Entry::new_byte_array(bs.to_be_bytes().to_vec(), name, padding)
+            ConstantValue::B256(value) => {
+                Entry::new_byte_array(value.to_be_bytes().to_vec(), name, padding)
             }
-            ConstantValue::String(bs) => Entry::new_byte_array(bs.clone(), name, padding),
+            ConstantValue::String(bytes) => Entry::new_byte_array(bytes.clone(), name, padding),
             ConstantValue::Array(_) => Entry::new_collection(
                 constant
                     .array_elements_with_padding(context)
@@ -148,23 +148,16 @@ impl Entry {
     pub(crate) fn to_bytes(&self) -> Vec<u8> {
         // Get the big-endian byte representation of the basic value.
         let bytes = match &self.value {
-            Datum::Byte(b) => vec![*b],
-            Datum::Word(w) => w.to_be_bytes().to_vec(),
-            Datum::ByteArray(bs) if bs.len() % 8 == 0 => bs.clone(),
-            Datum::ByteArray(bs) => bs
+            Datum::Byte(value) => vec![*value],
+            Datum::Word(value) => value.to_be_bytes().to_vec(),
+            Datum::ByteArray(bytes) | Datum::Slice(bytes) if bytes.len() % 8 == 0 => bytes.clone(),
+            Datum::ByteArray(bytes) | Datum::Slice(bytes) => bytes
                 .iter()
                 .chain([0; 8].iter())
                 .copied()
-                .take((bs.len() + 7) & 0xfffffff8_usize)
+                .take((bytes.len() + 7) & 0xfffffff8_usize)
                 .collect(),
-            Datum::Slice(bs) if bs.len() % 8 == 0 => bs.clone(),
-            Datum::Slice(bs) => bs
-                .iter()
-                .chain([0; 8].iter())
-                .copied()
-                .take((bs.len() + 7) & 0xfffffff8_usize)
-                .collect(),
-            Datum::Collection(els) => els.iter().flat_map(|el| el.to_bytes()).collect(),
+            Datum::Collection(items) => items.iter().flat_map(|el| el.to_bytes()).collect(),
         };
 
         let final_padding = self.padding.target_size().saturating_sub(bytes.len());
@@ -317,32 +310,8 @@ impl fmt::Display for DataSection {
             match datum {
                 Datum::Byte(w) => format!(".byte {w}"),
                 Datum::Word(w) => format!(".word {w}"),
-                Datum::ByteArray(bs) => {
-                    let mut hex_str = String::new();
-                    let mut chr_str = String::new();
-                    for b in bs {
-                        hex_str.push_str(format!("{b:02x} ").as_str());
-                        chr_str.push(if *b == b' ' || b.is_ascii_graphic() {
-                            *b as char
-                        } else {
-                            '.'
-                        });
-                    }
-                    format!(".bytes[{}] {hex_str} {chr_str}", bs.len())
-                }
-                Datum::Slice(bs) => {
-                    let mut hex_str = String::new();
-                    let mut chr_str = String::new();
-                    for b in bs {
-                        hex_str.push_str(format!("{b:02x} ").as_str());
-                        chr_str.push(if *b == b' ' || b.is_ascii_graphic() {
-                            *b as char
-                        } else {
-                            '.'
-                        });
-                    }
-                    format!(".slice[{}] {hex_str} {chr_str}", bs.len())
-                }
+                Datum::ByteArray(bs) => display_bytes_for_data_section(bs, ".bytes"),
+                Datum::Slice(bs) => display_bytes_for_data_section(bs, ".slice"),
                 Datum::Collection(els) => format!(
                     ".collection {{ {} }}",
                     els.iter()
@@ -365,4 +334,18 @@ impl fmt::Display for DataSection {
 
         write!(f, ".data:\n{data_buf}")
     }
+}
+
+fn display_bytes_for_data_section(bs: &Vec<u8>, prefix: &str) -> String {
+    let mut hex_str = String::new();
+    let mut chr_str = String::new();
+    for b in bs {
+        hex_str.push_str(format!("{b:02x} ").as_str());
+        chr_str.push(if *b == b' ' || b.is_ascii_graphic() {
+            *b as char
+        } else {
+            '.'
+        });
+    }
+    format!("{prefix}[{}] {hex_str} {chr_str}", bs.len())
 }
