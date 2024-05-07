@@ -6,7 +6,7 @@ abi Proxy {
     #[storage(write)]
     fn set_target_contract(id: ContractId);
 
-    #[storage(read, write)]
+    #[storage(read)]
     fn double_input(_value: u64) -> u64;
 }
 
@@ -22,7 +22,7 @@ impl Proxy for Contract {
         storage.target_contract.write(Some(id));
     }
 
-    #[storage(read, write)]
+    #[storage(read)]
     fn double_input(_value: u64) -> u64 {
         let target = storage.target_contract.read().unwrap();
         run_external(target)

@@ -1,7 +1,7 @@
 contract;
 
 abi Implementation {
-    #[storage(read, write)]
+    #[storage(write)]
     fn double_input(value: u64) -> u64;
 }
 
@@ -12,7 +12,7 @@ storage {
 }
 
 impl Implementation for Contract {
-    #[storage(read, write)]
+    #[storage(write)]
     fn double_input(value: u64) -> u64 {
         let new_value = value * 2;
         storage.value.write(new_value);

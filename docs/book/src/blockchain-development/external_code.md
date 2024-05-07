@@ -43,7 +43,7 @@ Second, the storage context of the proxy contract is retained for the loaded cod
 This means that in the examples above, the `value` variable gets updated in the storage for the *proxy* contract.
 
 This means that if you were to read the `value` variable by directly calling the implementation contract, you would get a different result than if you read it through the proxy contract.
-The proxy contract essentially adopts the code in the implementation as its own.
+The proxy contract loads the code and executes it in its own context.
 
 ## Fallback functions
 
@@ -70,3 +70,4 @@ Some limitations of `run_external` function are:
 
 - It can only be used with other contracts. Scripts, predicates, and library code cannot be run externally.
 - If you change the implementation contract, you must maintain the same order of previous storage variables and types, as this is what has been stored in the proxy storage.
+- You can't use the call stack in another call frame before you use `run_external`. You can only use the call stack within the call frame that contains `run_external`.
