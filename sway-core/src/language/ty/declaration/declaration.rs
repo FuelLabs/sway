@@ -128,18 +128,6 @@ impl PartialEqWithEngines for TyDecl {
                 TyDecl::EnumDecl(EnumDecl { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
-                TyDecl::EnumVariantDecl(EnumVariantDecl {
-		    enum_ref: l_enum,
-                    variant_name: ln,
-                    ..
-                }),
-                TyDecl::EnumVariantDecl(EnumVariantDecl {
-		    enum_ref: r_enum,
-                    variant_name: rn,
-                    ..
-                }),
-            ) => ln == rn && decl_engine.get_enum(l_enum).eq(&decl_engine.get_enum(r_enum), ctx),
-            (
                 TyDecl::ImplTrait(ImplTrait { decl_id: lid, .. }),
                 TyDecl::ImplTrait(ImplTrait { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
@@ -504,6 +492,25 @@ impl GetDeclIdent for TyDecl {
 }
 
 impl TyDecl {
+    pub(crate) fn eq_with_enum_variants(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let decl_engine = ctx.engines().de();
+	match (self, other) {
+            (
+                TyDecl::EnumVariantDecl(EnumVariantDecl {
+		    enum_ref: l_enum,
+                    variant_name: ln,
+                    ..
+                }),
+                TyDecl::EnumVariantDecl(EnumVariantDecl {
+		    enum_ref: r_enum,
+                    variant_name: rn,
+                    ..
+                }),
+            ) => ln == rn && decl_engine.get_enum(l_enum).eq(&decl_engine.get_enum(r_enum), ctx),
+	    _ => self.eq(other, ctx),
+	}
+    }
+
     /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][EnumDecl] variant.

@@ -322,7 +322,7 @@ impl Items {
 //	    if problem_symbol { println!("{} declarations found. Checking problem symbol", cur_decls.len()) } ;
 	    // Name already bound. Check if the decl is already imported
 	    let ctx = PartialEqWithEnginesContext::new(engines);
-	    match cur_decls.iter().position(|(_, cur_decl)| cur_decl.eq(decl, &ctx)) {
+	    match cur_decls.iter().position(|(_, cur_decl)| cur_decl.eq_with_enum_variants(decl, &ctx)) {
 		Some(index) => {
 		    // The name is already bound to this decl, but
 		    // we need to replace the binding to make the paths work out.
