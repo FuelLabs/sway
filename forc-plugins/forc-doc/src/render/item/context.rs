@@ -2,8 +2,13 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::IDENTITY, item::type_anchor::render_type_anchor, link::*, title::DocBlockTitle,
-        title::*, util::format::docstring::DocStrings, DocStyle, Renderable,
+        constant::IDENTITY,
+        item::type_anchor::render_type_anchor,
+        link::{DocLink, DocLinks},
+        title::BlockTitle,
+        title::DocBlockTitle,
+        util::format::docstring::DocStrings,
+        DocStyle, Renderable,
     },
     RenderPlan,
 };
@@ -376,7 +381,7 @@ impl Renderable for ItemContext {
             Some(impl_traits) => {
                 let mut impl_vec: Vec<_> = Vec::with_capacity(impl_traits.len());
                 for impl_trait in impl_traits {
-                    impl_vec.push(impl_trait.render(render_plan.clone())?)
+                    impl_vec.push(impl_trait.render(render_plan.clone())?);
                 }
                 Some(impl_vec)
             }
@@ -604,8 +609,7 @@ pub(crate) enum ContextType {
 impl DocBlockTitle for ContextType {
     fn as_block_title(&self) -> BlockTitle {
         match self {
-            ContextType::StructFields(_) => BlockTitle::Fields,
-            ContextType::StorageFields(_) => BlockTitle::Fields,
+            ContextType::StructFields(_) | ContextType::StorageFields(_) => BlockTitle::Fields,
             ContextType::EnumVariants(_) => BlockTitle::Variants,
             ContextType::RequiredMethods(_) => BlockTitle::RequiredMethods,
         }
