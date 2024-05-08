@@ -1,5 +1,0 @@
-category = "compile"
-
-# not: $()This declaration is never used
-
-# not: $()This trait is never implemented
