@@ -72,6 +72,7 @@ config
 cryptographic
 customizable
 customizations
+crate
 dapp
 dev
 dropdown
