@@ -295,11 +295,9 @@ impl b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
     ///     let val = b256::min();
-    ///     assert(val == ZERO_B256);
+    ///     assert(val == b256::zero());
     /// }
     /// ```
     pub fn min() -> Self {
