@@ -42,7 +42,7 @@ First, to use `run_external`, the ABI of the external contract is not required. 
 Second, the storage context of the proxy contract is retained for the loaded code.
 This means that in the examples above, the `value` variable gets updated in the storage for the *proxy* contract.
 
-This means that if you were to read the `value` variable by directly calling the implementation contract, you would get a different result than if you read it through the proxy contract.
+For example, if you were to read the `value` variable by directly calling the implementation contract, you would get a different result than if you read it through the proxy contract.
 The proxy contract loads the code and executes it in its own context.
 
 ## Fallback functions
@@ -52,7 +52,7 @@ If the function name doesn't exist in the target contract but a `fallback` funct
 > If there is no fallback function, the transaction will revert.
 
 You can access function parameters for fallback functions using the `call_frames` module in the `std-lib`.
-For example, to access the `_foo` input parameter in the proxy function below, you can use the `second_param` method in the `fallback` function:
+For example, to access the `_foo` input parameter in the proxy function below, you can use the `called_args` method in the `fallback` function:
 
 ```sway
 {{#include ../../../../test/src/sdk-harness/test_projects/run_external_proxy/src/main.sw:does_not_exist_in_the_target}}
