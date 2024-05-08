@@ -1527,7 +1527,7 @@ mod tests {
         assert_is_constant(
             true,
             "struct Person { age: u64 }",
-            "Person { age: { let mut x = 0; x = 1; 1} }",
+            "Person { age: { let mut x = 0; x = 1; 1 } }",
         );
         assert_is_constant(true, "", "if true { 1 } else { 0 }");
         assert_is_constant(true, "", "(0,1).0");

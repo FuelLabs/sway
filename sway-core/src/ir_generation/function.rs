@@ -1561,11 +1561,12 @@ impl<'eng> FnCompiler<'eng> {
                         .binary_op(BinaryOpKind::Add, len, step)
                 }
 
-                fn calc_addr_to_ptr_u8(
+                fn calc_addr_as_ptr(
                     current_block: &mut Block,
                     context: &mut Context,
                     ptr: Value,
                     len: Value,
+                    ptr_to: Type,
                 ) -> Value {
                     assert!(ptr.get_type(context).unwrap().is_ptr(context));
                     assert!(len.get_type(context).unwrap().is_uint64(context));
@@ -1576,32 +1577,11 @@ impl<'eng> FnCompiler<'eng> {
                         .append(context)
                         .binary_op(BinaryOpKind::Add, ptr, len);
 
-                    let uint8 = Type::get_uint8(context);
-                    let ptr_uint8 = Type::new_ptr(context, uint8);
-                    current_block.append(context).int_to_ptr(addr, ptr_uint8)
+                    let ptr_to = Type::new_ptr(context, ptr_to);
+                    current_block.append(context).int_to_ptr(addr, ptr_to)
                 }
 
-                fn calc_addr_to_ptr_u64(
-                    current_block: &mut Block,
-                    context: &mut Context,
-                    ptr: Value,
-                    len: Value,
-                ) -> Value {
-                    assert!(ptr.get_type(context).unwrap().is_ptr(context));
-                    assert!(len.get_type(context).unwrap().is_uint64(context));
-
-                    let uint64 = Type::get_uint64(context);
-                    let ptr = current_block.append(context).ptr_to_int(ptr, uint64);
-                    let addr = current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, ptr, len);
-
-                    let uint64 = Type::get_uint64(context);
-                    let ptr_uint64 = Type::new_ptr(context, uint64);
-                    current_block.append(context).int_to_ptr(addr, ptr_uint64)
-                }
-
-                fn append_u8(
+                fn append_with_store(
                     current_block: &mut Block,
                     context: &mut Context,
                     addr: Value,
@@ -1614,8 +1594,7 @@ impl<'eng> FnCompiler<'eng> {
                         .unwrap()
                         .get_pointee_type(context)
                         .unwrap()
-                        .is_uint8(context));
-                    assert!(item.get_type(context).unwrap().is_uint8(context));
+                        .eq(context, &item.get_type(context).unwrap()));
 
                     let _ = current_block.append(context).store(addr, item);
 
@@ -1668,7 +1647,7 @@ impl<'eng> FnCompiler<'eng> {
                     s: &mut FnCompiler<'_>,
                     context: &mut Context,
                     value: Value,
-                ) -> Value {
+                ) -> Result<Value, CompileError> {
                     let temp_arg_name = s.lexical_map.insert_anon();
 
                     let value_type = value.get_type(context).unwrap();
@@ -1677,81 +1656,101 @@ impl<'eng> FnCompiler<'eng> {
                         .new_local_var(context, temp_arg_name, value_type, None, false)
                         .map_err(|ir_error| {
                             CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                        })
-                        .unwrap();
+                        })?;
 
                     let local_var_ptr = s.current_block.append(context).get_local(local_var);
                     let _ = s.current_block.append(context).store(local_var_ptr, value);
 
-                    local_var_ptr
+                    Ok(local_var_ptr)
+                }
+
+                fn append_with_memcpy(
+                    s: &mut FnCompiler<'_>,
+                    context: &mut Context,
+                    item: Value,
+                    ptr: Value,
+                    len: Value,
+                    offset: u64,
+                ) -> Result<Value, CompileError> {
+                    // save to local and offset
+                    let item_ptr = save_to_local_return_ptr(s, context, item)?;
+
+                    let offset_value = Constant::new_uint(context, 64, offset);
+                    let offset_value = Value::new_constant(context, offset_value);
+                    let item_ptr = calc_addr_as_ptr(
+                        &mut s.current_block,
+                        context,
+                        item_ptr,
+                        offset_value,
+                        Type::get_uint8(context),
+                    );
+
+                    // now copy bytes
+                    let addr = calc_addr_as_ptr(
+                        &mut s.current_block,
+                        context,
+                        ptr,
+                        len,
+                        Type::get_uint8(context),
+                    );
+                    s.current_block
+                        .append(context)
+                        .mem_copy_bytes(addr, item_ptr, 8 - offset);
+                    Ok(increase_len(&mut s.current_block, context, len, 8 - offset))
                 }
 
                 let new_len = match &*item_type {
                     TypeInfo::Boolean => {
                         assert!(item.get_type(context).unwrap().is_bool(context));
-
-                        // bool is represented as u64. So save to a local
-                        let item_ptr = save_to_local_return_ptr(self, context, item);
-
-                        // now copy 1 byte
-                        let addr = calc_addr_to_ptr_u64(&mut self.current_block, context, ptr, len);
-                        self.current_block
-                            .append(context)
-                            .mem_copy_bytes(addr, item_ptr, 1);
-                        increase_len(&mut self.current_block, context, len, 1)
+                        let addr = calc_addr_as_ptr(
+                            &mut self.current_block,
+                            context,
+                            ptr,
+                            len,
+                            Type::get_bool(context),
+                        );
+                        append_with_store(&mut self.current_block, context, addr, len, item)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
                         assert!(item.get_type(context).unwrap().is_uint8(context),);
-                        let addr = calc_addr_to_ptr_u8(&mut self.current_block, context, ptr, len);
-                        append_u8(&mut self.current_block, context, addr, len, item)
+                        let addr = calc_addr_as_ptr(
+                            &mut self.current_block,
+                            context,
+                            ptr,
+                            len,
+                            Type::get_uint8(context),
+                        );
+                        append_with_store(&mut self.current_block, context, addr, len, item)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
                         assert!(item.get_type(context).unwrap().is_uint64(context));
-
-                        // u16 is represented as u64. So save to a local
-                        // get a ptr and offset 6 bytes
-                        let item_ptr = save_to_local_return_ptr(self, context, item);
-
-                        let offset = Constant::new_uint(context, 64, 6);
-                        let offset = Value::new_constant(context, offset);
-                        let item_ptr =
-                            calc_addr_to_ptr_u8(&mut self.current_block, context, item_ptr, offset);
-
-                        // now copy 2 bytes
-                        let addr = calc_addr_to_ptr_u64(&mut self.current_block, context, ptr, len);
-                        self.current_block
-                            .append(context)
-                            .mem_copy_bytes(addr, item_ptr, 2);
-                        increase_len(&mut self.current_block, context, len, 2)
+                        append_with_memcpy(self, context, item, ptr, len, 6)?
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
                         assert!(item.get_type(context).unwrap().is_uint64(context));
-
-                        // u32 is represented as u64. So save to a local
-                        // get a ptr and offset 4 bytes
-                        let item_ptr = save_to_local_return_ptr(self, context, item);
-
-                        let offset = Constant::new_uint(context, 64, 4);
-                        let offset = Value::new_constant(context, offset);
-                        let item_ptr =
-                            calc_addr_to_ptr_u8(&mut self.current_block, context, item_ptr, offset);
-
-                        // now copy 4 bytes
-                        let addr = calc_addr_to_ptr_u64(&mut self.current_block, context, ptr, len);
-                        self.current_block
-                            .append(context)
-                            .mem_copy_bytes(addr, item_ptr, 4);
-                        increase_len(&mut self.current_block, context, len, 4)
+                        append_with_memcpy(self, context, item, ptr, len, 4)?
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
                         assert!(item.get_type(context).unwrap().is_uint64(context));
-                        let addr = calc_addr_to_ptr_u64(&mut self.current_block, context, ptr, len);
+                        let addr = calc_addr_as_ptr(
+                            &mut self.current_block,
+                            context,
+                            ptr,
+                            len,
+                            Type::get_uint64(context),
+                        );
                         append_u64(&mut self.current_block, context, addr, len, item)
                     }
                     TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
                         // Save to local and return ptr to local
-                        let item_ptr = save_to_local_return_ptr(self, context, item);
-                        let addr = calc_addr_to_ptr_u8(&mut self.current_block, context, ptr, len);
+                        let item_ptr = save_to_local_return_ptr(self, context, item)?;
+                        let addr = calc_addr_as_ptr(
+                            &mut self.current_block,
+                            context,
+                            ptr,
+                            len,
+                            Type::get_uint8(context),
+                        );
                         self.current_block
                             .append(context)
                             .mem_copy_bytes(addr, item_ptr, 32);
@@ -1759,8 +1758,14 @@ impl<'eng> FnCompiler<'eng> {
                     }
                     TypeInfo::StringArray(string_len) => {
                         // Save to local and return ptr to local
-                        let item_ptr = save_to_local_return_ptr(self, context, item);
-                        let addr = calc_addr_to_ptr_u8(&mut self.current_block, context, ptr, len);
+                        let item_ptr = save_to_local_return_ptr(self, context, item)?;
+                        let addr = calc_addr_as_ptr(
+                            &mut self.current_block,
+                            context,
+                            ptr,
+                            len,
+                            Type::get_uint8(context),
+                        );
                         self.current_block.append(context).mem_copy_bytes(
                             addr,
                             item_ptr,
@@ -1776,13 +1781,29 @@ impl<'eng> FnCompiler<'eng> {
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
                         let uint64 = Type::get_uint64(context);
 
-                        let item_ptr = save_to_local_return_ptr(self, context, item);
-                        let addr = calc_addr_to_ptr_u64(&mut self.current_block, context, ptr, len);
+                        let item_ptr = save_to_local_return_ptr(self, context, item)?;
+                        let addr = calc_addr_as_ptr(
+                            &mut self.current_block,
+                            context,
+                            ptr,
+                            len,
+                            Type::get_uint8(context),
+                        );
 
+                        // asm(item_ptr = item_ptr, len = len, addr = addr, data_ptr, item_len, new_len) {
+                        //     lw item_len item_ptr i1;
+                        //     sw addr item_len i0;
+                        //     addi addr addr i8;
+                        //     lw data_ptr item_ptr i0;
+                        //     mcp addr data_ptr item_len;
+                        //     addi new_len len i8
+                        //     add new_len new_len item_len
+                        //     new_len: u64
+                        // }
                         let addr_ident = Ident::new_no_span("addr".into());
                         let len_ident = Ident::new_no_span("len".into());
                         let item_ptr_ident = Ident::new_no_span("item_ptr".into());
-                        let data_ptr_ident = Ident::new_no_span("data_ptr_ident".into());
+                        let data_ptr_ident = Ident::new_no_span("data_ptr".into());
                         let item_len_ident = Ident::new_no_span("item_len".into());
                         let new_len_ident = Ident::new_no_span("new_len".into());
                         self.current_block.append(context).asm_block(
