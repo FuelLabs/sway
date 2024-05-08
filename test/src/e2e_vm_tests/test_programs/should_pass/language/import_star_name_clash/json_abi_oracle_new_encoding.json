@@ -17,8 +17,8 @@
   "messagesTypes": [],
   "types": [
     {
-      "components": [],
-      "type": "()",
+      "components": null,
+      "type": "u64",
       "typeId": 0,
       "typeParameters": null
     }
