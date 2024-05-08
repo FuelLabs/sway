@@ -318,19 +318,6 @@ impl Items {
         src_path: ModulePathBuf,
         decl: &ty::TyDecl,
     ) {
-	enum CheckAlreadyImportedResult {
-	    Add,
-	    Replace(usize),
-	    Ignore,
-	}
-
-	fn is_already_imported = | (cur_decls, src_path, decl, ctx) | {
-	    for (i, (cur_path, cur_decl)) in cur_decls.enumerate() {
-		if cur_path.len >= 2 && cur_path[0].
-		if cur_decl
-	    }
-	}
-	
         if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
             // Name already bound. Check if the decl is already imported
             let ctx = PartialEqWithEnginesContext::new(engines);
@@ -345,19 +332,10 @@ impl Items {
 		// edge cases should go away.
 		// See https://github.com/FuelLabs/sway/issues/3113
 		//
-		// 1. core::prelude imports core::<anything>::* both implicitly and explicitly, but
-		// only the explicit one should be reexported. core::prelude should therefore shadow
-		// core::<anything>.
-		//
-		// 2. Every module in std imports core::prelude::* implicitly, but the std prelude
-		// should not reexport it. core::prelude should therefore shadow
-		// std::<anything>. (This only works because there are no name clashes between the
-		// items in core and std).
-		//
-		// 3. Every module outside of core and std may redefine a name from std or
-		// core. <anything not core or std>::<anything> should shadow core::<anything> and
-		// std::<anything>.
-		//
+		// As a heuristic we replace any bindings from std and core if the new binding is
+		// also from std or core.  This does not work if the user has declared an item with
+		// the same name as an item in one of the preludes, but this is an edge case that we
+		// will have to live with for now.
                     || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
                         && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std"))
             }) {
