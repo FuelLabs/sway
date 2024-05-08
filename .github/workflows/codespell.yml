@@ -28,4 +28,9 @@ jobs:
   #   - name: Check spelling of file.txt
   #     uses: crate-ci/typos@master
   cargo-spellcheck:
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Check spelling
       uses: mickare/cargo-spellcheck-action
