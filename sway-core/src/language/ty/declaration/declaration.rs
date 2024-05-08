@@ -138,11 +138,12 @@ impl PartialEqWithEngines for TyDecl {
                     variant_name: rn,
                     ..
                 }),
-            ) =>
+            ) => {
                 ln == rn
                     && decl_engine
                         .get_enum(l_enum)
-                        .eq(&decl_engine.get_enum(r_enum), ctx),
+                        .eq(&decl_engine.get_enum(r_enum), ctx)
+            }
             (
                 TyDecl::ImplTrait(ImplTrait { decl_id: lid, .. }),
                 TyDecl::ImplTrait(ImplTrait { decl_id: rid, .. }),

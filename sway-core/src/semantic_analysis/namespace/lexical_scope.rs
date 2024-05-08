@@ -318,22 +318,14 @@ impl Items {
         src_path: ModulePathBuf,
         decl: &ty::TyDecl,
     ) {
-        //	let problem_symbol = symbol.as_str() == "encode"; //match decl { TyDecl::FunctionDecl(_) => true, _ => false };
-        //	if problem_symbol {
-        //	    println!("\nSymbol = {}", symbol.as_str());
-        //	    println!("path = {}", src_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"));
-        //	    println!("destination module = {}", self_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"));
-        //	};
         if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
-            //	    if problem_symbol { println!("{} declarations found. Checking problem symbol", cur_decls.len()) } ;
             // Name already bound. Check if the decl is already imported
             let ctx = PartialEqWithEnginesContext::new(engines);
-            match cur_decls
-                .iter()
-                .position(|(cur_path, cur_decl)| cur_decl.eq(decl, &ctx)
-			  || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
-			       && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std")))
-            {
+            match cur_decls.iter().position(|(cur_path, cur_decl)| {
+                cur_decl.eq(decl, &ctx)
+                    || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
+                        && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std"))
+            }) {
                 Some(index) => {
                     // The name is already bound to this decl, but
                     // we need to replace the binding to make the paths work out.
@@ -347,28 +339,8 @@ impl Items {
                     cur_decls.push((src_path.to_vec(), decl.clone()));
                 }
             }
-
-        //	    if !cur_decls.iter().any(|(_, cur_decl)| cur_decl.eq(decl, &ctx)) {
-        //		// Insert additional declaration for symbol
-        //		cur_decls.push((src_path.to_vec(), decl.clone()));
-        //		if problem_symbol { println!("Problem symbol decl added to existing decls") };
-        //	    }
-        //	    else {
-        //		if problem_symbol {
-        //		    println!("Problem symbol ignored")
-        //		};
-        //	    };
-        //	    if problem_symbol {
-        //		if let Some(new_cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
-        //		    println!("{} declarations now in map", new_cur_decls.len())
-        //		} ;
-        //	    }
         } else {
-            //	    if problem_symbol {
-            //		println!("New problem symbol found - inserting")
-            //	    };
-            let /*mut*/ new_vec = vec![(src_path.to_vec(), decl.clone())]; // Vec::<(ModulePathBuf, ty::TyDecl)>::new();
-                                                                           //	    new_vec.push();
+            let new_vec = vec![(src_path.to_vec(), decl.clone())];
             self.use_glob_synonyms.insert(symbol, new_vec);
         }
     }
