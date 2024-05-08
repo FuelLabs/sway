@@ -71,7 +71,7 @@ impl RenderedDocumentation {
     pub fn from_raw_docs(
         raw_docs: Documentation,
         render_plan: RenderPlan,
-        root_attributes: Option<AttributesMap>,
+        root_attributes: Option<&AttributesMap>,
         program_kind: &TyProgramKind,
         forc_version: Option<String>,
     ) -> Result<RenderedDocumentation> {

@@ -13,7 +13,7 @@ forc_util::cli_examples! {
 }
 
 /// Forc plugin for building a Sway package's documentation
-#[derive(Debug, Parser, Default)]
+#[derive(Debug, Clone, Parser, Default)]
 #[clap(
     name = "forc-doc",
     after_help = help(),
