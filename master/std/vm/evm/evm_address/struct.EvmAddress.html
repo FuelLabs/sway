@@ -32,4 +32,20 @@ fn foo() {
     assert(result);
 }
 </code></pre>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../../convert/trait.From.html">From</a> for EvmAddress</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(bits: b256) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../../hash/trait.Hash.html">Hash</a> for EvmAddress</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../../convert/trait.From.html">From</a> for EvmAddress</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(bits: b256) -&gt; Self</h4></div></summary><div class="doc-block"><p>Casts raw <code>b256</code> data to an <code>EvmAddress</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>bits</code>: [b256] - The raw <code>b256</code> data to be casted.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[EvmAddress] - The newly created <code>EvmAddress</code> from the raw <code>b256</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::constants::ZERO_B256;
+
+fn foo() {
+   let evm_address = EvmAddress::from(ZERO_B256);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../../hash/trait.Hash.html">Hash</a> for EvmAddress</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
