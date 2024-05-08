@@ -3,7 +3,10 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
+use crate::{
+    abi_generation::abi_str::AbiStrContext, engine_threading::*, has_changes, language::ty::*,
+    type_system::*, types::*,
+};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -113,7 +116,17 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
             Intrinsic::Log => {
                 let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
                 types_metadata.push(TypeMetadata::LoggedType(
-                    LogId::new(ctx.log_id_counter()),
+                    LogId::new(
+                        ctx.log_id_counter(),
+                        logged_type.get_abi_type_str(
+                            &AbiStrContext {
+                                program_name: Some(ctx.program_name.clone()),
+                                abi_with_callpaths: true,
+                            },
+                            ctx.engines,
+                            logged_type,
+                        ),
+                    ),
                     logged_type,
                 ));
                 *ctx.log_id_counter_mut() += 1;

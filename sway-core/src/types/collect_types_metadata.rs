@@ -9,6 +9,7 @@ use std::{
 };
 
 use crate::{type_system::TypeId, Engines, ExperimentalFlags};
+use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span};
 
@@ -16,18 +17,18 @@ use sway_types::{Ident, Span};
 /// error to signal to the user that more type information is needed.
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct LogId(usize);
-
-impl std::ops::Deref for LogId {
-    type Target = usize;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+pub struct LogId {
+    pub index: usize,
+    pub hash_id: u64,
 }
 
 impl LogId {
-    pub fn new(index: usize) -> LogId {
-        LogId(index)
+    pub fn new(index: usize, string: String) -> LogId {
+        let mut hasher = Sha256::new();
+        hasher.update(string);
+        let result = hasher.finalize();
+        let hash_id = u64::from_be_bytes(result[0..8].try_into().unwrap());
+        LogId { index, hash_id }
     }
 }
 
@@ -70,6 +71,8 @@ pub struct CollectTypesMetadataContext<'cx> {
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
     pub(crate) engines: &'cx Engines,
+
+    pub(crate) program_name: String,
 
     pub experimental: ExperimentalFlags,
 }
@@ -119,13 +122,18 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
         None
     }
 
-    pub fn new(engines: &'cx Engines, experimental: ExperimentalFlags) -> Self {
+    pub fn new(
+        engines: &'cx Engines,
+        experimental: ExperimentalFlags,
+        program_name: String,
+    ) -> Self {
         let mut ctx = Self {
             engines,
             log_id_counter: 0,
             message_id_counter: 0,
             call_site_spans: vec![],
             experimental,
+            program_name,
         };
         ctx.call_site_push();
         ctx
