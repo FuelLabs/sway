@@ -28,6 +28,7 @@ jobs:
   #   - name: Check spelling of file.txt
   #     uses: crate-ci/typos@master
   cargo-spellcheck:
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
