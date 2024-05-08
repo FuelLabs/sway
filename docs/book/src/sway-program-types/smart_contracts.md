@@ -95,4 +95,4 @@ Each special parameter is optional and assumes a default value when skipped:
 
 1. The default value for `gas` is the context gas (i.e. the content of the special register `$cgas`). Refer to the [FuelVM specifications](https://fuellabs.github.io/fuel-specs/master/vm) for more information about context gas.
 2. The default value for `coins` is 0.
-3. The default value for `asset_id` is `ZERO_B256`.
+3. The default value for `asset_id` is `b256::zero()`.
