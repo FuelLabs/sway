@@ -189,6 +189,9 @@ unary
 SRC
 DEX
 SubId
+upgradeable
+Upgradeable
+transpiler
 Pausable
 Libs
 Reentrancy
