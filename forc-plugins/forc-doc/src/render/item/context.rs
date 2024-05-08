@@ -30,7 +30,7 @@ use sway_core::language::ty::{
 /// }
 /// ```
 /// Becomes:
-/// ```rust
+/// ```ignore
 /// Context {
 ///     module_info: ModuleInfo, /* cloned from item origin to create links */
 ///     context_type: ContextType::RequiredMethods(Vec<TyTraitFn>), /* trait fn foo() stored here */
