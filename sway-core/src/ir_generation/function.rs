@@ -1687,8 +1687,21 @@ impl<'eng> FnCompiler<'eng> {
                 }
 
                 let new_len = match &*item_type {
+                    TypeInfo::Boolean => {
+                        assert!(item.get_type(context).unwrap().is_bool(context));
+
+                        // bool is represented as u64. So save to a local
+                        let item_ptr = save_to_local_return_ptr(self, context, item);
+
+                        // now copy 1 byte
+                        let addr = calc_addr_to_ptr_u64(&mut self.current_block, context, ptr, len);
+                        self.current_block
+                            .append(context)
+                            .mem_copy_bytes(addr, item_ptr, 1);
+                        increase_len(&mut self.current_block, context, len, 1)
+                    }
                     TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
-                        assert!(item.get_type(context).unwrap().is_uint8(context));
+                        assert!(item.get_type(context).unwrap().is_uint8(context),);
                         let addr = calc_addr_to_ptr_u8(&mut self.current_block, context, ptr, len);
                         append_u8(&mut self.current_block, context, addr, len, item)
                     }
@@ -1696,7 +1709,7 @@ impl<'eng> FnCompiler<'eng> {
                         assert!(item.get_type(context).unwrap().is_uint64(context));
 
                         // u16 is represented as u64. So save to a local
-                        // get a ptr and offset 2 bytes
+                        // get a ptr and offset 6 bytes
                         let item_ptr = save_to_local_return_ptr(self, context, item);
 
                         let offset = Constant::new_uint(context, 64, 6);

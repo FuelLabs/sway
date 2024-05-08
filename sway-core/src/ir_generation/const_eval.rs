@@ -1333,6 +1333,11 @@ fn const_eval_intrinsic(
 
             use ConstantValue::*;
             match &args[1].value {
+                Bool(v) => {
+                    bytes.extend(if *v { [1] } else { [0] });
+                    len += 1;
+                    Ok(Some(to_encode_buffer(lookup, bytes, len)))
+                }
                 Uint(v) => {
                     match &*lookup.engines.te().get(intrinsic.arguments[1].return_type) {
                         TypeInfo::UnsignedInteger(IntegerBits::Eight) => {

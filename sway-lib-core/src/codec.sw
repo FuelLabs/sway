@@ -153,7 +153,7 @@ pub trait AbiEncode {
 impl AbiEncode for bool {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
-            buffer: __encode_buffer_append(buffer.buffer, if self { 1u8 } else { 0u8 }),
+            buffer: __encode_buffer_append(buffer.buffer, self),
         }
     }
 }
