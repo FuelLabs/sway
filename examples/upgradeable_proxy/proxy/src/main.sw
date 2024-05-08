@@ -27,5 +27,5 @@ impl Proxy for Contract {
         let target = storage.target_contract.read().unwrap();
         run_external(target)
     }
-    // ANCHOR_END: proxy
 }
+// ANCHOR_END: proxy
