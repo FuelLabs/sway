@@ -111,6 +111,7 @@ fn test_impl_traits_no_deps() {
     };
     let (doc_path, _) = compile_html(
         &command,
+        &get_doc_dir,
         ExperimentalFlags {
             new_encoding: false,
         },
