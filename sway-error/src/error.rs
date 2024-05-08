@@ -962,7 +962,7 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingCore { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
-    #[error("Type not supported with __encode_buffer_append.")]
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
     EncodingUnsupportedType { span: Span },
 }
 

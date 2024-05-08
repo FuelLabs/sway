@@ -166,6 +166,35 @@ fn type_check_encode_buffer_empty(
     Ok((kind, return_type))
 }
 
+fn encode_buffer_type(engines: &Engines) -> TypeInfo {
+    let raw_ptr = engines.te().insert(engines, TypeInfo::RawUntypedPtr, None);
+    let uint64 = engines.te().insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
+    TypeInfo::Tuple(vec![
+        TypeArgument {
+            type_id: raw_ptr,
+            initial_type_id: raw_ptr,
+            span: Span::dummy(),
+            call_path_tree: None,
+        },
+        TypeArgument {
+            type_id: uint64,
+            initial_type_id: uint64,
+            span: Span::dummy(),
+            call_path_tree: None,
+        },
+        TypeArgument {
+            type_id: uint64,
+            initial_type_id: uint64,
+            span: Span::dummy(),
+            call_path_tree: None,
+        },
+    ])
+}
+
 fn type_check_encode_append(
     handler: &Handler,
     mut ctx: TypeCheckContext,
@@ -177,21 +206,40 @@ fn type_check_encode_append(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
+    let buffer_type = type_engine.insert(engines, encode_buffer_type(engines), None);
     let buffer_expr = {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        ty::TyExpression::type_check(handler, ctx, &arguments[0].clone())?
+            .with_type_annotation(buffer_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
-    let return_type = buffer_expr.return_type;
 
+    let item_span = arguments[1].span.clone();
+    let item_type = type_engine.insert(engines, TypeInfo::Unknown, None);
     let item_expr = {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
-        ty::TyExpression::type_check(handler, ctx, &arguments[1].clone())?
+            .with_type_annotation(item_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[1])?
+    };
+
+    // only supported types
+    match &*engines.te().get(item_type) {
+        TypeInfo::Boolean
+        | TypeInfo::UnsignedInteger(IntegerBits::Eight)
+        | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
+        | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
+        | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+        | TypeInfo::UnsignedInteger(IntegerBits::V256)
+        | TypeInfo::B256
+        | TypeInfo::StringArray(_)
+        | TypeInfo::StringSlice
+        | TypeInfo::RawUntypedSlice => {}
+        _ => {
+            return Err(handler.emit_err(CompileError::EncodingUnsupportedType { span: item_span }))
+        }
     };
 
     let kind = ty::TyIntrinsicFunctionKind {
@@ -200,7 +248,7 @@ fn type_check_encode_append(
         type_arguments: vec![],
         span,
     };
-    Ok((kind, return_type))
+    Ok((kind, buffer_type))
 }
 
 /// Signature: `__not(val: u64) -> u64`

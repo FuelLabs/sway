@@ -1535,6 +1535,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 // Append item
                 let item = &arguments[1];
+                let item_span = item.span.clone();
                 let item_type = engines.te().get(item.return_type);
                 let item = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, item)?
@@ -1891,7 +1892,7 @@ impl<'eng> FnCompiler<'eng> {
                             Some(new_len_ident),
                         )
                     }
-                    _ => return Err(CompileError::EncodingUnsupportedType { span }),
+                    _ => return Err(CompileError::EncodingUnsupportedType { span: item_span }),
                 };
 
                 let buffer = self.compile_to_encode_buffer(context, ptr, cap, new_len)?;
