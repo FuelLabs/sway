@@ -4,7 +4,7 @@ on:
   pull_request:
 
 jobs:
-  cargo-spellcheck:
+  find-typos:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
