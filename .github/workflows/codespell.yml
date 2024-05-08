@@ -2,8 +2,6 @@ name: Codespell
 
 on:
   pull_request:
-    paths:
-      - docs/**
 
 jobs:
   test:
