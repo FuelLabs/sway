@@ -1,4 +1,4 @@
-name: Check for spelling errors
+name: Spellcheck
 
 on:
   pull_request:
@@ -18,12 +18,14 @@ jobs:
   #         skip: '*.lock'
   #         ignore_words_file: 'docs/book/spell-check-custom-words.txt'
   #         exclude_file: Cargo.lock
-  find-typos:
-    name: Spell Check with Typos
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout Actions Repository
-      uses: actions/checkout@v3
+  # find-typos:
+  #   name: Spell Check with Typos
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout Actions Repository
+  #     uses: actions/checkout@v3
 
-    - name: Check spelling of file.txt
-      uses: crate-ci/typos@master
+  #   - name: Check spelling of file.txt
+  #     uses: crate-ci/typos@master
+  cargo-spellcheck:
+      uses: mickare/cargo-spellcheck-action
