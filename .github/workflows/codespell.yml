@@ -1,0 +1,10 @@
+name: Codespell
+
+on:
+  pull_request:
+    paths:
+      - docs/**
+
+jobs:
+  test:
+    uses: codespell-project/actions-codespell@v2
