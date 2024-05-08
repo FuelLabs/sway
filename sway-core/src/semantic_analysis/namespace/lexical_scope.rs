@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, *},
-    engine_threading::{Engines, PartialEqWithEnginesContext},
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
@@ -330,7 +330,7 @@ impl Items {
             let ctx = PartialEqWithEnginesContext::new(engines);
             match cur_decls
                 .iter()
-                .position(|(cur_path, cur_decl)| cur_decl.eq_with_enum_variants(decl, &ctx)
+                .position(|(cur_path, cur_decl)| cur_decl.eq(decl, &ctx)
 			  || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
 			       && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std")))
             {
