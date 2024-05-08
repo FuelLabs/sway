@@ -4,6 +4,7 @@ use ::alias::SubId;
 use ::contract_id::ContractId;
 use ::convert::From;
 use ::hash::{Hash, Hasher};
+use ::math::Zero;
 
 /// An AssetId is used for interacting with an asset on the network.
 ///
@@ -46,10 +47,8 @@ impl From<b256> for AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let asset_id = AssetId::from(ZERO_B256);
+    ///    let asset_id = AssetId::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -72,11 +71,11 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{callframes::contract_id, constants::ZERO_B256};
+    /// use std::callframes::contract_id;
     ///
     /// fn foo() {
     ///     let contract_id = contract_id();
-    ///     let sub_id = ZERO_B256;
+    ///     let sub_id = b256::zero();
     ///
     ///     let asset_id = AssetId::new(contract_id, sub_id);
     /// }
@@ -146,12 +145,12 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, asset::transfer};
+    /// use std::asset::transfer;
     ///
     /// fn foo() {
     ///     let asset_id = AssetId::base();
     ///     let amount = 100;
-    ///     let recipient = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     let recipient = Identity::ContractId(ContractId::zero());
     ///
     ///     transfer(recipient, asset_id, amount);
     /// ```
@@ -173,11 +172,9 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() -> {
-    ///     let my_asset = AssetId::from(ZERO_B256);
-    ///     assert(my_asset.bits() == ZERO_B256);
+    ///     let my_asset = AssetId::from(b256::zero());
+    ///     assert(my_asset.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
@@ -195,16 +192,26 @@ impl From<AssetId> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let asset_id = AssetId::from(ZERO_B256);
+    ///     let asset_id = AssetId::from(b256::zero());
     ///     let b256_data = asset_id.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(id: AssetId) -> Self {
         id.bits()
+    }
+}
+
+impl Zero for AssetId {
+    fn zero() -> Self {
+        Self {
+            bits: b256::zero()
+        }
+    }
+
+    fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }
 

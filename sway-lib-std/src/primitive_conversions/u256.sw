@@ -114,10 +114,8 @@ impl From<b256> for u256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let u256_value = u256::from(ZERO_B256);
+    ///    let u256_value = u256::zero();
     /// }
     /// ```
     fn from(bits: b256) -> Self {

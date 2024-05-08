@@ -1,8 +1,9 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::convert::From;
+use ::convert::{Into, From};
 use ::hash::{Hash, Hasher};
+use ::math::Zero;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -20,11 +21,9 @@ impl ContractId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() -> {
-    ///     let my_contract = ContractId::from(ZERO_B256);
-    ///     assert(my_contract.bits() == ZERO_B256);
+    ///     let my_contract = ContractId:zero();
+    ///     assert(my_contract.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
@@ -53,10 +52,8 @@ impl From<b256> for ContractId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let contract_id = ContractId::from(ZERO_B256);
+    ///    let contract_id = ContractId::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -64,7 +61,7 @@ impl From<b256> for ContractId {
     }
 }
 
-impl From<ContractId> for b256 {
+impl Into<b256> for ContractId {
     /// Casts a `ContractId` to raw `b256` data.
     ///
     /// # Returns
@@ -74,16 +71,14 @@ impl From<ContractId> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let contract_id = ContractId::from(ZERO_B256);
+    ///     let contract_id = ContractId::zero();
     ///     let b256_data = contract_id.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
-    fn from(id: ContractId) -> Self {
-        id.bits()
+    fn into(self) -> b256 {
+        self.bits()
     }
 }
 
@@ -111,12 +106,12 @@ impl ContractId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, asset::mint};
+    /// use std::asset::mint;
     ///
     /// fn foo() {
     ///     let this_contract = ContractId::this();
-    ///     mint(ZERO_B256, 50);
-    ///     Address::from(ZERO_B256).transfer(AssetId::default(this_contract), 50);
+    ///     mint(b256::zero(), 50);
+    ///     Address::zero().transfer(AssetId::default(this_contract), 50);
     /// }
     /// ```
     pub fn this() -> ContractId {
@@ -124,4 +119,25 @@ impl ContractId {
             fp: b256
         })
     }
+}
+
+impl Zero for ContractId {
+    fn zero() -> Self {
+        Self {
+            bits: b256::zero()
+        }
+    }
+
+    fn is_zero(self) -> bool {
+        self.bits == b256::zero()
+    }
+}
+
+#[test]
+fn test_into() {
+    use ::assert::assert;
+    
+    let contract_id = ContractId::zero();
+    let b256_data = contract_id.into();
+    assert(b256_data == b256::zero());
 }

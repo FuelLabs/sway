@@ -3,6 +3,7 @@ library;
 
 use ::convert::From;
 use ::hash::{Hash, Hasher};
+use ::math::Zero;
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
@@ -20,11 +21,9 @@ impl Address {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() -> {
-    ///     let my_address = Address::from(ZERO_B256);
-    ///     assert(my_address.bits() == ZERO_B256);
+    ///     let my_address = Address::zero();
+    ///     assert(my_address.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
@@ -53,10 +52,8 @@ impl From<b256> for Address {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let address = Address::from(ZERO_B256);
+    ///    let address = Address::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -74,12 +71,10 @@ impl From<Address> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let address = Address::from(ZERO_B256);
+    ///     let address = Address::zero();
     ///     let b256_data = address.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(address: Address) -> Self {
@@ -91,5 +86,17 @@ impl Hash for Address {
     fn hash(self, ref mut state: Hasher) {
         let Address { bits } = self;
         bits.hash(state);
+    }
+}
+
+impl Zero for Address {
+    fn zero() -> Self {
+        Self {
+            bits: b256::zero()
+        }
+    }
+
+    fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }

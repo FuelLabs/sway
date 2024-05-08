@@ -2,8 +2,8 @@
 //! which are needed when working with public keys and signatures.
 library;
 
-use ::constants::ZERO_B256;
 use ::convert::From;
+use ::math::Zero;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -52,7 +52,7 @@ impl B512 {
     /// ```
     pub fn new() -> Self {
         Self {
-            bits: [ZERO_B256, ZERO_B256],
+            bits: [b256::zero(), b256::zero()],
         }
     }
 
@@ -65,14 +65,26 @@ impl B512 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{b512::B512, constants::ZERO_B256);
+    /// use std::b512::B512;
     ///
     /// fn foo() {
     ///     let zero = B512::new();
-    ///     assert(zero.bits() == [ZERO_B256, ZERO_B256]);
+    ///     assert(zero.bits() == [b256::zero(), b256::zero()]);
     /// }
     /// ```
     pub fn bits(self) -> [b256; 2] {
         self.bits
+    }
+}
+
+impl Zero for B512 {
+    fn zero() -> Self {
+        Self {
+            bits: [b256::zero(), b256::zero()],
+        }
+    }
+
+    fn is_zero(self) -> bool {
+        (self.bits)[0] == b256::zero() && (self.bits)[1] == b256::zero()
     }
 }

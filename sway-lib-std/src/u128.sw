@@ -690,6 +690,19 @@ impl Logarithm for U128 {
     }
 }
 
+impl Zero for U128 {
+    fn zero() -> Self {
+        Self {
+            upper: 0,
+            lower: 0,
+        }
+    }
+
+    fn is_zero(self) -> bool {
+        self.upper == 0 && self.lower == 0
+    }
+}
+
 #[test]
 fn test_u128_from_u8() {
     let u8_1: u8 = 0u8;

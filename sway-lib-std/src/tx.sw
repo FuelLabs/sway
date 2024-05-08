@@ -1,9 +1,9 @@
 //! Transaction field getters.
 library;
 
-use ::constants::ZERO_B256;
 use ::revert::revert;
 use ::option::Option::{self, *};
+use ::math::Zero;
 
 // GTF Opcode const selectors
 //
@@ -513,7 +513,7 @@ pub fn tx_script_bytecode_hash() -> b256 {
     match tx_type() {
         Transaction::Script => {
             // Get the script memory details
-            let mut result_buffer = ZERO_B256;
+            let mut result_buffer = b256::zero();
             let script_length = tx_script_length();
             let script_ptr = tx_script_start_pointer();
 

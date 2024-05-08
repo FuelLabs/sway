@@ -4,6 +4,7 @@ library;
 use ::intrinsics::size_of_val;
 use ::convert::From;
 use ::hash::*;
+use ::math::Zero;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
@@ -21,11 +22,11 @@ impl EvmAddress {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{evm::EvmAddress, constants::ZERO_B256);
+    /// use std::evm::EvmAddress;
     ///
     /// fn foo() {
-    ///     let evm_address = EvmAddress::from(ZERO_B256);
-    ///     assert(evm_address.bits() == ZERO_B256);
+    ///     let evm_address = EvmAddress::zero();
+    ///     assert(evm_address.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
@@ -65,5 +66,17 @@ impl Hash for EvmAddress {
     fn hash(self, ref mut state: Hasher) {
         let Address { bits } = self;
         bits.hash(state);
+    }
+}
+
+impl Zero for EvmAddress {
+    fn zero() -> Self {
+        Self {
+            bits: b256::zero()
+        }
+    }
+
+    fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }
