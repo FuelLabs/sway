@@ -517,6 +517,7 @@ mod tests {
             session,
             sway_core::ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
         )
         .expect_err("expected ManifestFileNotFound");

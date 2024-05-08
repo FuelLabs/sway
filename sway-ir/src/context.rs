@@ -42,6 +42,7 @@ pub struct Context<'eng> {
 #[derive(Copy, Clone)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
+    pub abi_hash_ids: bool,
 }
 
 impl<'eng> Context<'eng> {

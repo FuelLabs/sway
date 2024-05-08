@@ -31,6 +31,7 @@ fn test_impl_traits_default() {
         &get_doc_dir,
         ExperimentalFlags {
             new_encoding: false,
+            abi_hash_ids: false,
         },
     )
     .unwrap();
@@ -114,6 +115,7 @@ fn test_impl_traits_no_deps() {
         &get_doc_dir,
         ExperimentalFlags {
             new_encoding: false,
+            abi_hash_ids: false,
         },
     )
     .unwrap();

@@ -29,6 +29,10 @@ pub struct Command {
     /// Disable the "new encoding" feature
     #[clap(long)]
     pub no_encoding_v1: bool,
+
+    /// Enables abi ids using the first 8 bytes of sha256 of the type str.
+    #[clap(long)]
+    pub abi_hash_ids: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {

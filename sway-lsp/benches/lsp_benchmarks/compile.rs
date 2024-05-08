@@ -9,6 +9,7 @@ const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 fn benchmarks(c: &mut Criterion) {
     let experimental = ExperimentalFlags {
         new_encoding: false,
+        abi_hash_ids: false,
     };
 
     // Load the test project

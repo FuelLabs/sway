@@ -97,6 +97,7 @@ pub fn parse(
             input,
             ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
         ),
         // When a `BuildConfig` is given,
@@ -529,6 +530,7 @@ pub fn parsed_to_ast(
         .map(|x| x.experimental)
         .unwrap_or(ExperimentalFlags {
             new_encoding: false,
+            abi_hash_ids: false,
         });
     let lsp_config = build_config.map(|x| x.lsp_mode.clone()).unwrap_or_default();
 
@@ -630,6 +632,7 @@ pub fn parsed_to_ast(
         engines.se(),
         sway_ir::ExperimentalFlags {
             new_encoding: experimental.new_encoding,
+            abi_hash_ids: experimental.abi_hash_ids,
         },
     );
     let mut md_mgr = MetadataManager::default();

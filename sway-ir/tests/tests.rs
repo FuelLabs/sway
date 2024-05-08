@@ -28,6 +28,7 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
             &source_engine,
             ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
         )
         .unwrap_or_else(|parse_err| {

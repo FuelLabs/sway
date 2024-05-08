@@ -2748,6 +2748,7 @@ mod tests {
             ),
             ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
         )
     }
@@ -2895,6 +2896,7 @@ mod tests {
             ),
             ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
         );
         let (errors, warnings) = handler.consume();

@@ -165,6 +165,7 @@ impl BuildConfig {
             optimization_level: OptLevel::Opt0,
             experimental: ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
             lsp_mode: None,
         }
@@ -254,6 +255,7 @@ impl BuildConfig {
 #[derive(Debug, Clone, Copy)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
+    pub abi_hash_ids: bool,
 }
 
 #[derive(Clone, Debug, Default)]

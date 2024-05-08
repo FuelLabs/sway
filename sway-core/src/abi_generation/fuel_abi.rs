@@ -11,6 +11,7 @@ use super::abi_str::AbiStrContext;
 pub struct AbiContext<'a> {
     pub program: &'a TyProgram,
     pub abi_with_callpaths: bool,
+    pub abi_with_hash_ids: bool,
 }
 
 impl<'a> AbiContext<'a> {

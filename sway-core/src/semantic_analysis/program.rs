@@ -54,6 +54,7 @@ impl TyProgram {
                 .map(|x| x.experimental)
                 .unwrap_or(crate::ExperimentalFlags {
                     new_encoding: false,
+                    abi_hash_ids: false,
                 });
 
         let mut namespace = Namespace::init_root(initial_namespace);

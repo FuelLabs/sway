@@ -1557,6 +1557,7 @@ pub fn sway_build_config(
     .with_optimization_level(build_profile.optimization_level)
     .with_experimental(sway_core::ExperimentalFlags {
         new_encoding: build_profile.experimental.new_encoding,
+        abi_hash_ids: build_profile.experimental.abi_hash_ids,
     });
     Ok(build_config)
 }
@@ -1828,6 +1829,7 @@ pub fn compile(
                     &mut AbiContext {
                         program: typed_program,
                         abi_with_callpaths: profile.json_abi_with_callpaths,
+                        abi_with_hash_ids: profile.experimental.abi_hash_ids,
                     },
                     engines,
                     &mut types,
@@ -2083,6 +2085,7 @@ fn build_profile_from_opts(
     profile.error_on_warnings |= error_on_warnings;
     profile.experimental = ExperimentalFlags {
         new_encoding: experimental.new_encoding,
+        abi_hash_ids: experimental.abi_hash_ids,
     };
 
     Ok(profile)
@@ -2161,6 +2164,7 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         &outputs,
         sway_core::ExperimentalFlags {
             new_encoding: experimental.new_encoding,
+            abi_hash_ids: experimental.abi_hash_ids,
         },
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);

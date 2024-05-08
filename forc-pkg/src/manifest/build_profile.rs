@@ -5,6 +5,7 @@ use sway_core::{OptLevel, PrintAsm};
 #[serde(rename_all = "kebab-case")]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
+    pub abi_hash_ids: bool,
 }
 
 /// Parameters to pass through to the `sway_core::BuildConfig` during compilation.
@@ -67,6 +68,7 @@ impl BuildProfile {
             optimization_level: OptLevel::Opt0,
             experimental: ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
         }
     }
@@ -90,6 +92,7 @@ impl BuildProfile {
             optimization_level: OptLevel::Opt1,
             experimental: ExperimentalFlags {
                 new_encoding: false,
+                abi_hash_ids: false,
             },
         }
     }
@@ -141,7 +144,10 @@ mod tests {
             error_on_warnings: true,
             reverse_results: true,
             optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags { new_encoding: true },
+            experimental: ExperimentalFlags {
+                new_encoding: true,
+                abi_hash_ids: true,
+            },
         };
         let profile = build_profiles.get("release").expect("release profile");
         assert_eq!(*profile, expected);
