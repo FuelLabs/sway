@@ -1,0 +1,15 @@
+name: Spellcheck
+
+on:
+  pull_request:
+
+jobs:
+  cargo-spellcheck:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Check spelling
+      uses: crate-ci/typos@master
+        config: .typos.toml

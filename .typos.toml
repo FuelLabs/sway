@@ -1,0 +1,6 @@
+[default]
+extend-ignore-identifiers-re = [
+    "var*",
+    "ba",
+    "TRO"
+]
