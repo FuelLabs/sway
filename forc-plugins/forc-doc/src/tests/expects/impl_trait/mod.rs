@@ -1,5 +1,9 @@
 #![cfg(test)]
-use crate::{cli::Command, compile_html, tests::expects::check_file};
+use crate::{
+    cli::Command,
+    compile_html,
+    tests::expects::{check_file, get_doc_dir},
+};
 use dir_indexer::get_relative_file_paths_set;
 use expect_test::{expect, Expect};
 use std::{
@@ -24,6 +28,7 @@ fn test_impl_traits_default() {
     };
     let (doc_path, _) = compile_html(
         &command,
+        &get_doc_dir,
         ExperimentalFlags {
             new_encoding: false,
         },

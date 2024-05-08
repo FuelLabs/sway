@@ -1,6 +1,8 @@
 use anyhow::{bail, Result};
 use clap::Parser;
-use forc_doc::{cli::Command, compile_html, render::constant::INDEX_FILENAME, ASSETS_DIR_NAME};
+use forc_doc::{
+    cli::Command, compile_html, get_doc_dir, render::constant::INDEX_FILENAME, ASSETS_DIR_NAME,
+};
 use include_dir::{include_dir, Dir};
 use std::{
     process::Command as Process,
@@ -12,6 +14,7 @@ pub fn main() -> Result<()> {
 
     let (doc_path, pkg_manifest) = compile_html(
         &build_instructions,
+        &get_doc_dir,
         sway_core::ExperimentalFlags {
             new_encoding: !build_instructions.no_encoding_v1,
         },
