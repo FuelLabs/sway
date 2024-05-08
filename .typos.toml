@@ -4,5 +4,6 @@ extend-ignore-identifiers-re = [
     "ba",
     "TRO",
     "tro",
-    "Tro"
+    "Tro",
+    "Nam",
 ]

@@ -542,7 +542,7 @@ impl Op {
                 let (r1, r2, r3) = three_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::TR(r1, r2, r3)
             }
-            "to" => {
+            "tro" => {
                 let (r1, r2, r3, r4) = four_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::TRO(r1, r2, r3, r4)
             }
@@ -1087,7 +1087,7 @@ impl fmt::Display for VirtualOp {
             SWWQ(a, b, c, d) => write!(fmtr, "swwq {a} {b} {c} {d}"),
             TIME(a, b) => write!(fmtr, "time {a} {b}"),
             TR(a, b, c) => write!(fmtr, "tr {a} {b} {c}"),
-            TRO(a, b, c, d) => write!(fmtr, "to {a} {b} {c} {d}"),
+            TRO(a, b, c, d) => write!(fmtr, "tro {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1 {a} {b} {c}"),

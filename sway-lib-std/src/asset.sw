@@ -197,7 +197,7 @@ fn transfer_to_address(to: Address, asset_id: AssetId, amount: u64) {
         if let Output::Variable = output_type(index) {
             if output_amount(index) == 0 {
                 asm(r1: to.bits(), r2: index, r3: amount, r4: asset_id) {
-                    to r1 r2 r3 r4;
+                    tro r1 r2 r3 r4;
                 };
                 return;
             }
