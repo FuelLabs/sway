@@ -69,7 +69,7 @@ pub(crate) fn create_preview(raw_attributes: Option<String>) -> Option<String> {
 }
 
 /// Checks if some raw html (rendered from markdown) contains a header.
-/// If it does, it splits at the header and returns the slice that preceeded it.
+/// If it does, it splits at the header and returns the slice that preceded it.
 pub(crate) fn split_at_markdown_header(raw_html: &str) -> &str {
     for header in HTML_HEADERS {
         if raw_html.contains(header) {

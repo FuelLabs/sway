@@ -1,7 +1,7 @@
 script;
 
 // 24 bytes
-// (8 bytes per elemet)
+// (8 bytes per element)
 struct Data {
   one: u64,
   two: u64,

@@ -152,7 +152,7 @@ In case there is a storage read after an interaction, the CEI analyzer will issu
 
 In addition to storage reads and writes after an interaction, the CEI analyzer reports analogous warnings about:
 
-- balance tree updates, i.e. balance tree reads with subsequent writes, which may be produced by the `tr` and `tro` ASM instructions or library functions using them under the hood;
+- balance tree updates, i.e. balance tree reads with subsequent writes, which may be produced by the `tr` and `to` ASM instructions or library functions using them under the hood;
 - balance trees reads with `bal` instruction;
 - changes to the output messages that can be produced by the `__smo` intrinsic function or the `smo` ASM instruction.
 

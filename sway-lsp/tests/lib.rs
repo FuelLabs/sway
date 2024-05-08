@@ -1664,13 +1664,13 @@ fn hover_docs_for_structs() {
             test_fixtures_dir().join("tokens/structs/src/main.sw"),
         )
         .await;
-        let data_documention = "```sway\nenum Data\n```\n---\n My data enum";
+        let data_documentation = "```sway\nenum Data\n```\n---\n My data enum";
 
         let mut hover = HoverDocumentation {
             req_uri: &uri,
             req_line: 12,
             req_char: 10,
-            documentation: vec![data_documention],
+            documentation: vec![data_documentation],
         };
         lsp::hover_request(&server, &hover).await;
         hover.req_line = 13;
@@ -2076,7 +2076,7 @@ lsp_capability_test!(
     test_fixtures_dir().join("completion/src/main.sw")
 );
 
-// This method iterates over all of the examples in the e2e langauge should_pass dir
+// This method iterates over all of the examples in the e2e language should_pass dir
 // and saves the lexed, parsed, and typed ASTs to the users home directory.
 // This makes it easy to grep for certain compiler types to inspect their use cases,
 // providing necessary context when working on the traversal modules.

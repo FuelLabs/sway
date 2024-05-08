@@ -620,7 +620,7 @@ fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
     match op.op_name.as_str().to_lowercase().as_str() {
         "scwq" | "sww" | "swwq" => HashSet::from([Effect::StorageWrite]),
         "srw" | "srwq" => HashSet::from([Effect::StorageRead]),
-        "tr" | "tro" => HashSet::from([Effect::BalanceTreeReadWrite]),
+        "tr" | "to" => HashSet::from([Effect::BalanceTreeReadWrite]),
         "bal" => HashSet::from([Effect::BalanceTreeRead]),
         "smo" => HashSet::from([Effect::OutputMessage]),
         "call" => HashSet::from([Effect::Interaction]),

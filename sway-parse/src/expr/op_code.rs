@@ -102,7 +102,7 @@ define_op_codes!(
     (Swwq, SwwqOpcode, "swwq", (state_addr, is_set, addr, count)),
     (Time, TimeOpcode, "time", (ret, height)),
     (Tr, TrOpcode, "tr", (contract, coins, asset)),
-    (Tro, TroOpcode, "tro", (addr, output, coins, asset)),
+    (To, ToOpcode, "to", (addr, output, coins, asset)),
     /* Cryptographic Instructions */
     (Eck1, Eck1Opcode, "eck1", (addr, sig, hash)),
     (Ecr1, Ecr1Opcode, "ecr1", (addr, sig, hash)),

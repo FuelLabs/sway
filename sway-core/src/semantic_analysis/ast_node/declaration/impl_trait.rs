@@ -440,7 +440,7 @@ impl TyImplTrait {
                     let mut impl_trait = ty::TyImplTrait {
                         impl_type_parameters: new_impl_type_parameters,
                         trait_name,
-                        trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+                        trait_type_arguments: vec![], // this is empty because impl self don't support generics on the "Self" trait,
                         trait_decl_ref: None,
                         span: block_span,
                         items: new_items,

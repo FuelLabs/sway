@@ -109,7 +109,7 @@ fn main() -> bool {
   }
 
   asm(r1: 0, r2: 0, r3: 0, r4: 0) {
-    tro r1 r2 r3 r4;
+    to r1 r2 r3 r4;
   }
 
   bal == 0 && bhei == 0 && csiz == 0 && is_ext_caller && pred_index == 0 && caller_id != 0 && time != 0

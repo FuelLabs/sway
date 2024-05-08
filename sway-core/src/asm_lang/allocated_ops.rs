@@ -122,7 +122,7 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
     ),
 
-    /* Conrol Flow Instructions */
+    /* Control Flow Instructions */
     JMP(AllocatedRegister),
     JI(VirtualImmediate24),
     JNE(AllocatedRegister, AllocatedRegister, AllocatedRegister),
@@ -465,7 +465,7 @@ impl fmt::Display for AllocatedOpcode {
             SWWQ(a, b, c, d) => write!(fmtr, "swwq {a} {b} {c} {d}"),
             TIME(a, b) => write!(fmtr, "time {a} {b}"),
             TR(a, b, c) => write!(fmtr, "tr   {a} {b} {c}"),
-            TRO(a, b, c, d) => write!(fmtr, "tro  {a} {b} {c} {d}"),
+            TRO(a, b, c, d) => write!(fmtr, "to  {a} {b} {c} {d}"),
 
             /* Cryptographic Instructions */
             ECK1(a, b, c) => write!(fmtr, "eck1  {a} {b} {c}"),

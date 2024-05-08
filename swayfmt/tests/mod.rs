@@ -2613,7 +2613,7 @@ fn asm_block_v2() {
             if let Output::Variable = output_type(index) {
                 if output_amount(index) == 0 {
                     asm(r1: self.value, r2: index, r3: amount, r4: asset_id.value.with_long_long_name) {
-                        tro r1 r2 r3 r4;
+                        to r1 r2 r3 r4;
                     };
                     return;
                 }
@@ -2647,7 +2647,7 @@ pub fn transfer(self, asset_id: AssetId, amount: u64) {
                     r3: amount,
                     r4: asset_id.value.with_long_long_name,
                 ) {
-                    tro r1 r2 r3 r4;
+                    to r1 r2 r3 r4;
                 };
                 return;
             }

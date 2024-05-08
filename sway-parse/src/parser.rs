@@ -81,7 +81,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// This function will fork the current parse, and call the parsing function.
     /// If it succeeds it will sync the original parser with the forked one;
     ///
-    /// If it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    /// If it fails it will return a `Recoverer` together with the `ErrorEmitted`.
     ///
     /// This recoverer can be used to put the forked parsed back in track and then
     /// sync the original parser to allow the parsing to continue.
@@ -127,7 +127,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// This function will fork the current parse, and try to parse
     /// T using the fork. If it succeeds it will sync the original parser with the forked one;
     ///
-    /// If it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    /// If it fails it will return a `Recoverer` together with the `ErrorEmitted`.
     ///
     /// This recoverer can be used to put the forked parsed back in track and then
     /// sync the original parser to allow the parsing to continue.
@@ -142,7 +142,7 @@ impl<'a, 'e> Parser<'a, 'e> {
     /// 2 - it forks the current parser and tries to parse
     /// T using this fork. If it succeeds it syncs the original
     /// parser with the forked one;
-    /// 3 - if it fails it will return a `Recoverer` together with the `ErrorEmited`.
+    /// 3 - if it fails it will return a `Recoverer` together with the `ErrorEmitted`.
     ///
     /// This recoverer can be used to put the forked parsed back in track and then
     /// sync the original parser to allow the parsing to continue.
@@ -464,7 +464,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
         })
     }
 
-    /// Starts the parser recovery proces calling the callback with the forked parser.
+    /// Starts the parser recovery process calling the callback with the forked parser.
     /// All the changes to this forked parser will be imposed into the original parser,
     /// including diagnostics.
     pub fn start<'this>(
@@ -506,7 +506,7 @@ impl<'original, 'a, 'e> ParseRecoveryStrategies<'original, 'a, 'e> {
     /// This return a span encopassing all tokens that were consumed by the `p` since the start
     /// of the tentative parsing
     ///
-    /// Thsi is useful to show one single error for all the consumed tokens.
+    /// This is useful to show one single error for all the consumed tokens.
     pub fn diff_span<'this>(&self, p: &Parser<'a, 'this>) -> Span {
         let original = self.original.borrow_mut();
 

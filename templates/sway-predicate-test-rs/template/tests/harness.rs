@@ -66,6 +66,6 @@ async fn can_get_predicate_instance() {
 
     let _ = instance.transfer(wallet.address(), 1234, BASE_ASSET_ID, TxPolicies::default()).await;
 
-    // Check balances after transfering funds out of predicate
+    // Check balances after transferring funds out of predicate
     check_balances(&wallet, &instance, Some(1_000_000_000u64), Some(0u64)).await;
 }

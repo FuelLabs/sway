@@ -2,5 +2,7 @@
 extend-ignore-identifiers-re = [
     "var*",
     "ba",
-    "TRO"
+    "TRO",
+    "tro",
+    "Tro"
 ]

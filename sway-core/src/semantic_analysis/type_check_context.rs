@@ -1736,7 +1736,7 @@ pub(crate) trait MonomorphizeHelper {
 /// }
 /// ```
 ///
-/// `EnforeTypeArguments` would require that the type annotations
+/// `EnforceTypeArguments` would require that the type annotations
 /// for `p1` and `p2` contain `<...>`. This is to avoid ambiguous definitions:
 ///
 /// ```ignore
