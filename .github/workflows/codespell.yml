@@ -4,5 +4,5 @@ on:
   pull_request:
 
 jobs:
-  test:
+  run-codespell:
     uses: codespell-project/actions-codespell@v2
