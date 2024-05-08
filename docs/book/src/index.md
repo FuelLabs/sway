@@ -10,7 +10,7 @@ Heavily inspired by [Rust](https://doc.rust-lang.org/book/)'s approach to system
 
 **Q: What does "domain-specific" mean?**
 
-Sway is specifically made to be used within a blockchain environment, which behave very differently than traditional computers.
+Sway is specifically made to be used within a blockchain environment, which behaves very differently than traditional computers.
 This domain specific design permits it to make the right decisions about trade-offs at every level of the stack, enabling you to write fast, secure and cost effective smart contracts with features suited to your specific needs.
 
 **Q: Why not use Solidity?**
@@ -20,7 +20,7 @@ It lacks common features programmers have come to expect, has a relatively inexp
 
 In Sway, we let you design smart contracts with a full modern box of tools.
 You get a fully featured language with generics, algebraic types and trait based polymorphism.
-You also get an integrated, unified and easy to use toolchain with LSP server, formatter, documentation generation and everything you need to run and deploy your contracts so that nothing comes between you and implementing what you want.
+You also get an integrated, unified and easy to use toolchain with code completion LSP server, formatter, documentation generation and everything you need to run and deploy your contracts so that nothing comes between you and implementing what you want.
 
 Our expressive type system allows you to catch semantic mistakes, we provide good defaults and we do extensive static analysis checks (such as enforcing the [Checks, Effects, Interactions](./blockchain-development/calling_contracts.md#cei-pattern-violation-static-analysis) pattern) so that you can make sure you write secure and correct code at compile time.
 
@@ -34,7 +34,7 @@ On a blockchain, cost of execution and deployment is the scarce resource.
 Memory usage is low and execution time is short.
 This makes complex memory management in general much too expensive to be worthwhile and Rust's borrow checker a burden with no upside.
 
-General purpose programming languages in general are ill suited to this environment because their design has to assume execution on a regular computer.
+General purpose programming languages in general are ill suited to this environment because their design has to assume execution on a general-purpose computing environment.
 
 Sway attempts to bring all the other advantages of Rust, including its modern type system, approach to safety and good defaults to smart contract developers by providing familiar syntax and features adapted to the specific needs of the blockchain environment.
 
