@@ -2,6 +2,7 @@ library;
 
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
+use ::u128::U128;
 
 impl u32 {
     pub fn try_as_u8(self) -> Option<u8> {
@@ -101,6 +102,16 @@ impl TryFrom<u256> for u32 {
     }
 }
 
+impl TryFrom<U128> for u32 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            <u32 as TryFrom<u64>>::try_from(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
 // TODO: Replace <u32 as From<T>> with u32::from when https://github.com/FuelLabs/sway/issues/5798 is resolved.
 #[test]
 fn test_u32_from_u8() {
@@ -158,6 +169,22 @@ fn test_u32_try_from_u256() {
 
     assert(u32_1.is_some());
     assert(u32_1.unwrap() == 2u32);
+
+    assert(u32_2.is_none());
+}
+
+#[test]
+fn test_u32_try_from_u128() {
+    use ::assert::assert;
+
+    let u128_1: U128 = U128::new();
+    let u128_2: U128 = U128::from((0, u32::max().as_u64() + 1));
+
+    let u32_1 = <u32 as TryFrom<U128>>::try_from(u128_1);
+    let u32_2 = <u32 as TryFrom<U128>>::try_from(u128_2);
+
+    assert(u32_1.is_some());
+    assert(u32_1.unwrap() == 0u32);
 
     assert(u32_2.is_none());
 }

@@ -65,7 +65,7 @@ pub(crate) fn import_code_action(
             let changes = HashMap::from([(ctx.uri.clone(), vec![text_edit])]);
 
             CodeActionOrCommand::CodeAction(LspCodeAction {
-                title: format!("{} `{}`", CODE_ACTION_IMPORT_TITLE, call_path),
+                title: format!("{CODE_ACTION_IMPORT_TITLE} `{call_path}`"),
                 kind: Some(CodeActionKind::QUICKFIX),
                 edit: Some(WorkspaceEdit {
                     changes: Some(changes),
@@ -198,7 +198,7 @@ fn get_text_edit_for_group(
                 ImportType::Item(ident) => ident.to_string(),
             };
             match &stmt.alias {
-                Some(alias) => Some(format!("{} as {}", name, alias)),
+                Some(alias) => Some(format!("{name} as {alias}")),
                 None => Some(name),
             }
         })
@@ -214,7 +214,7 @@ fn get_text_edit_for_group(
         let prefix_string = call_path
             .prefixes
             .iter()
-            .map(|ident| ident.as_str())
+            .map(sway_types::BaseIdent::as_str)
             .collect::<Vec<_>>()
             .join("::");
 
@@ -283,7 +283,7 @@ fn get_text_edit_fallback(
         );
     TextEdit {
         range: Range::new(Position::new(range_line, 0), Position::new(range_line, 0)),
-        new_text: format!("\nuse {};\n", call_path),
+        new_text: format!("\nuse {call_path};\n"),
     }
 }
 

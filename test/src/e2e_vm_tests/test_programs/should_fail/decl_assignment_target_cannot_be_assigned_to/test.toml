@@ -1,0 +1,73 @@
+category = "fail"
+
+#check: $()Assignment target cannot be assigned to
+#check: $()abi Abi { }
+#nextln: $()ABI "Abi" is declared here.
+#check: $()Abi = 0;
+#check: $()"Abi" cannot be assigned to, because it is an ABI and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()abi Abi { }
+#nextln: $()ABI "Abi" is declared here.
+#check: $()Abi.x = 0;
+#check: $()This cannot be assigned to, because "Abi" is an ABI and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()struct S {
+#nextln: $()Struct "S" is declared here.
+#check: $()S = 0;
+#check: $()"S" cannot be assigned to, because it is a struct and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()struct S {
+#nextln: $()Struct "S" is declared here.
+#check: $()S.x = 0;
+#check: $()This cannot be assigned to, because "S" is a struct and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()trait Trait {}
+#nextln: $()Trait "Trait" is declared here.
+#check: $()Trait = 0;
+#check: $()"Trait" cannot be assigned to, because it is a trait and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()trait Trait {}
+#nextln: $()Trait "Trait" is declared here.
+#check: $()Trait.x = 0;
+#check: $()This cannot be assigned to, because "Trait" is a trait and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()fn function() { }
+#nextln: $()Function "function" is declared here.
+#check: $()function = 0;
+#check: $()"function" cannot be assigned to, because it is a function and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()fn function() { }
+#nextln: $()Function "function" is declared here.
+#check: $()function.x = 0;
+#check: $()This cannot be assigned to, because "function" is a function and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()enum E {
+#nextln: $()Enum "E" is declared here.
+#check: $()E = 0;
+#check: $()"E" cannot be assigned to, because it is an enum and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()enum E {
+#nextln: $()Enum "E" is declared here.
+#check: $()E.x = 0;
+#check: $()This cannot be assigned to, because "E" is an enum and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()type Type = u64;
+#nextln: $()Type alias "Type" is declared here.
+#check: $()Type = 0;
+#check: $()"Type" cannot be assigned to, because it is a type alias and not a mutable variable.
+
+#check: $()Assignment target cannot be assigned to
+#check: $()type Type = u64;
+#nextln: $()Type alias "Type" is declared here.
+#check: $()Type.x = 0;
+#check: $()This cannot be assigned to, because "Type" is a type alias and not a mutable variable.

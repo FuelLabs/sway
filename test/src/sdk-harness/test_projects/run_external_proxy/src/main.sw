@@ -9,6 +9,7 @@ configurable {
 
 abi RunExternalTest {
     fn double_value(foo: u64) -> u64;
+    fn large_value() -> b256;
     fn does_not_exist_in_the_target(foo: u64) -> u64;
 }
 
@@ -18,7 +19,13 @@ impl RunExternalTest for Contract {
         run_external(TARGET)
     }
 
+    fn large_value() -> b256 {
+        run_external(TARGET)
+    }
+
+    // ANCHOR: does_not_exist_in_the_target
     fn does_not_exist_in_the_target(_foo: u64) -> u64 {
         run_external(TARGET)
     }
+    // ANCHOR_END: does_not_exist_in_the_target
 }

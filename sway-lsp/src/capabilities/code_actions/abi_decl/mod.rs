@@ -8,7 +8,7 @@ use sway_core::{decl_engine::id::DeclId, language::ty::TyAbiDecl};
 pub(crate) fn code_actions(
     decl_id: &DeclId<TyAbiDecl>,
     ctx: &CodeActionContext,
-) -> Option<Vec<CodeActionOrCommand>> {
+) -> Vec<CodeActionOrCommand> {
     let decl = ctx.engines.de().get_abi(decl_id);
-    Some(vec![AbiImplCodeAction::new(ctx, &decl).code_action()])
+    vec![AbiImplCodeAction::new(ctx, &decl).code_action()]
 }

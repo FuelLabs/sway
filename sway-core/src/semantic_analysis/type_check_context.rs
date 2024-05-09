@@ -530,12 +530,13 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<(), ErrorEmitted> {
         let const_shadowing_mode = self.const_shadowing_mode;
         let generic_shadowing_mode = self.generic_shadowing_mode;
-        let engines = self.engines;
+        let engines = self.engines();
         self.namespace_mut()
             .module_mut(engines)
             .current_items_mut()
             .insert_symbol(
                 handler,
+                engines,
                 name,
                 item,
                 const_shadowing_mode,
@@ -572,10 +573,11 @@ impl<'a> TypeCheckContext<'a> {
             } => {
                 let type_decl_opt = if let Some(root_type_id) = root_type_id {
                     self.namespace()
-                        .module(engines)
+                        .root
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
+                            self.namespace().module(engines),
                             root_type_id,
                             None,
                             &qualified_call_path.clone().to_call_path(handler)?,
@@ -779,17 +781,13 @@ impl<'a> TypeCheckContext<'a> {
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         let engines = self.engines;
-        let (decl, mod_path) = self
-            .namespace()
-            .root
-            .module
-            .resolve_call_path_and_mod_path(
-                handler,
-                self.engines,
-                mod_path,
-                call_path,
-                self.self_type,
-            )?;
+        let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
+            handler,
+            self.engines,
+            mod_path,
+            call_path,
+            self.self_type,
+        )?;
         let decl = decl.expect_typed();
 
         // In case there is no mod path we don't need to check visibility
@@ -887,10 +885,10 @@ impl<'a> TypeCheckContext<'a> {
 
             self.namespace()
                 .root
-                .module
                 .resolve_call_path_and_root_type_id(
                     handler,
                     self.engines,
+                    &self.namespace().root.module,
                     root_type_id,
                     as_trait_opt,
                     &qualified_call_path.call_path,
@@ -989,11 +987,7 @@ impl<'a> TypeCheckContext<'a> {
                 type_id,
                 ..
             })) => type_id,
-            Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
-                decl_id,
-                name,
-                decl_span: _,
-            })) => {
+            Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id })) => {
                 let decl_type = decl_engine.get_type(&decl_id);
 
                 if let Some(ty) = &decl_type.ty {
@@ -1002,10 +996,10 @@ impl<'a> TypeCheckContext<'a> {
                     type_engine.insert(
                         self.engines,
                         TypeInfo::TraitType {
-                            name: name.clone(),
+                            name: decl_type.name.clone(),
                             trait_type_id: implementing_type,
                         },
-                        name.span().source_id(),
+                        decl_type.name.span().source_id(),
                     )
                 } else {
                     return Err(handler.emit_err(CompileError::Internal(
@@ -1487,14 +1481,14 @@ impl<'a> TypeCheckContext<'a> {
         type_id: TypeId,
         trait_name: &CallPath,
     ) -> Vec<ty::TyTraitItem> {
-        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, vec![])
+        self.get_items_for_type_and_trait_name_and_trait_type_arguments(type_id, trait_name, &[])
     }
 
     pub(crate) fn get_items_for_type_and_trait_name_and_trait_type_arguments(
         &self,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
         // Use trait name with full path, improves consistency between
         // this get and inserting in `insert_trait_implementation`.
@@ -1621,7 +1615,7 @@ impl<'a> TypeCheckContext<'a> {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(Span::join)
+                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
                 Err(handler.emit_err(make_type_arity_mismatch_error(
                     value.name().clone(),
@@ -1634,7 +1628,7 @@ impl<'a> TypeCheckContext<'a> {
                 let type_arguments_span = type_arguments
                     .iter()
                     .map(|x| x.span.clone())
-                    .reduce(Span::join)
+                    .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
                     .unwrap_or_else(|| value.name().span());
                 // a trait decl is passed the self type parameter and the corresponding argument
                 // but it would be confusing for the user if the error reporting mechanism
@@ -1742,7 +1736,7 @@ pub(crate) trait MonomorphizeHelper {
 /// }
 /// ```
 ///
-/// `EnforeTypeArguments` would require that the type annotations
+/// `EnforceTypeArguments` would require that the type annotations
 /// for `p1` and `p2` contain `<...>`. This is to avoid ambiguous definitions:
 ///
 /// ```ignore

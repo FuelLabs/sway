@@ -10,6 +10,6 @@ There are two functions that can be used to mint:
 - [`mint()`](./mint.md)
 - [`mint_to()`](./address-or-contract.md)
 
-Specific implementation details on transfering assets to addresses can be found [here](./address.md).
+Specific implementation details on transferring assets to addresses can be found [here](./address.md).
 
-Specific implementation details on transfering assets to contracts can be found [here](./contract.md).
+Specific implementation details on transferring assets to contracts can be found [here](./contract.md).

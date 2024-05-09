@@ -47,10 +47,10 @@ pub fn semantic_tokens(tokens_sorted: &[&RefMulti<TokenIdent, Token>]) -> Semant
         .to_string();
     let mut builder = SemanticTokensBuilder::new(id);
 
-    for entry in tokens_sorted.iter() {
+    for entry in tokens_sorted {
         let (ident, token) = entry.pair();
         let ty = semantic_token_type(&token.kind);
-        let token_index = type_index(ty);
+        let token_index = type_index(&ty);
         // TODO - improve with modifiers
         let modifier_bitset = 0;
         builder.push(ident.range, token_index, modifier_bitset);
@@ -60,7 +60,7 @@ pub fn semantic_tokens(tokens_sorted: &[&RefMulti<TokenIdent, Token>]) -> Semant
 
 /// Sort tokens by their span so each token is sequential.
 ///
-/// If this step isn't done, then the bit offsets used for the lsp_types::SemanticToken are incorrect.
+/// If this step isn't done, then the bit offsets used for the `lsp_types::SemanticToken` are incorrect.
 fn sort_tokens<'a>(
     tokens: &'a [RefMulti<'a, TokenIdent, Token>],
 ) -> Vec<&'a RefMulti<'a, TokenIdent, Token>> {
@@ -90,7 +90,7 @@ impl SemanticTokensBuilder {
             id,
             prev_line: 0,
             prev_char: 0,
-            data: Default::default(),
+            data: Vec::default(),
         }
     }
 
@@ -175,9 +175,8 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
     match kind {
         SymbolKind::Field => SemanticTokenType::PROPERTY,
         SymbolKind::ValueParam => SemanticTokenType::PARAMETER,
-        SymbolKind::Variable => SemanticTokenType::VARIABLE,
+        SymbolKind::Variable | SymbolKind::Const => SemanticTokenType::VARIABLE,
         SymbolKind::Function | SymbolKind::Intrinsic => SemanticTokenType::FUNCTION,
-        SymbolKind::Const => SemanticTokenType::VARIABLE,
         SymbolKind::Struct => SemanticTokenType::STRUCT,
         SymbolKind::Enum => SemanticTokenType::ENUM,
         SymbolKind::Variant => SemanticTokenType::ENUM_MEMBER,
@@ -198,6 +197,6 @@ fn semantic_token_type(kind: &SymbolKind) -> SemanticTokenType {
     }
 }
 
-fn type_index(ty: SemanticTokenType) -> u32 {
-    SUPPORTED_TYPES.iter().position(|it| *it == ty).unwrap() as u32
+fn type_index(ty: &SemanticTokenType) -> u32 {
+    SUPPORTED_TYPES.iter().position(|it| it == ty).unwrap() as u32
 }

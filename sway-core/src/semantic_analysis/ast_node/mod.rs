@@ -42,7 +42,7 @@ impl ty::TyAstNode {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        node: AstNode,
+        node: &AstNode,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
@@ -173,13 +173,13 @@ impl ty::TyAstNode {
                                 ));
                         }
                     }
-                    let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
+                    let inner = ty::TyExpression::type_check(handler, ctx, &expr)
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
                 }
                 AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
             },
-            span: node.span,
+            span: node.span.clone(),
         };
 
         if let ty::TyAstNode {

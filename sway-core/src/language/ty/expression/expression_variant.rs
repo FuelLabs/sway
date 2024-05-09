@@ -797,7 +797,7 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     // Finds method implementation for method dummy and replaces it.
                     // This is required because dummy methods don't have type parameters from impl traits.
-                    // Thus we use the implementated method that already contains all the required type parameters,
+                    // Thus we use the implemented method that already contains all the required type parameters,
                     // including those from the impl trait.
                     if method.is_trait_method_dummy {
                         if let Some(implementing_for_typeid) = method.implementing_for_typeid {
@@ -1210,19 +1210,6 @@ impl TypeCheckFinalization for TyExpressionVariant {
                 TyExpressionVariant::Break => {}
                 TyExpressionVariant::Continue => {}
                 TyExpressionVariant::Reassignment(node) => {
-                    for lhs_index in node.lhs_indices.iter_mut() {
-                        match lhs_index {
-                            ProjectionKind::StructField { name: _ } => {}
-                            ProjectionKind::TupleField {
-                                index: _,
-                                index_span: _,
-                            } => {}
-                            ProjectionKind::ArrayIndex {
-                                index,
-                                index_span: _,
-                            } => index.expression.type_check_finalize(handler, ctx)?,
-                        }
-                    }
                     node.type_check_finalize(handler, ctx)?;
                 }
                 TyExpressionVariant::ImplicitReturn(node) | TyExpressionVariant::Return(node) => {
@@ -1484,20 +1471,37 @@ impl DebugWithEngines for TyExpressionVariant {
             TyExpressionVariant::Break => "break".to_string(),
             TyExpressionVariant::Continue => "continue".to_string(),
             TyExpressionVariant::Reassignment(reassignment) => {
-                let mut place = reassignment.lhs_base_name.to_string();
-                for index in &reassignment.lhs_indices {
-                    place.push('.');
-                    match index {
-                        ProjectionKind::StructField { name } => place.push_str(name.as_str()),
-                        ProjectionKind::TupleField { index, .. } => {
-                            write!(&mut place, "{index}").unwrap();
+                let target = match &reassignment.lhs {
+                    TyReassignmentTarget::Deref(exp) => format!("{:?}", engines.help_out(exp)),
+                    TyReassignmentTarget::ElementAccess {
+                        base_name,
+                        base_type: _,
+                        indices,
+                    } => {
+                        let mut target = base_name.to_string();
+                        for index in indices {
+                            match index {
+                                ProjectionKind::StructField { name } => {
+                                    target.push('.');
+                                    target.push_str(name.as_str());
+                                }
+                                ProjectionKind::TupleField { index, .. } => {
+                                    target.push('.');
+                                    target.push_str(index.to_string().as_str());
+                                }
+                                ProjectionKind::ArrayIndex { index, .. } => {
+                                    write!(&mut target, "[{:?}]", engines.help_out(index)).unwrap();
+                                }
+                            }
                         }
-                        ProjectionKind::ArrayIndex { index, .. } => {
-                            write!(&mut place, "{index:#?}").unwrap();
-                        }
+                        target
                     }
-                }
-                format!("reassignment to {place}")
+                };
+
+                format!(
+                    "reassignment to {target} = {:?}",
+                    engines.help_out(&reassignment.rhs)
+                )
             }
             TyExpressionVariant::ImplicitReturn(exp) => {
                 format!("implicit return {:?}", engines.help_out(&**exp))

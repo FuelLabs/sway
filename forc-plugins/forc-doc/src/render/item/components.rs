@@ -2,8 +2,12 @@
 use crate::{
     doc::module::ModuleInfo,
     render::{
-        constant::IDENTITY, item::context::ItemContext, search::generate_searchbar, sidebar::*,
-        title::DocBlockTitle, DocStyle, Renderable,
+        constant::IDENTITY,
+        item::context::ItemContext,
+        search::generate_searchbar,
+        sidebar::{Sidebar, SidebarNav},
+        title::DocBlockTitle,
+        DocStyle, Renderable,
     },
     RenderPlan, ASSETS_DIR_NAME,
 };
@@ -15,10 +19,10 @@ use sway_types::BaseIdent;
 /// All necessary components to render the header portion of
 /// the item html doc.
 #[derive(Clone, Debug)]
-pub(crate) struct ItemHeader {
-    pub(crate) module_info: ModuleInfo,
-    pub(crate) friendly_name: &'static str,
-    pub(crate) item_name: BaseIdent,
+pub struct ItemHeader {
+    pub module_info: ModuleInfo,
+    pub friendly_name: &'static str,
+    pub item_name: BaseIdent,
 }
 impl Renderable for ItemHeader {
     /// Basic HTML header component
@@ -68,16 +72,16 @@ impl Renderable for ItemHeader {
 /// the item html doc. Many parts of the HTML body structure will be the same
 /// for each item, but things like struct fields vs trait methods will be different.
 #[derive(Clone, Debug)]
-pub(crate) struct ItemBody {
-    pub(crate) module_info: ModuleInfo,
-    pub(crate) ty_decl: TyDecl,
+pub struct ItemBody {
+    pub module_info: ModuleInfo,
+    pub ty_decl: TyDecl,
     /// The item name varies depending on type.
     /// We store it during info gathering to avoid
     /// multiple match statements.
-    pub(crate) item_name: BaseIdent,
-    pub(crate) code_str: String,
-    pub(crate) attrs_opt: Option<String>,
-    pub(crate) item_context: ItemContext,
+    pub item_name: BaseIdent,
+    pub code_str: String,
+    pub attrs_opt: Option<String>,
+    pub item_context: ItemContext,
 }
 impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
@@ -122,7 +126,7 @@ impl Renderable for ItemBody {
                 // this is the main code block
                 main {
                     div(class="width-limiter") {
-                        : generate_searchbar(module_info.clone());
+                        : generate_searchbar(&module_info);
                         section(id="main-content", class="content") {
                             div(class="main-heading") {
                                 h1(class="fqn") {

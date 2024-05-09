@@ -2,8 +2,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
+    decl_engine::{DeclEngineInsert, DeclId, DeclRef},
+    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
@@ -111,6 +111,12 @@ impl TypeArgs {
         }
     }
 
+    pub fn as_slice(&self) -> &[TypeArgument] {
+        match self {
+            TypeArgs::Regular(vec) | TypeArgs::Prefix(vec) => vec,
+        }
+    }
+
     pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,
@@ -121,7 +127,7 @@ impl TypeArgs {
 
 impl Spanned for TypeArgs {
     fn span(&self) -> Span {
-        Span::join_all(self.to_vec().iter().map(|t| t.span()))
+        Span::join_all(self.to_vec().iter().map(sway_types::Spanned::span))
     }
 }
 
@@ -232,7 +238,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a fn declaration.
-        let fn_ref = unknown_decl.to_fn_ref(handler)?;
+        let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
         match self.type_arguments {
@@ -375,7 +381,7 @@ impl TypeBinding<QualifiedCallPath> {
             ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok(const_ref)
     }
@@ -398,7 +404,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok((const_ref, None, None))
     }

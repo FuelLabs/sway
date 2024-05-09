@@ -110,6 +110,7 @@ impl ty::TyFunctionParameter {
         let _ = ctx.namespace_mut().module_mut(engines).write(engines, |m| {
             m.current_items_mut().insert_symbol(
                 handler,
+                engines,
                 self.name.clone(),
                 ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
                     name: self.name.clone(),

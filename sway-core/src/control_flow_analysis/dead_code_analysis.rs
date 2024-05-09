@@ -4,8 +4,8 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{
-            self, ConstantDecl, FunctionDecl, StructDecl, TraitDecl, TyAstNode, TyAstNodeContent,
-            TyDecl, TyImplItem, TypeAliasDecl,
+            self, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl, TraitDecl, TyAstNode,
+            TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
         CallPath, Visibility,
     },
@@ -51,23 +51,14 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
         TreeType::Contract | TreeType::Library { .. } => match node {
             TyAstNode {
                 content:
-                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })),
+                    TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })),
                 ..
             } => {
                 let decl = decl_engine.get_function(decl_id);
                 decl.visibility == Visibility::Public || decl.is_test() || decl.is_fallback()
             }
             TyAstNode {
-                content:
-                    TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })),
+                content: TyAstNodeContent::Declaration(TyDecl::TraitDecl(TraitDecl { decl_id })),
                 ..
             } => decl_engine.get_trait(decl_id).visibility.is_public(),
             TyAstNode {
@@ -84,11 +75,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
             } => true,
             TyAstNode {
                 content:
-                    TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
-                        decl_id,
-                        decl_span: _,
-                        ..
-                    })),
+                    TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl { decl_id })),
                 ..
             } => {
                 let decl = decl_engine.get_constant(decl_id);
@@ -1956,23 +1943,60 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             Ok(vec![])
         }
         Reassignment(typed_reassignment) => {
-            if let Some(variable_entry) = graph
-                .namespace
-                .get_variable(&typed_reassignment.lhs_base_name)
-            {
-                for leaf in leaves {
-                    graph.add_edge(*leaf, variable_entry.variable_decl_ix, "".into());
+            match &typed_reassignment.lhs {
+                ty::TyReassignmentTarget::ElementAccess {
+                    base_name, indices, ..
+                } => {
+                    if let Some(variable_entry) = graph.namespace.get_variable(base_name) {
+                        for leaf in leaves {
+                            graph.add_edge(
+                                *leaf,
+                                variable_entry.variable_decl_ix,
+                                "variable reassignment LHS".into(),
+                            );
+                        }
+                    };
+
+                    for projection in indices {
+                        if let ProjectionKind::ArrayIndex { index, index_span } = projection {
+                            connect_expression(
+                                engines,
+                                &index.expression,
+                                graph,
+                                leaves,
+                                exit_node,
+                                "variable reassignment LHS array index",
+                                tree_type,
+                                index_span.clone(),
+                                options,
+                            )?;
+                        }
+                    }
                 }
-            }
+                ty::TyReassignmentTarget::Deref(exp) => {
+                    connect_expression(
+                        engines,
+                        &exp.expression,
+                        graph,
+                        leaves,
+                        exit_node,
+                        "variable reassignment LHS dereferencing",
+                        tree_type,
+                        exp.span.clone(),
+                        options,
+                    )?;
+                }
+            };
+
             connect_expression(
                 engines,
                 &typed_reassignment.rhs.expression,
                 graph,
                 leaves,
                 exit_node,
-                "variable reassignment",
+                "variable reassignment RHS",
                 tree_type,
-                typed_reassignment.rhs.clone().span,
+                typed_reassignment.rhs.span.clone(),
                 options,
             )
         }
@@ -2197,49 +2221,45 @@ fn construct_dead_code_warning_from_node(
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl {
-                    name,
-                    ..
+                    decl_id,
                 })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get(decl_id).name.span(),
             warning_content: Warning::DeadFunctionDeclaration,
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDecl::StructDecl(ty::StructDecl {
-                    name, ..
-                })),
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::StructDecl(ty::StructDecl { decl_id })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get(decl_id).name().span(),
             warning_content: Warning::DeadStructDeclaration,
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDecl::EnumDecl(ty::EnumDecl { name, .. })),
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get(decl_id).name().span(),
             warning_content: Warning::DeadEnumDeclaration,
         },
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDecl::TraitDecl(ty::TraitDecl { name, .. })),
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get(decl_id).name.span(),
             warning_content: Warning::DeadTrait,
         },
         ty::TyAstNode {
             content:
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                    name,
-                    ..
+                    decl_id,
                 })),
             ..
         } => CompileWarning {
-            span: name.span(),
+            span: decl_engine.get_constant(decl_id).name().span(),
             warning_content: Warning::DeadDeclaration,
         },
         ty::TyAstNode {
