@@ -43,7 +43,7 @@ use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_MODULE_NAME,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FNDEDUP_DEBUG_PROFILE_NAME, FUNC_DCE_NAME,
     MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME,
     SIMPLIFYCFG_NAME, SROA_NAME,
 };
@@ -880,8 +880,9 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             pass_group.append_group(create_o1_pass_group());
         }
         OptLevel::Opt0 => {
-            // Inlining is necessary until #4899 is resolved.
-            pass_group.append_pass(INLINE_MODULE_NAME);
+            // We run a function deduplication pass that only removes duplicate
+            // functions when everything, including the metadata are identical.
+            pass_group.append_pass(FNDEDUP_DEBUG_PROFILE_NAME);
 
             // Do DCE so other optimizations run faster.
             pass_group.append_pass(FUNC_DCE_NAME);
