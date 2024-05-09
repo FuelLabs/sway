@@ -1,9 +1,5 @@
 script;
 
-fn abi_decode() {
-    
-}
-
 use std::hash::*;
 
 struct MyStruct {
