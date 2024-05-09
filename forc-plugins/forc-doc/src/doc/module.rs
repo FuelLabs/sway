@@ -9,9 +9,9 @@ pub(crate) type ModulePrefixes = Vec<String>;
 
 /// Information about a Sway module.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct ModuleInfo {
+pub struct ModuleInfo {
     /// The preceding module names, used in navigating between modules.
-    pub(crate) module_prefixes: ModulePrefixes,
+    pub module_prefixes: ModulePrefixes,
     /// Doc attributes of a module.
     /// Renders into the module level docstrings.
     ///
@@ -127,9 +127,9 @@ impl ModuleInfo {
     /// Example:
     /// ```
     /// // number of dirs:               [match][    2    ][    1    ]
-    /// current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
-    /// next_location    =              "module/other_submodule/enum.Name.html";
-    /// result           =               "../../other_submodule/enum.Name.html";
+    /// let current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
+    /// let next_location    =              "module/other_submodule/enum.Name.html";
+    /// let result           =               "../../other_submodule/enum.Name.html";
     /// ```
     /// In this case the first module to match is "module", so we have no need to go back further than that.
     pub(crate) fn file_path_from_location(
@@ -174,8 +174,8 @@ impl ModuleInfo {
     ///
     /// Example:
     /// ```
-    /// current_location = "project_root/module/submodule1/submodule2/struct.Name.html"
-    /// result           = "../.."
+    /// let current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
+    /// let result           = "../..";
     /// ```
     /// In this case the first module to match is "module", so we have no need to go back further than that.
     pub(crate) fn path_to_root(&self) -> String {

@@ -904,7 +904,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         pass_group.append_pass(RETDEMOTION_NAME);
         pass_group.append_pass(MISCDEMOTION_NAME);
 
-        // Convert loads and stores to mem_copys where possible.
+        // Convert loads and stores to mem_copies where possible.
         pass_group.append_pass(MEMCPYOPT_NAME);
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.

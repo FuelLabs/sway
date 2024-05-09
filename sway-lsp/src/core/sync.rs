@@ -243,7 +243,7 @@ impl SyncWorkspace {
 }
 
 /// Check if the current path is part of the users workspace.
-/// Returns false if the path is from a dependancy
+/// Returns false if the path is from a dependency
 pub(crate) fn is_path_in_temp_workspace(uri: &Url) -> bool {
     uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
 }
@@ -257,8 +257,8 @@ fn convert_url(uri: &Url, from: &Path, to: &PathBuf) -> Result<Url, DirectoryErr
     get_url_from_path(&path)
 }
 
-/// Deserialize the manifest file and loop through the dependancies.
-/// Check if the dependancy is specifying a 'path'.
+/// Deserialize the manifest file and loop through the dependencies.
+/// Check if the dependency is specifying a 'path'.
 /// If so, check if the path is relative and convert the relative path to an absolute path.
 /// Edit the toml entry using toml_edit with the absolute path.
 /// Save the manifest to temp_dir/Forc.toml.
@@ -266,7 +266,7 @@ pub(crate) fn edit_manifest_dependency_paths(
     manifest: &PackageManifestFile,
     temp_manifest_path: &Path,
 ) {
-    // Key = name of the dependancy that has been specified will a relative path
+    // Key = name of the dependency that has been specified will a relative path
     // Value = the absolute path that should be used to overwrite the relateive path
     let mut dependency_map: IndexMap<String, PathBuf> = IndexMap::new();
 

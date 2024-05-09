@@ -223,7 +223,7 @@ where
     ///
     /// ---
     ///
-    /// Note that becaues `Range<T>` relies on the assumption that `T` is an
+    /// Note that because `Range<T>` relies on the assumption that `T` is an
     /// integer value, this algorithm joins `Range<T>`s that are within ± 1 of
     /// one another. Given these two `Range<T>`s:
     ///

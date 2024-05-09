@@ -244,7 +244,7 @@ fn depends_on(
         (AstNodeContent::UseStatement(_), AstNodeContent::UseStatement(_)) => false,
         (_, AstNodeContent::UseStatement(_)) => true,
 
-        // Then declarations, ordered using the dependecies list.
+        // Then declarations, ordered using the dependencies list.
         (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {

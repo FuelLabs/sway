@@ -150,7 +150,7 @@ mod test {
     #[test]
     fn test_fs_locking_same_process() {
         let x = PidFileLocking::lsp("test");
-        assert!(!x.is_locked()); // checks the non-existance of the lock (therefore it is not locked)
+        assert!(!x.is_locked()); // checks the non-existence of the lock (therefore it is not locked)
         assert!(x.lock().is_ok());
         // The current process is locking "test"
         let x = PidFileLocking::lsp("test");
