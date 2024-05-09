@@ -1645,6 +1645,11 @@ pub enum AbiEncodeSizeHint {
 }
 
 impl AbiEncodeSizeHint {
+    fn range(min: usize, max: usize) -> AbiEncodeSizeHint {
+        assert!(min <= max);
+        AbiEncodeSizeHint::Range(min, max)
+    }
+
     fn range_from_min_max(a: AbiEncodeSizeHint, b: AbiEncodeSizeHint) -> AbiEncodeSizeHint {
         match (a, b) {
             (AbiEncodeSizeHint::CustomImpl, _) => AbiEncodeSizeHint::CustomImpl,
@@ -1654,22 +1659,22 @@ impl AbiEncodeSizeHint {
             (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Exact(r)) => {
                 let min = l.min(r);
                 let max = l.max(r);
-                AbiEncodeSizeHint::Range(min, max)
+                AbiEncodeSizeHint::range(min, max)
             }
             (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, rmax)) => {
                 let min = l.min(rmin);
                 let max = l.max(rmax);
-                AbiEncodeSizeHint::Range(min, max)
+                AbiEncodeSizeHint::range(min, max)
             }
             (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Exact(r)) => {
                 let min = r.min(lmin);
                 let max = r.max(lmax);
-                AbiEncodeSizeHint::Range(min, max)
+                AbiEncodeSizeHint::range(min, max)
             }
             (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Range(rmin, rmax)) => {
                 let min = lmin.min(rmin);
                 let max = lmax.max(rmax);
-                AbiEncodeSizeHint::Range(min, max)
+                AbiEncodeSizeHint::range(min, max)
             }
         }
     }
@@ -1725,7 +1730,7 @@ impl std::ops::Add<usize> for AbiEncodeSizeHint {
             AbiEncodeSizeHint::CustomImpl => AbiEncodeSizeHint::CustomImpl,
             AbiEncodeSizeHint::PotentiallyInfinite => AbiEncodeSizeHint::PotentiallyInfinite,
             AbiEncodeSizeHint::Exact(current) => AbiEncodeSizeHint::Exact(current + rhs),
-            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::Range(min + rhs, max + rhs),
+            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::range(min + rhs, max + rhs),
         }
     }
 }
@@ -1743,13 +1748,13 @@ impl std::ops::Add<AbiEncodeSizeHint> for AbiEncodeSizeHint {
                 AbiEncodeSizeHint::Exact(l + r)
             }
             (AbiEncodeSizeHint::Exact(l), AbiEncodeSizeHint::Range(rmin, rmax)) => {
-                AbiEncodeSizeHint::Range(rmin + l, rmax + l)
+                AbiEncodeSizeHint::range(rmin + l, rmax + l)
             }
             (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Exact(r)) => {
-                AbiEncodeSizeHint::Range(lmin + r, lmax + r)
+                AbiEncodeSizeHint::range(lmin + r, lmax + r)
             }
             (AbiEncodeSizeHint::Range(lmin, lmax), AbiEncodeSizeHint::Range(rmin, rmax)) => {
-                AbiEncodeSizeHint::Range(lmin + rmin, lmax + rmax)
+                AbiEncodeSizeHint::range(lmin + rmin, lmax + rmax)
             }
         }
     }
@@ -1763,7 +1768,7 @@ impl std::ops::Mul<usize> for AbiEncodeSizeHint {
             AbiEncodeSizeHint::CustomImpl => AbiEncodeSizeHint::CustomImpl,
             AbiEncodeSizeHint::PotentiallyInfinite => AbiEncodeSizeHint::PotentiallyInfinite,
             AbiEncodeSizeHint::Exact(current) => AbiEncodeSizeHint::Exact(current * rhs),
-            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::Range(min * rhs, max * rhs),
+            AbiEncodeSizeHint::Range(min, max) => AbiEncodeSizeHint::range(min * rhs, max * rhs),
         }
     }
 }
