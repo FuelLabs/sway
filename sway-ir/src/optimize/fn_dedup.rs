@@ -105,7 +105,7 @@ fn hash_fn(
             .expect("Orphan / missing metadata");
         let descr = std::mem::discriminant(md_contents);
         let state = &mut FxHasher::default();
-        // We temporarily set the descriminant as the hash.
+        // We temporarily set the discriminant as the hash.
         descr.hash(state);
         metadata_hashes.insert(m, state.finish());
 
