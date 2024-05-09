@@ -27,7 +27,7 @@ pub struct Module {
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
-    pub(crate) submodules: im::OrdMap<ModuleName, Module>,
+    pub(crate) submodules: im::HashMap<ModuleName, Module>,
     /// Keeps all lexical scopes associated with this module.
     pub lexical_scopes: Vec<LexicalScope>,
     /// Current lexical scope id in the lexical scope hierarchy stack.
@@ -86,7 +86,7 @@ impl Module {
     }
 
     /// Immutable access to this module's submodules.
-    pub fn submodules(&self) -> &im::OrdMap<ModuleName, Module> {
+    pub fn submodules(&self) -> &im::HashMap<ModuleName, Module> {
         &self.submodules
     }
 
