@@ -4,31 +4,39 @@ Welcome to the Sway programming language book 🌴.
 
 **Q: Hi! What is Sway?**
 
-Sway is a domain-specific language (DSL) for the [Fuel Virtual Machine (Fuel VM)](https://docs.fuel.network/docs/specs/fuel-vm/), a blockchain-optimized VM designed for the Fuel blockchain. Sway is based on [Rust](https://doc.rust-lang.org/book/), and includes syntax to leverage a blockchain VM without needlessly verbose boilerplate.
+Sway is a domain-specific programming language for implementing smart contracts on blockchain platforms, most notably for the [Fuel Virtual Machine (Fuel VM)](https://docs.fuel.network/docs/specs/fuel-vm/).
+
+Heavily inspired by [Rust](https://doc.rust-lang.org/book/)'s approach to systems programming, Sway aims to bring modern programming language features and tooling to smart contract development whilst retaining performance, fine grained control and making extensive use of static analysis to prevent common security issues.
 
 **Q: What does "domain-specific" mean?**
 
-A domain-specific language is a language that is made and used in a specific environment for a specific purpose, in this case execution in the Fuel VM. This differs from a general-purpose language that can be used for several environments and purposes, like Rust.
+Sway is specifically made to be used within a blockchain environment, which behaves very differently than traditional computers.
+This domain specific design permits it to make the right decisions about trade-offs at every level of the stack, enabling you to write fast, secure and cost effective smart contracts with features suited to your specific needs.
 
-**Q: Why doesn't Fuel use Solidity?**
+**Q: Why not use Solidity?**
 
-Sway aims to take the best of Solidity, and leave the worst. From Solidity, we took the notion of smart contract programming as a paradigm. This led to storage blocks, contract ABIs as entry points, and more.
+Solidity is a venerable pioneer but it suffers from being tied to a lot of the historical quirks of the EVM.
+It lacks common features programmers have come to expect, has a relatively inexpressive type system, and it lacks a unified tooling ecosystem.
 
-While Solidity has been used to make a lot of amazing contracts, as a developer it can also feel like a minefield for vulnerabilities. Instead of having to be a 10x developer to feel confident deploying a contract, Sway takes a lot of the the stress out of developing smart contracts.
+In Sway, we let you design smart contracts with a full modern box of tools.
+You get a fully featured language with generics, algebraic types and trait based polymorphism.
+You also get an integrated, unified and easy to use toolchain with code completion LSP server, formatter, documentation generation and everything you need to run and deploy your contracts so that nothing comes between you and implementing what you want.
 
-Sway provides multiple layers of safety. For one, we provide canonical tooling and "one right way" to do things. This results in less ambiguity and more correct and helpful tools. These tools ensure the programmer has nothing between them and the algorithm they are trying to implement.
+Our expressive type system allows you to catch semantic mistakes, we provide good defaults and we do extensive static analysis checks (such as enforcing the [Checks, Effects, Interactions](./blockchain-development/calling_contracts.md#cei-pattern-violation-static-analysis) pattern) so that you can make sure you write secure and correct code at compile time.
 
-In addition, Sway has implemented static analysis checks like a [Checks, Effects, Interactions](./blockchain-development/calling_contracts.md#cei-pattern-violation-static-analysis) checker, state and storage purity checking, immutable-by-default semantics, and other static compile-time audits to promote safety.
+**Q: Why not use Rust?**
 
-**Q: Why doesn't Fuel use Rust?**
+Whilst Rust is a great systems programming language (and Sway itself is written in Rust), it isn't suited for smart contract development.
 
-Sway aims to take the best of Rust, and leave out everything that doesn't make sense in blockchain.
+Rust shines because it can use zero-cost abstractions and its sophisticated borrow-checker memory model to achieve impressive runtime performance for complex programs without a garbage collector.
 
-From Rust, we took the prioritizations of performance, control, and safety. In Rust, this means the borrow checker, safe parallelism (send and sync), annotated unsafety, etc., mainly to save the programmer from referencing freed memory, shared mutable state, and undesirable memory management.
+On a blockchain, cost of execution and deployment is the scarce resource.
+Memory usage is low and execution time is short.
+This makes complex memory management in general much too expensive to be worthwhile and Rust's borrow checker a burden with no upside.
 
-This is great for a general-purpose language model. Sway, however, is not general purpose. Sway targets a blockchain VM environment, where execution is not indefinite, and memory allocation and management are less of a concern. Instead, we need to optimize for gas costs and contract-level safety.
+General purpose programming languages in general are ill suited to this environment because their design has to assume execution on a general-purpose computing environment.
 
-We applied the philosophy of performance, control, and safety and interpreted it in this new context. This is where Sway gets compile time checks of state mutability, namespacing of state variables, static analysis passes, and gas optimization.
+Sway attempts to bring all the other advantages of Rust, including its modern type system, approach to safety and good defaults to smart contract developers by providing familiar syntax and features adapted to the specific needs of the blockchain environment.
 
 **Q: I don't know Rust or Solidity. Can I still learn Sway?**
 
@@ -36,11 +44,12 @@ Yes! If you are familiar with the basics of programming, blockchain, and using a
 
 **Q: What can I build with Sway?**
 
-There are four types of programs you can build with Sway: contracts, scripts, predicates, and libraries. You can learn more about each of these in the [Program Types](./sway-program-types/index.md) section.
+You can build smart contracts and their components and libraries for them.
+You can learn more about the different program types and how they fit together in the [Program Types](./sway-program-types/index.md) section.
 
 **Q: Do I need to install anything?**
 
-If you want to develop with Sway in your local environment, you need to install [`fuelup`](https://docs.fuel.network/guides/installation/) and have an IDE such as [VSCode](https://code.visualstudio.com/).
+If you want to develop with Sway in your local environment, you need to install [`fuelup`](https://docs.fuel.network/guides/installation/) and your editor of choice that supports LSP, such as [VSCode](https://code.visualstudio.com/).
 
 If you don't want to install anything just yet, you can use the [Sway Playground](https://www.sway-playground.org/) to edit, compile, and deploy Sway code.
 
@@ -50,7 +59,7 @@ You can find example applications built with Sway in the [Sway Applications repo
 
 **Q: What is the standard library?**
 
-The [standard library](./introduction/standard_library.md), also referred to as the `std-lib`, is a library that offers core functions and helpers for developing in Sway. The standard library has it's own [reference documentation](https://fuellabs.github.io/sway/master/std/) that has detailed information about each module in the `std-lib`.
+The [standard library](./introduction/standard_library.md), also referred to as `std`, is a library that offers core functions and helpers for developing in Sway. The standard library has it's own [reference documentation](https://fuellabs.github.io/sway/master/std/) that has detailed information about each module in `std`.
 
 **Q: What are Sway standards?**
 
