@@ -5,7 +5,8 @@ use crate::{span::Span, Spanned};
 use std::{
     cmp::{Ord, Ordering},
     fmt,
-    hash::{Hash, Hasher}, sync::Arc,
+    hash::{Hash, Hasher},
+    sync::Arc,
 };
 
 pub trait Named {
