@@ -18,7 +18,7 @@ impl Owner {
 
 enum Role {
     FullAccess: (),
-    PartialAcess: (),
+    PartialAccess: (),
     NoAccess: (),
 }
 // ANCHOR_END: data_structures

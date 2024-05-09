@@ -37,7 +37,7 @@ pub fn handle_initialize(
         state.spawn_client_heartbeat(client_pid as usize);
     }
 
-    // Initalizing tracing library based on the user's config
+    // Initializing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
         let tracing_options = TracingSubscriberOptions {
@@ -346,7 +346,7 @@ pub(crate) async fn handle_inlay_hints(
 ///
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
-/// seperate side panel.
+/// separate side panel.
 pub async fn handle_show_ast(
     state: &ServerState,
     params: lsp_ext::ShowAstParams,

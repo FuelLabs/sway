@@ -21,7 +21,7 @@ We'll begin by defining the `Owner` & `Role` data structures and implement a `de
 {{#include ../../../code/operations/storage/storage_init/src/main.sw:data_structures}}
 ```
 
-Now that we have our data structures we'll keep track of how many `current_owners` we have and declare the owner in the two aformentioned styles.
+Now that we have our data structures we'll keep track of how many `current_owners` we have and declare the owner in the two aforementioned styles.
 
 ```sway
 {{#include ../../../code/operations/storage/storage_init/src/main.sw:initialization}}

@@ -168,7 +168,7 @@ impl Module {
         &self.current_lexical_scope().items
     }
 
-    /// The mutable collection of items declared by this module's curent lexical scope.
+    /// The mutable collection of items declared by this module's current lexical scope.
     pub fn current_items_mut(&mut self) -> &mut Items {
         &mut self.current_lexical_scope_mut().items
     }
