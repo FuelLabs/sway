@@ -98,7 +98,7 @@ impl CurlyBrace for ItemFn {
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // If shape is becoming left-most alligned or - indent just have the default shape
+        // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.unindent();
         write!(
             line,

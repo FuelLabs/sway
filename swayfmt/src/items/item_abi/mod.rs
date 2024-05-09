@@ -92,7 +92,7 @@ impl CurlyBrace for ItemAbi {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // If shape is becoming left-most alligned or - indent just have the default shape
+        // If shape is becoming left-most alligned or - indent just have the defualt shape
         formatter.unindent();
         write!(
             line,
