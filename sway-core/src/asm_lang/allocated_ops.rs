@@ -122,7 +122,7 @@ pub(crate) enum AllocatedOpcode {
         AllocatedRegister,
     ),
 
-    /* Conrol Flow Instructions */
+    /* Control Flow Instructions */
     JMP(AllocatedRegister),
     JI(VirtualImmediate24),
     JNE(AllocatedRegister, AllocatedRegister, AllocatedRegister),

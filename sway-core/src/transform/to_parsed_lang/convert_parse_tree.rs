@@ -2752,7 +2752,7 @@ fn path_expr_to_expression(
         && path_expr.suffix.is_empty()
         && path_expr.prefix.generics_opt.is_none()
     {
-        // only `foo`, it coult either be a variable or an enum variant
+        // only `foo`, it could either be a variable or an enum variant
 
         let name = path_expr_segment_to_ident(context, handler, &path_expr.prefix)?;
         Expression {

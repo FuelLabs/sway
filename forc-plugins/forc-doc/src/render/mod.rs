@@ -284,7 +284,7 @@ impl HTMLString {
     }
 }
 
-/// The type of document. Helpful in detemining what to represent in
+/// The type of document. Helpful in determining what to represent in
 /// the sidebar & page content.
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum DocStyle {

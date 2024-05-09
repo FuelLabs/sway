@@ -168,7 +168,7 @@ pub(super) async fn run(
     verbose: bool,
     mut experimental: ExperimentalFlags,
 ) -> Result<()> {
-    // TODO the way moduels are built for these tests, new_encoding is not working.
+    // TODO the way modules are built for these tests, new_encoding is not working.
     experimental.new_encoding = false;
 
     // Compile core library and reuse it when compiling tests.
