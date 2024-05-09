@@ -31,7 +31,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: "x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
 
       - name: get fuel core version
         id: get_fuel_core_ver
