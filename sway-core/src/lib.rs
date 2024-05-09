@@ -880,7 +880,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             pass_group.append_group(create_o1_pass_group());
         }
         OptLevel::Opt0 => {
-            // Inlining is necessary until #4899 is resolved
+            // Inlining is necessary until #4899 is resolved.
             pass_group.append_pass(INLINE_MODULE_NAME);
 
             // We run a function deduplication pass that only removes duplicate
