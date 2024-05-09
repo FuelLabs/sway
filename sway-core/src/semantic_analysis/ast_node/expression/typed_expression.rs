@@ -564,14 +564,19 @@ impl ty::TyExpression {
                     let as_slice = Expression {
                         kind: ExpressionKind::Asm(Box::new(AsmExpression {
                             registers: vec![AsmRegisterDeclaration {
-                                name: Ident::new_no_span("xxx".into()),
+                                name: Ident::new_no_span("slice".into()),
                                 initializer: Some(Expression {
                                     kind: ExpressionKind::Tuple(vec![ptr, len]),
                                     span: Span::dummy(),
                                 }),
                             }],
                             body: vec![],
-                            returns: Some((AsmRegister { name: "xxx".into() }, Span::dummy())),
+                            returns: Some((
+                                AsmRegister {
+                                    name: "slice".into(),
+                                },
+                                Span::dummy(),
+                            )),
                             return_type: TypeInfo::RawUntypedSlice,
                             whole_block_span: Span::dummy(),
                         })),
@@ -579,7 +584,7 @@ impl ty::TyExpression {
                     };
 
                     // decode it
-                    let r = Self::type_check_function_application(
+                    Self::type_check_function_application(
                         handler,
                         ctx,
                         TypeBinding {
@@ -598,8 +603,7 @@ impl ty::TyExpression {
                         },
                         &[as_slice],
                         name_span.clone(),
-                    );
-                    r.unwrap_or_else(|_| panic!("{:?}", handler))
+                    )?
                 } else {
                     ty::TyExpression {
                         return_type: const_decl.return_type,

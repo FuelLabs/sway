@@ -1543,7 +1543,7 @@ impl TypeInfo {
     }
 
     /// Calculate the needed buffer for "abi encoding" the self type. If "inside" this
-    /// type there is a custom AbiEncode impl, we cannot calculate the buffer buffer.
+    /// type there is a custom AbiEncode impl, we cannot calculate the buffer size.
     pub fn abi_encode_size_hint(&self, engines: &Engines) -> AbiEncodeSizeHint {
         // TODO we need to check if this type has a custom AbiEncode impl or not
         // https://github.com/FuelLabs/sway/issues/5727
