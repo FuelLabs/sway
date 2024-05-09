@@ -384,7 +384,7 @@ impl MemberFilter {
                 let pkg = &graph[node_ix];
                 let pkg_manifest = &manifest_map[&pkg.id()];
                 let program_type = pkg_manifest.program_type();
-                // Since parser cannot recover for program type detection, for the scenerios that
+                // Since parser cannot recover for program type detection, for the scenarios that
                 // parser fails to parse the code, program type detection is not possible. So in
                 // failing to parse cases we should try to build at least until
                 // https://github.com/FuelLabs/sway/issues/3017 is fixed. Until then we should
@@ -1012,7 +1012,7 @@ fn validate_dep(
 
     Ok(dep_manifest)
 }
-/// Part of dependency validation, any checks related to the depenency's manifest content.
+/// Part of dependency validation, any checks related to the dependency's manifest content.
 fn validate_dep_manifest(
     dep: &Pinned,
     dep_manifest: &PackageManifestFile,
@@ -1242,7 +1242,7 @@ fn graph_to_manifest_map(manifests: &MemberManifestFiles, graph: &Graph) -> Resu
 /// Assumes the given `graph` only contains valid dependencies (see `validate_graph`).
 ///
 /// `pkg_graph_to_manifest_map` starts from each node (which corresponds to the given proj_manifest)
-/// and visits childs to collect their manifest files.
+/// and visits children to collect their manifest files.
 fn pkg_graph_to_manifest_map(
     manifests: &MemberManifestFiles,
     pkg_name: &str,
@@ -2325,7 +2325,7 @@ pub fn build(
 
         let is_contract_dependency = is_contract_dependency(plan.graph(), node);
         // If we are building a contract and tests are enabled or we are building a contract
-        // dependency, we need the tests exlcuded bytecode.
+        // dependency, we need the tests excluded bytecode.
         let bytecode_without_tests = if (include_tests
             && matches!(manifest.program_type(), Ok(TreeType::Contract)))
             || is_contract_dependency

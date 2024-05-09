@@ -69,7 +69,7 @@ pub fn rename(
         }
         let mut range = ident.range;
         if ident.is_raw_ident() {
-            // Make sure the start char starts at the begining,
+            // Make sure the start char starts at the beginning,
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
@@ -154,7 +154,7 @@ fn is_token_in_workspace(
         .declared_token_ident(engines)
         .ok_or(RenameError::TokenNotFound)?;
 
-    // Check the span of the tokens defintions to determine if it's in the users workspace.
+    // Check the span of the tokens definitions to determine if it's in the users workspace.
     let temp_path = &session.sync.temp_dir()?;
     if let Some(path) = &decl_ident.path {
         if !path.starts_with(temp_path) {
