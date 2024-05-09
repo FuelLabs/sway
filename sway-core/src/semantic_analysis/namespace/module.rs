@@ -28,7 +28,7 @@ pub struct Module {
     /// Submodules are normally introduced in Sway code with the `mod foo;` syntax where `foo` is
     /// some library dependency that we include as a submodule.
     ///
-    /// Note that we *require* this map to be ordered to produce deterministic codegen results.
+    /// Note that we *require* this map to produce deterministic codegen results which is why [`FxHasher`] is used.
     pub(crate) submodules: im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>>,
     /// Keeps all lexical scopes associated with this module.
     pub lexical_scopes: Vec<LexicalScope>,
