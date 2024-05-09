@@ -6,6 +6,8 @@ use super::{
     LexicalScopeId, ModuleName, ModulePath, ModulePathBuf,
 };
 
+use rustc_hash::FxHasher;
+use std::hash::BuildHasherDefault;
 use sway_error::handler::Handler;
 use sway_error::{error::CompileError, handler::ErrorEmitted};
 use sway_types::{span::Span, Spanned};
@@ -27,7 +29,7 @@ pub struct Module {
     /// some library dependency that we include as a submodule.
     ///
     /// Note that we *require* this map to be ordered to produce deterministic codegen results.
-    pub(crate) submodules: im::HashMap<ModuleName, Module>,
+    pub(crate) submodules: im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>>,
     /// Keeps all lexical scopes associated with this module.
     pub lexical_scopes: Vec<LexicalScope>,
     /// Current lexical scope id in the lexical scope hierarchy stack.
@@ -86,7 +88,7 @@ impl Module {
     }
 
     /// Immutable access to this module's submodules.
-    pub fn submodules(&self) -> &im::HashMap<ModuleName, Module> {
+    pub fn submodules(&self) -> &im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>> {
         &self.submodules
     }
 
