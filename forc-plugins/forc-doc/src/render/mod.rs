@@ -48,10 +48,10 @@ impl Renderable for Document {
 
 /// A [Document] rendered to HTML.
 #[derive(Debug)]
-pub(crate) struct RenderedDocument {
-    pub(crate) module_info: ModuleInfo,
-    pub(crate) html_filename: String,
-    pub(crate) file_contents: HTMLString,
+pub struct RenderedDocument {
+    pub module_info: ModuleInfo,
+    pub html_filename: String,
+    pub file_contents: HTMLString,
 }
 impl RenderedDocument {
     fn from_doc(doc: &Document, render_plan: RenderPlan) -> Result<Self> {
@@ -64,7 +64,7 @@ impl RenderedDocument {
 }
 
 #[derive(Default)]
-pub(crate) struct RenderedDocumentation(pub(crate) Vec<RenderedDocument>);
+pub struct RenderedDocumentation(pub Vec<RenderedDocument>);
 
 impl RenderedDocumentation {
     /// Top level HTML rendering for all [Documentation] of a program.
@@ -268,7 +268,7 @@ fn populate_all_doc(doc: &Document, all_docs: &mut DocLinks) {
 
 /// The finalized HTML file contents.
 #[derive(Debug)]
-pub(crate) struct HTMLString(pub(crate) String);
+pub struct HTMLString(pub String);
 impl HTMLString {
     /// Final rendering of a [Document] HTML page to String.
     fn from_rendered_content(rendered_content: Box<dyn RenderBox>) -> Result<Self> {
@@ -287,7 +287,7 @@ impl HTMLString {
 /// The type of document. Helpful in determining what to represent in
 /// the sidebar & page content.
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) enum DocStyle {
+pub enum DocStyle {
     AllDoc(String),
     ProjectIndex(String),
     ModuleIndex,

@@ -24,11 +24,11 @@ mod descriptor;
 pub mod module;
 
 #[derive(Default, Clone)]
-pub(crate) struct Documentation(pub(crate) Vec<Document>);
+pub struct Documentation(pub Vec<Document>);
 
 impl Documentation {
     /// Gather [Documentation] from the [TyProgram].
-    pub(crate) fn from_ty_program(
+    pub fn from_ty_program(
         engines: &Engines,
         project_name: &str,
         typed_program: &TyProgram,
@@ -185,15 +185,15 @@ impl Documentation {
 /// A finalized Document ready to be rendered. We want to retain all
 /// information including spans, fields on structs, variants on enums etc.
 #[derive(Clone, Debug)]
-pub(crate) struct Document {
-    pub(crate) module_info: ModuleInfo,
-    pub(crate) item_header: ItemHeader,
-    pub(crate) item_body: ItemBody,
-    pub(crate) raw_attributes: Option<String>,
+pub struct Document {
+    pub module_info: ModuleInfo,
+    pub item_header: ItemHeader,
+    pub item_body: ItemBody,
+    pub raw_attributes: Option<String>,
 }
 impl Document {
     /// Creates an HTML file name from the [Document].
-    pub(crate) fn html_filename(&self) -> String {
+    pub fn html_filename(&self) -> String {
         use sway_core::language::ty::TyDecl::StorageDecl;
         let name = match &self.item_body.ty_decl {
             StorageDecl { .. } => None,
@@ -211,7 +211,7 @@ impl Document {
         }
     }
     /// Generate link info used in navigation between docs.
-    pub(crate) fn link(&self) -> DocLink {
+    pub fn link(&self) -> DocLink {
         DocLink {
             name: self.item_header.item_name.as_str().to_owned(),
             module_info: self.module_info.clone(),
@@ -219,7 +219,7 @@ impl Document {
             preview_opt: self.preview_opt(),
         }
     }
-    pub(crate) fn preview_opt(&self) -> Option<String> {
+    pub fn preview_opt(&self) -> Option<String> {
         create_preview(self.raw_attributes.clone())
     }
 }
