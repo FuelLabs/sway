@@ -214,7 +214,7 @@ where
                 let name = x.name.as_str();
                 Some(match &*engines.te().get(x.type_argument.type_id) {
                     // unit
-                    TypeInfo::Tuple(fiels) if fiels.is_empty() => {
+                    TypeInfo::Tuple(fields) if fields.is_empty() => {
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
                     },
                     _ => {

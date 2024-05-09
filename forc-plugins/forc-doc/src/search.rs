@@ -6,7 +6,7 @@ use std::{collections::HashMap, fs, path::Path};
 const JS_SEARCH_FILE_NAME: &str = "search.js";
 
 /// Creates the search index javascript file for the search bar.
-pub(crate) fn write_search_index(doc_path: &Path, docs: &Documentation) -> Result<()> {
+pub fn write_search_index(doc_path: &Path, docs: &Documentation) -> Result<()> {
     let json_data = docs.to_json_value()?;
     let module_export =
         "\"object\"==typeof exports&&\"undefined\"!=typeof module&&(module.exports=SEARCH_INDEX);";

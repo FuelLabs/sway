@@ -360,7 +360,7 @@ impl ServerState {
         let session = if let Some(item) = self.sessions.try_get(&manifest_dir).try_unwrap() {
             item.value().clone()
         } else {
-            // If no session can be found, then we need to call init and inserst a new session into the map
+            // If no session can be found, then we need to call init and insert a new session into the map
             self.init_session(uri).await?;
             self.sessions
                 .try_get(&manifest_dir)

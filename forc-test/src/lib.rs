@@ -71,7 +71,7 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: pkg::TestPassCondition,
-    /// Emitted `Recipt`s during the execution of the test.
+    /// Emitted `Receipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
@@ -274,7 +274,7 @@ fn get_contract_dependency_map(
             let pinned_member = graph[member_node].clone();
             let contract_dependencies = build_plan
                 .contract_dependencies(member_node)
-                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                .map(|contract_dependency_node_ix| graph[contract_dependency_node_ix].clone())
                 .filter_map(|pinned| built_members.get(&pinned))
                 .cloned()
                 .collect::<Vec<_>>();

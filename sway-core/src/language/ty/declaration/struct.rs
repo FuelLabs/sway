@@ -109,7 +109,7 @@ impl TyStructDecl {
     /// within the struct memory layout, or `None` if the field with the
     /// name `field_name` does not exist.
     pub(crate) fn get_field_index_and_type(&self, field_name: &Ident) -> Option<(u64, TypeId)> {
-        // TODO-MEMLAY: Warning! This implementation assumes that fields are layed out in
+        // TODO-MEMLAY: Warning! This implementation assumes that fields are laid out in
         //              memory in the order of their declaration.
         //              This assumption can be changed in the future.
         self.fields

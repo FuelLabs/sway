@@ -11,3 +11,4 @@ These are also some concepts related to the FuelVM and Fuel ecosystem that you m
 - [Native Assets](./native_assets.md)
 - [Access Control](./access_control.md)
 - [Calling Contracts](./calling_contracts.md)
+- [External Code Execution](./external_code.md)
