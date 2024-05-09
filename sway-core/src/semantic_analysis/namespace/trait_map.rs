@@ -419,7 +419,7 @@ impl TraitMap {
         engines: &Engines,
     ) {
         let key = TraitKey {
-            name: trait_name.into(),
+            name: trait_name,
             type_id,
             trait_decl_span,
         };
