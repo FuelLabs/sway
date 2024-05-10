@@ -1,72 +1,76 @@
 category = "fail"
 
 # check: $()error
-# check: $()Could not find symbol "A" in this scope
+# check: $()Could not find symbol "A" in this scope.
 
 # check: $()error
-# check: $()Found multiple bindings for "MyEnum" in this scope: a::MyEnum and b::MyEnum are both valid
+# check: $()The following paths are all valid bindings for symbol "MyEnum": a::MyEnum, b::MyEnum
 
 # check: $()error
-# check: $()Unknown type name "MyEnum"
+# check: $()Unknown type name "MyEnum".
 
 # check: $()error
-# check: $()Found multiple bindings for "E" in this scope: c::E and d::E are both valid
+# check: $()The following paths are all valid bindings for symbol "E": c::MyEnumVariants::E, d::MyOtherEnumVariants::E
 
 # check: $()error
-# check: $()Found multiple bindings for "MyStruct" in this scope: a::MyStruct and b::MyStruct are both valid
+# check: $()The following paths are all valid bindings for symbol "MyStruct": a::MyStruct, b::MyStruct
 
 # check: $()error
-# check: $()Unknown type name "MyStruct"
+# check: $()Unknown type name "MyStruct".
 
 # check: $()error
-# check: $()Found multiple bindings for "MyStruct" in this scope: a::MyStruct and b::MyStruct are both valid
+# check: $()The following paths are all valid bindings for symbol "MyStruct": a::MyStruct, b::MyStruct
 
 # check: $()error
-# check: $()Unknown type name "MyStruct"
+# check: $()Unknown type name "MyStruct".
 
 # check: $()error
-# check: $()Field "a" does not exist in the struct "MyStruct"
+# check: $()Field "a" does not exist in the struct "MyStruct".
 
 # check: $()error
-# check: $()Instantiation of the struct "MyStruct" is missing the field "b"
+# check: $()Instantiation of the struct "MyStruct" is missing the field "b".
 
 # check: $()error
-# check: $()Could not find symbol "A" in this scope
+# check: $()Could not find symbol "A" in this scope.
 
 # check: $()error
-# check: $()Found multiple bindings for "MyEnum" in this scope: a::MyEnum and b::MyEnum are both valid
+# check: $()The following paths are all valid bindings for symbol "MyEnum": a::MyEnum, b::MyEnum
 
 # check: $()error
-# check: $()Unknown type name "MyEnum"
+# check: $()Unknown type name "MyEnum".
 
 # check: $()error
-# check: $()Could not find symbol "B" in this scope
+# check: $()Could not find symbol "B" in this scope.
 
 # check: $()error
-# check: $()Found multiple bindings for "MyEnum" in this scope: a::MyEnum and b::MyEnum are both valid
+# check: $()The following paths are all valid bindings for symbol "MyEnum": a::MyEnum, b::MyEnum
 
 # check: $()error
-# check: $()Unknown type name "MyEnum"
+# check: $()Unknown type name "MyEnum".
 
 # check: $()error
-# check: $()No method named "B" found for type "MyEnum"
+# check: $()No method named "B" found for type "MyEnum".
 
 # check: $()error
-# check: $()Found multiple bindings for "C" in this scope: a::C and b::C are both valid
+# check: $()Mismatched types.
+# nextln: $()expected: MyEnum
+# nextln: $()found:    MyEnum.
 
 # check: $()error
-# check: $()Unknown type name "C"
+# check: $()The following paths are all valid bindings for symbol "C": a::C, b::MyOtherEnum::C
 
 # check: $()error
-# check: $()Found multiple bindings for "C" in this scope: a::C and b::C are both valid
+# check: $()Unknown type name "C".
 
 # check: $()error
-# check: $()Found multiple bindings for "E" in this scope: c::E and d::E are both valid
+# check: $()The following paths are all valid bindings for symbol "C": a::C, b::MyOtherEnum::C
 
 # check: $()error
-# check: $()Mismatched types
+# check: $()The following paths are all valid bindings for symbol "E": c::MyEnumVariants::E, d::MyOtherEnumVariants::E
+
+# check: $()error
+# check: $()Mismatched types.
 # nextln: $()expected: MyEnumVariants
 # nextln: $()found:    MyOtherEnumVariants.
-# nextln: $()help: The argument that has been provided to this function's type does not match the declared type of the parameter in the function declaration.
 
-# check: $()Aborting due to 23 errors
+# check: $()Aborting due to 23 errors.

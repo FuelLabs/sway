@@ -837,10 +837,16 @@ impl Root {
                 // Symbol not found
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
                     name: symbol.clone(),
-		    paths: decls.iter().map(|(path, _)|
-					    path.iter().map(|x| x.as_str())
-					    .collect::<Vec<_>>()
-					    .join("::")).collect(),
+		    paths: decls.iter().map(|(path, decl)| {
+			let mut path_strs = path.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+			// Add the enum name to the path if the decl is an enum variant.
+			match decl {
+			    TyDecl::EnumVariantDecl( ty::EnumVariantDecl { enum_ref , .. } ) => 
+				path_strs.push(enum_ref.name().as_str()),
+			    _ => {}
+			};
+			path_strs.join("::")
+		    }).collect(),
                     span: symbol.span(),
                 }));
             }

@@ -36,7 +36,7 @@ fn bad_variants_project_my_enum_b(e : b::MyEnum) -> u64 {
 // Error: MyEnum is ambiguous
 fn bad_enum_project_my_enum_b(e : MyEnum) -> u64 {
     match e {
-	// Error - MyEnum::A and MyEnum::B are ambiguous - not reported because of signature error
+	// Error - MyEnum::A and MyEnum::B are ambiguous - not reported because the signature is faulty
 	MyEnum::A(val)
 	| MyEnum::B(val) => val,
     }
@@ -56,12 +56,13 @@ fn main() {
     let my_struct_b_wrong_field = b::MyStruct { a : 6 }; // Error - b::MyStruct does not contain field a
 
     let my_enum_a_variant = A(100); // Error - A is not in scope
+    let my_enum_a_variant_legal = a::MyEnum::A(100); // Legal
     let my_enum_a_enum_variant = MyEnum::A(101); // Error - MyEnum is ambiguous
     let my_enum_b_variant = B(104); // Error - B is not in scope
     let my_enum_b_enum_variant = MyEnum::B(105); // Error - MyEnum is ambiguous
     let my_enum_a_wrong_variant = b::MyEnum::B(108); // Error - b::MyEnum does not contain variant B
 
-    let my_enum_function_wrong_type = project_my_enum_b(my_enum_a_enum_variant_relative); // Error - wrong MyEnum // BUG: project_my_enum_b not imported
+    let my_enum_function_wrong_type = project_my_enum_b(my_enum_a_variant_legal); // Error - wrong MyEnum
 
     let c_struct = C { b: 200 }; // Error - C is ambiguous
     let c_variant = C(203); // Error - C is ambiguous
