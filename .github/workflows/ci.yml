@@ -334,10 +334,8 @@ jobs:
           targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
       - name: Install fuel-core for tests
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: fuel-core-bin
-          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+        run: |
+          cargo install fuel-core-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
           fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
@@ -353,13 +351,11 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
       - name: Install fuel-core for tests
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: fuel-core-bin
-          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
+        run: |
+          cargo install fuel-core-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
           fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
