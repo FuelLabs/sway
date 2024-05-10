@@ -20,7 +20,7 @@ anyhow = "1"
 clap = { version = "3", features = ["derive", "env"] }
 devault = "0.1"
 forc-util = { version = "0.56.1", path = "../../forc-util" }
-fuel-tx = { workspace = true, features = ["serde", "test-helpers"] }
+fuel-tx = { workspace = true, features = ["serde", "test-helpers", "random"] }
 fuel-types = { workspace = true, features = ["serde"] }
 serde = "1.0"
 serde_json = { version = "1" }

@@ -1,5 +1,5 @@
 {
-  "chain_name": "Local Node Test Network",
+  "chain_name": "Local Node Testnet",
   "consensus_parameters": {
     "V1": {
       "tx_params": {
@@ -8,7 +8,8 @@
           "max_outputs": 255,
           "max_witnesses": 255,
           "max_gas_per_tx": 1000000000,
-          "max_size": 17825792
+          "max_size": 17825792,
+          "max_bytecode_subsections": 256
         }
       },
       "predicate_params": {
