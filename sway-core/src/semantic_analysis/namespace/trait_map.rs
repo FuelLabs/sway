@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     fmt,
     hash::{DefaultHasher, Hash, Hasher},
+    sync::Arc,
 };
 
 use hashbrown::HashSet;
@@ -85,7 +86,7 @@ impl DebugWithEngines for TraitSuffix {
     }
 }
 
-type TraitName = CallPath<TraitSuffix>;
+type TraitName = Arc<CallPath<TraitSuffix>>;
 
 #[derive(Clone, Debug)]
 struct TraitKey {
@@ -235,7 +236,7 @@ impl TraitMap {
                             args: map_trait_type_args,
                         },
                     ..
-                } = map_trait_name;
+                } = &*map_trait_name.clone();
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
 
@@ -385,14 +386,14 @@ impl TraitMap {
                     }
                 }
             }
-            let trait_name: TraitName = CallPath {
+            let trait_name: TraitName = Arc::new(CallPath {
                 prefixes: trait_name.prefixes,
                 suffix: TraitSuffix {
                     name: trait_name.suffix,
                     args: trait_type_args,
                 },
                 is_absolute: trait_name.is_absolute,
-            };
+            });
 
             // even if there is a conflicting definition, add the trait anyway
             self.insert_inner(
@@ -1079,7 +1080,7 @@ impl TraitMap {
                 ResolvedTraitImplItem::Parsed(impl_item) => match impl_item {
                     ImplItem::Fn(fn_ref) => {
                         let decl = engines.pe().get_function(&fn_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1092,7 +1093,7 @@ impl TraitMap {
                     }
                     ImplItem::Constant(const_ref) => {
                         let decl = engines.pe().get_constant(&const_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1105,7 +1106,7 @@ impl TraitMap {
                     }
                     ImplItem::Type(type_ref) => {
                         let decl = engines.pe().get_trait_type(&type_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1120,7 +1121,7 @@ impl TraitMap {
                 ResolvedTraitImplItem::Typed(ty_impl_item) => match ty_impl_item {
                     ty::TyTraitItem::Fn(fn_ref) => {
                         let decl = engines.de().get_function(&fn_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1133,7 +1134,7 @@ impl TraitMap {
                     }
                     ty::TyTraitItem::Constant(const_ref) => {
                         let decl = engines.de().get_constant(&const_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.call_path.suffix.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1146,7 +1147,7 @@ impl TraitMap {
                     }
                     ty::TyTraitItem::Type(type_ref) => {
                         let decl = engines.de().get_type(&type_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)

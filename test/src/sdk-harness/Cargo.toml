@@ -10,15 +10,15 @@ publish = false
 assert_matches = "1.5.0"
 
 # Dependencies from the `fuel-core` repository:
-fuel-core = { version = "0.24.3", default-features = false }
-fuel-core-client = { version = "0.24.3", default-features = false }
+fuel-core = { version = "0.26.0", default-features = false }
+fuel-core-client = { version = "0.26.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-vm = "0.48.0"
+fuel-vm = { version = "0.49.0", features = ["random"] }
 
 # Dependencies from the `fuels-rs` repository:
 # Need to point to master until encoding v1 is default everywhere
-fuels = { git = "https://github.com/FuelLabs/fuels-rs", features = [
+fuels = { git = "https://github.com/FuelLabs/fuels-rs", tag = "v0.60.0", features = [
     "fuel-core-lib",
 ] }
 

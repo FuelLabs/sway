@@ -49,6 +49,16 @@ impl PartialEqWithEngines for CallPathTree {
     }
 }
 
+impl<T: PartialEqWithEngines> EqWithEngines for Vec<T> {}
+impl<T: PartialEqWithEngines> PartialEqWithEngines for Vec<T> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        self.iter().zip(other.iter()).all(|(a, b)| a.eq(b, ctx))
+    }
+}
+
 impl OrdWithEngines for CallPathTree {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let CallPathTree {

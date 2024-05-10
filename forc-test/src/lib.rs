@@ -638,7 +638,10 @@ fn deployment_transaction(
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
-    let asset_id = rng.gen();
+    // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
+    // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
+    // base asset id is indeed the static `tx::AssetId::BASE`.
+    let asset_id = tx::AssetId::BASE;
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
