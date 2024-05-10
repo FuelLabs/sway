@@ -335,7 +335,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install fuel-core for tests
         run: |
-          cargo install fuel-core-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
           fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
@@ -355,7 +358,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install fuel-core for tests
         run: |
-          cargo install fuel-core-bin --version ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
           fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
@@ -504,10 +510,11 @@ jobs:
           targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
       - name: Install fuel-core for tests
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: fuel-core-bin
-          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+        run: |
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Run tests
         run: cargo test --locked --release -p forc-debug
   cargo-test-sway-lsp:
