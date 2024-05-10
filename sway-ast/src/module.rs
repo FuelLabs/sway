@@ -1,4 +1,5 @@
 use crate::priv_prelude::*;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Module {
@@ -8,8 +9,8 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn submodules(&self) -> impl Iterator<Item = &Submodule> {
-        self.items.iter().filter_map(|i| {
+    pub fn submodules(&self) -> impl ParallelIterator<Item = &Submodule> {
+        self.items.par_iter().filter_map(|i| {
             if let ItemKind::Submodule(submod) = &i.value {
                 Some(submod)
             } else {

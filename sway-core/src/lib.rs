@@ -34,6 +34,7 @@ pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
+use rayon::iter::ParallelIterator;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -258,66 +259,73 @@ fn parse_submodules(
     lsp_mode: Option<&LspConfig>,
 ) -> Submodules {
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
-    let mut submods = Vec::with_capacity(module.submodules().count());
+    //let mut submods = Vec::with_capacity(module.submodules().count());
 
-    module.submodules().for_each(|submod| {
-        // Read the source code from the dependency.
-        // If we cannot, record as an error, but continue with other files.
-        let submod_path = Arc::new(module_path(module_dir, module_name, submod));
-        let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
-            Ok(s) => Arc::from(s),
-            Err(e) => {
-                handler.emit_err(CompileError::FileCouldNotBeRead {
-                    span: submod.name.span(),
-                    file_path: submod_path.to_string_lossy().to_string(),
-                    stringified_error: e.to_string(),
-                });
-                return;
+    let now = std::time::Instant::now();
+    let submods: Vec<Submodule> = module
+        .submodules()
+        .filter_map(|submod| {
+            // Read the source code from the dependency.
+            // If we cannot, record as an error, but continue with other files.
+            let submod_path = Arc::new(module_path(module_dir, module_name, submod));
+            let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
+                Ok(s) => Arc::from(s),
+                Err(e) => {
+                    handler.emit_err(CompileError::FileCouldNotBeRead {
+                        span: submod.name.span(),
+                        file_path: submod_path.to_string_lossy().to_string(),
+                        stringified_error: e.to_string(),
+                    });
+                    return None;
+                }
+            };
+
+            if let Ok(ParsedModuleTree {
+                tree_type: kind,
+                lexed_module,
+                parse_module,
+            }) = parse_module_tree(
+                handler,
+                engines,
+                submod_str.clone(),
+                submod_path.clone(),
+                Some(submod.name.as_str()),
+                build_target,
+                include_tests,
+                experimental,
+                lsp_mode,
+            ) {
+                if !matches!(kind, parsed::TreeType::Library) {
+                    let source_id = engines.se().get_source_id(submod_path.as_ref());
+                    let span = span::Span::new(submod_str, 0, 0, Some(source_id)).unwrap();
+                    handler.emit_err(CompileError::ImportMustBeLibrary { span });
+                    return None;
+                }
+
+                let parse_submodule = parsed::ParseSubmodule {
+                    module: parse_module,
+                    visibility: match submod.visibility {
+                        Some(..) => Visibility::Public,
+                        None => Visibility::Private,
+                    },
+                    mod_name_span: submod.name.span(),
+                };
+                let lexed_submodule = lexed::LexedSubmodule {
+                    module: lexed_module,
+                };
+                let submodule = Submodule {
+                    name: submod.name.clone(),
+                    path: submod_path,
+                    lexed: lexed_submodule,
+                    parsed: parse_submodule,
+                };
+                Some(submodule)
+            } else {
+                None
             }
-        };
-
-        if let Ok(ParsedModuleTree {
-            tree_type: kind,
-            lexed_module,
-            parse_module,
-        }) = parse_module_tree(
-            handler,
-            engines,
-            submod_str.clone(),
-            submod_path.clone(),
-            Some(submod.name.as_str()),
-            build_target,
-            include_tests,
-            experimental,
-            lsp_mode,
-        ) {
-            if !matches!(kind, parsed::TreeType::Library) {
-                let source_id = engines.se().get_source_id(submod_path.as_ref());
-                let span = span::Span::new(submod_str, 0, 0, Some(source_id)).unwrap();
-                handler.emit_err(CompileError::ImportMustBeLibrary { span });
-                return;
-            }
-
-            let parse_submodule = parsed::ParseSubmodule {
-                module: parse_module,
-                visibility: match submod.visibility {
-                    Some(..) => Visibility::Public,
-                    None => Visibility::Private,
-                },
-                mod_name_span: submod.name.span(),
-            };
-            let lexed_submodule = lexed::LexedSubmodule {
-                module: lexed_module,
-            };
-            let submodule = Submodule {
-                name: submod.name.clone(),
-                path: submod_path,
-                lexed: lexed_submodule,
-                parsed: parse_submodule,
-            };
-            submods.push(submodule);
-        }
-    });
+        })
+        .collect();
+    eprintln!("Parsed {:?} submodules in {:?}", module_name, now.elapsed());
 
     submods
 }
