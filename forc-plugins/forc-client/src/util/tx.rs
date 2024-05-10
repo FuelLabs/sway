@@ -309,7 +309,6 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                 e
             })?;
 
-        // Set max_fee from consensus_parameters.
 
         let mut tx = self.finalize_without_signature_inner();
 
