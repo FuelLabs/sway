@@ -309,7 +309,6 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                 e
             })?;
 
-
         let mut tx = self.finalize_without_signature_inner();
 
         let signature = if let Some(signing_key) = signing_key {
