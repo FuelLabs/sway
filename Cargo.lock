@@ -2029,7 +2029,7 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "forc"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2040,7 +2040,7 @@ dependencies = [
  "completest-pty",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "forc-util",
  "fs_extra",
  "fuel-asm",
@@ -2064,7 +2064,7 @@ dependencies = [
 
 [[package]]
 name = "forc-client"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2073,7 +2073,7 @@ dependencies = [
  "devault",
  "forc",
  "forc-pkg",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "forc-tx",
  "forc-util",
  "forc-wallet",
@@ -2099,13 +2099,13 @@ dependencies = [
 
 [[package]]
 name = "forc-crypto"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "async-trait",
  "atty",
  "clap 3.2.25",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "forc-util",
  "fuel-core-types",
  "fuel-crypto",
@@ -2125,7 +2125,7 @@ dependencies = [
 
 [[package]]
 name = "forc-debug"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2150,7 +2150,7 @@ dependencies = [
 
 [[package]]
 name = "forc-doc"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "clap 4.5.4",
@@ -2175,12 +2175,12 @@ dependencies = [
 
 [[package]]
 name = "forc-fmt"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
  "forc-pkg",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "forc-util",
  "prettydiff 0.5.1",
  "sway-core",
@@ -2192,7 +2192,7 @@ dependencies = [
 
 [[package]]
 name = "forc-lsp"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2203,12 +2203,12 @@ dependencies = [
 
 [[package]]
 name = "forc-pkg"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "ansi_term",
  "anyhow",
  "cid",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "forc-util",
  "fuel-abi-types",
  "futures",
@@ -2239,7 +2239,7 @@ dependencies = [
 
 [[package]]
 name = "forc-test"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "forc-pkg",
@@ -2265,7 +2265,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tracing"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "ansi_term",
  "tracing",
@@ -2274,7 +2274,7 @@ dependencies = [
 
 [[package]]
 name = "forc-tx"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "clap 3.2.25",
@@ -2289,7 +2289,7 @@ dependencies = [
 
 [[package]]
 name = "forc-util"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "annotate-snippets",
  "ansi_term",
@@ -2297,7 +2297,7 @@ dependencies = [
  "clap 3.2.25",
  "dirs 3.0.2",
  "fd-lock 4.0.2",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "fuel-tx",
  "hex",
  "paste",
@@ -3579,6 +3579,12 @@ dependencies = [
  "quote",
  "syn 1.0.109",
 ]
+
+[[package]]
+name = "in_definite"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5bd47a3c8188d842aa7ff4dd65a9732f740fcbe04689ecfbfef43c465b381de"
 
 [[package]]
 name = "include_dir"
@@ -6605,7 +6611,7 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 
 [[package]]
 name = "sway-ast"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "extension-trait",
  "num-bigint",
@@ -6617,7 +6623,7 @@ dependencies = [
 
 [[package]]
 name = "sway-core"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "clap 3.2.25",
  "derivative",
@@ -6662,9 +6668,10 @@ dependencies = [
 
 [[package]]
 name = "sway-error"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "either",
+ "in_definite",
  "num-traits",
  "smallvec",
  "sway-types",
@@ -6674,7 +6681,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "downcast-rs",
@@ -6693,7 +6700,7 @@ dependencies = [
 
 [[package]]
 name = "sway-ir-macros"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "itertools 0.10.5",
  "proc-macro2",
@@ -6703,7 +6710,7 @@ dependencies = [
 
 [[package]]
 name = "sway-lsp"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -6713,7 +6720,7 @@ dependencies = [
  "dirs 4.0.0",
  "fd-lock 4.0.2",
  "forc-pkg",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "forc-util",
  "futures",
  "indexmap 2.2.6",
@@ -6768,7 +6775,7 @@ dependencies = [
 
 [[package]]
 name = "sway-parse"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "assert_matches",
  "extension-trait",
@@ -6786,7 +6793,7 @@ dependencies = [
 
 [[package]]
 name = "sway-types"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "bytecount",
  "fuel-asm",
@@ -6804,7 +6811,7 @@ dependencies = [
 
 [[package]]
 name = "sway-utils"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "serde",
  "walkdir",
@@ -6812,11 +6819,11 @@ dependencies = [
 
 [[package]]
 name = "swayfmt"
-version = "0.56.0"
+version = "0.56.1"
 dependencies = [
  "anyhow",
  "difference",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "paste",
  "prettydiff 0.6.4",
  "ropey",
@@ -7075,7 +7082,7 @@ dependencies = [
  "forc-client",
  "forc-pkg",
  "forc-test",
- "forc-tracing 0.56.0",
+ "forc-tracing 0.56.1",
  "fuel-vm",
  "futures",
  "gag",

@@ -30,7 +30,7 @@ impl Spanned for PathExpr {
             Some((_, path_expr_segment)) => path_expr_segment.span(),
             None => self.prefix.span(),
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -51,7 +51,7 @@ impl Spanned for PathExprSegment {
     fn span(&self) -> Span {
         let start = self.name.span();
         match &self.generics_opt {
-            Some((_, generic_args)) => Span::join(start, generic_args.span()),
+            Some((_, generic_args)) => Span::join(start, &generic_args.span()),
             None => start,
         }
     }
@@ -87,7 +87,7 @@ impl Spanned for PathType {
             Some((_, path_type_segment)) => path_type_segment.span(),
             None => self.prefix.span(),
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -101,7 +101,7 @@ impl Spanned for PathTypeSegment {
     fn span(&self) -> Span {
         let start = self.name.span();
         match &self.generics_opt {
-            Some((_, generic_args)) => Span::join(start, generic_args.span()),
+            Some((_, generic_args)) => Span::join(start, &generic_args.span()),
             None => start,
         }
     }

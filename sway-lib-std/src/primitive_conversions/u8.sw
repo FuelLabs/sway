@@ -2,6 +2,7 @@ library;
 
 use ::convert::TryFrom;
 use ::option::Option::{self, *};
+use ::u128::U128;
 
 impl TryFrom<u16> for u8 {
     fn try_from(u: u16) -> Option<Self> {
@@ -55,6 +56,16 @@ impl TryFrom<u256> for u8 {
             Some(asm(r1: parts.3) {
                 r1: u8
             })
+        }
+    }
+}
+
+impl TryFrom<U128> for u8 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            <u8 as TryFrom<u64>>::try_from(u.lower())
+        } else {
+            None
         }
     }
 }
@@ -119,6 +130,22 @@ fn test_u8_try_from_u256() {
 
     assert(u8_1.is_some());
     assert(u8_1.unwrap() == 2u8);
+
+    assert(u8_2.is_none());
+}
+
+#[test]
+fn test_u8_try_from_u128() {
+    use ::assert::assert;
+
+    let u128_1: U128 = U128::new();
+    let u128_2: U128 = U128::from((0, u8::max().as_u64() + 1));
+
+    let u8_1 = <u8 as TryFrom<U128>>::try_from(u128_1);
+    let u8_2 = <u8 as TryFrom<U128>>::try_from(u128_2);
+
+    assert(u8_1.is_some());
+    assert(u8_1.unwrap() == 0u8);
 
     assert(u8_2.is_none());
 }

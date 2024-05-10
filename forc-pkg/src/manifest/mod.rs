@@ -339,13 +339,13 @@ impl PackageManifestFile {
 
         parse_res.map_err(|_| {
             let (errors, _warnings) = handler.consume();
-            parsing_failed(&self.project.name, errors)
+            parsing_failed(&self.project.name, &errors)
         })
     }
 
     /// Given the current directory and expected program type,
     /// determines whether the correct program type is present.
-    pub fn check_program_type(&self, expected_types: Vec<TreeType>) -> Result<()> {
+    pub fn check_program_type(&self, expected_types: &[TreeType]) -> Result<()> {
         let parsed_type = self.program_type()?;
         if !expected_types.contains(&parsed_type) {
             bail!(wrong_program_type(
@@ -437,7 +437,7 @@ impl PackageManifestFile {
         pkg_dir.pop();
         if let Some(nested_package) = find_nested_manifest_dir(&pkg_dir) {
             // remove file name from nested_package_manifest
-            bail!("Nested packages are not supported, please consider seperating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
+            bail!("Nested packages are not supported, please consider separating the nested package at {} from the package at {}, or if it makes sense consider creating a workspace.", nested_package.display(), pkg_dir.display())
         }
         Ok(())
     }
@@ -875,7 +875,7 @@ impl GenericManifestFile for WorkspaceManifestFile {
             // package manifest as a workspace manifest), look into the parent directories for a
             // legitimate workspace manifest. If the error returned is something else this is a
             // workspace manifest with errors, classify this as a workspace manifest but with
-            // errors so that the erros will be displayed to the user.
+            // errors so that the errors will be displayed to the user.
             Self::from_file(possible_path)
                 .err()
                 .map(|e| !e.to_string().contains("missing field `workspace`"))
@@ -934,7 +934,7 @@ impl WorkspaceManifest {
     /// This checks if the listed members in the `WorkspaceManifest` are indeed in the given `Forc.toml`'s directory.
     pub fn validate(&self, path: &Path) -> Result<()> {
         let mut pkg_name_to_paths: HashMap<String, Vec<PathBuf>> = HashMap::new();
-        for member in self.workspace.members.iter() {
+        for member in &self.workspace.members {
             let member_path = path.join(member).join("Forc.toml");
             if !member_path.exists() {
                 bail!(
@@ -956,7 +956,7 @@ impl WorkspaceManifest {
         }
 
         // Check for duplicate pkg name entries in member manifests of this workspace.
-        let duplciate_pkg_lines = pkg_name_to_paths
+        let duplicate_pkg_lines = pkg_name_to_paths
             .iter()
             .filter_map(|(pkg_name, paths)| {
                 if paths.len() > 1 {
@@ -970,8 +970,8 @@ impl WorkspaceManifest {
             })
             .collect::<Vec<_>>();
 
-        if !duplciate_pkg_lines.is_empty() {
-            let error_message = duplciate_pkg_lines.join("\n");
+        if !duplicate_pkg_lines.is_empty() {
+            let error_message = duplicate_pkg_lines.join("\n");
             bail!(
                 "Duplicate package names detected in the workspace:\n\n{}",
                 error_message

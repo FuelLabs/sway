@@ -6,6 +6,7 @@ use std::{
     cmp::{Ord, Ordering},
     fmt,
     hash::{Hash, Hasher},
+    sync::Arc,
 };
 
 pub trait Named {
@@ -14,7 +15,7 @@ pub trait Named {
 
 #[derive(Clone)]
 pub struct BaseIdent {
-    name_override_opt: Option<String>,
+    name_override_opt: Option<Arc<String>>,
     span: Span,
     is_raw_ident: bool,
 }
@@ -23,6 +24,7 @@ impl BaseIdent {
     pub fn as_str(&self) -> &str {
         self.name_override_opt
             .as_deref()
+            .map(|x| x.as_str())
             .unwrap_or_else(|| self.span.as_str())
     }
 
@@ -31,7 +33,7 @@ impl BaseIdent {
     }
 
     pub fn name_override_opt(&self) -> Option<&str> {
-        self.name_override_opt.as_deref()
+        self.name_override_opt.as_deref().map(|x| x.as_str())
     }
 
     pub fn new(span: Span) -> Ident {
@@ -62,7 +64,7 @@ impl BaseIdent {
 
     pub fn new_with_override(name_override: String, span: Span) -> Ident {
         Ident {
-            name_override_opt: Some(name_override),
+            name_override_opt: Some(Arc::new(name_override)),
             span,
             is_raw_ident: false,
         }
@@ -70,7 +72,7 @@ impl BaseIdent {
 
     pub fn new_no_span(name: String) -> Ident {
         Ident {
-            name_override_opt: Some(name),
+            name_override_opt: Some(Arc::new(name)),
             span: Span::dummy(),
             is_raw_ident: false,
         }
@@ -78,7 +80,7 @@ impl BaseIdent {
 
     pub fn dummy() -> Ident {
         Ident {
-            name_override_opt: Some("foo".into()),
+            name_override_opt: Some(Arc::new("foo".into())),
             span: Span::dummy(),
             is_raw_ident: false,
         }
@@ -168,7 +170,7 @@ impl From<&Ident> for IdentUnique {
 impl From<&IdentUnique> for Ident {
     fn from(item: &IdentUnique) -> Self {
         Ident {
-            name_override_opt: item.0.name_override_opt().map(|s| s.to_string()),
+            name_override_opt: item.0.name_override_opt().map(|s| Arc::new(s.to_string())),
             span: item.0.span(),
             is_raw_ident: item.0.is_raw_ident(),
         }

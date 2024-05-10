@@ -78,7 +78,7 @@ impl TyStorageDecl {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
-        fields: Vec<Ident>,
+        fields: &[Ident],
         storage_fields: &[TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(TyStorageAccess, TypeId), ErrorEmitted> {

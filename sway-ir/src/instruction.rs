@@ -3,7 +3,7 @@
 //! Since Sway abstracts most low level operations behind traits they are translated into function
 //! calls which contain ASM blocks.
 //!
-//! Unfortuntely, using opaque ASM blocks limits the effectiveness of certain optimizations and
+//! Unfortunately, using opaque ASM blocks limits the effectiveness of certain optimizations and
 //! this should be addressed in the future, perhaps by using compiler intrinsic calls instead of
 //! the ASM blocks where possible. See: https://github.com/FuelLabs/sway/issues/855,
 

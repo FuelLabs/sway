@@ -8,7 +8,7 @@ use std::{
     fmt,
     hash::{BuildHasher, Hash, Hasher},
 };
-use sway_types::SourceEngine;
+use sway_types::{SourceEngine, Span};
 
 #[derive(Clone, Debug, Default)]
 pub struct Engines {
@@ -376,4 +376,8 @@ where
         key.hash(&mut state, engines);
         state.finish()
     }
+}
+
+pub trait SpannedWithEngines {
+    fn span(&self, engines: &Engines) -> Span;
 }

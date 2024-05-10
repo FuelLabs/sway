@@ -220,7 +220,7 @@ impl Op {
         }
     }
 
-    /// Dymamically jumps to a register value.
+    /// Dynamically jumps to a register value.
     pub(crate) fn jump_to_register(
         reg: VirtualRegister,
         comment: impl Into<String>,

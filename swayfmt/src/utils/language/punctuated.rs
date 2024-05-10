@@ -156,14 +156,14 @@ where
             let p_comment_spans = pair.1.leaf_spans();
             // Since we do not want to have comments between T and P we are extending the ByteSpans coming from T with spans coming from P
             // Since formatter can insert a trailing comma after a field, comments next to a field can be falsely inserted between the comma and the field
-            // So we shouldn't allow inserting comments (or searching for one) between T and P as in Punctuated scenerio this can/will result in formattings that breaks the build process
+            // So we shouldn't allow inserting comments (or searching for one) between T and P as in Punctuated scenario this can/will result in formatting that breaks the build process
             let mut comment_spans = pair
                 .0
                 .leaf_spans()
                 .iter_mut()
                 .map(|comment_map| {
                     // Since the length of P' ByteSpan is same for each pair we are using the first one's length for all of the pairs.
-                    // This assumtion always holds because for each pair P is formatted to same str so the length is going to be the same.
+                    // This assumption always holds because for each pair P is formatted to same str so the length is going to be the same.
                     // For example when P is CommaToken, the length of P is always 1.
                     comment_map.end += p_comment_spans[0].len();
                     comment_map.clone()

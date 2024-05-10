@@ -302,7 +302,7 @@ impl ty::TyModule {
             tree.root_nodes.clone(),
         )?;
 
-        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes)?;
+        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), &ordered_nodes)?;
 
         let submodules = submodules_res?;
 
@@ -320,7 +320,8 @@ impl ty::TyModule {
         if ctx.experimental.new_encoding {
             let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
-                    (decl.name.as_str() == "main").then(|| engines.de().get(&decl.decl_id))
+                    let fn_decl = engines.de().get_function(&decl.decl_id);
+                    (fn_decl.name.as_str() == "main").then_some(fn_decl)
                 }
                 _ => None,
             });
@@ -427,10 +428,10 @@ impl ty::TyModule {
     fn type_check_nodes(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        nodes: Vec<AstNode>,
+        nodes: &[AstNode],
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let engines = ctx.engines();
-        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
+        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
 

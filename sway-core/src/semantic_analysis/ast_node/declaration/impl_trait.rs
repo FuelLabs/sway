@@ -416,9 +416,7 @@ impl TyImplTrait {
                                     handler,
                                     decl_ref.name().clone(),
                                     ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                        name: decl_ref.name().clone(),
                                         decl_id: *decl_ref.id(),
-                                        decl_span: decl_ref.span().clone(),
                                     }),
                                 )?;
                             }
@@ -442,7 +440,7 @@ impl TyImplTrait {
                     let mut impl_trait = ty::TyImplTrait {
                         impl_type_parameters: new_impl_type_parameters,
                         trait_name,
-                        trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+                        trait_type_arguments: vec![], // this is empty because impl self's don't support generics on the "Self" trait,
                         trait_decl_ref: None,
                         span: block_span,
                         items: new_items,
@@ -818,7 +816,7 @@ fn type_check_trait_implementation(
                         None,
                     ),
                 };
-                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
                     vec![type_engine.insert(
                         engines,
                         old_type_decl_info1,
@@ -826,7 +824,7 @@ fn type_check_trait_implementation(
                     )],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
-                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
                     vec![type_engine.insert(
                         engines,
                         old_type_decl_info2,
@@ -910,7 +908,7 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    type_mapping.extend(trait_type_mapping);
+    type_mapping.extend(&trait_type_mapping);
 
     interface_item_refs.extend(supertrait_interface_item_refs);
     impld_item_refs.extend(supertrait_impld_item_refs);
