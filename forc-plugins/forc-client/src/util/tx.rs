@@ -4,9 +4,7 @@ use anyhow::{Error, Result};
 use async_trait::async_trait;
 use forc_tracing::println_warning;
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
-use fuel_tx::{
-    field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
-};
+use fuel_tx::{field, Address, Buildable, ContractId, Input, Output, TransactionBuilder, Witness};
 use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
 use fuels_core::types::{
     bech32::{Bech32Address, FUEL_BECH32_HRP},
@@ -143,10 +141,10 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         provider: Provider,
         signature_witness_index: u16,
     ) -> Result<&mut Self> {
+        let asset_id = *provider.base_asset_id();
         let wallet = Wallet::from_address(Bech32Address::from(address), Some(provider));
 
         let amount = 1_000_000;
-        let asset_id = AssetId::BASE;
         let inputs: Vec<_> = wallet
             .get_spendable_resources(asset_id, amount)
             .await?
