@@ -33,13 +33,13 @@ pub struct ControlFlowGraph<'cfg> {
     pub(crate) pending_entry_points_edges: Vec<(NodeIndex, ControlFlowGraphEdge)>,
     pub(crate) namespace: ControlFlowNamespace,
     pub(crate) decls: HashMap<IdentUnique, NodeIndex>,
-    pub(crate) engines: Engines,
+    pub(crate) engines: &'cfg Engines,
 }
 
 pub type Graph<'cfg> = petgraph::Graph<ControlFlowGraphNode<'cfg>, ControlFlowGraphEdge>;
 
 impl<'cfg> ControlFlowGraph<'cfg> {
-    pub fn new(engines: Engines) -> Self {
+    pub fn new(engines: &'cfg Engines) -> Self {
         Self {
             graph: Default::default(),
             entry_points: Default::default(),
