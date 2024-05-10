@@ -1,0 +1,68 @@
+// regex: FOONAME=fn (foo_1|foo_3)
+
+script {
+    entry fn main() -> bool, !1 {
+        entry():
+        v0 = const u64 1, !2
+        v1 = const u64 1, !3
+        v2 = call foo_1(v0, v1), !4
+        cbr v2, block0(), block1(v2), !5
+
+        block0():
+        v3 = const u64 1, !6
+        v4 = const u64 2, !7
+        v5 = call foo_3(v3, v4), !8
+        br block1(v5), !5
+
+        block1(v6: bool):
+        ret bool v6
+    }
+
+    // check: $(FOONAME)
+    fn foo_1(t1 !9: u64, t2 !10: u64) -> bool, !13 {
+        entry(t1: u64, t2: u64):
+        v0 = call eq_2(t1, t2), !14
+        ret bool v0
+    }
+
+    pub fn eq_2(self !16: u64, other !17: u64) -> bool, !18 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+
+    // check: $(FOONAME)
+    fn foo_3(t1 !9: u64, t2 !10: u64) -> bool, !19 {
+        entry(t1: u64, t2: u64):
+        v0 = call eq_4(t1, t2), !20
+        ret bool v0
+    }
+
+    pub fn eq_4(self !16: u64, other !17: u64) -> bool, !18 {
+        entry(self: u64, other: u64):
+        v0 = cmp eq self other
+        ret bool v0
+    }
+}
+
+!0 = "sway_test/src/main.sw"
+!1 = span !0 9 55
+!2 = span !0 35 36
+!3 = span !0 38 39
+!4 = span !0 31 40
+!5 = span !0 31 53
+!6 = span !0 48 49
+!7 = span !0 51 52
+!8 = span !0 44 53
+!9 = span !0 84 86
+!10 = span !0 91 93
+!11 = span !0 74 134
+!12 = inline "never"
+!13 = (!11 !12)
+!14 = span !0 123 132
+!15 = "sway/sway-lib-core/src/ops.sw"
+!16 = span !15 12645 12649
+!17 = span !15 12651 12656
+!18 = span !15 12639 12705
+!19 = (!11 !12)
+!20 = span !0 133 142
