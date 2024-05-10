@@ -188,7 +188,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         self.pending_entry_points_edges.push((to, label));
     }
     pub(crate) fn add_node<'eng: 'cfg>(&mut self, node: ControlFlowGraphNode<'cfg>) -> NodeIndex {
-        let ident_opt = node.get_decl_ident(&self.engines);
+        let ident_opt = node.get_decl_ident(self.engines);
         let node_index = self.graph.add_node(node);
         if let Some(ident) = ident_opt {
             self.decls.insert(ident.into(), node_index);
@@ -214,7 +214,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     }
 
     pub(crate) fn get_node_from_decl(&self, cfg_node: &ControlFlowGraphNode) -> Option<NodeIndex> {
-        if let Some(ident) = cfg_node.get_decl_ident(&self.engines) {
+        if let Some(ident) = cfg_node.get_decl_ident(self.engines) {
             if !ident.span().is_dummy() {
                 self.decls.get(&ident.into()).cloned()
             } else {
