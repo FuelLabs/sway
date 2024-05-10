@@ -2,7 +2,7 @@ library;
 
 use ::option::Option;
 use ::storage::storage_api::*;
-use ::math::Zero;
+use ::zero::Zero;
 
 impl<T> StorageKey<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value

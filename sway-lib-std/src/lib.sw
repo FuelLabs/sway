@@ -6,6 +6,7 @@ pub mod revert;
 pub mod result;
 pub mod option;
 pub mod assert;
+pub mod zero;
 pub mod convert;
 pub mod intrinsics;
 pub mod alloc;

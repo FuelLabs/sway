@@ -4,7 +4,7 @@ library;
 use ::assert::assert;
 use ::result::Result::{self, *};
 use ::logging::log;
-use ::math::Zero;
+use ::zero::Zero;
 
 /// Error type for when the block hash cannot be found.
 enum BlockHashError {

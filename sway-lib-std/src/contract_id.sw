@@ -1,9 +1,9 @@
 //! A wrapper around the `b256` type to help enhance type-safety.
 library;
 
-use ::convert::{Into, From};
+use ::convert::From;
 use ::hash::{Hash, Hasher};
-use ::math::Zero;
+use ::zero::Zero;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -61,7 +61,7 @@ impl From<b256> for ContractId {
     }
 }
 
-impl Into<b256> for ContractId {
+impl From<ContractId> for b256 {
     /// Casts a `ContractId` to raw `b256` data.
     ///
     /// # Returns
@@ -71,16 +71,19 @@ impl Into<b256> for ContractId {
     /// # Examples
     ///
     /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
     /// fn foo() {
-    ///     let contract_id = ContractId::zero();
+    ///     let contract_id = ContractId::from(ZERO_B256);
     ///     let b256_data: b256 = contract_id.into();
-    ///     assert(b256_data == b256::zero());
+    ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
-    fn into(self) -> b256 {
-        self.bits()
+    fn from(id: ContractId) -> Self {
+        id.bits()
     }
 }
+
 
 impl Hash for ContractId {
     fn hash(self, ref mut state: Hasher) {

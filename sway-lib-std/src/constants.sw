@@ -1,7 +1,7 @@
 //! Base asset and zero address constants.
 library;
 
-use ::math::Zero;
+use ::zero::Zero;
 
 /// A b256 of zero value.
 ///

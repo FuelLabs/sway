@@ -3,7 +3,7 @@
 library;
 
 use ::convert::From;
-use ::math::Zero;
+use ::zero::Zero;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.

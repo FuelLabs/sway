@@ -36,4 +36,5 @@ use ::logging::log;
 use ::auth::msg_sender;
 
 // Math
+use ::zero::*;
 use ::math::*;

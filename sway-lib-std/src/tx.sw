@@ -3,7 +3,7 @@ library;
 
 use ::revert::revert;
 use ::option::Option::{self, *};
-use ::math::Zero;
+use ::zero::Zero;
 
 // GTF Opcode const selectors
 //

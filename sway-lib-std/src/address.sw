@@ -3,7 +3,7 @@ library;
 
 use ::convert::From;
 use ::hash::{Hash, Hasher};
-use ::math::Zero;
+use ::zero::Zero;
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {

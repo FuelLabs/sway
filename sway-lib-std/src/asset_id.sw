@@ -4,7 +4,7 @@ use ::alias::SubId;
 use ::contract_id::ContractId;
 use ::convert::From;
 use ::hash::{Hash, Hasher};
-use ::math::Zero;
+use ::zero::Zero;
 
 /// An AssetId is used for interacting with an asset on the network.
 ///

@@ -4,7 +4,7 @@ library;
 use ::intrinsics::size_of_val;
 use ::convert::From;
 use ::hash::*;
-use ::math::Zero;
+use ::zero::Zero;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
