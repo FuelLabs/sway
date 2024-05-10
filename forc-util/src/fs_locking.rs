@@ -71,7 +71,10 @@ impl PidFileLocking {
         if self.is_locked() {
             Err(io::Error::new(
                 std::io::ErrorKind::Other,
-                "Cannot remove a dirty lock file, it is locked by another process",
+                format!(
+                    "Cannot remove a dirty lock file, it is locked by another process (PID: {:#?})",
+                    self.get_locker_pid()
+                ),
             ))
         } else {
             self.remove_file()?;
@@ -147,7 +150,7 @@ mod test {
     #[test]
     fn test_fs_locking_same_process() {
         let x = PidFileLocking::lsp("test");
-        assert!(!x.is_locked()); // checks the non-existance of the lock (therefore it is not locked)
+        assert!(!x.is_locked()); // checks the non-existence of the lock (therefore it is not locked)
         assert!(x.lock().is_ok());
         // The current process is locking "test"
         let x = PidFileLocking::lsp("test");

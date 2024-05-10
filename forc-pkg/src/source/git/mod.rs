@@ -67,7 +67,7 @@ const DEFAULT_REMOTE_NAME: &str = "origin";
 
 /// Everything needed to recognize a checkout in offline mode
 ///
-/// Since we are omiting `.git` folder to save disk space, we need an indexing file
+/// Since we are omitting `.git` folder to save disk space, we need an indexing file
 /// to recognize a checkout while searching local checkouts in offline mode
 #[derive(Serialize, Deserialize)]
 pub struct SourceIndex {
@@ -377,7 +377,7 @@ fn tmp_git_repo_dir(fetch_id: u64, name: &str, repo: &Url) -> PathBuf {
     git_checkouts_directory().join("tmp").join(repo_dir_name)
 }
 
-/// Given a git reference, build a list of `refspecs` required for the fetch opration.
+/// Given a git reference, build a list of `refspecs` required for the fetch operation.
 ///
 /// Also returns whether or not our reference implies we require fetching tags.
 fn git_ref_to_refspecs(reference: &Reference) -> (Vec<String>, bool) {
@@ -508,7 +508,7 @@ pub fn commit_path(name: &str, repo: &Url, commit_hash: &str) -> PathBuf {
 ///
 /// Returns the location of the checked out commit.
 ///
-/// NOTE: This function assumes that the caller has aquired an advisory lock to co-ordinate access
+/// NOTE: This function assumes that the caller has acquired an advisory lock to co-ordinate access
 /// to the git repository checkout path.
 pub fn fetch(fetch_id: u64, name: &str, pinned: &Pinned) -> Result<PathBuf> {
     let path = commit_path(name, &pinned.source.repo, &pinned.commit_hash);
@@ -621,7 +621,7 @@ fn find_repo_with_tag(
         let current_head = repo_index.head_with_time.0;
         if let Reference::Tag(curr_repo_tag) = repo_index.git_reference {
             if curr_repo_tag == tag {
-                found_local_repo = Some((repo_dir_path, current_head))
+                found_local_repo = Some((repo_dir_path, current_head));
             }
         }
         Ok(())

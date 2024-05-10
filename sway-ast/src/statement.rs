@@ -35,7 +35,7 @@ impl Spanned for Statement {
                 semicolon_token_opt,
             } => match semicolon_token_opt {
                 None => expr.span(),
-                Some(semicolon_token) => Span::join(expr.span(), semicolon_token.span()),
+                Some(semicolon_token) => Span::join(expr.span(), &semicolon_token.span()),
             },
             Statement::Error(spans, _) => Span::join_all(spans.iter().cloned()),
         }
@@ -44,6 +44,6 @@ impl Spanned for Statement {
 
 impl Spanned for StatementLet {
     fn span(&self) -> Span {
-        Span::join(self.let_token.span(), self.semicolon_token.span())
+        Span::join(self.let_token.span(), &self.semicolon_token.span())
     }
 }

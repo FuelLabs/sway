@@ -17,6 +17,7 @@ use std::collections::HashSet;
 use std::io::stdout;
 use std::io::Write;
 use std::str::FromStr;
+use std::time::Instant;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -292,11 +293,13 @@ impl TestContext {
 
         match category {
             TestCategory::Runs => {
-                let expected_result = expected_result.unwrap();
+                let expected_result = expected_result.expect("No expected result found. This is likely because test.toml is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry");
 
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
+
+                check_file_checker(checker, &name, output)?;
 
                 let compiled = result?;
 
@@ -440,9 +443,14 @@ impl TestContext {
             TestCategory::FailsToCompile => {
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
+
                 *output = out;
 
                 if result.is_ok() {
+                    if verbose {
+                        eprintln!("[{}]", output);
+                    }
+
                     Err(anyhow::Error::msg("Test compiles but is expected to fail"))
                 } else {
                     check_file_checker(checker, &name, output)?;
@@ -620,7 +628,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     // Be mindful that this can explode exponentially the number of tests
     // that run because one expansion expands on top of another
     let mut tests = tests;
-    let expansions = ["new_encoding"];
+    let expansions: [&str; 0] = [];
     for expansion in expansions {
         tests = tests
             .into_iter()
@@ -654,6 +662,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     let mut number_of_tests_failed = 0;
     let mut failed_tests = vec![];
 
+    let start_time = Instant::now();
     for (i, test) in tests.into_iter().enumerate() {
         let cur_profile = if run_config.release {
             BuildProfile::RELEASE
@@ -709,6 +718,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
 
         number_of_tests_executed += 1;
     }
+    let duration = Instant::now().duration_since(start_time);
 
     if number_of_tests_executed == 0 {
         if let Some(skip_until) = &filter_config.skip_until {
@@ -742,7 +752,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     } else {
         tracing::info!("_________________________________");
         tracing::info!(
-            "Sway tests result: {}. {} total, {} passed; {} failed; {} disabled",
+            "Sway tests result: {}. {} total, {} passed; {} failed; {} disabled [test duration: {}]",
             if number_of_tests_failed == 0 {
                 "ok".green().bold()
             } else {
@@ -751,7 +761,8 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
             total_number_of_tests,
             number_of_tests_executed - number_of_tests_failed,
             number_of_tests_failed,
-            disabled_tests.len()
+            disabled_tests.len(),
+            util::duration_to_str(&duration)
         );
         if number_of_tests_failed > 0 {
             tracing::info!("{}", "Failing tests:".red().bold());
@@ -1063,7 +1074,7 @@ fn get_expected_result(key: &str, toml_content: &toml::Value) -> Result<TestResu
             (Some("result"), toml::Value::Integer(v)) => Ok(TestResult::Result(*v as Word)),
 
             // A bytes32 value.
-            (Some("return_data"), toml::Value::String(v)) => hex::decode(v)
+            (Some("return_data"), toml::Value::String(v)) => hex::decode(v.replace(' ', ""))
                 .map(TestResult::ReturnData)
                 .map_err(|e| anyhow!("Invalid hex value for 'return_data': {}", e)),
 

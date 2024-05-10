@@ -41,7 +41,7 @@ pub struct Command {
     #[clap(long)]
     pub salt: Option<Vec<String>>,
     /// Generate a default salt (0x0000000000000000000000000000000000000000000000000000000000000000) for the contract.
-    /// Useful for CI, to create reproducable deployments.
+    /// Useful for CI, to create reproducible deployments.
     #[clap(long)]
     pub default_salt: bool,
     #[clap(flatten)]
@@ -64,7 +64,7 @@ pub struct Command {
     ///
     /// By default, storage slots are initialized with the values defined in the storage block in
     /// the contract. You can override the initialization by providing the file path to a JSON file
-    /// containing the overriden values.
+    /// containing the overridden values.
     ///
     /// The file format and key values should match the compiler-generated `*-storage_slots.json` file in the output
     /// directory of the compiled contract.
@@ -81,6 +81,7 @@ pub struct Command {
     #[clap(long, verbatim_doc_comment, name = "JSON_FILE_PATH")]
     pub override_storage_slots: Option<String>,
 
+    /// Disable the "new encoding" feature
     #[clap(long)]
-    pub experimental_new_encoding: bool,
+    pub no_encoding_v1: bool,
 }

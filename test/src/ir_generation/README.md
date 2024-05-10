@@ -31,7 +31,7 @@ To delimit between checks against IR and those against ASM the source file may b
 * `::check-ir-optimized::` marks the begingging of the optimized IR checks.
 * `::check-asm::` marks the beginning of the ASM checks.
 
-  Optimized IR chekcer can be configured with `pass: <PASSNAME or o1>`. When
+  Optimized IR checker can be configured with `pass: <PASSNAME or o1>`. When
   `o1` is chosen, all the configured passes are chosen automatically.
   ```
   ::check-ir-optimized::

@@ -44,17 +44,17 @@ impl HashWithEngines for TypeArgument {
 
 impl EqWithEngines for TypeArgument {}
 impl PartialEqWithEngines for TypeArgument {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         self.type_id == other.type_id
             || type_engine
                 .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+                .eq(&type_engine.get(other.type_id), ctx)
     }
 }
 
 impl OrdWithEngines for TypeArgument {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TypeArgument {
             type_id: lti,
             // these fields are not compared because they aren't relevant/a
@@ -74,7 +74,10 @@ impl OrdWithEngines for TypeArgument {
         if lti == rti {
             return Ordering::Equal;
         }
-        engines.te().get(*lti).cmp(&engines.te().get(*rti), engines)
+        ctx.engines()
+            .te()
+            .get(*lti)
+            .cmp(&ctx.engines().te().get(*rti), ctx)
     }
 }
 
@@ -106,7 +109,7 @@ impl From<&TypeParameter> for TypeArgument {
 }
 
 impl SubstTypes for TypeArgument {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_id.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.type_id.subst(type_mapping, engines)
     }
 }

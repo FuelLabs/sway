@@ -18,6 +18,10 @@ use std::{
     time::Duration,
 };
 use sway_types::{SourceEngine, Span};
+use sway_utils::{
+    constants::{LOCK_FILE_NAME, MANIFEST_FILE_NAME},
+    SWAY_EXTENSION,
+};
 use tempfile::Builder;
 use tokio::task::JoinHandle;
 
@@ -52,7 +56,7 @@ impl SyncWorkspace {
             .and_then(|manifest_path| PackageManifestFile::from_dir(manifest_path).ok())
         {
             if let Some(temp_manifest_path) = &self.temp_manifest_path() {
-                edit_manifest_dependency_paths(&manifest, temp_manifest_path)
+                edit_manifest_dependency_paths(&manifest, temp_manifest_path);
             }
         }
         Ok(())
@@ -116,20 +120,14 @@ impl SyncWorkspace {
         Ok(())
     }
 
-    /// Check if the current path is part of the users workspace.
-    /// Returns false if the path is from a dependancy
-    pub(crate) fn is_path_in_temp_workspace(&self, uri: &Url) -> bool {
-        uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
-    }
-
     /// Convert the Url path from the client to point to the same file in our temp folder
     pub(crate) fn workspace_to_temp_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
-        self.convert_url(uri, self.temp_dir()?, self.manifest_dir()?)
+        convert_url(uri, &self.temp_dir()?, &self.manifest_dir()?)
     }
 
     /// Convert the [Url] path from the temp folder to point to the same file in the users workspace.
     pub(crate) fn temp_to_workspace_url(&self, uri: &Url) -> Result<Url, DirectoryError> {
-        self.convert_url(uri, self.manifest_dir()?, self.temp_dir()?)
+        convert_url(uri, &self.manifest_dir()?, &self.temp_dir()?)
     }
 
     /// If it is a path to a temp directory, convert the path in the [Span] to the same file in the user's
@@ -140,8 +138,8 @@ impl SyncWorkspace {
         span: &Span,
     ) -> Result<Span, DirectoryError> {
         let url = get_url_from_span(source_engine, span)?;
-        if self.is_path_in_temp_workspace(&url) {
-            let converted_url = self.convert_url(&url, self.manifest_dir()?, self.temp_dir()?)?;
+        if is_path_in_temp_workspace(&url) {
+            let converted_url = convert_url(&url, &self.manifest_dir()?, &self.temp_dir()?)?;
             let converted_path = get_path_from_url(&converted_url)?;
             let source_id = source_engine.get_source_id(&converted_path);
             let converted_span = Span::new(
@@ -164,7 +162,7 @@ impl SyncWorkspace {
     /// If path is part of the users workspace, then convert URL from temp to workspace dir.
     /// Otherwise, pass through if it points to a dependency path
     pub(crate) fn to_workspace_url(&self, url: Url) -> Option<Url> {
-        if self.is_path_in_temp_workspace(&url) {
+        if is_path_in_temp_workspace(&url) {
             Some(self.temp_to_workspace_url(&url).ok()?)
         } else {
             Some(url)
@@ -242,19 +240,25 @@ impl SyncWorkspace {
             .map(|item| item.value().clone())
             .ok_or(DirectoryError::TempDirNotFound)
     }
-
-    fn convert_url(&self, uri: &Url, from: PathBuf, to: PathBuf) -> Result<Url, DirectoryError> {
-        let path = from.join(
-            PathBuf::from(uri.path())
-                .strip_prefix(to)
-                .map_err(DirectoryError::StripPrefixError)?,
-        );
-        get_url_from_path(&path)
-    }
 }
 
-/// Deserialize the manifest file and loop through the dependancies.
-/// Check if the dependancy is specifying a 'path'.
+/// Check if the current path is part of the users workspace.
+/// Returns false if the path is from a dependency
+pub(crate) fn is_path_in_temp_workspace(uri: &Url) -> bool {
+    uri.as_ref().contains(SyncWorkspace::LSP_TEMP_PREFIX)
+}
+
+fn convert_url(uri: &Url, from: &Path, to: &PathBuf) -> Result<Url, DirectoryError> {
+    let path = from.join(
+        PathBuf::from(uri.path())
+            .strip_prefix(to)
+            .map_err(DirectoryError::StripPrefixError)?,
+    );
+    get_url_from_path(&path)
+}
+
+/// Deserialize the manifest file and loop through the dependencies.
+/// Check if the dependency is specifying a 'path'.
 /// If so, check if the path is relative and convert the relative path to an absolute path.
 /// Edit the toml entry using toml_edit with the absolute path.
 /// Save the manifest to temp_dir/Forc.toml.
@@ -262,12 +266,12 @@ pub(crate) fn edit_manifest_dependency_paths(
     manifest: &PackageManifestFile,
     temp_manifest_path: &Path,
 ) {
-    // Key = name of the dependancy that has been specified will a relative path
+    // Key = name of the dependency that has been specified will a relative path
     // Value = the absolute path that should be used to overwrite the relateive path
     let mut dependency_map: IndexMap<String, PathBuf> = IndexMap::new();
 
     if let Some(deps) = &manifest.dependencies {
-        for (name, dep) in deps.iter() {
+        for (name, dep) in deps {
             if let Dependency::Detailed(details) = dep {
                 if details.path.is_some() {
                     if let Some(abs_path) = manifest.dep_path(name) {
@@ -296,20 +300,37 @@ pub(crate) fn edit_manifest_dependency_paths(
     }
 }
 
-/// Copy the contents of the current workspace folder into the target directory
+/// Copies only the specified files from the source directory to the target directory.
+/// This function targets files ending with `.sw`, and the specific files `Forc.toml` and `Forc.lock`.
+/// It returns `Ok(true)` if any relevant files were copied over, and `Ok(false)` if no such files were found.
 fn copy_dir_contents(
     src_dir: impl AsRef<Path>,
     target_dir: impl AsRef<Path>,
-) -> std::io::Result<()> {
-    fs::create_dir_all(&target_dir)?;
-    for entry in fs::read_dir(src_dir)? {
+) -> std::io::Result<bool> {
+    let mut has_relevant_files = false;
+    for entry in fs::read_dir(&src_dir)? {
         let entry = entry?;
+        let path = entry.path();
         let ty = entry.file_type()?;
         if ty.is_dir() {
-            copy_dir_contents(entry.path(), target_dir.as_ref().join(entry.file_name()))?;
-        } else {
-            fs::copy(entry.path(), target_dir.as_ref().join(entry.file_name()))?;
+            // Recursively check the directory; if it has relevant files, create the target directory
+            if copy_dir_contents(&path, target_dir.as_ref().join(entry.file_name()))? {
+                has_relevant_files = true;
+            }
+        } else if let Some(file_name_os) = path.file_name() {
+            if let Some(file_name) = file_name_os.to_str() {
+                if file_name.ends_with(&format!(".{SWAY_EXTENSION}"))
+                    || file_name == MANIFEST_FILE_NAME
+                    || file_name == LOCK_FILE_NAME
+                {
+                    if !has_relevant_files {
+                        fs::create_dir_all(&target_dir)?;
+                        has_relevant_files = true;
+                    }
+                    fs::copy(&path, target_dir.as_ref().join(file_name))?;
+                }
+            }
         }
     }
-    Ok(())
+    Ok(has_relevant_files)
 }

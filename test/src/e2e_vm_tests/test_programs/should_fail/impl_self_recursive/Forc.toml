@@ -6,3 +6,4 @@ name = "impl_self_recursive"
 implicit-std = false
 
 [dependencies]
+core = { path = "../../../../../../sway-lib-core" }

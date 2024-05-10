@@ -30,8 +30,8 @@ impl Named for TyStorageDecl {
 
 impl EqWithEngines for TyStorageDecl {}
 impl PartialEqWithEngines for TyStorageDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.fields.eq(&other.fields, engines) && self.attributes == other.attributes
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.fields.eq(&other.fields, ctx) && self.attributes == other.attributes
     }
 }
 
@@ -78,7 +78,7 @@ impl TyStorageDecl {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
-        fields: Vec<Ident>,
+        fields: &[Ident],
         storage_fields: &[TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(TyStorageAccess, TypeId), ErrorEmitted> {
@@ -137,7 +137,7 @@ impl TyStorageDecl {
             match get_struct_decl(previous_field_type_id) {
                 Some(struct_decl) => {
                     let (struct_can_be_changed, is_public_struct_access) =
-                        StructAccessInfo::get_info(&struct_decl, namespace).into();
+                        StructAccessInfo::get_info(engines, &struct_decl, namespace).into();
 
                     match struct_decl.find_field(field) {
                         Some(struct_field) => {
@@ -255,10 +255,10 @@ pub struct TyStorageField {
 
 impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.type_argument.eq(&other.type_argument, engines)
-            && self.initializer.eq(&other.initializer, engines)
+            && self.type_argument.eq(&other.type_argument, ctx)
+            && self.initializer.eq(&other.initializer, ctx)
     }
 }
 

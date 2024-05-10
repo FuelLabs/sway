@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use sway_error::error::CompileError;
-use sway_types::{Ident, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclEngineInsertArc, DeclId},
@@ -91,9 +91,10 @@ impl ty::TyAbiDecl {
                             if let Some(ty::TyDecl::AbiDecl(abi_decl)) =
                                 &superabi_impl_method.implementing_type
                             {
+                                let abi_decl = engines.de().get_abi(&abi_decl.decl_id);
                                 handler.emit_err(CompileError::AbiShadowsSuperAbiMethod {
                                     span: method_name.span(),
-                                    superabi: abi_decl.name.clone(),
+                                    superabi: abi_decl.name().clone(),
                                 });
                             }
                         }
@@ -135,9 +136,7 @@ impl ty::TyAbiDecl {
                                 handler,
                                 const_name.clone(),
                                 ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                    name: const_name.clone(),
                                     decl_id: *decl_ref.id(),
-                                    decl_span: const_decl.span.clone(),
                                 }),
                             )?;
 
@@ -225,6 +224,7 @@ impl ty::TyAbiDecl {
         subabi_span: Option<Span>,
     ) -> Result<(), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
+        let engines = ctx.engines();
 
         let ty::TyAbiDecl {
             interface_surface,
@@ -274,11 +274,12 @@ impl ty::TyAbiDecl {
                                     // to place it into Bottom we will encounter
                                     // the same method from Top in both Left and Right
                                     if self_decl_id != abi_decl.decl_id {
+                                        let abi_decl = engines.de().get_abi(&abi_decl.decl_id);
                                         handler.emit_err(
                                             CompileError::ConflictingSuperAbiMethods {
                                                 span: subabi_span.clone(),
                                                 method_name: method.name.to_string(),
-                                                superabi1: abi_decl.name.to_string(),
+                                                superabi1: abi_decl.name().to_string(),
                                                 superabi2: self.name.to_string(),
                                             },
                                         );
@@ -302,21 +303,18 @@ impl ty::TyAbiDecl {
                         all_items.push(TyImplItem::Constant(decl_ref.clone()));
                         let const_shadowing_mode = ctx.const_shadowing_mode();
                         let generic_shadowing_mode = ctx.generic_shadowing_mode();
-                        let _ = ctx
-                            .namespace_mut()
-                            .module_mut()
-                            .current_items_mut()
-                            .insert_symbol(
+                        let _ = ctx.namespace_mut().module_mut(engines).write(engines, |m| {
+                            m.current_items_mut().insert_symbol(
                                 handler,
+                                engines,
                                 const_name.clone(),
                                 ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                    name: const_name,
                                     decl_id: *decl_ref.id(),
-                                    decl_span: const_decl.span.clone(),
                                 }),
                                 const_shadowing_mode,
                                 generic_shadowing_mode,
-                            );
+                            )
+                        });
                     }
                     ty::TyTraitInterfaceItem::Type(decl_ref) => {
                         all_items.push(TyImplItem::Type(decl_ref.clone()));
@@ -347,10 +345,11 @@ impl ty::TyAbiDecl {
                             {
                                 // allow the diamond superABI hierarchy
                                 if self_decl_id != abi_decl.decl_id {
+                                    let abi_decl = engines.de().get_abi(&abi_decl.decl_id);
                                     handler.emit_err(CompileError::ConflictingSuperAbiMethods {
                                         span: subabi_span.clone(),
                                         method_name: method.name.to_string(),
-                                        superabi1: abi_decl.name.to_string(),
+                                        superabi1: abi_decl.name().to_string(),
                                         superabi2: self.name.to_string(),
                                     });
                                 }

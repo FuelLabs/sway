@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
 use strum::{Display, EnumString};
 
 #[derive(
@@ -62,6 +62,7 @@ pub struct BuildConfig {
     pub(crate) print_dca_graph_url_format: Option<String>,
     pub(crate) print_intermediate_asm: bool,
     pub(crate) print_finalized_asm: bool,
+    pub(crate) print_bytecode: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
@@ -109,12 +110,15 @@ impl BuildConfig {
             print_dca_graph_url_format: None,
             print_intermediate_asm: false,
             print_finalized_asm: false,
+            print_bytecode: false,
             print_ir: false,
             include_tests: false,
             time_phases: false,
             metrics_outfile: None,
             optimization_level: OptLevel::Opt0,
-            experimental: ExperimentalFlags::default(),
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
             lsp_mode: None,
         }
     }
@@ -143,6 +147,13 @@ impl BuildConfig {
     pub fn with_print_finalized_asm(self, a: bool) -> Self {
         Self {
             print_finalized_asm: a,
+            ..self
+        }
+    }
+
+    pub fn with_print_bytecode(self, a: bool) -> Self {
+        Self {
+            print_bytecode: a,
             ..self
         }
     }
@@ -203,7 +214,7 @@ impl BuildConfig {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
 }
@@ -215,6 +226,9 @@ pub struct LspConfig {
     //
     // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
     pub optimized_build: bool,
+    // The value of the `version` field in the `DidChangeTextDocumentParams` struct.
+    // This is used to determine if the file has been modified since the last compilation.
+    pub file_versions: BTreeMap<PathBuf, Option<u64>>,
 }
 
 #[cfg(test)]

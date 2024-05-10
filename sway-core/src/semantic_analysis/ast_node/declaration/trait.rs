@@ -154,9 +154,7 @@ impl TyTraitDecl {
                             handler,
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: const_name.clone(),
                                 decl_id: *decl_ref.id(),
-                                decl_span: const_decl.span.clone(),
                             }),
                         )?;
 
@@ -221,7 +219,7 @@ impl TyTraitDecl {
                 supertraits,
                 visibility,
                 attributes,
-                call_path: CallPath::from(name).to_fullpath(ctx.namespace()),
+                call_path: CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace()),
                 span,
             };
             Ok(typed_trait_decl)
@@ -352,38 +350,43 @@ impl TyTraitDecl {
             .get_items_for_type_and_trait_name_and_trait_type_arguments(
                 type_id,
                 call_path,
-                type_arguments.to_vec(),
+                type_arguments,
             )
             .into_iter()
         {
             match item {
                 ty::TyTraitItem::Fn(decl_ref) => {
                     let mut method = (*decl_engine.get_function(&decl_ref)).clone();
-                    method.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (method.name.clone(), type_id),
-                        TyTraitItem::Fn(
-                            decl_engine
-                                .insert(method)
-                                .with_parent(decl_engine, (*decl_ref.id()).into()),
-                        ),
-                    );
+                    let name = method.name.clone();
+                    let r = if method.subst(&type_mapping, engines).has_changes() {
+                        let new_ref = decl_engine
+                            .insert(method)
+                            .with_parent(decl_engine, (*decl_ref.id()).into());
+                        new_ref
+                    } else {
+                        decl_ref.clone()
+                    };
+                    impld_item_refs.insert((name, type_id), TyTraitItem::Fn(r));
                 }
                 ty::TyTraitItem::Constant(decl_ref) => {
                     let mut const_decl = (*decl_engine.get_constant(&decl_ref)).clone();
-                    const_decl.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (const_decl.call_path.suffix.clone(), type_id),
-                        TyTraitItem::Constant(decl_engine.insert(const_decl)),
-                    );
+                    let name = const_decl.call_path.suffix.clone();
+                    let r = if const_decl.subst(&type_mapping, engines).has_changes() {
+                        decl_engine.insert(const_decl)
+                    } else {
+                        decl_ref.clone()
+                    };
+                    impld_item_refs.insert((name, type_id), TyTraitItem::Constant(r));
                 }
                 ty::TyTraitItem::Type(decl_ref) => {
-                    let mut type_decl = (*decl_engine.get_type(&decl_ref)).clone();
-                    type_decl.subst(&type_mapping, engines);
-                    impld_item_refs.insert(
-                        (type_decl.name.clone(), type_id),
-                        TyTraitItem::Type(decl_engine.insert(type_decl)),
-                    );
+                    let mut t = (*decl_engine.get_type(&decl_ref)).clone();
+                    let name = t.name.clone();
+                    let r = if t.subst(&type_mapping, engines).has_changes() {
+                        decl_engine.insert(t)
+                    } else {
+                        decl_ref.clone()
+                    };
+                    impld_item_refs.insert((name, type_id), TyTraitItem::Type(r));
                 }
             }
         }
@@ -443,21 +446,18 @@ impl TyTraitDecl {
                     all_items.push(TyImplItem::Constant(decl_ref.clone()));
                     let const_shadowing_mode = ctx.const_shadowing_mode();
                     let generic_shadowing_mode = ctx.generic_shadowing_mode();
-                    let _ = ctx
-                        .namespace_mut()
-                        .module_mut()
-                        .current_items_mut()
-                        .insert_symbol(
+                    let _ = ctx.namespace_mut().module_mut(engines).write(engines, |m| {
+                        m.current_items_mut().insert_symbol(
                             handler,
+                            engines,
                             const_name.clone(),
                             ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                name: const_name,
                                 decl_id: *decl_ref.id(),
-                                decl_span: const_decl.span.clone(),
                             }),
                             const_shadowing_mode,
                             generic_shadowing_mode,
-                        );
+                        )
+                    });
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
                     all_items.push(TyImplItem::Type(decl_ref.clone()));

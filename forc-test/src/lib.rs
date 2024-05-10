@@ -18,6 +18,9 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
+use tx::consensus_parameters::ConsensusParametersV1;
+use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
+use vm::interpreter::InterpreterParams;
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -68,7 +71,7 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: pkg::TestPassCondition,
-    /// Emitted `Recipt`s during the execution of the test.
+    /// Emitted `Receipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
@@ -131,7 +134,9 @@ pub struct TestOpts {
     pub minify: pkg::MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
-    /// If set, outputs source file mapping in JSON format
+    /// If set, outputs debug info to the provided file.
+    /// If the argument provided ends with .json, a JSON is emitted,
+    /// otherwise, an ELF file containing DWARF is emitted.
     pub debug_outfile: Option<String>,
     /// Build target to use.
     pub build_target: BuildTarget,
@@ -192,21 +197,26 @@ impl PackageWithDeploymentToTest {
     /// For contract deploys all contract dependencies and the root contract itself.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
-        let params = tx::ConsensusParameters::default();
+        let gas_price = 0;
+        let params = maxed_consensus_params();
         let storage = vm::storage::MemoryStorage::default();
+        let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-            vm::interpreter::Interpreter::with_storage(storage, params.clone().into());
+            vm::interpreter::Interpreter::with_storage(storage, interpreter_params);
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
-        let contract_dependency_setups = self.contract_dependencies().map(|built_pkg| {
-            deployment_transaction(built_pkg, &built_pkg.bytecode, params.clone())
-        });
+        let contract_dependency_setups = self
+            .contract_dependencies()
+            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, &params));
 
         // Deploy contract dependencies of the root contract and collect their ids.
         let contract_dependency_ids = contract_dependency_setups
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
+                let tx = tx
+                    .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                    .unwrap();
                 interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
             })
@@ -219,8 +229,11 @@ impl PackageWithDeploymentToTest {
             let (root_contract_id, root_contract_tx) = deployment_transaction(
                 &contract_to_test.pkg,
                 &contract_to_test.without_tests_bytecode,
-                params,
+                &params,
             );
+            let root_contract_tx = root_contract_tx
+                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .unwrap();
             // Deploy the root contract.
             interpreter
                 .transact(root_contract_tx)
@@ -261,7 +274,7 @@ fn get_contract_dependency_map(
             let pinned_member = graph[member_node].clone();
             let contract_dependencies = build_plan
                 .contract_dependencies(member_node)
-                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                .map(|contract_dependency_node_ix| graph[contract_dependency_node_ix].clone())
                 .filter_map(|pinned| built_members.get(&pinned))
                 .cloned()
                 .collect::<Vec<_>>();
@@ -375,13 +388,13 @@ impl<'a> PackageTests {
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
                     let test_setup = self.setup()?;
-                    TestExecutor::new(
+                    TestExecutor::build(
                         &pkg_with_tests.bytecode.bytes,
                         offset,
                         test_setup,
                         test_entry,
                         name,
-                    )
+                    )?
                     .execute()
                 })
                 .collect::<anyhow::Result<_>>()
@@ -578,8 +591,26 @@ impl BuiltTests {
 pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.into();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
-    let built = pkg::build_with_options(build_opts)?;
+    let built = pkg::build_with_options(&build_opts)?;
     BuiltTests::from_built(built, &build_plan)
+}
+
+/// Returns a `ConsensusParameters` which has maximum length/size allowance for scripts, contracts,
+/// and transactions.
+pub(crate) fn maxed_consensus_params() -> ConsensusParameters {
+    let script_params = ScriptParameters::DEFAULT
+        .with_max_script_length(u64::MAX)
+        .with_max_script_data_length(u64::MAX);
+    let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
+    let contract_params = ContractParameters::DEFAULT
+        .with_contract_max_size(u64::MAX)
+        .with_max_storage_slots(u64::MAX);
+    ConsensusParameters::V1(ConsensusParametersV1 {
+        script_params,
+        tx_params,
+        contract_params,
+        ..Default::default()
+    })
 }
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
@@ -587,7 +618,7 @@ pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
 fn deployment_transaction(
     built_pkg: &pkg::BuiltPackage,
     without_tests_bytecode: &pkg::BuiltPackageBytecode,
-    params: tx::ConsensusParameters,
+    params: &tx::ConsensusParameters,
 ) -> ContractDeploymentSetup {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots.clone();
@@ -607,13 +638,16 @@ fn deployment_transaction(
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
-    let asset_id = rng.gen();
+    // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
+    // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
+    // base asset id is indeed the static `tx::AssetId::BASE`.
+    let asset_id = tx::AssetId::BASE;
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
-        .with_params(params)
-        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
+        .with_params(params.clone())
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
         .finalize_checked(block_height);

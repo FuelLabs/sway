@@ -1,8 +1,8 @@
 use crate::{
-    decl_engine::*,
+    decl_engine::{parsed_id::ParsedDeclId, *},
     engine_threading::Engines,
     language::{
-        parsed::Declaration,
+        parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
         CallPath,
     },
@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-use super::TraitMap;
+use super::{root::ResolvedDeclaration, TraitMap};
 
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -21,18 +21,25 @@ use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
 
-/// Is this a glob (`use foo::*;`) import?
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum GlobImport {
-    Yes,
-    No,
+pub enum ResolvedFunctionDecl {
+    Parsed(ParsedDeclId<FunctionDeclaration>),
+    Typed(DeclRefFunction),
+}
+
+impl ResolvedFunctionDecl {
+    pub fn expect_typed(self) -> DeclRefFunction {
+        match self {
+            ResolvedFunctionDecl::Parsed(_) => panic!(),
+            ResolvedFunctionDecl::Typed(fn_ref) => fn_ref,
+        }
+    }
 }
 
 pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
-// The `Vec<Ident>` path is absolute.
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
-pub(super) type UseAliases = im::HashMap<String, Ident>;
+type SourceIdent = Ident;
+pub(super) type GlobSynonyms = im::HashMap<Ident, (ModulePathBuf, ty::TyDecl)>;
+pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -66,12 +73,14 @@ pub struct Items {
     ///
     /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
     /// path `foo::bar::Baz`.
-    pub(crate) use_synonyms: UseSynonyms,
-    /// Represents an alternative name for an imported symbol.
     ///
-    /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
-    /// alias for `bar`.
-    pub(crate) use_aliases: UseAliases,
+    /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
+    /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
+    ///
+    /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
+    /// as the optional source identifier for error reporting purposes.
+    pub(crate) use_glob_synonyms: GlobSynonyms,
+    pub(crate) use_item_synonyms: ItemSynonyms,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
 }
@@ -87,7 +96,7 @@ impl Items {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
-        fields: Vec<Ident>,
+        fields: &[Ident],
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
@@ -140,11 +149,13 @@ impl Items {
     pub(crate) fn insert_symbol(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
+        let decl_engine = engines.de();
         let append_shadowing_error =
             |ident: &Ident,
              decl: &ty::TyDecl,
@@ -177,7 +188,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
@@ -199,7 +210,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
@@ -275,12 +286,14 @@ impl Items {
             append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
         }
 
-        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name) {
+        if let Some((ident, (imported_ident, _, decl))) =
+            self.use_item_synonyms.get_key_value(&name)
+        {
             append_shadowing_error(
                 ident,
                 decl,
                 true,
-                self.use_aliases.get(&name.to_string()).is_some(),
+                imported_ident.is_some(),
                 &item,
                 const_shadowing_mode,
             );
@@ -291,16 +304,21 @@ impl Items {
         Ok(())
     }
 
-    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<&ty::TyDecl, CompileError> {
+    pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {
         self.symbols
             .get(name)
+            .map(|ty_decl| ResolvedDeclaration::Typed(ty_decl.clone()))
             .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
             })
     }
 
-    pub fn get_items_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<ty::TyTraitItem> {
+    pub fn get_items_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedTraitImplItem> {
         self.implemented_traits.get_items_for_type(engines, type_id)
     }
 
@@ -325,13 +343,20 @@ impl Items {
             .get_impl_spans_for_trait_name(trait_name)
     }
 
-    pub fn get_methods_for_type(&self, engines: &Engines, type_id: TypeId) -> Vec<DeclRefFunction> {
+    pub fn get_methods_for_type(
+        &self,
+        engines: &Engines,
+        type_id: TypeId,
+    ) -> Vec<ResolvedFunctionDecl> {
         self.get_items_for_type(engines, type_id)
             .into_iter()
             .filter_map(|item| match item {
-                ty::TyTraitItem::Fn(decl_ref) => Some(decl_ref),
-                ty::TyTraitItem::Constant(_decl_ref) => None,
-                ty::TyTraitItem::Type(_decl_ref) => None,
+                ResolvedTraitImplItem::Parsed(_) => todo!(),
+                ResolvedTraitImplItem::Typed(item) => match item {
+                    ty::TyTraitItem::Fn(decl_ref) => Some(ResolvedFunctionDecl::Typed(decl_ref)),
+                    ty::TyTraitItem::Constant(_decl_ref) => None,
+                    ty::TyTraitItem::Type(_decl_ref) => None,
+                },
             })
             .collect::<Vec<_>>()
     }
@@ -401,7 +426,7 @@ impl Items {
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
                     let (struct_can_be_changed, is_public_struct_access) =
-                        StructAccessInfo::get_info(&struct_decl, namespace).into();
+                        StructAccessInfo::get_info(engines, &struct_decl, namespace).into();
 
                     let field_type_id = match struct_decl.find_field(field_name) {
                         Some(struct_field) => {
@@ -433,8 +458,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = field_type_id;
                     symbol_span = field_name.span().clone();
-                    full_span_for_error =
-                        Span::join(full_span_for_error, field_name.span().clone());
+                    full_span_for_error = Span::join(full_span_for_error, &field_name.span());
                 }
                 (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
@@ -457,7 +481,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = *field_type;
                     symbol_span = index_span.clone();
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (
                     TypeInfo::Array(elem_ty, _),
@@ -473,7 +497,7 @@ impl Items {
                     // we would need to bring the full span of the index all the way from
                     // the parsing stage. An effort that doesn't pay off at the moment.
                     // TODO: Include the closing square bracket into the error span.
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {

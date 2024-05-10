@@ -281,15 +281,20 @@ fn take_reassignment_op(parser: &mut Parser) -> Option<ReassignmentOp> {
 
 fn parse_reassignment(parser: &mut Parser, ctx: ParseExprCtx) -> ParseResult<Expr> {
     let expr = parse_logical_or(parser, ctx)?;
+    let expr_span = expr.span();
 
     if let Some(reassignment_op) = take_reassignment_op(parser) {
         let assignable = match expr.try_into_assignable() {
             Ok(assignable) => assignable,
             Err(expr) => {
                 let span = expr.span();
-                return Err(
-                    parser.emit_error_with_span(ParseErrorKind::UnassignableExpression, span)
-                );
+                return Err(parser.emit_error_with_span(
+                    ParseErrorKind::UnassignableExpression {
+                        erroneous_expression_kind: expr.friendly_name(),
+                        erroneous_expression_span: span,
+                    },
+                    expr_span,
+                ));
             }
         };
         let expr = Box::new(parse_reassignment(parser, ctx.not_statement())?);
@@ -630,7 +635,7 @@ fn ensure_field_projection_no_generics(
     generic_args: &Option<(DoubleColonToken, GenericArgs)>,
 ) {
     if let Some((dct, generic_args)) = generic_args {
-        let span = Span::join(dct.span(), generic_args.span());
+        let span = Span::join(dct.span(), &generic_args.span());
         parser.emit_error_with_span(ParseErrorKind::FieldProjectionWithGenericArgs, span);
     }
 }

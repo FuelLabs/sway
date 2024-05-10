@@ -8,7 +8,7 @@ use ::contract_id::ContractId;
 ///
 /// # Arguments
 ///
-/// * `contract_id`: [ContractId] - The contract of which the the bytecode should be returned.
+/// * `contract_id`: [ContractId] - The contract of which the bytecode should be returned.
 ///
 /// # Returns
 ///

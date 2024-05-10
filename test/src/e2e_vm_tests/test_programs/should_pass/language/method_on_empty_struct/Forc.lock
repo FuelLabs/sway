@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-81DEAB773E69E2BF'
+name = "core"
+source = "path+from-root-81DEAB773E69E2BF"
 
 [[package]]
-name = 'method_on_empty_struct'
-source = 'member'
-dependencies = ['core']
+name = "method_on_empty_struct"
+source = "member"
+dependencies = ["core"]

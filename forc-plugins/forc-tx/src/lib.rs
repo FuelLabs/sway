@@ -150,7 +150,7 @@ pub struct Create {
     pub bytecode: PathBuf,
     /// Witness index of contract bytecode to create.
     #[clap(long, default_value_t = 0)]
-    pub bytecode_witness_index: u8,
+    pub bytecode_witness_index: u16,
     /// Path to a JSON file with a list of storage slots to initialize (key, value).
     #[clap(long)]
     pub storage_slots: PathBuf,
@@ -246,7 +246,7 @@ pub struct InputCoin {
     pub tx_ptr: fuel_tx::TxPointer,
     /// Index of witness that authorizes spending the coin.
     #[clap(long)]
-    pub witness_ix: Option<u8>,
+    pub witness_ix: Option<u16>,
     /// UTXO being spent must have been created at least this many blocks ago.
     #[clap(long)]
     pub maturity: u32,
@@ -298,7 +298,7 @@ pub struct InputMessage {
     pub msg_data: PathBuf,
     /// Index of witness that authorizes the message.
     #[clap(long)]
-    pub witness_ix: Option<u8>,
+    pub witness_ix: Option<u16>,
     /// Gas used by predicates.
     #[clap(long, default_value_t = 0)]
     pub predicate_gas_used: u64,
@@ -356,7 +356,7 @@ pub struct OutputCoin {
 pub struct OutputContract {
     /// Index of input contract.
     #[clap(long)]
-    pub input_ix: u8,
+    pub input_ix: u16,
     /// Root of amount of coins owned by contract after transaction execution.
     #[clap(long)]
     pub balance_root: fuel_tx::Bytes32,
@@ -662,7 +662,7 @@ impl TryFrom<Create> for fuel_tx::Create {
 
         let maturity = (create.maturity.maturity != 0).then_some(create.maturity.maturity.into());
         let mut policies = Policies::default();
-        policies.set(PolicyType::GasPrice, create.gas.price);
+        policies.set(PolicyType::Tip, create.gas.price);
         policies.set(PolicyType::Maturity, maturity);
 
         let create = fuel_tx::Transaction::create(
@@ -710,7 +710,7 @@ impl TryFrom<Script> for fuel_tx::Script {
             .collect();
 
         let mut policies = Policies::default().with_maturity(script.maturity.maturity.into());
-        policies.set(PolicyType::GasPrice, script.gas.price);
+        policies.set(PolicyType::Tip, script.gas.price);
         let mut script_tx = fuel_tx::Transaction::script(
             0, // Temporary value. Will be replaced below
             script_bytecode,
@@ -729,7 +729,7 @@ impl TryFrom<Script> for fuel_tx::Script {
             let max_gas =
                 script_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
             // Increase `script_gas_limit` to the maximum allowed value.
-            script_tx.set_script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+            script_tx.set_script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
         }
 
         Ok(script_tx)
@@ -749,7 +749,7 @@ impl TryFrom<Input> for fuel_tx::Input {
                     amount,
                     asset_id,
                     tx_ptr: tx_pointer,
-                    maturity,
+                    maturity: _,
                     predicate_gas_used,
                     predicate,
                     witness_ix,
@@ -762,7 +762,6 @@ impl TryFrom<Input> for fuel_tx::Input {
                         asset_id,
                         tx_pointer,
                         witness_index,
-                        maturity.into(),
                     ),
                     (None, Some(predicate), Some(predicate_data)) => {
                         fuel_tx::Input::coin_predicate(
@@ -771,7 +770,6 @@ impl TryFrom<Input> for fuel_tx::Input {
                             amount,
                             asset_id,
                             tx_pointer,
-                            maturity.into(),
                             predicate_gas_used,
                             std::fs::read(&predicate).map_err(|err| {
                                 ConvertInputError::PredicateRead {

@@ -3,4 +3,6 @@ name = "supertraits_for_abis"
 authors = ["Fuel Labs <contact@fuel.sh>"]
 entry = "main.sw"
 license = "Apache-2.0"
-implicit-std = false
+
+[dependencies]
+core = { path = "../../../../../../sway-lib-core" }

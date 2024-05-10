@@ -54,8 +54,8 @@ pub enum DirectoryError {
     ManifestDirNotFound,
     #[error("Can't extract project name from {:?}", dir)]
     CantExtractProjectName { dir: String },
-    #[error("Failed to create hidden .lsp_locks directory")]
-    LspLocksDirFailed,
+    #[error("Failed to create hidden .lsp_locks directory: {0}")]
+    LspLocksDirFailed(String),
     #[error("Failed to create temp directory")]
     TempDirFailed,
     #[error("Failed to canonicalize path")]
@@ -72,6 +72,8 @@ pub enum DirectoryError {
     PathFromUrlFailed { url: String },
     #[error("Unable to create span from path {:?}", path)]
     SpanFromPathFailed { path: String },
+    #[error("No module ID found for path {:?}", path)]
+    ModuleIdNotFound { path: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -80,7 +82,7 @@ pub enum RenameError {
     TokenNotFound,
     #[error("Token is not part of the user's workspace")]
     TokenNotPartOfWorkspace,
-    #[error("Keywords and instrinsics are unable to be renamed")]
+    #[error("Keywords and intrinsics are unable to be renamed")]
     SymbolKindNotAllowed,
     #[error("Invalid name {:?}: not an identifier", name)]
     InvalidName { name: String },

@@ -1,38 +1,33 @@
 use crate::{
     core::token::{AstToken, SymbolKind, Token},
-    traverse::{Parse, ParseContext},
+    traverse::{adaptive_iter, Parse, ParseContext},
 };
-use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use sway_ast::{
-    expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable, CodeBlockContents, ConfigurableField,
-    Expr, ExprArrayDescriptor, ExprStructField, ExprTupleDescriptor, FnArg, FnArgs, FnSignature,
-    IfCondition, IfExpr, ItemAbi, ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl,
-    ItemImplItem, ItemKind, ItemStorage, ItemStruct, ItemTrait, ItemTypeAlias, ItemUse,
-    MatchBranchKind, ModuleKind, Pattern, PatternStructField, Statement, StatementLet,
-    StorageField, TraitType, Ty, TypeField, UseTree,
+    assignable::ElementAccess, expr::LoopControlFlow, ty::TyTupleDescriptor, Assignable,
+    CodeBlockContents, ConfigurableField, Expr, ExprArrayDescriptor, ExprStructField,
+    ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
+    ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemImplItem, ItemKind, ItemStorage,
+    ItemStruct, ItemTrait, ItemTypeAlias, ItemUse, MatchBranchKind, ModuleKind, Pattern,
+    PatternStructField, Statement, StatementLet, StorageField, TraitType, Ty, TypeField, UseTree,
 };
 use sway_core::language::{lexed::LexedProgram, HasSubmodules};
 use sway_types::{Ident, Span, Spanned};
 
 pub fn parse(lexed_program: &LexedProgram, ctx: &ParseContext) {
     insert_module_kind(ctx, &lexed_program.root.tree.kind);
-    lexed_program
-        .root
-        .tree
-        .items
-        .par_iter()
-        .for_each(|item| item.value.parse(ctx));
+    adaptive_iter(&lexed_program.root.tree.items, |item| {
+        item.value.parse(ctx);
+    });
 
     lexed_program
         .root
         .submodules_recursive()
         .for_each(|(_, dep)| {
             insert_module_kind(ctx, &dep.module.tree.kind);
-            dep.module
-                .tree
-                .items
-                .par_iter()
-                .for_each(|item| item.value.parse(ctx));
+            adaptive_iter(&dep.module.tree.items, |item| {
+                item.value.parse(ctx);
+            });
         });
 }
 
@@ -157,7 +152,7 @@ impl Parse for Expr {
             } => {
                 insert_keyword(ctx, match_token.span());
                 value.parse(ctx);
-                branches.get().iter().par_bridge().for_each(|branch| {
+                adaptive_iter(branches.get(), |branch| {
                     branch.pattern.parse(ctx);
                     branch.kind.parse(ctx);
                 });
@@ -326,21 +321,15 @@ impl Parse for ItemTrait {
             insert_keyword(ctx, where_clause_opt.where_token.span());
         }
 
-        self.trait_items
-            .get()
-            .par_iter()
-            .for_each(|annotated| match &annotated.value {
-                sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
-                sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
-                sway_ast::ItemTraitItem::Type(item_type, _) => item_type.parse(ctx),
-                sway_ast::ItemTraitItem::Error(_, _) => {}
-            });
+        adaptive_iter(self.trait_items.get(), |annotated| match &annotated.value {
+            sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
+            sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
+            sway_ast::ItemTraitItem::Type(item_type, _) => item_type.parse(ctx),
+            sway_ast::ItemTraitItem::Error(_, _) => {}
+        });
 
         if let Some(trait_defs_opt) = &self.trait_defs_opt {
-            trait_defs_opt
-                .get()
-                .par_iter()
-                .for_each(|item| item.value.parse(ctx));
+            adaptive_iter(trait_defs_opt.get(), |item| item.value.parse(ctx));
         }
     }
 }
@@ -359,14 +348,11 @@ impl Parse for ItemImpl {
             insert_keyword(ctx, where_clause_opt.where_token.span());
         }
 
-        self.contents
-            .get()
-            .par_iter()
-            .for_each(|item| match &item.value {
-                ItemImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
-                ItemImplItem::Const(const_decl) => const_decl.parse(ctx),
-                ItemImplItem::Type(type_decl) => type_decl.parse(ctx),
-            });
+        adaptive_iter(self.contents.get(), |item| match &item.value {
+            ItemImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
+            ItemImplItem::Const(const_decl) => const_decl.parse(ctx),
+            ItemImplItem::Type(type_decl) => type_decl.parse(ctx),
+        });
     }
 }
 
@@ -374,21 +360,15 @@ impl Parse for ItemAbi {
     fn parse(&self, ctx: &ParseContext) {
         insert_keyword(ctx, self.abi_token.span());
 
-        self.abi_items
-            .get()
-            .par_iter()
-            .for_each(|annotated| match &annotated.value {
-                sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
-                sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
-                sway_ast::ItemTraitItem::Type(item_type, _) => item_type.parse(ctx),
-                sway_ast::ItemTraitItem::Error(_, _) => {}
-            });
+        adaptive_iter(self.abi_items.get(), |annotated| match &annotated.value {
+            sway_ast::ItemTraitItem::Fn(fn_sig, _) => fn_sig.parse(ctx),
+            sway_ast::ItemTraitItem::Const(item_const, _) => item_const.parse(ctx),
+            sway_ast::ItemTraitItem::Type(item_type, _) => item_type.parse(ctx),
+            sway_ast::ItemTraitItem::Error(_, _) => {}
+        });
 
         if let Some(abi_defs_opt) = self.abi_defs_opt.as_ref() {
-            abi_defs_opt
-                .get()
-                .par_iter()
-                .for_each(|item| item.value.parse(ctx));
+            adaptive_iter(abi_defs_opt.get(), |item| item.value.parse(ctx));
         }
     }
 }
@@ -576,9 +556,9 @@ impl Parse for FnArg {
 
 impl Parse for CodeBlockContents {
     fn parse(&self, ctx: &ParseContext) {
-        self.statements
-            .par_iter()
-            .for_each(|statement| statement.parse(ctx));
+        adaptive_iter(&self.statements, |statement| {
+            statement.parse(ctx);
+        });
         if let Some(expr) = self.final_expr_opt.as_ref() {
             expr.parse(ctx);
         }
@@ -755,18 +735,27 @@ impl Parse for TyTupleDescriptor {
     }
 }
 
-impl Parse for Assignable {
+impl Parse for ElementAccess {
     fn parse(&self, ctx: &ParseContext) {
         match self {
-            Assignable::Index { target, arg } => {
+            ElementAccess::Index { target, arg } => {
                 target.parse(ctx);
                 arg.get().parse(ctx)
             }
-            Assignable::FieldProjection { target, .. }
-            | Assignable::TupleFieldProjection { target, .. } => {
+            ElementAccess::FieldProjection { target, .. }
+            | ElementAccess::TupleFieldProjection { target, .. } => {
                 target.parse(ctx);
             }
             _ => {}
+        }
+    }
+}
+
+impl Parse for Assignable {
+    fn parse(&self, ctx: &ParseContext) {
+        match self {
+            Assignable::ElementAccess(element_access) => element_access.parse(ctx),
+            Assignable::Deref { expr, .. } => expr.parse(ctx),
         }
     }
 }

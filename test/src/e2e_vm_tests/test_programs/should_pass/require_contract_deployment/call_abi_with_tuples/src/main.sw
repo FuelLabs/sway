@@ -3,9 +3,9 @@ script;
 use abi_with_tuples::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x1200d031e9c10f8d9bd9dd556a98a0c88e74a4da991047556f78b1bcc1be2ab6;
+const CONTRACT_ID = 0xb351aff8258ce46d16a71be666dd2b0b09d72243105c51f4423765824e59cac9;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xa6f9dd4eb91fadf782b0a62924f09b798dd4d374f692bb91070caf098c0bc769;
+const CONTRACT_ID = 0x0212eba3f33371c30e065501183f9403b1e3abbc5c8e7445bcb6cd46075f3c8e;
 
 fn main() -> bool {
     let the_abi = abi(MyContract, CONTRACT_ID);

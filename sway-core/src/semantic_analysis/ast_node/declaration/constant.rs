@@ -54,7 +54,7 @@ impl ty::TyConstantDecl {
             expression's type.",
             );
 
-        let value = match value {
+        let value = match &value {
             Some(value) => {
                 let result = ty::TyExpression::type_check(handler, ctx.by_ref(), value);
 
@@ -88,7 +88,7 @@ impl ty::TyConstantDecl {
         };
 
         let mut call_path: CallPath = name.into();
-        call_path = call_path.to_fullpath(ctx.namespace());
+        call_path = call_path.to_fullpath(engines, ctx.namespace());
 
         // create the const decl
         let decl = ty::TyConstantDecl {

@@ -1,3 +1,13 @@
+# Writing end-to-end VM tests
+
+In order to minimize compilation time of individual tests, strive to reduce dependencies in tests.
+
+To achieve that, follow these guidelines:
+- Use `implicit-std = false` if dependency on `core` is not needed. This is often possible when testing `should_pass/language` features.
+- Do not use `std` just to conveniently get an arbitrary type or trait. E.g., if a test requires an arbitrary type or trait, go with `struct Dummy {}` or `trait Trait {}` instead of importing `Option` or `Hash`.
+- If `std` functionality is needed, import the minimal [reduced `std` library](reduced_std_libs/README.md) that provides the functionality.
+- Import the full `std` only if the provided [reduced `std` libraries](reduced_std_libs/README.md) do not provide required types.
+
 # Running end-to-end VM tests
 
 This document assumes you have `fuel-core` running on the default port.

@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-6ADF79A3BE26848E'
+name = "core"
+source = "path+from-root-6ADF79A3BE26848E"
 
 [[package]]
-name = 'enum_type_inference'
-source = 'member'
-dependencies = ['core']
+name = "enum_type_inference"
+source = "member"
+dependencies = ["core"]

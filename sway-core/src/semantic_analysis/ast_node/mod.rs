@@ -42,7 +42,7 @@ impl ty::TyAstNode {
     pub(crate) fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        node: AstNode,
+        node: &AstNode,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let decl_engine = ctx.engines.de();
@@ -54,15 +54,15 @@ impl ty::TyAstNode {
                     let mut is_external = false;
                     if let Some(submodule) = ctx
                         .namespace()
-                        .module()
-                        .submodule(&[a.call_path[0].clone()])
+                        .module(engines)
+                        .submodule(engines, &[a.call_path[0].clone()])
                     {
-                        is_external = submodule.is_external;
+                        is_external = submodule.read(engines, |m| m.is_external);
                     }
                     let path = if is_external || a.is_absolute {
                         a.call_path.clone()
                     } else {
-                        ctx.namespace().find_module_path(&a.call_path)
+                        ctx.namespace().prepend_module_path(&a.call_path)
                     };
                     let _ = match a.import_type {
                         ImportType::Star => {
@@ -173,13 +173,13 @@ impl ty::TyAstNode {
                                 ));
                         }
                     }
-                    let inner = ty::TyExpression::type_check(handler, ctx, expr.clone())
+                    let inner = ty::TyExpression::type_check(handler, ctx, &expr)
                         .unwrap_or_else(|err| ty::TyExpression::error(err, expr.span(), engines));
                     ty::TyAstNodeContent::Expression(inner)
                 }
                 AstNodeContent::Error(spans, err) => ty::TyAstNodeContent::Error(spans, err),
             },
-            span: node.span,
+            span: node.span.clone(),
         };
 
         if let ty::TyAstNode {

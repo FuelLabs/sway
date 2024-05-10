@@ -8,7 +8,7 @@ use std::{
     fmt,
     hash::{BuildHasher, Hash, Hasher},
 };
-use sway_types::SourceEngine;
+use sway_types::{SourceEngine, Span};
 
 #[derive(Clone, Debug, Default)]
 pub struct Engines {
@@ -20,22 +20,6 @@ pub struct Engines {
 }
 
 impl Engines {
-    pub fn new(
-        type_engine: TypeEngine,
-        decl_engine: DeclEngine,
-        parsed_decl_engine: ParsedDeclEngine,
-        query_engine: QueryEngine,
-        source_engine: SourceEngine,
-    ) -> Engines {
-        Engines {
-            type_engine,
-            decl_engine,
-            parsed_decl_engine,
-            query_engine,
-            source_engine,
-        }
-    }
-
     pub fn te(&self) -> &TypeEngine {
         &self.type_engine
     }
@@ -107,7 +91,8 @@ impl<T: HashWithEngines> Hash for WithEngines<'_, T> {
 
 impl<T: PartialEqWithEngines> PartialEq for WithEngines<'_, T> {
     fn eq(&self, rhs: &Self) -> bool {
-        self.thing.eq(&rhs.thing, self.engines)
+        self.thing
+            .eq(&rhs.thing, &PartialEqWithEnginesContext::new(self.engines))
     }
 }
 
@@ -118,7 +103,10 @@ where
     T: PartialEqWithEngines,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.thing.cmp(&other.thing, self.engines))
+        Some(
+            self.thing
+                .cmp(&other.thing, &OrdWithEnginesContext::new(self.engines)),
+        )
     }
 }
 
@@ -127,7 +115,8 @@ where
     T: EqWithEngines,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.thing.cmp(&other.thing, self.engines)
+        self.thing
+            .cmp(&other.thing, &OrdWithEnginesContext::new(self.engines))
     }
 }
 
@@ -246,30 +235,88 @@ impl<T: HashWithEngines> HashWithEngines for Box<T> {
 
 pub trait EqWithEngines: PartialEqWithEngines {}
 
+pub struct PartialEqWithEnginesContext<'a> {
+    engines: &'a Engines,
+    is_inside_trait_constraint: bool,
+}
+
+impl<'a> PartialEqWithEnginesContext<'a> {
+    pub(crate) fn new(engines: &'a Engines) -> Self {
+        Self {
+            engines,
+            is_inside_trait_constraint: false,
+        }
+    }
+
+    pub(crate) fn with_is_inside_trait_constraint(&self) -> Self {
+        Self {
+            is_inside_trait_constraint: true,
+            ..*self
+        }
+    }
+
+    pub(crate) fn engines(&self) -> &Engines {
+        self.engines
+    }
+
+    pub(crate) fn is_inside_trait_constraint(&self) -> bool {
+        self.is_inside_trait_constraint
+    }
+}
+
 pub trait PartialEqWithEngines {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool;
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool;
+}
+
+pub struct OrdWithEnginesContext<'a> {
+    engines: &'a Engines,
+    is_inside_trait_constraint: bool,
+}
+
+impl<'a> OrdWithEnginesContext<'a> {
+    pub(crate) fn new(engines: &'a Engines) -> Self {
+        Self {
+            engines,
+            is_inside_trait_constraint: false,
+        }
+    }
+
+    pub(crate) fn with_is_inside_trait_constraint(&self) -> Self {
+        Self {
+            is_inside_trait_constraint: true,
+            ..*self
+        }
+    }
+
+    pub(crate) fn engines(&self) -> &Engines {
+        self.engines
+    }
+
+    pub(crate) fn is_inside_trait_constraint(&self) -> bool {
+        self.is_inside_trait_constraint
+    }
 }
 
 pub trait OrdWithEngines {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering;
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering;
 }
 
 impl<T: EqWithEngines + ?Sized> EqWithEngines for &T {}
 impl<T: PartialEqWithEngines + ?Sized> PartialEqWithEngines for &T {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        (*self).eq(*other, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        (*self).eq(*other, ctx)
     }
 }
 impl<T: OrdWithEngines + ?Sized> OrdWithEngines for &T {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
-        (*self).cmp(*other, engines)
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        (*self).cmp(*other, ctx)
     }
 }
 
 impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         match (self, other) {
-            (Some(x), Some(y)) => x.cmp(y, engines),
+            (Some(x), Some(y)) => x.cmp(y, ctx),
             (Some(_), None) => Ordering::Less,
             (None, Some(_)) => Ordering::Greater,
             (None, None) => Ordering::Equal,
@@ -278,17 +325,17 @@ impl<T: OrdWithEngines> OrdWithEngines for Option<T> {
 }
 
 impl<T: OrdWithEngines> OrdWithEngines for Box<T> {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
-        (**self).cmp(&(**other), engines)
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        (**self).cmp(&(**other), ctx)
     }
 }
 
 impl<T: EqWithEngines> EqWithEngines for Option<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (None, None) => true,
-            (Some(x), Some(y)) => x.eq(y, engines),
+            (Some(x), Some(y)) => x.eq(y, ctx),
             _ => false,
         }
     }
@@ -296,22 +343,22 @@ impl<T: PartialEqWithEngines> PartialEqWithEngines for Option<T> {
 
 impl<T: EqWithEngines> EqWithEngines for Box<T> {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for Box<T> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        (**self).eq(&(**other), engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        (**self).eq(&(**other), ctx)
     }
 }
 
 impl<T: EqWithEngines> EqWithEngines for [T] {}
 impl<T: PartialEqWithEngines> PartialEqWithEngines for [T] {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.len() == other.len() && self.iter().zip(other.iter()).all(|(x, y)| x.eq(y, engines))
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.len() == other.len() && self.iter().zip(other.iter()).all(|(x, y)| x.eq(y, ctx))
     }
 }
 impl<T: OrdWithEngines> OrdWithEngines for [T] {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         self.iter()
             .zip(other.iter())
-            .map(|(x, y)| x.cmp(y, engines))
+            .map(|(x, y)| x.cmp(y, ctx))
             .find(|o| o.is_ne())
             .unwrap_or_else(|| self.len().cmp(&other.len()))
     }
@@ -329,4 +376,8 @@ where
         key.hash(&mut state, engines);
         state.finish()
     }
+}
+
+pub trait SpannedWithEngines {
+    fn span(&self, engines: &Engines) -> Span;
 }

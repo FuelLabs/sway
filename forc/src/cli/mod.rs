@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use self::commands::{
     addr2line, build, check, clean, completions, contract_id, init, new, parse_bytecode, plugins,
     predicate_root, template, test, update,
@@ -19,6 +17,7 @@ pub use new::Command as NewCommand;
 use parse_bytecode::Command as ParseBytecodeCommand;
 pub use plugins::Command as PluginsCommand;
 pub(crate) use predicate_root::Command as PredicateRootCommand;
+use std::str::FromStr;
 pub use template::Command as TemplateCommand;
 pub use test::Command as TestCommand;
 use tracing::metadata::LevelFilter;
@@ -94,6 +93,28 @@ enum Forc {
     Plugin(Vec<String>),
 }
 
+impl Forc {
+    #[allow(dead_code)]
+    pub fn possible_values() -> Vec<&'static str> {
+        vec![
+            "addr2line",
+            "build",
+            "check",
+            "clean",
+            "completions",
+            "init",
+            "new",
+            "parse-bytecode",
+            "plugins",
+            "test",
+            "update",
+            "template",
+            "contract-id",
+            "predicate-root",
+        ]
+    }
+}
+
 pub async fn run_cli() -> ForcResult<()> {
     let opt = Opt::parse();
     let tracing_options = TracingSubscriberOptions {
@@ -116,12 +137,12 @@ pub async fn run_cli() -> ForcResult<()> {
         Forc::ParseBytecode(command) => parse_bytecode::exec(command),
         Forc::Plugins(command) => plugins::exec(command),
         Forc::Test(command) => test::exec(command),
-        Forc::Update(command) => update::exec(command).await,
+        Forc::Update(command) => update::exec(command),
         Forc::Template(command) => template::exec(command),
         Forc::ContractId(command) => contract_id::exec(command),
         Forc::PredicateRoot(command) => predicate_root::exec(command),
         Forc::Plugin(args) => {
-            let output = plugin::execute_external_subcommand(args, opt.silent)?;
+            let output = plugin::execute_external_subcommand(&args, opt.silent)?;
             let code = output
                 .status
                 .code()

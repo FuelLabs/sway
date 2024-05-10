@@ -50,9 +50,9 @@ pub struct Command {
     /// threads available in your system.
     pub test_threads: Option<usize>,
 
+    /// Disable the "new encoding" feature
     #[clap(long)]
-    /// Experimental flag for the "new encoding" feature
-    pub experimental_new_encoding: bool,
+    pub no_encoding_v1: bool,
 }
 
 /// The set of options provided for controlling output of a test.
@@ -60,7 +60,7 @@ pub struct Command {
 #[clap(after_help = help())]
 pub struct TestPrintOpts {
     #[clap(long = "pretty-print", short = 'r')]
-    /// Pretty-print the logs emiited from tests.
+    /// Pretty-print the logs emitted from tests.
     pub pretty_print: bool,
     /// Print `Log` and `LogData` receipts for tests.
     #[clap(long = "logs", short = 'l')]
@@ -216,6 +216,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             dca_graph_url_format: cmd.build.print.dca_graph_url_format,
             finalized_asm: cmd.build.print.finalized_asm,
             intermediate_asm: cmd.build.print.intermediate_asm,
+            bytecode: cmd.build.print.bytecode,
             ir: cmd.build.print.ir,
             reverse_order: cmd.build.print.reverse_order,
         },
@@ -232,7 +233,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

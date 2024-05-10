@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "test_projects/abi_impl_methods_callable",
+  "test_projects/asset_id",
   "test_projects/asset_ops",
   "test_projects/block",
   "test_projects/call_frames",
@@ -16,7 +17,6 @@ members = [
   "test_projects/hashing",
   "test_projects/logging",
   "test_projects/low_level_call",
-  "test_projects/low_level_call_bytes",
   "test_projects/messages",
   "test_projects/option_field_order",
   "test_projects/option_in_abi",
@@ -26,6 +26,9 @@ members = [
   "test_projects/private_struct_fields_in_storage_and_abi",
   "test_projects/registers",
   "test_projects/result_in_abi",
+  "test_projects/result_option_expect",
+  "test_projects/run_external_proxy",
+  "test_projects/run_external_target",
   "test_projects/script_bytecode",
   "test_projects/script_data",
   "test_projects/storage",

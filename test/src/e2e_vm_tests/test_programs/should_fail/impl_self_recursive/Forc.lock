@@ -1,3 +1,8 @@
 [[package]]
-name = 'impl_self_recursive'
-source = 'member'
+name = "core"
+source = "path+from-root-7BB1412CA5179B4D"
+
+[[package]]
+name = "impl_self_recursive"
+source = "member"
+dependencies = ["core"]

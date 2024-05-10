@@ -6,6 +6,6 @@ name = "storage"
 implicit-std = false
 
 [dependencies]
-# TODO: Temporarily use the local std before the tests dependencies are bumped to v0.51.1.
+# TODO: Temporarily use the local std before the tests dependencies are bumped to v0.54.1.
 # std = { git = "https://github.com/FuelLabs/sway", tag = "v0.48.1" }
 std = { path = "../../../../../sway-lib-std" }

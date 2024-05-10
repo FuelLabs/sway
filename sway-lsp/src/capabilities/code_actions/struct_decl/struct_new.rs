@@ -7,7 +7,7 @@ use crate::{
 };
 use lsp_types::{CodeActionDisabled, Position, Range, Url};
 use sway_core::language::ty::{self, TyImplTrait, TyStructDecl, TyStructField};
-use sway_types::Spanned;
+use sway_types::{LineCol, Spanned};
 
 pub(crate) struct StructNewCodeAction<'a> {
     decl: &'a TyStructDecl,
@@ -48,7 +48,7 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
     }
 
     fn new_text(&self) -> String {
-        let params = self.params_string(&self.decl.fields);
+        let params = StructNewCodeAction::params_string(&self.decl.fields);
         let new_fn = self.fn_signature_string(
             "new".to_string(),
             params,
@@ -74,7 +74,9 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
         // If there is already an impl block for this struct, insert the new function at the top of it.
         let insertion_position = match self.existing_impl_decl.clone() {
             Some(decl) => {
-                let (first_line, _) = decl.span.start_pos().line_col();
+                let LineCol {
+                    line: first_line, ..
+                } = decl.span.start_pos().line_col();
                 Position {
                     line: first_line as u32,
                     character: 0,
@@ -82,7 +84,9 @@ impl<'a> CodeAction<'a, TyStructDecl> for StructNewCodeAction<'a> {
             }
             None => {
                 // If we're inserting a whole new impl block, default to the line after the struct declaration.
-                let (last_line, _) = self.decl().span().end_pos().line_col();
+                let LineCol {
+                    line: last_line, ..
+                } = self.decl().span().end_pos().line_col();
                 Position {
                     line: last_line as u32,
                     character: 0,
@@ -136,7 +140,7 @@ impl StructNewCodeAction<'_> {
         " -> Self".to_string()
     }
 
-    fn params_string(&self, params: &[TyStructField]) -> String {
+    fn params_string(params: &[TyStructField]) -> String {
         params
             .iter()
             .map(|field| format!("{}: {}", field.name, field.type_argument.span.as_str()))

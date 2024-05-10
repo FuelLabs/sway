@@ -10,27 +10,27 @@ where
         AstToken::Declaration(declaration) => match declaration {
             Declaration::EnumDeclaration(decl_id) => {
                 let decl = engines.pe().get_enum(decl_id);
-                callback(&decl.attributes)
+                callback(&decl.attributes);
             }
             Declaration::FunctionDeclaration(decl_id) => {
                 let decl = engines.pe().get_function(decl_id);
-                callback(&decl.attributes)
+                callback(&decl.attributes);
             }
             Declaration::StructDeclaration(decl_id) => {
                 let decl = engines.pe().get_struct(decl_id);
-                callback(&decl.attributes)
+                callback(&decl.attributes);
             }
             Declaration::ConstantDeclaration(decl_id) => {
                 let decl = engines.pe().get_constant(decl_id);
-                callback(&decl.attributes)
+                callback(&decl.attributes);
             }
             Declaration::StorageDeclaration(decl_id) => {
                 let decl = engines.pe().get_storage(decl_id);
-                callback(&decl.attributes)
+                callback(&decl.attributes);
             }
             Declaration::AbiDeclaration(decl_id) => {
                 let decl = engines.pe().get_abi(decl_id);
-                callback(&decl.attributes)
+                callback(&decl.attributes);
             }
             _ => {}
         },
@@ -38,7 +38,7 @@ where
         AstToken::StructField(field) => callback(&field.attributes),
         AstToken::TraitFn(decl_id) => {
             let decl = engines.pe().get_trait_fn(decl_id);
-            callback(&decl.attributes)
+            callback(&decl.attributes);
         }
         AstToken::EnumVariant(variant) => callback(&variant.attributes),
         _ => {}

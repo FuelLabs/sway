@@ -1,5 +1,6 @@
 mod e2e_vm_tests;
 mod ir_generation;
+mod reduced_std_libs;
 mod test_consistency;
 
 use anyhow::Result;
@@ -51,9 +52,9 @@ struct Cli {
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
 
-    /// Experimental flag for new encoding
+    /// Disable the "new encoding" feature
     #[arg(long)]
-    experimental_new_encoding: bool,
+    no_encoding_v1: bool,
 
     /// Update all output files
     #[arg(long)]
@@ -107,13 +108,16 @@ async fn main() -> Result<()> {
         release: cli.release,
         build_target,
         experimental: sway_core::ExperimentalFlags {
-            new_encoding: cli.experimental_new_encoding,
+            new_encoding: !cli.no_encoding_v1,
         },
         update_output_files: cli.update_output_files,
     };
 
     // Check that the tests are consistent
     test_consistency::check()?;
+
+    // Create reduced versions of the `std` library.
+    reduced_std_libs::create()?;
 
     // Run E2E tests
     e2e_vm_tests::run(&filter_config, &run_config)

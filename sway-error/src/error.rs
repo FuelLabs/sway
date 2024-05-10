@@ -2,10 +2,11 @@ use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
 use crate::formatting::*;
 use crate::lex_error::LexError;
-use crate::parser_error::ParseError;
+use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::fmt::Formatter;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
 use sway_types::style::to_snake_case;
 use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
@@ -66,14 +67,19 @@ pub enum CompileError {
         what_it_is: &'static str,
         span: Span,
     },
-    #[error("Unimplemented feature: {0}")]
-    Unimplemented(&'static str, Span),
-    #[error(
-        "Unimplemented feature: {0}\n\
-         help: {1}.\n\
-         "
-    )]
-    UnimplementedWithHelp(&'static str, &'static str, Span),
+    #[error("{feature} is currently not implemented.")]
+    Unimplemented {
+        /// The description of the unimplemented feature,
+        /// formulated in a way that fits into common ending
+        /// "is currently not implemented."
+        /// E.g., "Using something".
+        feature: String,
+        /// Help lines. Empty if there is no additional help.
+        /// To get an empty line between the help lines,
+        /// insert a [String] containing only a space: `" ".to_string()`.
+        help: Vec<String>,
+        span: Span,
+    },
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -96,6 +102,8 @@ pub enum CompileError {
     PredicateMainDoesNotReturnBool(Span),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
+    #[error("Fallback function already defined in scope.")]
+    MultipleDefinitionsOfFallbackFunction { name: Ident, span: Span },
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
@@ -113,8 +121,67 @@ pub enum CompileError {
         duplicate: Span,
         duplicate_is_struct_field: bool,
     },
-    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
-    AssignmentToNonMutable { name: Ident, span: Span },
+    #[error(
+        "Assignment to an immutable variable. Variable \"{decl_name} is not declared as mutable."
+    )]
+    AssignmentToNonMutableVariable {
+        /// Variable name pointing to the name in the variable declaration.
+        decl_name: Ident,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
+        "Assignment to a {}. {} cannot be assigned to.",
+        if *is_configurable {
+            "configurable"
+        } else {
+            "constant"
+        },
+        if *is_configurable {
+            "Configurables"
+        } else {
+            "Constants"
+        }
+    )]
+    AssignmentToConstantOrConfigurable {
+        /// Constant or configurable name pointing to the name in the constant declaration.
+        decl_name: Ident,
+        is_configurable: bool,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
+        "This assignment target cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+        if let Some(decl_name) = decl_name {
+            format!("\"{decl_name}\"")
+        } else {
+            "this".to_string()
+        },
+        a_or_an(decl_friendly_type_name)
+    )]
+    DeclAssignmentTargetCannotBeAssignedTo {
+        /// Name of the declared variant, pointing to the name in the declaration.
+        decl_name: Option<Ident>,
+        /// Friendly name of the type of the declaration. E.g., "function", or "struct".
+        decl_friendly_type_name: &'static str,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error("This reference is not a reference to a mutable value (`&mut`).")]
+    AssignmentViaNonMutableReference {
+        /// Name of the reference, if the left-hand side of the assignment is a reference variable,
+        /// pointing to the name in the reference variable declaration.
+        ///
+        /// `None` if the assignment LHS is an arbitrary expression and not a variable.
+        decl_reference_name: Option<Ident>,
+        /// [Span] of the right-hand side of the reference variable definition,
+        /// if the left-hand side of the assignment is a reference variable.
+        decl_reference_rhs: Option<Span>,
+        /// The type of the reference, if the left-hand side of the assignment is a reference variable,
+        /// expected to start with `&`.
+        decl_reference_type: String,
+        span: Span,
+    },
     #[error(
         "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
             \"{variable_name}\" is not declared as mutable."
@@ -132,7 +199,7 @@ pub enum CompileError {
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
     RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
-    #[error("Reference to mutable value cannot reference a constant.")]
+    #[error("Reference to a mutable value cannot reference a constant.")]
     RefMutCannotReferenceConstant {
         /// Constant, as accessed in code. E.g.:
         ///  - `MY_CONST`
@@ -141,7 +208,7 @@ pub enum CompileError {
         constant: String,
         span: Span,
     },
-    #[error("Reference to mutable value cannot reference an immutable variable.")]
+    #[error("Reference to a mutable value cannot reference an immutable variable.")]
     RefMutCannotReferenceImmutableVariable {
         /// Variable name pointing to the name in the variable declaration.
         decl_name: Ident,
@@ -421,6 +488,7 @@ pub enum CompileError {
     UnconstrainedGenericParameter { ty: String, span: Span },
     #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
     TraitConstraintNotSatisfied {
+        type_id: usize, // Used to filter errors in method application type check.
         ty: String,
         trait_name: String,
         span: Span,
@@ -453,6 +521,8 @@ pub enum CompileError {
     UnnecessaryImmediate { span: Span },
     #[error("This reference is ambiguous, and could refer to a module, enum, or function of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span },
+    #[error("This is a module path, and not an expression.")]
+    ModulePathIsNotAnExpression { module_path: String, span: Span },
     #[error("Unknown type name.")]
     UnknownType { span: Span },
     #[error("Unknown type name \"{name}\".")]
@@ -648,6 +718,13 @@ pub enum CompileError {
         first_definition: Span,
         expected: String,
         received: String,
+    },
+    #[error("This cannot be matched.")]
+    MatchedValueIsNotValid {
+        /// Common message describing which Sway types
+        /// are currently supported in match expressions.
+        supported_types_message: Vec<&'static str>,
+        span: Span,
     },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
@@ -854,12 +931,27 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
-    #[error("\"Self\" is not valid in the self type of an impl block")]
-    SelfIsNotValidAsImplementingFor { span: Span },
+    #[error("{invalid_type} is not a valid type in the self type of an impl block.")]
+    TypeIsNotValidAsImplementingFor {
+        invalid_type: InvalidImplementingForType,
+        /// Name of the trait if the impl implements a trait, `None` otherwise.
+        trait_name: Option<String>,
+        span: Span,
+    },
     #[error("Uninitialized register is being read before being written")]
     UninitRegisterInAsmBlockBeingRead { span: Span },
     #[error("Expression of type \"{expression_type}\" cannot be dereferenced.")]
     ExpressionCannotBeDereferenced { expression_type: String, span: Span },
+    #[error("Fallback functions can only exist in contracts")]
+    FallbackFnsAreContractOnly { span: Span },
+    #[error("Fallback functions cannot have parameters")]
+    FallbackFnsCannotHaveParameters { span: Span },
+    #[error("Could not generate the entry method. See errors above for more details.")]
+    CouldNotGenerateEntry { span: Span },
+    #[error("Missing `core` in dependencies.")]
+    CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
+    CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -876,8 +968,7 @@ impl Spanned for CompileError {
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
             NotAVariable { span, .. } => span.clone(),
-            Unimplemented(_, span) => span.clone(),
-            UnimplementedWithHelp(_, _, span) => span.clone(),
+            Unimplemented { span, .. } => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
@@ -890,7 +981,11 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
-            AssignmentToNonMutable { span, .. } => span.clone(),
+            MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
+            AssignmentToNonMutableVariable { lhs_span, .. } => lhs_span.clone(),
+            AssignmentToConstantOrConfigurable { lhs_span, .. } => lhs_span.clone(),
+            DeclAssignmentTargetCannotBeAssignedTo { lhs_span, .. } => lhs_span.clone(),
+            AssignmentViaNonMutableReference { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
@@ -946,7 +1041,8 @@ impl Spanned for CompileError {
             Immediate24TooLarge { span, .. } => span.clone(),
             IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
             UnnecessaryImmediate { span, .. } => span.clone(),
-            AmbiguousPath { span, .. } => span.clone(),
+            AmbiguousPath { span } => span.clone(),
+            ModulePathIsNotAnExpression { span, .. } => span.clone(),
             UnknownType { span, .. } => span.clone(),
             UnknownTypeName { span, .. } => span.clone(),
             FileCouldNotBeRead { span, .. } => span.clone(),
@@ -991,6 +1087,7 @@ impl Spanned for CompileError {
             MatchStructPatternMustIgnorePrivateFields { span, .. } => span.clone(),
             MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
+            MatchedValueIsNotValid { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -1028,7 +1125,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
@@ -1055,9 +1152,14 @@ impl Spanned for CompileError {
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
-            SelfIsNotValidAsImplementingFor { span } => span.clone(),
+            TypeIsNotValidAsImplementingFor { span, .. } => span.clone(),
             UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
             ExpressionCannotBeDereferenced { span, .. } => span.clone(),
+            FallbackFnsAreContractOnly { span } => span.clone(),
+            FallbackFnsCannotHaveParameters { span } => span.clone(),
+            CouldNotGenerateEntry { span } => span.clone(),
+            CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
         }
     }
 }
@@ -1904,7 +2006,7 @@ impl ToDiagnostic for CompileError {
                     Hint::info(
                         source_engine,
                         decl_name.span(),
-                        format!("\"{decl_name}\" is declared here as immutable.")
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
                     ),
                 ],
                 help: vec![
@@ -1935,6 +2037,373 @@ impl ToDiagnostic for CompileError {
                     "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
                     "This property is called \"trait coherence\".".to_string(),
                 ],
+            },
+            AssignmentToNonMutableVariable { lhs_span, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Immutable variables cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is an immutable variable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is an immutable variable.
+                    format!("{} cannot be assigned to, because {} is an immutable variable.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just a single variable in the expression.
+                            format!("\"{decl_name}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{decl_name}\"")
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
+                    ),
+                ],
+                help: vec![
+                    // TODO-IG: Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
+                    format!("Consider declaring \"{decl_name}\" as mutable."),
+                ],
+            },
+            AssignmentToConstantOrConfigurable { lhs_span, is_configurable, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("{} cannot be assigned to",
+                    if *is_configurable {
+                        "Configurables"
+                    } else {
+                        "Constants"
+                    }
+                ))),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a constant/configurable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is a constant/configurable.
+                    format!("{} cannot be assigned to, because {} is a {}.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just the constant in the expression.
+                            format!("\"{decl_name}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{decl_name}\"")
+                        },
+                        if *is_configurable {
+                            "configurable"
+                        } else {
+                            "constant"
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("{} \"{decl_name}\" is declared here.",
+                            if *is_configurable {
+                                "Configurable"
+                            } else {
+                                "Constant"
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            DeclAssignmentTargetCannotBeAssignedTo { decl_name, decl_friendly_type_name, lhs_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Assignment target cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a trait/function/ etc and not a mutable variable.
+                    //  or
+                    // This cannot be assigned to, because "x" is a trait/function/ etc and not a mutable variable.
+                    format!("{} cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() => // We have just the decl name in the expression.
+                                format!("\"{decl_name}\""),
+                            _ => "This".to_string(),
+                        },
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() =>
+                                "it".to_string(),
+                            Some(decl_name) => format!("\"{}\"", decl_name.as_str()),
+                            _ => "it".to_string(),
+                        },
+                        a_or_an(decl_friendly_type_name)
+                    )
+                ),
+                hints: vec![
+                    match decl_name {
+                        Some(decl_name) => Hint::info(
+                            source_engine,
+                            decl_name.span(),
+                            format!("{} \"{decl_name}\" is declared here.", ascii_sentence_case(&decl_friendly_type_name.to_string()))
+                        ),
+                        _ => Hint::none(),
+                    }
+                ],
+                help: vec![],
+            },
+            AssignmentViaNonMutableReference { decl_reference_name, decl_reference_rhs, decl_reference_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Reference is not a reference to a mutable value (`&mut`)".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    // This reference expression is not a reference to a mutable value (`&mut`).
+                    //  or
+                    // Reference "ref_xyz" is not a reference to a mutable value (`&mut`).
+                    format!("{} is not a reference to a mutable value (`&mut`).",
+                        match decl_reference_name {
+                            Some(decl_reference_name) => format!("Reference \"{decl_reference_name}\""),
+                            _ => "This reference expression".to_string(),
+                        }
+                    )
+                ),
+                hints: vec![
+                    match decl_reference_name {
+                        Some(decl_reference_name) => Hint::info(
+                            source_engine,
+                            decl_reference_name.span(),
+                            format!("Reference \"{decl_reference_name}\" is declared here as a reference to immutable value.")
+                        ),
+                        _ => Hint::none(),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) => Hint::info(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("This expression has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                        _ => Hint::info(
+                            source_engine,
+                            span.clone(),
+                            format!("It has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) if decl_reference_rhs.as_str().starts_with('&') => Hint::help(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("Consider taking here a reference to a mutable value: `&mut {}`.",
+                                first_line(decl_reference_rhs.as_str()[1..].trim(), true)
+                            )
+                        ),
+                        _ => Hint::none(),
+                    },
+                ],
+                help: vec![
+                    format!("{} dereferenced in assignment targets must {} references to mutable values (`&mut`).",
+                        if decl_reference_name.is_some() {
+                            "References"
+                        } else {
+                            "Reference expressions"
+                        },
+                        if decl_reference_name.is_some() {
+                            "be"
+                        } else {
+                            "result in"
+                        }
+                    ),
+                ],
+            },
+            Unimplemented { feature, help, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Used feature is currently not implemented".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{feature} is currently not implemented.")
+                ),
+                hints: vec![],
+                help: help.clone(),
+            },
+            MatchedValueIsNotValid { supported_types_message, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Matched value is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This cannot be matched.".to_string()
+                ),
+                hints: vec![],
+                help: {
+                    let mut help = vec![];
+
+                    help.push("Matched value must be an expression whose result is of one of the types supported in pattern matching.".to_string());
+                    help.push(Diagnostic::help_empty_line());
+                    for msg in supported_types_message {
+                        help.push(msg.to_string());
+                    }
+
+                    help
+                }
+            },
+            TypeIsNotValidAsImplementingFor { invalid_type, trait_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Self type of an impl block is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{invalid_type} is not a valid type in the self type of {} impl block.",
+                        match trait_name {
+                            Some(_) => "a trait",
+                            None => "an",
+                        }
+                    )
+                ),
+                hints: vec![
+                    if matches!(invalid_type, InvalidImplementingForType::SelfType) {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("Replace {invalid_type} with the actual type that you want to implement for.")
+                        )
+                    } else {
+                        Hint::none()
+                    }
+                ],
+                help: {
+                    if matches!(invalid_type, InvalidImplementingForType::Placeholder) {
+                        vec![
+                            format!("Are you trying to implement {} for any type?",
+                                match trait_name {
+                                    Some(trait_name) => format!("trait \"{trait_name}\""),
+                                    None => "functionality".to_string(),
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "If so, use generic type parameters instead.".to_string(),
+                            "E.g., instead of:".to_string(),
+                            // The trait `trait_name` could represent an arbitrary complex trait.
+                            // E.g., `with generic arguments, etc. So we don't want to deal
+                            // with the complexity of representing it properly
+                            // but rather use a simplified but clearly instructive
+                            // sample trait name here, `SomeTrait`.
+                            // impl _
+                            //   or
+                            // impl SomeTrait for _
+                            format!("{}impl {}_",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                            "use:".to_string(),
+                            format!("{}impl<T> {}T",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+            },
+            ModulePathIsNotAnExpression { module_path, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Module path is not an expression".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This is a module path, and not an expression.".to_string()
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "An expression is expected at this location, but a module path is found.".to_string()
+                    ),
+                ],
+                help: vec![
+                    "In expressions, module paths can only be used to fully qualify names with a path.".to_string(),
+                    format!("E.g., `{module_path}::SOME_CONSTANT` or `{module_path}::some_function()`."),
+                ]
+            },
+            Parse { error } => {
+                match &error.kind {
+                    ParseErrorKind::UnassignableExpression { erroneous_expression_kind, erroneous_expression_span } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Expression cannot be assigned to".to_string())),
+                        // A bit of a special handling for parentheses, because they are the only
+                        // expression kind whose friendly name is in plural. Having it in singular
+                        // or without this simple special handling gives very odd sounding sentences.
+                        // Therefore, just a bit of a special handling.
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("This expression cannot be assigned to, because it {} {}{}.",
+                                if &error.span == erroneous_expression_span { // If the whole expression is erroneous.
+                                    "is"
+                                } else {
+                                    "contains"
+                                },
+                                if *erroneous_expression_kind == "parentheses" {
+                                    ""
+                                } else {
+                                    a_or_an(erroneous_expression_kind)
+                                },
+                                erroneous_expression_kind
+                            )
+                        ),
+                        hints: vec![
+                            if &error.span != erroneous_expression_span {
+                                Hint::info(
+                                    source_engine,
+                                    erroneous_expression_span.clone(),
+                                    format!("{} the contained {erroneous_expression_kind}.",
+                                        if *erroneous_expression_kind == "parentheses" {
+                                            "These are"
+                                        } else {
+                                            "This is"
+                                        }
+                                    )
+                                )
+                            } else {
+                                Hint::none()
+                            },
+                        ],
+                        help: vec![
+                            format!("{} cannot be {}an assignment target.",
+                                ascii_sentence_case(&erroneous_expression_kind.to_string()),
+                                if &error.span == erroneous_expression_span {
+                                    ""
+                                } else {
+                                    "a part of "
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "In Sway, assignment targets must be one of the following:".to_string(),
+                            format!("{}- Expressions starting with a mutable variable, optionally having", Indent::Single),
+                            format!("{}  array or tuple element accesses, struct field accesses,", Indent::Single),
+                            format!("{}  or arbitrary combinations of those.", Indent::Single),
+                            format!("{}  E.g., `mut_var` or `mut_struct.field` or `mut_array[x + y].field.1`.", Indent::Single),
+                            Diagnostic::help_empty_line(),
+                            format!("{}- Dereferencing of an arbitrary expression that results", Indent::Single),
+                            format!("{}  in a reference to a mutable value.", Indent::Single),
+                            format!("{}  E.g., `*ref_to_mutable_value` or `*max_mut(&mut x, &mut y)`.", Indent::Single),
+                        ]
+                    },
+                    _ => Diagnostic {
+                                // TODO: Temporary we use self here to achieve backward compatibility.
+                                //       In general, self must not be used and will not be used once we
+                                //       switch to our own #[error] macro. All the values for the formatting
+                                //       of a diagnostic must come from the enum variant parameters.
+                                issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                                ..Default::default()
+                        },
+                }
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
@@ -1983,4 +2452,21 @@ pub enum StructFieldUsageContext {
     //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
     //       and provide specific suggestions for these two cases.
     //       (Destructing desugars to plain struct field access.)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InvalidImplementingForType {
+    SelfType,
+    Placeholder,
+    Other,
+}
+
+impl fmt::Display for InvalidImplementingForType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            InvalidImplementingForType::SelfType => f.write_str("\"Self\""),
+            InvalidImplementingForType::Placeholder => f.write_str("Placeholder `_`"),
+            InvalidImplementingForType::Other => f.write_str("This"),
+        }
+    }
 }

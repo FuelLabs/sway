@@ -7,6 +7,7 @@ use super::{
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
+use crate::BuildConfig;
 
 use etk_asm::asm::Assembler;
 use sway_error::error::CompileError;
@@ -54,15 +55,16 @@ impl FinalizedAsm {
         handler: &Handler,
         source_map: &mut SourceMap,
         source_engine: &SourceEngine,
+        build_config: &BuildConfig,
     ) -> Result<CompiledBytecode, ErrorEmitted> {
         match &self.program_section {
-            InstructionSet::Fuel { ops } => to_bytecode_mut(
-                handler,
+            InstructionSet::Fuel { ops } => Ok(to_bytecode_mut(
                 ops,
                 &mut self.data_section,
                 source_map,
                 source_engine,
-            ),
+                build_config,
+            )),
             InstructionSet::Evm { ops } => {
                 let mut assembler = Assembler::new();
                 if let Err(e) = assembler.push_all(ops.clone()) {
@@ -98,67 +100,99 @@ impl fmt::Display for FinalizedAsm {
 }
 
 fn to_bytecode_mut(
-    handler: &Handler,
     ops: &[AllocatedOp],
     data_section: &mut DataSection,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
-) -> Result<CompiledBytecode, ErrorEmitted> {
-    if ops.len() & 1 != 0 {
-        tracing::info!("ops len: {}", ops.len());
-        return Err(handler.emit_err(CompileError::Internal(
-            "Non-word-aligned (odd-number) ops generated. This is an invariant violation.",
-            Span::new(" ".into(), 0, 0, None).unwrap(),
-        )));
-    }
-    // The below invariant is introduced to word-align the data section.
-    // A noop is inserted in ASM generation if there is an odd number of ops.
-    assert_eq!(ops.len() & 1, 0);
-    // this points at the byte (*4*8) address immediately following (+1) the last instruction
-    // Some LWs are expanded into two ops to allow for data larger than one word, so we calculate
-    // exactly how many ops will be generated to calculate the offset.
-    let offset_to_data_section_in_bytes = ops.iter().fold(0, |acc, item| match &item.opcode {
-        AllocatedOpcode::LoadDataId(_reg, data_label)
-            if !data_section
-                .has_copy_type(data_label)
-                .expect("data label references non existent data -- internal error") =>
-        {
-            acc + 8
+    build_config: &BuildConfig,
+) -> CompiledBytecode {
+    fn op_size_in_bytes(data_section: &DataSection, item: &AllocatedOp) -> u64 {
+        match &item.opcode {
+            AllocatedOpcode::LoadDataId(_reg, data_label)
+                if !data_section
+                    .has_copy_type(data_label)
+                    .expect("data label references non existent data -- internal error") =>
+            {
+                8
+            }
+            AllocatedOpcode::DataSectionOffsetPlaceholder => 8,
+            AllocatedOpcode::BLOB(count) => count.value as u64 * 4,
+            AllocatedOpcode::CFEI(i) | AllocatedOpcode::CFSI(i) if i.value == 0 => 0,
+            _ => 4,
         }
-        AllocatedOpcode::BLOB(count) => acc + count.value as u64 * 4,
-        _ => acc + 4,
-    }) + 4;
+    }
 
-    // each op is four bytes, so the length of the buf is the number of ops times four.
-    let mut buf = vec![0; (ops.len() * 4) + 4];
+    // Some instructions may be omitted or expanded into multiple instructions, so we compute,
+    // using `op_size_in_bytes`, exactly how many ops will be generated to calculate the offset.
+    let mut offset_to_data_section_in_bytes = ops
+        .iter()
+        .fold(0, |acc, item| acc + op_size_in_bytes(data_section, item));
+
+    // A noop is inserted in ASM generation if required, to word-align the data section.
+    let mut ops_padded = Vec::new();
+    let ops = if offset_to_data_section_in_bytes & 7 == 0 {
+        ops
+    } else {
+        ops_padded.reserve(ops.len() + 1);
+        ops_padded.extend(ops.iter().cloned());
+        ops_padded.push(AllocatedOp {
+            opcode: AllocatedOpcode::NOOP,
+            comment: "word-alignment of data section".into(),
+            owning_span: None,
+        });
+        offset_to_data_section_in_bytes += 4;
+        &ops_padded
+    };
+
+    let mut buf = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
+
+    if build_config.print_bytecode {
+        println!(";; --- START OF TARGET BYTECODE ---\n");
+    }
 
     let mut half_word_ix = 0;
+    let mut offset_from_instr_start = 0;
     for op in ops.iter() {
         let span = op.owning_span.clone();
-        let op = op.to_fuel_asm(offset_to_data_section_in_bytes, data_section);
-        match op {
+        let fuel_op = op.to_fuel_asm(
+            offset_to_data_section_in_bytes,
+            offset_from_instr_start,
+            data_section,
+        );
+        offset_from_instr_start += op_size_in_bytes(data_section, op);
+
+        match fuel_op {
             Either::Right(data) => {
-                for i in 0..data.len() {
-                    buf[(half_word_ix * 4) + i] = data[i];
+                if build_config.print_bytecode {
+                    println!("{:?}", data);
                 }
+                // Static assert to ensure that we're only dealing with DataSectionOffsetPlaceholder,
+                // a one-word (8 bytes) data within the code. No other uses are known.
+                let _: [u8; 8] = data;
+                buf.extend(data.iter().cloned());
                 half_word_ix += 2;
             }
             Either::Left(ops) => {
-                if ops.len() > 1 {
-                    buf.resize(buf.len() + ((ops.len() - 1) * 4), 0);
-                }
                 for op in ops {
+                    if build_config.print_bytecode {
+                        println!("{:?}", op);
+                    }
                     if let Some(span) = &span {
                         source_map.insert(source_engine, half_word_ix, span);
                     }
-                    let read_range_upper_bound =
-                        core::cmp::min(half_word_ix * 4 + std::mem::size_of_val(&op), buf.len());
-                    buf[half_word_ix * 4..read_range_upper_bound].copy_from_slice(&op.to_bytes());
+                    buf.extend(op.to_bytes().iter());
                     half_word_ix += 1;
                 }
             }
         }
     }
+    if build_config.print_bytecode {
+        println!("{}", data_section);
+        println!(";; --- END OF TARGET BYTECODE ---\n");
+    }
+
+    assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
+    assert_eq!(buf.len(), offset_to_data_section_in_bytes as usize);
 
     let config_offsets = data_section
         .config_map
@@ -175,10 +209,10 @@ fn to_bytecode_mut(
 
     buf.append(&mut data_section);
 
-    Ok(CompiledBytecode {
+    CompiledBytecode {
         bytecode: buf,
         config_const_offsets: config_offsets,
-    })
+    }
 }
 
 /// Checks for disallowed opcodes in non-contract code.

@@ -15,7 +15,7 @@ pub enum Pattern {
     /// A pattern made of a single ident, which could either be a variable or an enum variant
     AmbiguousSingleIdent(Ident),
     Var {
-        reference: Option<RefToken>, // TODO-IG: Remove this and replace with proper support for references in patterns.
+        reference: Option<RefToken>, // TODO-IG: Implement `ref`, `mut`, and `ref mut` when implementing matching of references.
         mutable: Option<MutToken>,
         name: Ident,
     },
@@ -41,27 +41,32 @@ impl Spanned for Pattern {
                 lhs,
                 pipe_token,
                 rhs,
-            } => Span::join(Span::join(lhs.span(), pipe_token.span()), rhs.span()),
+            } => Span::join(Span::join(lhs.span(), &pipe_token.span()), &rhs.span()),
             Pattern::Wildcard { underscore_token } => underscore_token.span(),
             Pattern::Var {
                 reference,
                 mutable,
                 name,
             } => match (reference, mutable) {
-                (Some(ref_token), Some(mut_token)) => {
-                    Span::join(Span::join(ref_token.span(), mut_token.span()), name.span())
-                }
-                (Some(ref_token), None) => Span::join(ref_token.span(), name.span()),
-                (None, Some(mut_token)) => Span::join(mut_token.span(), name.span()),
+                (Some(ref_token), Some(mut_token)) => Span::join(
+                    Span::join(ref_token.span(), &mut_token.span()),
+                    &name.span(),
+                ),
+                (Some(ref_token), None) => Span::join(ref_token.span(), &name.span()),
+                (None, Some(mut_token)) => Span::join(mut_token.span(), &name.span()),
                 (None, None) => name.span(),
             },
             Pattern::AmbiguousSingleIdent(ident) => ident.span(),
             Pattern::Literal(literal) => literal.span(),
             Pattern::Constant(path_expr) => path_expr.span(),
-            Pattern::Constructor { path, args } => Span::join(path.span(), args.span()),
-            Pattern::Struct { path, fields } => Span::join(path.span(), fields.span()),
+            Pattern::Constructor { path, args } => Span::join(path.span(), &args.span()),
+            Pattern::Struct { path, fields } => Span::join(path.span(), &fields.span()),
             Pattern::Tuple(pat_tuple) => pat_tuple.span(),
-            Pattern::Error(spans, _) => spans.iter().cloned().reduce(Span::join).unwrap(),
+            Pattern::Error(spans, _) => spans
+                .iter()
+                .cloned()
+                .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
+                .unwrap(),
         }
     }
 }
@@ -86,7 +91,7 @@ impl Spanned for PatternStructField {
                 field_name,
                 pattern_opt,
             } => match pattern_opt {
-                Some((_colon_token, pattern)) => Span::join(field_name.span(), pattern.span()),
+                Some((_colon_token, pattern)) => Span::join(field_name.span(), &pattern.span()),
                 None => field_name.span(),
             },
         }

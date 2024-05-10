@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-615AD0AE63423614'
+name = "core"
+source = "path+from-root-615AD0AE63423614"
 
 [[package]]
-name = 'retd_struct'
-source = 'member'
-dependencies = ['core']
+name = "retd_struct"
+source = "member"
+dependencies = ["core"]

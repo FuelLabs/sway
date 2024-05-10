@@ -16,7 +16,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         locked,
         disable_tests,
         ipfs_node,
-        experimental_new_encoding,
+        no_encoding_v1,
     } = command;
 
     let this_dir = if let Some(ref path) = path {
@@ -32,7 +32,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         &member_manifests,
         locked,
         offline,
-        ipfs_node.unwrap_or_default(),
+        &ipfs_node.unwrap_or_default(),
     )?;
     let tests_enabled = !disable_tests;
 
@@ -45,7 +45,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         engines,
         None,
         ExperimentalFlags {
-            new_encoding: experimental_new_encoding,
+            new_encoding: !no_encoding_v1,
         },
     )?;
     let (res, handler) = v

@@ -84,6 +84,10 @@ fn analyze_contract(engines: &Engines, ast_nodes: &[ty::TyAstNode]) -> Vec<Compi
     let decl_engine = engines.de();
     let mut warnings: Vec<CompileWarning> = vec![];
     for fn_decl in contract_entry_points(decl_engine, ast_nodes) {
+        // no need to analyze the entry fn
+        if fn_decl.name.as_str() == "__entry" {
+            continue;
+        }
         analyze_code_block(engines, &fn_decl.body, &fn_decl.name, &mut warnings);
     }
     warnings
@@ -245,7 +249,7 @@ fn analyze_expression(
             // we run CEI violation analysis as if the arguments form a code block
             let args_effs = analyze_expressions(
                 engines,
-                arguments.iter().map(|(_, e)| e).collect(),
+                arguments.iter().map(|(_, e)| e),
                 block_name,
                 warnings,
             );
@@ -271,12 +275,8 @@ fn analyze_expression(
         IntrinsicFunction(intrinsic) => {
             let intr_effs = effects_of_intrinsic(&intrinsic.kind);
             // assuming left-to-right arguments evaluation
-            let args_effs = analyze_expressions(
-                engines,
-                intrinsic.arguments.iter().collect(),
-                block_name,
-                warnings,
-            );
+            let args_effs =
+                analyze_expressions(engines, intrinsic.arguments.iter(), block_name, warnings);
             if args_effs.contains(&Effect::Interaction) {
                 // TODO: interaction span has to be more precise and point to an argument which performs interaction
                 warn_after_interaction(&intr_effs, &expr.span, &expr.span, block_name, warnings)
@@ -289,13 +289,13 @@ fn analyze_expression(
             contents: exprs,
         } => {
             // assuming left-to-right fields/elements evaluation
-            analyze_expressions(engines, exprs.iter().collect(), block_name, warnings)
+            analyze_expressions(engines, exprs.iter(), block_name, warnings)
         }
         StructExpression { fields, .. } => {
             // assuming left-to-right fields evaluation
             analyze_expressions(
                 engines,
-                fields.iter().map(|e| &e.value).collect(),
+                fields.iter().map(|e| &e.value),
                 block_name,
                 warnings,
             )
@@ -349,8 +349,7 @@ fn analyze_expression(
         } => {
             let init_exprs = registers
                 .iter()
-                .filter_map(|rdecl| rdecl.initializer.as_ref())
-                .collect();
+                .filter_map(|rdecl| rdecl.initializer.as_ref());
             let init_effs = analyze_expressions(engines, init_exprs, block_name, warnings);
             let asmblock_effs = analyze_asm_block(body, block_name, warnings);
             if init_effs.contains(&Effect::Interaction) {
@@ -386,9 +385,9 @@ fn analyze_two_expressions(
 // Analyze a sequence of expressions
 // TODO: analyze_expressions, analyze_codeblock and analyze_asm_block (see below) are very similar in structure
 //       looks like the algorithm implementation should be generalized
-fn analyze_expressions(
+fn analyze_expressions<'a>(
     engines: &Engines,
-    expressions: Vec<&ty::TyExpression>,
+    expressions: impl Iterator<Item = &'a ty::TyExpression>,
     block_name: &Ident,
     warnings: &mut Vec<CompileWarning>,
 ) -> HashSet<Effect> {
@@ -461,7 +460,7 @@ fn warn_after_interaction(
     let state_effects = ast_node_effects.difference(&interaction_singleton);
     for eff in state_effects {
         warnings.push(CompileWarning {
-            span: Span::join(interaction_span.clone(), effect_span.clone()),
+            span: Span::join(interaction_span.clone(), effect_span),
             warning_content: Warning::EffectAfterInteraction {
                 effect: eff.to_string(),
                 effect_in_suggestion: Effect::to_suggestion(eff),
@@ -608,10 +607,12 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         StateClear | StateStoreWord | StateStoreQuad => HashSet::from([Effect::StorageWrite]),
         StateLoadWord | StateLoadQuad => HashSet::from([Effect::StorageRead]),
         Smo => HashSet::from([Effect::OutputMessage]),
+        ContractCall => HashSet::from([Effect::Interaction]),
         Revert | JmpMem | IsReferenceType | IsStrArray | SizeOfType | SizeOfVal | SizeOfStr
-        | ContractCall | ContractRet | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf
-        | AddrOf | Log | Add | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd
-        | PtrSub | Not => HashSet::new(),
+        | ContractRet | AssertIsStrArray | ToStrArray | Eq | Gt | Lt | Gtf | AddrOf | Log | Add
+        | Sub | Mul | Div | And | Or | Xor | Mod | Rsh | Lsh | PtrAdd | PtrSub | Not => {
+            HashSet::new()
+        }
     }
 }
 

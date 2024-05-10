@@ -27,10 +27,8 @@ impl Named for TyTypeAliasDecl {
 
 impl EqWithEngines for TyTypeAliasDecl {}
 impl PartialEqWithEngines for TyTypeAliasDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name
-            && self.ty.eq(&other.ty, engines)
-            && self.visibility == other.visibility
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.ty.eq(&other.ty, ctx) && self.visibility == other.visibility
     }
 }
 
@@ -53,8 +51,8 @@ impl HashWithEngines for TyTypeAliasDecl {
 }
 
 impl SubstTypes for TyTypeAliasDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.ty.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.ty.subst(type_mapping, engines)
     }
 }
 

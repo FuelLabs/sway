@@ -23,7 +23,7 @@ pub fn possibly_nonzero_u64_expression(
         },
         VariableExpression { name, .. } => {
             match namespace
-                .resolve_symbol(&Handler::default(), engines, name, None)
+                .resolve_symbol_typed(&Handler::default(), engines, name, None)
                 .ok()
             {
                 Some(ty_decl) => {

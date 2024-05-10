@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     sync::Arc,
+    vec,
 };
 
 use sway_error::{
@@ -87,7 +88,11 @@ impl TyImplTrait {
                 // check to see if this type is supported in impl blocks
                 type_engine
                     .get(implementing_for.type_id)
-                    .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
+                    .expect_is_supported_in_impl_blocks_self(
+                        handler,
+                        Some(&trait_name.suffix),
+                        &implementing_for.span,
+                    )?;
 
                 // check for unconstrained type parameters
                 check_for_unconstrained_type_parameters(
@@ -120,7 +125,7 @@ impl TyImplTrait {
 
                 let impl_trait = match ctx
                     .namespace()
-                    .resolve_call_path(handler, engines, &trait_name, ctx.self_type())
+                    .resolve_call_path_typed(handler, engines, &trait_name, ctx.self_type())
                     .ok()
                 {
                     Some(ty::TyDecl::TraitDecl(ty::TraitDecl { decl_id, .. })) => {
@@ -194,10 +199,10 @@ impl TyImplTrait {
 
                         let abi = decl_engine.get_abi(&decl_id);
 
-                        if !type_engine
-                            .get(implementing_for.type_id)
-                            .eq(&TypeInfo::Contract, engines)
-                        {
+                        if !type_engine.get(implementing_for.type_id).eq(
+                            &TypeInfo::Contract,
+                            &PartialEqWithEnginesContext::new(engines),
+                        ) {
                             handler.emit_err(CompileError::ImplAbiForNonContract {
                                 span: implementing_for.span(),
                                 ty: engines.help_out(implementing_for.type_id).to_string(),
@@ -332,7 +337,11 @@ impl TyImplTrait {
                 // check to see if this type is supported in impl blocks
                 type_engine
                     .get(implementing_for.type_id)
-                    .expect_is_supported_in_impl_blocks_self(handler, &implementing_for.span)?;
+                    .expect_is_supported_in_impl_blocks_self(
+                        handler,
+                        None,
+                        &implementing_for.span,
+                    )?;
 
                 // check for unconstrained type parameters
                 check_for_unconstrained_type_parameters(
@@ -407,9 +416,7 @@ impl TyImplTrait {
                                     handler,
                                     decl_ref.name().clone(),
                                     ty::TyDecl::ConstantDecl(ty::ConstantDecl {
-                                        name: decl_ref.name().clone(),
                                         decl_id: *decl_ref.id(),
-                                        decl_span: decl_ref.span().clone(),
                                     }),
                                 )?;
                             }
@@ -433,7 +440,7 @@ impl TyImplTrait {
                     let mut impl_trait = ty::TyImplTrait {
                         impl_type_parameters: new_impl_type_parameters,
                         trait_name,
-                        trait_type_arguments: vec![], // this is empty because impl selfs don't support generics on the "Self" trait,
+                        trait_type_arguments: vec![], // this is empty because impl self's don't support generics on the "Self" trait,
                         trait_decl_ref: None,
                         span: block_span,
                         items: new_items,
@@ -628,20 +635,22 @@ fn type_check_trait_implementation(
     // Check to see if the type that we are implementing for implements the
     // supertraits of this trait.
     ctx.namespace_mut()
-        .module_mut()
-        .current_items_mut()
-        .implemented_traits
-        .check_if_trait_constraints_are_satisfied_for_type(
-            handler,
-            implementing_for,
-            &trait_supertraits
-                .iter()
-                .map(|x| x.into())
-                .collect::<Vec<_>>(),
-            block_span,
-            engines,
-            TryInsertingTraitImplOnFailure::Yes,
-        )?;
+        .module_mut(engines)
+        .write(engines, |m| {
+            m.current_items_mut()
+                .implemented_traits
+                .check_if_trait_constraints_are_satisfied_for_type(
+                    handler,
+                    implementing_for,
+                    &trait_supertraits
+                        .iter()
+                        .map(|x| x.into())
+                        .collect::<Vec<_>>(),
+                    block_span,
+                    engines,
+                    TryInsertingTraitImplOnFailure::Yes,
+                )
+        })?;
 
     for (type_arg, type_param) in trait_type_arguments.iter().zip(trait_type_parameters) {
         type_arg.type_id.check_type_parameter_bounds(
@@ -801,11 +810,13 @@ fn type_check_trait_implementation(
                             // Using Span::dummy just to match the type substitution, type is not used anywhere else.
                             name: Ident::new_with_override("Self".into(), Span::dummy()),
                             trait_constraints: VecSet(vec![]),
+                            parent: None,
+                            is_from_type_parameter: false,
                         },
                         None,
                     ),
                 };
-                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
                     vec![type_engine.insert(
                         engines,
                         old_type_decl_info1,
@@ -813,7 +824,7 @@ fn type_check_trait_implementation(
                     )],
                     vec![type_decl.ty.clone().unwrap().type_id],
                 ));
-                trait_type_mapping.extend(TypeSubstMap::from_type_parameters_and_type_arguments(
+                trait_type_mapping.extend(&TypeSubstMap::from_type_parameters_and_type_arguments(
                     vec![type_engine.insert(
                         engines,
                         old_type_decl_info2,
@@ -897,7 +908,7 @@ fn type_check_trait_implementation(
             .map(|type_arg| type_arg.type_id)
             .collect(),
     );
-    type_mapping.extend(trait_type_mapping);
+    type_mapping.extend(&trait_type_mapping);
 
     interface_item_refs.extend(supertrait_interface_item_refs);
     impld_item_refs.extend(supertrait_impld_item_refs);
@@ -1093,9 +1104,9 @@ fn type_check_impl_method(
                 impl_method_signature_param.type_argument.type_id;
             impl_method_signature_param_type_id.subst(&ctx.type_subst(), engines);
 
-            if !type_engine.get(impl_method_param_type_id).eq(
-                &type_engine.get(impl_method_signature_param_type_id),
-                engines,
+            if !UnifyCheck::non_dynamic_equality(engines).check(
+                impl_method_param_type_id,
+                impl_method_signature_param_type_id,
             ) {
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
                     interface_name: interface_name(),
@@ -1167,9 +1178,9 @@ fn type_check_impl_method(
             impl_method_signature.return_type.type_id;
         impl_method_signature_return_type_type_id.subst(&ctx.type_subst(), engines);
 
-        if !type_engine.get(impl_method_return_type_id).eq(
-            &type_engine.get(impl_method_signature_return_type_type_id),
-            engines,
+        if !UnifyCheck::non_dynamic_equality(engines).check(
+            impl_method_return_type_id,
+            impl_method_signature_return_type_type_id,
         ) {
             return Err(
                 handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
@@ -1277,9 +1288,8 @@ fn type_check_const_decl(
     const_decl_signature_type_id.subst(&ctx.type_subst(), engines);
 
     // unify the types from the constant with the constant signature
-    if !type_engine
-        .get(const_decl_type_id)
-        .eq(&type_engine.get(const_decl_signature_type_id), engines)
+    if !UnifyCheck::non_dynamic_equality(engines)
+        .check(const_decl_type_id, const_decl_signature_type_id)
     {
         return Err(
             handler.emit_err(CompileError::MismatchedTypeInInterfaceSurface {
@@ -1448,18 +1458,29 @@ fn handle_supertraits(
             // using a callpath directly, so we check to see if the user has done
             // this and we disallow it.
             if !supertrait.name.prefixes.is_empty() {
-                handler.emit_err(CompileError::UnimplementedWithHelp(
-                    "Using module paths to define supertraits is not supported yet.",
-                    "try importing the trait with a \"use\" statement instead",
-                    supertrait.span(),
-                ));
+                handler.emit_err(CompileError::Unimplemented {
+                    feature: "Using module paths to define supertraits".to_string(),
+                    help: vec![
+                        // Note that eventual leading `::` will not be shown. It'a fine for now, we anyhow want to implement using module paths.
+                        format!(
+                            "Import the supertrait by using: `use {};`.",
+                            supertrait.name
+                        ),
+                        format!(
+                            "Then, in the list of supertraits, just use the trait name \"{}\".",
+                            supertrait.name.suffix
+                        ),
+                    ],
+                    span: supertrait.span(),
+                });
+
                 continue;
             }
 
             match ctx
                 .namespace()
                 // Use the default Handler to avoid emitting the redundant SymbolNotFound error.
-                .resolve_call_path(
+                .resolve_call_path_typed(
                     &Handler::default(),
                     engines,
                     &supertrait.name,
@@ -1473,10 +1494,12 @@ fn handle_supertraits(
                     // Right now we don't parse type arguments for supertraits, so
                     // we should give this error message to users.
                     if !trait_decl.type_parameters.is_empty() {
-                        handler.emit_err(CompileError::Unimplemented(
-                            "Using generic traits as supertraits is not supported yet.",
-                            supertrait.name.span(),
-                        ));
+                        handler.emit_err(CompileError::Unimplemented {
+                            feature: "Using generic traits as supertraits".to_string(),
+                            help: vec![],
+                            span: supertrait.span(),
+                        });
+
                         continue;
                     }
 

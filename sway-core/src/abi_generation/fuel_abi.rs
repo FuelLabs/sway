@@ -2,13 +2,12 @@ use fuel_abi_types::abi::program as program_abi;
 use sway_types::integer_bits::IntegerBits;
 
 use crate::{
-    decl_engine::DeclEngine,
     language::{
         ty::{TyConstantDecl, TyFunctionDecl, TyProgram, TyProgramKind},
         CallPath,
     },
     transform::AttributesMap,
-    TypeArgument, TypeEngine, TypeId, TypeInfo, TypeParameter,
+    Engines, TypeArgument, TypeId, TypeInfo, TypeParameter,
 };
 
 pub struct AbiContext<'a> {
@@ -18,23 +17,23 @@ pub struct AbiContext<'a> {
 
 pub fn generate_program_abi(
     ctx: &mut AbiContext,
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     types: &mut Vec<program_abi::TypeDeclaration>,
     encoding: Option<program_abi::Version>,
 ) -> program_abi::ProgramABI {
+    let decl_engine = engines.de();
     match &ctx.program.kind {
         TyProgramKind::Contract { abi_entries, .. } => {
             let functions = abi_entries
                 .iter()
                 .map(|x| {
                     let fn_decl = decl_engine.get_function(x);
-                    fn_decl.generate_abi_function(ctx, type_engine, decl_engine, types)
+                    fn_decl.generate_abi_function(ctx, engines, types)
                 })
                 .collect();
-            let logged_types = generate_logged_types(ctx, type_engine, decl_engine, types);
-            let messages_types = generate_messages_types(ctx, type_engine, decl_engine, types);
-            let configurables = generate_configurables(ctx, type_engine, decl_engine, types);
+            let logged_types = generate_logged_types(ctx, engines, types);
+            let messages_types = generate_messages_types(ctx, engines, types);
+            let configurables = generate_configurables(ctx, engines, types);
             program_abi::ProgramABI {
                 encoding,
                 types: types.to_vec(),
@@ -47,11 +46,10 @@ pub fn generate_program_abi(
         TyProgramKind::Script { main_function, .. }
         | TyProgramKind::Predicate { main_function, .. } => {
             let main_function = decl_engine.get_function(main_function);
-            let functions =
-                vec![main_function.generate_abi_function(ctx, type_engine, decl_engine, types)];
-            let logged_types = generate_logged_types(ctx, type_engine, decl_engine, types);
-            let messages_types = generate_messages_types(ctx, type_engine, decl_engine, types);
-            let configurables = generate_configurables(ctx, type_engine, decl_engine, types);
+            let functions = vec![main_function.generate_abi_function(ctx, engines, types)];
+            let logged_types = generate_logged_types(ctx, engines, types);
+            let messages_types = generate_messages_types(ctx, engines, types);
+            let configurables = generate_configurables(ctx, engines, types);
             program_abi::ProgramABI {
                 encoding,
                 types: types.to_vec(),
@@ -74,8 +72,7 @@ pub fn generate_program_abi(
 
 fn generate_logged_types(
     ctx: &mut AbiContext,
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     types: &mut Vec<program_abi::TypeDeclaration>,
 ) -> Vec<program_abi::LoggedType> {
     // A list of all `program_abi::TypeDeclaration`s needed for the logged types
@@ -85,21 +82,9 @@ fn generate_logged_types(
         .iter()
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
-            type_field: type_id.get_abi_type_str(ctx, type_engine, decl_engine, *type_id),
-            components: type_id.get_abi_type_components(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-                *type_id,
-            ),
-            type_parameters: type_id.get_abi_type_parameters(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-                *type_id,
-            ),
+            type_field: type_id.get_abi_type_str(ctx, engines, *type_id),
+            components: type_id.get_abi_type_components(ctx, engines, types, *type_id),
+            type_parameters: type_id.get_abi_type_parameters(ctx, engines, types, *type_id),
         })
         .collect::<Vec<_>>();
 
@@ -115,13 +100,7 @@ fn generate_logged_types(
             application: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: type_id.index(),
-                type_arguments: type_id.get_abi_type_arguments(
-                    ctx,
-                    type_engine,
-                    decl_engine,
-                    types,
-                    *type_id,
-                ),
+                type_arguments: type_id.get_abi_type_arguments(ctx, engines, types, *type_id),
             },
         })
         .collect()
@@ -129,8 +108,7 @@ fn generate_logged_types(
 
 fn generate_messages_types(
     ctx: &mut AbiContext,
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     types: &mut Vec<program_abi::TypeDeclaration>,
 ) -> Vec<program_abi::MessageType> {
     // A list of all `program_abi::TypeDeclaration`s needed for the messages types
@@ -140,21 +118,9 @@ fn generate_messages_types(
         .iter()
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
-            type_field: type_id.get_abi_type_str(ctx, type_engine, decl_engine, *type_id),
-            components: type_id.get_abi_type_components(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-                *type_id,
-            ),
-            type_parameters: type_id.get_abi_type_parameters(
-                ctx,
-                type_engine,
-                decl_engine,
-                types,
-                *type_id,
-            ),
+            type_field: type_id.get_abi_type_str(ctx, engines, *type_id),
+            components: type_id.get_abi_type_components(ctx, engines, types, *type_id),
+            type_parameters: type_id.get_abi_type_parameters(ctx, engines, types, *type_id),
         })
         .collect::<Vec<_>>();
 
@@ -170,13 +136,7 @@ fn generate_messages_types(
             application: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: type_id.index(),
-                type_arguments: type_id.get_abi_type_arguments(
-                    ctx,
-                    type_engine,
-                    decl_engine,
-                    types,
-                    *type_id,
-                ),
+                type_arguments: type_id.get_abi_type_arguments(ctx, engines, types, *type_id),
             },
         })
         .collect()
@@ -184,8 +144,7 @@ fn generate_messages_types(
 
 fn generate_configurables(
     ctx: &mut AbiContext,
-    type_engine: &TypeEngine,
-    decl_engine: &DeclEngine,
+    engines: &Engines,
     types: &mut Vec<program_abi::TypeDeclaration>,
 ) -> Vec<program_abi::Configurable> {
     // A list of all `program_abi::TypeDeclaration`s needed for the configurables types
@@ -200,21 +159,18 @@ fn generate_configurables(
                 type_id: type_ascription.type_id.index(),
                 type_field: type_ascription.type_id.get_abi_type_str(
                     ctx,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     type_ascription.type_id,
                 ),
                 components: type_ascription.type_id.get_abi_type_components(
                     ctx,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     types,
                     type_ascription.type_id,
                 ),
                 type_parameters: type_ascription.type_id.get_abi_type_parameters(
                     ctx,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     types,
                     type_ascription.type_id,
                 ),
@@ -241,8 +197,7 @@ fn generate_configurables(
                     type_id: type_ascription.type_id.index(),
                     type_arguments: type_ascription.type_id.get_abi_type_arguments(
                         ctx,
-                        type_engine,
-                        decl_engine,
+                        engines,
                         types,
                         type_ascription.type_id,
                     ),
@@ -258,31 +213,26 @@ impl TypeId {
     pub(self) fn get_abi_type_str(
         &self,
         ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         resolved_type_id: TypeId,
     ) -> String {
-        if self.is_generic_parameter(type_engine, decl_engine, resolved_type_id) {
-            format!(
-                "generic {}",
-                type_engine
-                    .get(*self)
-                    .abi_str(ctx, type_engine, decl_engine)
-            )
+        let type_engine = engines.te();
+        if self.is_generic_parameter(engines, resolved_type_id) {
+            format!("generic {}", type_engine.get(*self).abi_str(ctx, engines))
         } else {
             match (
                 &*type_engine.get(*self),
                 &*type_engine.get(resolved_type_id),
             ) {
-                (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => type_engine
-                    .get(resolved_type_id)
-                    .abi_str(ctx, type_engine, decl_engine),
-                (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => type_engine
-                    .get(resolved_type_id)
-                    .abi_str(ctx, type_engine, decl_engine),
-                (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => type_engine
-                    .get(resolved_type_id)
-                    .abi_str(ctx, type_engine, decl_engine),
+                (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
+                    type_engine.get(resolved_type_id).abi_str(ctx, engines)
+                }
+                (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
+                    type_engine.get(resolved_type_id).abi_str(ctx, engines)
+                }
+                (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => {
+                    type_engine.get(resolved_type_id).abi_str(ctx, engines)
+                }
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = fields
@@ -296,16 +246,9 @@ impl TypeId {
                     format!("[_; {}]", count.val())
                 }
                 (TypeInfo::Custom { .. }, _) => {
-                    format!(
-                        "generic {}",
-                        type_engine
-                            .get(*self)
-                            .abi_str(ctx, type_engine, decl_engine)
-                    )
+                    format!("generic {}", type_engine.get(*self).abi_str(ctx, engines))
                 }
-                _ => type_engine
-                    .get(resolved_type_id)
-                    .abi_str(ctx, type_engine, decl_engine),
+                _ => type_engine.get(resolved_type_id).abi_str(ctx, engines),
             }
         }
     }
@@ -318,20 +261,17 @@ impl TypeId {
     pub(self) fn get_abi_type_parameters(
         &self,
         ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         types: &mut Vec<program_abi::TypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<usize>> {
-        match self.is_generic_parameter(type_engine, decl_engine, resolved_type_id) {
+        match self.is_generic_parameter(engines, resolved_type_id) {
             true => None,
-            false => resolved_type_id
-                .get_type_parameters(type_engine, decl_engine)
-                .map(|v| {
-                    v.iter()
-                        .map(|v| v.get_abi_type_parameter(ctx, type_engine, decl_engine, types))
-                        .collect::<Vec<_>>()
-                }),
+            false => resolved_type_id.get_type_parameters(engines).map(|v| {
+                v.iter()
+                    .map(|v| v.get_abi_type_parameter(ctx, engines, types))
+                    .collect::<Vec<_>>()
+            }),
         }
     }
     /// Return the components of a given (potentially generic) type while considering what it
@@ -341,11 +281,12 @@ impl TypeId {
     pub(self) fn get_abi_type_components(
         &self,
         ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         types: &mut Vec<program_abi::TypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<program_abi::TypeApplication>> {
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
         match &*type_engine.get(*self) {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
@@ -357,21 +298,18 @@ impl TypeId {
                         type_id: x.type_argument.initial_type_id.index(),
                         type_field: x.type_argument.initial_type_id.get_abi_type_str(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             x.type_argument.type_id,
                         ),
                         components: x.type_argument.initial_type_id.get_abi_type_components(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             x.type_argument.type_id,
                         ),
                         type_parameters: x.type_argument.initial_type_id.get_abi_type_parameters(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             x.type_argument.type_id,
                         ),
@@ -389,8 +327,7 @@ impl TypeId {
                             type_id: x.type_argument.initial_type_id.index(),
                             type_arguments: x.type_argument.initial_type_id.get_abi_type_arguments(
                                 ctx,
-                                type_engine,
-                                decl_engine,
+                                engines,
                                 types,
                                 x.type_argument.type_id,
                             ),
@@ -409,21 +346,18 @@ impl TypeId {
                         type_id: x.type_argument.initial_type_id.index(),
                         type_field: x.type_argument.initial_type_id.get_abi_type_str(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             x.type_argument.type_id,
                         ),
                         components: x.type_argument.initial_type_id.get_abi_type_components(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             x.type_argument.type_id,
                         ),
                         type_parameters: x.type_argument.initial_type_id.get_abi_type_parameters(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             x.type_argument.type_id,
                         ),
@@ -441,8 +375,7 @@ impl TypeId {
                             type_id: x.type_argument.initial_type_id.index(),
                             type_arguments: x.type_argument.initial_type_id.get_abi_type_arguments(
                                 ctx,
-                                type_engine,
-                                decl_engine,
+                                engines,
                                 types,
                                 x.type_argument.type_id,
                             ),
@@ -457,21 +390,18 @@ impl TypeId {
                         type_id: elem_ty.initial_type_id.index(),
                         type_field: elem_ty.initial_type_id.get_abi_type_str(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             elem_ty.type_id,
                         ),
                         components: elem_ty.initial_type_id.get_abi_type_components(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             elem_ty.type_id,
                         ),
                         type_parameters: elem_ty.initial_type_id.get_abi_type_parameters(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             elem_ty.type_id,
                         ),
@@ -485,8 +415,7 @@ impl TypeId {
                         type_id: elem_ty.initial_type_id.index(),
                         type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             elem_ty.type_id,
                         ),
@@ -502,26 +431,13 @@ impl TypeId {
                         .iter()
                         .map(|x| program_abi::TypeDeclaration {
                             type_id: x.initial_type_id.index(),
-                            type_field: x.initial_type_id.get_abi_type_str(
-                                ctx,
-                                type_engine,
-                                decl_engine,
-                                x.type_id,
-                            ),
-                            components: x.initial_type_id.get_abi_type_components(
-                                ctx,
-                                type_engine,
-                                decl_engine,
-                                types,
-                                x.type_id,
-                            ),
-                            type_parameters: x.initial_type_id.get_abi_type_parameters(
-                                ctx,
-                                type_engine,
-                                decl_engine,
-                                types,
-                                x.type_id,
-                            ),
+                            type_field: x.initial_type_id.get_abi_type_str(ctx, engines, x.type_id),
+                            components: x
+                                .initial_type_id
+                                .get_abi_type_components(ctx, engines, types, x.type_id),
+                            type_parameters: x
+                                .initial_type_id
+                                .get_abi_type_parameters(ctx, engines, types, x.type_id),
                         })
                         .collect::<Vec<_>>();
 
@@ -535,13 +451,9 @@ impl TypeId {
                             .map(|x| program_abi::TypeApplication {
                                 name: "__tuple_element".to_string(),
                                 type_id: x.initial_type_id.index(),
-                                type_arguments: x.initial_type_id.get_abi_type_arguments(
-                                    ctx,
-                                    type_engine,
-                                    decl_engine,
-                                    types,
-                                    x.type_id,
-                                ),
+                                type_arguments: x
+                                    .initial_type_id
+                                    .get_abi_type_arguments(ctx, engines, types, x.type_id),
                             })
                             .collect(),
                     )
@@ -550,7 +462,7 @@ impl TypeId {
                 }
             }
             TypeInfo::Custom { type_arguments, .. } => {
-                if !self.is_generic_parameter(type_engine, decl_engine, resolved_type_id) {
+                if !self.is_generic_parameter(engines, resolved_type_id) {
                     // A list of all `program_abi::TypeDeclaration`s needed for the type arguments
                     let type_args = type_arguments
                         .clone()
@@ -558,56 +470,32 @@ impl TypeId {
                         .iter()
                         .zip(
                             resolved_type_id
-                                .get_type_parameters(type_engine, decl_engine)
+                                .get_type_parameters(engines)
                                 .unwrap_or_default()
                                 .iter(),
                         )
                         .map(|(v, p)| program_abi::TypeDeclaration {
                             type_id: v.initial_type_id.index(),
-                            type_field: v.initial_type_id.get_abi_type_str(
-                                ctx,
-                                type_engine,
-                                decl_engine,
-                                p.type_id,
-                            ),
-                            components: v.initial_type_id.get_abi_type_components(
-                                ctx,
-                                type_engine,
-                                decl_engine,
-                                types,
-                                p.type_id,
-                            ),
-                            type_parameters: v.initial_type_id.get_abi_type_parameters(
-                                ctx,
-                                type_engine,
-                                decl_engine,
-                                types,
-                                p.type_id,
-                            ),
+                            type_field: v.initial_type_id.get_abi_type_str(ctx, engines, p.type_id),
+                            components: v
+                                .initial_type_id
+                                .get_abi_type_components(ctx, engines, types, p.type_id),
+                            type_parameters: v
+                                .initial_type_id
+                                .get_abi_type_parameters(ctx, engines, types, p.type_id),
                         })
                         .collect::<Vec<_>>();
                     types.extend(type_args);
 
-                    resolved_type_id.get_abi_type_components(
-                        ctx,
-                        type_engine,
-                        decl_engine,
-                        types,
-                        resolved_type_id,
-                    )
+                    resolved_type_id.get_abi_type_components(ctx, engines, types, resolved_type_id)
                 } else {
                     None
                 }
             }
             TypeInfo::Alias { .. } => {
                 if let TypeInfo::Alias { ty, .. } = &*type_engine.get(resolved_type_id) {
-                    ty.initial_type_id.get_abi_type_components(
-                        ctx,
-                        type_engine,
-                        decl_engine,
-                        types,
-                        ty.type_id,
-                    )
+                    ty.initial_type_id
+                        .get_abi_type_components(ctx, engines, types, ty.type_id)
                 } else {
                     None
                 }
@@ -617,13 +505,7 @@ impl TypeId {
                 if *self == resolved_type_id {
                     None
                 } else {
-                    resolved_type_id.get_abi_type_components(
-                        ctx,
-                        type_engine,
-                        decl_engine,
-                        types,
-                        resolved_type_id,
-                    )
+                    resolved_type_id.get_abi_type_components(ctx, engines, types, resolved_type_id)
                 }
             }
             _ => None,
@@ -637,12 +519,13 @@ impl TypeId {
     pub(self) fn get_abi_type_arguments(
         &self,
         ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         types: &mut Vec<program_abi::TypeDeclaration>,
         resolved_type_id: TypeId,
     ) -> Option<Vec<program_abi::TypeApplication>> {
-        let resolved_params = resolved_type_id.get_type_parameters(type_engine, decl_engine);
+        let type_engine = engines.te();
+        let decl_engine = engines.de();
+        let resolved_params = resolved_type_id.get_type_parameters(engines);
         match &*type_engine.get(*self) {
             TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
@@ -654,26 +537,13 @@ impl TypeId {
                     .zip(resolved_params.iter())
                     .map(|(v, p)| program_abi::TypeDeclaration {
                         type_id: v.initial_type_id.index(),
-                        type_field: v.initial_type_id.get_abi_type_str(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            p.type_id,
-                        ),
-                        components: v.initial_type_id.get_abi_type_components(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            types,
-                            p.type_id,
-                        ),
-                        type_parameters: v.initial_type_id.get_abi_type_parameters(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            types,
-                            p.type_id,
-                        ),
+                        type_field: v.initial_type_id.get_abi_type_str(ctx, engines, p.type_id),
+                        components: v
+                            .initial_type_id
+                            .get_abi_type_components(ctx, engines, types, p.type_id),
+                        type_parameters: v
+                            .initial_type_id
+                            .get_abi_type_parameters(ctx, engines, types, p.type_id),
                     })
                     .collect::<Vec<_>>();
                 types.extend(abi_type_arguments);
@@ -685,8 +555,7 @@ impl TypeId {
                         type_id: arg.initial_type_id.index(),
                         type_arguments: arg.initial_type_id.get_abi_type_arguments(
                             ctx,
-                            type_engine,
-                            decl_engine,
+                            engines,
                             types,
                             arg.type_id,
                         ),
@@ -701,26 +570,13 @@ impl TypeId {
                     .iter()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
-                        type_field: v.type_id.get_abi_type_str(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            v.type_id,
-                        ),
-                        components: v.type_id.get_abi_type_components(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            types,
-                            v.type_id,
-                        ),
-                        type_parameters: v.type_id.get_abi_type_parameters(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            types,
-                            v.type_id,
-                        ),
+                        type_field: v.type_id.get_abi_type_str(ctx, engines, v.type_id),
+                        components: v
+                            .type_id
+                            .get_abi_type_components(ctx, engines, types, v.type_id),
+                        type_parameters: v
+                            .type_id
+                            .get_abi_type_parameters(ctx, engines, types, v.type_id),
                     })
                     .collect::<Vec<_>>();
                 types.extend(abi_type_arguments);
@@ -733,8 +589,7 @@ impl TypeId {
                             type_id: arg.type_id.index(),
                             type_arguments: arg.type_id.get_abi_type_arguments(
                                 ctx,
-                                type_engine,
-                                decl_engine,
+                                engines,
                                 types,
                                 arg.type_id,
                             ),
@@ -751,26 +606,13 @@ impl TypeId {
                     .iter()
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
-                        type_field: v.type_id.get_abi_type_str(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            v.type_id,
-                        ),
-                        components: v.type_id.get_abi_type_components(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            types,
-                            v.type_id,
-                        ),
-                        type_parameters: v.type_id.get_abi_type_parameters(
-                            ctx,
-                            type_engine,
-                            decl_engine,
-                            types,
-                            v.type_id,
-                        ),
+                        type_field: v.type_id.get_abi_type_str(ctx, engines, v.type_id),
+                        components: v
+                            .type_id
+                            .get_abi_type_components(ctx, engines, types, v.type_id),
+                        type_parameters: v
+                            .type_id
+                            .get_abi_type_parameters(ctx, engines, types, v.type_id),
                     })
                     .collect::<Vec<_>>();
                 types.extend(abi_type_arguments);
@@ -783,8 +625,7 @@ impl TypeId {
                             type_id: arg.type_id.index(),
                             type_arguments: arg.type_id.get_abi_type_arguments(
                                 ctx,
-                                type_engine,
-                                decl_engine,
+                                engines,
                                 types,
                                 arg.type_id,
                             ),
@@ -798,13 +639,9 @@ impl TypeId {
 }
 
 impl TypeInfo {
-    pub fn abi_str(
-        &self,
-        ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> String {
+    pub fn abi_str(&self, ctx: &mut AbiContext, engines: &Engines) -> String {
         use TypeInfo::*;
+        let decl_engine = engines.de();
         match self {
             Unknown => "unknown".into(),
             Never => "never".into(),
@@ -829,7 +666,7 @@ impl TypeInfo {
             Tuple(fields) => {
                 let field_strs = fields
                     .iter()
-                    .map(|field| field.abi_str(ctx, type_engine, decl_engine))
+                    .map(|field| field.abi_str(ctx, engines))
                     .collect::<Vec<String>>();
                 format!("({})", field_strs.join(", "))
             }
@@ -839,32 +676,31 @@ impl TypeInfo {
             ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
-                format!("enum {}", call_path_display(ctx, &decl.call_path))
+                format!("enum {}", call_path_display(ctx, engines, &decl.call_path))
             }
             Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                format!("struct {}", call_path_display(ctx, &decl.call_path))
+                format!(
+                    "struct {}",
+                    call_path_display(ctx, engines, &decl.call_path)
+                )
             }
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {abi_name}")
             }
             Array(elem_ty, length) => {
-                format!(
-                    "[{}; {}]",
-                    elem_ty.abi_str(ctx, type_engine, decl_engine),
-                    length.val()
-                )
+                format!("[{}; {}]", elem_ty.abi_str(ctx, engines), length.val())
             }
             Storage { .. } => "contract storage".into(),
             RawUntypedPtr => "raw untyped ptr".into(),
             RawUntypedSlice => "raw untyped slice".into(),
             Ptr(ty) => {
-                format!("__ptr {}", ty.abi_str(ctx, type_engine, decl_engine))
+                format!("__ptr {}", ty.abi_str(ctx, engines))
             }
             Slice(ty) => {
-                format!("__slice {}", ty.abi_str(ctx, type_engine, decl_engine))
+                format!("__slice {}", ty.abi_str(ctx, engines))
             }
-            Alias { ty, .. } => ty.abi_str(ctx, type_engine, decl_engine),
+            Alias { ty, .. } => ty.abi_str(ctx, engines),
             TraitType {
                 name,
                 trait_type_id: _,
@@ -876,7 +712,7 @@ impl TypeInfo {
                 format!(
                     "__ref {}{}", // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
                     if *to_mutable_value { "mut " } else { "" },
-                    referenced_type.abi_str(ctx, type_engine, decl_engine)
+                    referenced_type.abi_str(ctx, engines)
                 )
             }
         }
@@ -885,7 +721,7 @@ impl TypeInfo {
 
 /// `call_path_display`  returns the provided `call_path` without the first prefix in case it is equal to the program name.
 /// If the program name is `my_program` and the `call_path` is `my_program::MyStruct` then this function returns only `MyStruct`.
-fn call_path_display(ctx: &mut AbiContext, call_path: &CallPath) -> String {
+fn call_path_display(ctx: &mut AbiContext, engines: &Engines, call_path: &CallPath) -> String {
     if !ctx.abi_with_callpaths {
         return call_path.suffix.as_str().to_string();
     }
@@ -893,7 +729,13 @@ fn call_path_display(ctx: &mut AbiContext, call_path: &CallPath) -> String {
     for (index, prefix) in call_path.prefixes.iter().enumerate() {
         let mut skip_prefix = false;
         if index == 0 {
-            if let Some(root_name) = &ctx.program.root.namespace.module().name {
+            if let Some(root_name) = &ctx
+                .program
+                .root
+                .namespace
+                .module_id(engines)
+                .read(engines, |m| m.name.clone())
+            {
                 if prefix.as_str() == root_name.as_str() {
                     skip_prefix = true;
                 }
@@ -913,8 +755,7 @@ impl TyFunctionDecl {
     pub(self) fn generate_abi_function(
         &self,
         ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         types: &mut Vec<program_abi::TypeDeclaration>,
     ) -> program_abi::ABIFunction {
         // A list of all `program_abi::TypeDeclaration`s needed for inputs
@@ -925,21 +766,18 @@ impl TyFunctionDecl {
                 type_id: x.type_argument.initial_type_id.index(),
                 type_field: x.type_argument.initial_type_id.get_abi_type_str(
                     ctx,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     x.type_argument.type_id,
                 ),
                 components: x.type_argument.initial_type_id.get_abi_type_components(
                     ctx,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     types,
                     x.type_argument.type_id,
                 ),
                 type_parameters: x.type_argument.type_id.get_abi_type_parameters(
                     ctx,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     types,
                     x.type_argument.type_id,
                 ),
@@ -951,21 +789,18 @@ impl TyFunctionDecl {
             type_id: self.return_type.initial_type_id.index(),
             type_field: self.return_type.initial_type_id.get_abi_type_str(
                 ctx,
-                type_engine,
-                decl_engine,
+                engines,
                 self.return_type.type_id,
             ),
             components: self.return_type.type_id.get_abi_type_components(
                 ctx,
-                type_engine,
-                decl_engine,
+                engines,
                 types,
                 self.return_type.type_id,
             ),
             type_parameters: self.return_type.type_id.get_abi_type_parameters(
                 ctx,
-                type_engine,
-                decl_engine,
+                engines,
                 types,
                 self.return_type.type_id,
             ),
@@ -986,8 +821,7 @@ impl TyFunctionDecl {
                     type_id: x.type_argument.initial_type_id.index(),
                     type_arguments: x.type_argument.initial_type_id.get_abi_type_arguments(
                         ctx,
-                        type_engine,
-                        decl_engine,
+                        engines,
                         types,
                         x.type_argument.type_id,
                     ),
@@ -998,8 +832,7 @@ impl TyFunctionDecl {
                 type_id: self.return_type.initial_type_id.index(),
                 type_arguments: self.return_type.initial_type_id.get_abi_type_arguments(
                     ctx,
-                    type_engine,
-                    decl_engine,
+                    engines,
                     types,
                     self.return_type.type_id,
                 ),
@@ -1033,22 +866,17 @@ impl TypeParameter {
     pub(self) fn get_abi_type_parameter(
         &self,
         ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
+        engines: &Engines,
         types: &mut Vec<program_abi::TypeDeclaration>,
     ) -> usize {
         let type_parameter = program_abi::TypeDeclaration {
             type_id: self.initial_type_id.index(),
-            type_field: self.initial_type_id.get_abi_type_str(
-                ctx,
-                type_engine,
-                decl_engine,
-                self.type_id,
-            ),
+            type_field: self
+                .initial_type_id
+                .get_abi_type_str(ctx, engines, self.type_id),
             components: self.initial_type_id.get_abi_type_components(
                 ctx,
-                type_engine,
-                decl_engine,
+                engines,
                 types,
                 self.type_id,
             ),
@@ -1060,14 +888,7 @@ impl TypeParameter {
 }
 
 impl TypeArgument {
-    pub(self) fn abi_str(
-        &self,
-        ctx: &mut AbiContext,
-        type_engine: &TypeEngine,
-        decl_engine: &DeclEngine,
-    ) -> String {
-        type_engine
-            .get(self.type_id)
-            .abi_str(ctx, type_engine, decl_engine)
+    pub(self) fn abi_str(&self, ctx: &mut AbiContext, engines: &Engines) -> String {
+        engines.te().get(self.type_id).abi_str(ctx, engines)
     }
 }

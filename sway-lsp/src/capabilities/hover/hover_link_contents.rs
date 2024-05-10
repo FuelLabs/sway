@@ -4,6 +4,7 @@ use crate::{
 };
 use std::sync::Arc;
 use sway_core::{
+    engine_threading::SpannedWithEngines,
     language::{
         ty::{TyDecl, TyTraitDecl},
         CallPath,
@@ -87,36 +88,37 @@ impl<'a> HoverLinkContents<'a> {
         };
     }
 
-    /// Adds all implementations of the given [TyTraitDecl] to the list of implementations.
+    /// Adds all implementations of the given [`TyTraitDecl`] to the list of implementations.
     pub fn add_implementations_for_trait(&mut self, trait_decl: &TyTraitDecl) {
         if let Some(namespace) = self.session.namespace() {
-            let call_path = CallPath::from(trait_decl.name.clone()).to_fullpath(&namespace);
+            let call_path =
+                CallPath::from(trait_decl.name.clone()).to_fullpath(self.engines, &namespace);
             let impl_spans = namespace
-                .module()
+                .module(self.engines)
                 .current_items()
                 .get_impl_spans_for_trait_name(&call_path);
             self.add_implementations(&trait_decl.span(), impl_spans);
         }
     }
 
-    /// Adds implementations of the given type to the list of implementations using the [TyDecl].
+    /// Adds implementations of the given type to the list of implementations using the [`TyDecl`].
     pub fn add_implementations_for_decl(&mut self, ty_decl: &TyDecl) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace
-                .module()
+                .module(self.engines)
                 .current_items()
                 .get_impl_spans_for_decl(self.engines, ty_decl);
-            self.add_implementations(&ty_decl.span(), impl_spans);
+            self.add_implementations(&ty_decl.span(self.engines), impl_spans);
         }
     }
 
-    /// Adds implementations of the given type to the list of implementations using the [TypeId].
-    pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: &TypeId) {
+    /// Adds implementations of the given type to the list of implementations using the [`TypeId`].
+    pub fn add_implementations_for_type(&mut self, decl_span: &Span, type_id: TypeId) {
         if let Some(namespace) = self.session.namespace() {
             let impl_spans = namespace
-                .module()
+                .module(self.engines)
                 .current_items()
-                .get_impl_spans_for_type(self.engines, type_id);
+                .get_impl_spans_for_type(self.engines, &type_id);
             self.add_implementations(decl_span, impl_spans);
         }
     }
@@ -127,7 +129,7 @@ impl<'a> HoverLinkContents<'a> {
         let mut all_spans = vec![decl_span.clone()];
         all_spans.append(&mut impl_spans);
         all_spans.dedup();
-        all_spans.iter().for_each(|span| {
+        for span in &all_spans {
             let span_result = self
                 .session
                 .sync
@@ -135,6 +137,6 @@ impl<'a> HoverLinkContents<'a> {
             if let Ok(span) = span_result {
                 self.implementations.push(span);
             }
-        });
+        }
     }
 }

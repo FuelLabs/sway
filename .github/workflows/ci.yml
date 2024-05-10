@@ -141,6 +141,27 @@ jobs:
       - name: Run the formatter against all sway projects and fail if any of them panic
         run: scripts/formatter/forc-fmt-check-panic.sh
 
+  check-sdk-harness-test-suite-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install toml-cli
+        run: cargo install toml-cli
+
+      - name: Read and compare versions
+        env:
+          PACKAGE_NAMES: "fuel-core-client" # multiple packages can be specified delimeted with `,`.
+        run: |
+          .github/workflows/scripts/check-sdk-harness-version.sh
+
   build-mdbook:
     runs-on: buildjet-8vcpu-ubuntu-2204
     steps:
@@ -287,7 +308,7 @@ jobs:
           crate: cargo-toml-lint
           version: '0.1'
       - name: Run Cargo.toml linter
-        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/sway-test-rs' | xargs --verbose -n 1 cargo-toml-lint
+        run: git ls-files | grep Cargo.toml$ | grep -v 'templates/' | xargs --verbose -n 1 cargo-toml-lint
 
   cargo-fmt-check:
     runs-on: ubuntu-latest
@@ -304,38 +325,48 @@ jobs:
   cargo-run-e2e-test:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-        ports:
-          - 4000:4000
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
+      - name: Install fuel-core for tests
+        run: |
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
-        run: cargo run --locked --release --bin test -- --locked
+        run: |
+          fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
+          sleep 5 &&
+          cargo run --locked --release --bin test -- --locked
 
   cargo-run-e2e-test-release:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
-    services:
-      fuel-core:
-        image: ghcr.io/fuellabs/fuel-core:v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-        ports:
-          - 4000:4000
     steps:
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
+      - name: Install fuel-core for tests
+        run: |
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
-        run: cargo run --locked --release --bin test -- --locked --release
+        run: |
+          fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
+          sleep 5 &&
+          cargo run --locked --release --bin test -- --locked --release
 
   cargo-run-e2e-test-evm:
     runs-on: ubuntu-latest
@@ -345,9 +376,10 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (EVM)
-        run: cargo run --locked --release --bin test -- --target evm --locked
+        run: cargo run --locked --release --bin test -- --target evm --locked --no-encoding-v1
 
   cargo-run-e2e-test-midenvm:
     runs-on: ubuntu-latest
@@ -359,7 +391,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (EVM)
-        run: cargo run --locked --release --bin test -- --target midenvm --locked
+        run: cargo run --locked --release --bin test -- --target midenvm --locked --no-encoding-v1
 
   # TODO: Remove this upon merging std tests with the rest of the E2E tests.
   cargo-test-lib-std:
@@ -475,14 +507,27 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-      - name: Install fuel-core for tests
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: fuel-core-bin
-          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
+      - name: Install fuel-core for tests
+        run: |
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Run tests
         run: cargo test --locked --release -p forc-debug
+  cargo-test-sway-lsp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Run sway-lsp tests sequentially
+        run: cargo test --locked --release -p sway-lsp -- --nocapture --test-threads=1
   cargo-test-workspace:
     runs-on: ubuntu-latest
     steps:
@@ -493,7 +538,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
@@ -523,6 +568,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
       ]
     runs-on: ubuntu-latest
@@ -608,6 +654,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
         pre-publish-check,
       ]
@@ -656,6 +703,7 @@ jobs:
         cargo-run-e2e-test-evm,
         cargo-test-lib-std,
         cargo-test-workspace,
+        cargo-test-sway-lsp,
         cargo-unused-deps-check,
       ]
     if: github.ref == 'refs/heads/master'

@@ -23,7 +23,7 @@ use tracing::metadata::LevelFilter;
 
 pub fn handle_initialize(
     state: &ServerState,
-    params: lsp_types::InitializeParams,
+    params: &lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
         let mut config = state.config.write();
@@ -37,7 +37,7 @@ pub fn handle_initialize(
         state.spawn_client_heartbeat(client_pid as usize);
     }
 
-    // Initalizing tracing library based on the user's config
+    // Initializing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
         let tracing_options = TracingSubscriberOptions {
@@ -61,7 +61,6 @@ pub async fn handle_document_symbol(
 ) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
     let _ = state.wait_for_parsing().await;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -80,13 +79,12 @@ pub async fn handle_goto_definition(
     params: lsp_types::GotoDefinitionParams,
 ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
         .await
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(uri, position))
+            Ok(session.token_definition_response(&uri, position))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -106,7 +104,6 @@ pub async fn handle_completion(
         .unwrap_or("");
     let position = params.text_document_position.position;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
         .await
     {
@@ -125,7 +122,6 @@ pub async fn handle_hover(
     params: lsp_types::HoverParams,
 ) -> Result<Option<lsp_types::Hover>> {
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
         .await
     {
@@ -134,7 +130,7 @@ pub async fn handle_hover(
             Ok(capabilities::hover::hover_data(
                 session,
                 &state.keyword_docs,
-                uri,
+                &uri,
                 position,
             ))
         }
@@ -150,12 +146,11 @@ pub async fn handle_prepare_rename(
     params: lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
         Ok((uri, session)) => {
-            match capabilities::rename::prepare_rename(session, uri, params.position) {
+            match capabilities::rename::prepare_rename(session, &uri, params.position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -175,14 +170,13 @@ pub async fn handle_rename(
     params: RenameParams,
 ) -> Result<Option<WorkspaceEdit>> {
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document_position.text_document.uri)
         .await
     {
         Ok((uri, session)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            match capabilities::rename::rename(session, new_name, uri, position) {
+            match capabilities::rename::rename(session, new_name, &uri, position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -203,14 +197,13 @@ pub async fn handle_document_highlight(
 ) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
     let _ = state.wait_for_parsing().await;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
         .await
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session, uri, position,
+                session, &uri, position,
             ))
         }
         Err(err) => {
@@ -226,10 +219,11 @@ pub async fn handle_formatting(
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let _ = state.wait_for_parsing().await;
     state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
-        .and_then(|(uri, session)| session.format_text(&uri).map(Some))
+        .and_then(|(uri, _)| {
+            capabilities::formatting::format_text(&state.documents, &uri).map(Some)
+        })
         .or_else(|err| {
             tracing::error!("{}", err.to_string());
             Ok(None)
@@ -240,8 +234,8 @@ pub async fn handle_code_action(
     state: &ServerState,
     params: lsp_types::CodeActionParams,
 ) -> Result<Option<lsp_types::CodeActionResponse>> {
+    let _ = state.wait_for_parsing().await;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -265,7 +259,6 @@ pub async fn handle_code_lens(
 ) -> Result<Option<Vec<CodeLens>>> {
     let _ = state.wait_for_parsing().await;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -283,7 +276,6 @@ pub async fn handle_semantic_tokens_range(
 ) -> Result<Option<SemanticTokensRangeResult>> {
     let _ = state.wait_for_parsing().await;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -305,7 +297,6 @@ pub async fn handle_semantic_tokens_full(
 ) -> Result<Option<SemanticTokensResult>> {
     let _ = state.wait_for_parsing().await;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -325,7 +316,6 @@ pub(crate) async fn handle_inlay_hints(
 ) -> Result<Option<Vec<InlayHint>>> {
     let _ = state.wait_for_parsing().await;
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -356,13 +346,12 @@ pub(crate) async fn handle_inlay_hints(
 ///
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
-/// seperate side panel.
+/// separate side panel.
 pub async fn handle_show_ast(
     state: &ServerState,
     params: lsp_ext::ShowAstParams,
 ) -> Result<Option<TextDocumentIdentifier>> {
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -459,15 +448,14 @@ pub async fn handle_on_enter(
     params: lsp_ext::OnEnterParams,
 ) -> Result<Option<WorkspaceEdit>> {
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
-        Ok((uri, session)) => {
+        Ok((uri, _)) => {
             // handle on_enter capabilities if they are enabled
             Ok(capabilities::on_enter(
                 &state.config.read().on_enter,
-                &session,
+                &state.documents,
                 &uri,
                 &params,
             ))
@@ -504,7 +492,6 @@ pub(crate) async fn metrics(
     params: lsp_ext::MetricsParams,
 ) -> Result<Option<Vec<(String, PerformanceData)>>> {
     match state
-        .sessions
         .uri_and_session_from_workspace(&params.text_document.uri)
         .await
     {
@@ -515,7 +502,8 @@ pub(crate) async fn metrics(
                     .engines
                     .read()
                     .se()
-                    .get_path(kv.key())
+                    .get_path_from_module_id(kv.key())
+                    .unwrap()
                     .to_string_lossy()
                     .to_string();
                 metrics.push((path, kv.value().clone()));

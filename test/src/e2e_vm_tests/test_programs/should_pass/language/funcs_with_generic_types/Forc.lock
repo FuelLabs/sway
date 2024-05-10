@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-EE30911CC58544F9'
+name = "core"
+source = "path+from-root-EE30911CC58544F9"
 
 [[package]]
-name = 'funcs_with_generic_types'
-source = 'member'
-dependencies = ['core']
+name = "funcs_with_generic_types"
+source = "member"
+dependencies = ["core"]

@@ -6,3 +6,4 @@ license = "Apache-2.0"
 name = "multiple_impl_fns"
 
 [dependencies]
+core = { path = "../../../../../../sway-lib-core" }

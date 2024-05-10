@@ -14,6 +14,24 @@ Second, confirm that your `$PATH` resolves to the `forc-lsp` binary in `$HOME/.f
 which forc-lsp
 ```
 
+## Slow Performance
+
+If you are experiencing slow performance, you can try the following:
+
+Follow [the steps above](#troubleshooting) to ensure you are running the most recent version.
+
+Then, make sure you only have the most recent version of the LSP server running.
+
+```sh
+pkill forc-lsp
+```
+
+### Large projects
+
+Sway projects with ten or more Sway files are likely to have slower LSP performance. We are working on better support for large projects.
+
+In the meantime, if it's too slow, you can disable the LSP server entirely with the `sway-lsp.diagnostic.disableLsp` setting. The extension will still provide basic syntax highlighting, command palettes, as well as the Sway debugger, but all other language features will be disabled.
+
 ## Server Logs
 
 You can you enable verbose logging of the LSP server.

@@ -1,3 +1,8 @@
 [[package]]
-name = 'impl_self_method_order'
-source = 'member'
+name = "core"
+source = "path+from-root-6CAAE7BDB8E5A7C5"
+
+[[package]]
+name = "impl_self_method_order"
+source = "member"
+dependencies = ["core"]

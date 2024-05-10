@@ -220,7 +220,7 @@ impl Op {
         }
     }
 
-    /// Dymamically jumps to a register value.
+    /// Dynamically jumps to a register value.
     pub(crate) fn jump_to_register(
         reg: VirtualRegister,
         comment: impl Into<String>,
@@ -1104,9 +1104,6 @@ impl fmt::Display for VirtualOp {
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
             DataSectionOffsetPlaceholder => write!(fmtr, "data section offset placeholder"),
-            DataSectionRegisterLoadPlaceholder => {
-                write!(fmtr, "data section register load placeholder")
-            }
             LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }

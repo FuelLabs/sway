@@ -15,10 +15,10 @@ pub struct TyStorageAccess {
 
 impl EqWithEngines for TyStorageAccess {}
 impl PartialEqWithEngines for TyStorageAccess {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.ix == other.ix
             && self.fields.len() == other.fields.len()
-            && self.fields.eq(&other.fields, engines)
+            && self.fields.eq(&other.fields, ctx)
     }
 }
 
@@ -43,7 +43,7 @@ impl Spanned for TyStorageAccess {
         self.fields
             .iter()
             .fold(self.fields[0].span.clone(), |acc, field| {
-                Span::join(acc, field.span.clone())
+                Span::join(acc, &field.span)
             })
     }
 }
@@ -64,12 +64,12 @@ pub struct TyStorageAccessDescriptor {
 
 impl EqWithEngines for TyStorageAccessDescriptor {}
 impl PartialEqWithEngines for TyStorageAccessDescriptor {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
         self.name == other.name
             && type_engine
                 .get(self.type_id)
-                .eq(&type_engine.get(other.type_id), engines)
+                .eq(&type_engine.get(other.type_id), ctx)
     }
 }
 

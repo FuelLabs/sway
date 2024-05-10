@@ -9,6 +9,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::{ty::*, Literal},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -28,12 +29,12 @@ pub struct TyExpression {
 
 impl EqWithEngines for TyExpression {}
 impl PartialEqWithEngines for TyExpression {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        let type_engine = engines.te();
-        self.expression.eq(&other.expression, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
+        self.expression.eq(&other.expression, ctx)
             && type_engine
                 .get(self.return_type)
-                .eq(&type_engine.get(other.return_type), engines)
+                .eq(&type_engine.get(other.return_type), ctx)
     }
 }
 
@@ -53,9 +54,11 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.expression.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.return_type.subst(type_mapping, engines);
+            self.expression.subst(type_mapping, engines);
+        }
     }
 }
 

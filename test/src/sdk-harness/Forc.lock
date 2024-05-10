@@ -1,6 +1,12 @@
 [[package]]
 name = "abi_impl_methods_callable"
 source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "asset_id"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
 name = "asset_ops"
@@ -110,7 +116,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "core"
-source = "path+from-root-872BB25145BD9C7F"
+source = "path+from-root-214E8589AEAE48E5"
 
 [[package]]
 name = "ec_recover"
@@ -157,11 +163,6 @@ dependencies = ["std"]
 
 [[package]]
 name = "low_level_call"
-source = "member"
-dependencies = ["std"]
-
-[[package]]
-name = "low_level_call_bytes"
 source = "member"
 dependencies = ["std"]
 
@@ -241,6 +242,21 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "result_option_expect"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "run_external_proxy"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "run_external_target"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "script_bytecode"
 source = "member"
 dependencies = ["std"]
@@ -252,7 +268,7 @@ dependencies = ["std"]
 
 [[package]]
 name = "std"
-source = "path+from-root-872BB25145BD9C7F"
+source = "path+from-root-EAEA0954D15D4BBE"
 dependencies = ["core"]
 
 [[package]]
@@ -288,7 +304,10 @@ dependencies = ["std"]
 [[package]]
 name = "storage_string"
 source = "member"
-dependencies = ["std"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "storage_vec_nested"

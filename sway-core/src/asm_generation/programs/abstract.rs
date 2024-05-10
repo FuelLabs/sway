@@ -39,7 +39,10 @@ impl AbstractProgram {
         }
     }
 
-    pub(crate) fn into_allocated_program(mut self) -> Result<AllocatedProgram, CompileError> {
+    pub(crate) fn into_allocated_program(
+        mut self,
+        fallback_fn: Option<crate::asm_lang::Label>,
+    ) -> Result<AllocatedProgram, CompileError> {
         // Build our bytecode prologue which has a preamble and for contracts is the switch based on
         // function selector.
         let mut prologue = self.build_preamble();
@@ -49,7 +52,7 @@ impl AbstractProgram {
                 self.build_jump_to_entry(&mut prologue);
             }
             (false, ProgramKind::Contract) => {
-                self.build_contract_abi_switch(&mut prologue);
+                self.build_contract_abi_switch(&mut prologue, fallback_fn);
             }
             _ => {}
         }
@@ -103,27 +106,29 @@ impl AbstractProgram {
     /// Right now, it looks like this:
     ///
     /// WORD OP
-    /// 1    JI program_start
-    /// -    NOOP
+    /// 1    MOV $scratch $pc
+    /// -    JMPF $zero i2
     /// 2    DATA_START (0-32) (in bytes, offset from $is)
     /// -    DATA_START (32-64)
-    /// 3    LW $ds $is               1 (where 1 is in words and $is is a byte address to base off of)
-    /// -    ADD $ds $ds $is
+    /// 3    LW $ds $scratch 1
+    /// -    ADD $ds $ds $scratch
     /// 4    .program_start:
     fn build_preamble(&mut self) -> AllocatedAbstractInstructionSet {
         let label = self.reg_seqr.get_label();
         AllocatedAbstractInstructionSet {
             ops: [
-                // word 1
                 AllocatedAbstractOp {
-                    opcode: Either::Right(ControlFlowOp::Jump(label)),
+                    opcode: Either::Left(AllocatedOpcode::MOVE(
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        AllocatedRegister::Constant(ConstantRegister::ProgramCounter),
+                    )),
                     comment: String::new(),
                     owning_span: None,
                 },
                 // word 1.5
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::NOOP),
-                    comment: "".into(),
+                    opcode: Either::Right(ControlFlowOp::Jump(label)),
+                    comment: String::new(),
                     owning_span: None,
                 },
                 // word 2 -- full word u64 placeholder
@@ -139,7 +144,11 @@ impl AbstractProgram {
                 },
                 // word 3 -- load the data offset into $ds
                 AllocatedAbstractOp {
-                    opcode: Either::Left(AllocatedOpcode::DataSectionRegisterLoadPlaceholder),
+                    opcode: Either::Left(AllocatedOpcode::LW(
+                        AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
+                        VirtualImmediate12::new_unchecked(1, "1 doesn't fit in 12 bits"),
+                    )),
                     comment: "".into(),
                     owning_span: None,
                 },
@@ -148,7 +157,7 @@ impl AbstractProgram {
                     opcode: Either::Left(AllocatedOpcode::ADD(
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
                         AllocatedRegister::Constant(ConstantRegister::DataSectionStart),
-                        AllocatedRegister::Constant(ConstantRegister::InstructionStart),
+                        AllocatedRegister::Constant(ConstantRegister::Scratch),
                     )),
                     comment: "".into(),
                     owning_span: None,
@@ -172,7 +181,11 @@ impl AbstractProgram {
     /// 'selector'.
     /// See https://fuellabs.github.io/fuel-specs/master/vm#call-frames which
     /// describes the first argument to be at word offset 73.
-    fn build_contract_abi_switch(&mut self, asm_buf: &mut AllocatedAbstractInstructionSet) {
+    fn build_contract_abi_switch(
+        &mut self,
+        asm_buf: &mut AllocatedAbstractInstructionSet,
+        fallback_fn: Option<crate::asm_lang::Label>,
+    ) {
         const SELECTOR_WORD_OFFSET: u64 = 73;
         const INPUT_SELECTOR_REG: AllocatedRegister = AllocatedRegister::Allocated(0);
         const PROG_SELECTOR_REG: AllocatedRegister = AllocatedRegister::Allocated(1);
@@ -241,8 +254,14 @@ impl AbstractProgram {
             });
         }
 
-        // If none of the selectors matched, then revert.  This may change in the future, see
-        // https://github.com/FuelLabs/sway/issues/444
+        if let Some(fallback_fn) = fallback_fn {
+            asm_buf.ops.push(AllocatedAbstractOp {
+                opcode: Either::Right(ControlFlowOp::Call(fallback_fn)),
+                comment: "call fallback function".into(),
+                owning_span: None,
+            });
+        }
+
         asm_buf.ops.push(AllocatedAbstractOp {
             opcode: Either::Left(AllocatedOpcode::MOVI(
                 AllocatedRegister::Constant(ConstantRegister::Scratch),

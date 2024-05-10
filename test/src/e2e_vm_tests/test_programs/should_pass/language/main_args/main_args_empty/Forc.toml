@@ -6,4 +6,3 @@ name = "main_args_empty"
 
 [dependencies]
 core = { path = "../../../../../../../../sway-lib-core" }
-std = { path = "../../../../../../../../sway-lib-std" }

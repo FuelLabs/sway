@@ -1,49 +1,60 @@
 [[package]]
-name = "abi_supertraits"
-source = "member"
-
-[[package]]
 name = "advanced_storage_variables"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "array"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "asm_return_tuple_pointer"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "basic_storage_variables"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "break_and_continue"
 source = "member"
-dependencies = ["core path+from-root-70EE78029FACCEF1"]
+dependencies = ["core"]
 
 [[package]]
 name = "cei_analysis"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "configurable_constants"
 source = "member"
+dependencies = ["core"]
 
 [[package]]
 name = "converting_types"
 source = "member"
-dependencies = ["std git+https://github.com/fuellabs/sway?tag=v0.51.1#d1e8f019c1da46273c3d3a72b385ce356ba2bc20"]
-
-[[package]]
-name = "core"
-source = "path+from-root-4F1FAAE4510FEB23"
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "core"
@@ -52,7 +63,10 @@ source = "path+from-root-70EE78029FACCEF1"
 [[package]]
 name = "counter"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "enums"
@@ -61,102 +75,167 @@ source = "member"
 [[package]]
 name = "fizzbuzz"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "hashing"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "identity"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "implementation"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "liquidity_pool"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "match_expressions"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "methods_and_associated_functions"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "msg_sender"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "mut_ref_params"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "native_asset"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "nested_storage_variables"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "option"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "ownership"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "proxy"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "result"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "signatures"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
-
-[[package]]
-name = "std"
-source = "git+https://github.com/fuellabs/sway?tag=v0.51.1#d1e8f019c1da46273c3d3a72b385ce356ba2bc20"
-dependencies = ["core path+from-root-4F1FAAE4510FEB23"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "std"
 source = "path+from-root-70EE78029FACCEF1"
-dependencies = ["core path+from-root-70EE78029FACCEF1"]
+dependencies = ["core"]
 
 [[package]]
 name = "storage_example"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "storage_map"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "storage_vec"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "struct_storage_variables"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "structs"
@@ -169,23 +248,33 @@ source = "member"
 [[package]]
 name = "type_aliases"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "vec"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "wallet_abi"
 source = "member"
-dependencies = ["std path+from-root-70EE78029FACCEF1"]
+dependencies = [
+    "core",
+    "std",
+]
 
 [[package]]
 name = "wallet_contract_caller_script"
 source = "member"
 dependencies = [
-    "std path+from-root-70EE78029FACCEF1",
+    "core",
+    "std",
     "wallet_abi",
 ]
 
@@ -193,6 +282,7 @@ dependencies = [
 name = "wallet_smart_contract"
 source = "member"
 dependencies = [
-    "std path+from-root-70EE78029FACCEF1",
+    "core",
+    "std",
     "wallet_abi",
 ]

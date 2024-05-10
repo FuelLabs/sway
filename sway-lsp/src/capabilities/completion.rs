@@ -4,7 +4,7 @@ use lsp_types::{
     Range, TextEdit,
 };
 use sway_core::{
-    language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl},
+    language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl, TyFunctionParameter},
     namespace::Items,
     Engines, TypeId, TypeInfo,
 };
@@ -21,7 +21,7 @@ pub(crate) fn to_completion_items(
         .unwrap_or_default()
 }
 
-/// Gathers the given [TypeId] struct's fields and methods and builds completion items.
+/// Gathers the given [`TypeId`] struct's fields and methods and builds completion items.
 fn completion_items_for_type_id(
     engines: &Engines,
     namespace: &Items,
@@ -32,7 +32,7 @@ fn completion_items_for_type_id(
     let type_info = engines.te().get(type_id);
     if let TypeInfo::Struct(decl_ref) = &*type_info {
         let struct_decl = engines.de().get_struct(&decl_ref.id().clone());
-        for field in struct_decl.fields.iter() {
+        for field in &struct_decl.fields {
             let item = CompletionItem {
                 kind: Some(CompletionItemKind::FIELD),
                 label: field.name.as_str().to_string(),
@@ -47,14 +47,16 @@ fn completion_items_for_type_id(
     }
 
     for method in namespace.get_methods_for_type(engines, type_id) {
+        let method = method.expect_typed();
         let fn_decl = engines.de().get_function(&method.id().clone());
         let params = &fn_decl.parameters;
 
         // Only show methods that take `self` as the first parameter.
-        if params.first().map(|p| p.is_self()).unwrap_or(false) {
-            let params_short = match params.is_empty() {
-                true => "()".to_string(),
-                false => "(…)".to_string(),
+        if params.first().is_some_and(TyFunctionParameter::is_self) {
+            let params_short = if params.is_empty() {
+                "()".to_string()
+            } else {
+                "(…)".to_string()
             };
             let params_edit_str = params
                 .iter()
@@ -128,7 +130,7 @@ fn replace_self_with_type_str(
 
 /// Returns the [TypeId] of an ident that may include field accesses and may be incomplete.
 /// For the first part of the ident, it looks for instantiation in the scope of the given
-/// [TyFunctionDecl]. For example, given `a.b.c`, it will return the type ID of `c`
+/// [`TyFunctionDecl`]. For example, given `a.b.c`, it will return the type ID of `c`
 /// if it can resolve `a` in the given function.
 fn type_id_of_raw_ident(
     engines: &Engines,
@@ -151,13 +153,14 @@ fn type_id_of_raw_ident(
             let method_name = parts[i].split_at(parts[i].find('(').unwrap_or(0)).0;
             curr_type_id = namespace
                 .get_methods_for_type(engines, curr_type_id?)
-                .iter()
-                .find_map(|decl_ref| {
-                    if decl_ref.name().clone().as_str() == method_name {
+                .into_iter()
+                .find_map(|method| {
+                    let method = method.expect_typed();
+                    if method.name().clone().as_str() == method_name {
                         return Some(
                             engines
                                 .de()
-                                .get_function(&decl_ref.id().clone())
+                                .get_function(&method.id().clone())
                                 .return_type
                                 .type_id,
                         );

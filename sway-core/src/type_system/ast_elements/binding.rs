@@ -2,8 +2,8 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::*,
-    engine_threading::*,
+    decl_engine::{DeclEngineInsert, DeclId, DeclRef},
+    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
@@ -111,6 +111,12 @@ impl TypeArgs {
         }
     }
 
+    pub fn as_slice(&self) -> &[TypeArgument] {
+        match self {
+            TypeArgs::Regular(vec) | TypeArgs::Prefix(vec) => vec,
+        }
+    }
+
     pub(crate) fn to_vec_mut(&mut self) -> &mut Vec<TypeArgument> {
         match self {
             TypeArgs::Regular(vec) => vec,
@@ -121,15 +127,15 @@ impl TypeArgs {
 
 impl Spanned for TypeArgs {
     fn span(&self) -> Span {
-        Span::join_all(self.to_vec().iter().map(|t| t.span()))
+        Span::join_all(self.to_vec().iter().map(sway_types::Spanned::span))
     }
 }
 
 impl PartialEqWithEngines for TypeArgs {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
-            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, engines),
-            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, engines),
+            (TypeArgs::Regular(vec1), TypeArgs::Regular(vec2)) => vec1.eq(vec2, ctx),
+            (TypeArgs::Prefix(vec1), TypeArgs::Prefix(vec2)) => vec1.eq(vec2, ctx),
             _ => false,
         }
     }
@@ -142,8 +148,8 @@ impl<T> Spanned for TypeBinding<T> {
 }
 
 impl PartialEqWithEngines for TypeBinding<()> {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.span == other.span && self.type_arguments.eq(&other.type_arguments, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.span == other.span && self.type_arguments.eq(&other.type_arguments, ctx)
     }
 }
 
@@ -170,9 +176,9 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
         let type_info_span = type_ident.span();
 
         // find the module that the symbol is in
-        let type_info_prefix = ctx.namespace().find_module_path(&self.inner.prefixes);
+        let type_info_prefix = ctx.namespace().prepend_module_path(&self.inner.prefixes);
         ctx.namespace()
-            .check_absolute_path_to_submodule(handler, &type_info_prefix)?;
+            .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
 
         // create the type info object
         let type_info = type_info.apply_type_arguments(
@@ -232,7 +238,7 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a fn declaration.
-        let fn_ref = unknown_decl.to_fn_ref(handler)?;
+        let fn_ref = unknown_decl.to_fn_ref(handler, ctx.engines())?;
         // Get a new copy from the declaration engine.
         let mut new_copy = (*decl_engine.get_function(fn_ref.id())).clone();
         match self.type_arguments {
@@ -375,7 +381,7 @@ impl TypeBinding<QualifiedCallPath> {
             ctx.resolve_qualified_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok(const_ref)
     }
@@ -398,7 +404,7 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_ref(handler)?;
+        let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok((const_ref, None, None))
     }

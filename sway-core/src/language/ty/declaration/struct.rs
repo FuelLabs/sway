@@ -8,6 +8,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     error::module_can_be_changed,
+    has_changes,
     language::{CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
@@ -33,10 +34,10 @@ impl Named for TyStructDecl {
 
 impl EqWithEngines for TyStructDecl {}
 impl PartialEqWithEngines for TyStructDecl {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.call_path == other.call_path
-            && self.fields.eq(&other.fields, engines)
-            && self.type_parameters.eq(&other.type_parameters, engines)
+            && self.fields.eq(&other.fields, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
             && self.visibility == other.visibility
     }
 }
@@ -61,13 +62,11 @@ impl HashWithEngines for TyStructDecl {
 }
 
 impl SubstTypes for TyStructDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.fields
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.fields.subst(type_mapping, engines);
+            self.type_parameters.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -110,7 +109,7 @@ impl TyStructDecl {
     /// within the struct memory layout, or `None` if the field with the
     /// name `field_name` does not exist.
     pub(crate) fn get_field_index_and_type(&self, field_name: &Ident) -> Option<(u64, TypeId)> {
-        // TODO-MEMLAY: Warning! This implementation assumes that fields are layed out in
+        // TODO-MEMLAY: Warning! This implementation assumes that fields are laid out in
         //              memory in the order of their declaration.
         //              This assumption can be changed in the future.
         self.fields
@@ -148,16 +147,16 @@ pub struct StructAccessInfo {
 }
 
 impl StructAccessInfo {
-    pub fn get_info(struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
+    pub fn get_info(engines: &Engines, struct_decl: &TyStructDecl, namespace: &Namespace) -> Self {
         assert!(
             struct_decl.call_path.is_absolute,
             "The call path of the struct declaration must always be absolute."
         );
 
         let struct_can_be_changed =
-            module_can_be_changed(namespace, &struct_decl.call_path.prefixes);
+            module_can_be_changed(engines, namespace, &struct_decl.call_path.prefixes);
         let is_public_struct_access =
-            !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
+            !namespace.module_is_submodule_of(engines, &struct_decl.call_path.prefixes, true);
 
         Self {
             struct_can_be_changed,
@@ -246,13 +245,13 @@ impl HashWithEngines for TyStructField {
 
 impl EqWithEngines for TyStructField {}
 impl PartialEqWithEngines for TyStructField {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name && self.type_argument.eq(&other.type_argument, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.type_argument.eq(&other.type_argument, ctx)
     }
 }
 
 impl OrdWithEngines for TyStructField {
-    fn cmp(&self, other: &Self, engines: &Engines) -> Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let TyStructField {
             name: ln,
             type_argument: lta,
@@ -269,12 +268,12 @@ impl OrdWithEngines for TyStructField {
             attributes: _,
             visibility: _,
         } = other;
-        ln.cmp(rn).then_with(|| lta.cmp(rta, engines))
+        ln.cmp(rn).then_with(|| lta.cmp(rta, ctx))
     }
 }
 
 impl SubstTypes for TyStructField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_argument.subst_inner(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.type_argument.subst_inner(type_mapping, engines)
     }
 }

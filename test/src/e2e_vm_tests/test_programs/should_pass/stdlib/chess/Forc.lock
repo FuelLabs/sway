@@ -1,13 +1,8 @@
 [[package]]
-name = 'chess'
-source = 'member'
-dependencies = ['std']
+name = "chess"
+source = "member"
+dependencies = ["core"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-CDE6DA60C7D0163E'
-
-[[package]]
-name = 'std'
-source = 'path+from-root-CDE6DA60C7D0163E'
-dependencies = ['core']
+name = "core"
+source = "path+from-root-CDE6DA60C7D0163E"
