@@ -31,7 +31,6 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
 
       - name: get fuel core version
         id: get_fuel_core_ver
@@ -327,17 +326,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
     steps:
-      - name: Install fuel-core for tests
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: fuel-core-bin
-          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
+      - name: Install fuel-core for tests
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: fuel-core-bin
+          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
           fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
@@ -348,17 +348,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: get-fuel-core-version
     steps:
-      - name: Install fuel-core for tests
-        uses: baptiste0928/cargo-install@v2
-        with:
-          crate: fuel-core-bin
-          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
       - uses: actions/checkout@v3
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
+      - name: Install fuel-core for tests
+        uses: baptiste0928/cargo-install@v2
+        with:
+          crate: fuel-core-bin
+          version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
           fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
@@ -373,6 +374,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
       - uses: Swatinem/rust-cache@v2
       - name: Cargo Run E2E Tests (EVM)
         run: cargo run --locked --release --bin test -- --target evm --locked --no-encoding-v1
@@ -503,12 +505,13 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
+      - uses: Swatinem/rust-cache@v2
       - name: Install fuel-core for tests
         uses: baptiste0928/cargo-install@v2
         with:
           crate: fuel-core-bin
           version: ${{ needs.get-fuel-core-version.outputs.fuel_core_version }}
-      - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: cargo test --locked --release -p forc-debug
   cargo-test-sway-lsp:
