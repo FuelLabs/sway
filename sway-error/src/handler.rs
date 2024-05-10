@@ -1,14 +1,15 @@
 use crate::{error::CompileError, warning::CompileWarning};
-use std::collections::HashMap;
-
-use core::cell::RefCell;
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 /// A handler with which you can emit diagnostics.
 #[derive(Default, Debug, Clone)]
 pub struct Handler {
     /// The inner handler.
     /// This construction is used to avoid `&mut` all over the compiler.
-    inner: RefCell<HandlerInner>,
+    inner: Arc<RwLock<HandlerInner>>,
 }
 
 /// Contains the actual data for `Handler`.
@@ -24,13 +25,13 @@ struct HandlerInner {
 impl Handler {
     pub fn from_parts(errors: Vec<CompileError>, warnings: Vec<CompileWarning>) -> Self {
         Self {
-            inner: RefCell::new(HandlerInner { errors, warnings }),
+            inner: Arc::new(RwLock::new(HandlerInner { errors, warnings })),
         }
     }
 
     /// Emit the error `err`.
     pub fn emit_err(&self, err: CompileError) -> ErrorEmitted {
-        self.inner.borrow_mut().errors.push(err);
+        self.inner.write().unwrap().errors.push(err);
         ErrorEmitted { _priv: () }
     }
 
@@ -41,19 +42,19 @@ impl Handler {
 
     /// Emit the warning `warn`.
     pub fn emit_warn(&self, warn: CompileWarning) {
-        self.inner.borrow_mut().warnings.push(warn);
+        self.inner.write().unwrap().warnings.push(warn);
     }
 
     pub fn has_errors(&self) -> bool {
-        !self.inner.borrow().errors.is_empty()
+        !self.inner.read().unwrap().errors.is_empty()
     }
 
     pub fn find_error(&self, f: impl FnMut(&&CompileError) -> bool) -> Option<CompileError> {
-        self.inner.borrow().errors.iter().find(f).cloned()
+        self.inner.read().unwrap().errors.iter().find(f).cloned()
     }
 
     pub fn has_warnings(&self) -> bool {
-        !self.inner.borrow().warnings.is_empty()
+        !self.inner.read().unwrap().warnings.is_empty()
     }
 
     pub fn scope<T>(
@@ -75,8 +76,10 @@ impl Handler {
 
     /// Extract all the warnings and errors from this handler.
     pub fn consume(self) -> (Vec<CompileError>, Vec<CompileWarning>) {
-        let inner = self.inner.into_inner();
-        (inner.errors, inner.warnings)
+        let mut inner = self.inner.write().unwrap();
+        let errors = std::mem::take(&mut inner.errors);
+        let warnings = std::mem::take(&mut inner.warnings);
+        (errors, warnings)
     }
 
     pub fn append(&self, other: Handler) {
@@ -90,7 +93,7 @@ impl Handler {
     }
 
     pub fn dedup(&self) {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.inner.write().unwrap();
         inner.errors = dedup_unsorted(inner.errors.clone());
         inner.warnings = dedup_unsorted(inner.warnings.clone());
     }
@@ -104,7 +107,7 @@ impl Handler {
     where
         F: FnMut(&CompileError) -> bool,
     {
-        self.inner.borrow_mut().errors.retain(f)
+        self.inner.write().unwrap().errors.retain(f)
     }
 }
 
