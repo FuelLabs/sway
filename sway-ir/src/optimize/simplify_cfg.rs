@@ -144,7 +144,7 @@ fn remove_dead_blocks(context: &mut Context, function: &Function) -> Result<bool
 }
 
 fn merge_blocks(context: &mut Context, function: &Function) -> Result<bool, IrError> {
-    // Check if block branches soley to another block B, and that B has exactly one predecessor.
+    // Check if block branches solely to another block B, and that B has exactly one predecessor.
     fn check_candidate(context: &Context, from_block: Block) -> Option<(Block, Block)> {
         from_block
             .get_terminator(context)

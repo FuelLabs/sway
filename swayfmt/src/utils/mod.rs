@@ -6,14 +6,14 @@ pub(crate) mod language;
 pub(crate) mod map;
 
 pub(crate) trait CurlyBrace {
-    /// Handles brace open scenerio. Checks the config for the placement of the brace.
+    /// Handles brace open scenario. Checks the config for the placement of the brace.
     /// Modifies the current shape of the formatter.
     fn open_curly_brace(
         line: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError>;
 
-    /// Handles brace close scenerio.
+    /// Handles brace close scenario.
     /// Currently it simply pushes a `}` and modifies the shape.
     fn close_curly_brace(
         line: &mut FormattedCode,

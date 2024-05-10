@@ -434,7 +434,7 @@ pub(crate) fn type_check_method_application(
             method_name_expr: Expression,
             _caller: Expression,
             arguments: Vec<Expression>,
-            typed_argumens: Vec<TypeId>,
+            typed_arguments: Vec<TypeId>,
             coins_expr: Expression,
             asset_id_expr: Expression,
             gas_expr: Expression,
@@ -442,7 +442,7 @@ pub(crate) fn type_check_method_application(
             let tuple_args_type_id = ctx.engines.te().insert(
                 ctx.engines,
                 TypeInfo::Tuple(
-                    typed_argumens
+                    typed_arguments
                         .iter()
                         .map(|&type_id| TypeArgument {
                             type_id,

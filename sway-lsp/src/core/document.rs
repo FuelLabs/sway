@@ -119,7 +119,7 @@ pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
         .map_err(|e| DirectoryError::LspLocksDirFailed(e.to_string()))?)
 }
 
-/// Removes the corresponding flag file for the specifed Url.
+/// Removes the corresponding flag file for the specified Url.
 ///
 /// If the flag file does not exist, this function will do nothing.
 pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {

@@ -49,7 +49,7 @@ impl Module {
         context.modules[self.0].kind
     }
 
-    /// Return an interator over each of the [`Function`]s in this module.
+    /// Return an iterator over each of the [`Function`]s in this module.
     pub fn function_iter(&self, context: &Context) -> FunctionIterator {
         FunctionIterator::new(context, self)
     }

@@ -797,7 +797,7 @@ impl ReplaceDecls for TyExpressionVariant {
 
                     // Finds method implementation for method dummy and replaces it.
                     // This is required because dummy methods don't have type parameters from impl traits.
-                    // Thus we use the implementated method that already contains all the required type parameters,
+                    // Thus we use the implemented method that already contains all the required type parameters,
                     // including those from the impl trait.
                     if method.is_trait_method_dummy {
                         if let Some(implementing_for_typeid) = method.implementing_for_typeid {

@@ -95,7 +95,7 @@ impl Formatter {
         let src = src.trim();
 
         let path = build_config.map(|build_config| build_config.canonical_root_module());
-        // Formatted code will be pushed here with raw newline stlye.
+        // Formatted code will be pushed here with raw newline style.
         // Which means newlines are not converted into system-specific versions until `apply_newline_style()`.
         // Use the length of src as a hint of the memory size needed for `raw_formatted_code`,
         // which will reduce the number of reallocations

@@ -193,8 +193,8 @@ impl From<AssetId> for b256 {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let asset_id = AssetId::from(b256::zero());
-    ///     let b256_data = asset_id.into();
+    ///     let asset_id = AssetId::b256::zero();
+    ///     let b256_data: b256 = asset_id.into();
     ///     assert(b256_data == b256::zero());
     /// }
     /// ```
@@ -245,4 +245,25 @@ fn test_hasher_sha256_contract_id() {
         .hash(hasher);
     let s256 = hasher.sha256();
     assert(s256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
+}
+
+#[test]
+fn test_asset_id_from_b256() {
+    use ::assert::assert;
+
+    let my_asset = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        my_asset
+            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+}
+
+#[test]
+fn test_asset_id_into_b256() {
+    use ::assert::assert;
+    use ::convert::Into;
+
+    let asset = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_data: b256 = asset.into();
+    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
 }

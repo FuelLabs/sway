@@ -73,7 +73,7 @@ impl Into<b256> for ContractId {
     /// ```sway
     /// fn foo() {
     ///     let contract_id = ContractId::zero();
-    ///     let b256_data = contract_id.into();
+    ///     let b256_data: b256 = contract_id.into();
     ///     assert(b256_data == b256::zero());
     /// }
     /// ```
@@ -134,10 +134,22 @@ impl Zero for ContractId {
 }
 
 #[test]
-fn test_into() {
+fn test_contract_id_from_b256() {
     use ::assert::assert;
-    
-    let contract_id = ContractId::zero();
-    let b256_data = contract_id.into();
-    assert(b256_data == b256::zero());
+
+    let my_contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        my_contract_id
+            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+}
+
+#[test]
+fn test_contract_id_into_b256() {
+    use ::assert::assert;
+    use ::convert::Into;
+
+    let contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_data: b256 = contract_id.into();
+    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
 }

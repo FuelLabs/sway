@@ -103,7 +103,7 @@ pub enum TypeInfo {
         name: Ident,
         // NOTE(Centril): Used to be BTreeSet; need to revert back later. Must be sorted!
         trait_constraints: VecSet<TraitConstraint>,
-        // Methods can have type parameters with unkown generic that extend the trait constraints of a parent unkown generic.
+        // Methods can have type parameters with unknown generic that extend the trait constraints of a parent unknown generic.
         parent: Option<TypeId>,
         // This is true when the UnknownGeneric is used in a type parameter.
         is_from_type_parameter: bool,
