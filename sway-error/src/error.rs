@@ -1921,7 +1921,7 @@ impl ToDiagnostic for CompileError {
 		    span.clone(),
 		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
 		),
-		hints: paths.into_iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
+		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
 		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
 	    },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
