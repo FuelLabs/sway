@@ -310,7 +310,12 @@ impl Items {
         Ok(())
     }
 
-    // Insert a symbol into use_glob_synonyms if the symbol has not yet been inserted
+    // Add a new binding into use_glob_synonyms. The symbol may already be bound by an earlier
+    // insertion, in which case the new binding is added as well so that multiple bindings exist.
+    //
+    // There are a few edge cases were a new binding will replace an old binding. These edge cases
+    // are a consequence of the prelude reexports not being implemented properly. See comments in
+    // the code for details.
     pub(crate) fn insert_glob_use_symbol(
         &mut self,
         engines: &Engines,

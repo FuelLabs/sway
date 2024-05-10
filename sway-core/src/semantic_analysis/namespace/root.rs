@@ -837,18 +837,10 @@ impl Root {
                 // Symbol not found
                 return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
                     name: symbol.clone(),
-                    path_1: decls[0]
-                        .0
-                        .iter()
-                        .map(|x| x.as_str())
-                        .collect::<Vec<_>>()
-                        .join("::"),
-                    path_2: decls[1]
-                        .0
-                        .iter()
-                        .map(|x| x.as_str())
-                        .collect::<Vec<_>>()
-                        .join("::"),
+		    paths: decls.iter().map(|(path, _)|
+					    path.iter().map(|x| x.as_str())
+					    .collect::<Vec<_>>()
+					    .join("::")).collect(),
                     span: symbol.span(),
                 }));
             }

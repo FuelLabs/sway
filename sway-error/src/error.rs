@@ -426,11 +426,10 @@ pub enum CompileError {
     DeclIsNotATypeAlias { actually: String, span: Span },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
-    #[error("Found multiple bindings for \"{name}\" in this scope: {path_1}::{name} and {path_2}::{name} are both valid.")]
+    #[error("Found multiple bindings for \"{name}\" in this scope.")]
     SymbolWithMultipleBindings {
         name: Ident,
-        path_1: String,
-        path_2: String,
+        paths: Vec<String>,
         span: Span,
     },
     #[error("Symbol \"{name}\" is private.")]
@@ -1915,6 +1914,16 @@ impl ToDiagnostic for CompileError {
                     ]
                 }
             },
+	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
+		issue: Issue::error(
+		    source_engine,
+		    span.clone(),
+		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
+		),
+		hints: paths.into_iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
+		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
+	    },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
                 issue: Issue::error(
