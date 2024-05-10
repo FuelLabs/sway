@@ -1,3 +1,4 @@
+//! A UTF-8 encoded growable string.
 library;
 
 use ::assert::assert;

@@ -1,4 +1,4 @@
-//! A wrapper around the `b256` type to help enhance type-safety.
+//! The `Address` type used for interacting with a addresses on the fuel network.
 library;
 
 use ::convert::From;
