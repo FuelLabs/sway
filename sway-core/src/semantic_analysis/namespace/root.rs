@@ -842,11 +842,11 @@ impl Root {
                         .map(|(path, decl)| {
                             let mut path_strs = path.iter().map(|x| x.as_str()).collect::<Vec<_>>();
                             // Add the enum name to the path if the decl is an enum variant.
-                            match decl {
-                                TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                    enum_ref, ..
-                                }) => path_strs.push(enum_ref.name().as_str()),
-                                _ => {}
+                            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                enum_ref, ..
+                            }) = decl
+                            {
+                                path_strs.push(enum_ref.name().as_str())
                             };
                             path_strs.join("::")
                         })
