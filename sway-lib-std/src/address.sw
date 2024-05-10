@@ -1,4 +1,4 @@
-//! The `Address` type used for interacting with a addresses on the fuel network.
+//! The `Address` type used for interacting with addresses on the fuel network.
 library;
 
 use ::convert::From;
