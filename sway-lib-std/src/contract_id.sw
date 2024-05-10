@@ -71,19 +71,16 @@ impl From<ContractId> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let contract_id = ContractId::from(ZERO_B256);
+    ///     let contract_id = ContractId::from(b256::zero());
     ///     let b256_data: b256 = contract_id.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(id: ContractId) -> Self {
         id.bits()
     }
 }
-
 
 impl Hash for ContractId {
     fn hash(self, ref mut state: Hasher) {
@@ -125,12 +122,40 @@ impl ContractId {
 }
 
 impl Zero for ContractId {
+    /// Returns the zero value for the `ContractId` type.
+    ///
+    /// # Returns
+    ///
+    /// * [ContractId] -> The zero value for the `ContractId` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_contract_id = ContractId::zero();
+    ///     assert(zero_contract_id == ContractId::from(b256::zero()));
+    /// }
+    /// ```
     fn zero() -> Self {
         Self {
-            bits: b256::zero()
+            bits: b256::zero(),
         }
     }
 
+    /// Returns whether a `ContractId` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `ContractId` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_contract_id = ContractId::zero();
+    ///     assert(zero_contract_id.is_zero());
+    /// }
+    /// ```
     fn is_zero(self) -> bool {
         self.bits == b256::zero()
     }

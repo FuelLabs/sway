@@ -117,10 +117,40 @@ impl<T> StorageKey<T> {
 }
 
 impl<T> Zero for StorageKey<T> {
+    /// Returns the zero value for the `StorageKey<T>` type.
+    ///
+    /// # Returns
+    ///
+    /// * [StorageKey<T>] -> The zero value for the `StorageKey<T>` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_storage_key: StorageKey<u64> = StorageKey::zero();
+    ///     assert(zero_storage_key.slot() == b256::zero());
+    ///     assert(zero_storage_key.offset() == 0);
+    ///     assert(zero_storage_key.field_id() == b256::zero());
+    /// }
+    /// ```
     fn zero() -> Self {
         Self::new(b256::zero(), 0, b256::zero())
     }
 
+    /// Returns whether a `StorageKey<T>` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `StorageKey<T>` is set to zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_storage_key: StorageKey<u64> = StorageKey::zero();
+    ///     assert(zero_storage_key.is_zero());
+    /// }
+    /// ```
     fn is_zero(self) -> bool {
         self.slot() == b256::zero() && self.field_id() == b256::zero() && self.offset() == 0
     }

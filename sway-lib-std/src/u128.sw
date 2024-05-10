@@ -692,6 +692,22 @@ impl Logarithm for U128 {
 }
 
 impl Zero for U128 {
+    /// Returns the zero value for the `U128` type.
+    ///
+    /// # Returns
+    ///
+    /// * [U128] -> The zero value for the `U128` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let zero_u128 = U128::zero();
+    ///     assert(zero_u128 == U128::from((0, 0)));
+    /// }
+    /// ```
     fn zero() -> Self {
         Self {
             upper: 0,
@@ -699,6 +715,22 @@ impl Zero for U128 {
         }
     }
 
+    /// Returns whether a `U128` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `U128` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let zero_u128 = u128::zero();
+    ///     assert(zero_u128.is_zero());
+    /// }
+    /// ```
     fn is_zero(self) -> bool {
         self.upper == 0 && self.lower == 0
     }

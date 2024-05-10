@@ -90,12 +90,40 @@ impl Hash for Address {
 }
 
 impl Zero for Address {
+    /// Returns the zero value for the `Address` type.
+    ///
+    /// # Returns
+    ///
+    /// * [Address] -> The zero value for the `Address` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_address = Address::zero();
+    ///     assert(zero_address == Address:from(b256::zero()));
+    /// }
+    /// ```
     fn zero() -> Self {
         Self {
-            bits: b256::zero()
+            bits: b256::zero(),
         }
     }
 
+    /// Returns whether an `Address` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `Address` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_address = Address::zero();
+    ///     assert(zero_address.is_zero());
+    /// }
+    /// ```
     fn is_zero(self) -> bool {
         self.bits == b256::zero()
     }

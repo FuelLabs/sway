@@ -204,12 +204,40 @@ impl From<AssetId> for b256 {
 }
 
 impl Zero for AssetId {
+    /// Returns the zero value for the `AssetId` type.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] -> The zero value for the `AssetId` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id == AssetId::from(b256::zero()));
+    /// }
+    /// ```
     fn zero() -> Self {
         Self {
-            bits: b256::zero()
+            bits: b256::zero(),
         }
     }
 
+    /// Returns whether an `AssetId` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `AssetId` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id.is_zero());
+    /// }
+    /// ```
     fn is_zero(self) -> bool {
         self.bits == b256::zero()
     }

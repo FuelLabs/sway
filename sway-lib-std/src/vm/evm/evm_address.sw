@@ -55,10 +55,10 @@ impl From<b256> for EvmAddress {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
+    /// use std::evm::EvmAddress;
     ///
     /// fn foo() {
-    ///    let evm_address = EvmAddress::from(ZERO_B256);
+    ///    let evm_address = EvmAddress::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -85,12 +85,12 @@ impl From<EvmAddress> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
+    /// use std::evm::EvmAddress;
     ///
     /// fn foo() {
-    ///     let evm_address = EvmAddress::from(ZERO_B256);
+    ///     let evm_address = EvmAddress::zero();
     ///     let b256_data: b256 = evm_address.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(addr: EvmAddress) -> b256 {
@@ -106,12 +106,44 @@ impl Hash for EvmAddress {
 }
 
 impl Zero for EvmAddress {
+    /// Returns the zero value for the `EvmAddress` type.
+    ///
+    /// # Returns
+    ///
+    /// * [EvmAddress] -> The zero value for the `EvmAddress` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::evm::EvmAddress;
+    ///
+    /// fn foo() {
+    ///     let zero_evm_address = EvmAddress::zero();
+    ///     assert(zero_evm_address == EvmAddress::from(b256::zero()));
+    /// }
+    /// ```
     fn zero() -> Self {
         Self {
-            bits: b256::zero()
+            bits: b256::zero(),
         }
     }
 
+    /// Returns whether an `EvmAddress` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `EvmAddress` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::evm::EvmAddress;
+    ///
+    /// fn foo() {
+    ///     let zero_evm_address = EvmAddress::zero();
+    ///     assert(zero_evm_address.is_zero());
+    /// }
+    /// ```
     fn is_zero(self) -> bool {
         self.bits == b256::zero()
     }

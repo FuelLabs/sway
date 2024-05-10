@@ -78,12 +78,44 @@ impl B512 {
 }
 
 impl Zero for B512 {
+    /// Returns the zero value for the `B512` type.
+    ///
+    /// # Returns
+    ///
+    /// * [B512] -> The zero value for the `B512` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let zero_b512 = B512::zero();
+    ///     assert(zero_b512 == B512::from((b256::zero(), b256::zero())));
+    /// }
+    /// ```
     fn zero() -> Self {
         Self {
             bits: [b256::zero(), b256::zero()],
         }
     }
 
+    /// Returns whether a `B512` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `B512` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let zero_b512 = B512::zero();
+    ///     assert(zero_b512.is_zero());
+    /// }
+    /// ```
     fn is_zero(self) -> bool {
         (self.bits)[0] == b256::zero() && (self.bits)[1] == b256::zero()
     }
