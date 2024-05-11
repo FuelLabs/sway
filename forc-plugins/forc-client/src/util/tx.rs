@@ -3,6 +3,7 @@ use std::{io::Write, str::FromStr};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use forc_tracing::println_warning;
+
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{field, Address, Buildable, ContractId, Input, Output, TransactionBuilder, Witness};
 use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};

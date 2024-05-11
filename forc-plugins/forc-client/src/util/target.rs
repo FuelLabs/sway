@@ -1,5 +1,6 @@
 use crate::constants::{
-    BETA_2_ENDPOINT_URL, BETA_3_ENDPOINT_URL, BETA_4_ENDPOINT_URL, BETA_5_ENDPOINT_URL, NODE_URL,
+    BETA_2_ENDPOINT_URL, BETA_3_ENDPOINT_URL, BETA_4_ENDPOINT_URL, BETA_5_ENDPOINT_URL,
+    DEVNET_ENDPOINT_URL, NODE_URL,
 };
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,7 @@ pub enum Target {
     Beta3,
     Beta4,
     Beta5,
+    Devnet,
     Local,
 }
 
@@ -28,6 +30,7 @@ impl Target {
             Target::Beta3 => BETA_3_ENDPOINT_URL,
             Target::Beta4 => BETA_4_ENDPOINT_URL,
             Target::Beta5 => BETA_5_ENDPOINT_URL,
+            Target::Devnet => DEVNET_ENDPOINT_URL,
             Target::Local => NODE_URL,
         };
         url.to_string()
@@ -45,7 +48,7 @@ impl Target {
 
     pub fn is_testnet(&self) -> bool {
         match self {
-            Target::Beta2 | Target::Beta3 | Target::Beta4 | Target::Beta5 => true,
+            Target::Beta2 | Target::Beta3 | Target::Beta4 | Target::Beta5 | Target::Devnet => true,
             Target::Local => false,
         }
     }
@@ -60,12 +63,15 @@ impl FromStr for Target {
             "beta-3" => Ok(Target::Beta3),
             "beta-4" => Ok(Target::Beta4),
             "beta-5" => Ok(Target::Beta5),
+            "devnet" => Ok(Target::Devnet),
             "local" => Ok(Target::Local),
             _ => bail!(
-                "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}'",
+                "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}', '{}', '{}'",
                 Target::Beta2,
                 Target::Beta3,
                 Target::Beta4,
+                Target::Beta5,
+                Target::Devnet,
                 Target::Local
             ),
         }
@@ -79,6 +85,7 @@ impl std::fmt::Display for Target {
             Target::Beta3 => "beta-3",
             Target::Beta4 => "beta-4",
             Target::Beta5 => "beta-5",
+            Target::Devnet => "devnet",
             Target::Local => "local",
         };
         write!(f, "{}", s)

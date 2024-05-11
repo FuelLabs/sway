@@ -1,6 +1,7 @@
 use crate::{
     cmd,
     util::{
+        gas::get_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -14,7 +15,7 @@ use forc_util::default_output_directory;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
-use fuel_tx::{Output, Salt, TransactionBuilder};
+use fuel_tx::{field::MaxFeeLimit, Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use fuels_accounts::provider::Provider;
 use futures::FutureExt;
@@ -237,21 +238,31 @@ pub async fn deploy_pkg(
         WalletSelectionMode::ForcWallet
     };
 
-    let max_fee = command.gas.max_fee.unwrap_or(0);
+    let provider = Provider::connect(node_url.clone()).await?;
 
-    let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
-        .max_fee_limit(max_fee)
-        .maturity(command.maturity.maturity.into())
-        .add_output(Output::contract_created(contract_id, state_root))
-        .finalize_signed(
-            Provider::connect(node_url.clone()).await?,
-            command.default_signer || command.unsigned,
-            command.signing_key,
-            wallet_mode,
-        )
-        .await?;
+    // Max fee limit is set to maximum possible value at during construction, but then we estimate the value and replace it.
+    // This is done so that tx does not fail during estimation.
+    let mut tx =
+        TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
+            .maturity(command.maturity.maturity.into())
+            .add_output(Output::contract_created(contract_id, state_root))
+            .finalize_signed(
+                provider.clone(),
+                command.default_signer || command.unsigned,
+                command.signing_key,
+                wallet_mode,
+            )
+            .await?;
 
+    let max_fee = if let Some(max_fee) = command.gas.max_fee {
+        max_fee
+    } else {
+        get_gas_used(Transaction::Create(tx.clone()), &provider).await?
+    };
+
+    tx.set_max_fee_limit(max_fee);
     let tx = Transaction::from(tx);
+
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use fuel_tx::{
     field::{Inputs, Witnesses},
-    Buildable, Chargeable, Input, Script, TxPointer,
+    Buildable, Chargeable, Input, Script, Transaction, TxPointer,
 };
 use fuels_accounts::provider::Provider;
 use fuels_core::types::transaction_builders::DryRunner;
@@ -18,7 +18,7 @@ fn no_spendable_input<'a, I: IntoIterator<Item = &'a Input>>(inputs: I) -> bool 
     })
 }
 
-pub(crate) async fn get_gas_used(mut tx: Script, provider: &Provider) -> Result<u64> {
+pub(crate) async fn get_script_gas_used(mut tx: Script, provider: &Provider) -> Result<u64> {
     let no_spendable_input = no_spendable_input(tx.inputs());
     if no_spendable_input {
         tx.inputs_mut().push(Input::coin_signed(
@@ -42,10 +42,13 @@ pub(crate) async fn get_gas_used(mut tx: Script, provider: &Provider) -> Result<
     // Increase `script_gas_limit` to the maximum allowed value.
     tx.set_script_gas_limit(max_gas_per_tx - max_gas);
 
-    let tolerance = 0.1;
-    let gas_used = provider
-        .dry_run_and_get_used_gas(tx.clone().into(), tolerance)
-        .await?;
+    get_gas_used(Transaction::Script(tx), provider).await
+}
 
+/// Returns gas_used for an arbitrary tx, by doing dry run with the provided `Provider`.
+pub(crate) async fn get_gas_used(tx: Transaction, provider: &Provider) -> Result<u64> {
+    let tolerance = 0.1;
+    let gas_used = provider.dry_run_and_get_used_gas(tx, tolerance).await?;
+    println!("estimation {gas_used}");
     Ok(gas_used)
 }

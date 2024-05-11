@@ -15,7 +15,7 @@ pub fn get_node_url(
         node_target.target.clone(),
         node_target.node_url.clone(),
     ) {
-        (true, None, None) => Target::Beta5.target_url(),
+        (true, None, None) => Target::Devnet.target_url(),
         (false, Some(target), None) => target.target_url(),
         (false, None, Some(node_url)) => node_url,
         (false, None, None) => manifest_network
@@ -99,6 +99,17 @@ fn test_get_node_url_beta3() {
     };
     let actual = get_node_url(&input, &None).unwrap();
     assert_eq!("https://beta-3.fuel.network", actual);
+}
+
+#[test]
+fn test_get_node_url_devnet() {
+    let input = NodeTarget {
+        target: Some(Target::Devnet),
+        node_url: None,
+        testnet: false,
+    };
+    let actual = get_node_url(&input, &None).unwrap();
+    assert_eq!("https://devnet.fuel.network", actual);
 }
 
 #[test]
