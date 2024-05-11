@@ -1527,21 +1527,6 @@ impl TypeInfo {
         matches!(self, TypeInfo::UnknownGeneric { .. })
     }
 
-    pub fn new_tuple(engines: &Engines, items: impl IntoIterator<Item = TypeInfo>) -> TypeInfo {
-        let te = engines.te();
-        let items = items
-            .into_iter()
-            .map(|x| te.insert(engines, x, None))
-            .map(|type_id| TypeArgument {
-                initial_type_id: type_id,
-                type_id,
-                span: Span::dummy(),
-                call_path_tree: None,
-            })
-            .collect();
-        TypeInfo::Tuple(items)
-    }
-
     /// Calculate the needed buffer for "abi encoding" the self type. If "inside" this
     /// type there is a custom AbiEncode impl, we cannot calculate the buffer size.
     pub fn abi_encode_size_hint(&self, engines: &Engines) -> AbiEncodeSizeHint {

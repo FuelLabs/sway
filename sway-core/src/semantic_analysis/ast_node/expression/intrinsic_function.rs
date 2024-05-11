@@ -135,6 +135,25 @@ fn type_check_encode_as_raw_slice(
     Ok((kind, return_type))
 }
 
+pub fn new_encoding_buffer_tuple(
+    engines: &Engines,
+    items: impl IntoIterator<Item = TypeInfo>,
+    span: Span,
+) -> TypeInfo {
+    let te = engines.te();
+    let items = items
+        .into_iter()
+        .map(|x| te.insert(engines, x, None))
+        .map(|type_id| TypeArgument {
+            initial_type_id: type_id,
+            type_id,
+            span: span.clone(),
+            call_path_tree: None,
+        })
+        .collect();
+    TypeInfo::Tuple(items)
+}
+
 fn type_check_encode_buffer_empty(
     ctx: TypeCheckContext,
     kind: sway_ast::Intrinsic,
@@ -147,13 +166,14 @@ fn type_check_encode_buffer_empty(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    let return_type = TypeInfo::new_tuple(
+    let return_type = new_encoding_buffer_tuple(
         engines,
         [
             TypeInfo::RawUntypedPtr,
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
             TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
         ],
+        span.clone(),
     );
     let return_type = type_engine.insert(engines, return_type, None);
 
