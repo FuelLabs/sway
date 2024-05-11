@@ -2236,7 +2236,7 @@ pub fn contract_id(
     contract.id(salt, &contract.root(), &state_root)
 }
 
-/// Checks if there are conficting `Salt` declarations for the contract dependencies in the graph.
+/// Checks if there are conflicting `Salt` declarations for the contract dependencies in the graph.
 fn validate_contract_deps(graph: &Graph) -> Result<()> {
     // For each contract dependency node in the graph, check if there are conflicting salt
     // declarations.

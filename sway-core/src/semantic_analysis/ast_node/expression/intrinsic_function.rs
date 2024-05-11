@@ -479,7 +479,7 @@ fn type_check_cmp(
 /// Description: Returns transaction field with ID `tx_field_id` at index `index`, if applicable.
 ///              This is a wrapper around FuelVM's `gtf` instruction:
 ///              https://fuellabs.github.io/fuel-specs/master/vm/instruction_set#gtf-get-transaction-fields.
-///              The resuting field is cast to `T`.
+///              The resulting field is cast to `T`.
 /// Constraints: None.
 fn type_check_gtf(
     handler: &Handler,
