@@ -237,7 +237,10 @@ pub async fn deploy_pkg(
         WalletSelectionMode::ForcWallet
     };
 
+    let max_fee = command.gas.max_fee.unwrap_or(0);
+
     let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
+        .max_fee_limit(max_fee)
         .maturity(command.maturity.maturity.into())
         .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
