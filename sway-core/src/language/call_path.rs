@@ -344,7 +344,7 @@ impl CallPath {
                     None
                 }
             }) {
-                synonym_prefixes = mod_path.clone();
+                synonym_prefixes.clone_from(&mod_path);
                 is_absolute = true;
                 let submodule = namespace
                     .module(engines)

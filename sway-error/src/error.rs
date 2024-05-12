@@ -561,6 +561,10 @@ pub enum CompileError {
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
     CannotBeEvaluatedToConst { span: Span },
+    #[error(
+        "This code cannot be evaluated to a configurable because its size is not always limited."
+    )]
+    CannotBeEvaluatedToConfigurableSizeUnknown { span: Span },
     #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
         if *dot_syntax_used { "Method" } else { "Function" },
         if *expected == 1usize { "argument" } else {"arguments"},
@@ -958,6 +962,8 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingCore { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
+    EncodingUnsupportedType { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1167,6 +1173,8 @@ impl Spanned for CompileError {
             CouldNotGenerateEntry { span } => span.clone(),
             CouldNotGenerateEntryMissingCore { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
+            CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
+            EncodingUnsupportedType { span } => span.clone(),
         }
     }
 }

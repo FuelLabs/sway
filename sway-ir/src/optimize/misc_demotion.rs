@@ -10,7 +10,7 @@ use std::ops::Not;
 /// - Fuel ASM block arguments: These are assumed to be pointers for 'by-reference' values.
 /// - Fuel ASM block return values: These are also assumed to be pointers for 'by-reference'
 ///   values.
-/// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
+/// - Fuel Wide binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
     InstOp, InstructionInserter, IrError, Pass, PassMutability, Predicate, ScopedPass, Type,

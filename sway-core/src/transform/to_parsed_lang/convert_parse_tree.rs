@@ -2496,19 +2496,40 @@ fn configurable_field_to_constant_declaration(
     attributes: AttributesMap,
 ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
+
+    let type_ascription = ty_to_type_argument(context, handler, engines, configurable_field.ty)?;
+
+    let value = expr_to_expression(context, handler, engines, configurable_field.initializer)?;
+    let value = if context.experimental.new_encoding {
+        let call_encode =
+            ExpressionKind::FunctionApplication(Box::new(FunctionApplicationExpression {
+                call_path_binding: TypeBinding {
+                    inner: CallPath {
+                        prefixes: vec![],
+                        suffix: Ident::new_with_override("encode".into(), span.clone()),
+                        is_absolute: false,
+                    },
+                    type_arguments: TypeArgs::Regular(vec![type_ascription.clone()]),
+                    span: span.clone(),
+                },
+                arguments: vec![value],
+            }));
+        Expression {
+            kind: call_encode,
+            span: span.clone(),
+        }
+    } else {
+        value
+    };
+
     let const_decl = ConstantDeclaration {
         name: configurable_field.name,
-        type_ascription: ty_to_type_argument(context, handler, engines, configurable_field.ty)?,
-        value: Some(expr_to_expression(
-            context,
-            handler,
-            engines,
-            configurable_field.initializer,
-        )?),
+        type_ascription,
+        value: Some(value),
         visibility: Visibility::Public,
         is_configurable: true,
         attributes,
-        span,
+        span: span.clone(),
     };
     let const_decl = engines.pe().insert(const_decl);
     Ok(const_decl)

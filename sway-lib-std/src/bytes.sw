@@ -919,15 +919,17 @@ impl Clone for Bytes {
 }
 
 impl AbiEncode for Bytes {
-    fn abi_encode(self, ref mut buffer: Buffer) {
-        buffer.push_u64(self.len);
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let mut buffer = self.len.abi_encode(buffer);
 
         let mut i = 0;
         while i < self.len {
             let item = self.get(i).unwrap();
-            item.abi_encode(buffer);
+            buffer = item.abi_encode(buffer);
             i += 1;
         }
+
+        buffer
     }
 }
 

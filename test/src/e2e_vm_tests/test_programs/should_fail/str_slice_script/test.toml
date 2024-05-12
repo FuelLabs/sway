@@ -3,5 +3,4 @@ category = "fail"
 # check: $()Expected string literal
 # check: $()`str` or a type containing `str` on `main()` arguments is not allowed
 # check: $()Returning `str` or a type containing `str` from `main()` is not allowed
-# check: $()`str` or a type containing `str` on `configurables` is not allowed.
 # check: $()`str` or a type containing `str` on `const` is not allowed

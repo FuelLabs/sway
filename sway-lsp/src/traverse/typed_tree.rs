@@ -141,7 +141,7 @@ impl Parse for ty::TySideEffect {
                                 type_def = Some(TypeDefinition::Ident(decl_ident));
                             }
                             token.kind = symbol_kind.clone();
-                            token.type_def = type_def.clone();
+                            token.type_def.clone_from(&type_def);
                             // the alias should take on the same symbol kind and type definition
                             if let Some(alias) = alias {
                                 if let Some(mut token) =
@@ -749,7 +749,7 @@ impl Parse for ty::ImplTrait {
                     }
                 }
             } else {
-                typed_token = token.typed.clone();
+                typed_token.clone_from(&token.typed);
                 Some(TypeDefinition::TypeId(implementing_for.type_id))
             };
         }

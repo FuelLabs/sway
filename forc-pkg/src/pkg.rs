@@ -1603,7 +1603,7 @@ pub fn dependency_namespace(
 
     root_module.write(engines, |root_module| {
         root_module.is_external = true;
-        root_module.name = name.clone();
+        root_module.name.clone_from(&name);
         root_module.visibility = Visibility::Public;
     });
 
@@ -2070,10 +2070,12 @@ fn build_profile_from_opts(
     profile.name = selected_profile_name.into();
     profile.print_ast |= print.ast;
     if profile.print_dca_graph.is_none() {
-        profile.print_dca_graph = print.dca_graph.clone();
+        profile.print_dca_graph.clone_from(&print.dca_graph);
     }
     if profile.print_dca_graph_url_format.is_none() {
-        profile.print_dca_graph_url_format = print.dca_graph_url_format.clone();
+        profile
+            .print_dca_graph_url_format
+            .clone_from(&print.dca_graph_url_format);
     }
     profile.print_ir |= print.ir;
     profile.print_finalized_asm |= print.finalized_asm;
@@ -2082,7 +2084,7 @@ fn build_profile_from_opts(
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     if profile.metrics_outfile.is_none() {
-        profile.metrics_outfile = metrics_outfile.clone();
+        profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
