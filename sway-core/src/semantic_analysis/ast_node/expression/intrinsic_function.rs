@@ -135,7 +135,8 @@ fn type_check_encode_as_raw_slice(
     Ok((kind, return_type))
 }
 
-pub fn new_encoding_buffer_tuple(
+// TODO: Rename to `new_tuple` and move to `TypeInfo` once https://github.com/FuelLabs/sway/issues/5991 is implemented.
+fn new_encoding_buffer_tuple(
     engines: &Engines,
     items: impl IntoIterator<Item = TypeInfo>,
     span: Span,
