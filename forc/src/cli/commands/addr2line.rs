@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use sway_types::LineCol;
 use tracing::info;
 
-use annotate_snippets::{AnnotationType, Slice, Snippet, SourceAnnotation};
+use annotate_snippets::{Level, Snippet};
 
 use sway_core::source_map::{LocationRange, SourceMap};
 
@@ -50,24 +50,20 @@ pub(crate) fn exec(command: Command) -> ForcResult<()> {
             .map_err(|err| anyhow!("{:?}: could not read: {:?}", path, err))?;
 
         let path_str = format!("{path:?}");
-        let snippet = Snippet {
-            title: None,
-            footer: vec![],
-            slices: vec![Slice {
-                source: &rr.source,
-                line_start: rr.source_start_line,
-                origin: Some(&path_str),
-                fold: false,
-                annotations: vec![SourceAnnotation {
-                    label: "here",
-                    annotation_type: AnnotationType::Note,
-                    range: (rr.offset, rr.offset + rr.length),
-                }],
-            }],
-        };
+        let message = Level::Note.title("").snippet(
+            Snippet::source(&rr.source)
+                .line_start(rr.source_start_line)
+                .origin(&path_str)
+                .fold(false)
+                .annotation(
+                    Level::Note
+                        .span(rr.offset..(rr.offset + rr.length))
+                        .label("here"),
+                ),
+        );
 
         let renderer = create_diagnostics_renderer();
-        info!("{}", renderer.render(snippet));
+        info!("{}", renderer.render(message));
 
         Ok(())
     } else {
