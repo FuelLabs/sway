@@ -9,6 +9,8 @@ mod r#trait;
 mod type_alias;
 mod variable;
 
+use std::fmt;
+
 pub use abi::*;
 pub use constant::*;
 pub use function::*;
@@ -21,7 +23,11 @@ use sway_types::Spanned;
 pub use type_alias::*;
 pub use variable::*;
 
-use crate::{decl_engine::parsed_id::ParsedDeclId, Engines};
+use crate::{
+    decl_engine::{parsed_id::ParsedDeclId, parsed_engine::ParsedDeclEngineGet},
+    engine_threading::{DebugWithEngines, DisplayWithEngines},
+    Engines,
+};
 
 #[derive(Debug, Clone)]
 pub enum Declaration {
@@ -50,6 +56,26 @@ impl Declaration {
         }
     }
 
+    /// Friendly type name string used for error reporting,
+    /// which consists of the type name of the declaration AST node.
+    pub fn friendly_type_name(&self) -> &'static str {
+        use Declaration::*;
+        match self {
+            VariableDeclaration(_) => "variable",
+            ConstantDeclaration(_) => "constant",
+            TraitTypeDeclaration(_) => "type",
+            FunctionDeclaration(_) => "function",
+            TraitDeclaration(_) => "trait",
+            StructDeclaration(_) => "struct",
+            EnumDeclaration(_) => "enum",
+            ImplSelf(_) => "impl self",
+            ImplTrait(_) => "impl trait",
+            AbiDeclaration(_) => "abi",
+            StorageDeclaration(_) => "contract storage",
+            TypeAliasDeclaration(_) => "type alias",
+        }
+    }
+
     #[allow(dead_code)]
     fn span(&self, engines: &Engines) -> sway_types::Span {
         use Declaration::*;
@@ -68,5 +94,51 @@ impl Declaration {
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
         }
+    }
+}
+
+impl DisplayWithEngines for Declaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
+        write!(
+            f,
+            "{} parsed declaration ({})",
+            self.friendly_type_name(),
+            match self {
+                Declaration::VariableDeclaration(decl_id) => {
+                    engines.pe().get(decl_id).name.as_str().into()
+                }
+                Declaration::FunctionDeclaration(decl_id) => {
+                    engines.pe().get(decl_id).name.as_str().into()
+                }
+                Declaration::TraitDeclaration(decl_id) => {
+                    engines.pe().get(decl_id).name.as_str().into()
+                }
+                Declaration::StructDeclaration(decl_id) => {
+                    engines.pe().get(decl_id).name.as_str().into()
+                }
+                Declaration::EnumDeclaration(decl_id) => {
+                    engines.pe().get(decl_id).name.as_str().into()
+                }
+                Declaration::ImplTrait(decl_id) => {
+                    engines
+                        .pe()
+                        .get(decl_id)
+                        .trait_name
+                        .as_vec_string()
+                        .join("::")
+                        .as_str()
+                        .into()
+                }
+                Declaration::TypeAliasDeclaration(decl_id) =>
+                    engines.pe().get(decl_id).name.as_str().into(),
+                _ => String::new(),
+            }
+        )
+    }
+}
+
+impl DebugWithEngines for Declaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
+        DisplayWithEngines::fmt(&self, f, engines)
     }
 }
