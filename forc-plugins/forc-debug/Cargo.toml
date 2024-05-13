@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1.0" # Used by the examples and for conversion only
-clap = { version = "3", features = ["env", "derive"] }
+clap = { version = "4.5.4", features = ["derive", "env"] }
 dap = "0.4.1-alpha1"
 forc-pkg = { version = "0.56.1", path = "../../forc-pkg" }
 forc-test = { version = "0.56.1", path = "../../forc-test" }

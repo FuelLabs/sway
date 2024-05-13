@@ -12,7 +12,7 @@ repository.workspace = true
 annotate-snippets = { version = "0.10.1" }
 ansi_term = "0.12"
 anyhow = "1"
-clap = { version = "3.1", features = ["cargo", "derive", "env"] }
+clap = { version = "4.5.4", features = ["cargo", "derive", "env"] }
 dirs = "3.0.2"
 fd-lock = "4.0"
 forc-tracing = { version = "0.56.1", path = "../forc-tracing" }
