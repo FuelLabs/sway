@@ -93,7 +93,7 @@ async fn generate_predicate_inputs(
         .unwrap()
         .with_provider(provider.clone());
 
-    let predicate_code = predicate.code().clone();
+    let predicate_code = predicate.code().to_vec();
 
     let predicate_root = predicate.address();
 

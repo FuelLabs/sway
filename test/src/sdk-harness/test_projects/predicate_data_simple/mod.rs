@@ -5,10 +5,7 @@ use fuels::{
     accounts::wallet::{Wallet, WalletUnlocked},
     core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
-    types::{
-        input::Input, transaction_builders::ScriptTransactionBuilder,
-        unresolved_bytes::UnresolvedBytes, Token,
-    },
+    types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
 };
 use std::str::FromStr;
 
@@ -63,7 +60,7 @@ async fn submit_to_predicate(
     amount_to_predicate: u64,
     asset_id: AssetId,
     receiver_address: Address,
-    predicate_data: UnresolvedBytes,
+    predicate_data: Vec<u8>,
 ) -> Result<()> {
     let filter = ResourceFilter {
         from: predicate_address.into(),
