@@ -1,11 +1,15 @@
 use anyhow::Result;
 
+use fuel_core_client::client::FuelClient;
+use fuel_core_types::services::executor::TransactionExecutionResult;
 use fuel_tx::{
-    field::{Inputs, Witnesses},
-    Buildable, Chargeable, Input, Script, Transaction, TxPointer,
+    field::{Inputs, MaxFeeLimit, Witnesses},
+    Buildable, Chargeable, Create, Input, Script, Transaction, TxPointer,
 };
 use fuels_accounts::provider::Provider;
-use fuels_core::types::transaction_builders::DryRunner;
+use fuels_core::{
+    constants::DEFAULT_GAS_ESTIMATION_BLOCK_HORIZON, types::transaction_builders::DryRunner,
+};
 
 fn no_spendable_input<'a, I: IntoIterator<Item = &'a Input>>(inputs: I) -> bool {
     !inputs.into_iter().any(|i| {
@@ -50,6 +54,51 @@ pub(crate) async fn get_script_gas_used(mut tx: Script, provider: &Provider) -> 
 pub(crate) async fn get_gas_used(tx: Transaction, provider: &Provider) -> Result<u64> {
     let tolerance = 0.1;
     let gas_used = provider.dry_run_and_get_used_gas(tx, tolerance).await?;
-    println!("estimation {gas_used}");
     Ok(gas_used)
+}
+
+pub(crate) async fn get_max_fee(
+    tx: Create,
+    provider: &Provider,
+    client: &FuelClient,
+) -> Result<u64> {
+    let mut tx = tx.clone();
+    // Add dummy input to get past validation for dry run.
+    let no_spendable_input = no_spendable_input(tx.inputs());
+    if no_spendable_input {
+        tx.inputs_mut().push(Input::coin_signed(
+            Default::default(),
+            Default::default(),
+            1_000_000_000,
+            Default::default(),
+            TxPointer::default(),
+            0,
+        ));
+
+        // Add an empty `Witness` for the `coin_signed` we just added
+        // and increase the witness limit
+        tx.witnesses_mut().push(Default::default());
+    }
+    let consensus_params = provider.consensus_parameters();
+    let gas_price = provider
+        .estimate_gas_price(DEFAULT_GAS_ESTIMATION_BLOCK_HORIZON)
+        .await?
+        .gas_price;
+    let max_fee = tx.max_fee(
+        consensus_params.gas_costs(),
+        consensus_params.fee_params(),
+        gas_price,
+    );
+    tx.set_max_fee_limit(max_fee as u64);
+    let tx = Transaction::from(tx);
+
+    let tx_status = client
+        .dry_run_opt(&[tx], Some(false))
+        .await
+        .map(|mut status_vec| status_vec.remove(0))?;
+    let total_fee = match tx_status.result {
+        TransactionExecutionResult::Success { total_fee, .. } => total_fee,
+        TransactionExecutionResult::Failed { total_fee, .. } => total_fee,
+    };
+    Ok(total_fee)
 }
