@@ -38,7 +38,7 @@ fn test_get_node_url_testnet() {
     };
 
     let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://beta-5.fuel.network", actual);
+    assert_eq!("https://devnet.fuel.network", actual);
 }
 
 #[test]
