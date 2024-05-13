@@ -1,8 +1,8 @@
 use anyhow::Result;
-use forc_tx::Gas;
+
 use fuel_tx::{
-    field::{Inputs, MaxFeeLimit, Witnesses},
-    Buildable, Chargeable, Create, Input, Script, Transaction, TxPointer,
+    field::{Inputs, Witnesses},
+    Buildable, Chargeable, Input, Script, Transaction, TxPointer,
 };
 use fuels_accounts::provider::Provider;
 use fuels_core::types::transaction_builders::DryRunner;
