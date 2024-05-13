@@ -40,7 +40,7 @@ impl AllocatedProgram {
 
 impl std::fmt::Display for AllocatedProgram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, ";; {:?}", self.kind)?;
+        writeln!(f, ";; Program kind: {:?}", self.kind)?;
         writeln!(f, ";; --- Prologue ---\n{}\n", self.prologue)?;
         writeln!(f, ";; --- Functions ---")?;
         for function in &self.functions {

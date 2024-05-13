@@ -61,14 +61,13 @@ pub fn compile_program<'eng>(
     };
 
     match kind {
-        // predicates and scripts have the same codegen, their only difference is static
+        // Predicates and scripts have the same codegen, their only difference is static
         // type-check time checks.
         ty::TyProgramKind::Script { entry_function, .. } => compile::compile_script(
             engines,
             &mut ctx,
             entry_function,
             root.namespace.module(engines),
-            declarations,
             &logged_types,
             &messages_types,
             &test_fns,
@@ -78,7 +77,6 @@ pub fn compile_program<'eng>(
             &mut ctx,
             entry_function,
             root.namespace.module(engines),
-            declarations,
             &logged_types,
             &messages_types,
             &test_fns,
@@ -101,14 +99,11 @@ pub fn compile_program<'eng>(
             engines,
             &mut ctx,
             root.namespace.module(engines),
-            declarations,
             &logged_types,
             &messages_types,
             &test_fns,
         ),
     }?;
-
-    //println!("{ctx}");
 
     ctx.verify().map_err(|ir_error: sway_ir::IrError| {
         vec![CompileError::InternalOwned(
