@@ -50,6 +50,55 @@ impl<'de> serde::Deserialize<'de> for OptLevel {
     }
 }
 
+/// Which ASM to print.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PrintAsm {
+    #[serde(rename = "virtual")]
+    pub virtual_abstract: bool,
+    #[serde(rename = "allocated")]
+    pub allocated_abstract: bool,
+    pub r#final: bool,
+}
+
+impl PrintAsm {
+    pub fn all() -> Self {
+        Self {
+            virtual_abstract: true,
+            allocated_abstract: true,
+            r#final: true,
+        }
+    }
+
+    pub fn abstract_virtual() -> Self {
+        Self {
+            virtual_abstract: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn abstract_allocated() -> Self {
+        Self {
+            allocated_abstract: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn r#final() -> Self {
+        Self {
+            r#final: true,
+            ..Self::default()
+        }
+    }
+}
+
+impl std::ops::BitOrAssign for PrintAsm {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.virtual_abstract |= rhs.virtual_abstract;
+        self.allocated_abstract |= rhs.allocated_abstract;
+        self.r#final |= rhs.r#final;
+    }
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
@@ -60,8 +109,7 @@ pub struct BuildConfig {
     pub(crate) canonical_root_module: Arc<PathBuf>,
     pub(crate) print_dca_graph: Option<String>,
     pub(crate) print_dca_graph_url_format: Option<String>,
-    pub(crate) print_intermediate_asm: bool,
-    pub(crate) print_finalized_asm: bool,
+    pub(crate) print_asm: PrintAsm,
     pub(crate) print_bytecode: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
@@ -108,8 +156,7 @@ impl BuildConfig {
             canonical_root_module: Arc::new(canonical_root_module),
             print_dca_graph: None,
             print_dca_graph_url_format: None,
-            print_intermediate_asm: false,
-            print_finalized_asm: false,
+            print_asm: PrintAsm::default(),
             print_bytecode: false,
             print_ir: false,
             include_tests: false,
@@ -137,18 +184,8 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_print_intermediate_asm(self, a: bool) -> Self {
-        Self {
-            print_intermediate_asm: a,
-            ..self
-        }
-    }
-
-    pub fn with_print_finalized_asm(self, a: bool) -> Self {
-        Self {
-            print_finalized_asm: a,
-            ..self
-        }
+    pub fn with_print_asm(self, print_asm: PrintAsm) -> Self {
+        Self { print_asm, ..self }
     }
 
     pub fn with_print_bytecode(self, a: bool) -> Self {
