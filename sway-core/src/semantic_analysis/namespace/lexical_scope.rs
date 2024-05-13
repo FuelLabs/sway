@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{parsed_id::ParsedDeclId, *},
-    engine_threading::Engines,
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
@@ -38,7 +38,7 @@ impl ResolvedFunctionDecl {
 pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
 pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
 type SourceIdent = Ident;
-pub(super) type GlobSynonyms = im::HashMap<Ident, (ModulePathBuf, ty::TyDecl)>;
+pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ty::TyDecl)>>;
 pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
@@ -75,6 +75,12 @@ pub struct Items {
     /// path `foo::bar::Baz`.
     ///
     /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
+    ///
+    /// When star importing from multiple modules the same name may be imported more than once. This
+    /// is not an error, but it is an error to use the name without a module path. To represent
+    /// this, use_glob_synonyms maps identifiers to a vector of (module path, type declaration)
+    /// tuples.
+    ///
     /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
     ///
     /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
@@ -302,6 +308,59 @@ impl Items {
         self.symbols.insert(name, item);
 
         Ok(())
+    }
+
+    // Add a new binding into use_glob_synonyms. The symbol may already be bound by an earlier
+    // insertion, in which case the new binding is added as well so that multiple bindings exist.
+    //
+    // There are a few edge cases were a new binding will replace an old binding. These edge cases
+    // are a consequence of the prelude reexports not being implemented properly. See comments in
+    // the code for details.
+    pub(crate) fn insert_glob_use_symbol(
+        &mut self,
+        engines: &Engines,
+        symbol: Ident,
+        src_path: ModulePathBuf,
+        decl: &ty::TyDecl,
+    ) {
+        if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
+            // Name already bound. Check if the decl is already imported
+            let ctx = PartialEqWithEnginesContext::new(engines);
+            match cur_decls.iter().position(|(cur_path, cur_decl)| {
+                cur_decl.eq(decl, &ctx)
+		// For some reason the equality check is not sufficient. In some cases items that
+		// are actually identical fail the eq check, so we have to add heuristics for these
+		// cases.
+		//
+	    	// These edge occur because core and std preludes are not reexported correctly. Once
+		// reexports are implemented we can handle the preludes correctly, and then these
+		// edge cases should go away.
+		// See https://github.com/FuelLabs/sway/issues/3113
+		//
+		// As a heuristic we replace any bindings from std and core if the new binding is
+		// also from std or core.  This does not work if the user has declared an item with
+		// the same name as an item in one of the preludes, but this is an edge case that we
+		// will have to live with for now.
+                    || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
+                        && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std"))
+            }) {
+                Some(index) => {
+                    // The name is already bound to this decl, but
+                    // we need to replace the binding to make the paths work out.
+                    // This appears to be an issue with the core prelude, and will probably no
+                    // longer be necessary once reexports are implemented:
+                    // https://github.com/FuelLabs/sway/issues/3113
+                    cur_decls[index] = (src_path.to_vec(), decl.clone());
+                }
+                None => {
+                    // New decl for this name. Add it to the end
+                    cur_decls.push((src_path.to_vec(), decl.clone()));
+                }
+            }
+        } else {
+            let new_vec = vec![(src_path.to_vec(), decl.clone())];
+            self.use_glob_synonyms.insert(symbol, new_vec);
+        }
     }
 
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {

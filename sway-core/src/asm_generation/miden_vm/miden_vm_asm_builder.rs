@@ -660,6 +660,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             Array(_) => todo!(),
             Struct(_) => todo!(),
             Reference(_) => todo!(),
+            RawUntypedSlice(_) => todo!(),
         }
     }
 }

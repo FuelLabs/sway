@@ -1,0 +1,4 @@
+category = "fail"
+
+#check: $()owner: u64 = INITIAL_OWNER,
+#nextln: $()Could not evaluate initializer to a const declaration.

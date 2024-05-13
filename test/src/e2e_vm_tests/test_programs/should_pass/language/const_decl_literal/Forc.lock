@@ -1,8 +1,8 @@
 [[package]]
-name = "const_decl"
+name = "const_decl_literal"
 source = "member"
 dependencies = ["core"]
 
 [[package]]
 name = "core"
-source = "path+from-root-FBEF090568E90A96"
+source = "path+from-root-CF582537254C5032"
