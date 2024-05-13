@@ -23,7 +23,7 @@ use forc_wallet::{
     utils::default_wallet_path,
 };
 
-use crate::constants::BETA_FAUCET_URL;
+use crate::util::target::Target;
 
 /// The maximum time to wait for a transaction to be included in a block by the node
 pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
@@ -170,7 +170,8 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         signing_key: Option<SecretKey>,
         wallet_mode: WalletSelectionMode,
     ) -> Result<Tx> {
-        let params = provider.chain_info().await?.consensus_parameters;
+        let chain_info = provider.chain_info().await?;
+        let params = chain_info.consensus_parameters;
         let signing_key = match (wallet_mode, signing_key, default_sign) {
             (WalletSelectionMode::ForcWallet, None, false) => {
                 // TODO: This is a very simple TUI, we should consider adding a nice TUI
@@ -218,10 +219,11 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                     let first_account = accounts
                         .get(&0)
                         .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
-                    let faucet_link = format!("{}/?address={first_account}", BETA_FAUCET_URL);
+                    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+                    let faucet_link = format!("{}/?address={first_account}", target.faucet_url());
                     anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
                                       \n\nIf you are interacting with a testnet consider using the faucet.\
-                                      \n-> devnet network faucet: {faucet_link}\
+                                      \n-> {target} network faucet: {faucet_link}\
                                       \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
                 }
                 print_account_balances(&accounts, &account_balances);
