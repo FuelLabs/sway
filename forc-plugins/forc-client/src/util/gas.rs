@@ -25,12 +25,13 @@ fn no_spendable_input<'a, I: IntoIterator<Item = &'a Input>>(inputs: I) -> bool 
 
 pub(crate) async fn get_script_gas_used(mut tx: Script, provider: &Provider) -> Result<u64> {
     let no_spendable_input = no_spendable_input(tx.inputs());
+    let base_asset_id = provider.base_asset_id();
     if no_spendable_input {
         tx.inputs_mut().push(Input::coin_signed(
             Default::default(),
             Default::default(),
             1_000_000_000,
-            Default::default(),
+            *base_asset_id,
             TxPointer::default(),
             0,
         ));
@@ -57,20 +58,25 @@ pub(crate) async fn get_gas_used(tx: Transaction, provider: &Provider) -> Result
     Ok(gas_used)
 }
 
-pub(crate) async fn get_max_fee(
+/// Returns an estimation for the max fee of `Create` transactions.
+/// Accepts a `tolerance` which is used to add some safety margin to the estimation.
+/// Resulting estimation is calculated as `(dry_run_estimation * tolerance)/100 + dry_run_estimation)`.
+pub(crate) async fn get_estimated_max_fee(
     tx: Create,
     provider: &Provider,
     client: &FuelClient,
+    tolerance: u64,
 ) -> Result<u64> {
     let mut tx = tx.clone();
     // Add dummy input to get past validation for dry run.
     let no_spendable_input = no_spendable_input(tx.inputs());
+    let base_asset_id = provider.base_asset_id();
     if no_spendable_input {
         tx.inputs_mut().push(Input::coin_signed(
             Default::default(),
             Default::default(),
             1_000_000_000,
-            Default::default(),
+            *base_asset_id,
             TxPointer::default(),
             0,
         ));
@@ -100,5 +106,7 @@ pub(crate) async fn get_max_fee(
         TransactionExecutionResult::Success { total_fee, .. } => total_fee,
         TransactionExecutionResult::Failed { total_fee, .. } => total_fee,
     };
-    Ok(total_fee)
+
+    let total_fee_with_tolerance = ((total_fee * tolerance) / 100) + total_fee;
+    Ok(total_fee_with_tolerance)
 }
