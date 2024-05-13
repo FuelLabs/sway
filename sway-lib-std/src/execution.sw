@@ -1,3 +1,4 @@
+//! Helper functions to load and run external contract code.
 library;
 
 use ::contract_id::ContractId;

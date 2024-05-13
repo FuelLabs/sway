@@ -14,7 +14,7 @@
       "output_index": 0,
       "tx_pointer_block_height": 0,
       "tx_pointer_tx_idx": 0,
-      "owner": "54944e5b8189827e470e5a8bacfc6c3667397dc4e1eef7ef3519d16d6d6c6610",
+      "owner": "de97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c",
       "amount": 1152921504606846976,
       "asset_id": "0000000000000000000000000000000000000000000000000000000000000000"
     },
@@ -131,6 +131,5 @@
       "balances": []
     }
   ],
-  "block_height": 0,
-  "da_block_height": 0
+  "last_block": null
 }

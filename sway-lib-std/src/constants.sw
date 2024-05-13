@@ -1,4 +1,4 @@
-//! Base asset and zero address constants.
+//! Definitions for constant values in Sway.
 library;
 
 use ::zero::Zero;

@@ -205,6 +205,9 @@ pub struct Gas {
     /// Gas limit for the transaction.
     #[clap(long = "script-gas-limit")]
     pub script_gas_limit: Option<u64>,
+    /// Max fee for the transaction.
+    #[clap(long)]
+    pub max_fee: Option<u64>,
 }
 
 /// Block until which tx cannot be included.

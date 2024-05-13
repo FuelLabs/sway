@@ -130,14 +130,16 @@ where
         if body.is_empty() {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code)]
-                fn abi_encode(self, ref mut _buffer: Buffer) {{
+                fn abi_encode(self, buffer: Buffer) -> Buffer {{
+                    buffer
                 }}
             }}")
         } else {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code)]
-                fn abi_encode(self, ref mut buffer: Buffer) {{
+                fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
+                    buffer
                 }}
             }}")
         }
@@ -178,7 +180,7 @@ where
 
         for f in decl.fields.iter() {
             code.push_str(&format!(
-                "self.{field_name}.abi_encode(buffer);\n",
+                "let buffer = self.{field_name}.abi_encode(buffer);\n",
                 field_name = f.name.as_str(),
             ));
         }
@@ -249,34 +251,31 @@ where
             .iter()
             .map(|x| {
                 let name = x.name.as_str();
-                match &*engines.te().get(x.type_argument.type_id) {
-                    // Unit
-                    TypeInfo::Tuple(fields) if fields.is_empty() => {
-                        format!(
-                            "{enum_name}::{variant_name} => {{
-                            {tag_value}u64.abi_encode(buffer);
-                        }}, \n",
-                            tag_value = x.tag,
-                            enum_name = enum_name,
-                            variant_name = name
-                        )
-                    }
-                    _ => {
-                        format!(
-                            "{enum_name}::{variant_name}(value) => {{
-                            {tag_value}u64.abi_encode(buffer);
-                            value.abi_encode(buffer);
-                        }}, \n",
-                            tag_value = x.tag,
-                            enum_name = enum_name,
-                            variant_name = name,
-                        )
-                    }
+                if engines.te().get(x.type_argument.type_id).is_unit() {
+                    format!(
+                        "{enum_name}::{variant_name} => {{
+                        {tag_value}u64.abi_encode(buffer)
+                    }}, \n",
+                        tag_value = x.tag,
+                        enum_name = enum_name,
+                        variant_name = name
+                    )
+                } else {
+                    format!(
+                        "{enum_name}::{variant_name}(value) => {{
+                        let buffer = {tag_value}u64.abi_encode(buffer);
+                        let buffer = value.abi_encode(buffer);
+                        buffer
+                    }}, \n",
+                        tag_value = x.tag,
+                        enum_name = enum_name,
+                        variant_name = name,
+                    )
                 }
             })
             .collect::<String>();
 
-        format!("match self {{ {arms} }}")
+        format!("let buffer = match self {{ {arms} }};")
     }
 
     pub fn parse_fn_to_ty_ast_node(

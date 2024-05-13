@@ -49,6 +49,16 @@ impl PartialEqWithEngines for CallPathTree {
     }
 }
 
+impl<T: PartialEqWithEngines> EqWithEngines for Vec<T> {}
+impl<T: PartialEqWithEngines> PartialEqWithEngines for Vec<T> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        self.iter().zip(other.iter()).all(|(a, b)| a.eq(b, ctx))
+    }
+}
+
 impl OrdWithEngines for CallPathTree {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let CallPathTree {
@@ -319,18 +329,22 @@ impl CallPath {
                     .cloned()
                 {
                     Some(path)
-                } else if let Some((path, _)) = m
+                } else if let Some(paths_and_decls) = m
                     .current_items()
                     .use_glob_synonyms
                     .get(&self.suffix)
                     .cloned()
                 {
-                    Some(path)
+                    if paths_and_decls.len() == 1 {
+                        Some(paths_and_decls[0].0.clone())
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             }) {
-                synonym_prefixes = mod_path.clone();
+                synonym_prefixes.clone_from(&mod_path);
                 is_absolute = true;
                 let submodule = namespace
                     .module(engines)

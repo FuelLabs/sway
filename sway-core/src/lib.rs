@@ -43,9 +43,9 @@ use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_MODULE_NAME,
-    MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME,
-    SIMPLIFYCFG_NAME, SROA_NAME,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FNDEDUP_DEBUG_PROFILE_NAME, FUNC_DCE_NAME,
+    INLINE_MODULE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME,
+    RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -883,6 +883,10 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             // Inlining is necessary until #4899 is resolved.
             pass_group.append_pass(INLINE_MODULE_NAME);
 
+            // We run a function deduplication pass that only removes duplicate
+            // functions when everything, including the metadata are identical.
+            pass_group.append_pass(FNDEDUP_DEBUG_PROFILE_NAME);
+
             // Do DCE so other optimizations run faster.
             pass_group.append_pass(FUNC_DCE_NAME);
             pass_group.append_pass(DCE_NAME);
@@ -1008,7 +1012,7 @@ fn dead_code_analysis<'a>(
     program: &ty::TyProgram,
 ) -> Result<ControlFlowGraph<'a>, ErrorEmitted> {
     let decl_engine = engines.de();
-    let mut dead_code_graph = ControlFlowGraph::new(engines.clone());
+    let mut dead_code_graph = ControlFlowGraph::new(engines);
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(
         handler,

@@ -17,5 +17,5 @@ pub use super::{
     },
     engine::TypeEngine,
     id::TypeId,
-    info::{AbiName, TypeInfo, TypeSourceInfo},
+    info::{AbiEncodeSizeHint, AbiName, TypeInfo, TypeSourceInfo},
 };

@@ -5,7 +5,8 @@ use sway_ir::{
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes,
-    Context, ExperimentalFlags, PassGroup, PassManager, DCE_NAME, MEM2REG_NAME, SROA_NAME,
+    Context, ExperimentalFlags, PassGroup, PassManager, DCE_NAME, FNDEDUP_DEBUG_PROFILE_NAME,
+    FNDEDUP_RELEASE_PROFILE_NAME, FUNC_DCE_NAME, MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -275,6 +276,33 @@ fn sroa() {
 
 // -------------------------------------------------------------------------------------------------
 
+#[allow(clippy::needless_collect)]
+#[test]
+fn fndedup_debug() {
+    run_tests("fn_dedup/debug", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        register_known_passes(&mut pass_mgr);
+        pass_group.append_pass(FNDEDUP_DEBUG_PROFILE_NAME);
+        pass_group.append_pass(FUNC_DCE_NAME);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+#[allow(clippy::needless_collect)]
+#[test]
+fn fndedup_release() {
+    run_tests("fn_dedup/release", |_first_line, ir: &mut Context| {
+        let mut pass_mgr = PassManager::default();
+        let mut pass_group = PassGroup::default();
+        register_known_passes(&mut pass_mgr);
+        pass_group.append_pass(FNDEDUP_RELEASE_PROFILE_NAME);
+        pass_group.append_pass(FUNC_DCE_NAME);
+        pass_mgr.run(ir, &pass_group).unwrap()
+    })
+}
+
+// -------------------------------------------------------------------------------------------------
 #[test]
 fn serialize() {
     // This isn't running a pass, it's just confirming that the IR can be loaded and printed, and

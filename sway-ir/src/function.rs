@@ -115,7 +115,12 @@ impl Function {
                 )
             })
             .collect();
-        context.functions.get_mut(func.0).unwrap().arguments = arguments.clone();
+        context
+            .functions
+            .get_mut(func.0)
+            .unwrap()
+            .arguments
+            .clone_from(&arguments);
         let (_, arg_vals): (Vec<_>, Vec<_>) = arguments.iter().cloned().unzip();
         context.blocks.get_mut(entry_block.0).unwrap().args = arg_vals;
 

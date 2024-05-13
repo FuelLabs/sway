@@ -80,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     command!(cmd_memory, "[offset] limit -- dump memory", ["m", "memory"]);
 
     let session_id = shell.state.client.start_session().await?;
-    shell.state.session_id = session_id.clone();
+    shell.state.session_id.clone_from(&session_id);
     shell.run_async().await?;
     shell.state.client.end_session(&session_id).await?;
     Ok(())

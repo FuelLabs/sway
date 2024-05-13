@@ -59,6 +59,14 @@ struct Cli {
     /// Update all output files
     #[arg(long)]
     update_output_files: bool,
+
+    /// Prints the final IR
+    #[arg(long)]
+    print_ir: bool,
+
+    /// Prints the finalized ASM
+    #[arg(long)]
+    print_finalized_asm: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -79,6 +87,8 @@ pub struct RunConfig {
     pub release: bool,
     pub experimental: ExperimentalFlags,
     pub update_output_files: bool,
+    pub print_ir: bool,
+    pub print_finalized_asm: bool,
 }
 
 #[tokio::main]
@@ -111,6 +121,8 @@ async fn main() -> Result<()> {
             new_encoding: !cli.no_encoding_v1,
         },
         update_output_files: cli.update_output_files,
+        print_ir: cli.print_ir,
+        print_finalized_asm: cli.print_finalized_asm,
     };
 
     // Check that the tests are consistent

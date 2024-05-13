@@ -275,10 +275,10 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             ast: false,
             dca_graph: None,
             dca_graph_url_format: None,
-            finalized_asm: false,
+            finalized_asm: run_config.print_finalized_asm,
             intermediate_asm: false,
             bytecode: false,
-            ir: false,
+            ir: run_config.print_ir,
             reverse_order: false,
         },
         pkg: forc_pkg::PkgOpts {

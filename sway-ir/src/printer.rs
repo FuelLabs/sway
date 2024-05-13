@@ -1120,6 +1120,17 @@ impl Constant {
                     .join(", ")
             ),
             ConstantValue::Reference(constant) => format!("&({})", constant.as_lit_string(context)),
+            ConstantValue::RawUntypedSlice(bytes) => {
+                format!(
+                    "{} 0x{}",
+                    self.ty.as_string(context),
+                    bytes
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<String>>()
+                        .concat()
+                )
+            }
         }
     }
 }

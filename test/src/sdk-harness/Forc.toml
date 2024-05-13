@@ -5,6 +5,8 @@ members = [
   "test_projects/asset_ops",
   "test_projects/block",
   "test_projects/call_frames",
+  # TODO Uncomment these when SDK supports encoding V1 for configurables
+  # https://github.com/FuelLabs/sway/issues/5727
   "test_projects/configurables_in_contract",
   "test_projects/configurables_in_script",
   "test_projects/context",

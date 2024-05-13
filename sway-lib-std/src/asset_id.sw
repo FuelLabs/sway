@@ -1,3 +1,4 @@
+//! The `AssetId` type used for interacting with an asset on the fuel network.
 library;
 
 use ::alias::SubId;

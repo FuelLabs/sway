@@ -426,6 +426,12 @@ pub enum CompileError {
     DeclIsNotATypeAlias { actually: String, span: Span },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
+    #[error("Found multiple bindings for \"{name}\" in this scope.")]
+    SymbolWithMultipleBindings {
+        name: Ident,
+        paths: Vec<String>,
+        span: Span,
+    },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
     #[error("Module \"{name}\" is private.")]
@@ -555,6 +561,10 @@ pub enum CompileError {
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
     CannotBeEvaluatedToConst { span: Span },
+    #[error(
+        "This code cannot be evaluated to a configurable because its size is not always limited."
+    )]
+    CannotBeEvaluatedToConfigurableSizeUnknown { span: Span },
     #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
         if *dot_syntax_used { "Method" } else { "Function" },
         if *expected == 1usize { "argument" } else {"arguments"},
@@ -952,6 +962,8 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingCore { span: Span },
     #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
+    EncodingUnsupportedType { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1019,6 +1031,7 @@ impl Spanned for CompileError {
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
+            SymbolWithMultipleBindings { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
@@ -1160,6 +1173,8 @@ impl Spanned for CompileError {
             CouldNotGenerateEntry { span } => span.clone(),
             CouldNotGenerateEntryMissingCore { span } => span.clone(),
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
+            CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
+            EncodingUnsupportedType { span } => span.clone(),
         }
     }
 }
@@ -1907,6 +1922,16 @@ impl ToDiagnostic for CompileError {
                     ]
                 }
             },
+	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
+		issue: Issue::error(
+		    source_engine,
+		    span.clone(),
+		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
+		),
+		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
+		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
+	    },
             StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
                 reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
                 issue: Issue::error(
