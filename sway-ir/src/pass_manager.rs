@@ -59,7 +59,6 @@ pub struct Pass {
     /// Other passes that this pass depends on.
     pub deps: Vec<&'static str>,
     /// The executor.
-    ///
     pub runner: ScopedPass,
 }
 
@@ -341,11 +340,22 @@ pub fn create_o1_pass_group() -> PassGroup {
     o1
 }
 
-/// Utility to insert a pass after every pass in the given group
+/// Utility to insert a pass after every pass in the given group `pg`.
+/// It preserves the `pg` group's structure. This means if `pg` has subgroups
+/// and those have subgroups, the resulting [PassGroup] will have the
+/// same subgroups, but with the `pass` inserted after every pass in every
+/// subgroup, as well as all passes outside of any groups.
 pub fn insert_after_each(pg: PassGroup, pass: &'static str) -> PassGroup {
-    PassGroup(
+    fn insert_after_each_rec(pg: PassGroup, pass: &'static str) -> Vec<PassOrGroup> {
         pg.0.into_iter()
-            .flat_map(|p_o_g| vec![p_o_g, PassOrGroup::Pass(pass)])
-            .collect(),
-    )
+            .flat_map(|p_o_g| match p_o_g {
+                PassOrGroup::Group(group) => vec![PassOrGroup::Group(PassGroup(
+                    insert_after_each_rec(group, pass),
+                ))],
+                PassOrGroup::Pass(_) => vec![p_o_g, PassOrGroup::Pass(pass)],
+            })
+            .collect()
+    }
+
+    PassGroup(insert_after_each_rec(pg, pass))
 }
