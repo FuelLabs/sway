@@ -2079,6 +2079,7 @@ dependencies = [
  "forc-wallet",
  "fuel-abi-types",
  "fuel-core-client",
+ "fuel-core-types",
  "fuel-crypto",
  "fuel-tx",
  "fuel-vm",

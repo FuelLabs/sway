@@ -1,7 +1,8 @@
 use anyhow::Result;
+use forc_tx::Gas;
 use fuel_tx::{
-    field::{Inputs, Witnesses},
-    Buildable, Chargeable, Input, Script, Transaction, TxPointer,
+    field::{Inputs, MaxFeeLimit, Witnesses},
+    Buildable, Chargeable, Create, Input, Script, Transaction, TxPointer,
 };
 use fuels_accounts::provider::Provider;
 use fuels_core::types::transaction_builders::DryRunner;
@@ -34,9 +35,9 @@ pub(crate) async fn get_script_gas_used(mut tx: Script, provider: &Provider) -> 
         // and increase the witness limit
         tx.witnesses_mut().push(Default::default());
     }
+    let consensus_params = provider.consensus_parameters();
 
     // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
-    let consensus_params = provider.consensus_parameters();
     let max_gas_per_tx = consensus_params.tx_params().max_gas_per_tx();
     let max_gas = tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
     // Increase `script_gas_limit` to the maximum allowed value.

@@ -1,7 +1,6 @@
 use crate::{
     cmd,
     util::{
-        gas::get_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -18,6 +17,7 @@ use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{field::MaxFeeLimit, Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use fuels_accounts::provider::Provider;
+use fuels_core::types::transaction::CreateTransaction;
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
@@ -257,7 +257,11 @@ pub async fn deploy_pkg(
     let max_fee = if let Some(max_fee) = command.gas.max_fee {
         max_fee
     } else {
-        get_gas_used(Transaction::Create(tx.clone()), &provider).await?
+        let estimate = provider
+            .estimate_transaction_cost(CreateTransaction::from(tx.clone()), Some(1.0), None)
+            .await;
+        println!("est {:?}", estimate);
+        0
     };
 
     tx.set_max_fee_limit(max_fee);
