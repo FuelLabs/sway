@@ -1,6 +1,7 @@
 use crate::constants::{
-    BETA_2_ENDPOINT_URL, BETA_3_ENDPOINT_URL, BETA_4_ENDPOINT_URL, BETA_5_ENDPOINT_URL,
-    DEVNET_ENDPOINT_URL, NODE_URL,
+    BETA_2_ENDPOINT_URL, BETA_2_FAUCET_URL, BETA_3_ENDPOINT_URL, BETA_3_FAUCET_URL,
+    BETA_4_ENDPOINT_URL, BETA_4_FAUCET_URL, BETA_5_ENDPOINT_URL, BETA_5_FAUCET_URL,
+    DEVNET_ENDPOINT_URL, DEVNET_FAUCET_URL, NODE_URL,
 };
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -46,10 +47,18 @@ impl Target {
         }
     }
 
-    pub fn is_testnet(&self) -> bool {
+    pub fn testnet() -> Self {
+        Target::Devnet
+    }
+
+    pub fn faucet_url(&self) -> String {
         match self {
-            Target::Beta2 | Target::Beta3 | Target::Beta4 | Target::Beta5 | Target::Devnet => true,
-            Target::Local => false,
+            Target::Beta2 => BETA_2_FAUCET_URL.to_string(),
+            Target::Beta3 => BETA_3_FAUCET_URL.to_string(),
+            Target::Beta4 => BETA_4_FAUCET_URL.to_string(),
+            Target::Beta5 => BETA_5_FAUCET_URL.to_string(),
+            Target::Devnet => DEVNET_FAUCET_URL.to_string(),
+            Target::Local => "http://localhost:3000".to_string(),
         }
     }
 }
