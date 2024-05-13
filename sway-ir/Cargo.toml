@@ -1,6 +1,6 @@
 [package]
 name = "sway-ir"
-version = "0.56.1"
+version = "0.57.0"
 description = "Sway intermediate representation."
 authors.workspace = true
 edition.workspace = true
@@ -19,9 +19,9 @@ peg = "0.7"
 prettydiff = "0.6.4"
 rustc-hash = "1.1.0"
 slotmap = "1.0.7"
-sway-ir-macros = { version = "0.56.1", path = "sway-ir-macros" }
-sway-types = { version = "0.56.1", path = "../sway-types" }
-sway-utils = { version = "0.56.1", path = "../sway-utils" }
+sway-ir-macros = { version = "0.57.0", path = "sway-ir-macros" }
+sway-types = { version = "0.57.0", path = "../sway-types" }
+sway-utils = { version = "0.57.0", path = "../sway-utils" }
 
 [lints.clippy]
 iter_over_hash_type = "deny"
