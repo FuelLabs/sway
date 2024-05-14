@@ -6,7 +6,7 @@ use ::option::Option::{self, *};
 use ::u128::U128;
 use ::b512::B512;
 
-impl TryFrom<B512> for b256 {
+impl TryFrom<B512> for u256 {
     /// Attempts conversion from a `B512` to a `u256`.
     /// If the high bits of the `B512` are not zero, the conversion will fail.
     ///
