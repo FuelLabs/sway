@@ -78,7 +78,7 @@ In the case where the `b256` value of an asset is already known, you may call th
 
 The SubId is used to differentiate between different assets that are created by the same contract. The `SubId` is a `b256` value.
 
-When creating an single new asset on Fuel, we recommend using the `DEFAULT_SUB_ID` or `SubId::zero()`.
+When creating a single new asset on Fuel, we recommend using the `DEFAULT_SUB_ID` or `SubId::zero()`.
 
 ## The Base Asset
 
