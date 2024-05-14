@@ -77,7 +77,7 @@ Note that the above implementation of the ABI follows the [Checks, Effects, Inte
 
 ## The `ContractId` type
 
-Contracts have an associated `ContractId` type in Sway which allows for Sway programs to interact with contracts in the Sway language. Please refer to the [ContractId](../basics/blockchain_types.md#contractid-type) section of the book for more information on `ContractId`s.
+Contracts have an associated `ContractId` type in Sway. The `ContractId` type allows for Sway programs to refer to contracts in the Sway language. Please refer to the [ContractId](../basics/blockchain_types.md#contractid-type) section of the book for more information on `ContractId`s.
 
 ## Calling a Smart Contract from a Script
 
