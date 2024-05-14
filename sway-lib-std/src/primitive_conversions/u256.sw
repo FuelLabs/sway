@@ -1,7 +1,9 @@
 library;
 
+use ::constants::ZERO_B256;
 use ::convert::From;
 use ::u128::U128;
+use ::b512::B512;
 
 impl TryFrom<B512> for b256 {
     /// Attempts conversion from a `B512` to a `u256`.
