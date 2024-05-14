@@ -196,7 +196,7 @@ fn test_b256_try_from_b512() {
     let b256_value = b256::try_from(b512_value);
     assert(b256_value.is_some());
 
-    let b512_value = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001_b256, ZERO_B256));
+    let b512_value = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001, ZERO_B256));
     let b256_value = b256::try_from(b512_value);
     assert(b256_value.is_none());
 }
