@@ -2,7 +2,7 @@ mod encode;
 use crate::{
     cmd,
     util::{
-        gas::get_gas_used,
+        gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -120,7 +120,7 @@ pub async fn run_pkg(
         script_gas_limit
     // Dry run tx and get `gas_used`
     } else {
-        get_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
+        get_script_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
     };
     tb.script_gas_limit(script_gas_limit);
 
