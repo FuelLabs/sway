@@ -2,12 +2,11 @@ use crate::{
     create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass, create_func_dce_pass,
-    create_inline_in_main_pass, create_inline_in_module_pass, create_mem2reg_pass,
-    create_memcpyopt_pass, create_misc_demotion_pass, create_module_printer_pass,
-    create_module_verifier_pass, create_postorder_pass, create_ret_demotion_pass,
-    create_simplify_cfg_pass, create_sroa_pass, Context, Function, IrError, Module,
-    CONSTCOMBINE_NAME, DCE_NAME, FNDEDUP_RELEASE_PROFILE_NAME, FUNC_DCE_NAME, INLINE_MODULE_NAME,
-    MEM2REG_NAME, SIMPLIFYCFG_NAME,
+    create_inline_in_module_pass, create_mem2reg_pass, create_memcpyopt_pass,
+    create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass,
+    create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass,
+    Context, Function, IrError, Module, CONSTCOMBINE_NAME, DCE_NAME, FNDEDUP_RELEASE_PROFILE_NAME,
+    FUNC_DCE_NAME, INLINE_MODULE_NAME, MEM2REG_NAME, SIMPLIFYCFG_NAME,
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -59,7 +58,6 @@ pub struct Pass {
     /// Other passes that this pass depends on.
     pub deps: Vec<&'static str>,
     /// The executor.
-    ///
     pub runner: ScopedPass,
 }
 
@@ -312,7 +310,6 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_mem2reg_pass());
     pm.register(create_sroa_pass());
     pm.register(create_inline_in_module_pass());
-    pm.register(create_inline_in_main_pass());
     pm.register(create_const_combine_pass());
     pm.register(create_simplify_cfg_pass());
     pm.register(create_func_dce_pass());
@@ -341,11 +338,22 @@ pub fn create_o1_pass_group() -> PassGroup {
     o1
 }
 
-/// Utility to insert a pass after every pass in the given group
+/// Utility to insert a pass after every pass in the given group `pg`.
+/// It preserves the `pg` group's structure. This means if `pg` has subgroups
+/// and those have subgroups, the resulting [PassGroup] will have the
+/// same subgroups, but with the `pass` inserted after every pass in every
+/// subgroup, as well as all passes outside of any groups.
 pub fn insert_after_each(pg: PassGroup, pass: &'static str) -> PassGroup {
-    PassGroup(
+    fn insert_after_each_rec(pg: PassGroup, pass: &'static str) -> Vec<PassOrGroup> {
         pg.0.into_iter()
-            .flat_map(|p_o_g| vec![p_o_g, PassOrGroup::Pass(pass)])
-            .collect(),
-    )
+            .flat_map(|p_o_g| match p_o_g {
+                PassOrGroup::Group(group) => vec![PassOrGroup::Group(PassGroup(
+                    insert_after_each_rec(group, pass),
+                ))],
+                PassOrGroup::Pass(_) => vec![p_o_g, PassOrGroup::Pass(pass)],
+            })
+            .collect()
+    }
+
+    PassGroup(insert_after_each_rec(pg, pass))
 }

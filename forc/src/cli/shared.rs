@@ -1,8 +1,7 @@
 //! Sets of arguments that are shared between commands.
-
 use clap::{Args, Parser};
 use forc_pkg::source::IPFSNode;
-use sway_core::BuildTarget;
+use sway_core::{BuildTarget, PrintAsm};
 
 /// Args that can be shared between all commands that `build` a package. E.g. `build`, `test`,
 /// `deploy`.
@@ -67,17 +66,16 @@ pub struct Print {
     ///   "vscode://file/{path}:{line}:{col}"
     #[clap(long, verbatim_doc_comment)]
     pub dca_graph_url_format: Option<String>,
-    /// Print the finalized ASM.
+    /// Print the generated ASM (assembler).
     ///
-    /// This is the state of the ASM with registers allocated and optimisations applied.
-    #[clap(long)]
-    pub finalized_asm: bool,
-    /// Print the generated ASM.
-    ///
-    /// This is the state of the ASM prior to performing register allocation and other ASM
-    /// optimisations.
-    #[clap(long)]
-    pub intermediate_asm: bool,
+    /// Possible values that can be combined:
+    ///  - virtual:   initial ASM with virtual registers and abstract control flow.
+    ///  - allocated: ASM with registers allocated, but still with abstract control flow.
+    ///  - abstract:  short for both virtual and allocated ASM.
+    ///  - final:     final ASM that gets serialized to the target VM bytecode.
+    ///  - all:       short for virtual, allocated, and final ASM.
+    #[arg(long, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
+    pub asm: Option<Vec<String>>,
     /// Print the bytecode. This is the final output of the compiler.
     #[clap(long)]
     pub bytecode: bool,
@@ -93,6 +91,14 @@ pub struct Print {
     /// Output compilation metrics into file.
     #[clap(long)]
     pub metrics_outfile: Option<String>,
+}
+
+impl Print {
+    pub fn asm(&self) -> PrintAsm {
+        self.asm
+            .as_ref()
+            .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0)
+    }
 }
 
 /// Package-related options.
@@ -138,4 +144,39 @@ pub struct Minify {
     /// this option JSON output will be "minified", i.e. all on one line without whitespace.
     #[clap(long)]
     pub json_storage_slots: bool,
+}
+
+pub struct PrintAsmCliOpt(pub PrintAsm);
+
+impl PrintAsmCliOpt {
+    const VIRTUAL: &'static str = "virtual";
+    const ALLOCATED: &'static str = "allocated";
+    const ABSTRACT: &'static str = "abstract";
+    const FINAL: &'static str = "final";
+    const ALL: &'static str = "all";
+    pub const CLI_OPTIONS: [&'static str; 5] = [
+        Self::VIRTUAL,
+        Self::ALLOCATED,
+        Self::ABSTRACT,
+        Self::FINAL,
+        Self::ALL,
+    ];
+}
+
+impl From<&Vec<String>> for PrintAsmCliOpt {
+    fn from(value: &Vec<String>) -> Self {
+        let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
+
+        let print_asm = if contains_opt(Self::ALL) {
+            PrintAsm::all()
+        } else {
+            PrintAsm {
+                virtual_abstract: contains_opt(Self::ABSTRACT) || contains_opt(Self::VIRTUAL),
+                allocated_abstract: contains_opt(Self::ABSTRACT) || contains_opt(Self::ALLOCATED),
+                r#final: contains_opt(Self::FINAL),
+            }
+        };
+
+        Self(print_asm)
+    }
 }

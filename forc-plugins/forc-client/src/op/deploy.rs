@@ -1,6 +1,7 @@
 use crate::{
     cmd,
     util::{
+        gas::get_estimated_max_fee,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -237,21 +238,40 @@ pub async fn deploy_pkg(
         WalletSelectionMode::ForcWallet
     };
 
-    let max_fee = command.gas.max_fee.unwrap_or(0);
+    let provider = Provider::connect(node_url.clone()).await?;
 
-    let tx = TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone())
+    // We need a tx for estimation without the signature.
+    let mut tb =
+        TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone());
+    tb.maturity(command.maturity.maturity.into())
+        .add_output(Output::contract_created(contract_id, state_root));
+    let tx_for_estimation = tb.finalize_without_signature_inner();
+
+    // If user specified max_fee use that but if not, we will estimate with %10 safety margin.
+    let max_fee = if let Some(max_fee) = command.gas.max_fee {
+        max_fee
+    } else {
+        let estimation_margin = 10;
+        get_estimated_max_fee(
+            tx_for_estimation.clone(),
+            &provider,
+            &client,
+            estimation_margin,
+        )
+        .await?
+    };
+
+    let tx = tb
         .max_fee_limit(max_fee)
-        .maturity(command.maturity.maturity.into())
-        .add_output(Output::contract_created(contract_id, state_root))
         .finalize_signed(
-            Provider::connect(node_url.clone()).await?,
+            provider.clone(),
             command.default_signer || command.unsigned,
             command.signing_key,
             wallet_mode,
         )
         .await?;
-
     let tx = Transaction::from(tx);
+
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
@@ -331,8 +351,7 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             ast: cmd.print.ast,
             dca_graph: cmd.print.dca_graph.clone(),
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
-            finalized_asm: cmd.print.finalized_asm,
-            intermediate_asm: cmd.print.intermediate_asm,
+            asm: cmd.print.asm(),
             bytecode: cmd.print.bytecode,
             ir: cmd.print.ir,
             reverse_order: cmd.print.reverse_order,

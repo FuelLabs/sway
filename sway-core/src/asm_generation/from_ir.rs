@@ -31,14 +31,6 @@ pub fn compile_ir_to_asm(
     let final_program =
         compile_module_to_asm(handler, RegisterSequencer::new(), ir, module, build_config)?;
 
-    if build_config
-        .map(|cfg| cfg.print_finalized_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- FINAL PROGRAM ---\n");
-        println!("{final_program}");
-    }
-
     let final_asm = final_program.finalize();
 
     check_invalid_opcodes(handler, &final_asm)?;
@@ -122,11 +114,17 @@ fn compile_module_to_asm(
                 },
             );
 
+            // Compiled dependencies will not have any content and we
+            // do not want to display their empty ASM structures.
+            // If printing ASM is requested, we want to emit the
+            // actual ASMs generated for the whole program.
+            let program_has_content = !abstract_program.is_empty();
+
             if build_config
-                .map(|cfg| cfg.print_intermediate_asm)
+                .map(|cfg| cfg.print_asm.virtual_abstract && program_has_content)
                 .unwrap_or(false)
             {
-                println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
+                println!(";; ASM: Virtual abstract program");
                 println!("{abstract_program}\n");
             }
 
@@ -135,16 +133,26 @@ fn compile_module_to_asm(
                 .map_err(|e| handler.emit_err(e))?;
 
             if build_config
-                .map(|cfg| cfg.print_intermediate_asm)
+                .map(|cfg| cfg.print_asm.allocated_abstract && program_has_content)
                 .unwrap_or(false)
             {
-                println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
+                println!(";; ASM: Allocated abstract program");
                 println!("{allocated_program}");
             }
 
-            allocated_program
+            let final_program = allocated_program
                 .into_final_program()
-                .map_err(|e| handler.emit_err(e))?
+                .map_err(|e| handler.emit_err(e))?;
+
+            if build_config
+                .map(|cfg| cfg.print_asm.r#final && program_has_content)
+                .unwrap_or(false)
+            {
+                println!(";; ASM: Final program");
+                println!("{final_program}");
+            }
+
+            final_program
         }
         AsmBuilderResult::Evm(result) => FinalProgram::Evm {
             ops: result.ops,

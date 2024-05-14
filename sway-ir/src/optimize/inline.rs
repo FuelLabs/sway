@@ -21,17 +21,6 @@ use crate::{
     AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
 };
 
-pub const INLINE_MAIN_NAME: &str = "inline_main";
-
-pub fn create_inline_in_main_pass() -> Pass {
-    Pass {
-        name: INLINE_MAIN_NAME,
-        descr: "inline from main fn.",
-        deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_main)),
-    }
-}
-
 pub const INLINE_MODULE_NAME: &str = "inline_module";
 
 pub fn create_inline_in_module_pass() -> Pass {
@@ -144,20 +133,6 @@ pub fn inline_in_module(
         modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
     }
     Ok(modified)
-}
-
-pub fn inline_in_main(
-    context: &mut Context,
-    _: &AnalysisResults,
-    module: Module,
-) -> Result<bool, IrError> {
-    // For now we inline everything into `main()`.  Eventually we can be more selective.
-    for function in module.function_iter(context) {
-        if function.get_name(context) == "main" {
-            return inline_all_function_calls(context, &function);
-        }
-    }
-    Ok(false)
 }
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
