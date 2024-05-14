@@ -1,7 +1,7 @@
 library;
 
 use ::constants::ZERO_B256;
-use ::convert::From;
+use ::convert::{From, TryFrom};
 use ::u128::U128;
 use ::b512::B512;
 
