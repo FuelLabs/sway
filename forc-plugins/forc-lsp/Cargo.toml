@@ -10,7 +10,7 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1"
-clap = { version = "3", features = ["derive"] }
+clap = { version = "4.5.4", features = ["derive"] }
 sway-lsp = { version = "0.58.0", path = "../../sway-lsp" }
 tikv-jemallocator = "0.5"
 tokio = { version = "1.8" }
