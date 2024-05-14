@@ -293,7 +293,6 @@ fn test_u256_from_tuple() {
 #[test]
 fn test_u256_try_from_b512() {
     use ::assert::assert;
-    use ::b512::B512;
 
     let b512_value = B512::new();
     let u256_value = u256::try_from(b512_value);
