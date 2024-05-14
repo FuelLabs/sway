@@ -23,7 +23,7 @@ use tracing::metadata::LevelFilter;
 
 pub fn handle_initialize(
     state: &ServerState,
-    params: lsp_types::InitializeParams,
+    params: &lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
         let mut config = state.config.write();
@@ -37,7 +37,7 @@ pub fn handle_initialize(
         state.spawn_client_heartbeat(client_pid as usize);
     }
 
-    // Initalizing tracing library based on the user's config
+    // Initializing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
         let tracing_options = TracingSubscriberOptions {
@@ -84,7 +84,7 @@ pub async fn handle_goto_definition(
     {
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
-            Ok(session.token_definition_response(uri, position))
+            Ok(session.token_definition_response(&uri, position))
         }
         Err(err) => {
             tracing::error!("{}", err.to_string());
@@ -130,7 +130,7 @@ pub async fn handle_hover(
             Ok(capabilities::hover::hover_data(
                 session,
                 &state.keyword_docs,
-                uri,
+                &uri,
                 position,
             ))
         }
@@ -150,7 +150,7 @@ pub async fn handle_prepare_rename(
         .await
     {
         Ok((uri, session)) => {
-            match capabilities::rename::prepare_rename(session, uri, params.position) {
+            match capabilities::rename::prepare_rename(session, &uri, params.position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -176,7 +176,7 @@ pub async fn handle_rename(
         Ok((uri, session)) => {
             let new_name = params.new_name;
             let position = params.text_document_position.position;
-            match capabilities::rename::rename(session, new_name, uri, position) {
+            match capabilities::rename::rename(session, new_name, &uri, position) {
                 Ok(res) => Ok(Some(res)),
                 Err(err) => {
                     tracing::error!("{}", err.to_string());
@@ -203,7 +203,7 @@ pub async fn handle_document_highlight(
         Ok((uri, session)) => {
             let position = params.text_document_position_params.position;
             Ok(capabilities::highlight::get_highlights(
-                session, uri, position,
+                session, &uri, position,
             ))
         }
         Err(err) => {
@@ -346,7 +346,7 @@ pub(crate) async fn handle_inlay_hints(
 ///
 /// A formatted AST is written to a temporary file and the URI is
 /// returned to the client so it can be opened and displayed in a
-/// seperate side panel.
+/// separate side panel.
 pub async fn handle_show_ast(
     state: &ServerState,
     params: lsp_ext::ShowAstParams,

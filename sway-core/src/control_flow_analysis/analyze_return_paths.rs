@@ -21,7 +21,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     ) -> Result<Self, Vec<CompileError>> {
         let mut errors = vec![];
 
-        let mut graph = ControlFlowGraph::default();
+        let mut graph = ControlFlowGraph::new(engines);
         // do a depth first traversal and cover individual inner ast nodes
         let mut leaves = vec![];
         for ast_entrypoint in module_nodes {

@@ -28,7 +28,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel};
+pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
@@ -43,15 +43,15 @@ use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FUNC_DCE_NAME, INLINE_MODULE_NAME,
-    MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME, RETDEMOTION_NAME,
-    SIMPLIFYCFG_NAME, SROA_NAME,
+    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FNDEDUP_DEBUG_PROFILE_NAME, FUNC_DCE_NAME,
+    INLINE_MODULE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME,
+    RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
 use sway_utils::{time_expr, PerformanceData, PerformanceMetric};
 use transform::{Attribute, AttributeArg, AttributeKind, AttributesMap};
-use types::*;
+use types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata};
 
 pub use semantic_analysis::namespace::{self, Namespace};
 pub mod types;
@@ -212,7 +212,7 @@ fn parse_in_memory(
         module.value.clone(),
     )?;
     let module_kind_span = module.value.kind.span();
-    let submodules = Default::default();
+    let submodules = Vec::default();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
     let root = parsed::ParseModule {
         span: span::Span::dummy(),
@@ -227,7 +227,7 @@ fn parse_in_memory(
         kind,
         lexed::LexedModule {
             tree: module.value,
-            submodules: Default::default(),
+            submodules: Vec::default(),
         },
     );
 
@@ -508,10 +508,9 @@ pub fn build_module_dep_graph(
     let module_dep_graph = ty::TyModule::build_dep_graph(handler, parse_module)?;
     parse_module.module_eval_order = module_dep_graph.compute_order(handler)?;
 
-    for (_, submodule) in parse_module.submodules.iter_mut() {
-        build_module_dep_graph(handler, &mut submodule.module)?
+    for (_, submodule) in &mut parse_module.submodules {
+        build_module_dep_graph(handler, &mut submodule.module)?;
     }
-
     Ok(())
 }
 
@@ -574,11 +573,7 @@ pub fn parsed_to_ast(
     };
 
     // Skip collecting metadata if we triggered an optimised build from LSP.
-    let types_metadata = if !lsp_config
-        .as_ref()
-        .map(|lsp| lsp.optimized_build)
-        .unwrap_or(false)
-    {
+    let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
         let types_metadata_result = typed_program.collect_types_metadata(
             handler,
@@ -739,10 +734,7 @@ pub fn compile_to_ast(
     };
 
     // If tests are not enabled, exclude them from `parsed_program`.
-    if build_config
-        .map(|config| !config.include_tests)
-        .unwrap_or(true)
-    {
+    if build_config.map_or(true, |config| !config.include_tests) {
         parsed_program.exclude_tests(engines);
     }
 
@@ -791,7 +783,7 @@ pub fn compile_to_asm(
     engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Root,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
     package_name: &str,
 ) -> Result<CompiledAsm, ErrorEmitted> {
     let ast_res = compile_to_ast(
@@ -799,11 +791,11 @@ pub fn compile_to_asm(
         engines,
         input,
         initial_namespace,
-        Some(&build_config),
+        Some(build_config),
         package_name,
         None,
     )?;
-    ast_to_asm(handler, engines, &ast_res, &build_config)
+    ast_to_asm(handler, engines, &ast_res, build_config)
 }
 
 /// Given an AST compilation result, try compiling to a `CompiledAsm`,
@@ -856,7 +848,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         Err(errors) => {
             let mut last = None;
             for e in errors {
-                last = Some(handler.emit_err(e))
+                last = Some(handler.emit_err(e));
             }
             return Err(last.unwrap());
         }
@@ -891,6 +883,10 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             // Inlining is necessary until #4899 is resolved.
             pass_group.append_pass(INLINE_MODULE_NAME);
 
+            // We run a function deduplication pass that only removes duplicate
+            // functions when everything, including the metadata are identical.
+            pass_group.append_pass(FNDEDUP_DEBUG_PROFILE_NAME);
+
             // Do DCE so other optimizations run faster.
             pass_group.append_pass(FUNC_DCE_NAME);
             pass_group.append_pass(DCE_NAME);
@@ -908,7 +904,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         pass_group.append_pass(RETDEMOTION_NAME);
         pass_group.append_pass(MISCDEMOTION_NAME);
 
-        // Convert loads and stores to mem_copys where possible.
+        // Convert loads and stores to mem_copies where possible.
         pass_group.append_pass(MEMCPYOPT_NAME);
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
@@ -952,7 +948,7 @@ pub fn compile_to_bytecode(
     engines: &Engines,
     input: Arc<str>,
     initial_namespace: namespace::Root,
-    build_config: BuildConfig,
+    build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
@@ -964,7 +960,7 @@ pub fn compile_to_bytecode(
         build_config,
         package_name,
     )?;
-    asm_to_bytecode(handler, asm_res, source_map, engines.se())
+    asm_to_bytecode(handler, asm_res, source_map, engines.se(), build_config)
 }
 
 /// Given the assembly (opcodes), compile to [CompiledBytecode], containing the asm in bytecode form.
@@ -973,8 +969,11 @@ pub fn asm_to_bytecode(
     mut asm: CompiledAsm,
     source_map: &mut SourceMap,
     source_engine: &SourceEngine,
+    build_config: &BuildConfig,
 ) -> Result<CompiledBytecode, ErrorEmitted> {
-    let compiled_bytecode = asm.0.to_bytecode_mut(handler, source_map, source_engine)?;
+    let compiled_bytecode =
+        asm.0
+            .to_bytecode_mut(handler, source_map, source_engine, build_config)?;
     Ok(compiled_bytecode)
 }
 
@@ -1013,7 +1012,7 @@ fn dead_code_analysis<'a>(
     program: &ty::TyProgram,
 ) -> Result<ControlFlowGraph<'a>, ErrorEmitted> {
     let decl_engine = engines.de();
-    let mut dead_code_graph = Default::default();
+    let mut dead_code_graph = ControlFlowGraph::new(engines);
     let tree_type = program.kind.tree_type();
     module_dead_code_analysis(
         handler,
@@ -1024,7 +1023,7 @@ fn dead_code_analysis<'a>(
     )?;
     let warnings = dead_code_graph.find_dead_code(decl_engine);
     for warn in warnings {
-        handler.emit_warn(warn)
+        handler.emit_warn(warn);
     }
     Ok(dead_code_graph)
 }
@@ -1037,10 +1036,13 @@ fn module_dead_code_analysis<'eng: 'cfg, 'cfg>(
     tree_type: &parsed::TreeType,
     graph: &mut ControlFlowGraph<'cfg>,
 ) -> Result<(), ErrorEmitted> {
-    module.submodules.iter().try_fold((), |_, (_, submodule)| {
-        let tree_type = parsed::TreeType::Library;
-        module_dead_code_analysis(handler, engines, &submodule.module, &tree_type, graph)
-    })?;
+    module
+        .submodules
+        .iter()
+        .try_fold((), |(), (_, submodule)| {
+            let tree_type = parsed::TreeType::Library;
+            module_dead_code_analysis(handler, engines, &submodule.module, &tree_type, graph)
+        })?;
     let res = {
         ControlFlowGraph::append_module_to_dead_code_graph(
             engines,

@@ -46,45 +46,55 @@ impl ty::TyConstantDecl {
         // this subst is required to replace associated types, namely TypeInfo::TraitType.
         type_ascription.type_id.subst(&ctx.type_subst(), engines);
 
-        let mut ctx = ctx
-            .by_ref()
-            .with_type_annotation(type_ascription.type_id)
-            .with_help_text(
-                "This declaration's type annotation does not match up with the assigned \
+        if !is_screaming_snake_case(name.as_str()) {
+            handler.emit_warn(CompileWarning {
+                span: name.span(),
+                warning_content: Warning::NonScreamingSnakeCaseConstName { name: name.clone() },
+            })
+        }
+
+        // Configurables will be encoded and must be type_checked into "slice"
+        let (value, return_type) = if is_configurable && ctx.experimental.new_encoding {
+            let mut ctx = ctx
+                .by_ref()
+                .with_type_annotation(type_engine.insert(engines, TypeInfo::RawUntypedSlice, None))
+                .with_help_text("Configurables must evaluate to slices.");
+
+            let value = value.map(|value| {
+                ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
+            });
+
+            (
+                value,
+                type_engine.insert(engines, TypeInfo::RawUntypedSlice, None),
+            )
+        } else {
+            let mut ctx = ctx
+                .by_ref()
+                .with_type_annotation(type_ascription.type_id)
+                .with_help_text(
+                    "This declaration's type annotation does not match up with the assigned \
             expression's type.",
-            );
+                );
 
-        let value = match value {
-            Some(value) => {
-                let result = ty::TyExpression::type_check(handler, ctx.by_ref(), value);
+            let value = value.map(|value| {
+                ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
+                    .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
+            });
+            // Integers are special in the sense that we can't only rely on the type of `expression`
+            // to get the type of the variable. The type of the variable *has* to follow
+            // `type_ascription` if `type_ascription` is a concrete integer type that does not
+            // conflict with the type of `expression` (i.e. passes the type checking above).
+            let return_type = match &*type_engine.get(type_ascription.type_id) {
+                TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
+                _ => match &value {
+                    Some(value) => value.return_type,
+                    None => type_ascription.type_id,
+                },
+            };
 
-                if !is_screaming_snake_case(name.as_str()) {
-                    handler.emit_warn(CompileWarning {
-                        span: name.span(),
-                        warning_content: Warning::NonScreamingSnakeCaseConstName {
-                            name: name.clone(),
-                        },
-                    })
-                }
-
-                let value =
-                    result.unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines));
-
-                Some(value)
-            }
-            None => None,
-        };
-
-        // Integers are special in the sense that we can't only rely on the type of `expression`
-        // to get the type of the variable. The type of the variable *has* to follow
-        // `type_ascription` if `type_ascription` is a concrete integer type that does not
-        // conflict with the type of `expression` (i.e. passes the type checking above).
-        let return_type = match &*type_engine.get(type_ascription.type_id) {
-            TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-            _ => match &value {
-                Some(value) => value.return_type,
-                None => type_ascription.type_id,
-            },
+            (value, return_type)
         };
 
         let mut call_path: CallPath = name.into();

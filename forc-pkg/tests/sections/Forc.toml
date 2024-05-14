@@ -11,8 +11,8 @@ print-ast = true
 print-dca-graph = "dca_graph"
 print-dca-graph-url-format = "print_dca_graph_url_format"
 print-ir = true
-print-finalized-asm = true
-print-intermediate-asm = true
+print-asm = { virtual = true, allocated = true, final = true }
+print-bytecode = true
 terse = true
 time-phases = true
 metrics-outfile = "metrics_outfile"
@@ -24,4 +24,4 @@ optimization-level = 0
 experimental = { new-encoding = true }
 
 [build-profile.custom]
-print-finalized-asm = true
+print-asm = { virtual = false, allocated = false, final = true }

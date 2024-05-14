@@ -14,7 +14,7 @@ impl AllocatedProgram {
 
         let (realized_ops, mut label_offsets) =
             abstract_ops.realize_labels(&mut self.data_section)?;
-        let ops = realized_ops.pad_to_even();
+        let ops = realized_ops.allocated_ops();
 
         // Collect the entry point offsets.
         let entries = self
@@ -40,7 +40,7 @@ impl AllocatedProgram {
 
 impl std::fmt::Display for AllocatedProgram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, ";; {:?}", self.kind)?;
+        writeln!(f, ";; Program kind: {:?}", self.kind)?;
         writeln!(f, ";; --- Prologue ---\n{}\n", self.prologue)?;
         writeln!(f, ";; --- Functions ---")?;
         for function in &self.functions {

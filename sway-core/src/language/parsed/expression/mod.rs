@@ -104,7 +104,7 @@ pub struct AmbiguousSuffix {
 impl Spanned for AmbiguousSuffix {
     fn span(&self) -> Span {
         if let Some(before) = &self.before {
-            Span::join(before.span(), self.suffix.span())
+            Span::join(before.span(), &self.suffix.span())
         } else {
             self.suffix.span()
         }
@@ -335,7 +335,18 @@ pub struct RefExpression {
 
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
-    VariableExpression(Box<Expression>),
+    /// An [Expression] representing a single variable or a path
+    /// to a part of an aggregate.
+    /// E.g.:
+    ///  - `my_variable`
+    ///  - `array[0].field.x.1`
+    ElementAccess(Box<Expression>),
+    /// An dereferencing [Expression] representing dereferencing
+    /// of an arbitrary reference expression.
+    /// E.g.:
+    ///  - *my_ref
+    ///  - **if x > 0 { &mut &mut a } else { &mut &mut b }
+    Deref(Box<Expression>),
 }
 
 #[derive(Debug, Clone)]

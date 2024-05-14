@@ -207,7 +207,7 @@ impl fmt::Display for Warning {
             ),
             UninitializedAsmRegShadowsVariable { name } => write!(
                 f,
-                "This unitialized register is shadowing a variable, you probably meant to also initialize it like \"{name}: {name}\"."
+                "This uninitialized register is shadowing a variable, you probably meant to also initialize it like \"{name}: {name}\"."
             ),
             OverridingTraitImplementation => write!(
                 f,
@@ -357,7 +357,7 @@ impl ToDiagnostic for CompileWarning {
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
-                    //       switch to our own #[error] macro. All the values for the formating
+                    //       switch to our own #[error] macro. All the values for the formatting
                     //       of a diagnostic must come from the enum variant parameters.
                     issue: Issue::warning(source_engine, self.span(), format!("{}", self.warning_content)),
                     ..Default::default()

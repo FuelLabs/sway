@@ -1716,6 +1716,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         stored_val: &Value,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
         if stored_val
             .get_type(self.context)
             .map_or(true, |ty| !self.is_copy_type(&ty))
@@ -1788,7 +1789,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     // ---------------------------------------------------------------------------------------------
 
-    // XXX reassess all the places we use this
+    // TODO-IG: Reassess all the places we use `is_copy_type`.
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
         ty.is_unit(self.context)
             || ty.is_never(self.context)

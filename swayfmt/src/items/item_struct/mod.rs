@@ -176,7 +176,7 @@ impl CurlyBrace for ItemStruct {
         line: &mut String,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        // If shape is becoming left-most alligned or - indent just have the defualt shape
+        // If shape is becoming left-most aligned or - indent just have the default shape
         formatter.unindent();
         write!(
             line,

@@ -88,7 +88,7 @@ impl Doc {
 
 /// Pretty-print a whole [`Context`] to a string.
 ///
-/// The ouput from this function must always be suitable for [`crate::parser::parse`].
+/// The output from this function must always be suitable for [crate::parser::parse].
 pub fn to_string(context: &Context) -> String {
     let mut md_namer = MetadataNamer::default();
     context
@@ -1120,6 +1120,17 @@ impl Constant {
                     .join(", ")
             ),
             ConstantValue::Reference(constant) => format!("&({})", constant.as_lit_string(context)),
+            ConstantValue::RawUntypedSlice(bytes) => {
+                format!(
+                    "{} 0x{}",
+                    self.ty.as_string(context),
+                    bytes
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<String>>()
+                        .concat()
+                )
+            }
         }
     }
 }

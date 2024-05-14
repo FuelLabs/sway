@@ -1,6 +1,7 @@
 use crate::{
     asm_generation::fuel::compiler_constants::MISMATCHED_SELECTOR_REVERT_CODE,
     decl_engine::{DeclEngineGet, DeclId, DeclRef},
+    engine_threading::SpannedWithEngines,
     language::{
         parsed::{self, AstNodeContent, Declaration, FunctionDeclarationKind},
         ty::{self, TyAstNode, TyDecl, TyEnumDecl, TyFunctionDecl, TyStructDecl},
@@ -129,14 +130,16 @@ where
         if body.is_empty() {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code)]
-                fn abi_encode(self, ref mut _buffer: Buffer) {{
+                fn abi_encode(self, buffer: Buffer) -> Buffer {{
+                    buffer
                 }}
             }}")
         } else {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code)]
-                fn abi_encode(self, ref mut buffer: Buffer) {{
+                fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
+                    buffer
                 }}
             }}")
         }
@@ -177,7 +180,7 @@ where
 
         for f in decl.fields.iter() {
             code.push_str(&format!(
-                "self.{field_name}.abi_encode(buffer);\n",
+                "let buffer = self.{field_name}.abi_encode(buffer);\n",
                 field_name = f.name.as_str(),
             ));
         }
@@ -213,7 +216,7 @@ where
                 let name = x.name.as_str();
                 Some(match &*engines.te().get(x.type_argument.type_id) {
                     // unit
-                    TypeInfo::Tuple(fiels) if fiels.is_empty() => {
+                    TypeInfo::Tuple(fields) if fields.is_empty() => {
                         format!("{} => {}::{}, \n", x.tag, enum_name, name)
                     },
                     _ => {
@@ -248,34 +251,31 @@ where
             .iter()
             .map(|x| {
                 let name = x.name.as_str();
-                match &*engines.te().get(x.type_argument.type_id) {
-                    // Unit
-                    TypeInfo::Tuple(fields) if fields.is_empty() => {
-                        format!(
-                            "{enum_name}::{variant_name} => {{
-                            {tag_value}u64.abi_encode(buffer);
-                        }}, \n",
-                            tag_value = x.tag,
-                            enum_name = enum_name,
-                            variant_name = name
-                        )
-                    }
-                    _ => {
-                        format!(
-                            "{enum_name}::{variant_name}(value) => {{
-                            {tag_value}u64.abi_encode(buffer);
-                            value.abi_encode(buffer);
-                        }}, \n",
-                            tag_value = x.tag,
-                            enum_name = enum_name,
-                            variant_name = name,
-                        )
-                    }
+                if engines.te().get(x.type_argument.type_id).is_unit() {
+                    format!(
+                        "{enum_name}::{variant_name} => {{
+                        {tag_value}u64.abi_encode(buffer)
+                    }}, \n",
+                        tag_value = x.tag,
+                        enum_name = enum_name,
+                        variant_name = name
+                    )
+                } else {
+                    format!(
+                        "{enum_name}::{variant_name}(value) => {{
+                        let buffer = {tag_value}u64.abi_encode(buffer);
+                        let buffer = value.abi_encode(buffer);
+                        buffer
+                    }}, \n",
+                        tag_value = x.tag,
+                        enum_name = enum_name,
+                        variant_name = name,
+                    )
                 }
             })
             .collect::<String>();
 
-        format!("match self {{ {arms} }}")
+        format!("let buffer = match self {{ {arms} }};")
     }
 
     pub fn parse_fn_to_ty_ast_node(
@@ -344,7 +344,7 @@ where
         } else {
             *self.ctx.namespace = namespace;
             Ok(TyAstNode {
-                span: decl.span(),
+                span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
         }
@@ -391,7 +391,7 @@ where
         } else {
             *self.ctx.namespace = namespace;
             Ok(TyAstNode {
-                span: decl.span(),
+                span: decl.span(engines),
                 content: ty::TyAstNodeContent::Declaration(decl),
             })
         }
@@ -408,7 +408,7 @@ where
             return Some((None, None));
         }
 
-        let implementing_for_decl_ref = decl.get_struct_decl_ref().unwrap();
+        let implementing_for_decl_ref = decl.to_struct_ref(&Handler::default(), engines).unwrap();
         let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
 
         let module_id = struct_decl.span().source_id().map(|sid| sid.module_id());
@@ -444,7 +444,7 @@ where
             return Some((None, None));
         }
 
-        let enum_decl_ref = decl.get_enum_decl_ref().unwrap();
+        let enum_decl_ref = decl.to_enum_ref(&Handler::default(), engines).unwrap();
         let enum_decl = self.ctx.engines().de().get(enum_decl_ref.id());
 
         let module_id = enum_decl.span().source_id().map(|sid| sid.module_id());

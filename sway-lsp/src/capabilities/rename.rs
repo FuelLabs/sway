@@ -17,7 +17,7 @@ const RAW_IDENTIFIER: &str = "r#";
 pub fn rename(
     session: Arc<Session>,
     new_name: String,
-    url: Url,
+    url: &Url,
     position: Position,
 ) -> Result<WorkspaceEdit, LanguageServerError> {
     // Make sure the new name is not a keyword or a literal int type
@@ -38,7 +38,7 @@ pub fn rename(
     // Get the token at the current cursor position
     let t = session
         .token_map()
-        .token_at_position(&url, position)
+        .token_at_position(url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let token = t.value();
 
@@ -52,7 +52,7 @@ pub fn rename(
     // If the token is a function, find the parent declaration
     // and collect idents for all methods of ABI Decl, Trait Decl, and Impl Trait
     let map_of_changes: HashMap<Url, Vec<TextEdit>> = (if token.kind == SymbolKind::Function {
-        find_all_methods_for_decl(&session, &session.engines.read(), &url, position)?
+        find_all_methods_for_decl(&session, &session.engines.read(), url, position)?
     } else {
         // otherwise, just find all references of the token in the token map
         session
@@ -69,7 +69,7 @@ pub fn rename(
         }
         let mut range = ident.range;
         if ident.is_raw_ident() {
-            // Make sure the start char starts at the begining,
+            // Make sure the start char starts at the beginning,
             // taking the r# tokens into account.
             range.start.character -= RAW_IDENTIFIER.len() as u32;
         }
@@ -89,7 +89,7 @@ pub fn rename(
                 existing.append(&mut v);
                 // Sort the TextEdits by their range in reverse order so the client applies edits
                 // from the end of the document to the beginning, preventing issues with offset changes.
-                existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start))
+                existing.sort_unstable_by(|a, b| b.range.start.cmp(&a.range.start));
             })
             .or_insert(v);
         map
@@ -99,12 +99,12 @@ pub fn rename(
 
 pub fn prepare_rename(
     session: Arc<Session>,
-    url: Url,
+    url: &Url,
     position: Position,
 ) -> Result<PrepareRenameResponse, LanguageServerError> {
     let t = session
         .token_map()
-        .token_at_position(&url, position)
+        .token_at_position(url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let (ident, token) = t.pair();
 
@@ -154,7 +154,7 @@ fn is_token_in_workspace(
         .declared_token_ident(engines)
         .ok_or(RenameError::TokenNotFound)?;
 
-    // Check the span of the tokens defintions to determine if it's in the users workspace.
+    // Check the span of the tokens definitions to determine if it's in the users workspace.
     let temp_path = &session.sync.temp_dir()?;
     if let Some(path) = &decl_ident.path {
         if !path.starts_with(temp_path) {
@@ -174,7 +174,7 @@ fn trait_interface_idents<'a>(
 ) -> Vec<TokenIdent> {
     interface_surface
         .iter()
-        .flat_map(|item| match item {
+        .filter_map(|item| match item {
             ty::TyTraitInterfaceItem::TraitFn(fn_decl) => Some(TokenIdent::new(fn_decl.name(), se)),
             _ => None,
         })
@@ -191,7 +191,7 @@ fn find_all_methods_for_decl<'a>(
     // Find the parent declaration
     let t = session
         .token_map()
-        .parent_decl_at_position(engines.se(), url, position)
+        .parent_decl_at_position(engines, url, position)
         .ok_or(RenameError::TokenNotFound)?;
     let decl_token = t.value();
 

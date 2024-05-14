@@ -67,7 +67,7 @@ pub fn code_actions(
     let actions_by_type = token
         .typed
         .as_ref()
-        .and_then(|typed_token| match typed_token {
+        .map(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
                     abi_decl::code_actions(decl_id, &ctx)
@@ -78,7 +78,7 @@ pub fn code_actions(
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     enum_decl::code_actions(decl_id, &ctx)
                 }
-                _ => None,
+                _ => Vec::new(),
             },
             TypedAstToken::TypedFunctionDeclaration(decl) => {
                 function_decl::code_actions(decl, &ctx)
@@ -90,7 +90,7 @@ pub fn code_actions(
             TypedAstToken::TypedEnumVariant(decl) => enum_variant::code_actions(decl, &ctx),
             TypedAstToken::TypedStructField(decl) => struct_field::code_actions(decl, &ctx),
             TypedAstToken::TypedTraitFn(decl) => trait_fn::code_actions(decl, &ctx),
-            _ => None,
+            _ => Vec::new(),
         })
         .unwrap_or_default();
 
@@ -100,7 +100,7 @@ pub fn code_actions(
 }
 
 pub(crate) trait CodeAction<'a, T: Spanned> {
-    /// Creates a new [CodeAction] with the given [Engines], delcaration type, and [Url].
+    /// Creates a new [`CodeAction`] with the given [Engines], declaration type, and [Url].
     fn new(ctx: &CodeActionContext<'a>, decl: &'a T) -> Self;
 
     /// Returns a [String] of text to insert into the document.
@@ -120,12 +120,12 @@ pub(crate) trait CodeAction<'a, T: Spanned> {
     /// Returns the declaration's [Url].
     fn uri(&self) -> &Url;
 
-    /// Returns an optional [CodeActionDisabled] indicating whether this code action should be disabled.
+    /// Returns an optional [`CodeActionDisabled`] indicating whether this code action should be disabled.
     fn disabled(&self) -> Option<CodeActionDisabled> {
         None
     }
 
-    /// Returns a [CodeActionOrCommand] for the given code action.
+    /// Returns a [`CodeActionOrCommand`] for the given code action.
     fn code_action(&self) -> CodeActionOrCommand {
         let text_edit = TextEdit {
             range: self.range(),

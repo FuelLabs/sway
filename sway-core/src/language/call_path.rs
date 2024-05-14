@@ -49,6 +49,16 @@ impl PartialEqWithEngines for CallPathTree {
     }
 }
 
+impl<T: PartialEqWithEngines> EqWithEngines for Vec<T> {}
+impl<T: PartialEqWithEngines> PartialEqWithEngines for Vec<T> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        self.iter().zip(other.iter()).all(|(a, b)| a.eq(b, ctx))
+    }
+}
+
 impl OrdWithEngines for CallPathTree {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let CallPathTree {
@@ -233,7 +243,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
                 })
                 .peekable();
             if prefixes_spans.peek().is_some() {
-                Span::join(Span::join_all(prefixes_spans), self.suffix.span())
+                Span::join(Span::join_all(prefixes_spans), &self.suffix.span())
             } else {
                 self.suffix.span()
             }
@@ -311,27 +321,34 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(use_synonym) = namespace.module_id(engines).read(engines, |m| {
-                if m.current_items()
+            if let Some(mod_path) = namespace.module_id(engines).read(engines, |m| {
+                if let Some((_, path, _)) = m
+                    .current_items()
                     .use_item_synonyms
-                    .contains_key(&self.suffix)
+                    .get(&self.suffix)
+                    .cloned()
                 {
-                    m.current_items()
-                        .use_item_synonyms
-                        .get(&self.suffix)
-                        .cloned()
+                    Some(path)
+                } else if let Some(paths_and_decls) = m
+                    .current_items()
+                    .use_glob_synonyms
+                    .get(&self.suffix)
+                    .cloned()
+                {
+                    if paths_and_decls.len() == 1 {
+                        Some(paths_and_decls[0].0.clone())
+                    } else {
+                        None
+                    }
                 } else {
-                    m.current_items()
-                        .use_glob_synonyms
-                        .get(&self.suffix)
-                        .cloned()
+                    None
                 }
             }) {
-                synonym_prefixes = use_synonym.0.clone();
+                synonym_prefixes.clone_from(&mod_path);
                 is_absolute = true;
                 let submodule = namespace
                     .module(engines)
-                    .submodule(engines, &[use_synonym.0[0].clone()]);
+                    .submodule(engines, &[mod_path[0].clone()]);
                 if let Some(submodule) = submodule {
                     is_external = submodule.read(engines, |m| m.is_external);
                 }

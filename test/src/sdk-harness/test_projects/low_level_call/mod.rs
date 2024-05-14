@@ -10,12 +10,12 @@ use fuels::{
 
 macro_rules! fn_selector {
     ( $fn_name: ident ( $($fn_arg: ty),* )  ) => {
-        resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::core::traits::Parameterize>::param_type() ),*]).to_vec()
-    }
+        encode_fn_selector(stringify!($fn_name)).to_vec()
+    };
 }
 macro_rules! calldata {
     ( $($arg: expr),* ) => {
-        ABIEncoder::new(EncoderConfig::default()).encode(&[$(::fuels::core::traits::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
+        ABIEncoder::new(EncoderConfig::default()).encode(&[$(::fuels::core::traits::Tokenizable::into_token($arg)),*]).unwrap()
     }
 }
 

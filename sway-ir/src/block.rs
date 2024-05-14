@@ -51,7 +51,7 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    /// Get the actual parameter passed to this block argument from `from_block`
+    /// Get the actual parameter passed to this block argument from `from_block`.
     pub fn get_val_coming_from(&self, context: &Context, from_block: &Block) -> Option<Value> {
         for BranchToWithArgs {
             block: succ_block,
@@ -336,7 +336,7 @@ impl Block {
                     if old_succ == *true_block {
                         modified = true;
                         *true_block = new_succ;
-                        *true_opds = new_params.clone();
+                        true_opds.clone_from(&new_params);
                     }
                     if old_succ == *false_block {
                         modified = true;

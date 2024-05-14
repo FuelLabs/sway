@@ -9,9 +9,9 @@ pub(crate) type ModulePrefixes = Vec<String>;
 
 /// Information about a Sway module.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct ModuleInfo {
+pub struct ModuleInfo {
     /// The preceding module names, used in navigating between modules.
-    pub(crate) module_prefixes: ModulePrefixes,
+    pub module_prefixes: ModulePrefixes,
     /// Doc attributes of a module.
     /// Renders into the module level docstrings.
     ///
@@ -42,13 +42,12 @@ impl ModuleInfo {
     ///
     /// Returns `None` if there is no parent.
     pub(crate) fn parent(&self) -> Option<&String> {
-        match self.has_parent() {
-            true => {
-                let mut iter = self.module_prefixes.iter();
-                iter.next_back();
-                iter.next_back()
-            }
-            false => None,
+        if self.has_parent() {
+            let mut iter = self.module_prefixes.iter();
+            iter.next_back();
+            iter.next_back()
+        } else {
+            None
         }
     }
     /// Determines if the current module has a parent module.
@@ -79,14 +78,14 @@ impl ModuleInfo {
                 break;
             }
         }
-        iter.map(|s| s.as_str()).collect::<Vec<&str>>().join("::")
+        iter.map(String::as_str).collect::<Vec<&str>>().join("::")
     }
     /// Renders the [ModuleInfo] into a [CallPath] with anchors. We return this as a `Result<Vec<String>>`
     /// since the `box_html!` macro returns a closure and no two closures are considered the same type.
     pub(crate) fn get_anchors(&self) -> Result<Vec<String>> {
         let mut count = self.depth();
         let mut rendered_module_anchors = Vec::with_capacity(self.depth());
-        for prefix in self.module_prefixes.iter() {
+        for prefix in &self.module_prefixes {
             let mut href = (1..count).map(|_| "../").collect::<String>();
             href.push_str(INDEX_FILENAME);
             rendered_module_anchors.push(
@@ -128,9 +127,9 @@ impl ModuleInfo {
     /// Example:
     /// ```
     /// // number of dirs:               [match][    2    ][    1    ]
-    /// current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
-    /// next_location    =              "module/other_submodule/enum.Name.html";
-    /// result           =               "../../other_submodule/enum.Name.html";
+    /// let current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
+    /// let next_location    =              "module/other_submodule/enum.Name.html";
+    /// let result           =               "../../other_submodule/enum.Name.html";
     /// ```
     /// In this case the first module to match is "module", so we have no need to go back further than that.
     pub(crate) fn file_path_from_location(
@@ -175,8 +174,8 @@ impl ModuleInfo {
     ///
     /// Example:
     /// ```
-    /// current_location = "project_root/module/submodule1/submodule2/struct.Name.html"
-    /// result           = "../.."
+    /// let current_location = "project_root/module/submodule1/submodule2/struct.Name.html";
+    /// let result           = "../..";
     /// ```
     /// In this case the first module to match is "module", so we have no need to go back further than that.
     pub(crate) fn path_to_root(&self) -> String {

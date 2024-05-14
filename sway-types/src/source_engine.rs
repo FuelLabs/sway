@@ -47,7 +47,7 @@ impl SourceEngine {
         {
             let source_map = self.path_to_source_map.read().unwrap();
             if source_map.contains_key(path) {
-                return source_map.get(path).cloned().unwrap();
+                return source_map.get(path).copied().unwrap();
             }
         }
         let manifest_path = sway_utils::find_parent_manifest_dir(path).unwrap_or(path.clone());
@@ -67,7 +67,7 @@ impl SourceEngine {
         {
             let source_map = self.path_to_source_map.read().unwrap();
             if source_map.contains_key(path) {
-                return source_map.get(path).cloned().unwrap();
+                return source_map.get(path).copied().unwrap();
             }
         }
 
@@ -105,7 +105,7 @@ impl SourceEngine {
 
     /// This function provides the module ID corresponding to a specified file path.
     pub fn get_module_id(&self, path: &PathBuf) -> Option<ModuleId> {
-        self.path_to_module_map.read().unwrap().get(path).cloned()
+        self.path_to_module_map.read().unwrap().get(path).copied()
     }
 
     /// Returns the [PathBuf] associated with the provided [ModuleId], if it exists in the path_to_module_map.

@@ -19,3 +19,9 @@ We can declare a variable that can have its value changed through the use of the
 ```sway
 {{#include ../../../code/language/variables/src/lib.sw:mutable}}
 ```
+
+When assigning to a mutable variable, the right-hand side of the assignment is evaluated before the left-hand side. In the below example, the mutable variable `i` will first be increased and the resulting value of `1` will be stored to `array[1]`, thus resulting in `array` being changed to `[0, 1, 0]`.
+
+```sway
+{{#include ../../../code/language/variables/src/lib.sw:mutable_evaluation_order}}
+```

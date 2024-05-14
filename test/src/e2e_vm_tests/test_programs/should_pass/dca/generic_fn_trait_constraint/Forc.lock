@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-D4114B7A53E80452"
+
+[[package]]
+name = "generic_fn_trait_constraint"
+source = "member"
+dependencies = ["core"]

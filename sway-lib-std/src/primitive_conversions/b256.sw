@@ -3,6 +3,7 @@ library;
 use ::bytes::Bytes;
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
+use ::u128::U128;
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
@@ -34,6 +35,35 @@ impl From<u256> for b256 {
     /// ```
     fn from(num: u256) -> Self {
         num.as_b256()
+    }
+}
+
+impl From<U128> for b256 {
+    /// Converts a `U128` to a `b256`.
+    ///
+    /// # Arguments
+    ///
+    /// * `num`: [U128] - The `U128` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The `b256` representation of the `U128` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///    let u128_value = U128::from((18446744073709551615_u64, 18446744073709551615_u64));
+    ///    let b256_value = b256::from(u128_value);
+    /// }
+    /// ```
+    fn from(num: U128) -> Self {
+        let input = (0u64, 0u64, num.upper(), num.lower());
+        asm(input: input) {
+            input: b256
+        }
     }
 }
 
@@ -101,6 +131,16 @@ fn test_b256_from_u256() {
     let val = 0x0000000000000000000000000000000000000000000000000000000000000000_u256;
     let res = b256::from(val);
     assert(res == 0x0000000000000000000000000000000000000000000000000000000000000000);
+}
+
+#[test]
+fn test_b256_from_u128() {
+    use ::assert::assert;
+
+    let b256_value = <b256 as From<U128>>::from(U128::from((18446744073709551615_u64, 18446744073709551615_u64)));
+    assert(
+        b256_value == 0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff,
+    );
 }
 
 #[test]

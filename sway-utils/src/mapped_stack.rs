@@ -3,6 +3,7 @@ use std::collections::HashMap;
 /// A HashMap that can hold multiple values and
 /// fetch values in a LIFO manner. Rust's MultiMap
 /// handles values in a FIFO manner.
+#[derive(Debug)]
 pub struct MappedStack<K: std::cmp::Eq + std::hash::Hash, V> {
     container: HashMap<K, Vec<V>>,
 }
@@ -25,6 +26,11 @@ impl<K: std::cmp::Eq + std::hash::Hash, V> MappedStack<K, V> {
     }
     pub fn get(&self, k: &K) -> Option<&V> {
         self.container.get(k).and_then(|val_vec| val_vec.last())
+    }
+    pub fn get_mut(&mut self, k: &K) -> Option<&mut V> {
+        self.container
+            .get_mut(k)
+            .and_then(|val_vec| val_vec.last_mut())
     }
     pub fn pop(&mut self, k: &K) {
         if let Some(val_vec) = self.container.get_mut(k) {

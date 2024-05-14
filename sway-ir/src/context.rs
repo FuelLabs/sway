@@ -68,7 +68,7 @@ impl<'eng> Context<'eng> {
         self.source_engine
     }
 
-    /// Return an interator for every module in this context.
+    /// Return an iterator for every module in this context.
     pub fn module_iter(&self) -> ModuleIterator {
         ModuleIterator::new(self)
     }

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sway_core::OptLevel;
+use sway_core::{OptLevel, PrintAsm};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Default)]
 #[serde(rename_all = "kebab-case")]
@@ -20,9 +20,9 @@ pub struct BuildProfile {
     #[serde(default)]
     pub print_ir: bool,
     #[serde(default)]
-    pub print_finalized_asm: bool,
+    pub print_asm: PrintAsm,
     #[serde(default)]
-    pub print_intermediate_asm: bool,
+    pub print_bytecode: bool,
     #[serde(default)]
     pub terse: bool,
     #[serde(default)]
@@ -55,8 +55,8 @@ impl BuildProfile {
             print_dca_graph: None,
             print_dca_graph_url_format: None,
             print_ir: false,
-            print_finalized_asm: false,
-            print_intermediate_asm: false,
+            print_asm: PrintAsm::default(),
+            print_bytecode: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
@@ -78,8 +78,8 @@ impl BuildProfile {
             print_dca_graph: None,
             print_dca_graph_url_format: None,
             print_ir: false,
-            print_finalized_asm: false,
-            print_intermediate_asm: false,
+            print_asm: PrintAsm::default(),
+            print_bytecode: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
@@ -103,7 +103,7 @@ impl Default for BuildProfile {
 
 #[cfg(test)]
 mod tests {
-    use sway_core::OptLevel;
+    use sway_core::{OptLevel, PrintAsm};
 
     use crate::{manifest::build_profile::ExperimentalFlags, BuildProfile, PackageManifest};
 
@@ -119,7 +119,7 @@ mod tests {
 
         let expected = BuildProfile {
             name: "".into(),
-            print_finalized_asm: true,
+            print_asm: PrintAsm::r#final(),
             ..BuildProfile::debug()
         };
         let profile = build_profiles.get("custom").expect("custom profile");
@@ -131,8 +131,8 @@ mod tests {
             print_dca_graph: Some("dca_graph".into()),
             print_dca_graph_url_format: Some("print_dca_graph_url_format".into()),
             print_ir: true,
-            print_finalized_asm: true,
-            print_intermediate_asm: true,
+            print_asm: PrintAsm::all(),
+            print_bytecode: true,
             terse: true,
             time_phases: true,
             metrics_outfile: Some("metrics_outfile".into()),

@@ -2,7 +2,7 @@ mod encode;
 use crate::{
     cmd,
     util::{
-        gas::get_gas_used,
+        gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -48,12 +48,12 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs_with_manifest = built_pkgs(&curr_dir, build_opts)?;
+    let built_pkgs_with_manifest = built_pkgs(&curr_dir, &build_opts)?;
     for built in built_pkgs_with_manifest {
         if built
             .descriptor
             .manifest_file
-            .check_program_type(vec![TreeType::Script])
+            .check_program_type(&[TreeType::Script])
             .is_ok()
         {
             let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
@@ -120,7 +120,7 @@ pub async fn run_pkg(
         script_gas_limit
     // Dry run tx and get `gas_used`
     } else {
-        get_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
+        get_script_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
     };
     tb.script_gas_limit(script_gas_limit);
 
@@ -220,8 +220,8 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             ast: cmd.print.ast,
             dca_graph: cmd.print.dca_graph.clone(),
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
-            finalized_asm: cmd.print.finalized_asm,
-            intermediate_asm: cmd.print.intermediate_asm,
+            asm: cmd.print.asm(),
+            bytecode: cmd.print.bytecode,
             ir: cmd.print.ir,
             reverse_order: cmd.print.reverse_order,
         },

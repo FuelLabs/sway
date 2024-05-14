@@ -74,7 +74,7 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: pkg::TestPassCondition,
-    /// Emitted `Recipt`s during the execution of the test.
+    /// Emitted `Receipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
@@ -282,7 +282,7 @@ fn get_contract_dependency_map(
             let pinned_member = graph[member_node].clone();
             let contract_dependencies = build_plan
                 .contract_dependencies(member_node)
-                .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
+                .map(|contract_dependency_node_ix| graph[contract_dependency_node_ix].clone())
                 .filter_map(|pinned| built_members.get(&pinned))
                 .cloned()
                 .collect::<Vec<_>>();
@@ -599,7 +599,7 @@ impl BuiltTests {
 pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
     let build_opts = opts.into();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
-    let built = pkg::build_with_options(build_opts)?;
+    let built = pkg::build_with_options(&build_opts)?;
     BuiltTests::from_built(built, &build_plan)
 }
 
@@ -646,7 +646,10 @@ fn deployment_transaction(
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
-    let asset_id = rng.gen();
+    // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
+    // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
+    // base asset id is indeed the static `tx::AssetId::BASE`.
+    let asset_id = tx::AssetId::BASE;
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
