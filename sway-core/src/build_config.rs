@@ -1,12 +1,12 @@
-use std::{path::PathBuf, sync::Arc};
-
-use serde::{Deserialize, Serialize};
-use strum::EnumString;
+use serde::{Deserialize, Deserializer, Serialize};
+use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+use strum::{Display, EnumString};
 
 #[derive(
     Clone,
     Copy,
     Debug,
+    Display,
     Default,
     Eq,
     PartialEq,
@@ -32,6 +32,73 @@ pub enum BuildTarget {
     MidenVM,
 }
 
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum OptLevel {
+    #[default]
+    Opt0 = 0,
+    Opt1 = 1,
+}
+
+impl<'de> serde::Deserialize<'de> for OptLevel {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let num = u8::deserialize(d)?;
+        match num {
+            0 => Ok(OptLevel::Opt0),
+            1 => Ok(OptLevel::Opt1),
+            _ => Err(serde::de::Error::custom(format!("invalid opt level {num}"))),
+        }
+    }
+}
+
+/// Which ASM to print.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PrintAsm {
+    #[serde(rename = "virtual")]
+    pub virtual_abstract: bool,
+    #[serde(rename = "allocated")]
+    pub allocated_abstract: bool,
+    pub r#final: bool,
+}
+
+impl PrintAsm {
+    pub fn all() -> Self {
+        Self {
+            virtual_abstract: true,
+            allocated_abstract: true,
+            r#final: true,
+        }
+    }
+
+    pub fn abstract_virtual() -> Self {
+        Self {
+            virtual_abstract: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn abstract_allocated() -> Self {
+        Self {
+            allocated_abstract: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn r#final() -> Self {
+        Self {
+            r#final: true,
+            ..Self::default()
+        }
+    }
+}
+
+impl std::ops::BitOrAssign for PrintAsm {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.virtual_abstract |= rhs.virtual_abstract;
+        self.allocated_abstract |= rhs.allocated_abstract;
+        self.r#final |= rhs.r#final;
+    }
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
@@ -42,13 +109,15 @@ pub struct BuildConfig {
     pub(crate) canonical_root_module: Arc<PathBuf>,
     pub(crate) print_dca_graph: Option<String>,
     pub(crate) print_dca_graph_url_format: Option<String>,
-    pub(crate) print_intermediate_asm: bool,
-    pub(crate) print_finalized_asm: bool,
+    pub(crate) print_asm: PrintAsm,
+    pub(crate) print_bytecode: bool,
     pub(crate) print_ir: bool,
     pub(crate) include_tests: bool,
+    pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
     pub metrics_outfile: Option<String>,
     pub experimental: ExperimentalFlags,
+    pub lsp_mode: Option<LspConfig>,
 }
 
 impl BuildConfig {
@@ -87,13 +156,17 @@ impl BuildConfig {
             canonical_root_module: Arc::new(canonical_root_module),
             print_dca_graph: None,
             print_dca_graph_url_format: None,
-            print_intermediate_asm: false,
-            print_finalized_asm: false,
+            print_asm: PrintAsm::default(),
+            print_bytecode: false,
             print_ir: false,
             include_tests: false,
             time_phases: false,
             metrics_outfile: None,
-            experimental: ExperimentalFlags::default(),
+            optimization_level: OptLevel::Opt0,
+            experimental: ExperimentalFlags {
+                new_encoding: false,
+            },
+            lsp_mode: None,
         }
     }
 
@@ -111,16 +184,13 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_print_intermediate_asm(self, a: bool) -> Self {
-        Self {
-            print_intermediate_asm: a,
-            ..self
-        }
+    pub fn with_print_asm(self, print_asm: PrintAsm) -> Self {
+        Self { print_asm, ..self }
     }
 
-    pub fn with_print_finalized_asm(self, a: bool) -> Self {
+    pub fn with_print_bytecode(self, a: bool) -> Self {
         Self {
-            print_finalized_asm: a,
+            print_bytecode: a,
             ..self
         }
     }
@@ -146,6 +216,13 @@ impl BuildConfig {
         }
     }
 
+    pub fn with_optimization_level(self, optimization_level: OptLevel) -> Self {
+        Self {
+            optimization_level,
+            ..self
+        }
+    }
+
     /// Whether or not to include test functions in parsing, type-checking and codegen.
     ///
     /// This should be set to `true` by invocations like `forc test` or `forc check --tests`.
@@ -165,14 +242,30 @@ impl BuildConfig {
         }
     }
 
+    pub fn with_lsp_mode(self, lsp_mode: Option<LspConfig>) -> Self {
+        Self { lsp_mode, ..self }
+    }
+
     pub fn canonical_root_module(&self) -> Arc<PathBuf> {
         self.canonical_root_module.clone()
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct ExperimentalFlags {
     pub new_encoding: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct LspConfig {
+    // This is set to true if compilation was triggered by a didChange LSP event. In this case, we
+    // bypass collecting type metadata and skip DCA.
+    //
+    // This is set to false if compilation was triggered by a didSave or didOpen LSP event.
+    pub optimized_build: bool,
+    // The value of the `version` field in the `DidChangeTextDocumentParams` struct.
+    // This is used to determine if the file has been modified since the last compilation.
+    pub file_versions: BTreeMap<PathBuf, Option<u64>>,
 }
 
 #[cfg(test)]

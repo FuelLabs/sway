@@ -49,7 +49,7 @@ pub(super) enum ReqOrVarDecl {
 /// The tree represents a logical expression that consists of equality comparisons, and
 /// lazy AND and OR operators.
 ///
-/// The leafs of the tree are either equality comparisons or eventual variable declarations
+/// The leaves of the tree are either equality comparisons or eventual variable declarations
 /// or none of those in the case of catch-all `_` pattern or only a single rest `..` in structs.
 pub(super) struct ReqDeclTree {
     root: ReqDeclNode,
@@ -299,8 +299,9 @@ fn match_or(
         for (variable, _) in variables.iter() {
             let missing_in_alternatives: Vec<Span> = variables_in_alternatives
                 .iter()
-                .filter(|(_, vars)| !vars.iter().any(|(ident, _)| ident == *variable))
-                .map(|(span, _)| span.clone())
+                .filter_map(|(span, vars)| {
+                    (!vars.iter().any(|(ident, _)| ident == *variable)).then_some(span.clone())
+                })
                 .collect();
 
             if missing_in_alternatives.is_empty() {
@@ -324,11 +325,10 @@ fn match_or(
 
         for (variable, type_id) in variables {
             let type_mismatched_vars = variables_in_alternatives.iter().flat_map(|(_, vars)| {
-                vars.iter()
-                    .filter(|(ident, var_type_id)| {
-                        ident == variable && !equality.check(type_id, *var_type_id)
-                    })
-                    .map(|(ident, var_type_id)| (ident.clone(), var_type_id))
+                vars.iter().filter_map(|(ident, var_type_id)| {
+                    (ident == variable && !equality.check(type_id, *var_type_id))
+                        .then_some((ident.clone(), *var_type_id))
+                })
             });
 
             for type_mismatched_var in type_mismatched_vars {
@@ -409,7 +409,7 @@ fn match_constant(
             expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
                 const_decl: Box::new(const_decl),
-                call_path: Some(CallPath::from(name).to_fullpath(ctx.namespace)),
+                call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
             },
             return_type,
             span,
@@ -439,6 +439,7 @@ fn match_struct(
         let subfield = instantiate_struct_field_access(
             handler,
             ctx.engines(),
+            ctx.namespace(),
             exp.clone(),
             field.clone(),
             field_span,

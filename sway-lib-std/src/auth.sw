@@ -178,7 +178,7 @@ pub fn caller_address() -> Result<Address, AuthError> {
     }
 }
 
-/// Get the current predicate's id when called in an internal context.
+/// Get the current predicate's address when called in an internal context.
 ///
 /// # Returns
 ///
@@ -191,14 +191,14 @@ pub fn caller_address() -> Result<Address, AuthError> {
 /// # Examples
 ///
 /// ```sway
-/// use std::auth::predicate_id;
+/// use std::auth::predicate_address;
 ///
 /// fn main() {
-///     let this_predicate = predicate_id();
+///     let this_predicate = predicate_address();
 ///     log(this_predicate);
 /// }
 /// ```
-pub fn predicate_id() -> Address {
+pub fn predicate_address() -> Address {
     // Get index of current predicate.
     // i3 = GM_GET_VERIFYING_PREDICATE
     let predicate_index = asm(r1) {

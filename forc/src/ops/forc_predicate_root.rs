@@ -1,7 +1,7 @@
 use crate::cli::PredicateRootCommand;
 use anyhow::Result;
 use forc_pkg::{self as pkg, build_with_options};
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::BuildTarget;
 
 pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
@@ -9,7 +9,7 @@ pub fn predicate_root(command: PredicateRootCommand) -> Result<()> {
     // Building predicates will output the predicate root by default.
     // So to display all predicate roots in the current workspace we just need to build the
     // workspace with a member filter that filters out every project type other than predicates.
-    build_with_options(build_options)?;
+    build_with_options(&build_options)?;
     Ok(())
 }
 
@@ -26,10 +26,10 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.print.ast,
-            dca_graph: cmd.print.dca_graph,
+            dca_graph: cmd.print.dca_graph.clone(),
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
-            finalized_asm: cmd.print.finalized_asm,
-            intermediate_asm: cmd.print.intermediate_asm,
+            asm: cmd.print.asm(),
+            bytecode: cmd.print.bytecode,
             ir: cmd.print.ir,
             reverse_order: cmd.print.reverse_order,
         },
@@ -48,7 +48,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
         tests: false,
         member_filter: pkg::MemberFilter::only_predicates(),
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

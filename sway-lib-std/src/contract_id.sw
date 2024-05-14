@@ -1,4 +1,4 @@
-//! A wrapper around the `b256` type to help enhance type-safety.
+//! The `ContractId` type used for interacting with contracts on the fuel network.
 library;
 
 use ::convert::From;
@@ -7,12 +7,34 @@ use ::hash::{Hash, Hasher};
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
     /// The underlying raw `b256` data of the contract id.
-    value: b256,
+    bits: b256,
+}
+
+impl ContractId {
+    /// Returns the underlying raw `b256` data of the contract id.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The raw data of the contract id.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() -> {
+    ///     let my_contract = ContractId::from(ZERO_B256);
+    ///     assert(my_contract.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.bits
+    }
 }
 
 impl core::ops::Eq for ContractId {
     fn eq(self, other: Self) -> bool {
-        self.value == other.value
+        self.bits == other.bits
     }
 }
 
@@ -38,9 +60,11 @@ impl From<b256> for ContractId {
     /// }
     /// ```
     fn from(bits: b256) -> Self {
-        Self { value: bits }
+        Self { bits }
     }
+}
 
+impl From<ContractId> for b256 {
     /// Casts a `ContractId` to raw `b256` data.
     ///
     /// # Returns
@@ -54,19 +78,19 @@ impl From<b256> for ContractId {
     ///
     /// fn foo() {
     ///     let contract_id = ContractId::from(ZERO_B256);
-    ///     let b256_data = contract_id.into();
+    ///     let b256_data: b256 = contract_id.into();
     ///     assert(b256_data == ZERO_B256);
     /// }
     /// ```
-    fn into(self) -> b256 {
-        self.value
+    fn from(id: ContractId) -> Self {
+        id.bits()
     }
 }
 
 impl Hash for ContractId {
     fn hash(self, ref mut state: Hasher) {
-        let Self { value } = self;
-        value.hash(state);
+        let Self { bits } = self;
+        bits.hash(state);
     }
 }
 
@@ -100,4 +124,25 @@ impl ContractId {
             fp: b256
         })
     }
+}
+
+#[test]
+fn test_contract_id_from_b256() {
+    use ::assert::assert;
+
+    let my_contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        my_contract_id
+            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+}
+
+#[test]
+fn test_contract_id_into_b256() {
+    use ::assert::assert;
+    use ::convert::Into;
+
+    let contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_data: b256 = contract_id.into();
+    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
 }

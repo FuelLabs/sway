@@ -10,7 +10,7 @@ use crate::{
     transform, Engines, Ident,
 };
 
-use sway_types::{span::Span, BaseIdent, IdentUnique, Spanned};
+use sway_types::{span::Span, BaseIdent, IdentUnique, LineCol, Spanned};
 
 use petgraph::{graph::EdgeIndex, prelude::NodeIndex};
 
@@ -23,7 +23,7 @@ pub(crate) use namespace::VariableNamespaceEntry;
 pub type EntryPoint = NodeIndex;
 pub type ExitPoint = NodeIndex;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 /// A graph that can be used to model the control flow of a Sway program.
 /// This graph is used as the basis for all of the algorithms in the control flow analysis portion
 /// of the compiler.
@@ -33,9 +33,23 @@ pub struct ControlFlowGraph<'cfg> {
     pub(crate) pending_entry_points_edges: Vec<(NodeIndex, ControlFlowGraphEdge)>,
     pub(crate) namespace: ControlFlowNamespace,
     pub(crate) decls: HashMap<IdentUnique, NodeIndex>,
+    pub(crate) engines: &'cfg Engines,
 }
 
 pub type Graph<'cfg> = petgraph::Graph<ControlFlowGraphNode<'cfg>, ControlFlowGraphEdge>;
+
+impl<'cfg> ControlFlowGraph<'cfg> {
+    pub fn new(engines: &'cfg Engines) -> Self {
+        Self {
+            graph: Default::default(),
+            entry_points: Default::default(),
+            pending_entry_points_edges: Default::default(),
+            namespace: Default::default(),
+            decls: Default::default(),
+            engines,
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct ControlFlowGraphEdge(String);
@@ -88,10 +102,10 @@ pub enum ControlFlowGraphNode<'cfg> {
 }
 
 impl<'cfg> GetDeclIdent for ControlFlowGraphNode<'cfg> {
-    fn get_decl_ident(&self) -> Option<Ident> {
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident> {
         match self {
             ControlFlowGraphNode::OrganizationalDominator(_) => None,
-            ControlFlowGraphNode::ProgramNode { node, .. } => node.get_decl_ident(),
+            ControlFlowGraphNode::ProgramNode { node, .. } => node.get_decl_ident(engines),
             ControlFlowGraphNode::EnumVariant { variant_name, .. } => Some(variant_name.clone()),
             ControlFlowGraphNode::MethodDeclaration { method_name, .. } => {
                 Some(method_name.clone())
@@ -174,7 +188,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
         self.pending_entry_points_edges.push((to, label));
     }
     pub(crate) fn add_node<'eng: 'cfg>(&mut self, node: ControlFlowGraphNode<'cfg>) -> NodeIndex {
-        let ident_opt = node.get_decl_ident();
+        let ident_opt = node.get_decl_ident(self.engines);
         let node_index = self.graph.add_node(node);
         if let Some(ident) = ident_opt {
             self.decls.insert(ident.into(), node_index);
@@ -200,8 +214,12 @@ impl<'cfg> ControlFlowGraph<'cfg> {
     }
 
     pub(crate) fn get_node_from_decl(&self, cfg_node: &ControlFlowGraphNode) -> Option<NodeIndex> {
-        if let Some(ident) = cfg_node.get_decl_ident() {
-            self.decls.get(&ident.into()).cloned()
+        if let Some(ident) = cfg_node.get_decl_ident(self.engines) {
+            if !ident.span().is_dummy() {
+                self.decls.get(&ident.into()).cloned()
+            } else {
+                None
+            }
         } else {
             None
         }
@@ -239,7 +257,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                                 if let Some(source_id) = span.source_id() {
                                     let path = engines.se().get_path(source_id);
                                     let path = path.to_string_lossy();
-                                    let (line, col) = span.start_pos().line_col();
+                                    let LineCol { line, col } = span.start_pos().line_col();
                                     let url_format = url_format
                                         .replace("{path}", path.to_string().as_str())
                                         .replace("{line}", line.to_string().as_str())
@@ -259,7 +277,7 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing DCA graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting DCA graph to path {graph_path:?}\n{error}"
                     );
                 }
             }

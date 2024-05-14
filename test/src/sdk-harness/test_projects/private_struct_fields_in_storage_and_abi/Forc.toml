@@ -1,0 +1,8 @@
+[project]
+authors = ["Fuel Labs <contact@fuel.sh>"]
+entry = "main.sw"
+license = "Apache-2.0"
+name = "private_struct_fields_in_storage_and_abi"
+
+[dependencies]
+std = { path = "../../../../../sway-lib-std" }

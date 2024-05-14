@@ -78,7 +78,7 @@ mod ir_builder {
                 }
 
             rule fn_decl() -> IrAstFnDecl
-                = is_public:is_public() _ is_entry:is_entry() _ "fn" _
+                = is_public:is_public() _ is_entry:is_entry() _  is_fallback:is_fallback() _ "fn" _
                         name:id() _ selector:selector_id()? _ "(" _
                         args:(block_arg() ** comma()) ")" _ "->" _ ret_type:ast_ty()
                             metadata:comma_metadata_idx()? "{" _
@@ -94,7 +94,8 @@ mod ir_builder {
                         locals,
                         blocks,
                         selector,
-                        is_entry
+                        is_entry,
+                        is_fallback,
                     }
                 }
 
@@ -104,6 +105,10 @@ mod ir_builder {
 
             rule is_entry() -> bool
                 = "entry" _ { true }
+                / "" _ { false }
+
+            rule is_fallback() -> bool
+                = "fallback" _ { true }
                 / "" _ { false }
 
             rule selector_id() -> [u8; 4]
@@ -203,6 +208,7 @@ mod ir_builder {
                 / op_read_register()
                 / op_ret()
                 / op_revert()
+                / op_jmp_mem()
                 / op_smo()
                 / op_state_load_quad_word()
                 / op_state_load_word()
@@ -362,6 +368,11 @@ mod ir_builder {
                     IrAstOperation::Revert(vn)
                 }
 
+            rule op_jmp_mem() -> IrAstOperation
+                = "jmp_mem" _ {
+                    IrAstOperation::JmpMem
+                }
+
             rule op_smo() -> IrAstOperation
                 = "smo" _
                 recipient_and_message:id() comma() message_size:id() comma() output_index:id() comma() coins:id() _ {
@@ -511,7 +522,7 @@ mod ir_builder {
                     (ty, cv)
                 }
                 / ty:ast_ty() "undef" _ {
-                    (ty.clone(), IrAstConst { value: IrAstConstValue::Undef(ty), meta_idx: None })
+                    (ty.clone(), IrAstConst { value: IrAstConstValue::Undef, meta_idx: None })
                 }
 
             rule ast_ty() -> IrAstTy
@@ -674,6 +685,7 @@ mod ir_builder {
         blocks: Vec<IrAstBlock>,
         selector: Option<[u8; 4]>,
         is_entry: bool,
+        is_fallback: bool,
     }
 
     #[derive(Debug)]
@@ -722,6 +734,7 @@ mod ir_builder {
         ReadRegister(String),
         Ret(IrAstTy, String),
         Revert(String),
+        JmpMem,
         Smo(String, String, String, String),
         StateClear(String, String),
         StateLoadQuadWord(String, String, String),
@@ -751,7 +764,7 @@ mod ir_builder {
 
     #[derive(Debug)]
     enum IrAstConstValue {
-        Undef(IrAstTy),
+        Undef,
         Unit,
         Bool(bool),
         Hex256([u8; 32]),
@@ -778,7 +791,7 @@ mod ir_builder {
     impl IrAstConstValue {
         fn as_constant_value(&self, context: &mut Context, val_ty: IrAstTy) -> ConstantValue {
             match self {
-                IrAstConstValue::Undef(_) => ConstantValue::Undef,
+                IrAstConstValue::Undef => ConstantValue::Undef,
                 IrAstConstValue::Unit => ConstantValue::Unit,
                 IrAstConstValue::Bool(b) => ConstantValue::Bool(*b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
@@ -820,7 +833,7 @@ mod ir_builder {
 
         fn as_value(&self, context: &mut Context, val_ty: IrAstTy) -> Value {
             match self {
-                IrAstConstValue::Undef(_) => unreachable!("Can't convert 'undef' to a value."),
+                IrAstConstValue::Undef => unreachable!("Can't convert 'undef' to a value."),
                 IrAstConstValue::Unit => Constant::get_unit(context),
                 IrAstConstValue::Bool(b) => Constant::get_bool(context, *b),
                 IrAstConstValue::Hex256(bs) => match val_ty {
@@ -975,6 +988,7 @@ mod ir_builder {
                 fn_decl.selector,
                 fn_decl.is_public,
                 fn_decl.is_entry,
+                fn_decl.is_fallback,
                 convert_md_idx(&fn_decl.metadata),
             );
 
@@ -1238,7 +1252,7 @@ mod ir_builder {
                             .append(context)
                             .contract_call(
                                 ir_ty,
-                                name,
+                                Some(name),
                                 *val_map.get(&params).unwrap(),
                                 *val_map.get(&coins).unwrap(),
                                 *val_map.get(&asset_id).unwrap(),
@@ -1343,6 +1357,10 @@ mod ir_builder {
                     IrAstOperation::Revert(ret_val_name) => block
                         .append(context)
                         .revert(*val_map.get(&ret_val_name).unwrap())
+                        .add_metadatum(context, opt_metadata),
+                    IrAstOperation::JmpMem => block
+                        .append(context)
+                        .jmp_mem()
                         .add_metadatum(context, opt_metadata),
                     IrAstOperation::Smo(recipient, message, message_size, coins) => block
                         .append(context)

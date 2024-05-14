@@ -131,31 +131,29 @@ impl core::ops::Eq for MyEnumTypeAlias2 {
 }
 
 fn enum_tests() {
-    let x = ContractId {
-        value: 0x0000000000000000000000000000000000000000000000000000000000000001,
-    };
+    let x = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let z: SubId = 0x0000000000000000000000000000000000000000000000000000000000000001;
     let o = Some(x);
-    if let Some(ContractId { value }) = o {
-        assert(value == z);
+    if let Some(value) = o {
+        assert(value.bits() == z);
     }
 
     let value = match o {
-        Some(value) => value.value,
+        Some(value) => value.bits(),
         None => revert(42),
     };
 
     let id1 = lib::MyIdentity::ContractId(x);
     let id2 = lib::MyIdentity::ContractId(x);
     match id1 {
-        lib::MyIdentity::ContractId(ContractId { value }) => assert(value == 0x0000000000000000000000000000000000000000000000000000000000000001),
+        lib::MyIdentity::ContractId(id) => assert(id.bits() == 0x0000000000000000000000000000000000000000000000000000000000000001),
         _ => revert(42),
     }
     assert(id1 == id2); // test trait `Eq`
     let id3 = lib::MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
     let id4 = lib::MyIdentity::Address(Address::from(0x1111111111111111111111111111111111111111111111111111111111111111));
     match id3 {
-        lib::MyIdentity::Address(Address { value }) => assert(value == 0x1111111111111111111111111111111111111111111111111111111111111111),
+        lib::MyIdentity::Address(id) => assert(id.bits() == 0x1111111111111111111111111111111111111111111111111111111111111111),
         _ => revert(42),
     }
     assert(id3 == id4);

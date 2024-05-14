@@ -1,21 +1,21 @@
 [[package]]
-name = 'bal_opcode'
-source = 'member'
+name = "bal_opcode"
+source = "member"
 dependencies = [
-    'balance_test_abi',
-    'std',
+    "balance_test_abi",
+    "std",
 ]
 
 [[package]]
-name = 'balance_test_abi'
-source = 'path+from-root-22833226E3BC014E'
-dependencies = ['core']
+name = "balance_test_abi"
+source = "path+from-root-22833226E3BC014E"
+dependencies = ["core"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-22833226E3BC014E'
+name = "core"
+source = "path+from-root-22833226E3BC014E"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-22833226E3BC014E'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-22833226E3BC014E"
+dependencies = ["core"]

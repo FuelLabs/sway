@@ -1,7 +1,5 @@
 script;
 
-use std::vec::*;
-
 trait Container {
     type E;
     fn empty() -> Self;

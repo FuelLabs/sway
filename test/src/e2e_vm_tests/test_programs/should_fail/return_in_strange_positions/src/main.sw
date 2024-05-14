@@ -15,16 +15,6 @@ pub enum Enum_multivariant {
     B: (u64, u64),
 }
 
-// Legal return type. Matching on the type is unimplemented.
-
-fn in_match_scrutinee_legal_return() -> u64 {
-    match return 42 {
-        _ => 5411,
-    }
-
-    1145
-}
-
 // Illegal return types. Every function should report an error for incorrect return
 // type, and a warning for unreachable code.
 
@@ -70,7 +60,7 @@ fn in_tuple() -> u64 {
 fn in_struct()  -> u64 {
     let _ = S { x: return, y: return };
 
-    345
+    345 // TODO: Missing unreachable warning
 }
 
 fn in_parentheses()  -> u64 {
@@ -88,15 +78,15 @@ fn in_arithmetic_parse()  -> u64 {
 fn in_arithmetic_typecheck()  -> u64 {
     let _ = (return) + return;
 
-    645
+    645 // TODO: Missing unreachable warning
 }
 
 fn in_if_condition() -> u64 {
     let _ = if return {
-        457
+        457 // TODO: Missing unreachable warning
     }
     else {
-        457
+        457 // TODO: Missing unreachable warning
     };
 
     745
@@ -121,13 +111,13 @@ fn in_match_scrutinee() -> u64 {
 fn in_enum() -> u64 {
     let _ = Enum::A((return, return));
     
-    1045
+    1045 // TODO: Missing unreachable warning
 }
 
 fn in_enum_multivariant() -> u64 {
     let _ = Enum_multivariant::B((return, return));
     
-    1145
+    1145 // TODO: Missing unreachable warning
 }
 
 fn helper_fun(x : u64, y : u64) -> u64 {
@@ -137,7 +127,7 @@ fn helper_fun(x : u64, y : u64) -> u64 {
 fn in_fun_arg() -> u64 {
     let _ = helper_fun(return, return);
 
-    1245
+    1245 // TODO: Missing unreachable warning
 }
 
 fn in_lazy_and_parse() -> u64 {
@@ -166,8 +156,6 @@ fn in_lazy_or_typecheck() -> u64 {
 
 
 fn main() {
-    assert(42 == in_match_scrutinee_legal_return());
-    
     assert(42 != in_init());
     assert(42 != in_array());
     assert(42 != in_length_1_array());

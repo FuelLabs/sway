@@ -1,3 +1,8 @@
 [[package]]
-name = 'superabi_diamond_impl'
-source = 'member'
+name = "core"
+source = "path+from-root-E158B82B4AB58E8C"
+
+[[package]]
+name = "superabi_diamond_impl"
+source = "member"
+dependencies = ["core"]

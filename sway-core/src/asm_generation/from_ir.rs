@@ -11,10 +11,10 @@ use super::{
     MidenVMAsmBuilder,
 };
 
-use crate::{BuildConfig, BuildTarget};
+use crate::{BuildConfig, BuildTarget, ExperimentalFlags};
 
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::*;
+use sway_ir::{Context, Kind, Module};
 
 pub fn compile_ir_to_asm(
     handler: &Handler,
@@ -30,14 +30,6 @@ pub fn compile_ir_to_asm(
     let module = ir.module_iter().next().unwrap();
     let final_program =
         compile_module_to_asm(handler, RegisterSequencer::new(), ir, module, build_config)?;
-
-    if build_config
-        .map(|cfg| cfg.print_finalized_asm)
-        .unwrap_or(false)
-    {
-        println!(";; --- FINAL PROGRAM ---\n");
-        println!("{final_program}");
-    }
 
     let final_asm = final_program.finalize();
 
@@ -76,10 +68,15 @@ fn compile_module_to_asm(
         BuildTarget::MidenVM => Box::new(MidenVMAsmBuilder::new(kind, context)),
     };
 
+    let mut fallback_fn = None;
+
     // Pre-create labels for all functions before we generate other code, so we can call them
     // before compiling them if needed.
     for func in module.function_iter(context) {
-        builder.func_to_labels(&func);
+        let (start, _) = builder.func_to_labels(&func);
+        if func.is_fallback(context) {
+            fallback_fn = Some(start);
+        }
     }
 
     for function in module.function_iter(context) {
@@ -106,32 +103,56 @@ fn compile_module_to_asm(
                 })
                 .collect();
 
-            let abstract_program =
-                AbstractProgram::new(kind, data_section, entries, non_entries, reg_seqr);
+            let abstract_program = AbstractProgram::new(
+                kind,
+                data_section,
+                entries,
+                non_entries,
+                reg_seqr,
+                ExperimentalFlags {
+                    new_encoding: context.experimental.new_encoding,
+                },
+            );
+
+            // Compiled dependencies will not have any content and we
+            // do not want to display their empty ASM structures.
+            // If printing ASM is requested, we want to emit the
+            // actual ASMs generated for the whole program.
+            let program_has_content = !abstract_program.is_empty();
 
             if build_config
-                .map(|cfg| cfg.print_intermediate_asm)
+                .map(|cfg| cfg.print_asm.virtual_abstract && program_has_content)
                 .unwrap_or(false)
             {
-                println!(";; --- ABSTRACT VIRTUAL PROGRAM ---\n");
+                println!(";; ASM: Virtual abstract program");
                 println!("{abstract_program}\n");
             }
 
             let allocated_program = abstract_program
-                .into_allocated_program()
+                .into_allocated_program(fallback_fn)
                 .map_err(|e| handler.emit_err(e))?;
 
             if build_config
-                .map(|cfg| cfg.print_intermediate_asm)
+                .map(|cfg| cfg.print_asm.allocated_abstract && program_has_content)
                 .unwrap_or(false)
             {
-                println!(";; --- ABSTRACT ALLOCATED PROGRAM ---\n");
+                println!(";; ASM: Allocated abstract program");
                 println!("{allocated_program}");
             }
 
-            allocated_program
+            let final_program = allocated_program
                 .into_final_program()
-                .map_err(|e| handler.emit_err(e))?
+                .map_err(|e| handler.emit_err(e))?;
+
+            if build_config
+                .map(|cfg| cfg.print_asm.r#final && program_has_content)
+                .unwrap_or(false)
+            {
+                println!(";; ASM: Final program");
+                println!("{final_program}");
+            }
+
+            final_program
         }
         AsmBuilderResult::Evm(result) => FinalProgram::Evm {
             ops: result.ops,

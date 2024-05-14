@@ -1,12 +1,14 @@
 mod e2e_vm_tests;
 mod ir_generation;
+mod reduced_std_libs;
 mod test_consistency;
 
 use anyhow::Result;
 use clap::Parser;
+use forc::cli::shared::PrintAsmCliOpt;
 use forc_tracing::init_tracing_subscriber;
 use std::str::FromStr;
-use sway_core::{BuildTarget, ExperimentalFlags};
+use sway_core::{BuildTarget, ExperimentalFlags, PrintAsm};
 use tracing::Instrument;
 
 #[derive(Parser)]
@@ -35,21 +37,37 @@ struct Cli {
     #[arg(long, visible_alias = "first")]
     first_only: bool,
 
-    /// Print out warnings and errors
+    /// Print out warnings, errors, and output of print options
     #[arg(long, env = "SWAY_TEST_VERBOSE")]
     verbose: bool,
+
+    /// Compile sway code in release mode
+    #[arg(long)]
+    release: bool,
 
     /// Intended for use in `CI` to ensure test lock files are up to date
     #[arg(long)]
     locked: bool,
 
-    /// Build target.
+    /// Build target
     #[arg(long, visible_alias = "target")]
     build_target: Option<String>,
 
-    /// Experimental flag for new encoding
+    /// Disable the "new encoding" feature
     #[arg(long)]
-    experimental_new_encoding: bool,
+    no_encoding_v1: bool,
+
+    /// Update all output files
+    #[arg(long)]
+    update_output_files: bool,
+
+    /// Print out the final IR, if the verbose option is on
+    #[arg(long)]
+    print_ir: bool,
+
+    /// Print out the ASM, if the verbose option is on
+    #[arg(long, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
+    print_asm: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone)]
@@ -67,7 +85,11 @@ pub struct RunConfig {
     pub build_target: BuildTarget,
     pub locked: bool,
     pub verbose: bool,
+    pub release: bool,
     pub experimental: ExperimentalFlags,
+    pub update_output_files: bool,
+    pub print_ir: bool,
+    pub print_asm: PrintAsm,
 }
 
 #[tokio::main]
@@ -94,14 +116,24 @@ async fn main() -> Result<()> {
     let run_config = RunConfig {
         locked: cli.locked,
         verbose: cli.verbose,
+        release: cli.release,
         build_target,
         experimental: sway_core::ExperimentalFlags {
-            new_encoding: cli.experimental_new_encoding,
+            new_encoding: !cli.no_encoding_v1,
         },
+        update_output_files: cli.update_output_files,
+        print_ir: cli.print_ir,
+        print_asm: cli
+            .print_asm
+            .as_ref()
+            .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0),
     };
 
     // Check that the tests are consistent
     test_consistency::check()?;
+
+    // Create reduced versions of the `std` library.
+    reduced_std_libs::create()?;
 
     // Run E2E tests
     e2e_vm_tests::run(&filter_config, &run_config)

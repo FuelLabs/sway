@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-519F719523F89C04"
+
+[[package]]
+name = "std"
+source = "path+from-root-519F719523F89C04"
+dependencies = ["core"]
+
+[[package]]
+name = "storage_into"
+source = "member"
+dependencies = ["std"]

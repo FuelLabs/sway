@@ -1,0 +1,16 @@
+[[package]]
+name = "const-instead-of-let"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
+name = "core"
+source = "path+from-root-8953E158C7D5F73E"
+
+[[package]]
+name = "std"
+source = "path+from-root-8953E158C7D5F73E"
+dependencies = ["core"]

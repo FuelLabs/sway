@@ -23,6 +23,7 @@ fn main() -> bool {
     test_vector_new_string();
     test_vector_new_array();
     test_vector_with_capacity_u64();
+    test_vector_iter();
     true
 }
 
@@ -2582,4 +2583,30 @@ fn test_vector_with_capacity_u64() {
     match vector.get(5) {
         Some(_val) => revert(0), None => (),
     }
+}
+
+fn test_vector_iter() {
+    let mut vector = Vec::new();
+
+    let number0 = 0;
+    let number1 = 1;
+    let number2 = 2;
+    let number3 = 3;
+    let number4 = 4;
+
+    vector.push(number0);
+    vector.push(number1);
+    vector.push(number2);
+    vector.push(number3);
+    vector.push(number4);
+
+    let mut iter = vector.iter();
+
+    assert(iter.next() == Some(number0));
+    assert(iter.next() == Some(number1));
+    assert(iter.next() == Some(number2));
+    assert(iter.next() == Some(number3));
+    assert(iter.next() == Some(number4));
+    assert(iter.next() == None);
+    assert(iter.next() == None);
 }

@@ -20,34 +20,34 @@ pub enum Enum_multivariant {
 fn in_init() -> u64 {
     let _ = return 42;
     
-    45
+    045
 }
 
 fn in_array() -> u64 {
     let _ = [return 42, return 43];
     
-    145
+    1450
 }
 
 // Arrays of length 1 are treated differently
 fn in_length_1_array() -> u64 {
     let _ = [return 42];
     
-    145
+    1451
 }
 
 // The first element of an array is treated differently
 fn in_length_2_array_first() -> u64 {
     let _ = [return 42, 0];
     
-    145
+    1452
 }
 
 // The first element of an array is treated differently
 fn in_length_2_array_second() -> u64 {
     let _ = [0, return 42];
     
-    145
+    1453
 }
 
 fn in_tuple() -> u64 {
@@ -127,6 +127,14 @@ fn in_lazy_or() -> u64 {
     1245
 }
 
+fn in_match_scrutinee() -> u64 {
+    let _ = match return 42 {
+        _ => 5411,
+    };
+
+    1345
+}
+
 
 fn main() -> u64 {
     assert(42 == in_init());
@@ -145,6 +153,7 @@ fn main() -> u64 {
     assert(42 == in_fun_arg());
     assert(42 == in_lazy_and());
     assert(42 == in_lazy_or());
-
+    assert(42 == in_match_scrutinee());
+    
     8193
 }

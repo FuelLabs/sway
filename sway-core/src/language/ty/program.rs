@@ -7,7 +7,7 @@ use crate::{
     transform::AllowDeprecatedState,
     type_system::*,
     types::*,
-    Engines,
+    Engines, ExperimentalFlags,
 };
 
 use sway_error::{
@@ -44,6 +44,18 @@ fn get_type_not_allowed_error(
     })
 }
 
+fn check_no_ref_main(engines: &Engines, handler: &Handler, main_function: &DeclId<TyFunctionDecl>) {
+    let main_function = engines.de().get_function(main_function);
+    for param in &main_function.parameters {
+        if param.is_reference && param.is_mutable {
+            handler.emit_err(CompileError::RefMutableNotAllowedInMain {
+                param_name: param.name.clone(),
+                span: param.name.span(),
+            });
+        }
+    }
+}
+
 impl TyProgram {
     /// Validate the root module given the expected program kind.
     pub fn validate_root(
@@ -52,6 +64,7 @@ impl TyProgram {
         root: &TyModule,
         kind: parsed::TreeType,
         package_name: &str,
+        experimental: ExperimentalFlags,
     ) -> Result<(TyProgramKind, Vec<TyDecl>, Vec<TyConstantDecl>), ErrorEmitted> {
         // Extract program-kind-specific properties from the root nodes.
 
@@ -68,12 +81,14 @@ impl TyProgram {
                 &submodule.module,
                 parsed::TreeType::Library,
                 package_name,
+                experimental,
             ) {
                 Ok(_) => {}
                 Err(_) => continue,
             }
         }
 
+        let mut entries = Vec::new();
         let mut mains = Vec::new();
         let mut declarations = Vec::<TyDecl>::new();
         let mut abi_entries = Vec::new();
@@ -81,16 +96,13 @@ impl TyProgram {
 
         for node in &root.all_nodes {
             match &node.content {
-                TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl {
-                    name,
-                    decl_id,
-                    subst_list,
-                    decl_span,
-                })) => {
+                TyAstNodeContent::Declaration(TyDecl::FunctionDecl(FunctionDecl { decl_id })) => {
                     let func = decl_engine.get_function(decl_id);
 
-                    if func.name.as_str() == "main" {
-                        mains.push(*decl_id);
+                    match func.kind {
+                        TyFunctionDeclKind::Main => mains.push(*decl_id),
+                        TyFunctionDeclKind::Entry => entries.push(*decl_id),
+                        _ => {}
                     }
 
                     if !fn_declarations.insert(func.name.clone()) {
@@ -100,12 +112,7 @@ impl TyProgram {
                         });
                     }
 
-                    declarations.push(TyDecl::FunctionDecl(FunctionDecl {
-                        name: name.clone(),
-                        decl_id: *decl_id,
-                        subst_list: subst_list.clone(),
-                        decl_span: decl_span.clone(),
-                    }));
+                    declarations.push(TyDecl::FunctionDecl(FunctionDecl { decl_id: *decl_id }));
                 }
                 TyAstNodeContent::Declaration(TyDecl::ConstantDecl(ConstantDecl {
                     decl_id,
@@ -143,20 +150,14 @@ impl TyProgram {
                                             abi_entries.push(*method_ref.id());
                                         }
                                         TyImplItem::Constant(const_ref) => {
-                                            let const_decl = decl_engine.get_constant(const_ref);
                                             declarations.push(TyDecl::ConstantDecl(ConstantDecl {
-                                                name: const_decl.name().clone(),
                                                 decl_id: *const_ref.id(),
-                                                decl_span: const_decl.span.clone(),
                                             }));
                                         }
                                         TyImplItem::Type(type_ref) => {
-                                            let type_decl = decl_engine.get_type(type_ref);
                                             declarations.push(TyDecl::TraitTypeDecl(
                                                 TraitTypeDecl {
-                                                    name: type_decl.name().clone(),
                                                     decl_id: *type_ref.id(),
-                                                    decl_span: type_decl.span.clone(),
                                                 },
                                             ));
                                         }
@@ -178,7 +179,7 @@ impl TyProgram {
         if kind != parsed::TreeType::Contract {
             // impure functions are disallowed in non-contracts
             if !matches!(kind, parsed::TreeType::Library { .. }) {
-                for err in disallow_impure_functions(decl_engine, &declarations, &mains) {
+                for err in disallow_impure_functions(decl_engine, &declarations, &entries) {
                     handler.emit_err(err);
                 }
             }
@@ -188,10 +189,10 @@ impl TyProgram {
                 .iter()
                 .find(|decl| matches!(decl, TyDecl::StorageDecl { .. }));
 
-            if let Some(TyDecl::StorageDecl(StorageDecl { decl_span, .. })) = storage_decl {
+            if let Some(TyDecl::StorageDecl(StorageDecl { decl_id })) = storage_decl {
                 handler.emit_err(CompileError::StorageDeclarationInNonContract {
                     program_kind: format!("{kind}"),
-                    span: decl_span.clone(),
+                    span: engines.de().get(decl_id).span.clone(),
                 });
             }
         }
@@ -201,11 +202,7 @@ impl TyProgram {
             parsed::TreeType::Contract => {
                 // Types containing raw_ptr are not allowed in storage (e.g Vec)
                 for decl in declarations.iter() {
-                    if let TyDecl::StorageDecl(StorageDecl {
-                        decl_id,
-                        decl_span: _,
-                    }) = decl
-                    {
+                    if let TyDecl::StorageDecl(StorageDecl { decl_id }) = decl {
                         let storage_decl = decl_engine.get_storage(decl_id);
                         for field in storage_decl.fields.iter() {
                             if let Some(error) = get_type_not_allowed_error(
@@ -230,7 +227,19 @@ impl TyProgram {
                     }
                 }
 
-                TyProgramKind::Contract { abi_entries }
+                TyProgramKind::Contract {
+                    entry_function: if experimental.new_encoding {
+                        if entries.len() != 1 {
+                            return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                                span: Span::dummy(),
+                            }));
+                        }
+                        Some(entries[0])
+                    } else {
+                        None
+                    },
+                    abi_entries,
+                }
             }
             parsed::TreeType::Library => {
                 if !configurables.is_empty() {
@@ -243,31 +252,51 @@ impl TyProgram {
                 }
             }
             parsed::TreeType::Predicate => {
-                // A predicate must have a main function and that function must return a boolean.
                 if mains.is_empty() {
                     return Err(
                         handler.emit_err(CompileError::NoPredicateMainFunction(root.span.clone()))
                     );
                 }
+
                 if mains.len() > 1 {
-                    let mains_last = decl_engine.get_function(mains.last().unwrap());
-                    handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                        name: mains_last.name.clone(),
-                        span: mains_last.name.span(),
-                    });
-                }
-                let main_func_id = mains.remove(0);
-                let main_func = decl_engine.get_function(&main_func_id);
-                match &*ty_engine.get(main_func.return_type.type_id) {
-                    TypeInfo::Boolean => (),
-                    _ => {
-                        handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
-                            main_func.span.clone(),
+                    let mut last_error = None;
+                    for m in mains.iter().skip(1) {
+                        let mains_last = decl_engine.get_function(m);
+                        last_error = Some(handler.emit_err(
+                            CompileError::MultipleDefinitionsOfFunction {
+                                name: mains_last.name.clone(),
+                                span: mains_last.name.span(),
+                            },
                         ));
                     }
+                    return Err(last_error.unwrap());
                 }
+
+                // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
+                check_no_ref_main(engines, handler, &mains[0]);
+
+                let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
+                    if entries.len() != 1 {
+                        return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                            span: Span::dummy(),
+                        }));
+                    }
+                    (entries[0], mains[0])
+                } else {
+                    assert!(entries.is_empty());
+                    (mains[0], mains[0])
+                };
+
+                let main_fn = decl_engine.get(&main_fn_id);
+                if !ty_engine.get(main_fn.return_type.type_id).is_bool() {
+                    handler.emit_err(CompileError::PredicateMainDoesNotReturnBool(
+                        main_fn.span.clone(),
+                    ));
+                }
+
                 TyProgramKind::Predicate {
-                    main_function: main_func_id,
+                    entry_function: entry_fn_id,
+                    main_function: main_fn_id,
                 }
             }
             parsed::TreeType::Script => {
@@ -279,20 +308,39 @@ impl TyProgram {
                 }
 
                 if mains.len() > 1 {
-                    let mains_last = decl_engine.get_function(mains.last().unwrap());
-                    handler.emit_err(CompileError::MultipleDefinitionsOfFunction {
-                        name: mains_last.name.clone(),
-                        span: mains_last.name.span(),
-                    });
+                    let mut last_error = None;
+                    for m in mains.iter().skip(1) {
+                        let mains_last = decl_engine.get_function(m);
+                        last_error = Some(handler.emit_err(
+                            CompileError::MultipleDefinitionsOfFunction {
+                                name: mains_last.name.clone(),
+                                span: mains_last.name.span(),
+                            },
+                        ));
+                    }
+                    return Err(last_error.unwrap());
                 }
+
+                // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
+                check_no_ref_main(engines, handler, &mains[0]);
+
+                let (entry_fn_id, main_fn_id) = if experimental.new_encoding {
+                    if entries.len() != 1 {
+                        return Err(handler.emit_err(CompileError::CouldNotGenerateEntry {
+                            span: Span::dummy(),
+                        }));
+                    }
+                    (entries[0], mains[0])
+                } else {
+                    assert!(entries.is_empty());
+                    (mains[0], mains[0])
+                };
 
                 // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
                 // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
                 // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
-                let main_func_decl_id = mains.remove(0);
-                let main_func = decl_engine.get_function(&main_func_decl_id);
-
-                for p in main_func.parameters() {
+                let main_fn = decl_engine.get(&main_fn_id);
+                for p in main_fn.parameters() {
                     if let Some(error) = get_type_not_allowed_error(
                         engines,
                         p.type_argument.type_id,
@@ -314,8 +362,8 @@ impl TyProgram {
                 // Check main return type is valid
                 if let Some(error) = get_type_not_allowed_error(
                     engines,
-                    main_func.return_type.type_id,
-                    &main_func.return_type,
+                    main_fn.return_type.type_id,
+                    &main_fn.return_type,
                     |t| match t {
                         TypeInfo::StringSlice => {
                             Some(TypeNotAllowedReason::StringSliceInMainReturn)
@@ -328,7 +376,7 @@ impl TyProgram {
                 ) {
                     // Let main return `raw_slice` directly
                     if !matches!(
-                        &*engines.te().get(main_func.return_type.type_id),
+                        &*engines.te().get(main_fn.return_type.type_id),
                         TypeInfo::RawUntypedSlice
                     ) {
                         handler.emit_err(error);
@@ -336,26 +384,11 @@ impl TyProgram {
                 }
 
                 TyProgramKind::Script {
-                    main_function: main_func_decl_id,
+                    entry_function: entry_fn_id,
+                    main_function: main_fn_id,
                 }
             }
         };
-        // check if no ref mut arguments passed to a `main()` in a `script` or `predicate`.
-        match &typed_program_kind {
-            TyProgramKind::Script { main_function, .. }
-            | TyProgramKind::Predicate { main_function, .. } => {
-                let main_function = decl_engine.get_function(main_function);
-                for param in &main_function.parameters {
-                    if param.is_reference && param.is_mutable {
-                        handler.emit_err(CompileError::RefMutableNotAllowedInMain {
-                            param_name: param.name.clone(),
-                            span: param.name.span(),
-                        });
-                    }
-                }
-            }
-            _ => (),
-        }
 
         //configurables and constant cannot be str slice
         for c in configurables.iter() {
@@ -429,14 +462,28 @@ impl CollectTypesMetadata for TyProgram {
         match &self.kind {
             // For scripts and predicates, collect metadata for all the types starting with
             // `main()` as the only entry point
-            TyProgramKind::Script { main_function, .. }
-            | TyProgramKind::Predicate { main_function, .. } => {
+            TyProgramKind::Script {
+                entry_function: main_function,
+                ..
+            }
+            | TyProgramKind::Predicate {
+                entry_function: main_function,
+                ..
+            } => {
                 let main_function = decl_engine.get_function(main_function);
                 metadata.append(&mut main_function.collect_types_metadata(handler, ctx)?);
             }
             // For contracts, collect metadata for all the types starting with each ABI method as
             // an entry point.
-            TyProgramKind::Contract { abi_entries, .. } => {
+            TyProgramKind::Contract {
+                abi_entries,
+                entry_function: main_function,
+            } => {
+                if let Some(main_function) = main_function {
+                    let entry = decl_engine.get_function(main_function);
+                    metadata.append(&mut entry.collect_types_metadata(handler, ctx)?);
+                }
+
                 for entry in abi_entries.iter() {
                     let entry = decl_engine.get_function(entry);
                     metadata.append(&mut entry.collect_types_metadata(handler, ctx)?);
@@ -494,15 +541,18 @@ impl CollectTypesMetadata for TyProgram {
 #[derive(Clone, Debug)]
 pub enum TyProgramKind {
     Contract {
+        entry_function: Option<DeclId<TyFunctionDecl>>,
         abi_entries: Vec<DeclId<TyFunctionDecl>>,
     },
     Library {
         name: String,
     },
     Predicate {
+        entry_function: DeclId<TyFunctionDecl>,
         main_function: DeclId<TyFunctionDecl>,
     },
     Script {
+        entry_function: DeclId<TyFunctionDecl>,
         main_function: DeclId<TyFunctionDecl>,
     },
 }

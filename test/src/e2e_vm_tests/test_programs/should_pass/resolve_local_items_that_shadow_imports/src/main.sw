@@ -11,9 +11,10 @@ enum Enum {
     B: (),
 }
 
+// TODO: Remove all the `pub`s from all the structs once https://github.com/FuelLabs/sway/issues/5500 is fixed.
 struct Struct {
-   x: u64,
-   y: u64,
+   pub x: u64,
+   pub y: u64,
 }
 
 impl Struct {
@@ -24,8 +25,8 @@ impl Struct {
 }
 
 pub struct PubStruct {
-   x: u64,
-   y: u64,
+   pub x: u64,
+   pub y: u64,
 }
 
 impl PubStruct {
@@ -36,8 +37,8 @@ impl PubStruct {
 }
 
 struct GenericStruct<T> {
-    x: T,
-    y: u64,
+    pub x: T,
+    pub y: u64,
 }
 
 impl<T> GenericStruct<T> {

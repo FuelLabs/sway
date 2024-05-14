@@ -70,7 +70,7 @@ fn test_meaning_of_life() {
 }
 ```
 
-Tests with `#[test(should_revert)]` considered to be passing if they are reverting.
+Tests with `#[test(should_revert)]` are considered to be passing if they are reverting.
 
 ## Calling Contracts
 

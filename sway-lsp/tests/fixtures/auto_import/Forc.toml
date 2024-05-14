@@ -6,5 +6,4 @@ name = "auto_import"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../../sway-lib-std" }
-core = { path = "../../../../sway-lib-core" }
+std = { git = "https://github.com/FuelLabs/sway", tag = "v0.48.1" }

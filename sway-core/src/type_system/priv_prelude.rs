@@ -6,7 +6,7 @@ pub(crate) use super::{
         create_type_id::CreateTypeId,
     },
     info::VecSet,
-    substitute::{subst_list::SubstList, subst_map::TypeSubstMap, subst_types::SubstTypes},
+    substitute::{subst_map::TypeSubstMap, subst_types::HasChanges, subst_types::SubstTypes},
     unify::unify_check::UnifyCheck,
 };
 
@@ -17,5 +17,5 @@ pub use super::{
     },
     engine::TypeEngine,
     id::TypeId,
-    info::{AbiName, TypeInfo, TypeSourceInfo},
+    info::{AbiEncodeSizeHint, AbiName, TypeInfo, TypeSourceInfo},
 };

@@ -50,6 +50,8 @@ fn method_usage() {
 // ANCHOR: associated_impl
 impl Foo {
     // this is an associated function because it does not take `self` as a parameter
+    // it is also a constructor because it instantiates
+    // and returns a new instance of `Foo`
     fn new(number: u64) -> Self {
         Self { bar: number }
     }

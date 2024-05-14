@@ -1,3 +1,8 @@
 [[package]]
-name = 'error_deduplication'
-source = 'member'
+name = "core"
+source = "path+from-root-4DD89F4C0953709D"
+
+[[package]]
+name = "error_deduplication"
+source = "member"
+dependencies = ["core"]

@@ -1,3 +1,8 @@
 [[package]]
-name = 'associated_const_impl'
-source = 'member'
+name = "associated_const_impl"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-0E2F2B52B0CF096C"

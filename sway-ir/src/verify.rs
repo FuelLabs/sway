@@ -63,11 +63,8 @@ impl<'eng> Context<'eng> {
         if function.get_module(self) != cur_module {
             return Err(IrError::InconsistentParent(
                 function.get_name(self).into(),
-                format!("Module_Index_{:?}", cur_module.0.into_raw_parts()),
-                format!(
-                    "Module_Index_{:?}",
-                    function.get_module(self).0.into_raw_parts()
-                ),
+                format!("Module_Index_{:?}", cur_module.0),
+                format!("Module_Index_{:?}", function.get_module(self).0),
             ));
         }
         let entry_block = function.get_entry_block(self);
@@ -114,13 +111,21 @@ impl<'eng> Context<'eng> {
             }
         }
 
-        InstructionVerifier {
+        let r = InstructionVerifier {
             context: self,
             cur_module,
             cur_function,
             cur_block,
         }
-        .verify_instructions()?;
+        .verify_instructions();
+
+        if r.is_err() {
+            println!("{}", self);
+            println!("{}", cur_function.get_name(self));
+            println!("{}", cur_block.get_label(self));
+        }
+
+        r?;
 
         let (last_is_term, num_terms) =
             cur_block
@@ -193,7 +198,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             if let ValueDatum::Instruction(instruction) = &value_content.value {
                 if instruction.parent != self.cur_block {
                     return Err(IrError::InconsistentParent(
-                        format!("Instr_{:?}", ins.0.into_raw_parts()),
+                        format!("Instr_{:?}", ins.0),
                         self.cur_block.get_label(self.context),
                         instruction.parent.get_label(self.context),
                     ));
@@ -221,7 +226,6 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         gas,
                         ..
                     } => self.verify_contract_call(params, coins, asset_id, gas)?,
-
                     // XXX move the fuelvm verification into a module
                     InstOp::FuelVm(fuel_vm_instr) => match fuel_vm_instr {
                         FuelVmInstruction::Gtf { index, tx_field_id } => {
@@ -233,6 +237,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                             log_id,
                         } => self.verify_log(log_val, log_ty, log_id)?,
                         FuelVmInstruction::ReadRegister(_) => (),
+                        FuelVmInstruction::JmpMem => (),
                         FuelVmInstruction::Revert(val) => self.verify_revert(val)?,
                         FuelVmInstruction::Smo {
                             recipient,
@@ -280,6 +285,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => {
                             self.verify_wide_cmp(op, arg1, arg2)?
                         }
+                        FuelVmInstruction::Retd { .. } => (),
                     },
                     InstOp::GetElemPtr {
                         base,
@@ -671,51 +677,55 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         asset_id: &Value,
         gas: &Value,
     ) -> Result<(), IrError> {
-        // - The params must be a struct with the B256 address, u64 selector and u64 address to
-        //   user args.
-        // - The coins and gas must be u64s.
-        // - The asset_id must be a B256
-        let fields = params
-            .get_type(self.context)
-            .and_then(|ty| ty.get_pointee_type(self.context))
-            .map_or_else(std::vec::Vec::new, |ty| ty.get_field_types(self.context));
-        if fields.len() != 3
-            || !fields[0].is_b256(self.context)
-            || !fields[1].is_uint64(self.context)
-            || !fields[2].is_uint64(self.context)
-        {
-            Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
+        if !self.context.experimental.new_encoding {
+            // - The params must be a struct with the B256 address, u64 selector and u64 address to
+            //   user args.
+            // - The coins and gas must be u64s.
+            // - The asset_id must be a B256
+            let fields = params
+                .get_type(self.context)
+                .and_then(|ty| ty.get_pointee_type(self.context))
+                .map_or_else(std::vec::Vec::new, |ty| ty.get_field_types(self.context));
+            if fields.len() != 3
+                || !fields[0].is_b256(self.context)
+                || !fields[1].is_uint64(self.context)
+                || !fields[2].is_uint64(self.context)
+            {
+                Err(IrError::VerifyContractCallBadTypes("params".to_owned()))
+            } else {
+                Ok(())
+            }
+            .and_then(|_| {
+                if coins
+                    .get_type(self.context)
+                    .is(Type::is_uint64, self.context)
+                {
+                    Ok(())
+                } else {
+                    Err(IrError::VerifyContractCallBadTypes("coins".to_owned()))
+                }
+            })
+            .and_then(|_| {
+                if asset_id
+                    .get_type(self.context)
+                    .and_then(|ty| ty.get_pointee_type(self.context))
+                    .is(Type::is_b256, self.context)
+                {
+                    Ok(())
+                } else {
+                    Err(IrError::VerifyContractCallBadTypes("asset_id".to_owned()))
+                }
+            })
+            .and_then(|_| {
+                if gas.get_type(self.context).is(Type::is_uint64, self.context) {
+                    Ok(())
+                } else {
+                    Err(IrError::VerifyContractCallBadTypes("gas".to_owned()))
+                }
+            })
         } else {
             Ok(())
         }
-        .and_then(|_| {
-            if coins
-                .get_type(self.context)
-                .is(Type::is_uint64, self.context)
-            {
-                Ok(())
-            } else {
-                Err(IrError::VerifyContractCallBadTypes("coins".to_owned()))
-            }
-        })
-        .and_then(|_| {
-            if asset_id
-                .get_type(self.context)
-                .and_then(|ty| ty.get_pointee_type(self.context))
-                .is(Type::is_b256, self.context)
-            {
-                Ok(())
-            } else {
-                Err(IrError::VerifyContractCallBadTypes("asset_id".to_owned()))
-            }
-        })
-        .and_then(|_| {
-            if gas.get_type(self.context).is(Type::is_uint64, self.context) {
-                Ok(())
-            } else {
-                Err(IrError::VerifyContractCallBadTypes("gas".to_owned()))
-            }
-        })
     }
 
     fn verify_get_elem_ptr(
@@ -806,8 +816,16 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
         // Just confirm `src_val` is a pointer.
-        self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
-            .map(|_| ())
+        let r = self
+            .get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
+            .map(|_| ());
+
+        if r.is_err() {
+            let meta = src_val.get_metadata(self.context).unwrap();
+            dbg!(&self.context.metadata[meta.0], &r);
+        }
+
+        r
     }
 
     fn verify_log(&self, log_val: &Value, log_ty: &Type, log_id: &Value) -> Result<(), IrError> {

@@ -27,7 +27,7 @@ impl Spanned for Module {
         } else {
             self.semicolon_token.span()
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 

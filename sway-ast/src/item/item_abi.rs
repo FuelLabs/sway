@@ -16,6 +16,6 @@ impl Spanned for ItemAbi {
             Some(abi_defs) => abi_defs.span(),
             None => self.abi_items.span(),
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }

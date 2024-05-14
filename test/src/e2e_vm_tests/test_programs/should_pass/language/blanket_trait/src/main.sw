@@ -10,7 +10,6 @@ impl<T> MyFrom<T> for T {
     }
 }
 
-
 struct A {}
 
 struct B {}

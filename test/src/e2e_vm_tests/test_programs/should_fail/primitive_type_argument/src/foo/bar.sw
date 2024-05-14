@@ -1,5 +1,5 @@
 library;
 
 pub struct ExampleStruct<T> {
-  a_field: T
+  pub a_field: T
 }

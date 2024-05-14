@@ -1,7 +1,9 @@
 script;
 
+struct Dummy<T> {}
+
 fn main() {
-    let _b = foo::<Option>();
+    let _b = foo::<Dummy>();
 }
 
 fn foo<T>() -> T {

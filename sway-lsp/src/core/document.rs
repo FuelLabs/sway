@@ -3,9 +3,11 @@ use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::document,
 };
+use dashmap::DashMap;
+use forc_util::fs_locking::PidFileLocking;
 use lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
 use ropey::Rope;
-use tokio::fs::File;
+use tokio::{fs::File, io::AsyncWriteExt};
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {
@@ -60,13 +62,12 @@ impl TextDocument {
         let text_bytes = change_text.as_bytes();
         let text_end_byte_index = text_bytes.len();
 
-        let range = match change.range {
-            Some(range) => range,
-            None => {
-                let start = self.byte_to_position(0);
-                let end = self.byte_to_position(text_end_byte_index);
-                Range { start, end }
-            }
+        let range = if let Some(range) = change.range {
+            range
+        } else {
+            let start = self.byte_to_position(0);
+            let end = self.byte_to_position(text_end_byte_index);
+            Range { start, end }
         };
 
         let start_index = self.position_to_index(range.start);
@@ -111,41 +112,25 @@ impl TextDocument {
 /// Marks the specified file as "dirty" by creating a corresponding flag file.
 ///
 /// This function ensures the necessary directory structure exists before creating the flag file.
-pub async fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
+pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
-    let dirty_file_path = forc_util::is_dirty_path(&path);
-    if let Some(dir) = dirty_file_path.parent() {
-        // Ensure the directory exists
-        tokio::fs::create_dir_all(dir)
-            .await
-            .map_err(|_| DirectoryError::LspLocksDirFailed)?;
-    }
-    // Create an empty "dirty" file
-    File::create(&dirty_file_path)
-        .await
-        .map_err(|err| DocumentError::UnableToCreateFile {
-            path: uri.path().to_string(),
-            err: err.to_string(),
-        })?;
-    Ok(())
+    Ok(PidFileLocking::lsp(path)
+        .lock()
+        .map_err(|e| DirectoryError::LspLocksDirFailed(e.to_string()))?)
 }
 
-/// Removes the corresponding flag file for the specifed Url.
+/// Removes the corresponding flag file for the specified Url.
 ///
 /// If the flag file does not exist, this function will do nothing.
-pub async fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
+pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
     let path = document::get_path_from_url(uri)?;
-    let dirty_file_path = forc_util::is_dirty_path(&path);
-    if dirty_file_path.exists() {
-        // Remove the "dirty" file
-        tokio::fs::remove_file(dirty_file_path)
-            .await
-            .map_err(|err| DocumentError::UnableToRemoveFile {
-                path: uri.path().to_string(),
-                err: err.to_string(),
-            })?;
-    }
-    Ok(())
+    let uri = uri.clone();
+    Ok(PidFileLocking::lsp(path)
+        .release()
+        .map_err(|err| DocumentError::UnableToRemoveFile {
+            path: uri.path().to_string(),
+            err: err.to_string(),
+        })?)
 }
 
 #[derive(Debug)]
@@ -153,6 +138,108 @@ struct EditText<'text> {
     start_index: usize,
     end_index: usize,
     change_text: &'text str,
+}
+
+pub struct Documents(DashMap<String, TextDocument>);
+
+impl Default for Documents {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Documents {
+    pub fn new() -> Self {
+        Documents(DashMap::new())
+    }
+
+    pub async fn handle_open_file(&self, uri: &Url) {
+        if !self.contains_key(uri.path()) {
+            if let Ok(text_document) = TextDocument::build_from_path(uri.path()).await {
+                let _ = self.store_document(text_document);
+            }
+        }
+    }
+
+    /// Asynchronously writes the changes to the file and updates the document.
+    pub async fn write_changes_to_file(
+        &self,
+        uri: &Url,
+        changes: &[TextDocumentContentChangeEvent],
+    ) -> Result<(), LanguageServerError> {
+        let src = self.update_text_document(uri, changes).ok_or_else(|| {
+            DocumentError::DocumentNotFound {
+                path: uri.path().to_string(),
+            }
+        })?;
+
+        let mut file =
+            File::create(uri.path())
+                .await
+                .map_err(|err| DocumentError::UnableToCreateFile {
+                    path: uri.path().to_string(),
+                    err: err.to_string(),
+                })?;
+
+        file.write_all(src.as_bytes())
+            .await
+            .map_err(|err| DocumentError::UnableToWriteFile {
+                path: uri.path().to_string(),
+                err: err.to_string(),
+            })?;
+
+        Ok(())
+    }
+
+    /// Get the document at the given [Url].
+    pub fn get_text_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        self.try_get(url.path())
+            .try_unwrap()
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|document| document.clone())
+    }
+
+    /// Update the document at the given [Url] with the Vec of changes returned by the client.
+    pub fn update_text_document(
+        &self,
+        url: &Url,
+        changes: &[TextDocumentContentChangeEvent],
+    ) -> Option<String> {
+        self.try_get_mut(url.path())
+            .try_unwrap()
+            .map(|mut document| {
+                for change in changes {
+                    document.apply_change(change);
+                }
+                document.get_text()
+            })
+    }
+
+    /// Remove the text document.
+    pub fn remove_document(&self, url: &Url) -> Result<TextDocument, DocumentError> {
+        self.remove(url.path())
+            .ok_or_else(|| DocumentError::DocumentNotFound {
+                path: url.path().to_string(),
+            })
+            .map(|(_, text_document)| text_document)
+    }
+
+    /// Store the text document.
+    pub fn store_document(&self, text_document: TextDocument) -> Result<(), DocumentError> {
+        let uri = text_document.get_uri().to_string();
+        self.insert(uri.clone(), text_document).map_or(Ok(()), |_| {
+            Err(DocumentError::DocumentAlreadyStored { path: uri })
+        })
+    }
+}
+
+impl std::ops::Deref for Documents {
+    type Target = DashMap<String, TextDocument>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 #[cfg(test)]
@@ -174,5 +261,29 @@ mod tests {
             .await
             .expect_err("expected DocumentNotFound");
         assert_eq!(result, DocumentError::DocumentNotFound { path });
+    }
+
+    #[tokio::test]
+    async fn store_document_returns_empty_tuple() {
+        let documents = Documents::new();
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
+        let document = TextDocument::build_from_path(&path).await.unwrap();
+        let result = documents.store_document(document);
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn store_document_returns_document_already_stored_error() {
+        let documents = Documents::new();
+        let path = get_absolute_path("sway-lsp/tests/fixtures/cats.txt");
+        let document = TextDocument::build_from_path(&path).await.unwrap();
+        documents
+            .store_document(document)
+            .expect("expected successfully stored");
+        let document = TextDocument::build_from_path(&path).await.unwrap();
+        let result = documents
+            .store_document(document)
+            .expect_err("expected DocumentAlreadyStored");
+        assert_eq!(result, DocumentError::DocumentAlreadyStored { path });
     }
 }

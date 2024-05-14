@@ -24,11 +24,11 @@ fn main() -> bool {
 
     // Calling foo() gives us the following expected error:
     // Trait "MyTrait" is not implemented for type "u64".
-    my_struct_1.foo(my_struct_2);
+    let _ = my_struct_1.foo(my_struct_2);
 
     // Calling bar() gives us the following expected error:
     // Trait "MyTrait" is not implemented for type "u64".
-    my_struct_1.bar(my_struct_2);
+    let _ = my_struct_1.bar(my_struct_2);
 
     true
 }

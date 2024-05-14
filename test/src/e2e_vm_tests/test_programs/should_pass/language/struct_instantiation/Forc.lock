@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-F5066E46095A1823"
+
+[[package]]
+name = "std"
+source = "path+from-root-F5066E46095A1823"
+dependencies = ["core"]
+
+[[package]]
+name = "struct_instantiation"
+source = "member"
+dependencies = ["std"]

@@ -53,8 +53,8 @@ where
     pub fn insert(self, key: K, value: V)
     where
         K: Hash,
-{
-        let key = sha256((key, self.field_id));
+    {
+        let key = sha256((key, self.field_id()));
         write::<V>(key, 0, value);
     }
 
@@ -87,11 +87,11 @@ where
     pub fn get(self, key: K) -> StorageKey<V>
     where
         K: Hash,
-{
+    {
         StorageKey::<V>::new(
-            sha256((key, self.field_id)),
+            sha256((key, self.field_id())),
             0,
-            sha256((key, self.field_id)),
+            sha256((key, self.field_id())),
         )
     }
 
@@ -129,8 +129,8 @@ where
     pub fn remove(self, key: K) -> bool
     where
         K: Hash,
-{
-        let key = sha256((key, self.slot));
+    {
+        let key = sha256((key, self.slot()));
         clear::<V>(key, 0)
     }
 
@@ -180,8 +180,8 @@ where
     pub fn try_insert(self, key: K, value: V) -> Result<V, StorageMapError<V>>
     where
         K: Hash,
-{
-        let key = sha256((key, self.field_id));
+    {
+        let key = sha256((key, self.field_id()));
 
         let val = read::<V>(key, 0);
 

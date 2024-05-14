@@ -4,7 +4,13 @@ use std::{
     vec::IntoIter,
 };
 
-use crate::{engine_threading::*, type_system::priv_prelude::*};
+use crate::{
+    engine_threading::{
+        Engines, EqWithEngines, HashWithEngines, OrdWithEngines, OrdWithEnginesContext,
+        PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    type_system::priv_prelude::*,
+};
 
 /// A list of types that serve as the list of type params for type substitution.
 /// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an
@@ -60,8 +66,8 @@ impl std::iter::FromIterator<TypeParameter> for SubstList {
 
 impl EqWithEngines for SubstList {}
 impl PartialEqWithEngines for SubstList {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.list.eq(&other.list, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.list.eq(&other.list, ctx)
     }
 }
 
@@ -72,17 +78,15 @@ impl HashWithEngines for SubstList {
 }
 
 impl OrdWithEngines for SubstList {
-    fn cmp(&self, other: &Self, engines: &Engines) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> std::cmp::Ordering {
         let SubstList { list: ll } = self;
         let SubstList { list: rl } = other;
-        ll.cmp(rl, engines)
+        ll.cmp(rl, ctx)
     }
 }
 
 impl SubstTypes for SubstList {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.list
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.list.subst(type_mapping, engines)
     }
 }

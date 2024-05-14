@@ -1,0 +1,7 @@
+category = "fail"
+
+# check: $()let (_a, _b, _c, _d) = u256::min().my_into();
+# nextln: $()Trait "MyFrom<u256>" is not implemented for type "(_, _, _, _)".
+
+# check: $()let (_a, _b, _c, _d) = u256::min().my_into();
+# nextln: $()Cannot infer type for type parameter "_". Insufficient type information provided. Try annotating its type.

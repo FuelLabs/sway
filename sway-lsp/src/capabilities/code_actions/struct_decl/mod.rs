@@ -11,11 +11,11 @@ use super::common::basic_doc_comment::BasicDocCommentCodeAction;
 pub(crate) fn code_actions(
     decl_id: &DeclId<ty::TyStructDecl>,
     ctx: &CodeActionContext,
-) -> Option<Vec<CodeActionOrCommand>> {
+) -> Vec<CodeActionOrCommand> {
     let decl = (*ctx.engines.de().get_struct(decl_id)).clone();
-    Some(vec![
+    vec![
         StructImplCodeAction::new(ctx, &decl).code_action(),
         StructNewCodeAction::new(ctx, &decl).code_action(),
         BasicDocCommentCodeAction::new(ctx, &decl).code_action(),
-    ])
+    ]
 }

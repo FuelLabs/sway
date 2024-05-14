@@ -9,6 +9,7 @@ pub(crate) mod allocated_ops;
 pub(crate) mod virtual_immediate;
 pub(crate) mod virtual_ops;
 pub(crate) mod virtual_register;
+use indexmap::IndexMap;
 pub(crate) use virtual_immediate::*;
 pub(crate) use virtual_ops::*;
 pub(crate) use virtual_register::*;
@@ -219,7 +220,7 @@ impl Op {
         }
     }
 
-    /// Dymamically jumps to a register value.
+    /// Dynamically jumps to a register value.
     pub(crate) fn jump_to_register(
         reg: VirtualRegister,
         comment: impl Into<String>,
@@ -638,7 +639,7 @@ impl Op {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+        reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         Op {
             opcode: match &self.opcode {
@@ -1103,9 +1104,6 @@ impl fmt::Display for VirtualOp {
             /* Non-VM Instructions */
             BLOB(a) => write!(fmtr, "blob {a}"),
             DataSectionOffsetPlaceholder => write!(fmtr, "data section offset placeholder"),
-            DataSectionRegisterLoadPlaceholder => {
-                write!(fmtr, "data section register load placeholder")
-            }
             LoadDataId(a, b) => write!(fmtr, "load {a} {b}"),
             Undefined => write!(fmtr, "undefined op"),
         }
@@ -1238,7 +1236,7 @@ impl<Reg: Clone + Eq + Ord + Hash> ControlFlowOp<Reg> {
         BTreeSet::new()
     }
 
-    pub(crate) fn update_register(&self, reg_to_reg_map: &HashMap<&Reg, &Reg>) -> Self {
+    pub(crate) fn update_register(&self, reg_to_reg_map: &IndexMap<&Reg, &Reg>) -> Self {
         let update_reg = |reg: &Reg| -> Reg { (*reg_to_reg_map.get(reg).unwrap_or(&reg)).clone() };
 
         use ControlFlowOp::*;

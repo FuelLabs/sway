@@ -15,6 +15,7 @@ pub enum TypeError {
         received: String,
         help_text: String,
         span: Span,
+        internal: String,
     },
     #[error("This type is not known. Try annotating it with a type annotation.")]
     UnknownType { span: Span },

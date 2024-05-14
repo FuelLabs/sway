@@ -11,18 +11,16 @@ pub fn get_sway_files(path: PathBuf) -> Vec<PathBuf> {
 
     while let Some(next_dir) = dir_entries.pop() {
         if let Ok(read_dir) = fs::read_dir(next_dir) {
-            for entry in read_dir.filter_map(|res| res.ok()) {
+            for entry in read_dir.filter_map(std::result::Result::ok) {
                 let path = entry.path();
-
                 if path.is_dir() {
                     dir_entries.push(path);
                 } else if is_sway_file(&path) {
-                    files.push(path)
+                    files.push(path);
                 }
             }
         }
     }
-
     files
 }
 
@@ -43,7 +41,7 @@ pub fn is_sway_file(file: &Path) -> bool {
 /// assert_eq!(it.next(), None);
 ///
 /// ```
-pub fn iter_prefixes<T>(slice: &[T]) -> impl Iterator<Item = &[T]> + DoubleEndedIterator {
+pub fn iter_prefixes<T>(slice: &[T]) -> impl DoubleEndedIterator<Item = &[T]> {
     (1..=slice.len()).map(move |len| &slice[..len])
 }
 
@@ -62,17 +60,18 @@ pub fn find_nested_dir_with_file(starter_path: &Path, file_name: &str) -> Option
     } else {
         starter_path.parent()?
     };
-    WalkDir::new(starter_path)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .filter(|entry| entry.path() != starter_dir.join(file_name))
-        .filter(|entry| entry.file_name().to_string_lossy() == file_name)
-        .map(|entry| {
+    WalkDir::new(starter_path).into_iter().find_map(|e| {
+        let entry = e.ok()?;
+        if entry.path() != starter_dir.join(file_name)
+            && entry.file_name().to_string_lossy() == file_name
+        {
             let mut entry = entry.path().to_path_buf();
             entry.pop();
-            entry
-        })
-        .next()
+            Some(entry)
+        } else {
+            None
+        }
+    })
 }
 
 /// Continually go up in the file tree until a specified file is found.
@@ -90,10 +89,9 @@ pub fn find_parent_dir_with_file<P: AsRef<Path>>(
         if path.exists() {
             path.pop();
             return Some(path);
-        } else {
-            path.pop();
-            path.pop();
         }
+        path.pop();
+        path.pop();
     }
     None
 }
@@ -112,7 +110,7 @@ where
     F: Fn(&Path) -> bool,
 {
     find_parent_manifest_dir(starter_path).and_then(|manifest_dir| {
-        // If given check satisifies return current dir otherwise start searching from the parent.
+        // If given check satisfies return current dir otherwise start searching from the parent.
         if f(&manifest_dir) {
             Some(manifest_dir)
         } else if let Some(parent_dir) = manifest_dir.parent() {

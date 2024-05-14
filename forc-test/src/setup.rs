@@ -5,7 +5,7 @@ use fuel_vm::{self as vm};
 pub type ContractDeploymentSetup = (tx::ContractId, vm::checked_transaction::Checked<tx::Create>);
 
 /// Required test setup for package types that requires a deployment.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DeploymentSetup {
     Script(ScriptTestSetup),
     Contract(ContractTestSetup),
@@ -30,7 +30,7 @@ impl DeploymentSetup {
 }
 
 /// The storage and the contract id (if a contract is being tested) for a test.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TestSetup {
     WithDeployment(DeploymentSetup),
     WithoutDeployment(vm::storage::MemoryStorage),
@@ -78,7 +78,7 @@ impl TestSetup {
 }
 
 /// The data collected to test a contract.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ContractTestSetup {
     pub storage: vm::storage::MemoryStorage,
     pub contract_dependency_ids: Vec<tx::ContractId>,
@@ -86,7 +86,7 @@ pub struct ContractTestSetup {
 }
 
 /// The data collected to test a script.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ScriptTestSetup {
     pub storage: vm::storage::MemoryStorage,
     pub contract_dependency_ids: Vec<tx::ContractId>,

@@ -1,5 +1,4 @@
 category = "compile"
-expected_warnings = 2
+expected_warnings = 1
 
 # check: $()deprecated struct
-# check: $()deprecated struct: use the built-in type `u256` instead

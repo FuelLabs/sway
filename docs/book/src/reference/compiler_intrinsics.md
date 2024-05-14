@@ -28,7 +28,7 @@ ___
 __size_of_str_array<T>() -> u64
 ```
 
-**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of "string arrays" where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a string `0` is returned.
+**Description:** Return the size of type `T` in bytes. This intrinsic differs from `__size_of` in the case of "string arrays" where the actual length in bytes of the string is returned without padding the byte size to the next word alignment. When `T` is not a "string array" `0` is returned.
 
 **Constraints:** None.
 
@@ -315,4 +315,13 @@ __not(op: T) -> T
 **Description:** Bitwise NOT of `op`
 
 **Constraints:** `T` is an integer type, i.e. `u8`, `u16`, `u32`, `u64`, `u256`, `b256`.
+
 ___
+
+```sway
+__jmp_mem()
+```
+
+**Description:** Jumps to `MEM[$hp]`.
+
+**Constraints:** None.

@@ -19,7 +19,7 @@ pub type Item = Annotated<ItemKind>;
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self.attribute_list.first() {
-            Some(attr0) => Span::join(attr0.span(), self.value.span()),
+            Some(attr0) => Span::join(attr0.span(), &self.value.span()),
             None => self.value.span(),
         }
     }
@@ -66,6 +66,7 @@ impl Spanned for ItemKind {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct TypeField {
+    pub visibility: Option<PubToken>,
     pub name: Ident,
     pub colon_token: ColonToken,
     pub ty: Ty,
@@ -73,7 +74,12 @@ pub struct TypeField {
 
 impl Spanned for TypeField {
     fn span(&self) -> Span {
-        Span::join(self.name.span(), self.ty.span())
+        let start = match &self.visibility {
+            Some(pub_token) => pub_token.span(),
+            None => self.name.span(),
+        };
+        let end = self.ty.span();
+        Span::join(start, &end)
     }
 }
 
@@ -97,7 +103,7 @@ pub struct FnArg {
 
 impl Spanned for FnArg {
     fn span(&self) -> Span {
-        Span::join(self.pattern.span(), self.ty.span())
+        Span::join(self.pattern.span(), &self.ty.span())
     }
 }
 
@@ -125,7 +131,7 @@ impl Spanned for FnSignature {
                 None => self.arguments.span(),
             },
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -145,6 +151,6 @@ impl Spanned for TraitType {
             Some(ty_opt) => ty_opt.span(),
             None => self.name.span(),
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }

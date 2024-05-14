@@ -1,3 +1,8 @@
 [[package]]
+name = "core"
+source = "path+from-root-FD421B5153D1E7FC"
+
+[[package]]
 name = "run"
 source = "member"
+dependencies = ["core"]

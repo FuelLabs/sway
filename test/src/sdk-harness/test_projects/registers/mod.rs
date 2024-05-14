@@ -3,7 +3,7 @@ use fuels::{accounts::wallet::WalletUnlocked, prelude::*};
 
 abigen!(Contract(
     name = "TestRegistersContract",
-    abi = "test_projects/registers/out/debug/registers-abi.json",
+    abi = "test_projects/registers/out/release/registers-abi.json",
 ));
 
 // Compile contract, create node and deploy contract, returning TestRegistersContract contract instance
@@ -13,7 +13,7 @@ abigen!(Contract(
 async fn deploy_test_registers_instance() -> TestRegistersContract<WalletUnlocked> {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/registers/out/debug/registers.bin",
+        "test_projects/registers/out/release/registers.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

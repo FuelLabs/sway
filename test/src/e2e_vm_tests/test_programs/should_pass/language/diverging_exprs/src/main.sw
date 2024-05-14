@@ -88,8 +88,6 @@ fn diverge_in_match_condition() -> u64 {
         return 5;
         true
     } {
-        true => 23,
-        false => 56,
     }
 }
 
@@ -112,6 +110,19 @@ fn diverge_in_match_branch_1() -> u64 {
     };
     123
 }
+
+fn diverge_in_match_branch_2() -> u64 {
+    let _m:! = match false {
+        true => {
+            return 5;
+        },
+        false => {
+            return 5;
+        },
+    };
+    123
+}
+
 
 fn diverge_in_while_condition() -> u64 {
     while  {
@@ -137,14 +148,6 @@ fn diverge_in_func_arg() -> u64 {
     })
 }
 
-fn diverge_in_array_index_array() -> u64 {
-    let _b: bool =  {
-        return 5;
-        [true, false]
-    }[0];
-    123
-}
-
 fn diverge_in_array_index_index() -> u64 {
     let arr: [bool; 2] = [true, false];
     let _b: bool = arr[ {
@@ -157,14 +160,6 @@ fn diverge_in_op_not() -> u64 {
     let _b: bool = ! {
         return 5;
     };
-    123
-}
-
-fn diverge_in_op_add_lhs() -> u64 {
-    let _x: u32 = ( {
-        return 5;
-        1u32
-    }) + 2u32;
     123
 }
 
@@ -335,15 +330,14 @@ fn main() -> u64 {
     assert(5 == diverge_in_match_condition());
     assert(5 == diverge_in_match_branch_0());
     assert(5 == diverge_in_match_branch_1());
+    assert(5 == diverge_in_match_branch_2());
     assert(5 == diverge_in_while_condition());
     assert(5 == diverge_in_while_body());
     assert(5 == diverge_in_func_arg());
-    assert(5 == diverge_in_array_index_array());
     assert(5 == diverge_in_array_index_index());
     assert(5 == diverge_with_if_else(true));
     assert(1 == diverge_with_if_else(false));
     assert(5 == diverge_in_op_not());
-    assert(5 == diverge_in_op_add_lhs());
     assert(5 == diverge_in_op_add_rhs());
     assert(5 == diverge_in_logical_and_lhs());
     assert(5 == diverge_in_logical_and_rhs());
@@ -369,6 +363,14 @@ fn main() -> u64 {
     let result = diverge_in_match_with_revert_intrinsic(false);
     assert(result.0 == 5);
     assert(result.1 == 5);
+
+    // Test type coercion
+    if false {
+        let _: u8 = __revert(1);      // Ok.  Never -> u8.
+        let _: u8 = { return 123 };  // Ok.  Never -> u8.
+        let _: ! = __revert(1);       // Ok.  Never -> Never.
+        let _: ! = { return 123 };   // Ok.  Never -> Never.
+    }
 
     42
 }

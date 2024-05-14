@@ -1,12 +1,12 @@
 use sway_core::language::ty::TyDecl;
 
-pub(crate) trait DocBlockTitle {
+pub trait DocBlockTitle {
     fn as_block_title(&self) -> BlockTitle;
 }
 /// Represents all of the possible titles
 /// belonging to an index or sidebar.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) enum BlockTitle {
+pub enum BlockTitle {
     Modules,
     Structs,
     Enums,
@@ -20,7 +20,7 @@ pub(crate) enum BlockTitle {
     RequiredMethods,
 }
 impl BlockTitle {
-    pub(crate) fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             Self::Modules => "Modules",
             Self::Structs => "Structs",
@@ -35,7 +35,7 @@ impl BlockTitle {
             Self::RequiredMethods => "Required Methods",
         }
     }
-    pub(crate) fn item_title_str(&self) -> &str {
+    pub fn item_title_str(&self) -> &str {
         match self {
             Self::Modules => "Module",
             Self::Structs => "Struct",
@@ -50,7 +50,7 @@ impl BlockTitle {
             Self::RequiredMethods => "Required Methods",
         }
     }
-    pub(crate) fn class_title_str(&self) -> &str {
+    pub fn class_title_str(&self) -> &str {
         match self {
             Self::Modules => "mod",
             Self::Structs => "struct",
@@ -63,7 +63,7 @@ impl BlockTitle {
             _ => unimplemented!("These titles are unimplemented, and should not be used this way."),
         }
     }
-    pub(crate) fn html_title_string(&self) -> String {
+    pub fn html_title_string(&self) -> String {
         if self.as_str().contains(' ') {
             self.as_str()
                 .to_lowercase()

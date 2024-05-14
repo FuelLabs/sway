@@ -11,11 +11,23 @@
 
 use crate::{context::Context, pretty::DebugWithContext, Constant, ConstantValue, Value};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
-pub struct Type(pub generational_arena::Index);
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct Type(pub slotmap::DefaultKey);
+
+impl DebugWithContext for Type {
+    fn fmt_with_context(
+        &self,
+        formatter: &mut std::fmt::Formatter,
+        context: &Context,
+    ) -> std::fmt::Result {
+        self.get_content(context)
+            .fmt_with_context(formatter, context)
+    }
+}
 
 #[derive(Debug, Clone, DebugWithContext, Hash, PartialEq, Eq)]
 pub enum TypeContent {
+    Never,
     Unit,
     Bool,
     Uint(u16),
@@ -48,6 +60,7 @@ impl Type {
     }
 
     pub fn create_basic_types(context: &mut Context) {
+        Self::get_or_create_unique_type(context, TypeContent::Never);
         Self::get_or_create_unique_type(context, TypeContent::Unit);
         Self::get_or_create_unique_type(context, TypeContent::Bool);
         Self::get_or_create_unique_type(context, TypeContent::Uint(8));
@@ -62,6 +75,11 @@ impl Type {
     /// Get the content for this [Type].
     pub fn get_content<'a>(&self, context: &'a Context) -> &'a TypeContent {
         &context.types[self.0]
+    }
+
+    /// Get never type
+    pub fn get_never(context: &Context) -> Type {
+        Self::get_type(context, &TypeContent::Never).expect("create_basic_types not called")
     }
 
     /// Get unit type
@@ -140,7 +158,7 @@ impl Type {
     }
 
     /// Get slice type
-    pub fn get_slice(context: &mut Context) -> Type {
+    pub fn get_slice(context: &Context) -> Type {
         Self::get_type(context, &TypeContent::Slice).expect("create_basic_types not called")
     }
 
@@ -155,6 +173,7 @@ impl Type {
         };
 
         match self.get_content(context) {
+            TypeContent::Never => "never".into(),
             TypeContent::Unit => "()".into(),
             TypeContent::Bool => "bool".into(),
             TypeContent::Uint(nbits) => format!("u{nbits}"),
@@ -197,10 +216,17 @@ impl Type {
             // Unions are special.  We say unions are equivalent to any of their variant types.
             (_, TypeContent::Union(_)) => other.eq(context, self),
             (TypeContent::Union(l), _) => l.iter().any(|field_ty| other.eq(context, field_ty)),
+            // Never type can coerce into any other type.
+            (TypeContent::Never, _) => true,
             (TypeContent::Slice, TypeContent::Slice) => true,
             (TypeContent::Pointer(l), TypeContent::Pointer(r)) => l.eq(context, r),
             _ => false,
         }
+    }
+
+    /// Is Never type
+    pub fn is_never(&self, context: &Context) -> bool {
+        matches!(*self.get_content(context), TypeContent::Never)
     }
 
     /// Is bool type
@@ -505,7 +531,9 @@ impl Type {
     /// when it's not embedded in an aggregate.
     pub fn size(&self, context: &Context) -> TypeSize {
         match self.get_content(context) {
-            TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit => TypeSize::new(1),
+            TypeContent::Uint(8) | TypeContent::Bool | TypeContent::Unit | TypeContent::Never => {
+                TypeSize::new(1)
+            }
             // All integers larger than a byte are words since FuelVM only has memory operations on those two units.
             TypeContent::Uint(16)
             | TypeContent::Uint(32)
@@ -725,9 +753,9 @@ mod tests {
         /// The first word is the pointer to the actual content, and the second the
         /// length of the slice.
         fn slice() {
-            let mut context = create_context();
+            let context = create_context();
 
-            let s_slice = Type::get_slice(&mut context).size(&context);
+            let s_slice = Type::get_slice(&context).size(&context);
 
             assert_eq!(s_slice.in_bytes(), 16);
             assert_eq!(s_slice.in_bytes(), s_slice.in_bytes_aligned());
@@ -927,7 +955,12 @@ mod tests {
         static SOURCE_ENGINE: Lazy<SourceEngine> = Lazy::new(SourceEngine::default);
 
         fn create_context() -> Context<'static> {
-            Context::new(&SOURCE_ENGINE, ExperimentalFlags::default())
+            Context::new(
+                &SOURCE_ENGINE,
+                ExperimentalFlags {
+                    new_encoding: false,
+                },
+            )
         }
 
         /// Creates sample types that are not aggregates and do not point to

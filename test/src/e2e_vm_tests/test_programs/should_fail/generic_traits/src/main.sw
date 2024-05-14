@@ -70,6 +70,10 @@ trait Multiple<T> {
 
 impl<T> Multiple<u64> for FooBarData<T> {
     fn unused(self, x: u64, other: u64) -> u64 {
+        // TODO: Remove these empty lines once https://github.com/FuelLabs/sway/issues/5499 is solved.
+        //
+        //
+        //
         other
     }
 }
@@ -77,6 +81,10 @@ impl<T> Multiple<u64> for FooBarData<T> {
 // Conflicting definitions
 impl<F> Multiple<u64> for FooBarData<F> {
     fn unused(self, x: u64, other: u64) -> u64 {
+        // TODO: Remove these empty lines once https://github.com/FuelLabs/sway/issues/5499 is solved.
+        //
+        //
+        //
         other
     }
 }
@@ -93,17 +101,23 @@ impl<T> Returner<T> for Self {
     }
 }
 
+impl<T> Returner<T> for _ {
+    fn return_it(self, the_value: T) -> T {
+        the_value
+    }
+}
+
 struct Data<T> {
     value: T
 }
 
 impl<T> Setter<T> for Data<T> {
-    fn set(mut self, new_value: T) {
+    fn set(ref mut self, new_value: T) {
         self.value = new_value;
     }
 }
 
-fn set_it<T, F>(mut data: T, new_value: F) where T: Setter<F> {
+fn set_it<T, F>(ref mut data: T, new_value: F) where T: Setter<F> {
     data.set(new_value);
 }
 

@@ -9,6 +9,7 @@ use sway_types::{Ident, Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::ty::*,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -19,47 +20,140 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TyReassignment {
-    // either a direct variable, so length of 1, or
-    // at series of struct fields/array indices (array syntax)
-    pub lhs_base_name: Ident,
-    pub lhs_type: TypeId,
-    pub lhs_indices: Vec<ProjectionKind>,
+    pub lhs: TyReassignmentTarget,
     pub rhs: TyExpression,
+}
+
+#[derive(Clone, Debug)]
+pub enum TyReassignmentTarget {
+    /// An [TyExpression] representing a single variable or a path
+    /// to a part of an aggregate.
+    /// E.g.:
+    ///  - `my_variable`
+    ///  - `array[0].field.x.1`
+    ElementAccess {
+        /// [Ident] of the single variable, or the starting variable
+        /// of the path to a part of an aggregate.
+        base_name: Ident,
+        /// [TypeId] of the variable behind the `base_name`.
+        base_type: TypeId,
+        /// Indices representing the path from the `base_name` to the
+        /// final part of an aggregate.
+        /// Empty if the LHS of the reassignment is a single variable.
+        indices: Vec<ProjectionKind>,
+    },
+    /// An dereferencing [TyExpression] representing dereferencing
+    /// of an arbitrary reference expression.
+    /// E.g.:
+    ///  - *my_ref
+    ///  - **if x > 0 { &mut &mut a } else { &mut &mut b }
+    /// The [TyExpression] is guaranteed to be of [TyExpressionVariant::Deref].
+    Deref(Box<TyExpression>),
+}
+
+impl EqWithEngines for TyReassignmentTarget {}
+impl PartialEqWithEngines for TyReassignmentTarget {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        let type_engine = ctx.engines().te();
+        match (self, other) {
+            (TyReassignmentTarget::Deref(l), TyReassignmentTarget::Deref(r)) => (*l).eq(r, ctx),
+            (
+                TyReassignmentTarget::ElementAccess {
+                    base_name: l_name,
+                    base_type: l_type,
+                    indices: l_indices,
+                },
+                TyReassignmentTarget::ElementAccess {
+                    base_name: r_name,
+                    base_type: r_type,
+                    indices: r_indices,
+                },
+            ) => {
+                l_name == r_name
+                    && (l_type == r_type
+                        || type_engine.get(*l_type).eq(&type_engine.get(*r_type), ctx))
+                    && l_indices.eq(r_indices, ctx)
+            }
+            _ => false,
+        }
+    }
 }
 
 impl EqWithEngines for TyReassignment {}
 impl PartialEqWithEngines for TyReassignment {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.lhs.eq(&other.lhs, ctx) && self.rhs.eq(&other.rhs, ctx)
+    }
+}
+
+impl HashWithEngines for TyReassignmentTarget {
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let type_engine = engines.te();
-        self.lhs_base_name == other.lhs_base_name
-            && type_engine
-                .get(self.lhs_type)
-                .eq(&type_engine.get(other.lhs_type), engines)
-            && self.lhs_indices.eq(&other.lhs_indices, engines)
-            && self.rhs.eq(&other.rhs, engines)
+        match self {
+            TyReassignmentTarget::Deref(exp) => exp.hash(state, engines),
+            TyReassignmentTarget::ElementAccess {
+                base_name,
+                base_type,
+                indices,
+            } => {
+                base_name.hash(state);
+                type_engine.get(*base_type).hash(state, engines);
+                indices.hash(state, engines);
+            }
+        };
     }
 }
 
 impl HashWithEngines for TyReassignment {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let TyReassignment {
-            lhs_base_name,
-            lhs_type,
-            lhs_indices,
-            rhs,
-        } = self;
-        let type_engine = engines.te();
-        lhs_base_name.hash(state);
-        type_engine.get(*lhs_type).hash(state, engines);
-        lhs_indices.hash(state, engines);
+        let TyReassignment { lhs, rhs } = self;
+
+        lhs.hash(state, engines);
         rhs.hash(state, engines);
     }
 }
 
+impl SubstTypes for TyReassignmentTarget {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            match self {
+                TyReassignmentTarget::Deref(exp) => exp.subst(type_mapping, engines),
+                TyReassignmentTarget::ElementAccess { base_type, indices, .. } => {
+                    has_changes! {
+                        base_type.subst(type_mapping, engines);
+                        indices.subst(type_mapping, engines);
+                    }
+                }
+            };
+        }
+    }
+}
+
 impl SubstTypes for TyReassignment {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.rhs.subst(type_mapping, engines);
-        self.lhs_type.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.lhs.subst(type_mapping, engines);
+            self.rhs.subst(type_mapping, engines);
+        }
+    }
+}
+
+impl ReplaceDecls for TyReassignmentTarget {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<bool, ErrorEmitted> {
+        Ok(match self {
+            TyReassignmentTarget::Deref(exp) => exp.replace_decls(decl_mapping, handler, ctx)?,
+            TyReassignmentTarget::ElementAccess { indices, .. } => indices
+                .iter_mut()
+                .map(|i| i.replace_decls(decl_mapping, handler, ctx))
+                .collect::<Result<Vec<bool>, _>>()?
+                .iter()
+                .any(|is_changed| *is_changed),
+        })
     }
 }
 
@@ -69,8 +163,29 @@ impl ReplaceDecls for TyReassignment {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
+    ) -> Result<bool, ErrorEmitted> {
+        let lhs_changed = self.lhs.replace_decls(decl_mapping, handler, ctx)?;
+        let rhs_changed = self.rhs.replace_decls(decl_mapping, handler, ctx)?;
+
+        Ok(lhs_changed || rhs_changed)
+    }
+}
+
+impl TypeCheckAnalysis for TyReassignmentTarget {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        self.rhs.replace_decls(decl_mapping, handler, ctx)
+        match self {
+            TyReassignmentTarget::Deref(exp) => exp.type_check_analyze(handler, ctx)?,
+            TyReassignmentTarget::ElementAccess { indices, .. } => indices
+                .iter()
+                .map(|i| i.type_check_analyze(handler, ctx))
+                .collect::<Result<Vec<()>, _>>()
+                .map(|_| ())?,
+        };
+        Ok(())
     }
 }
 
@@ -80,7 +195,28 @@ impl TypeCheckAnalysis for TyReassignment {
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
-        self.rhs.type_check_analyze(handler, ctx)
+        self.lhs.type_check_analyze(handler, ctx)?;
+        self.rhs.type_check_analyze(handler, ctx)?;
+
+        Ok(())
+    }
+}
+
+impl TypeCheckFinalization for TyReassignmentTarget {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        match self {
+            TyReassignmentTarget::Deref(exp) => exp.type_check_finalize(handler, ctx)?,
+            TyReassignmentTarget::ElementAccess { indices, .. } => indices
+                .iter_mut()
+                .map(|i| i.type_check_finalize(handler, ctx))
+                .collect::<Result<Vec<()>, _>>()
+                .map(|_| ())?,
+        };
+        Ok(())
     }
 }
 
@@ -90,14 +226,34 @@ impl TypeCheckFinalization for TyReassignment {
         handler: &Handler,
         ctx: &mut TypeCheckFinalizationContext,
     ) -> Result<(), ErrorEmitted> {
-        self.rhs.type_check_finalize(handler, ctx)
+        self.lhs.type_check_finalize(handler, ctx)?;
+        self.rhs.type_check_finalize(handler, ctx)?;
+
+        Ok(())
+    }
+}
+
+impl UpdateConstantExpression for TyReassignmentTarget {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+        match self {
+            TyReassignmentTarget::Deref(exp) => {
+                exp.update_constant_expression(engines, implementing_type)
+            }
+            TyReassignmentTarget::ElementAccess { indices, .. } => {
+                indices
+                    .iter_mut()
+                    .for_each(|i| i.update_constant_expression(engines, implementing_type));
+            }
+        };
     }
 }
 
 impl UpdateConstantExpression for TyReassignment {
     fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+        self.lhs
+            .update_constant_expression(engines, implementing_type);
         self.rhs
-            .update_constant_expression(engines, implementing_type)
+            .update_constant_expression(engines, implementing_type);
     }
 }
 
@@ -118,7 +274,7 @@ pub enum ProjectionKind {
 
 impl EqWithEngines for ProjectionKind {}
 impl PartialEqWithEngines for ProjectionKind {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         match (self, other) {
             (
                 ProjectionKind::StructField { name: l_name },
@@ -143,7 +299,7 @@ impl PartialEqWithEngines for ProjectionKind {
                     index: r_index,
                     index_span: r_index_span,
                 },
-            ) => l_index.eq(r_index, engines) && l_index_span == r_index_span,
+            ) => l_index.eq(r_index, ctx) && l_index_span == r_index_span,
             _ => false,
         }
     }
@@ -169,6 +325,73 @@ impl HashWithEngines for ProjectionKind {
             } => {
                 index.hash(state, engines);
             }
+        }
+    }
+}
+
+impl SubstTypes for ProjectionKind {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        use ProjectionKind::*;
+        match self {
+            ArrayIndex { index, .. } => index.subst(type_mapping, engines),
+            _ => HasChanges::No,
+        }
+    }
+}
+
+impl ReplaceDecls for ProjectionKind {
+    fn replace_decls_inner(
+        &mut self,
+        decl_mapping: &DeclMapping,
+        handler: &Handler,
+        ctx: &mut TypeCheckContext,
+    ) -> Result<bool, ErrorEmitted> {
+        use ProjectionKind::*;
+        match self {
+            ArrayIndex { index, .. } => index.replace_decls(decl_mapping, handler, ctx),
+            _ => Ok(false),
+        }
+    }
+}
+
+impl TypeCheckAnalysis for ProjectionKind {
+    fn type_check_analyze(
+        &self,
+        handler: &Handler,
+        ctx: &mut TypeCheckAnalysisContext,
+    ) -> Result<(), ErrorEmitted> {
+        use ProjectionKind::*;
+        match self {
+            ArrayIndex { index, .. } => index.type_check_analyze(handler, ctx),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl TypeCheckFinalization for ProjectionKind {
+    fn type_check_finalize(
+        &mut self,
+        handler: &Handler,
+        ctx: &mut TypeCheckFinalizationContext,
+    ) -> Result<(), ErrorEmitted> {
+        use ProjectionKind::*;
+        match self {
+            ArrayIndex { index, .. } => index.type_check_finalize(handler, ctx),
+            _ => Ok(()),
+        }
+    }
+}
+
+impl UpdateConstantExpression for ProjectionKind {
+    fn update_constant_expression(&mut self, engines: &Engines, implementing_type: &TyDecl) {
+        use ProjectionKind::*;
+        #[allow(clippy::single_match)]
+        // To keep it consistent and same looking as the above implementations.
+        match self {
+            ArrayIndex { index, .. } => {
+                index.update_constant_expression(engines, implementing_type)
+            }
+            _ => (),
         }
     }
 }

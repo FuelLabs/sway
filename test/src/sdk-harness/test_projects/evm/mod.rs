@@ -6,13 +6,13 @@ use fuels::{
 
 abigen!(Contract(
     name = "EvmTestContract",
-    abi = "test_projects/evm/out/debug/evm-abi.json"
+    abi = "test_projects/evm/out/release/evm-abi.json"
 ));
 
 async fn get_evm_test_instance() -> (EvmTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/evm/out/debug/evm.bin",
+        "test_projects/evm/out/release/evm.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

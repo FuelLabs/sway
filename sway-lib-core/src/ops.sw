@@ -81,11 +81,22 @@ impl Add for u16 {
 
 impl Add for u8 {
     fn add(self, other: Self) -> Self {
-        let res = __add(self, other);
-        if __gt(res, Self::max()) {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __add(self_u64, other_u64);
+        let max_u8_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u8_u64) {
             __revert(0)
         } else {
-            res
+            asm(input: res_u64) {
+                input: u8
+            }
         }
     }
 }
@@ -239,11 +250,22 @@ impl Multiply for u16 {
 
 impl Multiply for u8 {
     fn multiply(self, other: Self) -> Self {
-        let res = __mul(self, other);
-        if __gt(res, Self::max()) {
+        let self_u64 = asm(input: self) {
+            input: u64
+        };
+        let other_u64 = asm(input: other) {
+            input: u64
+        };
+        let res_u64 = __mul(self_u64, other_u64);
+        let max_u8_u64 = asm(input: Self::max()) {
+            input: u64
+        };
+        if __gt(res_u64, max_u8_u64) {
             __revert(0)
         } else {
-            res
+            asm(input: res_u64) {
+                input: u8
+            }
         }
     }
 }
@@ -1218,4 +1240,20 @@ impl Eq for str {
             }
         }
     }
+}
+
+fn assert(v: bool) {
+    if !v {
+        __revert(0)
+    }
+}
+
+#[test]
+pub fn ok_str_eq() {
+    assert("" == "");
+    assert("a" == "a");
+
+    assert("a" != "");
+    assert("" != "a");
+    assert("a" != "b");
 }

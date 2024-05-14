@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-B9035DF7D149443C"
+
+[[package]]
+name = "generic_struct_instantiation"
+source = "member"
+dependencies = ["core"]

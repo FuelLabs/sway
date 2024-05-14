@@ -56,6 +56,10 @@ More details in [Unit Testing](../testing/unit-testing.md).
 
 ## Deprecated
 
-The `#[deprecated]` attribute marks a item as deprecated and makes the compiler emit a warning for every usage of the deprecated item. This warning can be disabled using `#[allow(deprecated)]`.
+The `#[deprecated]` attribute marks an item as deprecated and makes the compiler emit a warning for every usage of the deprecated item. This warning can be disabled using `#[allow(deprecated)]`.
 
 It is possible to improve the warning message with `#[deprecated(note = "your message")]`
+
+## Fallback
+
+The `#[fallback]` attribute makes the compiler use the marked function as the contract call fallback function, which means that, when a contract is called, and the contract selection fails, the fallback function will be called instead.

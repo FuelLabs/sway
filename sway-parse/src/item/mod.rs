@@ -94,7 +94,9 @@ impl Parse for ItemKind {
 
 impl Parse for TypeField {
     fn parse(parser: &mut Parser) -> ParseResult<TypeField> {
+        let visibility = parser.take();
         Ok(TypeField {
+            visibility,
             name: parser.parse()?,
             colon_token: if parser.peek::<ColonToken>().is_some() {
                 parser.parse()

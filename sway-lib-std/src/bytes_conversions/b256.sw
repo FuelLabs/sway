@@ -1,10 +1,11 @@
 library;
 
 use ::assert::assert;
-use ::bytes::Bytes;
+use ::bytes::*;
 use ::alloc::alloc;
 use ::option::Option;
 use ::bytes_conversions::u64::*;
+use ::convert::From;
 
 impl b256 {
     /// Converts the `b256` to a sequence of little-endian bytes.

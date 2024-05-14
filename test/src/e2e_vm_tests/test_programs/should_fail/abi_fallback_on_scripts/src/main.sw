@@ -1,0 +1,5 @@
+script;
+
+#[fallback]
+fn fallback() {
+}

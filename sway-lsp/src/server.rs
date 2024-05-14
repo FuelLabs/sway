@@ -24,7 +24,7 @@ use tower_lsp::{jsonrpc::Result, LanguageServer};
 #[tower_lsp::async_trait]
 impl LanguageServer for ServerState {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        request::handle_initialize(self, params)
+        request::handle_initialize(self, &params)
     }
 
     async fn initialized(&self, _: InitializedParams) {
@@ -32,7 +32,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn shutdown(&self) -> Result<()> {
-        self.shutdown_server().await
+        self.shutdown_server()
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
@@ -42,7 +42,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri).await {
+        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri) {
             tracing::error!("{}", err.to_string());
         }
     }

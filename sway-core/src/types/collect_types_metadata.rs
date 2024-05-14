@@ -108,7 +108,7 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
     }
 
     pub fn call_site_get(&mut self, type_id: &TypeId) -> Option<Span> {
-        for lock in self.call_site_spans.iter() {
+        for lock in &self.call_site_spans {
             if let Ok(hash_map) = lock.lock() {
                 let opt = hash_map.get(type_id).cloned();
                 if opt.is_some() {

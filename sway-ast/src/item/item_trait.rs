@@ -33,7 +33,7 @@ impl Spanned for ItemTrait {
             Some(trait_defs) => trait_defs.span(),
             None => self.trait_items.span(),
         };
-        Span::join(start, end)
+        Span::join(start, &end)
     }
 }
 
@@ -41,18 +41,18 @@ impl Spanned for ItemTraitItem {
     fn span(&self) -> Span {
         match self {
             ItemTraitItem::Fn(fn_decl, semicolon) => match semicolon.as_ref().map(|x| x.span()) {
-                Some(semicolon) => Span::join(fn_decl.span(), semicolon),
+                Some(semicolon) => Span::join(fn_decl.span(), &semicolon),
                 None => fn_decl.span(),
             },
             ItemTraitItem::Const(const_decl, semicolon) => {
                 match semicolon.as_ref().map(|x| x.span()) {
-                    Some(semicolon) => Span::join(const_decl.span(), semicolon),
+                    Some(semicolon) => Span::join(const_decl.span(), &semicolon),
                     None => const_decl.span(),
                 }
             }
             ItemTraitItem::Type(type_decl, semicolon) => {
                 match semicolon.as_ref().map(|x| x.span()) {
-                    Some(semicolon) => Span::join(type_decl.span(), semicolon),
+                    Some(semicolon) => Span::join(type_decl.span(), &semicolon),
                     None => type_decl.span(),
                 }
             }
@@ -70,7 +70,7 @@ pub struct Traits {
 impl Spanned for Traits {
     fn span(&self) -> Span {
         match self.suffixes.last() {
-            Some((_add_token, path_type)) => Span::join(self.prefix.span(), path_type.span()),
+            Some((_add_token, path_type)) => Span::join(self.prefix.span(), &path_type.span()),
             None => self.prefix.span(),
         }
     }

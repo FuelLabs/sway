@@ -10,17 +10,17 @@ use std::collections::BTreeMap;
 
 /// Used for creating links between docs.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct DocLink {
-    pub(crate) name: String,
-    pub(crate) module_info: ModuleInfo,
-    pub(crate) html_filename: String,
-    pub(crate) preview_opt: Option<String>,
+pub struct DocLink {
+    pub name: String,
+    pub module_info: ModuleInfo,
+    pub html_filename: String,
+    pub preview_opt: Option<String>,
 }
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct DocLinks {
-    pub(crate) style: DocStyle,
+pub struct DocLinks {
+    pub style: DocStyle,
     /// The title and link info for each doc item.
-    pub(crate) links: BTreeMap<BlockTitle, Vec<DocLink>>,
+    pub links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
 impl Renderable for DocLinks {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {

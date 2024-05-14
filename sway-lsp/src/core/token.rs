@@ -2,6 +2,7 @@ use lsp_types::{Position, Range};
 use std::path::PathBuf;
 use sway_ast::Intrinsic;
 use sway_core::{
+    decl_engine::parsed_id::ParsedDeclId,
     language::{
         parsed::{
             AbiCastExpression, AmbiguousPathExpression, Declaration, DelineatedPathExpression,
@@ -49,7 +50,7 @@ pub enum AstToken {
     StructScrutineeField(StructScrutineeField),
     Supertrait(Supertrait),
     TraitConstraint(TraitConstraint),
-    TraitFn(TraitFn),
+    TraitFn(ParsedDeclId<TraitFn>),
     TypeArgument(TypeArgument),
     TypeParameter(TypeParameter),
     UseStatement(UseStatement),
@@ -184,7 +185,7 @@ impl Token {
 /// This type is used as the key in the [TokenMap]. It's constructed during AST traversal
 /// where we compute the [Range] of the token and the convert [SourceId]'s to [PathBuf]'s.
 /// Although this introduces a small amount of overhead while traversing, precomputing this
-/// greatly speeds up performace in all other areas of the language server.
+/// greatly speeds up performance in all other areas of the language server.
 ///
 /// [TokenMap]: crate::core::token_map::TokenMap
 /// [SourceId]: sway_types::SourceId
@@ -227,10 +228,10 @@ impl std::hash::Hash for TokenIdent {
     }
 }
 
-/// Check if the given method is a [core::ops] application desugared from short-hand syntax like / + * - etc.
+/// Check if the given method is a [`core::ops`] application desugared from short-hand syntax like / + * - etc.
 pub fn desugared_op(prefixes: &[Ident]) -> bool {
-    let prefix0 = prefixes.first().map(|ident| ident.as_str());
-    let prefix1 = prefixes.get(1).map(|ident| ident.as_str());
+    let prefix0 = prefixes.first().map(sway_types::BaseIdent::as_str);
+    let prefix1 = prefixes.get(1).map(sway_types::BaseIdent::as_str);
     if let (Some("core"), Some("ops")) = (prefix0, prefix1) {
         return true;
     }
@@ -240,10 +241,9 @@ pub fn desugared_op(prefixes: &[Ident]) -> bool {
 /// Use the [TypeId] to look up the associated [TypeInfo] and return the [TokenIdent] if one is found.
 pub fn ident_of_type_id(engines: &Engines, type_id: &TypeId) -> Option<TokenIdent> {
     let ident = match &*engines.te().get(*type_id) {
-        TypeInfo::UnknownGeneric { name, .. } => name.clone(),
+        TypeInfo::UnknownGeneric { name, .. } | TypeInfo::Alias { name, .. } => name.clone(),
         TypeInfo::Enum(decl_ref) => engines.de().get_enum(decl_ref).call_path.suffix.clone(),
         TypeInfo::Struct(decl_ref) => engines.de().get_struct(decl_ref).call_path.suffix.clone(),
-        TypeInfo::Alias { name, .. } => name.clone(),
         TypeInfo::Custom {
             qualified_call_path,
             ..
@@ -292,7 +292,7 @@ pub fn get_range_from_span(span: &Span) -> Range {
     let start = span.start_pos().line_col();
     let end = span.end_pos().line_col();
     Range {
-        start: Position::new(start.0 as u32 - 1, start.1 as u32 - 1),
-        end: Position::new(end.0 as u32 - 1, end.1 as u32 - 1),
+        start: Position::new(start.line as u32 - 1, start.col as u32 - 1),
+        end: Position::new(end.line as u32 - 1, end.col as u32 - 1),
     }
 }

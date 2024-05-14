@@ -1,0 +1,152 @@
+category = "fail"
+
+#check: $()error
+#check: $()let _: MyStruct = Struct { x: 123 };
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyStruct
+#nextln: $()found:    Struct<numeric>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: MyOtherStruct = Struct { x: 123 };
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyOtherStruct
+#nextln: $()found:    Struct<numeric>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let s: StructAlias<u8> = Struct { x: 123u64 };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#nextln: $()let _ = s.x == 123u8; // No error here.
+
+#not: $()let _ = s.x == 123u8; // No error here.
+
+#check: $()error
+#check: $()let s: Struct<u8> = StructAlias { x: 123u64 };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#nextln: $()let _ = s.x == 123u8; // No error here.
+
+#not: $()let _ = s.x == 123u8; // No error here.
+
+#check: $()error
+#check: $()let _: Struct<u8> = Struct { x: 123u64 };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#nextln: $()let _ = s.x == 123u8; // No error here.
+
+#not: $()let _ = s.x == 123u8; // No error here.
+
+#check: $()error
+#check: $()let _: Struct<u8> = Struct::<bool> { x: true };
+#nextln: $()Mismatched types.
+#nextln: $()expected: Struct<u8>
+#nextln: $()found:    Struct<bool>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#nextln: $()let _ = s.x == 123u8; // No error here.
+
+#not: $()let _ = s.x == 123u8; // No error here.
+
+#check: $()error
+#check: $()let _: Struct<u8> = Struct::<bool> { x: "not bool" };
+#nextln: $()Mismatched types.
+#nextln: $()expected: bool
+#nextln: $()found:    str.
+#nextln: $()Struct field's type must match the type specified in its declaration.
+#nextln: $()let _ = s.x == 123u8; // No error here.
+
+#not: $()let _ = s.x == 123u8; // No error here.
+
+# ----------------------------------------------------
+
+#check: $()error
+#check: $()let _: MyStruct = Struct { x: Option::Some(123) };
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyStruct
+#nextln: $()found:    Struct<Option<numeric>>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let _: MyOtherStruct = Struct { x: Option::Some(123) };
+#nextln: $()Mismatched types.
+#nextln: $()expected: MyOtherStruct
+#nextln: $()found:    Struct<Option<numeric>>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let s: StructAlias<Option<u8>> = Struct { x: Option::Some(123u64) };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#check: $()Some(x) => x == 123u8, // No error here.
+
+#not: $()Some(x) => x == 123u8, // No error here.
+
+#check: $()error
+#check: $()let s: Struct<Option<u8>> = StructAlias { x: Option::Some(123u64) };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#check: $()Some(x) => x == 123u8, // No error here.
+
+#not: $()Some(x) => x == 123u8, // No error here.
+
+#check: $()error
+#check: $()let s: Struct<Option<u8>> = Struct { x: Option::Some(123u64) };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#check: $()Some(x) => x == 123u8, // No error here.
+
+#not: $()Some(x) => x == 123u8, // No error here.
+
+#check: $()error
+#check: $()let s: Struct<Option<u8>> = Struct::<Option<bool>> { x: Option::Some(true) };
+#nextln: $()Mismatched types.
+#nextln: $()expected: Struct<Option<u8>>
+#nextln: $()found:    Struct<Option<bool>>.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+
+#check: $()error
+#check: $()let s: Struct<Option<u8>> = Struct::<Option<bool>> { x: Option::Some("not bool") };
+#nextln: $()Mismatched types.
+#nextln: $()expected: bool
+#nextln: $()found:    str.
+#nextln: $()Struct field's type must match the type specified in its declaration.
+#check: $()Some(x) => x == 123u8, // No error here.
+
+#not: $()Some(x) => x == 123u8, // No error here.
+
+#check: $()error
+#check: $()let s: GenericStruct<_, bool> = GenericStruct::<u8, _> { a: 123u64, b: true };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u8
+#nextln: $()found:    u64.
+#nextln: $()Variable declaration's type annotation does not match up with the assigned expression's type.
+#nextln: $()let _ = s.a == 123u8; // No error here.
+#nextln: $()let _ = s.b == true; // No error here.
+
+#not: $()let _ = s.a == 123u8; // No error here.
+#not: $()let _ = s.b == true; // No error here.
+
+#check: $()error
+#check: $()let s: GenericStruct<u8, bool> = GenericStruct::<u8, u32> { a: 123, b: true };
+#nextln: $()Mismatched types.
+#nextln: $()expected: u32
+#nextln: $()found:    bool.
+#nextln: $()Struct field's type must match the type specified in its declaration.
+#nextln: $()let _ = s.a == 123u8; // No error here.
+#nextln: $()let _ = s.b == true; // No error here.
+
+#not: $()let _ = s.a == 123u8; // No error here.
+#not: $()let _ = s.b == true; // No error here.

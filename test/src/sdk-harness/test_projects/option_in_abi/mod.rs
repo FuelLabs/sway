@@ -3,13 +3,13 @@ use std::str::FromStr;
 
 abigen!(Contract(
     name = "OptionInAbiTestContract",
-    abi = "test_projects/option_in_abi/out/debug/option_in_abi-abi.json"
+    abi = "test_projects/option_in_abi/out/release/option_in_abi-abi.json"
 ));
 
 async fn get_option_in_abi_instance() -> (OptionInAbiTestContract<WalletUnlocked>, ContractId) {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
     let id = Contract::load_from(
-        "test_projects/option_in_abi/out/debug/option_in_abi.bin",
+        "test_projects/option_in_abi/out/release/option_in_abi.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

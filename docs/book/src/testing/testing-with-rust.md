@@ -51,6 +51,9 @@ placeholder in the template. Otherwise, `cargo-generate` automatically converts 
 With `--force`, this means that both `my_fuel_project` and `my-fuel-project` are valid project names,
 depending on your needs.
 
+> _**Note**: `templates/sway-test-rs` can be replaced with `templates/sway-script-test-rs` or `templates/sway-predicate-test-rs` to generate a test
+> harness for scripts and predicates respectively.
+
 If all goes well, the output should look as follows:
 
 ```console

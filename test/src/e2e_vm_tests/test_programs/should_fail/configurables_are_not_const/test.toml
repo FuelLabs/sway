@@ -1,0 +1,4 @@
+category = "fail"
+
+#check: $()const CONSTANT: u64 = VALUE;
+#nextln: $()Could not evaluate initializer to a const declaration.

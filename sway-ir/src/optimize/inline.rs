@@ -21,17 +21,6 @@ use crate::{
     AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
 };
 
-pub const INLINE_MAIN_NAME: &str = "inline_main";
-
-pub fn create_inline_in_main_pass() -> Pass {
-    Pass {
-        name: INLINE_MAIN_NAME,
-        descr: "inline from main fn.",
-        deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_main)),
-    }
-}
-
 pub const INLINE_MODULE_NAME: &str = "inline_module";
 
 pub fn create_inline_in_module_pass() -> Pass {
@@ -132,15 +121,6 @@ pub fn inline_in_module(
             return true;
         }
 
-        // See https://github.com/FuelLabs/sway/pull/4899
-        if func.args_iter(ctx).any(|(_name, arg_val)| {
-            arg_val.get_type(ctx).map_or(false, |ty| {
-                ty.is_ptr(ctx) || !(ty.is_unit(ctx) | ty.is_bool(ctx) | ty.is_uint(ctx))
-            })
-        }) {
-            return true;
-        }
-
         false
     };
 
@@ -153,20 +133,6 @@ pub fn inline_in_module(
         modified |= inline_some_function_calls(context, &function, inline_heuristic)?;
     }
     Ok(modified)
-}
-
-pub fn inline_in_main(
-    context: &mut Context,
-    _: &AnalysisResults,
-    module: Module,
-) -> Result<bool, IrError> {
-    // For now we inline everything into `main()`.  Eventually we can be more selective.
-    for function in module.function_iter(context) {
-        if function.get_name(context) == "main" {
-            return inline_all_function_calls(context, &function);
-        }
-    }
-    Ok(false)
 }
 
 /// Inline all calls made from a specific function, effectively removing all `Call` instructions.
@@ -535,6 +501,7 @@ fn inline_instruction(
                     new_block.append(context).read_register(reg)
                 }
                 FuelVmInstruction::Revert(val) => new_block.append(context).revert(map_value(val)),
+                FuelVmInstruction::JmpMem => new_block.append(context).jmp_mem(),
                 FuelVmInstruction::Smo {
                     recipient,
                     message,
@@ -606,6 +573,9 @@ fn inline_instruction(
                 FuelVmInstruction::WideCmpOp { op, arg1, arg2 } => new_block
                     .append(context)
                     .wide_cmp_op(op, map_value(arg1), map_value(arg2)),
+                FuelVmInstruction::Retd { ptr, len } => new_block
+                    .append(context)
+                    .retd(map_value(ptr), map_value(len)),
             },
             InstOp::GetElemPtr {
                 base,

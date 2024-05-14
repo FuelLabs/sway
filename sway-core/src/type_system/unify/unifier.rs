@@ -1,9 +1,13 @@
 use std::fmt;
 
 use sway_error::{handler::Handler, type_error::TypeError};
-use sway_types::{Ident, Span};
+use sway_types::Span;
 
-use crate::{engine_threading::*, language::ty, type_system::priv_prelude::*};
+use crate::{
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext, WithEngines},
+    language::{ty, CallPath},
+    type_system::priv_prelude::*,
+};
 
 use super::occurs_check::OccursCheck;
 
@@ -57,7 +61,7 @@ impl<'a> Unifier<'a> {
         span: &Span,
     ) {
         let type_engine = self.engines.te();
-        let source_id = span.source_id().cloned();
+        let source_id = span.source_id().copied();
         type_engine.replace(
             received,
             TypeSourceInfo {
@@ -75,7 +79,7 @@ impl<'a> Unifier<'a> {
         span: &Span,
     ) {
         let type_engine = self.engines.te();
-        let source_id = span.source_id().cloned();
+        let source_id = span.source_id().copied();
         type_engine.replace(
             expected,
             TypeSourceInfo {
@@ -87,16 +91,20 @@ impl<'a> Unifier<'a> {
 
     /// Performs type unification with `received` and `expected`.
     pub(crate) fn unify(&self, handler: &Handler, received: TypeId, expected: TypeId, span: &Span) {
-        use TypeInfo::*;
+        use TypeInfo::{
+            Alias, Array, Boolean, Contract, Enum, Never, Numeric, Placeholder, RawUntypedPtr,
+            RawUntypedSlice, Ref, StringArray, StringSlice, Struct, Tuple, Unknown, UnknownGeneric,
+            UnsignedInteger, B256,
+        };
 
         if received == expected {
             return;
         }
 
         let r_type_source_info = self.engines.te().get(received);
-        let l_type_source_info = self.engines.te().get(expected);
+        let e_type_source_info = self.engines.te().get(expected);
 
-        match (&*r_type_source_info, &*l_type_source_info) {
+        match (&*r_type_source_info, &*e_type_source_info) {
             // If they have the same `TypeInfo`, then we either compare them for
             // correctness or perform further unification.
             (Boolean, Boolean) => (),
@@ -107,13 +115,13 @@ impl<'a> Unifier<'a> {
             (RawUntypedSlice, RawUntypedSlice) => (),
             (StringSlice, StringSlice) => (),
             (StringArray(l), StringArray(r)) => {
-                self.unify_strs(handler, received, expected, span, l.val(), r.val())
+                self.unify_strs(handler, received, expected, span, l.val(), r.val());
             }
             (Tuple(rfs), Tuple(efs)) if rfs.len() == efs.len() => {
-                self.unify_tuples(handler, rfs, efs)
+                self.unify_tuples(handler, rfs, efs);
             }
             (Array(re, rc), Array(ee, ec)) if rc.val() == ec.val() => {
-                self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee)
+                self.unify_type_arguments_in_parents(handler, received, expected, span, re, ee);
             }
             (Struct(r_decl_ref), Struct(e_decl_ref)) => {
                 let r_decl = self.engines.de().get_struct(r_decl_ref);
@@ -125,18 +133,17 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix.clone(),
+                        r_decl.call_path.clone(),
                         r_decl.type_parameters.clone(),
                         r_decl.fields.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix.clone(),
+                        e_decl.call_path.clone(),
                         e_decl.type_parameters.clone(),
                         e_decl.fields.clone(),
                     ),
-                )
+                );
             }
-
             // When we don't know anything about either term, assume that
             // they match and make the one we know nothing about reference the
             // one we may know something about.
@@ -145,7 +152,7 @@ impl<'a> Unifier<'a> {
             (r, Unknown) => self.replace_expected_with_received(expected, r, span),
 
             (r @ Placeholder(_), _e @ Placeholder(_)) => {
-                self.replace_expected_with_received(expected, r, span)
+                self.replace_expected_with_received(expected, r, span);
             }
             (_r @ Placeholder(_), e) => self.replace_received_with_expected(received, e, span),
             (r, _e @ Placeholder(_)) => self.replace_expected_with_received(expected, r, span),
@@ -153,16 +160,43 @@ impl<'a> Unifier<'a> {
             // Generics are handled similarly to the case for unknowns, except
             // we take more careful consideration for the type/purpose for the
             // unification that we are performing.
+            (UnknownGeneric { parent: rp, .. }, e)
+                if rp.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(rp.unwrap())
+                        .eq(e, &PartialEqWithEnginesContext::new(self.engines)) => {}
+            (r, UnknownGeneric { parent: ep, .. })
+                if ep.is_some()
+                    && self
+                        .engines
+                        .te()
+                        .get(ep.unwrap())
+                        .eq(r, &PartialEqWithEnginesContext::new(self.engines)) => {}
+            (UnknownGeneric { parent: rp, .. }, UnknownGeneric { parent: ep, .. })
+                if rp.is_some()
+                    && ep.is_some()
+                    && self.engines.te().get(ep.unwrap()).eq(
+                        &*self.engines.te().get(rp.unwrap()),
+                        &PartialEqWithEnginesContext::new(self.engines),
+                    ) => {}
+
             (
                 UnknownGeneric {
                     name: rn,
                     trait_constraints: rtc,
+                    parent: _,
+                    is_from_type_parameter: _,
                 },
                 UnknownGeneric {
                     name: en,
                     trait_constraints: etc,
+                    parent: _,
+                    is_from_type_parameter: _,
                 },
-            ) if rn.as_str() == en.as_str() && rtc.eq(etc, self.engines) => (),
+            ) if rn.as_str() == en.as_str()
+                && rtc.eq(etc, &PartialEqWithEnginesContext::new(self.engines)) => {}
 
             (_r @ UnknownGeneric { .. }, e)
                 if !self.occurs_check(received, expected)
@@ -179,15 +213,16 @@ impl<'a> Unifier<'a> {
                     && e.is_self_type()
                     && matches!(self.unify_kind, UnifyKind::WithSelf) =>
             {
-                self.replace_expected_with_received(expected, r, span)
+                self.replace_expected_with_received(expected, r, span);
             }
+
+            // Never type coerces to any other type.
+            // This should be after the unification of self types.
+            (Never, _) => {}
+
             // Type aliases and the types they encapsulate coerce to each other.
             (Alias { ty, .. }, _) => self.unify(handler, ty.type_id, expected, span),
             (_, Alias { ty, .. }) => self.unify(handler, received, ty.type_id, span),
-
-            // Let empty enums to coerce to any other type. This is useful for Never enum.
-            (Enum(r_decl_ref), _) if self.engines.de().get_enum(r_decl_ref).variants.is_empty() => {
-            }
 
             (Enum(r_decl_ref), Enum(e_decl_ref)) => {
                 let r_decl = self.engines.de().get_enum(r_decl_ref);
@@ -199,26 +234,26 @@ impl<'a> Unifier<'a> {
                     expected,
                     span,
                     (
-                        r_decl.call_path.suffix.clone(),
+                        r_decl.call_path.clone(),
                         r_decl.type_parameters.clone(),
                         r_decl.variants.clone(),
                     ),
                     (
-                        e_decl.call_path.suffix.clone(),
+                        e_decl.call_path.clone(),
                         e_decl.type_parameters.clone(),
                         e_decl.variants.clone(),
                     ),
-                )
+                );
             }
 
             // For integers and numerics, we (potentially) unify the numeric
             // with the integer.
             (UnsignedInteger(r), UnsignedInteger(e)) if r == e => (),
             (Numeric, e @ UnsignedInteger(_)) => {
-                self.replace_received_with_expected(received, e, span)
+                self.replace_received_with_expected(received, e, span);
             }
             (r @ UnsignedInteger(_), Numeric) => {
-                self.replace_expected_with_received(expected, r, span)
+                self.replace_expected_with_received(expected, r, span);
             }
 
             // For contract callers, we (potentially) unify them if they have
@@ -237,7 +272,7 @@ impl<'a> Unifier<'a> {
                     received,
                     &self.engines.te().get(expected),
                     span,
-                )
+                );
             }
             (
                 TypeInfo::ContractCaller {
@@ -253,15 +288,29 @@ impl<'a> Unifier<'a> {
                     expected,
                     &self.engines.te().get(received),
                     span,
-                )
+                );
             }
             (ref r @ TypeInfo::ContractCaller { .. }, ref e @ TypeInfo::ContractCaller { .. })
-                if r.eq(e, self.engines) =>
+                if r.eq(e, &PartialEqWithEnginesContext::new(self.engines)) =>
             {
                 // if they are the same, then it's ok
             }
-            (Ref(r), Ref(e)) => {
-                self.unify_type_arguments_in_parents(handler, received, expected, span, r, e)
+            // Unification is possible in these situations, assuming that the referenced types
+            // can unify:
+            //  - `&` -> `&`
+            //  - `&mut` -> `&`
+            //  - `&mut` -> `&mut`
+            (
+                Ref {
+                    to_mutable_value: r_to_mut,
+                    referenced_type: r_ty,
+                },
+                Ref {
+                    to_mutable_value: e_to_mut,
+                    referenced_type: e_ty,
+                },
+            ) if *r_to_mut || !*e_to_mut => {
+                self.unify_type_arguments_in_parents(handler, received, expected, span, r_ty, e_ty)
             }
 
             // If no previous attempts to unify were successful, raise an error.
@@ -275,6 +324,7 @@ impl<'a> Unifier<'a> {
                         received,
                         help_text: self.help_text.clone(),
                         span: span.clone(),
+                        internal: "4".into(),
                     }
                     .into(),
                 );
@@ -303,6 +353,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "3".into(),
                 }
                 .into(),
             );
@@ -321,8 +372,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyStructField>),
     ) {
         let (rn, rtps, rfs) = r;
         let (en, etps, efs) = e;
@@ -346,6 +397,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "2".into(),
                 }
                 .into(),
             );
@@ -358,8 +410,8 @@ impl<'a> Unifier<'a> {
         received: TypeId,
         expected: TypeId,
         span: &Span,
-        r: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
-        e: (Ident, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        r: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
+        e: (CallPath, Vec<TypeParameter>, Vec<ty::TyEnumVariant>),
     ) {
         let (rn, rtps, rvs) = r;
         let (en, etps, evs) = e;
@@ -376,6 +428,8 @@ impl<'a> Unifier<'a> {
                 self.unify(handler, rtp.type_id, etp.type_id, span);
             });
         } else {
+            dbg!(rn == en, rvs.len() == evs.len(), rtps.len() == etps.len());
+            let internal = format!("[{received:?}] versus [{expected:?}]");
             let (received, expected) = self.assign_args(received, expected);
             handler.emit_err(
                 TypeError::MismatchedType {
@@ -383,6 +437,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal,
                 }
                 .into(),
             );
@@ -421,6 +476,7 @@ impl<'a> Unifier<'a> {
                     received,
                     help_text: self.help_text.clone(),
                     span: span.clone(),
+                    internal: "1".into(),
                 }
                 .into(),
             );

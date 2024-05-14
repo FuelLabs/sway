@@ -55,6 +55,7 @@
 //! `unwrap_or`: `Result::unwrap_or`
 library;
 
+use ::logging::log;
 use ::revert::revert;
 
 // ANCHOR: docs_result
@@ -200,6 +201,66 @@ impl<T, E> Result<T, E> {
         match self {
             Self::Ok(inner_value) => inner_value,
             Self::Err(_) => default,
+        }
+    }
+
+    /// Returns the contained `Ok` value, consuming the `self` value.
+    /// If the `Result` is the `Err` variant, logs the provided message, along with the error value.
+    ///
+    /// # Additional Information
+    ///
+    /// Because this function may revert, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the `Err`
+    /// case explicitly.
+    ///
+    /// # Arguments
+    ///
+    /// * `msg`: [M] - The message to be logged if the `Result` is the `Err` variant.
+    ///
+    /// # Returns
+    ///
+    /// * [T] - The value contained by the result.
+    ///
+    /// # Reverts
+    ///
+    /// * Reverts if the `Result` is the `Err` variant.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// enum Error {
+    ///     NotFound,
+    ///     Invalid,
+    /// }
+    ///
+    /// fn foo() {
+    ///     let x: Result<u64, Error> = Result::Ok(42);
+    ///     assert(x.expect("X is known to be 42") == 42);
+    ///
+    ///     let y: Result<u64, Error> = Result::Err(Error::NotFound));
+    ///     let val = y.expect("Testing expect"); // reverts with `("Testing Expect", "Error::NotFound")`
+    /// }
+    /// ```
+    ///
+    /// # Recommended Message Style
+    ///
+    /// We recommend that `expect` messages are used to describe the reason you *expect* the `Result` should be `Ok`.
+    ///
+    /// ```sway
+    /// let x: Result<u64, Error> = bar(1);
+    /// let value = x.expect("bar() should never return Err with 1 as an argument");
+    /// ```
+    pub fn expect<M>(self, msg: M) -> T
+    where
+        M: AbiEncode,
+        E: AbiEncode,
+    {
+        match self {
+            Self::Ok(v) => v,
+            Self::Err(err) => {
+                log((msg, err));
+                revert(0);
+            },
         }
     }
 

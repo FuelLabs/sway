@@ -1,8 +1,8 @@
 [[package]]
-name = 'asm_without_return'
-source = 'member'
-dependencies = ['core']
+name = "asm_without_return"
+source = "member"
+dependencies = ["core"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-8F74D3135E693ACB'
+name = "core"
+source = "path+from-root-8F74D3135E693ACB"

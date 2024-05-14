@@ -1,3 +1,8 @@
 [[package]]
-name = 'ref_mutable_fn_args_struct'
-source = 'member'
+name = "core"
+source = "path+from-root-6D99027A2D2D3D31"
+
+[[package]]
+name = "ref_mutable_fn_args_struct"
+source = "member"
+dependencies = ["core"]

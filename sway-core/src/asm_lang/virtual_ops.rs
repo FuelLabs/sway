@@ -4,6 +4,8 @@
 //! The immediate types are used to safely construct numbers that are within their bounds, and the
 //! ops are clones of the actual opcodes, but with the safe primitives as arguments.
 
+use indexmap::IndexMap;
+
 use super::{
     allocated_ops::{AllocatedOpcode, AllocatedRegister},
     virtual_immediate::*,
@@ -196,7 +198,6 @@ pub(crate) enum VirtualOp {
     /* Non-VM Instructions */
     BLOB(VirtualImmediate24),
     DataSectionOffsetPlaceholder,
-    DataSectionRegisterLoadPlaceholder,
     // LoadDataId takes a virtual register and a DataId, which points to a labeled piece
     // of data in the data section. Note that the ASM op corresponding to a LW is
     // subtly complex: $rB is in bytes and points to some mem address. The immediate
@@ -312,10 +313,6 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![
-                &VirtualRegister::Constant(ConstantRegister::DataSectionStart),
-                &VirtualRegister::Constant(ConstantRegister::InstructionStart),
-            ],
             LoadDataId(r1, _i) => vec![r1],
             Undefined => vec![],
         })
@@ -427,7 +424,6 @@ impl VirtualOp {
             // Virtual OPs
             | BLOB(_)
             | DataSectionOffsetPlaceholder
-            | DataSectionRegisterLoadPlaceholder
             | Undefined => true
         }
     }
@@ -530,7 +526,6 @@ impl VirtualOp {
             | GTF(_, _, _)
             | BLOB(_)
             | DataSectionOffsetPlaceholder
-            | DataSectionRegisterLoadPlaceholder
             | LoadDataId(_, _)
             | Undefined => vec![],
         })
@@ -644,9 +639,6 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
-                ConstantRegister::InstructionStart,
-            )],
             LoadDataId(_r1, _i) => vec![],
             Undefined => vec![],
         })
@@ -763,9 +755,6 @@ impl VirtualOp {
             BLOB(_imm) => vec![],
             LoadDataId(r1, _i) => vec![r1],
             DataSectionOffsetPlaceholder => vec![],
-            DataSectionRegisterLoadPlaceholder => vec![&VirtualRegister::Constant(
-                ConstantRegister::DataSectionStart,
-            )],
             Undefined => vec![],
         })
         .into_iter()
@@ -795,7 +784,7 @@ impl VirtualOp {
 
     pub(crate) fn update_register(
         &self,
-        reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+        reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         use VirtualOp::*;
         match self {
@@ -1190,7 +1179,6 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
-            DataSectionRegisterLoadPlaceholder => Self::DataSectionRegisterLoadPlaceholder,
             LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
         }
@@ -1647,9 +1635,6 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(imm) => AllocatedOpcode::BLOB(imm.clone()),
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
-            DataSectionRegisterLoadPlaceholder => {
-                AllocatedOpcode::DataSectionRegisterLoadPlaceholder
-            }
             LoadDataId(reg1, label) => {
                 AllocatedOpcode::LoadDataId(map_reg(&mapping, reg1), label.clone())
             }
@@ -1667,7 +1652,7 @@ fn map_reg(
 }
 
 fn update_reg(
-    reg_to_reg_map: &HashMap<&VirtualRegister, &VirtualRegister>,
+    reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     reg: &VirtualRegister,
 ) -> VirtualRegister {
     if let Some(r) = reg_to_reg_map.get(reg) {

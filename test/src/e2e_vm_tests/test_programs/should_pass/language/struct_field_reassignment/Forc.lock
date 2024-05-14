@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-53919E193550072B'
+name = "core"
+source = "path+from-root-53919E193550072B"
 
 [[package]]
-name = 'struct_field_reassignment'
-source = 'member'
-dependencies = ['core']
+name = "struct_field_reassignment"
+source = "member"
+dependencies = ["core"]

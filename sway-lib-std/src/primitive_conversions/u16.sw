@@ -1,7 +1,8 @@
 library;
 
-use ::convert::TryFrom;
+use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
+use ::u128::U128;
 
 impl u16 {
     pub fn try_as_u8(self) -> Option<u8> {
@@ -11,6 +12,28 @@ impl u16 {
             })
         } else {
             None
+        }
+    }
+}
+
+impl From<u8> for u16 {
+    /// Casts a `u8` to a `u16`.
+    ///
+    /// # Returns
+    ///
+    /// * [u16] - The `u16` representation of the `u8` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    ///
+    /// fn foo() {
+    ///     let u16_value = u16::from(0u8);
+    /// }
+    /// ```
+    fn from(u: u8) -> Self {
+        asm(r1: u) {
+            r1: u16
         }
     }
 }
@@ -59,6 +82,30 @@ impl TryFrom<u256> for u16 {
     }
 }
 
+impl TryFrom<U128> for u16 {
+    fn try_from(u: U128) -> Option<Self> {
+        if u.upper() == 0 {
+            <u16 as TryFrom<u64>>::try_from(u.lower())
+        } else {
+            None
+        }
+    }
+}
+
+#[test]
+fn test_u16_from_u8() {
+    use ::assert::assert;
+
+    let u8_1: u8 = 0u8;
+    let u8_2: u8 = 255u8;
+
+    let u16_1 = u16::from(u8_1);
+    let u16_2 = u16::from(u8_2);
+
+    assert(u16_1 == 0u16);
+    assert(u16_2 == 255u16);
+}
+
 #[test]
 fn test_u16_try_from_u32() {
     use ::assert::assert;
@@ -103,6 +150,22 @@ fn test_u16_try_from_u256() {
 
     assert(u16_1.is_some());
     assert(u16_1.unwrap() == 2u16);
+
+    assert(u16_2.is_none());
+}
+
+#[test]
+fn test_u16_try_from_u128() {
+    use ::assert::assert;
+
+    let u128_1: U128 = U128::new();
+    let u128_2: U128 = U128::from((0, u16::max().as_u64() + 1));
+
+    let u16_1 = <u16 as TryFrom<U128>>::try_from(u128_1);
+    let u16_2 = <u16 as TryFrom<U128>>::try_from(u128_2);
+
+    assert(u16_1.is_some());
+    assert(u16_1.unwrap() == 0u16);
 
     assert(u16_2.is_none());
 }

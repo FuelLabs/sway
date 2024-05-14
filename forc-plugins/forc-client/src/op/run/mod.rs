@@ -2,7 +2,7 @@ mod encode;
 use crate::{
     cmd,
     util::{
-        gas::{get_gas_price, get_gas_used},
+        gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -15,7 +15,7 @@ use forc_util::tx_utils::format_log_receipts;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use fuels_accounts::provider::Provider;
-use pkg::{manifest::ExperimentalFlags, BuiltPackage};
+use pkg::{manifest::build_profile::ExperimentalFlags, BuiltPackage};
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use sway_core::language::parsed::TreeType;
@@ -48,12 +48,12 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
         std::env::current_dir().map_err(|e| anyhow!("{:?}", e))?
     };
     let build_opts = build_opts_from_cmd(&command);
-    let built_pkgs_with_manifest = built_pkgs(&curr_dir, build_opts)?;
+    let built_pkgs_with_manifest = built_pkgs(&curr_dir, &build_opts)?;
     for built in built_pkgs_with_manifest {
         if built
             .descriptor
             .manifest_file
-            .check_program_type(vec![TreeType::Script])
+            .check_program_type(&[TreeType::Script])
             .is_ok()
         {
             let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
@@ -70,7 +70,6 @@ pub async fn run_pkg(
     compiled: &BuiltPackage,
 ) -> Result<RanScript> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
-    let client = FuelClient::new(node_url.clone())?;
 
     let script_data = match (&command.data, &command.args) {
         (None, Some(args)) => {
@@ -110,8 +109,7 @@ pub async fn run_pkg(
     };
 
     let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
-    tb.gas_price(get_gas_price(&command.gas, client.node_info().await?))
-        .maturity(command.maturity.maturity.into())
+    tb.maturity(command.maturity.maturity.into())
         .add_contracts(contract_ids);
 
     let provider = Provider::connect(node_url.clone()).await?;
@@ -122,7 +120,7 @@ pub async fn run_pkg(
         script_gas_limit
     // Dry run tx and get `gas_used`
     } else {
-        get_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
+        get_script_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
     };
     tb.script_gas_limit(script_gas_limit);
 
@@ -177,24 +175,34 @@ async fn send_tx(
 ) -> Result<Vec<fuel_tx::Receipt>> {
     let outputs = {
         if !simulate {
-            let (_, receipts) = client.submit_and_await_commit_with_receipts(tx).await?;
-            if let Some(receipts) = receipts {
-                Ok(receipts)
-            } else {
-                bail!("The `receipts` during `send_tx` is empty")
+            let status = client.submit_and_await_commit(tx).await?;
+
+            match status {
+                fuel_core_client::client::types::TransactionStatus::Success {
+                    receipts, ..
+                } => receipts,
+                fuel_core_client::client::types::TransactionStatus::Failure {
+                    receipts, ..
+                } => receipts,
+                _ => vec![],
             }
         } else {
-            client.dry_run(tx).await
+            let txs = vec![tx.clone()];
+            let receipts = client.dry_run(txs.as_slice()).await?;
+            let receipts = receipts
+                .first()
+                .map(|tx| &tx.result)
+                .map(|res| res.receipts());
+            match receipts {
+                Some(receipts) => receipts.to_vec(),
+                None => vec![],
+            }
         }
     };
-
-    match outputs {
-        Ok(logs) => {
-            info!("{}", format_log_receipts(&logs, pretty_print)?);
-            Ok(logs)
-        }
-        Err(e) => bail!("{e}"),
+    if !outputs.is_empty() {
+        info!("{}", format_log_receipts(&outputs, pretty_print)?);
     }
+    Ok(outputs)
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
@@ -212,8 +220,8 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             ast: cmd.print.ast,
             dca_graph: cmd.print.dca_graph.clone(),
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
-            finalized_asm: cmd.print.finalized_asm,
-            intermediate_asm: cmd.print.intermediate_asm,
+            asm: cmd.print.asm(),
+            bytecode: cmd.print.bytecode,
             ir: cmd.print.ir,
             reverse_order: cmd.print.reverse_order,
         },
@@ -232,7 +240,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         tests: false,
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

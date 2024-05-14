@@ -10,7 +10,7 @@ use fuel_abi_types::error_codes::ErrorSignal;
 use fuel_tx as tx;
 use fuel_vm::checked_transaction::builder::TransactionBuilderExt;
 use fuel_vm::{self as vm};
-use pkg::manifest::ExperimentalFlags;
+use pkg::manifest::build_profile::ExperimentalFlags;
 use pkg::TestPassCondition;
 use pkg::{Built, BuiltPackage};
 use rand::{Rng, SeedableRng};
@@ -18,6 +18,9 @@ use rayon::prelude::*;
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use sway_core::BuildTarget;
 use sway_types::Span;
+use tx::consensus_parameters::ConsensusParametersV1;
+use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
+use vm::interpreter::InterpreterParams;
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -54,7 +57,7 @@ pub struct TestFilter<'a> {
 }
 
 /// The result of executing a single test within a single package.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TestResult {
     /// The name of the function.
     pub name: String,
@@ -68,7 +71,7 @@ pub struct TestResult {
     pub state: vm::state::ProgramState,
     /// The required state of the VM for this test to pass.
     pub condition: pkg::TestPassCondition,
-    /// Emitted `Recipt`s during the execution of the test.
+    /// Emitted `Receipt`s during the execution of the test.
     pub logs: Vec<fuel_tx::Receipt>,
     /// Gas used while executing this test.
     pub gas_used: u64,
@@ -125,22 +128,22 @@ pub enum PackageWithDeploymentToTest {
 
 /// The set of options provided to the `test` function.
 #[derive(Default, Clone)]
-pub struct Opts {
+pub struct TestOpts {
     pub pkg: pkg::PkgOpts,
     pub print: pkg::PrintOpts,
     pub minify: pkg::MinifyOpts,
     /// If set, outputs a binary file representing the script bytes.
     pub binary_outfile: Option<String>,
-    /// If set, outputs source file mapping in JSON format
+    /// If set, outputs debug info to the provided file.
+    /// If the argument provided ends with .json, a JSON is emitted,
+    /// otherwise, an ELF file containing DWARF is emitted.
     pub debug_outfile: Option<String>,
     /// Build target to use.
     pub build_target: BuildTarget,
     /// Name of the build profile to use.
-    /// If it is not specified, forc will use debug build profile.
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    /// If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     pub release: bool,
     /// Should warnings be treated as errors?
     pub error_on_warnings: bool,
@@ -194,21 +197,26 @@ impl PackageWithDeploymentToTest {
     /// For contract deploys all contract dependencies and the root contract itself.
     fn deploy(&self) -> anyhow::Result<TestSetup> {
         // Setup the interpreter for deployment.
-        let params = tx::ConsensusParameters::default();
+        let gas_price = 0;
+        let params = maxed_consensus_params();
         let storage = vm::storage::MemoryStorage::default();
+        let interpreter_params = InterpreterParams::new(gas_price, params.clone());
         let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-            vm::interpreter::Interpreter::with_storage(storage, params.clone().into());
+            vm::interpreter::Interpreter::with_storage(storage, interpreter_params);
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
-        let contract_dependency_setups = self.contract_dependencies().map(|built_pkg| {
-            deployment_transaction(built_pkg, &built_pkg.bytecode, params.clone())
-        });
+        let contract_dependency_setups = self
+            .contract_dependencies()
+            .map(|built_pkg| deployment_transaction(built_pkg, &built_pkg.bytecode, &params));
 
         // Deploy contract dependencies of the root contract and collect their ids.
         let contract_dependency_ids = contract_dependency_setups
             .map(|(contract_id, tx)| {
                 // Transact the deployment transaction constructed for this contract dependency.
+                let tx = tx
+                    .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                    .unwrap();
                 interpreter.transact(tx).map_err(anyhow::Error::msg)?;
                 Ok(contract_id)
             })
@@ -221,8 +229,11 @@ impl PackageWithDeploymentToTest {
             let (root_contract_id, root_contract_tx) = deployment_transaction(
                 &contract_to_test.pkg,
                 &contract_to_test.without_tests_bytecode,
-                params,
+                &params,
             );
+            let root_contract_tx = root_contract_tx
+                .into_ready(gas_price, params.gas_costs(), params.fee_params())
+                .unwrap();
             // Deploy the root contract.
             interpreter
                 .transact(root_contract_tx)
@@ -245,23 +256,48 @@ impl PackageWithDeploymentToTest {
     }
 }
 
+/// Returns a mapping of each member package of a build plan to its compiled contract dependencies,
+/// ordered by deployment order.
+///
+/// Each dependency package needs to be deployed before executing the test for that package.
+fn get_contract_dependency_map(
+    built: &Built,
+    build_plan: &pkg::BuildPlan,
+) -> ContractDependencyMap {
+    let built_members: HashMap<&pkg::Pinned, Arc<pkg::BuiltPackage>> =
+        built.into_members().collect();
+    // For each member node, collect their contract dependencies.
+    build_plan
+        .member_nodes()
+        .map(|member_node| {
+            let graph = build_plan.graph();
+            let pinned_member = graph[member_node].clone();
+            let contract_dependencies = build_plan
+                .contract_dependencies(member_node)
+                .map(|contract_dependency_node_ix| graph[contract_dependency_node_ix].clone())
+                .filter_map(|pinned| built_members.get(&pinned))
+                .cloned()
+                .collect::<Vec<_>>();
+            (pinned_member, contract_dependencies)
+        })
+        .collect()
+}
+
 impl BuiltTests {
     /// Constructs a `PackageTests` from `Built`.
-    ///
-    /// `contract_dependencies` represents ordered (by deployment order) packages that needs to be deployed for each package, before executing the test.
-    pub(crate) fn from_built(
-        built: Built,
-        contract_dependencies: &ContractDependencyMap,
-    ) -> anyhow::Result<BuiltTests> {
+    pub fn from_built(built: Built, build_plan: &pkg::BuildPlan) -> anyhow::Result<BuiltTests> {
+        let contract_dependencies = get_contract_dependency_map(&built, build_plan);
         let built = match built {
             Built::Package(built_pkg) => BuiltTests::Package(PackageTests::from_built_pkg(
                 built_pkg,
-                contract_dependencies,
+                &contract_dependencies,
             )),
             Built::Workspace(built_workspace) => {
                 let pkg_tests = built_workspace
                     .into_iter()
-                    .map(|built_pkg| PackageTests::from_built_pkg(built_pkg, contract_dependencies))
+                    .map(|built_pkg| {
+                        PackageTests::from_built_pkg(built_pkg, &contract_dependencies)
+                    })
                     .collect();
                 BuiltTests::Workspace(pkg_tests)
             }
@@ -352,13 +388,13 @@ impl<'a> PackageTests {
                         .expect("test instruction offset out of range");
                     let name = entry.finalized.fn_name.clone();
                     let test_setup = self.setup()?;
-                    TestExecutor::new(
+                    TestExecutor::build(
                         &pkg_with_tests.bytecode.bytes,
                         offset,
                         test_setup,
                         test_entry,
                         name,
-                    )
+                    )?
                     .execute()
                 })
                 .collect::<anyhow::Result<_>>()
@@ -374,7 +410,7 @@ impl<'a> PackageTests {
     ///
     /// For testing contracts, storage returned from this function contains the deployed contract.
     /// For other types, default storage is returned.
-    fn setup(&self) -> anyhow::Result<TestSetup> {
+    pub fn setup(&self) -> anyhow::Result<TestSetup> {
         match self {
             PackageTests::Contract(contract_to_test) => {
                 let test_setup = contract_to_test.deploy()?;
@@ -391,7 +427,28 @@ impl<'a> PackageTests {
     }
 }
 
-impl Opts {
+impl From<TestOpts> for pkg::BuildOpts {
+    fn from(val: TestOpts) -> Self {
+        pkg::BuildOpts {
+            pkg: val.pkg,
+            print: val.print,
+            minify: val.minify,
+            binary_outfile: val.binary_outfile,
+            debug_outfile: val.debug_outfile,
+            build_target: val.build_target,
+            build_profile: val.build_profile,
+            release: val.release,
+            error_on_warnings: val.error_on_warnings,
+            time_phases: val.time_phases,
+            metrics_outfile: val.metrics_outfile,
+            tests: true,
+            member_filter: Default::default(),
+            experimental: val.experimental,
+        }
+    }
+}
+
+impl TestOpts {
     /// Convert this set of test options into a set of build options.
     pub fn into_build_opts(self) -> pkg::BuildOpts {
         pkg::BuildOpts {
@@ -531,30 +588,29 @@ impl BuiltTests {
 }
 
 /// First builds the package or workspace, ready for execution.
-pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
-    let build_opts = opts.into_build_opts();
+pub fn build(opts: TestOpts) -> anyhow::Result<BuiltTests> {
+    let build_opts = opts.into();
     let build_plan = pkg::BuildPlan::from_build_opts(&build_opts)?;
-    let built = pkg::build_with_options(build_opts)?;
-    let built_members: HashMap<&pkg::Pinned, Arc<BuiltPackage>> = built.into_members().collect();
+    let built = pkg::build_with_options(&build_opts)?;
+    BuiltTests::from_built(built, &build_plan)
+}
 
-    // For each member node collect their contract dependencies.
-    let member_contract_dependencies: HashMap<pkg::Pinned, Vec<Arc<pkg::BuiltPackage>>> =
-        build_plan
-            .member_nodes()
-            .map(|member_node| {
-                let graph = build_plan.graph();
-                let pinned_member = graph[member_node].clone();
-                let contract_dependencies = build_plan
-                    .contract_dependencies(member_node)
-                    .map(|contract_depency_node_ix| graph[contract_depency_node_ix].clone())
-                    .filter_map(|pinned| built_members.get(&pinned))
-                    .cloned()
-                    .collect();
-
-                (pinned_member, contract_dependencies)
-            })
-            .collect();
-    BuiltTests::from_built(built, &member_contract_dependencies)
+/// Returns a `ConsensusParameters` which has maximum length/size allowance for scripts, contracts,
+/// and transactions.
+pub(crate) fn maxed_consensus_params() -> ConsensusParameters {
+    let script_params = ScriptParameters::DEFAULT
+        .with_max_script_length(u64::MAX)
+        .with_max_script_data_length(u64::MAX);
+    let tx_params = TxParameters::DEFAULT.with_max_size(u64::MAX);
+    let contract_params = ContractParameters::DEFAULT
+        .with_contract_max_size(u64::MAX)
+        .with_max_storage_slots(u64::MAX);
+    ConsensusParameters::V1(ConsensusParametersV1 {
+        script_params,
+        tx_params,
+        contract_params,
+        ..Default::default()
+    })
 }
 
 /// Deploys the provided contract and returns an interpreter instance ready to be used in test
@@ -562,7 +618,7 @@ pub fn build(opts: Opts) -> anyhow::Result<BuiltTests> {
 fn deployment_transaction(
     built_pkg: &pkg::BuiltPackage,
     without_tests_bytecode: &pkg::BuiltPackageBytecode,
-    params: tx::ConsensusParameters,
+    params: &tx::ConsensusParameters,
 ) -> ContractDeploymentSetup {
     // Obtain the contract id for deployment.
     let mut storage_slots = built_pkg.storage_slots.clone();
@@ -582,13 +638,16 @@ fn deployment_transaction(
     let utxo_id = rng.gen();
     let amount = 1;
     let maturity = 1u32.into();
-    let asset_id = rng.gen();
+    // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
+    // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
+    // base asset id is indeed the static `tx::AssetId::BASE`.
+    let asset_id = tx::AssetId::BASE;
     let tx_pointer = rng.gen();
     let block_height = (u32::MAX >> 1).into();
 
     let tx = tx::TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots)
-        .with_params(params)
-        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer, maturity)
+        .with_params(params.clone())
+        .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
         .add_output(tx::Output::contract_created(contract_id, state_root))
         .maturity(maturity)
         .finalize_checked(block_height);
@@ -622,7 +681,7 @@ fn run_tests(
 mod tests {
     use std::path::PathBuf;
 
-    use crate::{build, BuiltTests, Opts, TestFilter, TestResult};
+    use crate::{build, BuiltTests, TestFilter, TestOpts, TestResult};
 
     /// Name of the folder containing required data for tests to run, such as an example forc
     /// project.
@@ -644,7 +703,7 @@ mod tests {
             .join(TEST_DATA_FOLDER_NAME)
             .join(package_name);
         let library_package_dir_string = library_package_dir.to_string_lossy().to_string();
-        let build_options = Opts {
+        let build_options = TestOpts {
             pkg: forc_pkg::PkgOpts {
                 path: Some(library_package_dir_string),
                 ..Default::default()

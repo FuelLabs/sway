@@ -1,7 +1,7 @@
 library;
 
 pub struct Person {
-    age: u64
+    pub age: u64
 }
 
 pub enum Location {

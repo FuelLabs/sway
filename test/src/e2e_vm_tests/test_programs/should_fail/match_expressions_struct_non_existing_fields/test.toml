@@ -1,0 +1,16 @@
+category = "fail"
+
+#check: $()Struct field does not exist
+#check: $()Struct { x, nn_1 } => { x },
+#nextln: $()Field "nn_1" does not exist in the struct "Struct".
+#nextln: $()Only available field is "x".
+
+#check: $()Struct field does not exist
+#check: $()Struct { x, nn_1, nn_2 } => { x },
+#nextln: $()Field "nn_1" does not exist in the struct "Struct".
+#nextln: $()Only available field is "x".
+
+#check: $()Struct field does not exist
+#check: $()Struct { x, nn_1, nn_2 } => { x },
+#nextln: $()Field "nn_2" does not exist in the struct "Struct".
+#nextln: $()Only available field is "x".

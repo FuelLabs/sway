@@ -1,0 +1,8 @@
+category = "fail"
+
+# check: $()error
+# check: const-instead-of-let/src/main.sw:13
+# check: $()const INVALID_CONST = contract_1.foo();
+# nextln: $()Could not evaluate initializer to a const declaration.
+
+# check: $()Aborting due to 1 error

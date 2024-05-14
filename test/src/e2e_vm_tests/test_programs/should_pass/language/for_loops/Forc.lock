@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-39A1897B6E883C90"
+
+[[package]]
+name = "for_loops"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-39A1897B6E883C90"
+dependencies = ["core"]

@@ -2,11 +2,13 @@ use crate::{
     block::Block, AnalysisResult, AnalysisResultT, AnalysisResults, BranchToWithArgs, Context,
     Function, IrError, Pass, PassMutability, ScopedPass,
 };
+use indexmap::IndexSet;
 /// Dominator tree and related algorithms.
 /// The algorithms implemented here are from the paper
 // "A Simple, Fast Dominance Algorithm" -- Keith D. Cooper, Timothy J. Harvey, and Ken Kennedy.
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::fmt::Write;
+use sway_types::{FxIndexMap, FxIndexSet};
 
 /// Represents a node in the dominator tree.
 pub struct DomTreeNode {
@@ -26,11 +28,11 @@ impl DomTreeNode {
 }
 
 // The dominator tree is represented by mapping each Block to its DomTreeNode.
-pub type DomTree = FxHashMap<Block, DomTreeNode>;
+pub type DomTree = FxIndexMap<Block, DomTreeNode>;
 impl AnalysisResultT for DomTree {}
 
 // Dominance frontier sets.
-pub type DomFronts = FxHashMap<Block, FxHashSet<Block>>;
+pub type DomFronts = FxIndexMap<Block, FxIndexSet<Block>>;
 impl AnalysisResultT for DomFronts {}
 
 /// Post ordering of blocks in the CFG.
@@ -216,7 +218,7 @@ fn compute_dom_fronts(
     let dom_tree: &DomTree = analyses.get_analysis_result(function);
     let mut res = DomFronts::default();
     for (b, _) in dom_tree.iter() {
-        res.insert(*b, FxHashSet::default());
+        res.insert(*b, IndexSet::default());
     }
 
     // for all nodes, b
@@ -226,7 +228,7 @@ fn compute_dom_fronts(
             // unwrap() is safe as b is not "entry", and hence must have idom.
             let b_idom = dom_tree[b].parent.unwrap();
             // for all (reachable) predecessors, p, of b
-            for p in b.pred_iter(context).filter(|p| dom_tree.contains_key(p)) {
+            for p in b.pred_iter(context).filter(|&p| dom_tree.contains_key(p)) {
                 let mut runner = *p;
                 while runner != b_idom {
                     // add b to runner’s dominance frontier set

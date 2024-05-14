@@ -25,6 +25,7 @@ pub enum ConstantValue {
     Array(Vec<Constant>),
     Struct(Vec<Constant>),
     Reference(Box<Constant>),
+    RawUntypedSlice(Vec<u8>),
 }
 
 /// A [Constant] with its required [Padding].

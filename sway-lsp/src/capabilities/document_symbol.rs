@@ -1,25 +1,26 @@
 use crate::core::token::{SymbolKind, Token, TokenIdent};
+use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{self, Location, SymbolInformation, Url};
 
-pub fn to_symbol_information<I>(tokens: I, url: Url) -> Vec<SymbolInformation>
+pub fn to_symbol_information<'a, I>(tokens: I, url: &Url) -> Vec<SymbolInformation>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = RefMulti<'a, TokenIdent, Token>>,
 {
-    let mut symbols: Vec<SymbolInformation> = vec![];
-
-    for (ident, token) in tokens {
-        let symbol = symbol_info(&ident, &token, url.clone());
-        symbols.push(symbol)
-    }
-
-    symbols
+    tokens
+        .map(|entry| {
+            let (ident, token) = entry.pair();
+            symbol_info(ident, token, url.clone())
+        })
+        .collect()
 }
 
 /// Given a `token::SymbolKind`, return the `lsp_types::SymbolKind` that corresponds to it.
 pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
     match symbol_kind {
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
-        SymbolKind::BuiltinType => lsp_types::SymbolKind::TYPE_PARAMETER,
+        SymbolKind::BuiltinType | SymbolKind::TypeParameter => {
+            lsp_types::SymbolKind::TYPE_PARAMETER
+        }
         SymbolKind::Function | SymbolKind::DeriveHelper | SymbolKind::Intrinsic => {
             lsp_types::SymbolKind::FUNCTION
         }
@@ -32,7 +33,6 @@ pub(crate) fn symbol_kind(symbol_kind: &SymbolKind) -> lsp_types::SymbolKind {
         SymbolKind::BoolLiteral => lsp_types::SymbolKind::BOOLEAN,
         SymbolKind::StringLiteral => lsp_types::SymbolKind::STRING,
         SymbolKind::NumericLiteral => lsp_types::SymbolKind::NUMBER,
-        SymbolKind::TypeParameter => lsp_types::SymbolKind::TYPE_PARAMETER,
         SymbolKind::ValueParam
         | SymbolKind::ByteLiteral
         | SymbolKind::Variable

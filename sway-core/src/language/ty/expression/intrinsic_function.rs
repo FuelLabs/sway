@@ -3,9 +3,7 @@ use std::{
     hash::{Hash, Hasher},
 };
 
-use crate::{
-    decl_engine::DeclEngine, engine_threading::*, language::ty::*, type_system::*, types::*,
-};
+use crate::{engine_threading::*, has_changes, language::ty::*, type_system::*, types::*};
 use itertools::Itertools;
 use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
@@ -48,10 +46,10 @@ impl TyIntrinsicFunctionKind {
 
 impl EqWithEngines for TyIntrinsicFunctionKind {}
 impl PartialEqWithEngines for TyIntrinsicFunctionKind {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.kind == other.kind
-            && self.arguments.eq(&other.arguments, engines)
-            && self.type_arguments.eq(&other.type_arguments, engines)
+            && self.arguments.eq(&other.arguments, ctx)
+            && self.type_arguments.eq(&other.type_arguments, ctx)
     }
 }
 
@@ -72,12 +70,10 @@ impl HashWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl SubstTypes for TyIntrinsicFunctionKind {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        for arg in &mut self.arguments {
-            arg.subst(type_mapping, engines);
-        }
-        for targ in &mut self.type_arguments {
-            targ.type_id.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.arguments.subst(type_mapping, engines);
+            self.type_arguments.subst(type_mapping, engines);
         }
     }
 }
@@ -96,16 +92,6 @@ impl DebugWithEngines for TyIntrinsicFunctionKind {
             .join(", ");
 
         write!(f, "{}::<{}>::({})", self.kind, targs, args)
-    }
-}
-
-impl DeterministicallyAborts for TyIntrinsicFunctionKind {
-    fn deterministically_aborts(&self, decl_engine: &DeclEngine, check_call_body: bool) -> bool {
-        matches!(self.kind, Intrinsic::Revert)
-            || self
-                .arguments
-                .iter()
-                .any(|x| x.deterministically_aborts(decl_engine, check_call_body))
     }
 }
 

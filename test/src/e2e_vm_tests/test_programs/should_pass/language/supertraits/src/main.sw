@@ -1,6 +1,6 @@
 script;
 
-/// Inheritence tree:
+/// Inheritance tree:
 ///      A 
 ///      |
 ///      |

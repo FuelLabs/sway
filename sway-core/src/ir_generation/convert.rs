@@ -147,8 +147,8 @@ fn convert_resolved_type(
                 // aggregate which might not make as much sense as a dedicated Unit type.
                 Type::get_unit(context)
             } else {
-                let new_fields = fields.iter().map(|x| x.type_id).collect();
-                create_tuple_aggregate(type_engine, decl_engine, context, new_fields)?
+                let new_fields: Vec<_> = fields.iter().map(|x| x.type_id).collect();
+                create_tuple_aggregate(type_engine, decl_engine, context, &new_fields)?
             }
         }
         TypeInfo::RawUntypedPtr => Type::get_uint64(context),
@@ -158,7 +158,8 @@ fn convert_resolved_type(
         TypeInfo::Alias { ty, .. } => {
             convert_resolved_typeid(type_engine, decl_engine, context, &ty.type_id, span)?
         }
-        TypeInfo::Ref(_) => Type::get_uint64(context),
+        TypeInfo::Ref { .. } => Type::get_uint64(context),
+        TypeInfo::Never => Type::get_never(context),
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.

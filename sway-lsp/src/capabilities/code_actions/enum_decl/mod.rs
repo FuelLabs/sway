@@ -10,10 +10,10 @@ use super::common::basic_doc_comment::BasicDocCommentCodeAction;
 pub(crate) fn code_actions(
     decl_id: &DeclId<ty::TyEnumDecl>,
     ctx: &CodeActionContext,
-) -> Option<Vec<CodeActionOrCommand>> {
+) -> Vec<CodeActionOrCommand> {
     let decl = (*ctx.engines.de().get_enum(decl_id)).clone();
-    Some(vec![
+    vec![
         EnumImplCodeAction::new(ctx, &decl).code_action(),
         BasicDocCommentCodeAction::new(ctx, &decl).code_action(),
-    ])
+    ]
 }

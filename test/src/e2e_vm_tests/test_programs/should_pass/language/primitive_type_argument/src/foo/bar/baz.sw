@@ -3,6 +3,6 @@ library;
 mod quux;
 
 pub struct ExampleStruct<T, U> {
-  a_field: T,
-  b_field: U 
+  pub a_field: T,
+  pub b_field: U 
 }

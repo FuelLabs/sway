@@ -1,13 +1,3 @@
 [[package]]
-name = 'abi_impl_method_duplicate'
-source = 'member'
-dependencies = ['std']
-
-[[package]]
-name = 'core'
-source = 'path+from-root-DA324EF751E6D833'
-
-[[package]]
-name = 'std'
-source = 'path+from-root-DA324EF751E6D833'
-dependencies = ['core']
+name = "abi_impl_method_duplicate"
+source = "member"

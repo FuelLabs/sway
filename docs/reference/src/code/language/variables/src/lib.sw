@@ -7,6 +7,18 @@ fn mutable() {
     // ANCHOR_END: mutable
 }
 
+fn mutable_evaluation_order() {
+    // ANCHOR: mutable_evaluation_order
+    let mut array = [0, 0, 0];
+    let mut i = 0;
+
+    array[i] = {
+        i += 1;
+        i
+    };
+    // ANCHOR_END: mutable_evaluation_order
+}
+
 fn immutable() {
     // ANCHOR: immutable
     let foo = 5;

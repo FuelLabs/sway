@@ -203,7 +203,7 @@ impl AbstractInstructionSet {
                 op.opcode
             {
                 // Block boundary. Start afresh.
-                cur_live = liveness.get(ix).expect("Incorrect liveness info").clone();
+                cur_live.clone_from(liveness.get(ix).expect("Incorrect liveness info"));
                 // Add use(op) to cur_live.
                 for u in op_use {
                     cur_live.insert(u.clone());
@@ -234,8 +234,13 @@ impl AbstractInstructionSet {
         let mut new_ops: Vec<_> = std::mem::take(&mut self.ops)
             .into_iter()
             .enumerate()
-            .filter(|(idx, _)| !dead_indices.contains(idx))
-            .map(|(_, op)| op)
+            .filter_map(|(idx, op)| {
+                if !dead_indices.contains(&idx) {
+                    Some(op)
+                } else {
+                    None
+                }
+            })
             .collect();
         std::mem::swap(&mut self.ops, &mut new_ops);
 

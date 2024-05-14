@@ -1,15 +1,15 @@
 library;
 
 pub struct Inner {
-    foo: u64
+    pub foo: u64
 }
 
 pub struct StructOne {
-    inn: Inner,
+    pub inn: Inner,
 }
 
 pub struct StructTwo {
-    foo: u64,
+    pub foo: u64,
 }
 
 abi NestedStructArgs {

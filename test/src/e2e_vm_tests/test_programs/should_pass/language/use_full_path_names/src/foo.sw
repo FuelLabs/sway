@@ -1,5 +1,5 @@
 library;
 
 pub struct Foo {
-    foo: u32,
+    pub foo: u32,
 }

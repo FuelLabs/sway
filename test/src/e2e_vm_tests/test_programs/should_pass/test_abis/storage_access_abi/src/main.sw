@@ -1,20 +1,20 @@
 library;
 
 pub struct S {
-    x: u64,
-    y: u64,
-    z: b256,
-    t: T,
+    pub x: u64,
+    pub y: u64,
+    pub z: b256,
+    pub t: T,
 }
 
 pub struct T {
-    x: u64,
-    y: u64,
-    z: b256,
-    boolean: bool,
-    int8: u8,
-    int16: u16,
-    int32: u32,
+    pub x: u64,
+    pub y: u64,
+    pub z: b256,
+    pub boolean: bool,
+    pub int8: u8,
+    pub int16: u16,
+    pub int32: u32,
 }
 
 pub enum E {

@@ -1,3 +1,8 @@
 [[package]]
-name = 'mutable_arrays'
-source = 'member'
+name = "core"
+source = "path+from-root-BA3A7C875093CBDA"
+
+[[package]]
+name = "mutable_arrays"
+source = "member"
+dependencies = ["core"]

@@ -39,7 +39,7 @@ impl Checker {
     ///
     /// # ::check-ir-optimized::
     ///
-    /// Optimized IR chekcer can be configured with `pass: <PASSNAME or o1>`. When
+    /// Optimized IR checker can be configured with `pass: <PASSNAME or o1>`. When
     /// `o1` is chosen, all the configured passes are chosen automatically.
     ///
     /// ```
@@ -166,12 +166,21 @@ fn pretty_print_error_report(error: &str) {
 pub(super) async fn run(
     filter_regex: Option<&regex::Regex>,
     verbose: bool,
-    experimental: ExperimentalFlags,
+    mut experimental: ExperimentalFlags,
 ) -> Result<()> {
+    // TODO the way modules are built for these tests, new_encoding is not working.
+    experimental.new_encoding = false;
+
     // Compile core library and reuse it when compiling tests.
     let engines = Engines::default();
     let build_target = BuildTarget::default();
-    let core_lib = compile_core(build_target, &engines);
+    let mut core_lib = compile_core(build_target, &engines, experimental);
+
+    // Create new initial namespace for every test by reusing the precompiled
+    // standard libraries. The namespace, thus its root module, must have the
+    // name set.
+    const PACKAGE_NAME: &str = "test_lib";
+    core_lib.name = Some(sway_types::Ident::new_no_span(PACKAGE_NAME.to_string()));
 
     // Find all the tests.
     let all_tests = discover_test_files();
@@ -179,34 +188,35 @@ pub(super) async fn run(
     let mut run_test_count = 0;
     all_tests
         .into_iter()
-        .filter(|path| {
+        .filter_map(|path|  {
             // Filter against the regex.
-            path.to_str()
+            if path.to_str()
                 .and_then(|path_str| filter_regex.map(|regex| regex.is_match(path_str)))
-                .unwrap_or(true)
-        })
-        .map(|path| {
-            // Read entire file.
-            let input_bytes = fs::read(&path).expect("Read entire Sway source.");
-            let input = String::from_utf8_lossy(&input_bytes);
+                .unwrap_or(true)  {
+                // Read entire file.
+                let input_bytes = fs::read(&path).expect("Read entire Sway source.");
+                let input = String::from_utf8_lossy(&input_bytes);
 
-            let checkers = Checker::new(&input);
+                let checkers = Checker::new(&input);
 
-            let mut optimisation_inline = false;
-            let mut target_fuelvm = false;
+                let mut optimisation_inline = false;
+                let mut target_fuelvm = false;
 
-            if let Some(first_line) = input.lines().next() {
-                optimisation_inline = first_line.contains("optimisation-inline");
-                target_fuelvm = first_line.contains("target-fuelvm");
+                if let Some(first_line) = input.lines().next() {
+                    optimisation_inline = first_line.contains("optimisation-inline");
+                    target_fuelvm = first_line.contains("target-fuelvm");
+                }
+
+                Some((
+                    path,
+                    input_bytes,
+                    checkers,
+                    optimisation_inline,
+                    target_fuelvm,
+                ))
+            } else {
+                None
             }
-
-            (
-                path,
-                input_bytes,
-                checkers,
-                optimisation_inline,
-                target_fuelvm,
-            )
         })
         .for_each(
             |(path, sway_str, checkers, optimisation_inline, target_fuelvm)| {
@@ -219,18 +229,23 @@ pub(super) async fn run(
                     path.clone(),
                     PathBuf::from("/"),
                     build_target,
-                );
+                ).with_experimental(sway_core::ExperimentalFlags {
+                    new_encoding: experimental.new_encoding
+                });
+
                 // Include unit tests in the build.
                 let bld_cfg = bld_cfg.with_include_tests(true);
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
-                let handler = Handler::default(); let compile_res = compile_to_ast(
+                let handler = Handler::default();
+                let initial_namespace = namespace::Root::from(core_lib.clone());
+                let compile_res = compile_to_ast(
                     &handler,
                     &engines,
                     Arc::from(sway_str),
-                    core_lib.clone(),
+                    initial_namespace,
                     Some(&bld_cfg),
-                    "test_lib",
+                    PACKAGE_NAME,
                     None,
                 );
                 let (errors, _warnings) = handler.consume();
@@ -248,6 +263,12 @@ pub(super) async fn run(
                 }
                 let programs = compile_res
                     .expect("there were no errors, so there should be a program");
+
+                if verbose {
+                    println!("Declaration Engine");
+                    println!("-----------------------");
+                    println!("{}", engines.de().pretty_print(&engines));
+                }
 
                 let typed_program = programs.typed.as_ref().unwrap();
 
@@ -505,7 +526,11 @@ fn discover_test_files() -> Vec<PathBuf> {
     test_files
 }
 
-fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Module {
+fn compile_core(
+    build_target: BuildTarget,
+    engines: &Engines,
+    experimental: ExperimentalFlags,
+) -> namespace::Module {
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let libcore_root_dir = format!("{manifest_dir}/../sway-lib-core");
 
@@ -517,6 +542,7 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         disable_tests: false,
         locked: false,
         ipfs_node: None,
+        no_encoding_v1: !experimental.new_encoding,
     };
 
     let res = match forc::test::forc_check::check(check_cmd, engines) {
@@ -530,13 +556,19 @@ fn compile_core(build_target: BuildTarget, engines: &Engines) -> namespace::Modu
         Some(typed_program) => {
             // Create a module for core and copy the compiled modules into it.  Unfortunately we
             // can't get mutable access to move them out so they're cloned.
-            let core_module = typed_program.root.namespace.submodules().into_iter().fold(
-                namespace::Module::default(),
-                |mut core_mod, (name, sub_mod)| {
-                    core_mod.insert_submodule(name.clone(), sub_mod.clone());
-                    core_mod
-                },
-            );
+            let core_module = typed_program
+                .root
+                .namespace
+                .module(engines)
+                .submodules()
+                .into_iter()
+                .fold(
+                    namespace::Module::default(),
+                    |mut core_mod, (name, sub_mod)| {
+                        core_mod.insert_submodule(name.clone(), sub_mod.clone());
+                        core_mod
+                    },
+                );
 
             // Create a module for std and insert the core module.
             let mut std_module = namespace::Module::default();

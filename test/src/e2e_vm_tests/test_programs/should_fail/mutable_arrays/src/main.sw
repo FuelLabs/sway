@@ -16,6 +16,4 @@ fn main() -> bool {
     false
 }
 
-fn takes_ref_mut_arr(ref mut arr: [u64; 1]) {
-
-}
+fn takes_ref_mut_arr(ref mut _arr: [u64; 1]) { }

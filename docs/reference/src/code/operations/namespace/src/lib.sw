@@ -1,13 +1,14 @@
 library;
 
+/* External declarations
 // ANCHOR: address
 pub struct Address {
-    value: b256,
+    bits: b256,
 }
 // ANCHOR_END: address
 // ANCHOR: contract_id
 pub struct ContractId {
-    value: b256,
+    bits: b256,
 }
 // ANCHOR_END: contract_id
 // ANCHOR: identity
@@ -16,11 +17,13 @@ pub enum Identity {
     ContractId: ContractId,
 }
 // ANCHOR_END: identity
+*/
+
 fn address_cast() {
     // ANCHOR: address_cast
     let variable1 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     let my_address = Address::from(variable1);
-    let variable2 = my_address.into();
+    let variable2: b256 = my_address.into();
     // variable1 == variable2
     // ANCHOR_END: address_cast
 }
@@ -29,7 +32,7 @@ fn contract_id_cast() {
     // ANCHOR: contract_id_cast
     let variable1 = 0x000000000000000000000000000000000000000000000000000000000000002A;
     let my_contract_id = ContractId::from(variable1);
-    let variable2 = my_contract_id.into();
+    let variable2: b256 = my_contract_id.into();
     // variable1 == variable2
     // ANCHOR_END: contract_id_cast
 }

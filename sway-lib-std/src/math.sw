@@ -6,6 +6,24 @@ pub trait Root {
     fn sqrt(self) -> Self;
 }
 
+impl Root for u256 {
+    // Integer square root using [Newton's Method](https://en.wikipedia.org/wiki/Integer_square_root#Algorithm_using_Newton's_method).
+    fn sqrt(self) -> Self {
+        let mut x0 = self >> 1;
+        if x0 == 0 {
+            return self;
+        }
+        let mut x1 = (x0 + self / x0) >> 1;
+
+        while x1 < x0 {
+            x0 = x1;
+            x1 = (x0 + self / x0) >> 1;
+        }
+
+        x0
+    }
+}
+
 impl Root for u64 {
     fn sqrt(self) -> Self {
         let index: u64 = 2;
@@ -193,14 +211,56 @@ impl BinaryLogarithm for u8 {
     }
 }
 
+impl BinaryLogarithm for u256 {
+    fn log2(self) -> Self {
+        use ::assert::*;
+        assert(self != 0);
+        let (a, b, c, d) = asm(r1: self) {
+            r1: (u64, u64, u64, u64)
+        };
+        if a != 0 {
+            return a.log2().as_u256() + 0xc0u256;
+        } else if b != 0 {
+            return b.log2().as_u256() + 0x80u256;
+        } else if c != 0 {
+            return c.log2().as_u256() + 0x40u256;
+        } else if d != 0 {
+            return d.log2().as_u256();
+        }
+        self
+    }
+}
+
+impl Logarithm for u256 {
+    fn log(self, base: Self) -> Self {
+        let self_log2 = self.log2();
+        let base_log2 = base.log2();
+        self_log2 / base_log2
+    }
+}
+
 #[test]
 fn square_root_test_math_sw() {
     use ::assert::*;
 
+    let max_u256 = u256::max();
     let max_u64 = u64::max();
     let max_u32 = u32::max();
     let max_u16 = u16::max();
     let max_u8 = u8::max();
+
+    // u256
+    assert(0x1u256.sqrt() == 1);
+    assert(0x4u256.sqrt() == 2);
+    assert(0x9u256.sqrt() == 3);
+    assert(0x90u256.sqrt() == 12);
+    assert(0x400u256.sqrt() == 32);
+    assert(0x2386f26fc10000u256.sqrt() == 100000000);
+    assert(0x0u256.sqrt() == 0);
+    assert(0x2u256.sqrt() == 1);
+    assert(0x5u256.sqrt() == 2);
+    assert(0x3e8u256.sqrt() == 31);
+    assert(max_u256.sqrt() == 0xffffffffffffffffffffffffffffffffu256);
 
     // u64
     assert(1.sqrt() == 1);
@@ -383,10 +443,26 @@ fn exponentiation_test_math_sw() {
 fn logarithmic_test_math_sw() {
     use ::assert::*;
 
+    let max_u256 = u256::max();
     let max_u64 = u64::max();
     let max_u32 = u32::max();
     let max_u16 = u16::max();
     let max_u8 = u8::max();
+
+    // u256
+    assert(0x2u256.log2() == 0x1u256);
+    assert(0x401u256.log2() == 0xau256);
+    assert(max_u256.log2() == 0xffu256);
+    assert(0x2u256.log(0x2u256) == 0x1u256);
+    assert(0x2u256.log2() == 0x1u256);
+    assert(0x1u256.log(0x3u256) == 0);
+    assert(0x8u256.log(0x2u256) == 0x3u256);
+    assert(0x8u256.log2() == 0x3u256);
+    assert(0x64u256.log(0xau256) == 0x2u256);
+    assert(0x64u256.log(0x2u256) == 0x6u256);
+    assert(0x64u256.log2() == 0x6u256);
+    assert(0x64u256.log(0x9u256) == 0x2u256);
+    assert(max_u256.log(0x2u256) == 0xffu256);
 
     // u64
     assert(2.log(2) == 1);

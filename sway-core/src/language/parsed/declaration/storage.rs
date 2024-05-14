@@ -1,5 +1,5 @@
 use crate::{language::parsed::Expression, transform, type_system::*};
-use sway_types::{ident::Ident, span::Span};
+use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
 /// A declaration of contract storage. Only valid within contract contexts.
@@ -9,6 +9,12 @@ pub struct StorageDeclaration {
     pub fields: Vec<StorageField>,
     pub span: Span,
     pub storage_keyword: Ident,
+}
+
+impl Spanned for StorageDeclaration {
+    fn span(&self) -> sway_types::Span {
+        self.span.clone()
+    }
 }
 
 /// An individual field in a storage declaration.

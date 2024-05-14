@@ -4,7 +4,7 @@ use core::ops::Eq;
 use ::asset::Asset;
 
 pub struct Wrapper {
-    asset: Asset
+    pub asset: Asset
 }
 
 impl Wrapper {

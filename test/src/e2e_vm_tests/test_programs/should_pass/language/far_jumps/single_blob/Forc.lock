@@ -1,3 +1,8 @@
 [[package]]
-name = 'single_blob'
-source = 'member'
+name = "core"
+source = "path+from-root-6C0E4D3584CB39F4"
+
+[[package]]
+name = "single_blob"
+source = "member"
+dependencies = ["core"]

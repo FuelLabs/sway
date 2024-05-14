@@ -57,16 +57,22 @@ impl std::fmt::Display for FinalProgram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FinalProgram::Fuel {
-                data_section, ops, ..
-            } => write!(
-                f,
-                ".program:\n{}\n{}",
-                ops.iter()
-                    .map(|x| format!("{x}"))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
+                kind,
                 data_section,
-            ),
+                ops,
+                ..
+            } => {
+                writeln!(f, ";; Program kind: {:?}", kind)?;
+                writeln!(
+                    f,
+                    ".program:\n{}\n{}",
+                    ops.iter()
+                        .map(|x| format!("{x}"))
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                    data_section,
+                )
+            }
             FinalProgram::Evm { ops, .. } => {
                 let mut separator = etk_dasm::blocks::basic::Separator::new();
 

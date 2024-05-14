@@ -1,0 +1,10 @@
+category = "run"
+
+# 1336 encoded as [0, 0, 0, 0, 0, 0, 5, 56]
+script_data = "0000000000000538"
+expected_result = { action = "return", value = 1337 }
+
+script_data_new_encoding = "0000000000000538"
+expected_result_new_encoding = { action = "return_data", value = "0000000000000539" }
+
+validate_abi = true

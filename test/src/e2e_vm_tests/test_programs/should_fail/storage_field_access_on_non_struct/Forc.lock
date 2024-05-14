@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-95C477BB1546ECF8"
+
+[[package]]
+name = "std"
+source = "path+from-root-95C477BB1546ECF8"
+dependencies = ["core"]
+
+[[package]]
+name = "storage_field_access_on_non_struct"
+source = "member"
+dependencies = ["std"]

@@ -8,7 +8,7 @@ pub enum ProgramType {
 
 impl std::fmt::Display for ProgramType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        use ProgramType::*;
+        use ProgramType::{Contract, Library, Predicate, Script};
         let s = match self {
             Contract => "contract",
             Script => "script",

@@ -1,6 +1,9 @@
 contract;
 
+// ANCHOR: storage_namespace
+#[namespace(my_storage_namespace)]
 storage {
+    // ANCHOR_END: storage_namespace
     var: u64 = 0,
 }
 

@@ -1,6 +1,6 @@
 contract;
 
-use std::asset::transfer_to_address;
+use std::asset::transfer;
 
 abi TestAbi {
     fn deposit();
@@ -17,7 +17,7 @@ impl TestAbi for Contract {
         let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
         let asset = AssetId::from(address);
         let user = Address::from(address);
-        // `transfer_to_address` uses `tro` asm instruction
-        transfer_to_address(user, asset, amount);
+        // `transfer` uses `tro` asm instruction for Address
+        transfer(Identity::Address(user), asset, amount);
     }
 }

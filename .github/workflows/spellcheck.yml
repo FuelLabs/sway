@@ -1,0 +1,16 @@
+name: Spellcheck
+
+on:
+  pull_request:
+
+jobs:
+  find-typos:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Check spelling
+      uses: crate-ci/typos@master
+      with:
+        config: .typos.toml

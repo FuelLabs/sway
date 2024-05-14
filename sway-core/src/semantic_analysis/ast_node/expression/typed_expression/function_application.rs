@@ -3,7 +3,7 @@ use crate::{
     language::{ty, *},
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
-use std::collections::HashMap;
+use indexmap::IndexMap;
 use sway_error::error::CompileError;
 use sway_types::Spanned;
 
@@ -18,7 +18,7 @@ pub(crate) fn instantiate_function_application(
     mut ctx: TypeCheckContext,
     function_decl_ref: DeclRefFunction,
     call_path_binding: TypeBinding<CallPath>,
-    arguments: Option<Vec<Expression>>,
+    arguments: Option<&[Expression]>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let decl_engine = ctx.engines.de();
@@ -72,6 +72,7 @@ pub(crate) fn instantiate_function_application(
         function_decl.name.as_str(),
         &call_path_binding.span(),
     )?;
+
     function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
     let return_type = function_decl.return_type.clone();
     let new_decl_ref = decl_engine
@@ -81,13 +82,14 @@ pub(crate) fn instantiate_function_application(
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
             call_path: call_path_binding.inner.clone(),
-            contract_call_params: HashMap::new(),
             arguments: typed_arguments_with_names,
             fn_ref: new_decl_ref,
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
             deferred_monomorphization: false,
+            contract_call_params: IndexMap::new(),
+            contract_caller: None,
         },
         return_type: return_type.type_id,
         span,
@@ -100,7 +102,7 @@ pub(crate) fn instantiate_function_application(
 fn type_check_arguments(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    arguments: Vec<parsed::Expression>,
+    arguments: &[parsed::Expression],
     parameters: &[ty::TyFunctionParameter],
 ) -> Result<Vec<ty::TyExpression>, ErrorEmitted> {
     let engines = ctx.engines();
@@ -115,14 +117,14 @@ fn type_check_arguments(
 
     handler.scope(|handler| {
         let typed_arguments = arguments
-            .into_iter()
+            .iter()
             .zip(parameters)
             .map(|(arg, param)| {
                 let ctx = ctx
                     .by_ref()
                     .with_help_text(UNIFY_ARGS_HELP_TEXT)
                     .with_type_annotation(param.type_argument.type_id);
-                ty::TyExpression::type_check(handler, ctx, arg.clone())
+                ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, arg.span(), engines))
             })
             .collect();

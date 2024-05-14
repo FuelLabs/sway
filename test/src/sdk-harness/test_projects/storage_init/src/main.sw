@@ -37,7 +37,7 @@ pub enum E {
 pub enum F {
     Int8: u8,
     Int64: u64,
-    Tuple: (u8, u16, u32, u64, bool)
+    Tuple: (u8, u16, u32, u64, bool),
 }
 
 impl F {
@@ -62,8 +62,7 @@ impl core::ops::Eq for T {
 
 impl core::ops::Eq for S {
     fn eq(self, other: Self) -> bool {
-        self.x == other.x && self.y == other.y && self.z == other.z && self.u == other.u && self.t == other.t &&
-        self.f_int8.equals(other.f_int8) && self.f_int64.equals(other.f_int64) && self.f_tuple.equals(other.f_tuple)
+        self.x == other.x && self.y == other.y && self.z == other.z && self.u == other.u && self.t == other.t && self.f_int8.equals(other.f_int8) && self.f_int64.equals(other.f_int64) && self.f_tuple.equals(other.f_tuple)
     }
 }
 
@@ -195,7 +194,7 @@ impl ExperimentalStorageInitTest for Contract {
         assert(storage.s.read() == s);
         assert(storage.boolean.read() == boolean);
         assert(storage.int8.read() == int8);
-        
+
         assert(storage.int16.read() == int16);
         assert(storage.int32.read() == int32);
         assert(storage.s.x.read() == s.x);
@@ -220,7 +219,7 @@ impl ExperimentalStorageInitTest for Contract {
         assert(storage.e_enum_int8.read() == e_enum_int8);
         assert(storage.e_enum_int64.read() == e_enum_int64);
         assert(storage.e_enum_tuple.read() == e_enum_tuple);
-        
+
         assert(sha256_str_array(storage.string.read()) == sha256_str_array(string));
         true
     }

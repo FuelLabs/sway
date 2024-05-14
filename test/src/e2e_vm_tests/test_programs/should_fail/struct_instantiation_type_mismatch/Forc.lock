@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-F09A856EDDEE88D8"
+
+[[package]]
+name = "std"
+source = "path+from-root-F09A856EDDEE88D8"
+dependencies = ["core"]
+
+[[package]]
+name = "struct_instantiation_type_mismatch"
+source = "member"
+dependencies = ["std"]

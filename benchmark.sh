@@ -35,20 +35,20 @@ forc_path="$SCRIPT_DIR/target/$build_type/forc"
 
 # prepare the benchmark data for commit if requested
 if $PREPARE_FOR_COMMIT; then
-    sway_peformance_data_dir=performance-data
+    sway_performance_data_dir=performance-data
     sway_performance_data_repo_url=git@github.com:FuelLabs/sway-performance-data.git
 
-    if [ ! -d "$SCRIPT_DIR/$sway_peformance_data_dir" ]; then
-        echo "Directory $sway_peformance_data_dir not found. Cloning the repository..."
-        git clone "$sway_performance_data_repo_url" "$sway_peformance_data_dir"
-        echo "Repository cloned into $sway_peformance_data_dir."
+    if [ ! -d "$SCRIPT_DIR/$sway_performance_data_dir" ]; then
+        echo "Directory $sway_performance_data_dir not found. Cloning the repository..."
+        git clone "$sway_performance_data_repo_url" "$sway_performance_data_dir"
+        echo "Repository cloned into $sway_performance_data_dir."
     else
         echo "Updating sway-performance-data repository..."
-        git -C "$SCRIPT_DIR/$sway_peformance_data_dir" pull
+        git -C "$SCRIPT_DIR/$sway_performance_data_dir" pull
     fi
 
-    mkdir -p "$SCRIPT_DIR/$sway_peformance_data_dir/$GITHUB_SHA"
-    cp -r $benchmarks_dir/* "$SCRIPT_DIR/$sway_peformance_data_dir/$GITHUB_SHA"
+    mkdir -p "$SCRIPT_DIR/$sway_performance_data_dir/$GITHUB_SHA"
+    cp -r $benchmarks_dir/* "$SCRIPT_DIR/$sway_performance_data_dir/$GITHUB_SHA"
 else
     sway_libs_dir=sway-libs
     sway_libs_repo_url=https://github.com/FuelLabs/sway-libs.git

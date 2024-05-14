@@ -1,13 +1,18 @@
 use crate::convert_parse_tree_error::ConvertParseTreeError;
 use crate::diagnostic::{Code, Diagnostic, Hint, Issue, Reason, ToDiagnostic};
+use crate::formatting::*;
 use crate::lex_error::LexError;
-use crate::parser_error::ParseError;
+use crate::parser_error::{ParseError, ParseErrorKind};
 use crate::type_error::TypeError;
 
 use core::fmt;
+use std::fmt::Formatter;
 use sway_types::constants::STORAGE_PURITY_ATTRIBUTE_NAME;
-use sway_types::{BaseIdent, Ident, SourceEngine, SourceId, Span, Spanned};
+use sway_types::style::to_snake_case;
+use sway_types::{BaseIdent, Ident, IdentUnique, SourceEngine, Span, Spanned};
 use thiserror::Error;
+
+use self::StructFieldUsageContext::*;
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InterfaceName {
@@ -24,8 +29,24 @@ impl fmt::Display for InterfaceName {
     }
 }
 
-// TODO: since moving to using Idents instead of strings, there are a lot of redundant spans in
-// this type.
+// TODO: Since moving to using Idents instead of strings, there are a lot of redundant spans in
+//       this type. When replacing Strings + Spans with Idents, be aware of the rule explained below.
+
+// When defining error structures that display identifiers, we prefer passing Idents over Strings.
+// The error span can come from that same Ident or can be a different span.
+// We handle those two cases in the following way:
+//   - If the error span equals Ident's span, we use IdentUnique and never the plain Ident.
+//   - If the error span is different then Ident's span, we pass Ident and Span as two separate fields.
+//
+// The reason for this rule is clearly communicating the difference of the two cases in every error,
+// as well as avoiding issues with the error message deduplication explained below.
+//
+// Deduplication of error messages might remove errors that are actually not duplicates because
+// although they point to the same Ident (in terms of the identifier's name), the span can be different.
+// Deduplication works on hashes and Ident's hash contains only the name and not the span.
+// That's why we always use IdentUnique whenever we extract the span from the provided Ident.
+// Using IdentUnique also clearly communicates that we are extracting the span from the
+// provided identifier.
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CompileError {
     #[error(
@@ -46,14 +67,19 @@ pub enum CompileError {
         what_it_is: &'static str,
         span: Span,
     },
-    #[error("Unimplemented feature: {0}")]
-    Unimplemented(&'static str, Span),
-    #[error(
-        "Unimplemented feature: {0}\n\
-         help: {1}.\n\
-         "
-    )]
-    UnimplementedWithHelp(&'static str, &'static str, Span),
+    #[error("{feature} is currently not implemented.")]
+    Unimplemented {
+        /// The description of the unimplemented feature,
+        /// formulated in a way that fits into common ending
+        /// "is currently not implemented."
+        /// E.g., "Using something".
+        feature: String,
+        /// Help lines. Empty if there is no additional help.
+        /// To get an empty line between the help lines,
+        /// insert a [String] containing only a space: `" ".to_string()`.
+        help: Vec<String>,
+        span: Span,
+    },
     #[error("{0}")]
     TypeError(TypeError),
     #[error("Error parsing input: {err:?}")]
@@ -76,6 +102,8 @@ pub enum CompileError {
     PredicateMainDoesNotReturnBool(Span),
     #[error("Script declaration contains no main function. Scripts require a main function.")]
     NoScriptMainFunction(Span),
+    #[error("Fallback function already defined in scope.")]
+    MultipleDefinitionsOfFallbackFunction { name: Ident, span: Span },
     #[error("Function \"{name}\" was already defined in scope.")]
     MultipleDefinitionsOfFunction { name: Ident, span: Span },
     #[error("Name \"{name}\" is defined multiple times.")]
@@ -93,8 +121,67 @@ pub enum CompileError {
         duplicate: Span,
         duplicate_is_struct_field: bool,
     },
-    #[error("Assignment to immutable variable. Variable {name} is not declared as mutable.")]
-    AssignmentToNonMutable { name: Ident, span: Span },
+    #[error(
+        "Assignment to an immutable variable. Variable \"{decl_name} is not declared as mutable."
+    )]
+    AssignmentToNonMutableVariable {
+        /// Variable name pointing to the name in the variable declaration.
+        decl_name: Ident,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
+        "Assignment to a {}. {} cannot be assigned to.",
+        if *is_configurable {
+            "configurable"
+        } else {
+            "constant"
+        },
+        if *is_configurable {
+            "Configurables"
+        } else {
+            "Constants"
+        }
+    )]
+    AssignmentToConstantOrConfigurable {
+        /// Constant or configurable name pointing to the name in the constant declaration.
+        decl_name: Ident,
+        is_configurable: bool,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error(
+        "This assignment target cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+        if let Some(decl_name) = decl_name {
+            format!("\"{decl_name}\"")
+        } else {
+            "this".to_string()
+        },
+        a_or_an(decl_friendly_type_name)
+    )]
+    DeclAssignmentTargetCannotBeAssignedTo {
+        /// Name of the declared variant, pointing to the name in the declaration.
+        decl_name: Option<Ident>,
+        /// Friendly name of the type of the declaration. E.g., "function", or "struct".
+        decl_friendly_type_name: &'static str,
+        /// The complete left-hand side of the assignment.
+        lhs_span: Span,
+    },
+    #[error("This reference is not a reference to a mutable value (`&mut`).")]
+    AssignmentViaNonMutableReference {
+        /// Name of the reference, if the left-hand side of the assignment is a reference variable,
+        /// pointing to the name in the reference variable declaration.
+        ///
+        /// `None` if the assignment LHS is an arbitrary expression and not a variable.
+        decl_reference_name: Option<Ident>,
+        /// [Span] of the right-hand side of the reference variable definition,
+        /// if the left-hand side of the assignment is a reference variable.
+        decl_reference_rhs: Option<Span>,
+        /// The type of the reference, if the left-hand side of the assignment is a reference variable,
+        /// expected to start with `&`.
+        decl_reference_type: String,
+        span: Span,
+    },
     #[error(
         "Cannot call method \"{method_name}\" on variable \"{variable_name}\" because \
             \"{variable_name}\" is not declared as mutable."
@@ -112,6 +199,21 @@ pub enum CompileError {
     ImmutableArgumentToMutableParameter { span: Span },
     #[error("ref mut or mut parameter is not allowed for contract ABI function.")]
     RefMutableNotAllowedInContractAbi { param_name: Ident, span: Span },
+    #[error("Reference to a mutable value cannot reference a constant.")]
+    RefMutCannotReferenceConstant {
+        /// Constant, as accessed in code. E.g.:
+        ///  - `MY_CONST`
+        ///  - `LIB_CONST_ALIAS`
+        ///  - `::lib::module::SOME_CONST`
+        constant: String,
+        span: Span,
+    },
+    #[error("Reference to a mutable value cannot reference an immutable variable.")]
+    RefMutCannotReferenceImmutableVariable {
+        /// Variable name pointing to the name in the variable declaration.
+        decl_name: Ident,
+        span: Span,
+    },
     #[error(
         "Cannot call associated function \"{fn_name}\" as a method. Use associated function \
         syntax instead."
@@ -206,17 +308,64 @@ pub enum CompileError {
          it?"
     )]
     EnumNotFound { name: Ident, span: Span },
-    #[error("Initialization of struct \"{struct_name}\" is missing field \"{field_name}\".")]
-    StructMissingField {
+    /// This error is used only for error recovery and is not emitted as a compiler
+    /// error to the final compilation output. The compiler emits the cumulative error
+    /// [CompileError::StructInstantiationMissingFields] given below, and that one also
+    /// only if the struct can actually be instantiated.
+    #[error("Instantiation of the struct \"{struct_name}\" is missing field \"{field_name}\".")]
+    StructInstantiationMissingFieldForErrorRecovery {
         field_name: Ident,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
     },
-    #[error("Struct \"{struct_name}\" does not have field \"{field_name}\".")]
-    StructDoesNotHaveField {
-        field_name: Ident,
+    #[error("Instantiation of the struct \"{struct_name}\" is missing {} {}.",
+        if field_names.len() == 1 { "field" } else { "fields" },
+        field_names.iter().map(|name| format!("\"{name}\"")).collect::<Vec::<_>>().join(", "))]
+    StructInstantiationMissingFields {
+        field_names: Vec<Ident>,
+        /// Original, non-aliased struct name.
         struct_name: Ident,
         span: Span,
+        struct_decl_span: Span,
+        total_number_of_fields: usize,
+    },
+    #[error("Struct \"{struct_name}\" cannot be instantiated here because it has private fields.")]
+    StructCannotBeInstantiated {
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        span: Span,
+        struct_decl_span: Span,
+        private_fields: Vec<Ident>,
+        /// All available public constructors if `is_in_storage_declaration` is false,
+        /// or only the public constructors that potentially evaluate to a constant
+        /// if `is_in_storage_declaration` is true.
+        constructors: Vec<String>,
+        /// True if the struct has only private fields.
+        all_fields_are_private: bool,
+        is_in_storage_declaration: bool,
+        struct_can_be_changed: bool,
+    },
+    #[error("Field \"{field_name}\" of the struct \"{struct_name}\" is private.")]
+    StructFieldIsPrivate {
+        field_name: IdentUnique,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        field_decl_span: Span,
+        struct_can_be_changed: bool,
+        usage_context: StructFieldUsageContext,
+    },
+    #[error("Field \"{field_name}\" does not exist in struct \"{struct_name}\".")]
+    StructFieldDoesNotExist {
+        field_name: IdentUnique,
+        /// Only public fields if `is_public_struct_access` is true.
+        available_fields: Vec<Ident>,
+        is_public_struct_access: bool,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        struct_is_empty: bool,
+        usage_context: StructFieldUsageContext,
     },
     #[error("No method named \"{method_name}\" found for type \"{type_name}\".")]
     MethodNotFound {
@@ -226,20 +375,25 @@ pub enum CompileError {
     },
     #[error("Module \"{name}\" could not be found.")]
     ModuleNotFound { span: Span, name: String },
-    #[error("This is a {actually}, not a struct. Fields can only be accessed on structs.")]
-    FieldAccessOnNonStruct { actually: String, span: Span },
-    #[error("\"{name}\" is a {actually}, not a tuple. Elements can only be access on tuples.")]
-    NotATuple {
-        name: String,
-        span: Span,
+    #[error("This expression has type \"{actually}\", which is not a struct. Fields can only be accessed on structs.")]
+    FieldAccessOnNonStruct {
         actually: String,
-    },
-    #[error("\"{name}\" is a {actually}, which is not an indexable expression.")]
-    NotIndexable {
-        name: String,
+        /// Name of the storage variable, if the field access
+        /// happens within the access to a storage variable.
+        storage_variable: Option<String>,
+        /// Name of the field that is tried to be accessed.
+        field_name: IdentUnique,
         span: Span,
-        actually: String,
     },
+    #[error("This expression has type \"{actually}\", which is not a tuple. Elements can only be accessed on tuples.")]
+    TupleElementAccessOnNonTuple {
+        actually: String,
+        span: Span,
+        index: usize,
+        index_span: Span,
+    },
+    #[error("This expression has type \"{actually}\", which is not an indexable type.")]
+    NotIndexable { actually: String, span: Span },
     #[error("\"{name}\" is a {actually}, not an enum.")]
     NotAnEnum {
         name: String,
@@ -270,18 +424,14 @@ pub enum CompileError {
     DeclIsNotAConstant { actually: String, span: Span },
     #[error("This is a {actually}, not a type alias")]
     DeclIsNotATypeAlias { actually: String, span: Span },
-    #[error(
-        "Field \"{field_name}\" not found on struct \"{struct_name}\". Available fields are:\n \
-         {available_fields}"
-    )]
-    FieldNotFound {
-        field_name: Ident,
-        available_fields: String,
-        struct_name: Ident,
-        span: Span,
-    },
     #[error("Could not find symbol \"{name}\" in this scope.")]
     SymbolNotFound { name: Ident, span: Span },
+    #[error("Found multiple bindings for \"{name}\" in this scope.")]
+    SymbolWithMultipleBindings {
+        name: Ident,
+        paths: Vec<String>,
+        span: Span,
+    },
     #[error("Symbol \"{name}\" is private.")]
     ImportPrivateSymbol { name: Ident, span: Span },
     #[error("Module \"{name}\" is private.")]
@@ -344,6 +494,7 @@ pub enum CompileError {
     UnconstrainedGenericParameter { ty: String, span: Span },
     #[error("Trait \"{trait_name}\" is not implemented for type \"{ty}\".")]
     TraitConstraintNotSatisfied {
+        type_id: usize, // Used to filter errors in method application type check.
         ty: String,
         trait_name: String,
         span: Span,
@@ -376,6 +527,8 @@ pub enum CompileError {
     UnnecessaryImmediate { span: Span },
     #[error("This reference is ambiguous, and could refer to a module, enum, or function of the same name. Try qualifying the name with a path.")]
     AmbiguousPath { span: Span },
+    #[error("This is a module path, and not an expression.")]
+    ModulePathIsNotAnExpression { module_path: String, span: Span },
     #[error("Unknown type name.")]
     UnknownType { span: Span },
     #[error("Unknown type name \"{name}\".")]
@@ -408,6 +561,10 @@ pub enum CompileError {
     InvalidExpressionOnLhs { span: Span },
     #[error("This code cannot be evaluated to a constant")]
     CannotBeEvaluatedToConst { span: Span },
+    #[error(
+        "This code cannot be evaluated to a configurable because its size is not always limited."
+    )]
+    CannotBeEvaluatedToConfigurableSizeUnknown { span: Span },
     #[error("{} \"{method_name}\" expects {expected} {} but you provided {received}.",
         if *dot_syntax_used { "Method" } else { "Function" },
         if *expected == 1usize { "argument" } else {"arguments"},
@@ -445,6 +602,7 @@ pub enum CompileError {
     ConflictingImplsForTraitAndType {
         trait_name: String,
         type_implementing_for: String,
+        existing_impl_span: Span,
         second_impl_span: Span,
     },
     #[error("Duplicate definitions for the {decl_kind} \"{decl_name}\" for type \"{type_implementing_for}\".")]
@@ -498,36 +656,59 @@ pub enum CompileError {
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
     #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
-    #[error("Tuple index out of bounds; the arity is {count} but the index is {index}.")]
+    #[error("Tuple index {index} is out of bounds. The tuple has {count} element{}.", plural_s(*count))]
     TupleIndexOutOfBounds {
         index: usize,
         count: usize,
+        tuple_type: String,
         span: Span,
+        prefix_span: Span,
     },
     #[error("Constants cannot be shadowed. {variable_or_constant} \"{name}\" shadows constant with the same name.")]
     ConstantsCannotBeShadowed {
         variable_or_constant: String,
-        name: Ident,
+        name: IdentUnique,
         constant_span: Span,
         constant_decl: Span,
         is_alias: bool,
     },
     #[error("Constants cannot shadow variables. The constant \"{name}\" shadows variable with the same name.")]
-    ConstantShadowsVariable { name: Ident, variable_span: Span },
+    ConstantShadowsVariable {
+        name: IdentUnique,
+        variable_span: Span,
+    },
     #[error("The imported symbol \"{name}\" shadows another symbol with the same name.")]
-    ShadowsOtherSymbol { name: Ident },
+    ShadowsOtherSymbol { name: IdentUnique },
     #[error("The name \"{name}\" is already used for a generic parameter in this scope.")]
-    GenericShadowsGeneric { name: Ident },
+    GenericShadowsGeneric { name: IdentUnique },
     #[error("Non-exhaustive match expression. Missing patterns {missing_patterns}")]
     MatchExpressionNonExhaustive {
         missing_patterns: String,
         span: Span,
     },
-    #[error("Pattern does not mention {}: {}",
-        if missing_fields.len() == 1 { "field" } else { "fields" },
-        missing_fields.join(", "))]
+    #[error("Struct pattern is missing the {}field{} {}.",
+        if *missing_fields_are_public { "public " } else { "" },
+        plural_s(missing_fields.len()),
+        sequence_to_str(missing_fields, Enclosing::DoubleQuote, 2)
+    )]
     MatchStructPatternMissingFields {
-        missing_fields: Vec<String>,
+        missing_fields: Vec<Ident>,
+        missing_fields_are_public: bool,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        total_number_of_fields: usize,
+        span: Span,
+    },
+    #[error("Struct pattern must ignore inaccessible private field{} {}.",
+        plural_s(private_fields.len()),
+        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2))]
+    MatchStructPatternMustIgnorePrivateFields {
+        private_fields: Vec<Ident>,
+        /// Original, non-aliased struct name.
+        struct_name: Ident,
+        struct_decl_span: Span,
+        all_fields_are_private: bool,
         span: Span,
     },
     #[error("Variable \"{variable}\" is not defined in all alternatives.")]
@@ -547,6 +728,13 @@ pub enum CompileError {
         first_definition: Span,
         expected: String,
         received: String,
+    },
+    #[error("This cannot be matched.")]
+    MatchedValueIsNotValid {
+        /// Common message describing which Sway types
+        /// are currently supported in match expressions.
+        supported_types_message: Vec<&'static str>,
+        span: Span,
     },
     #[error(
         "Storage attribute access mismatch. Try giving the surrounding function more access by \
@@ -617,8 +805,12 @@ pub enum CompileError {
     UnrecognizedContractParam { param_name: String, span: Span },
     #[error("Attempting to specify a contract method parameter for a non-contract function call")]
     CallParamForNonContractCallMethod { span: Span },
-    #[error("Storage field {name} does not exist")]
-    StorageFieldDoesNotExist { name: Ident, span: Span },
+    #[error("Storage field \"{field_name}\" does not exist.")]
+    StorageFieldDoesNotExist {
+        field_name: IdentUnique,
+        available_fields: Vec<Ident>,
+        storage_decl_span: Span,
+    },
     #[error("No storage has been declared")]
     NoDeclaredStorage { span: Span },
     #[error("Multiple storage declarations were found")]
@@ -749,12 +941,29 @@ pub enum CompileError {
     AssociatedTypeNotSupportedInAbi { span: Span },
     #[error("Cannot call ABI supertrait's method as a contract method: \"{fn_name}\"")]
     AbiSupertraitMethodCallAsContractCall { fn_name: Ident, span: Span },
-    #[error("\"Self\" is not valid in the self type of an impl block")]
-    SelfIsNotValidAsImplementingFor { span: Span },
+    #[error("{invalid_type} is not a valid type in the self type of an impl block.")]
+    TypeIsNotValidAsImplementingFor {
+        invalid_type: InvalidImplementingForType,
+        /// Name of the trait if the impl implements a trait, `None` otherwise.
+        trait_name: Option<String>,
+        span: Span,
+    },
     #[error("Uninitialized register is being read before being written")]
     UninitRegisterInAsmBlockBeingRead { span: Span },
     #[error("Expression of type \"{expression_type}\" cannot be dereferenced.")]
     ExpressionCannotBeDereferenced { expression_type: String, span: Span },
+    #[error("Fallback functions can only exist in contracts")]
+    FallbackFnsAreContractOnly { span: Span },
+    #[error("Fallback functions cannot have parameters")]
+    FallbackFnsCannotHaveParameters { span: Span },
+    #[error("Could not generate the entry method. See errors above for more details.")]
+    CouldNotGenerateEntry { span: Span },
+    #[error("Missing `core` in dependencies.")]
+    CouldNotGenerateEntryMissingCore { span: Span },
+    #[error("Type \"{ty}\" does not implement AbiEncode or AbiDecode.")]
+    CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
+    #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
+    EncodingUnsupportedType { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -771,8 +980,7 @@ impl Spanned for CompileError {
             ModuleDepGraphCyclicReference { .. } => Span::dummy(),
             UnknownVariable { span, .. } => span.clone(),
             NotAVariable { span, .. } => span.clone(),
-            Unimplemented(_, span) => span.clone(),
-            UnimplementedWithHelp(_, _, span) => span.clone(),
+            Unimplemented { span, .. } => span.clone(),
             TypeError(err) => err.span(),
             ParseError { span, .. } => span.clone(),
             Internal(_, span) => span.clone(),
@@ -785,10 +993,16 @@ impl Spanned for CompileError {
             MultipleDefinitionsOfConstant { span, .. } => span.clone(),
             MultipleDefinitionsOfType { span, .. } => span.clone(),
             MultipleDefinitionsOfMatchArmVariable { duplicate, .. } => duplicate.clone(),
-            AssignmentToNonMutable { span, .. } => span.clone(),
+            MultipleDefinitionsOfFallbackFunction { span, .. } => span.clone(),
+            AssignmentToNonMutableVariable { lhs_span, .. } => lhs_span.clone(),
+            AssignmentToConstantOrConfigurable { lhs_span, .. } => lhs_span.clone(),
+            DeclAssignmentTargetCannotBeAssignedTo { lhs_span, .. } => lhs_span.clone(),
+            AssignmentViaNonMutableReference { span, .. } => span.clone(),
             MutableParameterNotSupported { span, .. } => span.clone(),
             ImmutableArgumentToMutableParameter { span } => span.clone(),
             RefMutableNotAllowedInContractAbi { span, .. } => span.clone(),
+            RefMutCannotReferenceConstant { span, .. } => span.clone(),
+            RefMutCannotReferenceImmutableVariable { span, .. } => span.clone(),
             MethodRequiresMutableSelf { span, .. } => span.clone(),
             AssociatedFunctionCalledAsMethod { span, .. } => span.clone(),
             TypeParameterNotInTypeScope { span, .. } => span.clone(),
@@ -805,16 +1019,19 @@ impl Spanned for CompileError {
             DoesNotTakeTypeArgumentsAsPrefix { span, .. } => span.clone(),
             TypeArgumentsNotAllowed { span } => span.clone(),
             NeedsTypeArguments { span, .. } => span.clone(),
-            StructMissingField { span, .. } => span.clone(),
-            StructDoesNotHaveField { span, .. } => span.clone(),
+            StructInstantiationMissingFieldForErrorRecovery { span, .. } => span.clone(),
+            StructInstantiationMissingFields { span, .. } => span.clone(),
+            StructCannotBeInstantiated { span, .. } => span.clone(),
+            StructFieldIsPrivate { field_name, .. } => field_name.span(),
+            StructFieldDoesNotExist { field_name, .. } => field_name.span(),
             MethodNotFound { span, .. } => span.clone(),
             ModuleNotFound { span, .. } => span.clone(),
-            NotATuple { span, .. } => span.clone(),
+            TupleElementAccessOnNonTuple { span, .. } => span.clone(),
             NotAStruct { span, .. } => span.clone(),
             NotIndexable { span, .. } => span.clone(),
             FieldAccessOnNonStruct { span, .. } => span.clone(),
-            FieldNotFound { span, .. } => span.clone(),
             SymbolNotFound { span, .. } => span.clone(),
+            SymbolWithMultipleBindings { span, .. } => span.clone(),
             ImportPrivateSymbol { span, .. } => span.clone(),
             ImportPrivateModule { span, .. } => span.clone(),
             NoElseBranch { span, .. } => span.clone(),
@@ -837,7 +1054,8 @@ impl Spanned for CompileError {
             Immediate24TooLarge { span, .. } => span.clone(),
             IncorrectNumberOfAsmRegisters { span, .. } => span.clone(),
             UnnecessaryImmediate { span, .. } => span.clone(),
-            AmbiguousPath { span, .. } => span.clone(),
+            AmbiguousPath { span } => span.clone(),
+            ModulePathIsNotAnExpression { span, .. } => span.clone(),
             UnknownType { span, .. } => span.clone(),
             UnknownTypeName { span, .. } => span.clone(),
             FileCouldNotBeRead { span, .. } => span.clone(),
@@ -879,8 +1097,10 @@ impl Spanned for CompileError {
             GenericShadowsGeneric { name } => name.span(),
             MatchExpressionNonExhaustive { span, .. } => span.clone(),
             MatchStructPatternMissingFields { span, .. } => span.clone(),
+            MatchStructPatternMustIgnorePrivateFields { span, .. } => span.clone(),
             MatchArmVariableNotDefinedInAllAlternatives { variable, .. } => variable.span(),
             MatchArmVariableMismatchedType { variable, .. } => variable.span(),
+            MatchedValueIsNotValid { span, .. } => span.clone(),
             NotAnEnum { span, .. } => span.clone(),
             StorageAccessMismatch { span, .. } => span.clone(),
             TraitDeclPureImplImpure { span, .. } => span.clone(),
@@ -907,7 +1127,7 @@ impl Spanned for CompileError {
             ContractCallParamRepeated { span, .. } => span.clone(),
             UnrecognizedContractParam { span, .. } => span.clone(),
             CallParamForNonContractCallMethod { span, .. } => span.clone(),
-            StorageFieldDoesNotExist { span, .. } => span.clone(),
+            StorageFieldDoesNotExist { field_name, .. } => field_name.span(),
             InvalidStorageOnlyTypeDecl { span, .. } => span.clone(),
             NoDeclaredStorage { span, .. } => span.clone(),
             MultipleStorageDeclarations { span, .. } => span.clone(),
@@ -918,7 +1138,7 @@ impl Spanned for CompileError {
             Parse { error } => error.span.clone(),
             EnumNotFound { span, .. } => span.clone(),
             TupleIndexOutOfBounds { span, .. } => span.clone(),
-            NonConstantDeclValue { span } => span.clone(),
+            NonConstantDeclValue { span, .. } => span.clone(),
             StorageDeclarationInNonContract { span, .. } => span.clone(),
             IntrinsicUnsupportedArgType { span, .. } => span.clone(),
             IntrinsicIncorrectNumArgs { span, .. } => span.clone(),
@@ -945,13 +1165,24 @@ impl Spanned for CompileError {
             AbiSupertraitMethodCallAsContractCall { span, .. } => span.clone(),
             TypeNotAllowed { span, .. } => span.clone(),
             ExpectedStringLiteral { span } => span.clone(),
-            SelfIsNotValidAsImplementingFor { span } => span.clone(),
+            TypeIsNotValidAsImplementingFor { span, .. } => span.clone(),
             UninitRegisterInAsmBlockBeingRead { span } => span.clone(),
             ExpressionCannotBeDereferenced { span, .. } => span.clone(),
+            FallbackFnsAreContractOnly { span } => span.clone(),
+            FallbackFnsCannotHaveParameters { span } => span.clone(),
+            CouldNotGenerateEntry { span } => span.clone(),
+            CouldNotGenerateEntryMissingCore { span } => span.clone(),
+            CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
+            CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
+            EncodingUnsupportedType { span } => span.clone(),
         }
     }
 }
 
+// When implementing diagnostics, follow these two guidelines outlined in the Expressive Diagnostics RFC:
+// - Guide-level explanation: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#guide-level-explanation
+// - Wording guidelines: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0011-expressive-diagnostics.md#wording-guidelines
+// For concrete examples, look at the existing diagnostics.
 impl ToDiagnostic for CompileError {
     fn to_diagnostic(&self, source_engine: &SourceEngine) -> Diagnostic {
         let code = Code::semantic_analysis;
@@ -1140,8 +1371,83 @@ impl ToDiagnostic for CompileError {
                     format!("Consider removing the variable \"{variable}\" altogether, or adding it to all alternatives."),
                 ],
             },
-            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates }=> {
-                // Make candidates order deterministic
+            MatchStructPatternMissingFields { missing_fields, missing_fields_are_public, struct_name, struct_decl_span, total_number_of_fields, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct pattern has missing fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct pattern is missing the {}field{} {}.",
+                        if *missing_fields_are_public { "public " } else { "" },
+                        plural_s(missing_fields.len()),
+                        sequence_to_str(missing_fields, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Struct pattern must either contain or ignore each struct field.".to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
+                            number_to_str(*total_number_of_fields),
+                            plural_s(*total_number_of_fields),
+                        )
+                    ),
+                ],
+                help: vec![
+                    // Consider ignoring the field "x_1" by using the `_` pattern: `x_1: _`.
+                    //  or
+                    // Consider ignoring individual fields by using the `_` pattern. E.g, `x_1: _`.
+                    format!("Consider ignoring {} field{} {}by using the `_` pattern{} `{}: _`.",
+                        singular_plural(missing_fields.len(), "the", "individual"),
+                        plural_s(missing_fields.len()),
+                        singular_plural(missing_fields.len(), &format!("\"{}\" ", missing_fields[0]), ""),
+                        singular_plural(missing_fields.len(), ":", ". E.g.,"),
+                        missing_fields[0]
+                    ),
+                    "Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.".to_string(),
+                ],
+            },
+            MatchStructPatternMustIgnorePrivateFields { private_fields, struct_name, struct_decl_span, all_fields_are_private, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct pattern must ignore inaccessible private fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Struct pattern must ignore inaccessible private field{} {}.",
+                        plural_s(private_fields.len()),
+                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("To ignore the private field{}, end the struct pattern with `..`.",
+                            plural_s(private_fields.len()),
+                        )
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "all private fields".to_string()
+                            } else {
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                )
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            TraitNotImportedAtFunctionApplication { trait_name, function_name, function_call_site_span, trait_constraint_span, trait_candidates } => {
+                // Make candidates order deterministic.
                 let mut trait_candidates = trait_candidates.clone();
                 trait_candidates.sort();
                 let trait_candidates = &trait_candidates; // Remove mutability.
@@ -1206,25 +1512,28 @@ impl ToDiagnostic for CompileError {
                         let mut help = vec![];
 
                         if trait_candidates.len() > 1 {
-                            help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", trait_candidates.len()));
+                            help.push(format!("There are these {} traits with the name \"{trait_name}\" available in the modules:", number_to_str(trait_candidates.len())));
                             for trait_candidate in trait_candidates.iter() {
-                                help.push(format!("  - {trait_candidate}"));
+                                help.push(format!("{}- {trait_candidate}", Indent::Single));
                             }
                             help.push("To import the proper one follow these steps:".to_string());
                             help.push(format!(
-                                "  1. Look at the definition of the \"{function_name}\"{}.",
+                                "{}1. Look at the definition of the \"{function_name}\"{}.",
+                                    Indent::Single,
                                     get_file_name(source_engine, trait_constraint_span.source_id())
                                         .map_or("".to_string(), |file_name| format!(" in the \"{file_name}\""))
                             ));
                             help.push(format!(
-                                "  2. Detect which exact \"{trait_name}\" is used in the trait constraint in the \"{function_name}\"."
+                                "{}2. Detect which exact \"{trait_name}\" is used in the trait constraint in the \"{function_name}\".",
+                                Indent::Single
                             ));
                             help.push(format!(
-                                "  3. Import that \"{trait_name}\"{}.",
+                                "{}3. Import that \"{trait_name}\"{}.",
+                                Indent::Single,
                                 get_file_name(source_engine, function_call_site_span.source_id())
                                     .map_or("".to_string(), |file_name| format!(" into \"{file_name}\""))
                             ));
-                            help.push(format!("     E.g., assuming it is the first one on the list, use: `use {};`", trait_candidates[0]));
+                            help.push(format!("{} E.g., assuming it is the first one on the list, use: `use {};`", Indent::Double, trait_candidates[0]));
                         }
 
                         help
@@ -1253,6 +1562,874 @@ impl ToDiagnostic for CompileError {
                 ],
                 help: vec![],
             },
+            StructInstantiationMissingFields { field_names, struct_name, span, struct_decl_span, total_number_of_fields } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct instantiation has missing fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Instantiation of the struct \"{struct_name}\" is missing the field{} {}.",
+                            plural_s(field_names.len()),
+                            sequence_to_str(field_names, Enclosing::DoubleQuote, 2)
+                        )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "Struct instantiation must initialize all the fields of the struct.".to_string()
+                    ),
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {} field{}.",
+                            number_to_str(*total_number_of_fields),
+                            plural_s(*total_number_of_fields),
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            StructCannotBeInstantiated { struct_name, span, struct_decl_span, private_fields, constructors, all_fields_are_private, is_in_storage_declaration, struct_can_be_changed } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct cannot be instantiated due to inaccessible private fields".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{struct_name}\" cannot be {}instantiated in this {}, due to {}inaccessible private field{}.",
+                        if *is_in_storage_declaration { "" } else { "directly " },
+                        if *is_in_storage_declaration { "storage declaration" } else { "module" },
+                        singular_plural(private_fields.len(), "an ", ""),
+                        plural_s(private_fields.len())
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        format!("Inaccessible field{} {} {}.",
+                            plural_s(private_fields.len()),
+                            is_are(private_fields.len()),
+                            sequence_to_str(private_fields, Enclosing::DoubleQuote, 5)
+                        )
+                    ),
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        if *is_in_storage_declaration {
+                            "Structs with private fields can be instantiated in storage declarations only if they are declared in the same module as the storage.".to_string()
+                        } else {
+                            "Structs with private fields can be instantiated only within the module in which they are declared.".to_string()
+                        }
+                    ),
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can still be initialized in storage declarations if they have public constructors that evaluate to a constant.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if *is_in_storage_declaration {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            "They can always be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    if !*is_in_storage_declaration && !constructors.is_empty() {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("\"{struct_name}\" can be instantiated via public constructors suggested below.")
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::info(
+                        source_engine,
+                        struct_decl_span.clone(),
+                        format!("Struct \"{struct_name}\" is declared here, and has {}.",
+                            if *all_fields_are_private {
+                                "all private fields".to_string()
+                            } else {
+                                format!("private field{} {}",
+                                    plural_s(private_fields.len()),
+                                    sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                )
+                            }
+                        )
+                    ),
+                ],
+                help: {
+                    let mut help = vec![];
+
+                    if *is_in_storage_declaration {
+                        help.push(format!("Consider initializing \"{struct_name}\" by finding an available constructor that evaluates to a constant{}.",
+                            if *struct_can_be_changed {
+                                ", or implement a new one"
+                            } else {
+                                ""
+                            }
+                        ));
+
+                        if !constructors.is_empty() {
+                            help.push("Check these already available constructors. They might evaluate to a constant:".to_string());
+                            // We always expect a very few candidates here. So let's list all of them by using `usize::MAX`.
+                            for constructor in sequence_to_list(constructors, Indent::Single, usize::MAX) {
+                                help.push(constructor);
+                            }
+                        };
+
+                        help.push(Diagnostic::help_empty_line());
+
+                        help.push(format!("Or you can always store instances of \"{struct_name}\" in the contract storage, by using the `std::storage::storage_api`:"));
+                        help.push(format!("{}use std::storage::storage_api::{{read, write}};", Indent::Single));
+                        help.push(format!("{}write(STORAGE_KEY, 0, my_{});", Indent::Single, to_snake_case(struct_name.as_str())));
+                        help.push(format!("{}let my_{}_option = read::<{struct_name}>(STORAGE_KEY, 0);", Indent::Single, to_snake_case(struct_name.as_str())));
+                    }
+                    else if !constructors.is_empty() {
+                        help.push(format!("Consider instantiating \"{struct_name}\" by using one of the available constructors{}:",
+                            if *struct_can_be_changed {
+                                ", or implement a new one"
+                            } else {
+                                ""
+                            }
+                        ));
+                        for constructor in sequence_to_list(constructors, Indent::Single, 5) {
+                            help.push(constructor);
+                        }
+                    }
+
+                    if *struct_can_be_changed {
+                        if *is_in_storage_declaration || !constructors.is_empty() {
+                            help.push(Diagnostic::help_empty_line());
+                        }
+
+                        if !*is_in_storage_declaration && constructors.is_empty() {
+                            help.push(format!("Consider implementing a public constructor for \"{struct_name}\"."));
+                        };
+
+                        help.push(
+                            // Alternatively, consider declaring the field "f" as public in "Struct": `pub f: ...,`.
+                            //  or
+                            // Alternatively, consider declaring the fields "f" and "g" as public in "Struct": `pub <field>: ...,`.
+                            //  or
+                            // Alternatively, consider declaring all fields as public in "Struct": `pub <field>: ...,`.
+                            format!("Alternatively, consider declaring {} as public in \"{struct_name}\": `pub {}: ...,`.",
+                                if *all_fields_are_private {
+                                    "all fields".to_string()
+                                } else {
+                                    format!("{} {}",
+                                        singular_plural(private_fields.len(), "the field", "the fields"),
+                                        sequence_to_str(private_fields, Enclosing::DoubleQuote, 2)
+                                    )
+                                },
+                                if *all_fields_are_private {
+                                    "<field>".to_string()
+                                } else {
+                                    match &private_fields[..] {
+                                        [field] => format!("{field}"),
+                                        _ => "<field>".to_string(),
+                                    }
+                                },
+                            )
+                        )
+                    };
+
+                    help
+                }
+            },
+            StructFieldIsPrivate { field_name, struct_name, field_decl_span, struct_can_be_changed, usage_context } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Private struct field is inaccessible".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Private field \"{field_name}\" {}is inaccessible in this module.",
+                        match usage_context {
+                            StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => "".to_string(),
+                            StorageAccess | StructFieldAccess => format!("of the struct \"{struct_name}\" "),
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        field_name.span(),
+                        format!("Private fields can only be {} within the module in which their struct is declared.",
+                            match usage_context {
+                                StructInstantiation { .. } | StorageDeclaration { .. } => "initialized",
+                                StorageAccess | StructFieldAccess => "accessed",
+                                PatternMatching { .. } => "matched",
+                            }
+                        )
+                    ),
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        Hint::help(
+                            source_engine,
+                            field_name.span(),
+                            "Otherwise, they must be ignored by ending the struct pattern with `..`.".to_string()
+                        )
+                    } else {
+                        Hint::none()
+                    },
+                    Hint::info(
+                        source_engine,
+                        field_decl_span.clone(),
+                        format!("Field \"{field_name}\" {}is declared here as private.",
+                            match usage_context {
+                                StructInstantiation { .. } | StorageDeclaration { .. } | PatternMatching { .. } => format!("of the struct \"{struct_name}\" "),
+                                StorageAccess | StructFieldAccess => "".to_string(),
+                            }
+                        )
+                    ),
+                ],
+                help: vec![
+                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                        format!("Consider removing the field \"{field_name}\" from the struct pattern, and ending the pattern with `..`.")
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                    if *struct_can_be_changed {
+                        match usage_context {
+                            StorageAccess | StructFieldAccess | PatternMatching { .. } => {
+                                format!("{} declaring the field \"{field_name}\" as public in \"{struct_name}\": `pub {field_name}: ...,`.",
+                                    if matches!(usage_context, PatternMatching { has_rest_pattern } if !has_rest_pattern) {
+                                        "Alternatively, consider"
+                                    } else {
+                                        "Consider"
+                                    }
+                                )
+                            },
+                            // For all other usages, detailed instructions are already given in specific messages.
+                            _ => Diagnostic::help_none(),
+                        }
+                    } else {
+                        Diagnostic::help_none()
+                    },
+                ],
+            },
+            StructFieldDoesNotExist { field_name, available_fields, is_public_struct_access, struct_name, struct_decl_span, struct_is_empty, usage_context } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Struct field does not exist".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Field \"{field_name}\" does not exist in the struct \"{struct_name}\".")
+                ),
+                hints: {
+                    let public = if *is_public_struct_access { "public " } else { "" };
+
+                    let (hint, show_struct_decl) = if *struct_is_empty {
+                        (Some(format!("\"{struct_name}\" is an empty struct. It doesn't have any fields.")), false)
+                    }
+                    // If the struct anyhow cannot be instantiated (in the struct instantiation or storage declaration),
+                    // we don't show any additional hints.
+                    // Showing any available fields would be inconsistent and misleading, because they anyhow cannot be used.
+                    // Besides, "Struct cannot be instantiated" error will provide all the explanations and suggestions.
+                    else if (matches!(usage_context, StorageAccess) && *is_public_struct_access && available_fields.is_empty())
+                            ||
+                            (matches!(usage_context, StructInstantiation { struct_can_be_instantiated: false } | StorageDeclaration { struct_can_be_instantiated: false })) {
+                        // If the struct anyhow cannot be instantiated in the storage, don't show any additional hint
+                        // if there is an attempt to access a non existing field of such non-instantiable struct.
+                        //   or
+                        // Likewise, if we are in the struct instantiation or storage declaration and the struct
+                        // cannot be instantiated.
+                        (None, false)
+                    } else if !available_fields.is_empty() {
+                        // In all other cases, show the available fields.
+                        const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
+                        match &available_fields[..] {
+                            [field] => (Some(format!("Only available {public}field is \"{field}\".")), false),
+                            _ => (Some(format!("Available {public}fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY))),
+                                    available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
+                                ),
+                        }
+                    }
+                    else {
+                        (None, false)
+                    };
+
+                    let mut hints = vec![];
+
+                    if let Some(hint) = hint {
+                        hints.push(Hint::help(source_engine, field_name.span(), hint));
+                    };
+
+                    if show_struct_decl {
+                        hints.push(Hint::info(
+                            source_engine,
+                            struct_decl_span.clone(),
+                            format!("Struct \"{struct_name}\" is declared here, and has {} {public}fields.",
+                                number_to_str(available_fields.len())
+                            )
+                        ));
+                    }
+
+                    hints
+                },
+                help: vec![],
+            },
+            NotIndexable { actually, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Type is not indexable".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{actually}\", which is not an indexable type.")
+                ),
+                hints: vec![],
+                help: vec![
+                    "Index operator `[]` can be used only on indexable types.".to_string(),
+                    "In Sway, indexable types are:".to_string(),
+                    format!("{}- arrays. E.g., `[u64;3]`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to arrays. E.g., `&[u64;3]` or `&&&[u64;3]`.", Indent::Single),
+                ],
+            },
+            FieldAccessOnNonStruct { actually, storage_variable, field_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Field access requires a struct".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{} has type \"{actually}\", which is not a struct{}.",
+                        if let Some(storage_variable) = storage_variable {
+                            format!("Storage variable \"{storage_variable}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if storage_variable.is_some() {
+                            ""
+                        } else {
+                            " or a reference to a struct"
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        field_name.span(),
+                        format!("Field access happens here, on \"{field_name}\".")
+                    )
+                ],
+                help: if storage_variable.is_some() {
+                    vec![
+                        "Fields can only be accessed on storage variables that are structs.".to_string(),
+                    ]
+                } else {
+                    vec![
+                        "In Sway, fields can be accessed on:".to_string(),
+                        format!("{}- structs. E.g., `my_struct.field`.", Indent::Single),
+                        format!("{}- references, direct or indirect, to structs. E.g., `(&my_struct).field` or `(&&&my_struct).field`.", Indent::Single),
+                    ]
+                }
+            },
+	    SymbolWithMultipleBindings { name, paths, span } => Diagnostic {
+		reason: Some(Reason::new(code(1), "Multiple bindings for symbol in this scope".to_string())),
+		issue: Issue::error(
+		    source_engine,
+		    span.clone(),
+		    format!("The following paths are all valid bindings for symbol \"{}\": {}", name, paths.iter().map(|path| format!("{path}::{name}")).collect::<Vec<_>>().join(", ")),
+		),
+		hints: paths.iter().map(|path| Hint::info(source_engine, Span::dummy(), format!("{path}::{}", name.as_str()))).collect(),
+		help: vec![format!("Consider using a fully qualified name, e.g., {}::{}", paths[0], name.as_str())],
+	    },
+            StorageFieldDoesNotExist { field_name, available_fields, storage_decl_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Storage field does not exist".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    field_name.span(),
+                    format!("Storage field \"{field_name}\" does not exist in the storage.")
+                ),
+                hints: {
+                    let (hint, show_storage_decl) = if available_fields.is_empty() {
+                        ("The storage is empty. It doesn't have any fields.".to_string(), false)
+                    } else {
+                        const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
+                        match &available_fields[..] {
+                            [field] => (format!("Only available storage field is \"{field}\"."), false),
+                            _ => (format!("Available storage fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
+                                    available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
+                                ),
+                        }
+                    };
+
+                    let mut hints = vec![];
+
+                    hints.push(Hint::help(source_engine, field_name.span(), hint));
+
+                    if show_storage_decl {
+                        hints.push(Hint::info(
+                            source_engine,
+                            storage_decl_span.clone(),
+                            format!("Storage is declared here, and has {} fields.",
+                                number_to_str(available_fields.len())
+                            )
+                        ));
+                    }
+
+                    hints
+                },
+                help: vec![],
+            },
+            TupleIndexOutOfBounds { index, count, tuple_type, span, prefix_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Tuple index is out of bounds".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("Tuple index {index} is out of bounds. The tuple has only {count} element{}.", plural_s(*count))
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        prefix_span.clone(),
+                        format!("This expression has type \"{tuple_type}\".")
+                    ),
+                ],
+                help: vec![],
+            },
+            TupleElementAccessOnNonTuple { actually, span, index, index_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Tuple element access requires a tuple".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("This expression has type \"{actually}\", which is not a tuple or a reference to a tuple.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        index_span.clone(),
+                        format!("Tuple element access happens here, on the index {index}.")
+                    )
+                ],
+                help: vec![
+                    "In Sway, tuple elements can be accessed on:".to_string(),
+                    format!("{}- tuples. E.g., `my_tuple.1`.", Indent::Single),
+                    format!("{}- references, direct or indirect, to tuples. E.g., `(&my_tuple).1` or `(&&&my_tuple).1`.", Indent::Single),
+                ],
+            },
+            RefMutCannotReferenceConstant { constant, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "References to mutable values cannot reference constants".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{constant}\" is a constant. `&mut` cannot reference constants.")
+                ),
+                hints: vec![],
+                help: vec![
+                    "Consider:".to_string(),
+                    format!("{}- taking a reference without `mut`: `&{constant}`.", Indent::Single),
+                    format!("{}- referencing a mutable copy of the constant, by returning it from a block: `&mut {{ {constant} }}`.", Indent::Single)
+                ],
+            },
+            RefMutCannotReferenceImmutableVariable { decl_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "References to mutable values cannot reference immutable variables".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("\"{decl_name}\" is an immutable variable. `&mut` cannot reference immutable variables.")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
+                    ),
+                ],
+                help: vec![
+                    "Consider:".to_string(),
+                    // TODO-IG: Once desugaring information becomes available, do not show the first suggestion if declaring variable as mutable is not possible.
+                    format!("{}- declaring \"{decl_name}\" as mutable.", Indent::Single),
+                    format!("{}- taking a reference without `mut`: `&{decl_name}`.", Indent::Single),
+                    format!("{}- referencing a mutable copy of \"{decl_name}\", by returning it from a block: `&mut {{ {decl_name} }}`.", Indent::Single)
+                ],
+            },
+            ConflictingImplsForTraitAndType { trait_name, type_implementing_for, existing_impl_span, second_impl_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Trait is already implemented for type".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    second_impl_span.clone(),
+                    format!("Trait \"{trait_name}\" is already implemented for type \"{type_implementing_for}\".")
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        existing_impl_span.clone(),
+                        format!("This is the already existing implementation of \"{}\" for \"{type_implementing_for}\".",
+                            call_path_suffix_with_args(trait_name)
+                        )
+                    ),
+                ],
+                help: vec![
+                    "In Sway, there can be at most one implementation of a trait for any given type.".to_string(),
+                    "This property is called \"trait coherence\".".to_string(),
+                ],
+            },
+            AssignmentToNonMutableVariable { lhs_span, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Immutable variables cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is an immutable variable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is an immutable variable.
+                    format!("{} cannot be assigned to, because {} is an immutable variable.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just a single variable in the expression.
+                            format!("\"{decl_name}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{decl_name}\"")
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("Variable \"{decl_name}\" is declared here as immutable.")
+                    ),
+                ],
+                help: vec![
+                    // TODO-IG: Once desugaring information becomes available, do not show this suggestion if declaring variable as mutable is not possible.
+                    format!("Consider declaring \"{decl_name}\" as mutable."),
+                ],
+            },
+            AssignmentToConstantOrConfigurable { lhs_span, is_configurable, decl_name } => Diagnostic {
+                reason: Some(Reason::new(code(1), format!("{} cannot be assigned to",
+                    if *is_configurable {
+                        "Configurables"
+                    } else {
+                        "Constants"
+                    }
+                ))),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a constant/configurable.
+                    //  or
+                    // This expression cannot be assigned to, because "x" is a constant/configurable.
+                    format!("{} cannot be assigned to, because {} is a {}.",
+                        if decl_name.as_str() == lhs_span.as_str() { // We have just the constant in the expression.
+                            format!("\"{decl_name}\"")
+                        } else {
+                            "This expression".to_string()
+                        },
+                        if decl_name.as_str() == lhs_span.as_str() {
+                            "it".to_string()
+                        } else {
+                            format!("\"{decl_name}\"")
+                        },
+                        if *is_configurable {
+                            "configurable"
+                        } else {
+                            "constant"
+                        }
+                    )
+                ),
+                hints: vec![
+                    Hint::info(
+                        source_engine,
+                        decl_name.span(),
+                        format!("{} \"{decl_name}\" is declared here.",
+                            if *is_configurable {
+                                "Configurable"
+                            } else {
+                                "Constant"
+                            }
+                        )
+                    ),
+                ],
+                help: vec![],
+            },
+            DeclAssignmentTargetCannotBeAssignedTo { decl_name, decl_friendly_type_name, lhs_span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Assignment target cannot be assigned to".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    lhs_span.clone(),
+                    // "x" cannot be assigned to, because it is a trait/function/ etc and not a mutable variable.
+                    //  or
+                    // This cannot be assigned to, because "x" is a trait/function/ etc and not a mutable variable.
+                    format!("{} cannot be assigned to, because {} is {}{decl_friendly_type_name} and not a mutable variable.",
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() => // We have just the decl name in the expression.
+                                format!("\"{decl_name}\""),
+                            _ => "This".to_string(),
+                        },
+                        match decl_name {
+                            Some(decl_name) if decl_name.as_str() == lhs_span.as_str() =>
+                                "it".to_string(),
+                            Some(decl_name) => format!("\"{}\"", decl_name.as_str()),
+                            _ => "it".to_string(),
+                        },
+                        a_or_an(decl_friendly_type_name)
+                    )
+                ),
+                hints: vec![
+                    match decl_name {
+                        Some(decl_name) => Hint::info(
+                            source_engine,
+                            decl_name.span(),
+                            format!("{} \"{decl_name}\" is declared here.", ascii_sentence_case(&decl_friendly_type_name.to_string()))
+                        ),
+                        _ => Hint::none(),
+                    }
+                ],
+                help: vec![],
+            },
+            AssignmentViaNonMutableReference { decl_reference_name, decl_reference_rhs, decl_reference_type, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Reference is not a reference to a mutable value (`&mut`)".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    // This reference expression is not a reference to a mutable value (`&mut`).
+                    //  or
+                    // Reference "ref_xyz" is not a reference to a mutable value (`&mut`).
+                    format!("{} is not a reference to a mutable value (`&mut`).",
+                        match decl_reference_name {
+                            Some(decl_reference_name) => format!("Reference \"{decl_reference_name}\""),
+                            _ => "This reference expression".to_string(),
+                        }
+                    )
+                ),
+                hints: vec![
+                    match decl_reference_name {
+                        Some(decl_reference_name) => Hint::info(
+                            source_engine,
+                            decl_reference_name.span(),
+                            format!("Reference \"{decl_reference_name}\" is declared here as a reference to immutable value.")
+                        ),
+                        _ => Hint::none(),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) => Hint::info(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("This expression has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                        _ => Hint::info(
+                            source_engine,
+                            span.clone(),
+                            format!("It has type \"{decl_reference_type}\" instead of \"&mut {}\".",
+                                &decl_reference_type[1..]
+                            )
+                        ),
+                    },
+                    match decl_reference_rhs {
+                        Some(decl_reference_rhs) if decl_reference_rhs.as_str().starts_with('&') => Hint::help(
+                            source_engine,
+                            decl_reference_rhs.clone(),
+                            format!("Consider taking here a reference to a mutable value: `&mut {}`.",
+                                first_line(decl_reference_rhs.as_str()[1..].trim(), true)
+                            )
+                        ),
+                        _ => Hint::none(),
+                    },
+                ],
+                help: vec![
+                    format!("{} dereferenced in assignment targets must {} references to mutable values (`&mut`).",
+                        if decl_reference_name.is_some() {
+                            "References"
+                        } else {
+                            "Reference expressions"
+                        },
+                        if decl_reference_name.is_some() {
+                            "be"
+                        } else {
+                            "result in"
+                        }
+                    ),
+                ],
+            },
+            Unimplemented { feature, help, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Used feature is currently not implemented".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{feature} is currently not implemented.")
+                ),
+                hints: vec![],
+                help: help.clone(),
+            },
+            MatchedValueIsNotValid { supported_types_message, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Matched value is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This cannot be matched.".to_string()
+                ),
+                hints: vec![],
+                help: {
+                    let mut help = vec![];
+
+                    help.push("Matched value must be an expression whose result is of one of the types supported in pattern matching.".to_string());
+                    help.push(Diagnostic::help_empty_line());
+                    for msg in supported_types_message {
+                        help.push(msg.to_string());
+                    }
+
+                    help
+                }
+            },
+            TypeIsNotValidAsImplementingFor { invalid_type, trait_name, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Self type of an impl block is not valid".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    format!("{invalid_type} is not a valid type in the self type of {} impl block.",
+                        match trait_name {
+                            Some(_) => "a trait",
+                            None => "an",
+                        }
+                    )
+                ),
+                hints: vec![
+                    if matches!(invalid_type, InvalidImplementingForType::SelfType) {
+                        Hint::help(
+                            source_engine,
+                            span.clone(),
+                            format!("Replace {invalid_type} with the actual type that you want to implement for.")
+                        )
+                    } else {
+                        Hint::none()
+                    }
+                ],
+                help: {
+                    if matches!(invalid_type, InvalidImplementingForType::Placeholder) {
+                        vec![
+                            format!("Are you trying to implement {} for any type?",
+                                match trait_name {
+                                    Some(trait_name) => format!("trait \"{trait_name}\""),
+                                    None => "functionality".to_string(),
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "If so, use generic type parameters instead.".to_string(),
+                            "E.g., instead of:".to_string(),
+                            // The trait `trait_name` could represent an arbitrary complex trait.
+                            // E.g., `with generic arguments, etc. So we don't want to deal
+                            // with the complexity of representing it properly
+                            // but rather use a simplified but clearly instructive
+                            // sample trait name here, `SomeTrait`.
+                            // impl _
+                            //   or
+                            // impl SomeTrait for _
+                            format!("{}impl {}_",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                            "use:".to_string(),
+                            format!("{}impl<T> {}T",
+                                Indent::Single,
+                                match trait_name {
+                                    Some(_) => "SomeTrait for ",
+                                    None => "",
+                                }
+                            ),
+                        ]
+                    } else {
+                        vec![]
+                    }
+                }
+            },
+            ModulePathIsNotAnExpression { module_path, span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Module path is not an expression".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    "This is a module path, and not an expression.".to_string()
+                ),
+                hints: vec![
+                    Hint::help(
+                        source_engine,
+                        span.clone(),
+                        "An expression is expected at this location, but a module path is found.".to_string()
+                    ),
+                ],
+                help: vec![
+                    "In expressions, module paths can only be used to fully qualify names with a path.".to_string(),
+                    format!("E.g., `{module_path}::SOME_CONSTANT` or `{module_path}::some_function()`."),
+                ]
+            },
+            Parse { error } => {
+                match &error.kind {
+                    ParseErrorKind::UnassignableExpression { erroneous_expression_kind, erroneous_expression_span } => Diagnostic {
+                        reason: Some(Reason::new(code(1), "Expression cannot be assigned to".to_string())),
+                        // A bit of a special handling for parentheses, because they are the only
+                        // expression kind whose friendly name is in plural. Having it in singular
+                        // or without this simple special handling gives very odd sounding sentences.
+                        // Therefore, just a bit of a special handling.
+                        issue: Issue::error(
+                            source_engine,
+                            error.span.clone(),
+                            format!("This expression cannot be assigned to, because it {} {}{}.",
+                                if &error.span == erroneous_expression_span { // If the whole expression is erroneous.
+                                    "is"
+                                } else {
+                                    "contains"
+                                },
+                                if *erroneous_expression_kind == "parentheses" {
+                                    ""
+                                } else {
+                                    a_or_an(erroneous_expression_kind)
+                                },
+                                erroneous_expression_kind
+                            )
+                        ),
+                        hints: vec![
+                            if &error.span != erroneous_expression_span {
+                                Hint::info(
+                                    source_engine,
+                                    erroneous_expression_span.clone(),
+                                    format!("{} the contained {erroneous_expression_kind}.",
+                                        if *erroneous_expression_kind == "parentheses" {
+                                            "These are"
+                                        } else {
+                                            "This is"
+                                        }
+                                    )
+                                )
+                            } else {
+                                Hint::none()
+                            },
+                        ],
+                        help: vec![
+                            format!("{} cannot be {}an assignment target.",
+                                ascii_sentence_case(&erroneous_expression_kind.to_string()),
+                                if &error.span == erroneous_expression_span {
+                                    ""
+                                } else {
+                                    "a part of "
+                                }
+                            ),
+                            Diagnostic::help_empty_line(),
+                            "In Sway, assignment targets must be one of the following:".to_string(),
+                            format!("{}- Expressions starting with a mutable variable, optionally having", Indent::Single),
+                            format!("{}  array or tuple element accesses, struct field accesses,", Indent::Single),
+                            format!("{}  or arbitrary combinations of those.", Indent::Single),
+                            format!("{}  E.g., `mut_var` or `mut_struct.field` or `mut_array[x + y].field.1`.", Indent::Single),
+                            Diagnostic::help_empty_line(),
+                            format!("{}- Dereferencing of an arbitrary expression that results", Indent::Single),
+                            format!("{}  in a reference to a mutable value.", Indent::Single),
+                            format!("{}  E.g., `*ref_to_mutable_value` or `*max_mut(&mut x, &mut y)`.", Indent::Single),
+                        ]
+                    },
+                    _ => Diagnostic {
+                                // TODO: Temporary we use self here to achieve backward compatibility.
+                                //       In general, self must not be used and will not be used once we
+                                //       switch to our own #[error] macro. All the values for the formatting
+                                //       of a diagnostic must come from the enum variant parameters.
+                                issue: Issue::error(source_engine, self.span(), format!("{}", self)),
+                                ..Default::default()
+                        },
+                }
+            },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
                     //       In general, self must not be used and will not be used once we
@@ -1260,7 +2437,7 @@ impl ToDiagnostic for CompileError {
                     //       of a diagnostic must come from the enum variant parameters.
                     issue: Issue::error(source_engine, self.span(), format!("{}", self)),
                     ..Default::default()
-                }
+            }
         }
     }
 }
@@ -1289,12 +2466,32 @@ pub enum TypeNotAllowedReason {
     StringSliceInConst,
 }
 
-/// Returns the file name (with extension) for the provided `source_id`,
-/// or `None` if the `source_id` is `None` or the file name cannot be
-/// obtained.
-fn get_file_name(source_engine: &SourceEngine, source_id: Option<&SourceId>) -> Option<String> {
-    match source_id {
-        Some(source_id) => source_engine.get_file_name(source_id),
-        None => None,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StructFieldUsageContext {
+    StructInstantiation { struct_can_be_instantiated: bool },
+    StorageDeclaration { struct_can_be_instantiated: bool },
+    StorageAccess,
+    PatternMatching { has_rest_pattern: bool },
+    StructFieldAccess,
+    // TODO: Distinguish between struct field access and destructing
+    //       once https://github.com/FuelLabs/sway/issues/5478 is implemented
+    //       and provide specific suggestions for these two cases.
+    //       (Destructing desugars to plain struct field access.)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InvalidImplementingForType {
+    SelfType,
+    Placeholder,
+    Other,
+}
+
+impl fmt::Display for InvalidImplementingForType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            InvalidImplementingForType::SelfType => f.write_str("\"Self\""),
+            InvalidImplementingForType::Placeholder => f.write_str("Placeholder `_`"),
+            InvalidImplementingForType::Other => f.write_str("This"),
+        }
     }
 }

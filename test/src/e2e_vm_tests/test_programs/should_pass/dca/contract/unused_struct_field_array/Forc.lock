@@ -1,3 +1,8 @@
 [[package]]
-name = 'unused_struct_field_array'
-source = 'member'
+name = "core"
+source = "path+from-root-7D62036E37D0166D"
+
+[[package]]
+name = "unused_struct_field_array"
+source = "member"
+dependencies = ["core"]

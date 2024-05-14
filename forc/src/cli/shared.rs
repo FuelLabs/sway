@@ -1,8 +1,7 @@
 //! Sets of arguments that are shared between commands.
-
 use clap::{Args, Parser};
 use forc_pkg::source::IPFSNode;
-use sway_core::BuildTarget;
+use sway_core::{BuildTarget, PrintAsm};
 
 /// Args that can be shared between all commands that `build` a package. E.g. `build`, `test`,
 /// `deploy`.
@@ -26,10 +25,11 @@ pub struct Build {
 /// Build output file options.
 #[derive(Args, Debug, Default)]
 pub struct BuildOutput {
-    /// If set, outputs a binary file representing the script bytes.
+    /// Create a binary file representing the script bytecode at the provided path.
     #[clap(long = "output-bin", short = 'o')]
     pub bin_file: Option<String>,
-    /// If set, outputs source file mapping in JSON format
+    /// Create a file containing debug information at the provided path.
+    /// If the file extension is .json, JSON format is used. Otherwise, an ELF file containing DWARF is emitted.
     #[clap(long = "output-debug", short = 'g')]
     pub debug_file: Option<String>,
 }
@@ -37,14 +37,11 @@ pub struct BuildOutput {
 /// Build profile options.
 #[derive(Args, Debug, Default)]
 pub struct BuildProfile {
-    /// Name of the build profile to use.
-    ///
-    /// If unspecified, forc will use debug build profile.
-    #[clap(long)]
-    pub build_profile: Option<String>,
-    /// Use release build plan. If a custom release plan is not specified, it is implicitly added to the manifest file.
-    ///
-    ///  If --build-profile is also provided, forc omits this flag and uses provided build-profile.
+    /// The name of the build profile to use.
+    #[clap(long, conflicts_with = "release", default_value = forc_pkg::BuildProfile::DEBUG)]
+    pub build_profile: String,
+    /// Use the release build profile.
+    /// The release profile can be customized in the manifest file.
     #[clap(long)]
     pub release: bool,
     /// Treat warnings as errors.
@@ -69,17 +66,19 @@ pub struct Print {
     ///   "vscode://file/{path}:{line}:{col}"
     #[clap(long, verbatim_doc_comment)]
     pub dca_graph_url_format: Option<String>,
-    /// Print the finalized ASM.
+    /// Print the generated ASM (assembler).
     ///
-    /// This is the state of the ASM with registers allocated and optimisations applied.
+    /// Possible values that can be combined:
+    ///  - virtual:   initial ASM with virtual registers and abstract control flow.
+    ///  - allocated: ASM with registers allocated, but still with abstract control flow.
+    ///  - abstract:  short for both virtual and allocated ASM.
+    ///  - final:     final ASM that gets serialized to the target VM bytecode.
+    ///  - all:       short for virtual, allocated, and final ASM.
+    #[arg(long, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
+    pub asm: Option<Vec<String>>,
+    /// Print the bytecode. This is the final output of the compiler.
     #[clap(long)]
-    pub finalized_asm: bool,
-    /// Print the generated ASM.
-    ///
-    /// This is the state of the ASM prior to performing register allocation and other ASM
-    /// optimisations.
-    #[clap(long)]
-    pub intermediate_asm: bool,
+    pub bytecode: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     #[clap(long)]
     pub ir: bool,
@@ -92,6 +91,14 @@ pub struct Print {
     /// Output compilation metrics into file.
     #[clap(long)]
     pub metrics_outfile: Option<String>,
+}
+
+impl Print {
+    pub fn asm(&self) -> PrintAsm {
+        self.asm
+            .as_ref()
+            .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0)
+    }
 }
 
 /// Package-related options.
@@ -137,4 +144,39 @@ pub struct Minify {
     /// this option JSON output will be "minified", i.e. all on one line without whitespace.
     #[clap(long)]
     pub json_storage_slots: bool,
+}
+
+pub struct PrintAsmCliOpt(pub PrintAsm);
+
+impl PrintAsmCliOpt {
+    const VIRTUAL: &'static str = "virtual";
+    const ALLOCATED: &'static str = "allocated";
+    const ABSTRACT: &'static str = "abstract";
+    const FINAL: &'static str = "final";
+    const ALL: &'static str = "all";
+    pub const CLI_OPTIONS: [&'static str; 5] = [
+        Self::VIRTUAL,
+        Self::ALLOCATED,
+        Self::ABSTRACT,
+        Self::FINAL,
+        Self::ALL,
+    ];
+}
+
+impl From<&Vec<String>> for PrintAsmCliOpt {
+    fn from(value: &Vec<String>) -> Self {
+        let contains_opt = |opt: &str| value.iter().any(|val| *val == opt);
+
+        let print_asm = if contains_opt(Self::ALL) {
+            PrintAsm::all()
+        } else {
+            PrintAsm {
+                virtual_abstract: contains_opt(Self::ABSTRACT) || contains_opt(Self::VIRTUAL),
+                allocated_abstract: contains_opt(Self::ABSTRACT) || contains_opt(Self::ALLOCATED),
+                r#final: contains_opt(Self::FINAL),
+            }
+        };
+
+        Self(print_asm)
+    }
 }

@@ -12,3 +12,4 @@ Whether you are a beginner or an experienced Sway developer, this documentation 
 
 - [Installation](./installation.md)
 - [Features](./features.md)
+- [Troubleshooting](./troubleshooting.md)

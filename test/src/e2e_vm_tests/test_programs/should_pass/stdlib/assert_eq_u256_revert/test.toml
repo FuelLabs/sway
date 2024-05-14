@@ -1,3 +1,0 @@
-category = "run"
-expected_result = { action = "revert", value = -65533 } # 0xffffffffffff0003 as i64
-validate_abi = true

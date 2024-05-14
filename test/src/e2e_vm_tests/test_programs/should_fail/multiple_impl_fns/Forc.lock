@@ -1,3 +1,8 @@
 [[package]]
-name = 'multiple_impl_fns'
-source = 'member'
+name = "core"
+source = "path+from-root-99C864323F6D5FE1"
+
+[[package]]
+name = "multiple_impl_fns"
+source = "member"
+dependencies = ["core"]

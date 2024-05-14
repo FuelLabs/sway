@@ -6,6 +6,7 @@ name = "test_script"
 implicit-std = false
 
 [dependencies]
+core = { path = "../../../../../../../../sway-lib-core" }
 test_lib = { path = "../test_lib/" }
 
 [contract-dependencies]

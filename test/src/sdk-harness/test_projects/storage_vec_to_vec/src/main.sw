@@ -5,7 +5,7 @@ use std::storage::storage_vec::*;
 pub struct TestStruct {
     val1: u64,
     val2: u64,
-    val3: u64
+    val3: u64,
 }
 
 impl Eq for TestStruct {
@@ -76,7 +76,11 @@ impl VecToVecStorageTest for Contract {
 
     #[storage(read, write)]
     fn pop_vec_struct() -> TestStruct {
-        storage.storage_vec_struct.pop().unwrap_or(TestStruct{val1: 0, val2: 0, val3: 0})
+        storage.storage_vec_struct.pop().unwrap_or(TestStruct {
+            val1: 0,
+            val2: 0,
+            val3: 0,
+        })
     }
 }
 
@@ -144,68 +148,221 @@ fn test_pop_u64() {
     assert(returned_vec.get(2).unwrap() == 9);
 }
 
-
 #[test]
 fn test_conversion_struct() {
     let vec_abi = abi(VecToVecStorageTest, CONTRACT_ID);
     let mut test_vec = Vec::<TestStruct>::new();
-    test_vec.push(TestStruct{val1: 0, val2: 1, val3: 2});
-    test_vec.push(TestStruct{val1: 1, val2: 2, val3: 3});
-    test_vec.push(TestStruct{val1: 2, val2: 3, val3: 4});
-    test_vec.push(TestStruct{val1: 3, val2: 4, val3: 5});
+    test_vec.push(TestStruct {
+        val1: 0,
+        val2: 1,
+        val3: 2,
+    });
+    test_vec.push(TestStruct {
+        val1: 1,
+        val2: 2,
+        val3: 3,
+    });
+    test_vec.push(TestStruct {
+        val1: 2,
+        val2: 3,
+        val3: 4,
+    });
+    test_vec.push(TestStruct {
+        val1: 3,
+        val2: 4,
+        val3: 5,
+    });
 
     vec_abi.store_vec_struct(test_vec);
 
     let returned_vec = vec_abi.read_vec_struct();
 
     assert(returned_vec.len() == 4);
-    assert(returned_vec.get(0).unwrap() == TestStruct{val1: 0, val2: 1, val3: 2});
-    assert(returned_vec.get(1).unwrap() == TestStruct{val1: 1, val2: 2, val3: 3});
-    assert(returned_vec.get(2).unwrap() == TestStruct{val1: 2, val2: 3, val3: 4});
-    assert(returned_vec.get(3).unwrap() == TestStruct{val1: 3, val2: 4, val3: 5});
+    assert(
+        returned_vec
+            .get(0)
+            .unwrap() == TestStruct {
+            val1: 0,
+            val2: 1,
+            val3: 2,
+        },
+    );
+    assert(
+        returned_vec
+            .get(1)
+            .unwrap() == TestStruct {
+            val1: 1,
+            val2: 2,
+            val3: 3,
+        },
+    );
+    assert(
+        returned_vec
+            .get(2)
+            .unwrap() == TestStruct {
+            val1: 2,
+            val2: 3,
+            val3: 4,
+        },
+    );
+    assert(
+        returned_vec
+            .get(3)
+            .unwrap() == TestStruct {
+            val1: 3,
+            val2: 4,
+            val3: 5,
+        },
+    );
 }
 
 #[test]
 fn test_push_struct() {
     let vec_abi = abi(VecToVecStorageTest, CONTRACT_ID);
     let mut test_vec = Vec::<TestStruct>::new();
-    test_vec.push(TestStruct{val1: 0, val2: 1, val3: 2});
-    test_vec.push(TestStruct{val1: 1, val2: 2, val3: 3});
-    test_vec.push(TestStruct{val1: 2, val2: 3, val3: 4});
-    test_vec.push(TestStruct{val1: 3, val2: 4, val3: 5});
+    test_vec.push(TestStruct {
+        val1: 0,
+        val2: 1,
+        val3: 2,
+    });
+    test_vec.push(TestStruct {
+        val1: 1,
+        val2: 2,
+        val3: 3,
+    });
+    test_vec.push(TestStruct {
+        val1: 2,
+        val2: 3,
+        val3: 4,
+    });
+    test_vec.push(TestStruct {
+        val1: 3,
+        val2: 4,
+        val3: 5,
+    });
 
     vec_abi.store_vec_struct(test_vec);
 
-    vec_abi.push_vec_struct(TestStruct{val1: 4, val2: 5, val3: 6});
+    vec_abi.push_vec_struct(TestStruct {
+        val1: 4,
+        val2: 5,
+        val3: 6,
+    });
 
     let returned_vec = vec_abi.read_vec_struct();
 
     assert(returned_vec.len() == 5);
-    assert(returned_vec.get(0).unwrap() == TestStruct{val1: 0, val2: 1, val3: 2});
-    assert(returned_vec.get(1).unwrap() == TestStruct{val1: 1, val2: 2, val3: 3});
-    assert(returned_vec.get(2).unwrap() == TestStruct{val1: 2, val2: 3, val3: 4});
-    assert(returned_vec.get(3).unwrap() == TestStruct{val1: 3, val2: 4, val3: 5});
-    assert(returned_vec.get(4).unwrap() == TestStruct{val1: 4, val2: 5 , val3: 6});
+    assert(
+        returned_vec
+            .get(0)
+            .unwrap() == TestStruct {
+            val1: 0,
+            val2: 1,
+            val3: 2,
+        },
+    );
+    assert(
+        returned_vec
+            .get(1)
+            .unwrap() == TestStruct {
+            val1: 1,
+            val2: 2,
+            val3: 3,
+        },
+    );
+    assert(
+        returned_vec
+            .get(2)
+            .unwrap() == TestStruct {
+            val1: 2,
+            val2: 3,
+            val3: 4,
+        },
+    );
+    assert(
+        returned_vec
+            .get(3)
+            .unwrap() == TestStruct {
+            val1: 3,
+            val2: 4,
+            val3: 5,
+        },
+    );
+    assert(
+        returned_vec
+            .get(4)
+            .unwrap() == TestStruct {
+            val1: 4,
+            val2: 5,
+            val3: 6,
+        },
+    );
 }
 
 #[test]
 fn test_pop_struct() {
     let vec_abi = abi(VecToVecStorageTest, CONTRACT_ID);
     let mut test_vec = Vec::<TestStruct>::new();
-    test_vec.push(TestStruct{val1: 0, val2: 1, val3: 2});
-    test_vec.push(TestStruct{val1: 1, val2: 2, val3: 3});
-    test_vec.push(TestStruct{val1: 2, val2: 3, val3: 4});
-    test_vec.push(TestStruct{val1: 3, val2: 4, val3: 5});
+    test_vec.push(TestStruct {
+        val1: 0,
+        val2: 1,
+        val3: 2,
+    });
+    test_vec.push(TestStruct {
+        val1: 1,
+        val2: 2,
+        val3: 3,
+    });
+    test_vec.push(TestStruct {
+        val1: 2,
+        val2: 3,
+        val3: 4,
+    });
+    test_vec.push(TestStruct {
+        val1: 3,
+        val2: 4,
+        val3: 5,
+    });
 
     vec_abi.store_vec_struct(test_vec);
 
-    assert(TestStruct{val1: 3, val2: 4, val3: 5} == vec_abi.pop_vec_struct());
+    assert(
+        TestStruct {
+            val1: 3,
+            val2: 4,
+            val3: 5,
+        } == vec_abi
+            .pop_vec_struct(),
+    );
 
     let returned_vec = vec_abi.read_vec_struct();
 
     assert(returned_vec.len() == 3);
-    assert(returned_vec.get(0).unwrap() == TestStruct{val1: 0, val2: 1, val3: 2});
-    assert(returned_vec.get(1).unwrap() == TestStruct{val1: 1, val2: 2, val3: 3});
-    assert(returned_vec.get(2).unwrap() == TestStruct{val1: 2, val2: 3, val3: 4});
+    assert(
+        returned_vec
+            .get(0)
+            .unwrap() == TestStruct {
+            val1: 0,
+            val2: 1,
+            val3: 2,
+        },
+    );
+    assert(
+        returned_vec
+            .get(1)
+            .unwrap() == TestStruct {
+            val1: 1,
+            val2: 2,
+            val3: 3,
+        },
+    );
+    assert(
+        returned_vec
+            .get(2)
+            .unwrap() == TestStruct {
+            val1: 2,
+            val2: 3,
+            val3: 4,
+        },
+    );
 }
-

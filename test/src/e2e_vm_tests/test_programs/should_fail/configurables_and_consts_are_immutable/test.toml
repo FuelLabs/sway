@@ -1,0 +1,25 @@
+category = "fail"
+
+#check: $()Configurables cannot be assigned to
+#check: $()C: u64 = 0,
+#nextln: $()Configurable "C" is declared here.
+#check: $()C = 1;
+#nextln: $()"C" cannot be assigned to, because it is a configurable.
+
+#check: $()Configurables cannot be assigned to
+#check: $()C_S: S = S { x: 0 },
+#nextln: $()Configurable "C_S" is declared here.
+#check: $()C_S.x = 1;
+#nextln: $()This expression cannot be assigned to, because "C_S" is a configurable.
+
+#check: $()Constants cannot be assigned to
+#check: $()const CONST: u64 = 0;
+#nextln: $()Constant "CONST" is declared here.
+#check: $()CONST = 1;
+#nextln: $()"CONST" cannot be assigned to, because it is a constant.
+
+#check: $()Constants cannot be assigned to
+#check: $()const CONST_S: S = S { x: 0 };
+#nextln: $()Constant "CONST_S" is declared here.
+#check: $()CONST_S.x = 1;
+#nextln: $()This expression cannot be assigned to, because "CONST_S" is a constant.

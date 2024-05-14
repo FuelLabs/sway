@@ -1,37 +1,50 @@
 #![allow(dead_code)]
 use crate::core::token::{Token, TokenIdent};
+use dashmap::mapref::multiple::RefMulti;
 use lsp_types::{Diagnostic, DiagnosticSeverity};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{ty, Literal},
 };
 
-pub(crate) fn generate_warnings_non_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_non_typed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
 {
     tokens
-        .filter(|(_, token)| token.typed.is_none())
-        .map(|(ident, _)| warning_from_ident(&ident))
+        .filter_map(|entry| {
+            let (ident, token) = entry.pair();
+            if token.typed.is_none() {
+                Some(warning_from_ident(ident))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
-pub(crate) fn generate_warnings_for_parsed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_for_parsed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
 {
     tokens
-        .map(|(ident, _)| warning_from_ident(&ident))
+        .map(|entry| warning_from_ident(entry.key()))
         .collect()
 }
 
-pub(crate) fn generate_warnings_for_typed_tokens<I>(tokens: I) -> Vec<Diagnostic>
+pub(crate) fn generate_warnings_for_typed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where
-    I: Iterator<Item = (TokenIdent, Token)>,
+    I: Iterator<Item = RefMulti<'s, TokenIdent, Token>>,
 {
     tokens
-        .filter(|(_, token)| token.typed.is_some())
-        .map(|(ident, _)| warning_from_ident(&ident))
+        .filter_map(|entry| {
+            let (ident, token) = entry.pair();
+            if token.typed.is_some() {
+                Some(warning_from_ident(ident))
+            } else {
+                None
+            }
+        })
         .collect()
 }
 
@@ -39,7 +52,7 @@ fn warning_from_ident(ident: &TokenIdent) -> Diagnostic {
     Diagnostic {
         range: ident.range,
         severity: Some(DiagnosticSeverity::WARNING),
-        message: "".to_string(),
+        message: String::new(),
         ..Default::default()
     }
 }
@@ -49,9 +62,8 @@ fn literal_to_string(literal: &Literal) -> String {
         Literal::U8(_) => "u8".into(),
         Literal::U16(_) => "u16".into(),
         Literal::U32(_) => "u32".into(),
-        Literal::U64(_) => "u64".into(),
+        Literal::U64(_) | Literal::Numeric(_) => "u64".into(),
         Literal::U256(_) => "u256".into(),
-        Literal::Numeric(_) => "u64".into(),
         Literal::String(len) => format!("str[{}]", len.as_str().len()),
         Literal::Boolean(_) => "bool".into(),
         Literal::B256(_) => "b256".into(),
@@ -99,12 +111,11 @@ pub(crate) fn print_decl_engine_types(
                 }
                 _ => format!("{declaration:#?}"),
             },
-            ty::TyAstNodeContent::Expression(expression)
-            | ty::TyAstNodeContent::ImplicitReturnExpression(expression) => {
+            ty::TyAstNodeContent::Expression(expression) => {
                 format!("{expression:#?}")
             }
             ty::TyAstNodeContent::SideEffect(side_effect) => format!("{side_effect:#?}"),
             ty::TyAstNodeContent::Error(_, _) => "error".to_string(),
         })
-        .fold("".to_string(), |output, s| format!("{output}{s}\n"))
+        .fold(String::new(), |output, s| format!("{output}{s}\n"))
 }

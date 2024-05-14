@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-05E81A9122984246"
+
+[[package]]
+name = "function_impls"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-05E81A9122984246"
+dependencies = ["core"]

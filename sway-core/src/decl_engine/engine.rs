@@ -7,7 +7,7 @@ use std::{
 use sway_types::{ModuleId, Named, Spanned};
 
 use crate::{
-    concurrent_slab::{ConcurrentSlab, ListDisplay},
+    concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     engine_threading::*,
     language::ty::{
@@ -190,16 +190,16 @@ macro_rules! decl_engine_clear_module {
                 self.parents.write().unwrap().retain(|key, _| {
                     match key {
                         AssociatedItemDeclId::TraitFn(decl_id) => {
-                            self.get_trait_fn(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                            self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                         AssociatedItemDeclId::Function(decl_id) => {
-                            self.get_function(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                            self.get_function(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                         AssociatedItemDeclId::Type(decl_id) => {
-                            self.get_type(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                            self.get_type(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                         AssociatedItemDeclId::Constant(decl_id) => {
-                            self.get_constant(decl_id).span().source_id().map_or(false, |src_id| &src_id.module_id() != module_id)
+                            self.get_constant(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
                         },
                     }
                 });
@@ -207,7 +207,7 @@ macro_rules! decl_engine_clear_module {
                 $(
                     self.$slab.retain(|_k, ty| match ty.span().source_id() {
                         Some(source_id) => &source_id.module_id() != module_id,
-                        None => false,
+                        None => true,
                     });
                 )*
             }
@@ -261,11 +261,17 @@ impl DeclEngine {
                         (
                             AssociatedItemDeclId::TraitFn(x_id),
                             AssociatedItemDeclId::TraitFn(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        ) => self.get(x_id).eq(
+                            &self.get(curr_parent_id),
+                            &PartialEqWithEnginesContext::new(engines),
+                        ),
                         (
                             AssociatedItemDeclId::Function(x_id),
                             AssociatedItemDeclId::Function(curr_parent_id),
-                        ) => self.get(x_id).eq(&self.get(curr_parent_id), engines),
+                        ) => self.get(x_id).eq(
+                            &self.get(curr_parent_id),
+                            &PartialEqWithEnginesContext::new(engines),
+                        ),
                         _ => false,
                     }) {
                         left_to_check.push_back(curr_parent.clone());
@@ -441,11 +447,11 @@ impl DeclEngine {
     /// [DisplayWithEngines].
     pub fn pretty_print(&self, engines: &Engines) -> String {
         let mut builder = String::new();
-        let mut list = vec![];
-        for func in self.function_slab.values() {
-            list.push(format!("{:?}", engines.help_out(&*func)));
+        let mut list = String::with_capacity(1024 * 1024);
+        let funcs = self.function_slab.values();
+        for (i, func) in funcs.iter().enumerate() {
+            list.push_str(&format!("{i} - {:?}\n", engines.help_out(func)));
         }
-        let list = ListDisplay { list };
         write!(builder, "DeclEngine {{\n{list}\n}}").unwrap();
         builder
     }

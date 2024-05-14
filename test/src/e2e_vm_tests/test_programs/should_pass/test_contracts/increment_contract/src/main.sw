@@ -19,3 +19,8 @@ impl Incrementor for Contract {
         storage.value.read()
     }
 }
+
+#[fallback]
+fn fallback() -> u64 {
+    444444444
+}

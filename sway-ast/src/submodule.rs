@@ -10,6 +10,6 @@ pub struct Submodule {
 
 impl Spanned for Submodule {
     fn span(&self) -> Span {
-        Span::join(self.mod_token.span(), self.semicolon_token.span())
+        Span::join(self.mod_token.span(), &self.semicolon_token.span())
     }
 }

@@ -1,7 +1,7 @@
 library;
 
 pub struct MyStruct {
-    x: u64,
+    pub x: u64,
 }
 
 impl MyStruct {

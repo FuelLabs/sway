@@ -53,13 +53,15 @@ fn is_sway_fence(s: &str) -> bool {
     let tokens = s
         .trim()
         .split(|c| matches!(c, ',' | ' ' | '\t'))
-        .map(str::trim)
-        .filter(|t| !t.is_empty());
+        .filter_map(|t| {
+            let t = t.trim();
+            (!t.is_empty()).then_some(t)
+        });
 
     for token in tokens {
         match token {
             "should_panic" | "no_run" | "ignore" | "allow_fail" => {
-                seen_sway_tags = !seen_other_tags
+                seen_sway_tags = !seen_other_tags;
             }
             "sway" => seen_sway_tags = true,
             "test_harness" | "compile_fail" => seen_sway_tags = !seen_other_tags || seen_sway_tags,

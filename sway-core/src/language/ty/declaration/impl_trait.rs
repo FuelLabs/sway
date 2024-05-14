@@ -3,7 +3,8 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRefMixedInterface, engine_threading::*, language::CallPath, type_system::*,
+    decl_engine::DeclRefMixedInterface, engine_threading::*, has_changes, language::CallPath,
+    type_system::*,
 };
 
 use super::TyTraitItem;
@@ -22,6 +23,12 @@ pub struct TyImplTrait {
     pub span: Span,
 }
 
+impl TyImplTrait {
+    pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
+        matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
+    }
+}
+
 impl Named for TyImplTrait {
     fn name(&self) -> &Ident {
         &self.trait_name.suffix
@@ -36,16 +43,16 @@ impl Spanned for TyImplTrait {
 
 impl EqWithEngines for TyImplTrait {}
 impl PartialEqWithEngines for TyImplTrait {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.impl_type_parameters
-            .eq(&other.impl_type_parameters, engines)
+            .eq(&other.impl_type_parameters, ctx)
             && self.trait_name == other.trait_name
             && self
                 .trait_type_arguments
-                .eq(&other.trait_type_arguments, engines)
-            && self.items.eq(&other.items, engines)
-            && self.implementing_for.eq(&other.implementing_for, engines)
-            && self.trait_decl_ref.eq(&other.trait_decl_ref, engines)
+                .eq(&other.trait_type_arguments, ctx)
+            && self.items.eq(&other.items, ctx)
+            && self.implementing_for.eq(&other.implementing_for, ctx)
+            && self.trait_decl_ref.eq(&other.trait_decl_ref, ctx)
     }
 }
 
@@ -72,13 +79,11 @@ impl HashWithEngines for TyImplTrait {
 }
 
 impl SubstTypes for TyImplTrait {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.impl_type_parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.implementing_for.subst_inner(type_mapping, engines);
-        self.items
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.impl_type_parameters.subst(type_mapping, engines);
+            self.implementing_for.subst_inner(type_mapping, engines);
+            self.items.subst(type_mapping, engines);
+        }
     }
 }

@@ -40,19 +40,18 @@ pub(crate) fn import_code_action(
     let mut include_statements = Vec::<TyIncludeStatement>::new();
     let mut program_type_keyword = None;
 
-    ctx.tokens
-        .tokens_for_file(ctx.temp_uri)
-        .for_each(|(_, token)| {
-            if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = token.typed {
-                use_statements.push(use_stmt);
-            } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = token.typed {
-                include_statements.push(include_stmt);
-            } else if token.kind == SymbolKind::ProgramTypeKeyword {
-                if let AstToken::Keyword(ident) = token.parsed {
-                    program_type_keyword = Some(ident);
-                }
+    ctx.tokens.tokens_for_file(ctx.temp_uri).for_each(|item| {
+        if let Some(TypedAstToken::TypedUseStatement(use_stmt)) = &item.value().typed {
+            use_statements.push(use_stmt.clone());
+        } else if let Some(TypedAstToken::TypedIncludeStatement(include_stmt)) = &item.value().typed
+        {
+            include_statements.push(include_stmt.clone());
+        } else if item.value().kind == SymbolKind::ProgramTypeKeyword {
+            if let AstToken::Keyword(ident) = &item.value().parsed {
+                program_type_keyword = Some(ident.clone());
             }
-        });
+        }
+    });
 
     // Create a list of code actions, one for each potential call path.
     let actions = call_paths
@@ -66,7 +65,7 @@ pub(crate) fn import_code_action(
             let changes = HashMap::from([(ctx.uri.clone(), vec![text_edit])]);
 
             CodeActionOrCommand::CodeAction(LspCodeAction {
-                title: format!("{} `{}`", CODE_ACTION_IMPORT_TITLE, call_path),
+                title: format!("{CODE_ACTION_IMPORT_TITLE} `{call_path}`"),
                 kind: Some(CodeActionKind::QUICKFIX),
                 edit: Some(WorkspaceEdit {
                     changes: Some(changes),
@@ -95,24 +94,28 @@ pub(crate) fn get_call_paths_for_name<'s>(
     let mut call_paths = ctx
         .tokens
         .tokens_for_name(symbol_name)
-        .filter_map(move |(_, token)| {
+        .filter_map(move |item| {
             // If the typed token is a declaration, then we can import it.
-            match token.typed.as_ref() {
+            match item.value().typed.as_ref() {
                 Some(TypedAstToken::TypedDeclaration(ty_decl)) => {
                     return match ty_decl {
                         TyDecl::StructDecl(decl) => {
                             let struct_decl = ctx.engines.de().get_struct(&decl.decl_id);
-                            let call_path = struct_decl.call_path.to_import_path(&namespace);
+                            let call_path = struct_decl
+                                .call_path
+                                .to_import_path(ctx.engines, &namespace);
                             Some(call_path)
                         }
                         TyDecl::EnumDecl(decl) => {
                             let enum_decl = ctx.engines.de().get_enum(&decl.decl_id);
-                            let call_path = enum_decl.call_path.to_import_path(&namespace);
+                            let call_path =
+                                enum_decl.call_path.to_import_path(ctx.engines, &namespace);
                             Some(call_path)
                         }
                         TyDecl::TraitDecl(decl) => {
                             let trait_decl = ctx.engines.de().get_trait(&decl.decl_id);
-                            let call_path = trait_decl.call_path.to_import_path(&namespace);
+                            let call_path =
+                                trait_decl.call_path.to_import_path(ctx.engines, &namespace);
                             Some(call_path)
                         }
                         _ => None,
@@ -128,7 +131,7 @@ pub(crate) fn get_call_paths_for_name<'s>(
                     call_path,
                     ..
                 })) => {
-                    let call_path = call_path.to_import_path(&namespace);
+                    let call_path = call_path.to_import_path(ctx.engines, &namespace);
                     Some(call_path)
                 }
                 _ => None,
@@ -195,7 +198,7 @@ fn get_text_edit_for_group(
                 ImportType::Item(ident) => ident.to_string(),
             };
             match &stmt.alias {
-                Some(alias) => Some(format!("{} as {}", name, alias)),
+                Some(alias) => Some(format!("{name} as {alias}")),
                 None => Some(name),
             }
         })
@@ -211,7 +214,7 @@ fn get_text_edit_for_group(
         let prefix_string = call_path
             .prefixes
             .iter()
-            .map(|ident| ident.as_str())
+            .map(sway_types::BaseIdent::as_str)
             .collect::<Vec<_>>()
             .join("::");
 
@@ -280,7 +283,7 @@ fn get_text_edit_fallback(
         );
     TextEdit {
         range: Range::new(Position::new(range_line, 0), Position::new(range_line, 0)),
-        new_text: format!("\nuse {};\n", call_path),
+        new_text: format!("\nuse {call_path};\n"),
     }
 }
 

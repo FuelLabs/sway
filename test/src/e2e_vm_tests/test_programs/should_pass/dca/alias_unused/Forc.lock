@@ -1,3 +1,8 @@
 [[package]]
-name = 'alias_unused'
-source = 'member'
+name = "alias_unused"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-7E37357576BFA81B"

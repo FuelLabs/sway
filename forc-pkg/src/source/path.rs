@@ -1,3 +1,4 @@
+use crate::manifest::GenericManifestFile;
 use crate::{manifest::PackageManifestFile, pkg::PinnedId, source};
 use serde::{Deserialize, Serialize};
 use std::{

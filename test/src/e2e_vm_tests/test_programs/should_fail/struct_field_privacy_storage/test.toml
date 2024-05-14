@@ -1,0 +1,38 @@
+category = "fail"
+
+#check: $()Struct cannot be instantiated due to inaccessible private fields
+#check: $()ls: LibStruct = LibStruct { },
+#nextln: $()"LibStruct" cannot be instantiated in this storage declaration, due to an inaccessible private field.
+#nextln: $()Inaccessible field is "y".
+#nextln: $()Structs with private fields can be instantiated in storage declarations only if they are declared in the same module as the storage.
+#nextln: $()They can still be initialized in storage declarations if they have public constructors that evaluate to a constant.
+#nextln: $()They can always be stored in storage by using the `read` and `write` functions provided in the `std::storage::storage_api`.
+#check: $()Struct "LibStruct" is declared here, and has private field "y".
+#check: $()Consider initializing "LibStruct" by finding an available constructor that evaluates to a constant, or implement a new one.
+#nextln: $()Check these already available constructors. They might evaluate to a constant:
+#nextln: $()- new()
+#not: $()- constructor(
+#check: $()use std::storage::storage_api::{read, write};
+#check: $()write(STORAGE_KEY, 0, my_lib_struct);
+#nextln: $()let my_lib_struct_option = read::<LibStruct>(STORAGE_KEY, 0);
+#check: $()Alternatively, consider declaring the field "y" as public in "LibStruct": `pub y: ...,`.
+
+#check: $()Private struct field is inaccessible
+#check: $()let _ = storage.ls.y.read();
+#nextln: $()Private field "y" of the struct "LibStruct" is inaccessible in this module.
+#check: $()y: u64,
+#nextln: $()Field "y" is declared here as private.
+#check: $()Consider declaring the field "y" as public in "LibStruct": `pub y: ...,`.
+
+#check: $()Private struct field is inaccessible
+#check: $()let _ = storage.ls.other.y.read();
+#nextln: $()Private field "y" of the struct "LibOtherStruct" is inaccessible in this module.
+#check: $()y: u64,
+#nextln: $()Field "y" is declared here as private.
+#check: $()Consider declaring the field "y" as public in "LibOtherStruct": `pub y: ...,`.
+
+#not: Private field "y" of the struct "MainStruct" is inaccessible in this module.
+
+#check: $()error
+#check: $()ls: LibStruct = LibStruct { },
+#nextln: $()Could not evaluate initializer to a const declaration.

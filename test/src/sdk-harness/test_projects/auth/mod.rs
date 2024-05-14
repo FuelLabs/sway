@@ -11,15 +11,15 @@ use std::str::FromStr;
 abigen!(
     Contract(
         name = "AuthContract",
-        abi = "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract-abi.json"
+        abi = "test_artifacts/auth_testing_contract/out/release/auth_testing_contract-abi.json"
     ),
     Contract(
         name = "AuthCallerContract",
-        abi = "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract-abi.json"
+        abi = "test_artifacts/auth_caller_contract/out/release/auth_caller_contract-abi.json"
     ),
     Predicate(
         name = "AuthPredicate",
-        abi = "test_artifacts/auth_predicate/out/debug/auth_predicate-abi.json"
+        abi = "test_artifacts/auth_predicate/out/release/auth_predicate-abi.json"
     ),
 );
 
@@ -74,7 +74,7 @@ async fn get_contracts() -> (
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
     let id_1 = Contract::load_from(
-        "test_artifacts/auth_testing_contract/out/debug/auth_testing_contract.bin",
+        "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -83,7 +83,7 @@ async fn get_contracts() -> (
     .unwrap();
 
     let id_2 = Contract::load_from(
-        "test_artifacts/auth_caller_contract/out/debug/auth_caller_contract.bin",
+        "test_artifacts/auth_caller_contract/out/release/auth_caller_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -104,7 +104,7 @@ async fn get_contracts() -> (
 }
 
 #[tokio::test]
-async fn can_get_predicate_id() {
+async fn can_get_predicate_address() {
     // Setup Wallets
     let asset_id = AssetId::default();
     let wallets_config = WalletsConfig::new_multiple_assets(
@@ -123,13 +123,15 @@ async fn can_get_predicate_id() {
 
     // Setup Predciate
     let hex_predicate_address: &str =
-        "0x76bae6a88c3f54a9aee40ee5390696dd9edaf1b2a16d96a75adbcaac2ec6584f";
+        "0xb91f2b368b7784611ca0a4df5530c5eea31d01f0d16d393aa000c00c0d7125ca";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
-    let predicate_data = AuthPredicateEncoder::encode_data(predicate_bech32_address);
+    let predicate_data = AuthPredicateEncoder::default()
+        .encode_data(predicate_bech32_address)
+        .unwrap();
     let predicate: Predicate =
-        Predicate::load_from("test_artifacts/auth_predicate/out/debug/auth_predicate.bin")
+        Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
             .unwrap()
             .with_provider(first_wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);
@@ -201,9 +203,11 @@ async fn when_incorrect_predicate_address_passed() {
         "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
-    let predicate_data = AuthPredicateEncoder::encode_data(Bech32Address::from(predicate_address));
+    let predicate_data = AuthPredicateEncoder::default()
+        .encode_data(Bech32Address::from(predicate_address))
+        .unwrap();
     let predicate: Predicate =
-        Predicate::load_from("test_artifacts/auth_predicate/out/debug/auth_predicate.bin")
+        Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
             .unwrap()
             .with_provider(first_wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);

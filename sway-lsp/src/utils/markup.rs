@@ -55,42 +55,18 @@ impl Markup {
         }
     }
 
-    fn quoted_tooltip(&self, text: String) -> String {
-        format!("\"{}\"", text)
-    }
-
-    /// Builds a markdown URI using the "command" scheme and args passed as encoded JSON.
-    fn command_uri(&self, command: &str, args: Value) -> String {
-        format!("command:{}?{}", command, encode(args.to_string().as_str()))
-    }
-
     /// Adds go-to links if there are any related types, a link to view implementations if there are any,
     /// or nothing if there are no related types or implementations.
     pub fn maybe_add_links(
         self,
         source_engine: &SourceEngine,
-        related_types: Vec<RelatedType>,
-        implementations: Vec<Span>,
+        related_types: &[RelatedType],
+        implementations: &[Span],
     ) -> Self {
-        if !related_types.is_empty() {
-            let links_string = related_types
-                .iter()
-                .map(|related_type| {
-                    let args = json!([{ "uri": related_type.uri, "range": &related_type.range }]);
-                    format!(
-                        "[{}]({} {})",
-                        related_type.name,
-                        self.command_uri(GO_TO_COMMAND, args),
-                        self.quoted_tooltip(related_type.callpath.to_string())
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(" | ");
-            self.text(&format!("Go to {}", links_string))
-        } else {
+        if related_types.is_empty() {
             let locations = implementations
                 .iter()
-                .flat_map(|span| {
+                .filter_map(|span| {
                     if let Ok(uri) = get_url_from_span(source_engine, span) {
                         let range = get_range_from_span(span);
                         Some(json!({ "uri": uri, "range": range }))
@@ -100,20 +76,33 @@ impl Markup {
                 })
                 .collect::<Vec<_>>();
 
-            // The definition is stored as a location. We only want to show this if there is at least 1
-            // implementation in addition to the definition.
             if locations.len() > 1 {
                 let args = json!([{ "locations": locations }]);
                 let links_string = format!(
                     "[{} implementations]({} {})",
                     locations.len(),
-                    self.command_uri(PEEK_COMMAND, args),
-                    self.quoted_tooltip("Go to implementations".to_string())
+                    command_uri(PEEK_COMMAND, &args),
+                    quoted_tooltip("Go to implementations")
                 );
                 self.text(&links_string)
             } else {
                 self
             }
+        } else {
+            let links_string = related_types
+                .iter()
+                .map(|related_type| {
+                    let args = json!([{ "uri": related_type.uri, "range": &related_type.range }]);
+                    format!(
+                        "[{}]({} {})",
+                        related_type.name,
+                        command_uri(GO_TO_COMMAND, &args),
+                        quoted_tooltip(&related_type.callpath.to_string())
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" | ");
+            self.text(&format!("Go to {links_string}"))
         }
     }
 
@@ -147,4 +136,13 @@ impl Markup {
     pub fn as_str(&self) -> &str {
         self.text.as_str()
     }
+}
+
+/// Builds a markdown URI using the "command" scheme and args passed as encoded JSON.
+fn command_uri(command: &str, args: &Value) -> String {
+    format!("command:{}?{}", command, encode(args.to_string().as_str()))
+}
+
+fn quoted_tooltip(text: &str) -> String {
+    format!("\"{text}\"")
 }

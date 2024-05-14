@@ -8,7 +8,7 @@ The underlying virtual machine targeted by Sway is the FuelVM, specified [here](
 
 ## Word Size
 
-Words in the FuelVM are 64 bits (8 bytes), rather than the 256 bits (32 bytes) of the EVM. Therefore, all primitive integers smaller and including `u64` are stored in registers; `u256`, being bigger than the registers, and hashes (the `b256` type) are not stored in registers but rather in memory. They are therefore pointers to a 32-byte memory region containing the their data.
+Words in the FuelVM are 64 bits (8 bytes), rather than the 256 bits (32 bytes) of the EVM. Therefore, all primitive integers smaller and including `u64` are stored in registers; `u256`, being bigger than the registers, and hashes (the `b256` type) are not stored in registers but rather in memory. They are therefore pointers to a 32-byte memory region containing their data.
 
 ## Unsigned Integers Only
 

@@ -1,3 +1,8 @@
 [[package]]
-name = 'ref_mutable_fn_args_bool'
-source = 'member'
+name = "core"
+source = "path+from-root-9FAC251FC90576DE"
+
+[[package]]
+name = "ref_mutable_fn_args_bool"
+source = "member"
+dependencies = ["core"]

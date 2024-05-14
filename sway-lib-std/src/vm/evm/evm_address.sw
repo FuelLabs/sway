@@ -8,17 +8,58 @@ use ::hash::*;
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
     /// The underlying evm address data.
-    value: b256,
+    bits: b256,
+}
+
+impl EvmAddress {
+    /// Returns the underlying bits for the EvmAddress type.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The `b256` that make up the EvmAddress.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::{evm::EvmAddress, constants::ZERO_B256);
+    ///
+    /// fn foo() {
+    ///     let evm_address = EvmAddress::from(ZERO_B256);
+    ///     assert(evm_address.bits() == ZERO_B256);
+    /// }
+    /// ```
+    pub fn bits(self) -> b256 {
+        self.bits
+    }
 }
 
 impl core::ops::Eq for EvmAddress {
     fn eq(self, other: Self) -> bool {
-        self.value == other.value
+        self.bits == other.bits
     }
 }
 
 /// Functions for casting between the `b256` and `EvmAddress` types.
 impl From<b256> for EvmAddress {
+    /// Casts raw `b256` data to an `EvmAddress`.
+    ///
+    /// # Arguments
+    ///
+    /// * `bits`: [b256] - The raw `b256` data to be casted.
+    ///
+    /// # Returns
+    ///
+    /// * [EvmAddress] - The newly created `EvmAddress` from the raw `b256`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///    let evm_address = EvmAddress::from(ZERO_B256);
+    /// }
+    /// ```
     fn from(bits: b256) -> Self {
         // An EVM address is only 20 bytes, so the first 12 are set to zero
         // Create a mutable local copy of `bits`
@@ -28,18 +69,58 @@ impl From<b256> for EvmAddress {
         };
 
         Self {
-            value: local_bits,
+            bits: local_bits,
         }
     }
+}
 
-    fn into(self) -> b256 {
-        self.value
+impl From<EvmAddress> for b256 {
+    /// Casts an `EvmAddress` to raw `b256` data.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The underlying raw `b256` data of the `EvmAddress`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::constants::ZERO_B256;
+    ///
+    /// fn foo() {
+    ///     let evm_address = EvmAddress::from(ZERO_B256);
+    ///     let b256_data: b256 = evm_address.into();
+    ///     assert(b256_data == ZERO_B256);
+    /// }
+    /// ```
+    fn from(addr: EvmAddress) -> b256 {
+        addr.bits
     }
 }
 
 impl Hash for EvmAddress {
     fn hash(self, ref mut state: Hasher) {
-        let Address { value } = self;
-        value.hash(state);
+        let Address { bits } = self;
+        bits.hash(state);
     }
+}
+
+#[test]
+fn test_evm_address_from_b256() {
+    use ::assert::assert;
+
+    let evm_address = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(
+        evm_address
+            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+}
+
+#[test]
+fn test_evm_address_into_b256() {
+    use ::assert::assert;
+    use ::convert::Into;
+
+    let evm_address = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    let b256_data: b256 = evm_address.into();
+    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
 }

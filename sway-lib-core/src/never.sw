@@ -2,20 +2,20 @@ library;
 
 use ::ops::{Eq, Not, Ord};
 
-/// `Never` represents the type of computations which never resolve to any value at all.
+/// `!` represents the type of computations which never resolve to any value at all.
 ///
 /// # Additional Information
 ///
-/// `break`, `continue` and `return` expressions also have type `Never`. For example we are allowed to
+/// `break`, `continue` and `return` expressions also have type `!`. For example we are allowed to
 /// write:
 ///
 /// ```sway
-/// let x: Never = {
+/// let x: ! = {
 ///     return 123
 /// };
 /// ```
 ///
-/// Although the `let` is pointless here, it illustrates the meaning of `Never`. Since `x` is never
+/// Although the `let` is pointless here, it illustrates the meaning of `!`. Since `x` is never
 /// assigned a value (because `return` returns from the entire function), `x` can be given type
 /// `Never`. We could also replace `return 123` with a `revert()` or a never-ending `loop` and this code
 /// would still be valid.
@@ -31,9 +31,9 @@ use ::ops::{Eq, Not, Ord};
 ///
 /// Both match arms must produce values of type [`u32`], but since `break` never produces a value
 /// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
-/// behaviour of the `Never` type - expressions with type `Never` will coerce into any other type.
+/// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
 ///
-/// Note that `Never` type coerces into any other type, another example of this would be:
+/// Note that `!` type coerces into any other type, another example of this would be:
 ///
 /// ```sway
 /// let x: u32 = {
@@ -53,21 +53,19 @@ use ::ops::{Eq, Not, Ord};
 ///     };
 /// }
 /// ```
-pub enum Never {}
-
-impl Not for Never {
+impl Not for ! {
     fn not(self) -> Self {
         match self {}
     }
 }
 
-impl Eq for Never {
+impl Eq for ! {
     fn eq(self, _other: Self) -> bool {
         self
     }
 }
 
-impl Ord for Never {
+impl Ord for ! {
     fn gt(self, _other: Self) -> bool {
         self
     }

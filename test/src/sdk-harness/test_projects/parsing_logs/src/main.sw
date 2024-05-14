@@ -37,6 +37,7 @@ abi TestContract {
     fn produce_logs_custom_types() -> ();
     fn produce_logs_generic_types() -> ();
     fn produce_multiple_logs() -> ();
+    fn produce_logs_private_structs() -> ();
 }
 
 impl TestContract for Contract {
@@ -57,6 +58,16 @@ impl TestContract for Contract {
         log(u);
         log(e);
         log(l);
+    }
+
+    fn produce_logs_private_structs() -> () {
+        let f: Address = Address::from(0xef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a);
+        let u: ContractId = ContractId::from(0xef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a);
+        let e: AssetId = AssetId::from(0xef86afa9696cf0dc6385e2c407a6e159a1103cefb7e2ae0636fb33d3cb2a9e4a);
+
+        log(f);
+        log(u);
+        log(e);
     }
 
     fn produce_logs_custom_types() -> () {

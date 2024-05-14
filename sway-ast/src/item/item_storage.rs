@@ -8,7 +8,7 @@ pub struct ItemStorage {
 
 impl Spanned for ItemStorage {
     fn span(&self) -> Span {
-        Span::join(self.storage_token.span(), self.fields.span())
+        Span::join(self.storage_token.span(), &self.fields.span())
     }
 }
 

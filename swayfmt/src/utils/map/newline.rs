@@ -176,7 +176,7 @@ fn add_newlines(
     // Since we are adding newline sequences into the formatted code, in the next iteration the spans we find for the formatted code needs to be offsetted
     // as the total length of newline sequences we added in previous iterations.
     let mut offset = 0;
-    // We will definetly have a span in the collected span since for a source code to be parsed there should be some tokens present.
+    // We will definitely have a span in the collected span since for a source code to be parsed there should be some tokens present.
     let mut previous_unformatted_newline_span = unformatted_newline_spans
         .first()
         .ok_or(FormatterError::NewlineSequenceError)?;

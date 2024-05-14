@@ -1,3 +1,8 @@
 [[package]]
-name = 'const_eval_bad_struct_with_return'
-source = 'member'
+name = "const_eval_bad_struct_with_return"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-154BF654D5BA1912"

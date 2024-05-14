@@ -19,8 +19,8 @@ pub struct TyStructExpressionField {
 
 impl EqWithEngines for TyStructExpressionField {}
 impl PartialEqWithEngines for TyStructExpressionField {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
-        self.name == other.name && self.value.eq(&other.value, engines)
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.value.eq(&other.value, ctx)
     }
 }
 
@@ -33,8 +33,8 @@ impl HashWithEngines for TyStructExpressionField {
 }
 
 impl SubstTypes for TyStructExpressionField {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.value.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.value.subst(type_mapping, engines)
     }
 }
 
@@ -44,7 +44,7 @@ impl ReplaceDecls for TyStructExpressionField {
         decl_mapping: &DeclMapping,
         handler: &Handler,
         ctx: &mut TypeCheckContext,
-    ) -> Result<(), ErrorEmitted> {
+    ) -> Result<bool, ErrorEmitted> {
         self.value.replace_decls(decl_mapping, handler, ctx)
     }
 }

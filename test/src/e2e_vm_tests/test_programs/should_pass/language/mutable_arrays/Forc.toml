@@ -5,3 +5,5 @@ name = "mutable_arrays"
 entry = "main.sw"
 implicit-std = false
 
+[dependencies]
+core = { path = "../../../../../../../sway-lib-core" }

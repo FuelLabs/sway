@@ -61,6 +61,7 @@ define_keyword!(FnToken, "fn");
 define_keyword!(TraitToken, "trait");
 define_keyword!(ImplToken, "impl");
 define_keyword!(ForToken, "for");
+define_keyword!(InToken, "in");
 define_keyword!(AbiToken, "abi");
 define_keyword!(ConstToken, "const");
 define_keyword!(StorageToken, "storage");

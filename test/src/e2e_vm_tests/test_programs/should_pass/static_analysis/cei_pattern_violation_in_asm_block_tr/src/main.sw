@@ -1,6 +1,6 @@
 contract;
 
-use std::asset::force_transfer_to_contract;
+use std::asset::transfer;
 
 abi TestAbi {
     fn deposit();
@@ -17,7 +17,7 @@ impl TestAbi for Contract {
         let address = 0x0000000000000000000000000000000000000000000000000000000000000001;
         let asset = AssetId::from(address);
         let pool = ContractId::from(address);
-        // `force_transfer_to_contract` uses `tr` asm instruction
-        force_transfer_to_contract(pool, asset, amount);
+        // `transfer` uses `tr` asm instruction for ContractId
+        transfer(Identity::ContractId(pool), asset, amount);
     }
 }

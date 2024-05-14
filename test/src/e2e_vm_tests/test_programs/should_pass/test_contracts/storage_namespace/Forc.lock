@@ -1,0 +1,21 @@
+[[package]]
+name = "basic_storage_abi"
+source = "path+from-root-7819628DC0499FA1"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-7819628DC0499FA1"
+
+[[package]]
+name = "std"
+source = "path+from-root-7819628DC0499FA1"
+dependencies = ["core"]
+
+[[package]]
+name = "storage_namespace"
+source = "member"
+dependencies = [
+    "basic_storage_abi",
+    "std",
+]

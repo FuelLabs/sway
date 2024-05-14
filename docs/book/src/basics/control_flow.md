@@ -37,10 +37,10 @@ Note that all branches of the `if` expression must return a value of the same ty
 
 <!-- This section should explain `match` expressions in Sway -->
 <!-- match:example:start -->
-Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` statement, a `match` expression asserts **at compile** time that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your `match` expression is non-exhaustive.
+Sway supports advanced pattern matching through exhaustive `match` expressions. Unlike an `if` expression, a `match` expression asserts **at compile time** that all possible patterns have been matched. If you don't handle all the patterns, you will get compiler error indicating that your `match` expression is non-exhaustive.
 <!-- match:example:end -->
 
-The basic syntax of a `match` statement is as follows:
+The basic syntax of a `match` expression is as follows:
 
 ```sway
 let result = match expression {
@@ -52,17 +52,17 @@ let result = match expression {
 }
 ```
 
-Some examples of how you can use a match statement:
+Some examples of how you can use a `match` expression:
 
 ```sway
-{{#include ../../../../examples/match_statements/src/main.sw}}
+{{#include ../../../../examples/match_expressions/src/main.sw}}
 ```
 
 ## Loops
 
 ### `while`
 
-Loops in Sway are currently limited to `while` loops. This is what they look like:
+This is what a `while` loop looks like:
 
 ```sway
 while counter < 10 {
@@ -72,9 +72,21 @@ while counter < 10 {
 
 You need the `while` keyword, some condition (`value < 10` in this case) which will be evaluated each iteration, and a block of code inside the curly braces (`{...}`) to execute each iteration.
 
+### `for`
+
+This is what a `for` loop that computes the sum of a vector of numbers looks like:
+
+```sway
+for element in vector.iter() {
+    sum += element;
+}
+```
+
+You need the `for` keyword, some pattern that contains variable names such as `element` in this case, the `ìn` keyword followed by an iterator, and a block of code inside the curly braces (`{...}`) to execute each iteration. `vector.iter()` in the example above returns an iterator for the `vector`. In each iteration, the value of `element` is updated with the next value in the iterator until the end of the vector is reached and the `for` loop iteration ends.
+
 ### `break` and `continue`
 
-`break` and `continue` keywords are available to use inside the body of a `while` loop. The purpose of the `break` statement is to break out of a loop early:
+`break` and `continue` keywords are available to use inside the body of a `while` or `for` loop. The purpose of the `break` statement is to break out of a loop early:
 
 ```sway
 {{#include ../../../../examples/break_and_continue/src/main.sw:break_example}}

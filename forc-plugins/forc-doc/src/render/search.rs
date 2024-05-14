@@ -3,9 +3,9 @@ use crate::doc::module::ModuleInfo;
 use horrorshow::{box_html, Raw, RenderBox};
 use minifier::js::minify;
 
-pub(crate) fn generate_searchbar(module_info: ModuleInfo) -> Box<dyn RenderBox> {
+pub(crate) fn generate_searchbar(module_info: &ModuleInfo) -> Box<dyn RenderBox> {
     let path_to_root = module_info.path_to_root();
-    // Since this searchbar is rendered on all pages, we need to inject the path the the root into the script.
+    // Since this searchbar is rendered on all pages, we need to inject the path the root into the script.
     // Therefore, we can't simply import this script from a javascript file.
     let minified_script = minify(&format!(r#"
         function onSearchFormSubmit(event) {{

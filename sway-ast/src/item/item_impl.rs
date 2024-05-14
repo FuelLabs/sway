@@ -19,7 +19,7 @@ pub struct ItemImpl {
 
 impl Spanned for ItemImpl {
     fn span(&self) -> Span {
-        Span::join(self.impl_token.span(), self.contents.span())
+        Span::join(self.impl_token.span(), &self.contents.span())
     }
 }
 

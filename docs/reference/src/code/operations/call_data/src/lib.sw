@@ -1,7 +1,7 @@
 library;
 
 // ANCHOR: import_asset
-use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
+use std::call_frames::msg_asset_id;
 // ANCHOR_END: import_asset
 
 // ANCHOR: import_amount
@@ -19,7 +19,7 @@ fn update() {
 
 // ANCHOR: deposit
 fn deposit() {
-    if msg_asset_id() == BASE_ASSET_ID {
+    if msg_asset_id() == AssetId::base() {
         // code
     } else {
         // code

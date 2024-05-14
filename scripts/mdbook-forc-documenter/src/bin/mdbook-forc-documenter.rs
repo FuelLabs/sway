@@ -7,7 +7,7 @@ use std::process;
 
 use mdbook_forc_documenter::ForcDocumenter;
 
-pub fn make_app() -> Command<'static> {
+pub fn make_app() -> Command {
     Command::new("forc-documenter")
         .about("A mdbook preprocessor which documents Forc commands")
         .subcommand(
@@ -53,8 +53,8 @@ fn handle_preprocessing(pre: &dyn Preprocessor) -> Result<(), Error> {
 }
 
 fn handle_supports(pre: &dyn Preprocessor, sub_args: &ArgMatches) -> ! {
-    let renderer = sub_args.value_of("renderer").expect("Required argument");
-    let supported = pre.supports_renderer(renderer);
+    let renderer: &Option<&str> = sub_args.get_one("renderer").expect("Required argument");
+    let supported = renderer.map(|r| pre.supports_renderer(r)).unwrap_or(false);
 
     // Signal whether the renderer is supported by exiting with 1 or 0.
     if supported {

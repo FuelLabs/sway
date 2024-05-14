@@ -6,4 +6,4 @@ name = "caller_auth_test"
 
 [dependencies]
 auth_testing_abi = { path = "../../test_abis/auth_testing_abi" }
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

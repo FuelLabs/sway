@@ -3,8 +3,8 @@ library;
 use ::my_double::MyDouble;
 
 pub struct MyPoint<T> {
-    x: T,
-    y: T,
+    pub x: T,
+    pub y: T,
 }
 
 impl MyDouble<u64> for MyPoint<u64> {

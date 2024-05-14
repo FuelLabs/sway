@@ -9,13 +9,22 @@ fn dereference<T>()
     where T: TestInstance + Eq
 {
     let mut x = T::new();
+
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
+    let mut r_mut_x = &mut x;
+    let mut r_mut_r_mut_x = &mut r_mut_x;
+    let r_mut_r_mut_r_mut_x = &mut r_mut_r_mut_x;
+
     assert(*r_x == x);
     assert(**r_r_x == x);
     assert(***r_r_r_x == x);
+
+    assert(*r_mut_x == x);
+    assert(**r_mut_r_mut_x == x);
+    assert(***r_mut_r_mut_r_mut_x == x);
 
     let r_x_ptr = asm(r: r_x) { r: raw_ptr };
     let r_r_x_ptr = asm(r: r_r_x) { r: raw_ptr };
@@ -36,6 +45,10 @@ fn dereference<T>()
     assert(*r_x == x);
     assert(**r_r_x == x);
     assert(***r_r_r_x == x);
+
+    assert(*r_mut_x == x);
+    assert(**r_mut_r_mut_x == x);
+    assert(***r_mut_r_mut_r_mut_x == x);
 }
 
 #[inline(never)]
@@ -49,31 +62,78 @@ fn dereference_not_inlined<T>()
 fn dereference_array<T>()
     where T: TestInstance + Eq
 {
-    let mut x = [T::new(), T::new()];
+    let mut x = [T::new(), T::different()];
+
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
+    let mut r_mut_x = &mut x;
+    let mut r_mut_r_mut_x = &mut r_mut_x;
+    let r_mut_r_mut_r_mut_x = &mut r_mut_r_mut_x;
+
     assert((*r_x)[0] == T::new());
-    assert((*r_x)[1] == T::new());
+    assert((*r_x)[1] == T::different());
+    assert((*r_x)[0] == r_x[0]);
+    assert((*r_x)[1] == r_x[1]);
+
+    assert((*r_mut_x)[0] == T::new());
+    assert((*r_mut_x)[1] == T::different());
+    assert((*r_mut_x)[0] == r_x[0]);
+    assert((*r_mut_x)[1] == r_x[1]);
 
     assert((**r_r_x)[0] == T::new());
-    assert((**r_r_x)[1] == T::new());
+    assert((**r_r_x)[1] == T::different());
+    assert((**r_r_x)[0] == r_r_x[0]);
+    assert((**r_r_x)[1] == r_r_x[1]);
+
+    assert((**r_mut_r_mut_x)[0] == T::new());
+    assert((**r_mut_r_mut_x)[1] == T::different());
+    assert((**r_mut_r_mut_x)[0] == r_x[0]);
+    assert((**r_mut_r_mut_x)[1] == r_x[1]);
 
     assert((***r_r_r_x)[0] == T::new());
-    assert((***r_r_r_x)[1] == T::new());
+    assert((***r_r_r_x)[1] == T::different());
+    assert((***r_r_r_x)[0] == r_r_r_x[0]);
+    assert((***r_r_r_x)[1] == r_r_r_x[1]);
+
+    assert((***r_mut_r_mut_r_mut_x)[0] == T::new());
+    assert((***r_mut_r_mut_r_mut_x)[1] == T::different());
+    assert((***r_mut_r_mut_r_mut_x)[0] == r_x[0]);
+    assert((***r_mut_r_mut_r_mut_x)[1] == r_x[1]);
 
     x[0] = T::different();
-    x[1] = T::different();
+    x[1] = T::new();
 
     assert((*r_x)[0] == T::different());
-    assert((*r_x)[1] == T::different());
+    assert((*r_x)[1] == T::new());
+    assert((*r_x)[0] == r_x[0]);
+    assert((*r_x)[1] == r_x[1]);
+
+    assert((*r_mut_x)[0] == T::different());
+    assert((*r_mut_x)[1] == T::new());
+    assert((*r_mut_x)[0] == r_x[0]);
+    assert((*r_mut_x)[1] == r_x[1]);
 
     assert((**r_r_x)[0] == T::different());
-    assert((**r_r_x)[1] == T::different());
+    assert((**r_r_x)[1] == T::new());
+    assert((**r_r_x)[0] == r_r_x[0]);
+    assert((**r_r_x)[1] == r_r_x[1]);
+
+    assert((**r_mut_r_mut_x)[0] == T::different());
+    assert((**r_mut_r_mut_x)[1] == T::new());
+    assert((**r_mut_r_mut_x)[0] == r_x[0]);
+    assert((**r_mut_r_mut_x)[1] == r_x[1]);
 
     assert((***r_r_r_x)[0] == T::different());
-    assert((***r_r_r_x)[1] == T::different());
+    assert((***r_r_r_x)[1] == T::new());
+    assert((***r_r_r_x)[0] == r_r_r_x[0]);
+    assert((***r_r_r_x)[1] == r_r_r_x[1]);
+
+    assert((***r_mut_r_mut_r_mut_x)[0] == T::different());
+    assert((***r_mut_r_mut_r_mut_x)[1] == T::new());
+    assert((***r_mut_r_mut_r_mut_x)[0] == r_x[0]);
+    assert((***r_mut_r_mut_r_mut_x)[1] == r_x[1]);
 }
 
 #[inline(never)]
@@ -87,31 +147,78 @@ fn dereference_array_not_inlined<T>()
 fn dereference_tuple<T>()
     where T: TestInstance + Eq
 {
-    let mut x = (T::new(), T::new());
+    let mut x = (T::new(), T::different());
+
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
+    let mut r_mut_x = &mut x;
+    let mut r_mut_r_mut_x = &mut r_mut_x;
+    let r_mut_r_mut_r_mut_x = &mut r_mut_r_mut_x;
+
     assert((*r_x).0 == T::new());
-    assert((*r_x).1 == T::new());
+    assert((*r_x).1 == T::different());
+    assert((*r_x).0 == r_x.0);
+    assert((*r_x).1 == r_x.1);
+
+    assert((*r_mut_x).0 == T::new());
+    assert((*r_mut_x).1 == T::different());
+    assert((*r_mut_x).0 == r_x.0);
+    assert((*r_mut_x).1 == r_x.1);
 
     assert((**r_r_x).0 == T::new());
-    assert((**r_r_x).1 == T::new());
+    assert((**r_r_x).1 == T::different());
+    assert((**r_r_x).0 == r_r_x.0);
+    assert((**r_r_x).1 == r_r_x.1);
+
+    assert((**r_mut_r_mut_x).0 == T::new());
+    assert((**r_mut_r_mut_x).1 == T::different());
+    assert((**r_mut_r_mut_x).0 == r_x.0);
+    assert((**r_mut_r_mut_x).1 == r_x.1);
 
     assert((***r_r_r_x).0 == T::new());
-    assert((***r_r_r_x).1 == T::new());
+    assert((***r_r_r_x).1 == T::different());
+    assert((***r_r_r_x).0 == r_r_r_x.0);
+    assert((***r_r_r_x).1 == r_r_r_x.1);
+
+    assert((***r_mut_r_mut_r_mut_x).0 == T::new());
+    assert((***r_mut_r_mut_r_mut_x).1 == T::different());
+    assert((***r_mut_r_mut_r_mut_x).0 == r_x.0);
+    assert((***r_mut_r_mut_r_mut_x).1 == r_x.1);
 
     x.0 = T::different();
-    x.1 = T::different();
+    x.1 = T::new();
 
     assert((*r_x).0 == T::different());
-    assert((*r_x).1 == T::different());
+    assert((*r_x).1 == T::new());
+    assert((*r_x).0 == r_x.0);
+    assert((*r_x).1 == r_x.1);
+
+    assert((*r_mut_x).0 == T::different());
+    assert((*r_mut_x).1 == T::new());
+    assert((*r_mut_x).0 == r_x.0);
+    assert((*r_mut_x).1 == r_x.1);
 
     assert((**r_r_x).0 == T::different());
-    assert((**r_r_x).1 == T::different());
+    assert((**r_r_x).1 == T::new());
+    assert((**r_r_x).0 == r_r_x.0);
+    assert((**r_r_x).1 == r_r_x.1);
+
+    assert((**r_mut_r_mut_x).0 == T::different());
+    assert((**r_mut_r_mut_x).1 == T::new());
+    assert((**r_mut_r_mut_x).0 == r_x.0);
+    assert((**r_mut_r_mut_x).1 == r_x.1);
 
     assert((***r_r_r_x).0 == T::different());
-    assert((***r_r_r_x).1 == T::different());
+    assert((***r_r_r_x).1 == T::new());
+    assert((***r_r_r_x).0 == r_r_r_x.0);
+    assert((***r_r_r_x).1 == r_r_r_x.1);
+
+    assert((***r_mut_r_mut_r_mut_x).0 == T::different());
+    assert((***r_mut_r_mut_r_mut_x).1 == T::new());
+    assert((***r_mut_r_mut_r_mut_x).0 == r_x.0);
+    assert((***r_mut_r_mut_r_mut_x).1 == r_x.1);
 }
 
 #[inline(never)]
@@ -132,31 +239,78 @@ struct S<T>
 fn dereference_struct<T>()
     where T: TestInstance + Eq
 {
-    let mut x = S { x: T::new(), y: T::new() };
+    let mut x = S { x: T::new(), y: T::different() };
+
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
 
+    let mut r_mut_x = &mut x;
+    let mut r_mut_r_mut_x = &mut r_mut_x;
+    let r_mut_r_mut_r_mut_x = &mut r_mut_r_mut_x;
+
     assert((*r_x).x == T::new());
-    assert((*r_x).y == T::new());
+    assert((*r_x).y == T::different());
+    assert((*r_x).x == r_x.x);
+    assert((*r_x).y == r_x.y);
+
+    assert((*r_mut_x).x == T::new());
+    assert((*r_mut_x).y == T::different());
+    assert((*r_mut_x).x == r_x.x);
+    assert((*r_mut_x).y == r_x.y);
 
     assert((**r_r_x).x == T::new());
-    assert((**r_r_x).y == T::new());
+    assert((**r_r_x).y == T::different());
+    assert((**r_r_x).x == r_r_x.x);
+    assert((**r_r_x).y == r_r_x.y);
+
+    assert((**r_mut_r_mut_x).x == T::new());
+    assert((**r_mut_r_mut_x).y == T::different());
+    assert((**r_mut_r_mut_x).x == r_x.x);
+    assert((**r_mut_r_mut_x).y == r_x.y);
 
     assert((***r_r_r_x).x == T::new());
-    assert((***r_r_r_x).y == T::new());
+    assert((***r_r_r_x).y == T::different());
+    assert((***r_r_r_x).x == r_r_r_x.x);
+    assert((***r_r_r_x).y == r_r_r_x.y);
+
+    assert((***r_mut_r_mut_r_mut_x).x == T::new());
+    assert((***r_mut_r_mut_r_mut_x).y == T::different());
+    assert((***r_mut_r_mut_r_mut_x).x == r_x.x);
+    assert((***r_mut_r_mut_r_mut_x).y == r_x.y);
 
     x.x = T::different();
-    x.y = T::different();
+    x.y = T::new();
 
     assert((*r_x).x == T::different());
-    assert((*r_x).y == T::different());
+    assert((*r_x).y == T::new());
+    assert((*r_x).x == r_x.x);
+    assert((*r_x).y == r_x.y);
+
+    assert((*r_mut_x).x == T::different());
+    assert((*r_mut_x).y == T::new());
+    assert((*r_mut_x).x == r_x.x);
+    assert((*r_mut_x).y == r_x.y);
 
     assert((**r_r_x).x == T::different());
-    assert((**r_r_x).y == T::different());
+    assert((**r_r_x).y == T::new());
+    assert((**r_r_x).x == r_r_x.x);
+    assert((**r_r_x).y == r_r_x.y);
+
+    assert((**r_mut_r_mut_x).x == T::different());
+    assert((**r_mut_r_mut_x).y == T::new());
+    assert((**r_mut_r_mut_x).x == r_x.x);
+    assert((**r_mut_r_mut_x).y == r_x.y);
 
     assert((***r_r_r_x).x == T::different());
-    assert((***r_r_r_x).y == T::different());
+    assert((***r_r_r_x).y == T::new());
+    assert((***r_r_r_x).x == r_r_r_x.x);
+    assert((***r_r_r_x).y == r_r_r_x.y);
+
+    assert((***r_mut_r_mut_r_mut_x).x == T::different());
+    assert((***r_mut_r_mut_r_mut_x).y == T::new());
+    assert((***r_mut_r_mut_r_mut_x).x == r_x.x);
+    assert((***r_mut_r_mut_r_mut_x).y == r_x.y);
 }
 
 #[inline(never)]
@@ -178,14 +332,25 @@ fn dereference_enum<T>()
     where T: TestInstance + Eq
 {
     let mut x = E::A(T::new());
+
     let r_x = &x;
     let r_r_x = &r_x;
     let r_r_r_x = &r_r_x;
+
+    let mut r_mut_x = &mut x;
+    let mut r_mut_r_mut_x = &mut r_mut_x;
+    let r_mut_r_mut_r_mut_x = &mut r_mut_r_mut_x;
 
     // TODO-IG: Uncomment the version with (t) once this issue for match expression is resolved:
     // error: Internal compiler error: Unable to resolve variable 't'.
 
     match *r_x {
+        E::A(_) => assert(true),
+        //E::A(t) => assert(t == T::new()),
+        _ => assert(false),
+    };
+
+    match *r_mut_x {
         E::A(_) => assert(true),
         //E::A(t) => assert(t == T::new()),
         _ => assert(false),
@@ -197,7 +362,19 @@ fn dereference_enum<T>()
         _ => assert(false),
     };
 
+    match **r_mut_r_mut_x {
+        E::A(_) => assert(true),
+        //E::A(t) => assert(t == T::new()),
+        _ => assert(false),
+    };
+
     match ***r_r_r_x {
+        E::A(_) => assert(true),
+        //E::A(t) => assert(t == T::new()),
+        _ => assert(false),
+    };
+
+    match ***r_mut_r_mut_r_mut_x {
         E::A(_) => assert(true),
         //E::A(t) => assert(t == T::new()),
         _ => assert(false),
@@ -211,13 +388,31 @@ fn dereference_enum<T>()
         _ => assert(false),
     };
 
+    match *r_mut_x {
+        E::B(_) => assert(true),
+        //E::B(t) => assert(t == T::different()),
+        _ => assert(false),
+    };
+
     match **r_r_x {
         E::B(_) => assert(true),
         //E::B(t) => assert(t == T::different()),
         _ => assert(false),
     };
 
+    match **r_mut_r_mut_x {
+        E::B(_) => assert(true),
+        //E::B(t) => assert(t == T::different()),
+        _ => assert(false),
+    };
+
     match ***r_r_r_x {
+        E::B(_) => assert(true),
+        //E::B(t) => assert(t == T::different()),
+        _ => assert(false),
+    };
+
+    match ***r_mut_r_mut_r_mut_x {
         E::B(_) => assert(true),
         //E::B(t) => assert(t == T::different()),
         _ => assert(false),
@@ -258,10 +453,7 @@ fn test_all_inlined() {
     dereference_array::<u16>();
     dereference_array::<u32>();
     dereference_array::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    // thread 'main' panicked at sway-ir/src/optimize/sroa.rs:174:25:
-    // assertion failed: ty.is_aggregate(context)
-    //dereference_array::<u256>();
+    dereference_array::<u256>();
     dereference_array::<[u64;2]>();
     dereference_array::<[u64;0]>();
     dereference_array::<Struct>();
@@ -280,8 +472,7 @@ fn test_all_inlined() {
     dereference_tuple::<u16>();
     dereference_tuple::<u32>();
     dereference_tuple::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_tuple::<u256>();
+    dereference_tuple::<u256>();
     dereference_tuple::<[u64;2]>();
     dereference_tuple::<[u64;0]>();
     dereference_tuple::<Struct>();
@@ -300,8 +491,7 @@ fn test_all_inlined() {
     dereference_struct::<u16>();
     dereference_struct::<u32>();
     dereference_struct::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_struct::<u256>();
+    dereference_struct::<u256>();
     dereference_struct::<[u64;2]>();
     dereference_struct::<[u64;0]>();
     dereference_struct::<Struct>();
@@ -361,8 +551,7 @@ fn test_not_inlined() {
     dereference_array_not_inlined::<u16>();
     dereference_array_not_inlined::<u32>();
     dereference_array_not_inlined::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_array_not_inlined::<u256>();
+    dereference_array_not_inlined::<u256>();
     dereference_array_not_inlined::<[u64;2]>();
     dereference_array_not_inlined::<[u64;0]>();
     dereference_array_not_inlined::<Struct>();
@@ -381,8 +570,7 @@ fn test_not_inlined() {
     dereference_tuple_not_inlined::<u16>();
     dereference_tuple_not_inlined::<u32>();
     dereference_tuple_not_inlined::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_tuple_not_inlined::<u256>();
+    dereference_tuple_not_inlined::<u256>();
     dereference_tuple_not_inlined::<[u64;2]>();
     dereference_tuple_not_inlined::<[u64;0]>();
     dereference_tuple_not_inlined::<Struct>();
@@ -401,8 +589,7 @@ fn test_not_inlined() {
     dereference_struct_not_inlined::<u16>();
     dereference_struct_not_inlined::<u32>();
     dereference_struct_not_inlined::<u64>();
-    // TODO-IG: Uncomment once this issue is solved: https://github.com/FuelLabs/sway/issues/5377 
-    //dereference_struct_not_inlined::<u256>();
+    dereference_struct_not_inlined::<u256>();
     dereference_struct_not_inlined::<[u64;2]>();
     dereference_struct_not_inlined::<[u64;0]>();
     dereference_struct_not_inlined::<Struct>();
@@ -438,6 +625,13 @@ fn test_not_inlined() {
 fn main() -> u64 {
     test_all_inlined();
     test_not_inlined();
+
+    let mut x = 2;
+
+    assert_eq(*&x * *&x, 4);
+    assert_eq(*&mut x * *&mut x, 4);
+    assert_eq(*&x * *&mut x, 4);
+    assert_eq(*&mut x * *&x, 4);
 
     42
 }

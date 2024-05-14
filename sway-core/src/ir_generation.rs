@@ -61,32 +61,34 @@ pub fn compile_program<'eng>(
     };
 
     match kind {
-        // predicates and scripts have the same codegen, their only difference is static
+        // Predicates and scripts have the same codegen, their only difference is static
         // type-check time checks.
-        ty::TyProgramKind::Script { main_function } => compile::compile_script(
+        ty::TyProgramKind::Script { entry_function, .. } => compile::compile_script(
             engines,
             &mut ctx,
-            main_function,
-            &root.namespace,
-            declarations,
+            entry_function,
+            root.namespace.module(engines),
             &logged_types,
             &messages_types,
             &test_fns,
         ),
-        ty::TyProgramKind::Predicate { main_function } => compile::compile_predicate(
+        ty::TyProgramKind::Predicate { entry_function, .. } => compile::compile_predicate(
             engines,
             &mut ctx,
-            main_function,
-            &root.namespace,
-            declarations,
+            entry_function,
+            root.namespace.module(engines),
             &logged_types,
             &messages_types,
             &test_fns,
         ),
-        ty::TyProgramKind::Contract { abi_entries } => compile::compile_contract(
-            &mut ctx,
+        ty::TyProgramKind::Contract {
+            entry_function,
             abi_entries,
-            &root.namespace,
+        } => compile::compile_contract(
+            &mut ctx,
+            entry_function.as_ref(),
+            abi_entries,
+            root.namespace.module(engines),
             declarations,
             &logged_types,
             &messages_types,
@@ -96,15 +98,12 @@ pub fn compile_program<'eng>(
         ty::TyProgramKind::Library { .. } => compile::compile_library(
             engines,
             &mut ctx,
-            &root.namespace,
-            declarations,
+            root.namespace.module(engines),
             &logged_types,
             &messages_types,
             &test_fns,
         ),
     }?;
-
-    //println!("{ctx}");
 
     ctx.verify().map_err(|ir_error: sway_ir::IrError| {
         vec![CompileError::InternalOwned(

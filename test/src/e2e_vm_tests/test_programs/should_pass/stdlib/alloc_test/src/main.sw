@@ -1,7 +1,6 @@
 script;
 
 use std::alloc::*;
-use std::intrinsics::*;
 
 fn lw(ptr: raw_ptr) -> u64 {
     asm(r1: ptr, res) {

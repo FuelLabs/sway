@@ -1,0 +1,10 @@
+category = "run"
+
+# {{ u64, u32} , { u8 } }
+script_data = "0000000000000538 0000000000000538 1100000000000000"
+expected_result = { action = "return_data", value = "0000000000000539 0000000000000539 1200000000000000" }
+
+script_data_new_encoding = "0000000000000538 00000538 11"
+expected_result_new_encoding = { action = "return_data", value = "0000000000000539 00000539 12" }
+
+validate_abi = true

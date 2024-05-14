@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-57DF61CC9B467D2F"
+
+[[package]]
+name = "enum_instantiation"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-57DF61CC9B467D2F"
+dependencies = ["core"]

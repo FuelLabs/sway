@@ -3,8 +3,17 @@ use clap::Parser;
 use forc_pkg::source::IPFSNode;
 use forc_util::ForcResult;
 
+forc_util::cli_examples! {
+    crate::cli::Opt {
+        [Update dependencies => "forc update"]
+        [Update a specific dependency => "forc update -d std"]
+        [Check if dependencies have newer versions => "forc update --check"]
+    }
+}
+
 /// Update dependencies in the Forc dependencies directory.
-#[derive(Debug, Parser)]
+#[derive(Debug, Default, Parser)]
+#[clap(bin_name = "forc update", version, after_help = help())]
 pub struct Command {
     /// Path to the project, if not specified, current working directory will be used.
     #[clap(short, long)]
@@ -28,8 +37,8 @@ pub struct Command {
     pub ipfs_node: Option<IPFSNode>,
 }
 
-pub(crate) async fn exec(command: Command) -> ForcResult<()> {
-    match forc_update::update(command).await {
+pub(crate) fn exec(command: Command) -> ForcResult<()> {
+    match forc_update::update(command) {
         Ok(_) => Ok(()),
         Err(e) => Err(format!("couldn't update dependencies: {}", e)
             .as_str()

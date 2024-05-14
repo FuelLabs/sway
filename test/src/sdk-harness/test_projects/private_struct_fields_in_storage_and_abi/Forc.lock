@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-45272F4FFA3F93AB"
+
+[[package]]
+name = "private_struct_fields_in_storage_and_abi"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-45272F4FFA3F93AB"
+dependencies = ["core"]

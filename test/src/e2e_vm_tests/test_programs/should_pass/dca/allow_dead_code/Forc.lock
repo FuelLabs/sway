@@ -1,3 +1,8 @@
 [[package]]
-name = 'allow_dead_code'
-source = 'member'
+name = "allow_dead_code"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-C94770251D028DB3"

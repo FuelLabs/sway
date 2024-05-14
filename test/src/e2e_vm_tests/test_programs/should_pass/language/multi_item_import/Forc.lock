@@ -1,8 +1,8 @@
 [[package]]
-name = 'core'
-source = 'path+from-root-0840D11631A9C24C'
+name = "core"
+source = "path+from-root-0840D11631A9C24C"
 
 [[package]]
-name = 'multi_item_import'
-source = 'member'
-dependencies = ['core']
+name = "multi_item_import"
+source = "member"
+dependencies = ["core"]

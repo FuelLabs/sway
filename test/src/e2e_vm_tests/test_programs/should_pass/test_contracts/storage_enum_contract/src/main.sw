@@ -119,7 +119,7 @@ fn check_s_u8_a(expected: u8) -> u8 {
         },
         _ => {
             assert(false);
-            return 9999;
+            return 99;
         }
     }
 }

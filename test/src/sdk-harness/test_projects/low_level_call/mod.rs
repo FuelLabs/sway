@@ -3,18 +3,19 @@ use fuel_vm::fuel_tx::{
 };
 use fuels::{
     accounts::wallet::WalletUnlocked,
+    core::codec::*,
     prelude::*,
     types::{input::Input, Bits256, SizedAsciiString},
 };
 
 macro_rules! fn_selector {
     ( $fn_name: ident ( $($fn_arg: ty),* )  ) => {
-         ::fuels::core::codec::resolve_fn_selector(stringify!($fn_name), &[$( <$fn_arg as ::fuels::core::traits::Parameterize>::param_type() ),*]).to_vec()
-    }
+        encode_fn_selector(stringify!($fn_name)).to_vec()
+    };
 }
 macro_rules! calldata {
     ( $($arg: expr),* ) => {
-        ::fuels::core::codec::ABIEncoder::encode(&[$(::fuels::core::traits::Tokenizable::into_token($arg)),*]).unwrap().resolve(0)
+        ABIEncoder::new(EncoderConfig::default()).encode(&[$(::fuels::core::traits::Tokenizable::into_token($arg)),*]).unwrap()
     }
 }
 
@@ -23,11 +24,11 @@ abigen!(
     Contract(
         name = "TestContract",
         abi =
-            "test_artifacts/low_level_callee_contract/out/debug/low_level_callee_contract-abi.json"
+            "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract-abi.json"
     ),
     Script(
         name = "TestScript",
-        abi = "test_projects/low_level_call/out/debug/low_level_call-abi.json"
+        abi = "test_projects/low_level_call/out/release/low_level_call-abi.json"
     )
 );
 
@@ -41,7 +42,7 @@ async fn low_level_call(
     // Build the script instance
     let script_instance = TestScript::new(
         wallet,
-        "test_projects/low_level_call/out/debug/low_level_call.bin",
+        "test_projects/low_level_call/out/release/low_level_call.bin",
     );
 
     // Add the contract being called to the inputs and outputs
@@ -54,14 +55,19 @@ async fn low_level_call(
     };
 
     let contract_output = Output::Contract(OutputContract {
-        input_index: 0u8,
+        input_index: 0u16,
         balance_root: Bytes32::zeroed(),
         state_root: Bytes32::zeroed(),
     });
 
     // Run the script which will call the contract
     let tx = script_instance
-        .main(id, function_selector, calldata, single_value_type_arg)
+        .main(
+            id,
+            fuels::types::Bytes(function_selector),
+            fuels::types::Bytes(calldata),
+            single_value_type_arg,
+        )
         .with_inputs(vec![contract_input])
         .with_outputs(vec![contract_output])
         .with_tx_policies(TxPolicies::default());
@@ -85,7 +91,7 @@ async fn get_contract_instance() -> (TestContract<WalletUnlocked>, ContractId, W
     let wallet = wallets.pop().unwrap();
 
     let id = Contract::load_from(
-        "test_artifacts/low_level_callee_contract/out/debug/low_level_callee_contract.bin",
+        "test_artifacts/low_level_callee_contract/out/release/low_level_callee_contract.bin",
         LoadConfiguration::default(),
     )
     .unwrap()

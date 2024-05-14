@@ -6,4 +6,4 @@ name = "aggr_indexing"
 implicit-std = false
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../reduced_std_libs/sway-lib-std-assert" }

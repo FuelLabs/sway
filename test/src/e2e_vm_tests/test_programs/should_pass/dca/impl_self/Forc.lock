@@ -1,3 +1,8 @@
 [[package]]
-name = 'impl_self'
-source = 'member'
+name = "core"
+source = "path+from-root-A2B5A55D708E5882"
+
+[[package]]
+name = "impl_self"
+source = "member"
+dependencies = ["core"]

@@ -5,7 +5,7 @@ use std::{
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use crate::{engine_threading::*, transform, type_system::*};
+use crate::{engine_threading::*, has_changes, transform, type_system::*};
 
 #[derive(Clone, Debug)]
 pub struct TyTraitType {
@@ -30,9 +30,9 @@ impl Named for TyTraitType {
 
 impl EqWithEngines for TyTraitType {}
 impl PartialEqWithEngines for TyTraitType {
-    fn eq(&self, other: &Self, engines: &Engines) -> bool {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
-            && self.ty.eq(&other.ty, engines)
+            && self.ty.eq(&other.ty, ctx)
             && self.implementing_type.eq(&other.implementing_type)
     }
 }
@@ -55,11 +55,11 @@ impl HashWithEngines for TyTraitType {
 }
 
 impl SubstTypes for TyTraitType {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        if let Some(ref mut ty) = self.ty {
-            ty.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.ty.subst(type_mapping, engines);
+            self.implementing_type.subst(type_mapping, engines);
         }
-        self.implementing_type.subst(type_mapping, engines);
     }
 }
 

@@ -1,6 +1,6 @@
 # StorageVec
 
-A `StorageVec` is a vector that permanently stores its data in `storage`. It replicates the functionality of a regular vector however its data is not stored contigiously because it utilizes hashing and [generics](../../../language/generics/index.md) to find a location to store the value `T`.
+A `StorageVec` is a vector that permanently stores its data in `storage`. It replicates the functionality of a regular vector however its data is not stored contiguously because it utilizes hashing and [generics](../../../language/generics/index.md) to find a location to store the value `T`.
 
 There is a number of methods in the [standard library](https://github.com/FuelLabs/sway/blob/master/sway-lib-std/src/storage.sw) however we will take a look at pushing and retrieving data.
 

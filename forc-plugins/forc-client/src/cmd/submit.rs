@@ -3,11 +3,13 @@ use devault::Devault;
 use std::path::PathBuf;
 
 forc_util::cli_examples! {
-    [ Submit a transaction from a json file => submit "./mint.json" => "Submission of tx or awaiting commit failed" ]
-    [ Submit a transaction from a json file and wait for confirmation => submit "./mint.json --await true" => "Submission of tx or awaiting commit failed" ]
-    [ Submit a transaction from a json file and get output in json => submit "./mint.json --tx-status-json true" => "Submission of tx or awaiting commit failed" ]
-    [ Submit a transaction from a json file to testnet => submit "./mint.json --testnet" => "Submission of tx or awaiting commit failed" ]
-    [ Submit a transaction from a json file to a local net => submit "./mint.json --target local" => "Submission of tx or awaiting commit failed" ]
+    super::Command {
+        [ Submit a transaction from a json file => "forc submit {path}/mint.json" ]
+        [ Submit a transaction from a json file and wait for confirmation => "forc submit {path}/mint.json --await true" ]
+        [ Submit a transaction from a json file and get output in json => "forc submit {path}/mint.json --tx-status-json true" ]
+        [ Submit a transaction from a json file to testnet => "forc submit {path}/mint.json --testnet" ]
+        [ Submit a transaction from a json file to a local net => "forc submit {path}/mint.json --target local" ]
+    }
 }
 
 /// Submit a transaction to the specified fuel node.
@@ -35,7 +37,7 @@ pub struct Network {
     ///
     /// When `true`, await commitment and output the transaction status.
     /// When `false`, do not await confirmation and simply output the transaction ID.
-    #[clap(long = "await", default_value_t = true)]
+    #[clap(long = "await", default_value = "true", action(clap::ArgAction::Set))]
     #[devault("true")]
     pub await_: bool,
 }
@@ -44,6 +46,10 @@ pub struct Network {
 #[derive(Debug, Default, clap::Args)]
 pub struct TxStatus {
     /// Output the resulting transaction status as JSON rather than the default output.
-    #[clap(long = "tx-status-json", default_value_t = false)]
+    #[clap(
+        long = "tx-status-json",
+        default_value = "false",
+        action(clap::ArgAction::Set)
+    )]
     pub json: bool,
 }

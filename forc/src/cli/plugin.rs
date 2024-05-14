@@ -16,7 +16,7 @@ use std::{
 /// E.g. given `foo bar baz` where `foo` is an unrecognized subcommand to `forc`, tries to execute
 /// `forc-foo bar baz`.
 pub(crate) fn execute_external_subcommand(
-    args: Vec<String>,
+    args: &[String],
     silent: bool,
 ) -> Result<process::Output> {
     let cmd = args.first().expect("`args` must not be empty");
@@ -93,6 +93,8 @@ pub(crate) fn find_all() -> impl Iterator<Item = PathBuf> {
         .into_iter()
         .flat_map(walkdir::WalkDir::new)
         .filter_map(Result::ok)
-        .map(|entry| entry.path().to_path_buf())
-        .filter(|p| is_plugin(p))
+        .filter_map(|entry| {
+            let path = entry.path().to_path_buf();
+            is_plugin(&path).then_some(path)
+        })
 }

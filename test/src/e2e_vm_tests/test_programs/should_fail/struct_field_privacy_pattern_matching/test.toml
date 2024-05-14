@@ -1,0 +1,78 @@
+category = "fail"
+
+#check: $()Struct pattern must ignore inaccessible private fields
+#check: $()LibStruct { x_1: 0, x_2: 0 } => 1,
+#nextln: $()Struct pattern must ignore inaccessible private fields "y_1" and "y_2".
+#nextln: $()To ignore the private fields, end the struct pattern with `..`.
+#check: $()Struct "LibStruct" is declared here, and has private fields "y_1" and "y_2".
+
+#check: $()Private struct field is inaccessible
+#check: $()LibStruct { x_1: 0, x_2: 0, y_1: 0 } => 1,
+#nextln: $()Private field "y_1" is inaccessible in this module.
+#nextln: $()Private fields can only be matched within the module in which their struct is declared.
+#nextln: $()Otherwise, they must be ignored by ending the struct pattern with `..`.
+#check: $()y_1: u64,
+#nextln: $()Field "y_1" of the struct "LibStruct" is declared here as private.
+#check: $()Consider removing the field "y_1" from the struct pattern, and ending the pattern with `..`.
+#nextln: $()Alternatively, consider declaring the field "y_1" as public in "LibStruct": `pub y_1: ...,`.
+
+#check: $()Struct pattern has missing fields
+#check: $()LibStruct { x_1: 0 } => 1,
+#nextln: $()Struct pattern is missing the public field "x_2".
+#nextln: $()Struct pattern must either contain or ignore each struct field.
+#check: $()Struct "LibStruct" is declared here, and has four fields.
+#check: $()Consider ignoring the field "x_2" by using the `_` pattern: `x_2: _`.
+#nextln: $()Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.
+
+#check: $()Struct pattern has missing fields
+#check: $()LibStruct { y_1: 0, y_2: 0 } => 1,
+#nextln: $()Struct pattern is missing the public fields "x_1" and "x_2".
+#nextln: $()Struct pattern must either contain or ignore each struct field.
+#check: $()Struct "LibStruct" is declared here, and has four fields.
+#check: $()Consider ignoring individual fields by using the `_` pattern. E.g., `x_1: _`.
+#nextln: $()Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.
+
+#check: $()Private struct field is inaccessible
+#check: $()LibStruct { x_1: 0, y_2: 0, .. } => 1,
+#nextln: $()Private field "y_2" is inaccessible in this module.
+#nextln: $()Private fields can only be matched within the module in which their struct is declared.
+#not: $()Otherwise, they must be ignored by ending the struct pattern with `..`.
+#check: $()y_2: u64,
+#nextln: $()Field "y_2" of the struct "LibStruct" is declared here as private.
+#not: $()Consider removing the field "y_2" from the struct pattern, and ending the pattern with `..`.
+#check: $()Consider declaring the field "y_2" as public in "LibStruct": `pub y_2: ...,`.
+
+#not: $()LibStruct { .. } => 1,
+
+#check: $()Struct pattern has missing fields
+#check: $()LibStruct { } => 1,
+#nextln: $()Struct pattern is missing the public fields "x_1" and "x_2".
+#nextln: $()Struct pattern must either contain or ignore each struct field.
+#check: $()Struct "LibStruct" is declared here, and has four fields.
+#check: $()Consider ignoring individual fields by using the `_` pattern. E.g., `x_1: _`.
+#nextln: $()Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.
+
+#check: $()Struct pattern has missing fields
+#check: $()MainStruct { x_1: 0, x_2: 0 } => 1,
+#nextln: $()Struct pattern is missing the fields "y_1" and "y_2".
+#nextln: $()Struct pattern must either contain or ignore each struct field.
+#check: $()Consider ignoring individual fields by using the `_` pattern. E.g., `y_1: _`.
+#nextln: $()Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.
+
+#check: $()Struct pattern has missing fields
+#check: $()MainStruct { x_1: 0, x_2: 0, y_1: 0 } => 1,
+#nextln: $()Struct pattern is missing the field "y_2".
+#nextln: $()Struct pattern must either contain or ignore each struct field.
+#check: $()Consider ignoring the field "y_2" by using the `_` pattern: `y_2: _`.
+#nextln: $()Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.
+
+#check: $()Struct pattern has missing fields
+#check: $()MainStruct { x_1: 0 } => 1,
+#nextln: $()Struct pattern is missing the fields "x_2", "y_1", and one more.
+#nextln: $()Struct pattern must either contain or ignore each struct field.
+#check: $()Consider ignoring individual fields by using the `_` pattern. E.g., `x_2: _`.
+#nextln: $()Alternatively, consider ignoring all the missing fields by ending the struct pattern with `..`.
+
+#not: $()MainStruct { x_1: 0, y_2: 0, .. } => 1,
+
+#not: $()EmptyStruct

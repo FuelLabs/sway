@@ -11,7 +11,7 @@ pub enum IntegerBits {
 
 impl fmt::Display for IntegerBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use IntegerBits::*;
+        use IntegerBits::{Eight, Sixteen, SixtyFour, ThirtyTwo, V256};
         let s = match self {
             Eight => "eight",
             Sixteen => "sixteen",

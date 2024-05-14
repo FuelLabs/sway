@@ -207,7 +207,7 @@ pub fn global_gas() -> u64 {
 ///
 /// # Returns
 ///
-/// * [u64] - The remaining gas for the curren context.
+/// * [u64] - The remaining gas for the current context.
 ///
 /// # Examples
 ///

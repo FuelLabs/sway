@@ -1,11 +1,10 @@
 script;
 
-// TODO: Add this test once numeric type inference in tuples is improved.
-// enum E {
-//     F: u64,
-//     G: (u64, u64),
-//     H: (u64, u64, u64),
-// }
+enum E {
+    F: u64,
+    G: (u64, u64),
+    H: (u64, u64, u64),
+}
 
 struct S {
     x: u64,
@@ -16,8 +15,7 @@ struct S {
 enum X {
     Y: u64,
     Z: bool,
-    // TODO: Add this test once numeric type inference in tuples is improved.
-    // K: E,
+    K: E,
     S: S,
 }
 
@@ -26,8 +24,7 @@ fn match_me(me: X) -> u64 {
         X::Y(10) | X::Y(20) | X::Y(30) => { 102030 },
         X::Y(hi) => { hi },
         X::Z(false) => { 1000 },
-        // TODO: Add this test once numeric type inference in tuples is improved.
-        // X::K(E::F(a) | E::G((101, x)) | E::H((202, 303, x))) => x,
+        X::K(E::F(x) | E::G((101, x)) | E::H((202, 303, x))) => x,
         X::S(S {x: a, y: 102, z: 103}) | X::S(S {x: 201, y: a, z: 203}) | X::S(S {x: 301, y: 302, z: a}) => a,
         X::S(_) => 8888,
         _ => { 9999 },
@@ -50,26 +47,25 @@ fn main() -> u64 {
     let x = match_me(X::Z(false));
     assert (x == 1000);
 
-    // TODO: Add this test once numeric type inference in tuples is improved.
-//    let x = match_me(X::K(E::F(42)));
-//
-//    assert (x == 42);
-//
-//    let x = match_me(X::K(E::G((101, 42))));
-//
-//    assert (x == 42);
-//
-//    let x = match_me(X::K(E::H((202, 303, 42))));
-//
-//    assert (x == 42);
-//
-//    let x = match_me(X::K(E::G((202, 42))));
-//
-//    assert (x == 9999);
-//
-//    let x = match_me(X::K(E::H((303, 303, 42))));
-//
-//    assert (x == 9999);
+    let x = match_me(X::K(E::F(42)));
+
+    assert (x == 42);
+
+    let x = match_me(X::K(E::G((101, 42))));
+
+    assert (x == 42);
+
+    let x = match_me(X::K(E::H((202, 303, 42))));
+
+    assert (x == 42);
+
+    let x = match_me(X::K(E::G((202, 42))));
+
+    assert (x == 9999);
+
+    let x = match_me(X::K(E::H((303, 303, 42))));
+
+    assert (x == 9999);
 
     let x = match_me(X::S(S { x:42, y: 102, z:103 }));
     assert (x == 42);

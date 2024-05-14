@@ -5,9 +5,11 @@ use forc_util::{forc_result_bail, ForcResult};
 use sway_core::{BuildTarget, Engines};
 
 forc_util::cli_examples! {
-    [ Check the current project => forc "check" => r#".*could not find `Forc.toml`.*"# ]
-    [ Check the current project with a different path => forc "check --path ../tests/" => r#".*could not find `Forc.toml`.*"# ]
-    [ Check the current project without updating dependencies => forc "check --locked" => r#".*could not find `Forc.toml`.*"# ]
+    crate::cli::Opt {
+        [ Check the current project => "forc check" ]
+        [ Check the current project with a different path => "forc check --path <PATH>" ]
+        [ Check the current project without updating dependencies => "forc check --locked" ]
+    }
 }
 
 /// Check the current or target project and all of its dependencies for errors.
@@ -42,6 +44,10 @@ pub struct Command {
     /// Possible values: PUBLIC, LOCAL, <GATEWAY_URL>
     #[clap(long)]
     pub ipfs_node: Option<IPFSNode>,
+
+    /// Disable the "new encoding" feature
+    #[clap(long)]
+    pub no_encoding_v1: bool,
 }
 
 pub(crate) fn exec(command: Command) -> ForcResult<()> {

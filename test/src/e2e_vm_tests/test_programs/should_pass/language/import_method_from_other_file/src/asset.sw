@@ -3,7 +3,7 @@ library;
 use core::ops::Eq;
 
 pub struct Asset {
-    value: u64
+    pub value: u64
 }
 
 impl Eq for Asset {

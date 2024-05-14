@@ -305,6 +305,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                         arg2,
                         arg3,
                     } => self.compile_wide_modular_op(instr_val, op, result, arg1, arg2, arg3),
+                    FuelVmInstruction::JmpMem => self.compile_jmp_mem(instr_val),
+                    FuelVmInstruction::Retd { ptr, len } => self.compile_retd(instr_val, ptr, len),
                 },
                 InstOp::GetElemPtr {
                     base,
@@ -661,6 +663,24 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
         self.cur_bytecode.push(Op {
             opcode: Either::Left(opcode),
+            comment: String::new(),
+            owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+        });
+
+        Ok(())
+    }
+
+    fn compile_retd(
+        &mut self,
+        instr_val: &Value,
+        ptr: &Value,
+        len: &Value,
+    ) -> Result<(), CompileError> {
+        let ptr = self.value_to_register(ptr)?;
+        let len = self.value_to_register(len)?;
+
+        self.cur_bytecode.push(Op {
+            opcode: Either::Left(VirtualOp::RETD(ptr, len)),
             comment: String::new(),
             owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
         });
@@ -1451,6 +1471,49 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         Ok(())
     }
 
+    fn compile_jmp_mem(&mut self, instr_val: &Value) -> Result<(), CompileError> {
+        let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+        let target_reg = self.reg_seqr.next();
+        let is_target_reg = self.reg_seqr.next();
+        let by4_reg = self.reg_seqr.next();
+
+        self.cur_bytecode.push(Op {
+            owning_span: owning_span.clone(),
+            opcode: Either::Left(VirtualOp::LW(
+                target_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::HeapPointer),
+                VirtualImmediate12::new(0, Span::dummy()).unwrap(),
+            )),
+            comment: "jmp_mem: Load MEM[$hp]".into(),
+        });
+        self.cur_bytecode.push(Op {
+            owning_span: owning_span.clone(),
+            opcode: Either::Left(VirtualOp::SUB(
+                is_target_reg.clone(),
+                target_reg,
+                VirtualRegister::Constant(ConstantRegister::InstructionStart),
+            )),
+            comment: "jmp_mem: Subtract $is since Jmp adds it back.".into(),
+        });
+        self.cur_bytecode.push(Op {
+            owning_span: owning_span.clone(),
+            opcode: Either::Left(VirtualOp::DIVI(
+                by4_reg.clone(),
+                is_target_reg.clone(),
+                VirtualImmediate12::new(4, Span::dummy()).unwrap(),
+            )),
+            comment: "jmp_mem: Divide by 4 since Jmp multiplies by 4.".into(),
+        });
+
+        self.cur_bytecode.push(Op {
+            owning_span,
+            opcode: Either::Left(VirtualOp::JMP(by4_reg)),
+            comment: "jmp_mem: Jump to computed value".into(),
+        });
+
+        Ok(())
+    }
+
     fn compile_smo(
         &mut self,
         instr_val: &Value,
@@ -1653,6 +1716,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         stored_val: &Value,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
         if stored_val
             .get_type(self.context)
             .map_or(true, |ty| !self.is_copy_type(&ty))
@@ -1725,9 +1789,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
     // ---------------------------------------------------------------------------------------------
 
-    // XXX reassess all the places we use this
+    // TODO-IG: Reassess all the places we use `is_copy_type`.
     pub(crate) fn is_copy_type(&self, ty: &Type) -> bool {
         ty.is_unit(self.context)
+            || ty.is_never(self.context)
             || ty.is_bool(self.context)
             || ty
                 .get_uint_width(self.context)

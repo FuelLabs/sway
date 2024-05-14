@@ -73,52 +73,52 @@ We can recognize the `while` loop by the conditional jumps `JNZI`. The condition
 ## Setting up the debugging
 
 We can start up the debug infrastructure. On a new terminal session run `fuel-core run --db-type in-memory --debug`; we need to have that running because it actually executes the program. Now we can fire up the debugger itself: `forc-debug`. Now
-if everything is set up correctly, you shoould see the debugger prompt (`>>`). You can use `help` command to list available commands.
+if everything is set up correctly, you should see the debugger prompt (`>>`). You can use `help` command to list available commands.
 
-Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. `fuel-core`. To do so, we need a *transaction specification*, `tx.json`. It looks something like this:
+Now we would like to inspect the program while it's running. To do this, we first need to send the script to the executor, i.e. `fuel-core`. To do so, we need a *transaction specification*, `tx.json`. It looks something like the following (this is a simplified example and to see a valid tx json please see [example-tx.json](https://github.com/FuelLabs/sway/blob/master/forc-plugins/forc-debug/examples/example_tx.json)):
 
 ```json
 {
-    "Script": {
-        "script_gas_limit": 1000000,
-        "script": [],
-        "script_data": [],
-        "policies": {
-            "bits": "GasPrice",
-            "values": [0,0,0,0]
-        },
-        "inputs": [
-            {
-                "CoinSigned": {
-                    "utxo_id": {
-                        "tx_id": "c49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2",
-                        "output_index": 18
-                    },
-                    "owner": "f1e92c42b90934aa6372e30bc568a326f6e66a1a0288595e6e3fbd392a4f3e6e",
-                    "amount": 10599410012256088338,
-                    "asset_id": "2cafad611543e0265d89f1c2b60d9ebf5d56ad7e23d9827d6b522fd4d6e44bc3",
-                    "tx_pointer": {
-                        "block_height": 0,
-                        "tx_index": 0
-                    },
-                    "witness_index": 0,
-                    "maturity": 0,
-                    "predicate_gas_used": null,
-                    "predicate": null,
-                    "predicate_data": null
-                }
-            }
-        ],
-        "outputs": [],
-        "witnesses": [
-            {
-                "data": [
-                    156,254,34,102,65,96,133,170,254,105,147,35,196,199,179,133,132,240,208,149,11,46,30,96,44,91,121,195,145,184,159,235,117,82,135,41,84,154,102,61,61,16,99,123,58,173,75,226,219,139,62,33,41,176,16,18,132,178,8,125,130,169,32,108
-                ]
-            }
-        ],
-        "receipts_root": "0000000000000000000000000000000000000000000000000000000000000000"
-    }
+  "Script": {
+    "body": {
+      "script_gas_limit": 1000000,
+      "script": [],
+      "script_data": [],
+      "receipts_root": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "policies": {
+      "bits": "MaxFee",
+      "values": [...]
+    },
+    "inputs": [
+      {
+        "CoinSigned": {
+          "utxo_id": {
+            "tx_id": "c49d65de61cf04588a764b557d25cc6c6b4bc0d7429227e2a21e61c213b3a3e2",
+            "output_index": 18
+          },
+          "owner": "f1e92c42b90934aa6372e30bc568a326f6e66a1a0288595e6e3fbd392a4f3e6e",
+          "amount": 10599410012256088000,
+          "asset_id": "2cafad611543e0265d89f1c2b60d9ebf5d56ad7e23d9827d6b522fd4d6e44bc3",
+          "tx_pointer": {
+            "block_height": 0,
+            "tx_index": 0
+          },
+          "witness_index": 0,
+          "maturity": 0,
+          "predicate_gas_used": null,
+          "predicate": null,
+          "predicate_data": null
+        }
+      }
+    ],
+    "outputs": [],
+    "witnesses": [
+      {
+        "data": [...]
+      }
+    ]
+  }
 }
 ```
 
@@ -143,7 +143,7 @@ Receipt: ScriptResult { result: Success, gas_used: 60 }
 Terminated
 ```
 
-Looking at the first output line, we can see that it logged `ra: 120` which is the correct return value for `factorial(5)`. It also tells us that the exection terminated without hitting any breakpoints. That's unsurprising, because we haven't set up any. We can do so with `breakpoint` command:
+Looking at the first output line, we can see that it logged `ra: 120` which is the correct return value for `factorial(5)`. It also tells us that the execution terminated without hitting any breakpoints. That's unsurprising, because we haven't set up any. We can do so with `breakpoint` command:
 
 ```text
 >> breakpoint 0
@@ -167,7 +167,7 @@ reg[0x9] = 1000000  # ggas
  000010: e9 5c 58 86 c8 87 26 dd
 ```
 
-However, that's not too interesting either, so let's just execute until the end, and then reset the vm to remove the breakpoints.
+However, that's not too interesting either, so let's just execute until the end, and then reset the VM to remove the breakpoints.
 
 ```text
 >> continue
@@ -199,7 +199,7 @@ Stopped on breakpoint at address 56 of contract 0x000000000000000000000000000000
 
 ```
 
-Now we can inspect the inputs tu multiply. Looking at [the specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply) tells us that the instruction `MUL { ra: 18, rb: 18, rc: 17 }` means `reg[18] = reg[18] * reg[17]`. So inpecting the inputs tells us that
+Now we can inspect the inputs to multiply. Looking at [the specification](https://github.com/FuelLabs/fuel-specs/blob/master/src/fuel-vm/instruction-set.md#mul-multiply) tells us that the instruction `MUL { ra: 18, rb: 18, rc: 17 }` means `reg[18] = reg[18] * reg[17]`. So inspecting the inputs tells us that
 
 ```text
 >> r 18 17

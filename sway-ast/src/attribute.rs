@@ -25,7 +25,7 @@ impl Spanned for AttributeDecl {
             AttributeHashKind::Inner(hash_bang_token) => hash_bang_token.span(),
             AttributeHashKind::Outer(hash_token) => hash_token.span(),
         };
-        Span::join(hash_span, self.attribute.span())
+        Span::join(hash_span, &self.attribute.span())
     }
 }
 
@@ -61,7 +61,7 @@ pub struct AttributeArg {
 impl Spanned for AttributeArg {
     fn span(&self) -> Span {
         if let Some(value) = &self.value {
-            Span::join(self.name.span(), value.span())
+            Span::join(self.name.span(), &value.span())
         } else {
             self.name.span()
         }
@@ -78,7 +78,7 @@ impl Spanned for Attribute {
     fn span(&self) -> Span {
         self.args
             .as_ref()
-            .map(|args| Span::join(self.name.span(), args.span()))
+            .map(|args| Span::join(self.name.span(), &args.span()))
             .unwrap_or_else(|| self.name.span())
     }
 }

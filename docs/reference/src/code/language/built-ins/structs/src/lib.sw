@@ -2,7 +2,7 @@ library;
 
 // ANCHOR: definition
 struct Foo {
-    bar: u64,
+    pub bar: u64,
     baz: bool,
 }
 // ANCHOR_END: definition
@@ -27,6 +27,18 @@ fn variable_instantiation() {
         bar: number,
         baz: boolean,
     };
+
+    // Access and write to "baz"
+    foo.baz = true;
+}
+
+fn shorthand_instantiation() {
+    // Declare variables with the same names as the fields in `Foo`
+    let bar = 42;
+    let baz = false;
+
+    // Instantiate `foo` as `Foo`
+    let mut foo = Foo { bar, baz };
 
     // Access and write to "baz"
     foo.baz = true;

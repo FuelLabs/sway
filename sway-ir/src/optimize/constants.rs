@@ -25,7 +25,7 @@ pub fn create_const_combine_pass() -> Pass {
     }
 }
 
-/// Find constant expressions which can be reduced to fewer opterations.
+/// Find constant expressions which can be reduced to fewer operations.
 pub fn combine_constants(
     context: &mut Context,
     _: &AnalysisResults,

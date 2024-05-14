@@ -40,7 +40,7 @@ pub(crate) fn render_type_anchor(
                     (*render_plan.engines.te().get(ty_arg.type_id)).clone(),
                     render_plan,
                     current_module_info,
-                )?)
+                )?);
             }
             Ok(box_html! {
                 : "(";

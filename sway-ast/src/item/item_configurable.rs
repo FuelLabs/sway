@@ -8,7 +8,7 @@ pub struct ItemConfigurable {
 
 impl Spanned for ItemConfigurable {
     fn span(&self) -> Span {
-        Span::join(self.configurable_token.span(), self.fields.span())
+        Span::join(self.configurable_token.span(), &self.fields.span())
     }
 }
 

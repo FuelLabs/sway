@@ -61,11 +61,16 @@ impl Parse for Ty {
             return Ok(Ty::Slice { slice_token, ty });
         }
         if let Some(ampersand_token) = parser.take() {
+            let mut_token = parser.take();
             let ty = Box::new(parser.parse()?);
             return Ok(Ty::Ref {
                 ampersand_token,
+                mut_token,
                 ty,
             });
+        }
+        if let Some(bang_token) = parser.take() {
+            return Ok(Ty::Never { bang_token });
         }
         if parser.peek::<OpenAngleBracketToken>().is_some()
             || parser.peek::<DoubleColonToken>().is_some()
@@ -133,6 +138,28 @@ mod tests {
             &T
             "#,
         );
-        assert_matches!(item, Ty::Ref { .. });
+        assert_matches!(
+            item,
+            Ty::Ref {
+                mut_token: None,
+                ..
+            }
+        );
+    }
+
+    #[test]
+    fn parse_mut_ref() {
+        let item = parse::<Ty>(
+            r#"
+            &mut T
+            "#,
+        );
+        assert_matches!(
+            item,
+            Ty::Ref {
+                mut_token: Some(_),
+                ..
+            }
+        );
     }
 }

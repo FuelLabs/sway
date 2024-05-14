@@ -12,6 +12,8 @@ impl Foo {
     }
 
     // this is an _associated function_, since it does not take `self` as a parameter.
+    // it is at the same time a _constructor_ because it instantiates and returns
+    // a new instance of `Foo`.
     fn new_foo(number: u64, boolean: bool) -> Foo {
         Foo {
             bar: number,

@@ -1,0 +1,35 @@
+category = "fail"
+
+#check: $()Private struct field is inaccessible
+#check: $()let LibStruct { x_1, x_2, y_1 } = ls;
+#nextln: $()Private field "y_1" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private fields can only be accessed within the module in which their struct is declared.
+#check: $()y_1: u64,
+#nextln: $()Field "y_1" is declared here as private.
+#check: $()Consider declaring the field "y_1" as public in "LibStruct": `pub y_1: ...,`.
+
+#check: $()Private struct field is inaccessible
+#check: $()let LibStruct { y_1, y_2 } = ls;
+#nextln: $()Private field "y_1" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private fields can only be accessed within the module in which their struct is declared.
+#check: $()y_1: u64,
+#nextln: $()Field "y_1" is declared here as private.
+#check: $()Consider declaring the field "y_1" as public in "LibStruct": `pub y_1: ...,`.
+
+#check: $()Private struct field is inaccessible
+#check: $()let LibStruct { y_1, y_2 } = ls;
+#nextln: $()Private field "y_2" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private fields can only be accessed within the module in which their struct is declared.
+#check: $()y_2: u64,
+#nextln: $()Field "y_2" is declared here as private.
+#check: $()Consider declaring the field "y_2" as public in "LibStruct": `pub y_2: ...,`.
+
+#check: $()Private struct field is inaccessible
+#check: $()let LibStruct { x_1, y_2, .. } = ls;
+#nextln: $()Private field "y_2" of the struct "LibStruct" is inaccessible in this module.
+#nextln: $()Private fields can only be accessed within the module in which their struct is declared.
+#check: $()y_2: u64,
+#nextln: $()Field "y_2" is declared here as private.
+#check: $()Consider declaring the field "y_2" as public in "LibStruct": `pub y_2: ...,`.
+
+#not: $()MainStruct

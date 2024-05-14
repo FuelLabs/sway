@@ -6,26 +6,26 @@ use crate::{
     },
 };
 use std::fmt::Write;
-use sway_ast::{expr::ReassignmentOp, Assignable, Expr};
+use sway_ast::{assignable::ElementAccess, expr::ReassignmentOp, Assignable, Expr};
 use sway_types::Spanned;
 
-impl Format for Assignable {
+impl Format for ElementAccess {
     fn format(
         &self,
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         match self {
-            Assignable::Var(name) => {
+            ElementAccess::Var(name) => {
                 name.format(formatted_code, formatter)?;
             }
-            Assignable::Index { target, arg } => {
+            ElementAccess::Index { target, arg } => {
                 target.format(formatted_code, formatter)?;
                 Expr::open_square_bracket(formatted_code, formatter)?;
                 arg.get().format(formatted_code, formatter)?;
                 Expr::close_square_bracket(formatted_code, formatter)?;
             }
-            Assignable::FieldProjection {
+            ElementAccess::FieldProjection {
                 target,
                 dot_token,
                 name,
@@ -34,7 +34,7 @@ impl Format for Assignable {
                 write!(formatted_code, "{}", dot_token.span().as_str())?;
                 name.format(formatted_code, formatter)?;
             }
-            Assignable::TupleFieldProjection {
+            ElementAccess::TupleFieldProjection {
                 target,
                 dot_token,
                 field: _,
@@ -53,6 +53,25 @@ impl Format for Assignable {
     }
 }
 
+impl Format for Assignable {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        match self {
+            Assignable::ElementAccess(element_access) => {
+                element_access.format(formatted_code, formatter)?
+            }
+            Assignable::Deref { star_token, expr } => {
+                write!(formatted_code, "{}", star_token.span().as_str())?;
+                expr.format(formatted_code, formatter)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Format for ReassignmentOp {
     fn format(
         &self,
@@ -64,16 +83,16 @@ impl Format for ReassignmentOp {
     }
 }
 
-impl LeafSpans for Assignable {
+impl LeafSpans for ElementAccess {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = Vec::new();
         match self {
-            Assignable::Var(var) => collected_spans.push(ByteSpan::from(var.span())),
-            Assignable::Index { target, arg } => {
+            ElementAccess::Var(var) => collected_spans.push(ByteSpan::from(var.span())),
+            ElementAccess::Index { target, arg } => {
                 collected_spans.append(&mut target.leaf_spans());
                 collected_spans.append(&mut arg.leaf_spans());
             }
-            Assignable::FieldProjection {
+            ElementAccess::FieldProjection {
                 target,
                 dot_token,
                 name,
@@ -82,7 +101,7 @@ impl LeafSpans for Assignable {
                 collected_spans.push(ByteSpan::from(dot_token.span()));
                 collected_spans.push(ByteSpan::from(name.span()));
             }
-            Assignable::TupleFieldProjection {
+            ElementAccess::TupleFieldProjection {
                 target,
                 dot_token,
                 field: _field,
@@ -94,5 +113,19 @@ impl LeafSpans for Assignable {
             }
         };
         collected_spans
+    }
+}
+
+impl LeafSpans for Assignable {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        match self {
+            Assignable::ElementAccess(element_access) => element_access.leaf_spans(),
+            Assignable::Deref { star_token, expr } => {
+                let mut collected_spans = Vec::new();
+                collected_spans.push(ByteSpan::from(star_token.span()));
+                collected_spans.append(&mut expr.leaf_spans());
+                collected_spans
+            }
+        }
     }
 }
