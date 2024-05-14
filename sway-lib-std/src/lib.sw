@@ -1,5 +1,6 @@
 library;
 
+pub mod constants;
 pub mod error_signals;
 pub mod logging;
 pub mod revert;
@@ -22,7 +23,6 @@ pub mod hash;
 pub mod asset_id;
 pub mod contract_id;
 pub mod execution;
-pub mod constants;
 pub mod call_frames;
 pub mod context;
 pub mod external;
