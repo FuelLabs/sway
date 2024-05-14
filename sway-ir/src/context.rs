@@ -8,7 +8,7 @@
 
 use rustc_hash::FxHashMap;
 use slotmap::{DefaultKey, SlotMap};
-use sway_types::SourceEngine;
+use sway_types::{SourceEngine, SourceId};
 
 use crate::{
     block::BlockContent, function::FunctionContent, local_var::LocalVarContent,
