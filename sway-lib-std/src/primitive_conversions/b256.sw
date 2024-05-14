@@ -1,9 +1,11 @@
 library;
 
 use ::bytes::Bytes;
+use ::constants::ZERO_B256;
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 use ::u128::U128;
+use ::b512::B512;
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
@@ -14,6 +16,38 @@ impl TryFrom<Bytes> for b256 {
             let ptr = __addr_of(val);
             b.ptr().copy_to::<b256>(ptr, 1);
             Some(val)
+        }
+    }
+}
+
+impl TryFrom<B512> for b256 {
+    /// Attempts conversion from a `B512` to a `b256`.
+    /// If the high bits of the `B512` are not zero, the conversion will fail.
+    ///
+    /// # Arguments
+    ///
+    /// * `val`: [B512] - The `B512` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// * [Option<b256>] - The `b256` representation of the `B512` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let b512_value = B512::new();
+    ///     let b256_value = b256::try_from(b512_value);
+    /// }
+    /// ```
+    fn try_from(val: B512) -> Option<Self> {
+        let bits = val.bits();
+        if bits[1] == ZERO_B256 {
+            Some(bits[0])
+        } else {
+            None
         }
     }
 }
@@ -151,4 +185,18 @@ fn test_b256_from_tuple() {
     assert(
         b256_value == 0x0000000000000001000000000000000200000000000000030000000000000004,
     );
+}
+
+#[test]
+fn test_b256_try_from_b512() {
+    use ::assert::assert;
+    use ::b512::B512;
+
+    let b512_value = B512::new();
+    let b256_value = b256::try_from(b512_value);
+    assert(b256_value.is_some());
+
+    let b512_value = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001_b256, ZERO_B256));
+    let b256_value = b256::try_from(b512_value);
+    assert(b256_value.is_none());
 }
