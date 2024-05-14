@@ -1,6 +1,6 @@
 [package]
 name = "forc-debug"
-version = "0.57.0"
+version = "0.58.0"
 description = "Supports debugging Sway code via CLI and DAP server."
 authors.workspace = true
 edition.workspace = true
@@ -10,10 +10,10 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1.0" # Used by the examples and for conversion only
-clap = { version = "3", features = ["env", "derive"] }
+clap = { version = "4.5.4", features = ["derive", "env"] }
 dap = "0.4.1-alpha1"
-forc-pkg = { version = "0.57.0", path = "../../forc-pkg" }
-forc-test = { version = "0.57.0", path = "../../forc-test" }
+forc-pkg = { version = "0.58.0", path = "../../forc-pkg" }
+forc-test = { version = "0.58.0", path = "../../forc-test" }
 fuel-core-client = { workspace = true }
 fuel-types = { workspace = true, features = ["serde"] }
 fuel-vm = { workspace = true, features = ["serde"] }
@@ -21,8 +21,8 @@ rayon = "1.7.0"
 serde = "1.0"
 serde_json = "1.0"
 shellfish = { version = "0.6.0", features = ["rustyline", "async", "tokio"] }
-sway-core = { version = "0.57.0", path = "../../sway-core" }
-sway-types = { version = "0.57.0", path = "../../sway-types" }
+sway-core = { version = "0.58.0", path = "../../sway-core" }
+sway-types = { version = "0.58.0", path = "../../sway-types" }
 thiserror = "1.0"
 tokio = { version = "1.8", features = [
     "net",

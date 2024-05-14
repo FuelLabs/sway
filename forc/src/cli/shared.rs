@@ -74,7 +74,7 @@ pub struct Print {
     ///  - abstract:  short for both virtual and allocated ASM.
     ///  - final:     final ASM that gets serialized to the target VM bytecode.
     ///  - all:       short for virtual, allocated, and final ASM.
-    #[clap(long, multiple = true, possible_values = &PrintAsmCliOpt::CLI_OPTIONS)]
+    #[arg(long, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
     pub asm: Option<Vec<String>>,
     /// Print the bytecode. This is the final output of the compiler.
     #[clap(long)]
