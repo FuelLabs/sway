@@ -9,7 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "4.5.4", features = ["derive"] }
 derivative = "2.2.0"
 dirs = "3.0"
 either = "1.9.0"
