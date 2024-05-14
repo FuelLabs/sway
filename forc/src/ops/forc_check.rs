@@ -47,7 +47,7 @@ pub fn check(command: CheckCommand, engines: &Engines) -> Result<(Option<ty::TyP
         None,
         ExperimentalFlags {
             new_encoding: !no_encoding_v1,
-            abi_hash_ids: abi_hash_ids,
+            abi_hash_ids,
         },
     )?;
     let (res, handler) = v
