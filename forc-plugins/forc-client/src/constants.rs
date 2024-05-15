@@ -10,3 +10,5 @@ pub const BETA_4_FAUCET_URL: &str = "https://faucet-beta-4.fuel.network";
 pub const BETA_5_FAUCET_URL: &str = "https://faucet-beta-5.fuel.network";
 pub const DEVNET_FAUCET_URL: &str = "https://faucet-devnet.fuel.network";
 pub const DEVNET_ENDPOINT_URL: &str = "https://devnet.fuel.network";
+pub const TESTNET_FAUCET_URL: &str = "https://faucet-testnet.fuel.network";
+pub const TESTNET_ENDPOINT_URL: &str = "https://testnet.fuel.network";
