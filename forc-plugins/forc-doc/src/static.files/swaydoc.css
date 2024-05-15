@@ -152,7 +152,7 @@ h2,
   border-bottom: 1px solid var(--headings-border-bottom-color);
 }
 h3.code-header {
-  font-size: 1em;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 h4.code-header {
@@ -604,18 +604,14 @@ h2.location a {
 .top-doc .docblock h6 {
   font-size: 1rem;
 }
-.docblock h5 {
-  font-size: 1rem;
-}
-.docblock h6 {
-  font-size: 0.875rem;
-}
 .docblock h1,
 .docblock h2,
 .docblock h3,
 .docblock h4,
 .docblock h5,
 .docblock h6 {
+  font-size: 1.125rem;
+  color: var(--main-color);
   border-bottom-color: var(--headings-border-bottom-color);
 }
 .docblock {
