@@ -1,4 +1,5 @@
 use fuel_abi_types::abi::program as program_abi;
+use std::collections::HashSet;
 
 use crate::{
     language::ty::{TyConstantDecl, TyFunctionDecl, TyProgram, TyProgramKind},
@@ -105,20 +106,30 @@ fn generate_logged_types(
     types.extend(logged_types);
 
     // Generate the JSON data for the logged types
+    let mut log_ids: HashSet<u64> = HashSet::default();
     ctx.program
         .logged_types
         .iter()
-        .map(|(log_id, type_id)| program_abi::LoggedType {
-            log_id: if ctx.abi_with_hash_ids {
+        .filter_map(|(log_id, type_id)| {
+            let log_id = if ctx.abi_with_hash_ids {
                 log_id.hash_id
             } else {
                 log_id.index as u64
-            },
-            application: program_abi::TypeApplication {
-                name: "".to_string(),
-                type_id: type_id.index(),
-                type_arguments: type_id.get_abi_type_arguments(ctx, engines, types, *type_id),
-            },
+            };
+            if log_ids.contains(&log_id) {
+                None
+            } else {
+                log_ids.insert(log_id);
+                Some(program_abi::LoggedType {
+                    log_id,
+                    application: program_abi::TypeApplication {
+                        name: "".to_string(),
+                        type_id: type_id.index(),
+                        type_arguments: type_id
+                            .get_abi_type_arguments(ctx, engines, types, *type_id),
+                    },
+                })
+            }
         })
         .collect()
 }
