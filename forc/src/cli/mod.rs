@@ -43,7 +43,7 @@ fn help() -> &'static str {
 }
 
 #[derive(Debug, Parser)]
-#[clap(name = "forc", about = "Fuel Orchestrator", version, after_help = help())]
+#[clap(name = "forc", about = "Fuel Orchestrator", version, after_long_help = help())]
 struct Opt {
     /// The command to run
     #[clap(subcommand)]
