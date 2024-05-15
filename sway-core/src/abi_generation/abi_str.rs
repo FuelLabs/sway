@@ -5,6 +5,7 @@ use crate::{language::CallPath, Engines, TypeArgument, TypeId, TypeInfo};
 pub struct AbiStrContext {
     pub program_name: Option<String>,
     pub abi_with_callpaths: bool,
+    pub abi_with_fully_specified_types: bool,
 }
 
 impl TypeId {
@@ -36,13 +37,24 @@ impl TypeId {
                     assert_eq!(fields.len(), resolved_fields.len());
                     let field_strs = fields
                         .iter()
-                        .map(|_| "_".to_string())
+                        .map(|f| {
+                            if ctx.abi_with_fully_specified_types {
+                                type_engine.get(f.type_id).abi_str(ctx, engines)
+                            } else {
+                                "_".to_string()
+                            }
+                        })
                         .collect::<Vec<String>>();
                     format!("({})", field_strs.join(", "))
                 }
-                (TypeInfo::Array(_, count), TypeInfo::Array(_, resolved_count)) => {
+                (TypeInfo::Array(type_arg, count), TypeInfo::Array(_, resolved_count)) => {
                     assert_eq!(count.val(), resolved_count.val());
-                    format!("[_; {}]", count.val())
+                    let inner_type = if ctx.abi_with_fully_specified_types {
+                        type_engine.get(type_arg.type_id).abi_str(ctx, engines)
+                    } else {
+                        "_".to_string()
+                    };
+                    format!("[{}; {}]", inner_type, count.val())
                 }
                 (TypeInfo::Custom { .. }, _) => {
                     format!("generic {}", type_engine.get(*self).abi_str(ctx, engines))
@@ -57,6 +69,7 @@ impl TypeInfo {
     pub fn abi_str(&self, ctx: &AbiStrContext, engines: &Engines) -> String {
         use TypeInfo::*;
         let decl_engine = engines.de();
+        let type_engine = engines.te();
         match self {
             Unknown => "unknown".into(),
             Never => "never".into(),
@@ -91,11 +104,45 @@ impl TypeInfo {
             ErrorRecovery(_) => "unknown due to error".into(),
             Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
-                format!("enum {}", call_path_display(ctx, &decl.call_path))
+                let type_params =
+                    if !ctx.abi_with_fully_specified_types || decl.type_parameters.is_empty() {
+                        "".into()
+                    } else {
+                        format!(
+                            "<{}>",
+                            decl.type_parameters
+                                .iter()
+                                .map(|p| type_engine.get(p.type_id).abi_str(ctx, engines))
+                                .collect::<Vec<_>>()
+                                .join(",")
+                        )
+                    };
+                format!(
+                    "enum {}{}",
+                    call_path_display(ctx, &decl.call_path),
+                    type_params
+                )
             }
             Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
-                format!("struct {}", call_path_display(ctx, &decl.call_path))
+                let type_params =
+                    if !ctx.abi_with_fully_specified_types || decl.type_parameters.is_empty() {
+                        "".into()
+                    } else {
+                        format!(
+                            "<{}>",
+                            decl.type_parameters
+                                .iter()
+                                .map(|p| type_engine.get(p.type_id).abi_str(ctx, engines))
+                                .collect::<Vec<_>>()
+                                .join(",")
+                        )
+                    };
+                format!(
+                    "struct {}{}",
+                    call_path_display(ctx, &decl.call_path),
+                    type_params
+                )
             }
             ContractCaller { abi_name, .. } => {
                 format!("contract caller {abi_name}")

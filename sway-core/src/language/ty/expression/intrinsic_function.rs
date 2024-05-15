@@ -122,6 +122,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                             &AbiStrContext {
                                 program_name: Some(ctx.program_name.clone()),
                                 abi_with_callpaths: true,
+                                abi_with_fully_specified_types: true,
                             },
                             ctx.engines,
                             logged_type,
