@@ -15,7 +15,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 0,
+      "logId": 4579537983717831593,
       "loggedType": {
         "name": "",
         "type": 6,
@@ -23,7 +23,7 @@
       }
     },
     {
-      "logId": 1,
+      "logId": 16566583104751091389,
       "loggedType": {
         "name": "",
         "type": 7,
@@ -37,7 +37,7 @@
       }
     },
     {
-      "logId": 2,
+      "logId": 5087777005172090899,
       "loggedType": {
         "name": "",
         "type": 1,
@@ -45,15 +45,7 @@
       }
     },
     {
-      "logId": 3,
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": []
-      }
-    },
-    {
-      "logId": 4,
+      "logId": 5555909392781521367,
       "loggedType": {
         "name": "",
         "type": 5,
