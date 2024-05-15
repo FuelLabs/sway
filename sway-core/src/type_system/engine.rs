@@ -6,7 +6,8 @@ use crate::{
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -26,7 +27,7 @@ impl Clone for TypeEngine {
     fn clone(&self) -> Self {
         TypeEngine {
             slab: self.slab.clone(),
-            id_map: RwLock::new(self.id_map.read().unwrap().clone()),
+            id_map: RwLock::new(self.id_map.read().clone()),
         }
     }
 }
@@ -45,7 +46,7 @@ impl TypeEngine {
             type_info: ty.clone().into(),
             source_id,
         };
-        let mut id_map = self.id_map.write().unwrap();
+        let mut id_map = self.id_map.write();
 
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, engines)(&tsi);
@@ -72,13 +73,10 @@ impl TypeEngine {
             Some(source_id) => &source_id.module_id() != module_id,
             None => true,
         });
-        self.id_map
-            .write()
-            .unwrap()
-            .retain(|tsi, _| match tsi.source_id {
-                Some(source_id) => &source_id.module_id() != module_id,
-                None => true,
-            });
+        self.id_map.write().retain(|tsi, _| match tsi.source_id {
+            Some(source_id) => &source_id.module_id() != module_id,
+            None => true,
+        });
     }
 
     pub fn replace(&self, id: TypeId, new_value: TypeSourceInfo) {

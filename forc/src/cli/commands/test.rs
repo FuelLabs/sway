@@ -2,9 +2,10 @@ use crate::cli;
 use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
-use forc_test::{TestFilter, TestRunnerCount, TestedPackage};
+use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
 use pkg::manifest::build_profile::ExperimentalFlags;
+use sway_core::fuel_prelude::fuel_tx::Receipt;
 use tracing::info;
 
 forc_util::cli_examples! {
@@ -65,6 +66,10 @@ pub struct TestPrintOpts {
     /// Print `Log` and `LogData` receipts for tests.
     #[clap(long = "logs", short = 'l')]
     pub print_logs: bool,
+    /// Decode logs and show decoded log information in human readable format alongside the raw
+    /// logs.
+    #[clap(long = "decode", short = 'd')]
+    pub decode_logs: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
@@ -142,6 +147,21 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
         // If logs are enabled, print them.
         if test_print_opts.print_logs {
             let logs = &test.logs;
+            if test_print_opts.decode_logs {
+                for log in logs {
+                    if let Receipt::LogData {
+                        rb,
+                        data: Some(data),
+                        ..
+                    } = log
+                    {
+                        let decoded_log_data = decode_log_data(*rb, data, &pkg.built.program_abi)?;
+                        let var_value = decoded_log_data.value;
+                        info!("Decoded log value: {}, log rb: {}", var_value, rb);
+                    }
+                }
+                info!("Raw logs:");
+            }
             let formatted_logs = format_log_receipts(logs, test_print_opts.pretty_print)?;
             info!("{}", formatted_logs);
         }
