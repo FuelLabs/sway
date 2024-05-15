@@ -44,8 +44,8 @@ impl TryFrom<B512> for b256 {
     /// ```
     fn try_from(val: B512) -> Option<Self> {
         let bits = val.bits();
-        if bits[1] == ZERO_B256 {
-            Some(bits[0])
+        if bits[0] == ZERO_B256 {
+            Some(bits[1])
         } else {
             None
         }
