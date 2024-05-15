@@ -1,8 +1,5 @@
-use std::path::PathBuf;
-use std::sync::RwLock;
-use std::time::SystemTime;
-use std::{collections::HashMap, sync::Arc};
-
+use parking_lot::RwLock;
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::SystemTime};
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
 
@@ -55,7 +52,7 @@ pub struct QueryEngine {
 
 impl QueryEngine {
     pub fn get_parse_module_cache_entry(&self, path: &ModuleCacheKey) -> Option<ModuleCacheEntry> {
-        let cache = self.parse_module_cache.read().unwrap();
+        let cache = self.parse_module_cache.read();
         cache.get(path).cloned()
     }
 
@@ -63,20 +60,17 @@ impl QueryEngine {
         let path = entry.path.clone();
         let include_tests = entry.include_tests;
         let key = ModuleCacheKey::new(path, include_tests);
-        let mut cache = self.parse_module_cache.write().unwrap();
+        let mut cache = self.parse_module_cache.write();
         cache.insert(key, entry);
     }
 
     pub fn get_programs_cache_entry(&self, path: &Arc<PathBuf>) -> Option<ProgramsCacheEntry> {
-        let cache = self
-            .programs_cache
-            .read()
-            .expect("Failed to read programs cache");
+        let cache = self.programs_cache.read();
         cache.get(path).cloned()
     }
 
     pub fn insert_programs_cache_entry(&self, entry: ProgramsCacheEntry) {
-        let mut cache = self.programs_cache.write().unwrap();
+        let mut cache = self.programs_cache.write();
         cache.insert(entry.path.clone(), entry);
     }
 }
