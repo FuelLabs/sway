@@ -6,7 +6,70 @@
 i.e. sha256((contract_id, sub_id)).</p>
 <p>An exception is the Base Asset.</p>
 <p>The SubId is used to differentiate between different assets that are created by the same contract.</p>
-</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.bits" class="structfield small-section-header"><a class="anchor field" href="#structfield.bits"></a><code>bits: b256</code></span><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for AssetId</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/ops/trait.Eq.html">Eq</a> for AssetId</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="doc-block"><p>Evaluates if two values of the same type are not equal.</p>
+</div></details><h2 id="fields" class="fields small-section-header">Fields<a class="anchor" href="#fields"></a></h2><span id="structfield.bits" class="structfield small-section-header"><a class="anchor field" href="#structfield.bits"></a><code>bits: b256</code></span><h2 id="inherent-implementations" class="small-section-header">Implementations<a href="#inherent-implementations" class="anchor"></a></h2><div id="inherent-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AssetId" class="impl has-srclink"><a href="#impl-AssetId" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="..//trait.AssetId.html">AssetId</a></h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.new" class="method trait-impl"><a href="#method.new" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.new">new</a>(contract_id: ContractId, sub_id: SubId) -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a new AssetId from a ContractId and SubId.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>contract_id</code>: [ContractId] - The ContractId of the contract that created the asset.</li>
+<li><code>sub_id</code>: [SubId] - The SubId of the asset.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[AssetId] - The AssetId of the asset. Computed by hashing the ContractId and SubId.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{callframes::contract_id, constants::ZERO_B256};
+
+fn foo() {
+    let contract_id = contract_id();
+    let sub_id = ZERO_B256;
+
+    let asset_id = AssetId::new(contract_id, sub_id);
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.default" class="method trait-impl"><a href="#method.default" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.default">default</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>Creates a new AssetId with the default SubId for the current contract.</p>
+<h1>Returns</h1>
+<ul>
+<li>[AssetId] - The AssetId of the asset. Computed by hashing the ContractId and the default SubId.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{callframes::contract_id, constants::DEFAULT_SUB_ID};
+
+fn foo() {
+    let asset_id = AssetId::default();
+    assert(asset_id == AssetId::new(contract_id(), DEFAULT_SUB_ID));
+}
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.base" class="method trait-impl"><a href="#method.base" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.base">base</a>() -&gt; Self</h4></div></summary><div class="docblock"><p>The base asset of a chain.</p>
+<h1>Additional Information</h1>
+<p>On the Fuel network, the base asset is Ether.</p>
+<h1>Returns</h1>
+<ul>
+<li>[AssetId] - The AssetId of the base asset.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{constants::ZERO_B256, asset::transfer};
+
+fn foo() {
+    let asset_id = AssetId::base();
+    let amount = 100;
+    let recipient = Identity::ContractId(ContractId::from(ZERO_B256));
+
+    transfer(recipient, asset_id, amount);
+</code></pre>
+</div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.bits" class="method trait-impl"><a href="#method.bits" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.bits">bits</a>(self) -&gt; b256</h4></div></summary><div class="docblock"><p>Returns the underlying raw <code>b256</code> data of the asset id.</p>
+<h1>Returns</h1>
+<ul>
+<li>[b256] - The raw data of the asset id.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::constants::ZERO_B256;
+
+fn foo() -&gt; {
+    let my_asset = AssetId::from(ZERO_B256);
+    assert(my_asset.bits() == ZERO_B256);
+}
+</code></pre>
+</div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Hash" class="impl has-srclink"><a href="#impl-Hash" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../hash/trait.Hash.html">Hash</a> for AssetId</h3></div></summary><div class="impl-items"><div id="method.hash" class="method trait-impl"><a href="#method.hash" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.hash">hash</a>(<br>    self,<br>    refmut state: Hasher,<br>)</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/ops/trait.Eq.html">Eq</a> for AssetId</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
 <h1>Additional Information</h1>
 <p>This function is inherited when <code>eq()</code> is implemented.</p>
 <h1>Arguments</h1>
@@ -35,7 +98,7 @@ fn foo() {
     assert(result);
 }
 </code></pre>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle"><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for AssetId</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(bits: b256) -&gt; Self</h4></div></summary><div class="doc-block"><p>Casts raw <code>b256</code> data to an <code>AssetId</code>.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From" class="impl has-srclink"><a href="#impl-From" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a> for AssetId</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(bits: b256) -&gt; Self</h4></div></summary><div class="docblock"><p>Casts raw <code>b256</code> data to an <code>AssetId</code>.</p>
 <h1>Arguments</h1>
 <ul>
 <li><code>bits</code>: [b256] - The raw <code>b256</code> data to be casted.</li>
