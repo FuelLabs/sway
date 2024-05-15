@@ -16,7 +16,7 @@ use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox, Template};
 use std::{collections::BTreeMap, fmt::Write};
 use sway_core::language::ty::{
-    TyEnumVariant, TyImplTrait, TyStorageField, TyStructField, TyTraitFn, TyTraitItem
+    TyEnumVariant, TyImplTrait, TyStorageField, TyStructField, TyTraitFn, TyTraitItem,
 };
 
 /// The actual context of the item displayed by [ItemContext].
