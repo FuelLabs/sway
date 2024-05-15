@@ -38,19 +38,30 @@ fn test_get_node_url_testnet() {
     };
 
     let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://devnet.fuel.network", actual);
+    assert_eq!("https://testnet.fuel.network", actual);
 }
 
 #[test]
-fn test_get_node_url_devnet() {
+fn test_get_node_url_target_devnet() {
     let input = NodeTarget {
         target: Some(Target::Devnet),
         node_url: None,
         testnet: false,
     };
-
     let actual = get_node_url(&input, &None).unwrap();
     assert_eq!("https://devnet.fuel.network", actual);
+}
+
+#[test]
+fn test_get_node_url_target_testnet() {
+    let input = NodeTarget {
+        target: Some(Target::Testnet),
+        node_url: None,
+        testnet: false,
+    };
+
+    let actual = get_node_url(&input, &None).unwrap();
+    assert_eq!("https://testnet.fuel.network", actual);
 }
 
 #[test]
@@ -111,17 +122,6 @@ fn test_get_node_url_beta3() {
     };
     let actual = get_node_url(&input, &None).unwrap();
     assert_eq!("https://beta-3.fuel.network", actual);
-}
-
-#[test]
-fn test_get_node_url_devnet() {
-    let input = NodeTarget {
-        target: Some(Target::Devnet),
-        node_url: None,
-        testnet: false,
-    };
-    let actual = get_node_url(&input, &None).unwrap();
-    assert_eq!("https://devnet.fuel.network", actual);
 }
 
 #[test]

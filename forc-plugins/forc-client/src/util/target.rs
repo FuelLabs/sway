@@ -82,12 +82,13 @@ impl FromStr for Target {
             "testnet" => Ok(Target::Testnet),
             "local" => Ok(Target::Local),
             _ => bail!(
-                "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}', '{}', '{}'",
+                "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}', '{}', '{}', '{}'",
                 Target::Beta2,
                 Target::Beta3,
                 Target::Beta4,
                 Target::Beta5,
                 Target::Devnet,
+                Target::Testnet,
                 Target::Local
             ),
         }
