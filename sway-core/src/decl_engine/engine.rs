@@ -1,7 +1,8 @@
+use parking_lot::RwLock;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Write,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use sway_types::{ModuleId, Named, Spanned};
@@ -48,7 +49,7 @@ impl Clone for DeclEngine {
             constant_slab: self.constant_slab.clone(),
             enum_slab: self.enum_slab.clone(),
             type_alias_slab: self.type_alias_slab.clone(),
-            parents: RwLock::new(self.parents.read().unwrap().clone()),
+            parents: RwLock::new(self.parents.read().clone()),
         }
     }
 }
@@ -187,7 +188,7 @@ macro_rules! decl_engine_clear_module {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
             pub fn clear_module(&mut self, module_id: &ModuleId) {
-                self.parents.write().unwrap().retain(|key, _| {
+                self.parents.write().retain(|key, _| {
                     match key {
                         AssociatedItemDeclId::TraitFn(decl_id) => {
                             self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
@@ -244,7 +245,7 @@ impl DeclEngine {
         AssociatedItemDeclId: From<&'a T>,
     {
         let index: AssociatedItemDeclId = AssociatedItemDeclId::from(index);
-        let parents = self.parents.read().unwrap();
+        let parents = self.parents.read();
         let mut acc_parents: HashMap<AssociatedItemDeclId, AssociatedItemDeclId> = HashMap::new();
         let mut already_checked: HashSet<AssociatedItemDeclId> = HashSet::new();
         let mut left_to_check: VecDeque<AssociatedItemDeclId> = VecDeque::from([index]);
@@ -289,7 +290,7 @@ impl DeclEngine {
     ) where
         AssociatedItemDeclId: From<DeclId<I>>,
     {
-        let mut parents = self.parents.write().unwrap();
+        let mut parents = self.parents.write();
         parents
             .entry(index)
             .and_modify(|e| e.push(parent.clone()))
