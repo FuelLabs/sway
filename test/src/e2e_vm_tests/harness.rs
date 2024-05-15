@@ -325,6 +325,7 @@ pub(crate) async fn compile_and_run_unit_tests(
         ]
         .iter()
         .collect();
+
         match std::panic::catch_unwind(|| {
             forc_test::build(forc_test::TestOpts {
                 pkg: forc_pkg::PkgOpts {
@@ -332,6 +333,9 @@ pub(crate) async fn compile_and_run_unit_tests(
                     locked: run_config.locked,
                     terse: !(capture_output || run_config.verbose),
                     ..Default::default()
+                },
+                experimental: ExperimentalFlags {
+                    new_encoding: run_config.experimental.new_encoding,
                 },
                 ..Default::default()
             })
