@@ -132,31 +132,24 @@ impl Renderable for Sidebar {
             }
             _ => box_html! {
                 div(class="sidebar-elems") {
-                    // section {
-                        // div(class="block") {
-                            // ul {
-                                @ for (title, doc_links) in self.nav.links {
-                                    section {
-
-                                    h3 {
-                                        a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
-                                            : title.as_str();
-                                        }
-                                    }
-                                    ul(class="block method") {
-                                        @ for doc_link in doc_links {
-                                            li {
-                                                a(href=format!("{}", doc_link.html_filename)) {
-                                                    : doc_link.name;
-                                                }
-                                            }
+                    @ for (title, doc_links) in self.nav.links {
+                        section {
+                            h3 {
+                                a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
+                                    : title.as_str();
+                                }
+                            }
+                            ul(class="block method") {
+                                @ for doc_link in doc_links {
+                                    li {
+                                        a(href=format!("{}", doc_link.html_filename)) {
+                                            : doc_link.name;
                                         }
                                     }
                                 }
-                                }
-                            // }
-                        // }
-                    // }
+                            }
+                        }
+                    }
                 }
             }
             .into_string()
