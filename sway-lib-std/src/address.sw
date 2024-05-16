@@ -4,20 +4,6 @@ library;
 use ::convert::From;
 use ::hash::{Hash, Hasher};
 
-pub enum TestEnum {
-    TestVariant: (),
-}
-
-impl TestEnum {
-    pub fn test_fn() {}
-}
-
-impl Eq for TestEnum {
-    fn eq(self, other: Self) -> bool {
-        true
-    }
-}
-
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
     /// The underlying raw `b256` data of the address.
