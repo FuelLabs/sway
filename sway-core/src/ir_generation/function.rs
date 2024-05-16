@@ -1171,14 +1171,9 @@ impl<'eng> FnCompiler<'eng> {
                             span,
                         ));
                     }
-                    Some(log_id) => convert_literal_to_value(
-                        context,
-                        &Literal::U64(if context.experimental.abi_hash_ids {
-                            log_id.hash_id
-                        } else {
-                            log_id.index as u64
-                        }),
-                    ),
+                    Some(log_id) => {
+                        convert_literal_to_value(context, &Literal::U64(log_id.hash_id))
+                    }
                 };
 
                 match log_val.get_type(context) {

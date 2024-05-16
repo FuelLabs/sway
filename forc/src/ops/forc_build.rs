@@ -45,7 +45,6 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         member_filter: MemberFilter::default(),
         experimental: ExperimentalFlags {
             new_encoding: !cmd.no_encoding_v1,
-            abi_hash_ids: cmd.abi_hash_ids,
         },
     }
 }

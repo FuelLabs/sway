@@ -31,7 +31,6 @@ fn main() -> Result<(), anyhow::Error> {
         &source_engine,
         ExperimentalFlags {
             new_encoding: false,
-            abi_hash_ids: false,
         },
     )?;
 

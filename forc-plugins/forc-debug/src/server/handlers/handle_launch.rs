@@ -56,7 +56,6 @@ impl DapServer {
 
         let experimental = sway_core::ExperimentalFlags {
             new_encoding: false,
-            abi_hash_ids: false,
         };
 
         // 1. Build the packages

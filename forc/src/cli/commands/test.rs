@@ -253,7 +253,6 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
         build_target: cmd.build.build_target,
         experimental: ExperimentalFlags {
             new_encoding: !cmd.no_encoding_v1,
-            abi_hash_ids: true,
         },
     }
 }

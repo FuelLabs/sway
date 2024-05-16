@@ -57,10 +57,6 @@ struct Cli {
     #[arg(long)]
     no_encoding_v1: bool,
 
-    /// Disable the abi hash ids feature
-    #[arg(long)]
-    no_abi_hash_ids: bool,
-
     /// Update all output files
     #[arg(long)]
     update_output_files: bool,
@@ -124,7 +120,6 @@ async fn main() -> Result<()> {
         build_target,
         experimental: sway_core::ExperimentalFlags {
             new_encoding: !cli.no_encoding_v1,
-            abi_hash_ids: !cli.no_abi_hash_ids,
         },
         update_output_files: cli.update_output_files,
         print_ir: cli.print_ir,
@@ -153,7 +148,6 @@ async fn main() -> Result<()> {
             cli.verbose,
             sway_ir::ExperimentalFlags {
                 new_encoding: run_config.experimental.new_encoding,
-                abi_hash_ids: run_config.experimental.abi_hash_ids,
             },
         )
         .instrument(tracing::trace_span!("IR"))

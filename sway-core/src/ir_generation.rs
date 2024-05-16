@@ -51,7 +51,6 @@ pub fn compile_program<'eng>(
         engines.se(),
         sway_ir::ExperimentalFlags {
             new_encoding: experimental.new_encoding,
-            abi_hash_ids: experimental.abi_hash_ids,
         },
     );
     ctx.program_kind = match kind {

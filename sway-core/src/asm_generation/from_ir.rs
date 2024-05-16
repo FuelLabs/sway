@@ -111,7 +111,6 @@ fn compile_module_to_asm(
                 reg_seqr,
                 ExperimentalFlags {
                     new_encoding: context.experimental.new_encoding,
-                    abi_hash_ids: context.experimental.abi_hash_ids,
                 },
             );
 

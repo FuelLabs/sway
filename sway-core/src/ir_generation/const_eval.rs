@@ -1433,7 +1433,6 @@ mod tests {
             engines.se(),
             sway_ir::ExperimentalFlags {
                 new_encoding: false,
-                abi_hash_ids: false,
             },
         );
         let mut md_mgr = MetadataManager::default();

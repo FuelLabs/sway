@@ -291,7 +291,6 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
         },
         experimental: ExperimentalFlags {
             new_encoding: run_config.experimental.new_encoding,
-            abi_hash_ids: run_config.experimental.abi_hash_ids,
         },
         ..Default::default()
     };
@@ -337,7 +336,6 @@ pub(crate) async fn compile_and_run_unit_tests(
                 },
                 experimental: ExperimentalFlags {
                     new_encoding: run_config.experimental.new_encoding,
-                    abi_hash_ids: run_config.experimental.abi_hash_ids,
                 },
                 ..Default::default()
             })

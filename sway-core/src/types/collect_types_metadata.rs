@@ -18,17 +18,16 @@ use sway_types::{Ident, Span};
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct LogId {
-    pub index: usize,
     pub hash_id: u64,
 }
 
 impl LogId {
-    pub fn new(index: usize, string: String) -> LogId {
+    pub fn new(string: String) -> LogId {
         let mut hasher = Sha256::new();
         hasher.update(string);
         let result = hasher.finalize();
         let hash_id = u64::from_be_bytes(result[0..8].try_into().unwrap());
-        LogId { index, hash_id }
+        LogId { hash_id }
     }
 }
 
@@ -62,10 +61,6 @@ pub enum TypeMetadata {
 // A simple context that only contains a single counter for now but may expand in the future.
 pub struct CollectTypesMetadataContext<'cx> {
     // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
-    // obtain a unique ID for a given log instance.
-    log_id_counter: usize,
-
-    // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
     // obtain a unique ID for a given smo instance.
     message_id_counter: usize,
 
@@ -78,14 +73,6 @@ pub struct CollectTypesMetadataContext<'cx> {
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {
-    pub fn log_id_counter(&self) -> usize {
-        self.log_id_counter
-    }
-
-    pub fn log_id_counter_mut(&mut self) -> &mut usize {
-        &mut self.log_id_counter
-    }
-
     pub fn message_id_counter(&self) -> usize {
         self.message_id_counter
     }
@@ -129,7 +116,6 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
     ) -> Self {
         let mut ctx = Self {
             engines,
-            log_id_counter: 0,
             message_id_counter: 0,
             call_site_spans: vec![],
             experimental,

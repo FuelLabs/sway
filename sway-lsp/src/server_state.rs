@@ -117,7 +117,6 @@ impl ServerState {
         let last_compilation_state = self.last_compilation_state.clone();
         let experimental = sway_core::ExperimentalFlags {
             new_encoding: false,
-            abi_hash_ids: false,
         };
         std::thread::spawn(move || {
             while let Ok(msg) = rx.recv() {

@@ -13,7 +13,6 @@ use sway_lsp::core::{
 pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
     let experimental = ExperimentalFlags {
         new_encoding: false,
-        abi_hash_ids: false,
     };
     let session = Arc::new(Session::new());
     let documents = Documents::new();

@@ -21,7 +21,7 @@ json-abi-with-callpaths = true
 error-on-warnings = true
 reverse-results = true
 optimization-level = 0
-experimental = { new-encoding = true, abi-hash-ids = true }
+experimental = { new-encoding = true }
 
 [build-profile.custom]
 print-asm = { virtual = false, allocated = false, final = true }

@@ -12,7 +12,6 @@ use super::abi_str::AbiStrContext;
 pub struct AbiContext<'a> {
     pub program: &'a TyProgram,
     pub abi_with_callpaths: bool,
-    pub abi_with_hash_ids: bool,
 }
 
 impl<'a> AbiContext<'a> {
@@ -120,11 +119,7 @@ fn generate_logged_types(
         .logged_types
         .iter()
         .filter_map(|(log_id, type_id)| {
-            let log_id = if ctx.abi_with_hash_ids {
-                log_id.hash_id
-            } else {
-                log_id.index as u64
-            };
+            let log_id = log_id.hash_id;
             if log_ids.contains(&log_id) {
                 None
             } else {

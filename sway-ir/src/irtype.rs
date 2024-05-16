@@ -959,7 +959,6 @@ mod tests {
                 &SOURCE_ENGINE,
                 ExperimentalFlags {
                     new_encoding: false,
-                    abi_hash_ids: false,
                 },
             )
         }

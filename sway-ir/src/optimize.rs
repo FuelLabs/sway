@@ -83,7 +83,6 @@ pub mod tests {
             &source_engine,
             ExperimentalFlags {
                 new_encoding: false,
-                abi_hash_ids: false,
             },
         )
         .unwrap();

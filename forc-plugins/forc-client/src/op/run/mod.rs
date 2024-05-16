@@ -241,7 +241,6 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
         member_filter: pkg::MemberFilter::only_scripts(),
         experimental: ExperimentalFlags {
             new_encoding: !cmd.no_encoding_v1,
-            abi_hash_ids: cmd.abi_hash_ids,
         },
     }
 }
