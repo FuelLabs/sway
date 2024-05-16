@@ -76,16 +76,17 @@ impl Documentation {
         // currently this compares the spans as str, but this needs to change
         // to compare the actual types
         for doc in docs.iter_mut() {
-            let mut impl_vec: Vec<DocImplTrait> = Vec::new();
+            let mut impl_trait_vec: Vec<DocImplTrait> = Vec::new();
+            let mut inherent_impl_vec: Vec<DocImplTrait> = Vec::new();
 
             match doc.item_body.ty_decl {
                 TyDecl::StructDecl(ref decl) => {
                     for (impl_trait, module_info) in impl_traits.iter_mut() {
                         let struct_decl = engines.de().get_struct(&decl.decl_id);
-                        if struct_decl.name().as_str() == impl_trait.implementing_for.span.as_str()
-                            && struct_decl.name().as_str()
-                                != impl_trait.trait_name.suffix.span().as_str()
-                        {
+                        let struct_name = struct_decl.name().as_str();
+
+                        // Check if this implementation is for this struct.
+                        if struct_name == impl_trait.implementing_for.span.as_str() {
                             let module_info_override = if let Some(decl_module_info) =
                                 trait_decls.get(&impl_trait.trait_name.suffix)
                             {
@@ -97,19 +98,33 @@ impl Documentation {
                                 None
                             };
 
-                            impl_vec.push(DocImplTrait {
-                                impl_for_module: module_info.clone(),
-                                impl_trait: impl_trait.clone(),
-                                module_info_override,
-                            });
+                            if struct_name == impl_trait.trait_name.suffix.span().as_str() {
+                                // If the trait name is the same as the struct name, it's an inherent implementation.
+                                inherent_impl_vec.push(DocImplTrait {
+                                    impl_for_module: module_info.clone(),
+                                    impl_trait: impl_trait.clone(),
+                                    module_info_override: None,
+                                });
+                            } else {
+                                // Otherwise, it's an implementation for a trait.
+                                impl_trait_vec.push(DocImplTrait {
+                                    impl_for_module: module_info.clone(),
+                                    impl_trait: impl_trait.clone(),
+                                    module_info_override,
+                                });
+                            }
                         }
                     }
                 }
                 _ => continue,
             }
 
-            if !impl_vec.is_empty() {
-                doc.item_body.item_context.impl_traits = Some(impl_vec);
+            if !impl_trait_vec.is_empty() {
+                doc.item_body.item_context.impl_traits = Some(impl_trait_vec.clone());
+            }
+
+            if !inherent_impl_vec.is_empty() {
+                doc.item_body.item_context.inherent_impls = Some(inherent_impl_vec);
             }
         }
 
