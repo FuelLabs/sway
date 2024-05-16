@@ -24,7 +24,7 @@ pub use type_alias::*;
 pub use variable::*;
 
 use crate::{
-    decl_engine::{parsed_id::ParsedDeclId, parsed_engine::ParsedDeclEngineGet},
+    decl_engine::{parsed_engine::ParsedDeclEngineGet, parsed_id::ParsedDeclId},
     engine_threading::{DebugWithEngines, DisplayWithEngines},
     Engines,
 };

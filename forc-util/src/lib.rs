@@ -21,7 +21,7 @@ use sway_error::{
     error::CompileError,
     warning::CompileWarning,
 };
-use sway_types::{LineCol, SourceEngine, Span, LineColRange};
+use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
 use tracing::error;
 
