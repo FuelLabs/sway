@@ -683,11 +683,11 @@ pub fn decode_log_data(
         .logged_types
         .iter()
         .flatten()
-        .map(|logged_type| (logged_type.log_id, logged_type.application.clone()))
+        .map(|logged_type| (logged_type.log_id.clone(), logged_type.application.clone()))
         .collect();
 
     let type_application = logged_type_lookup
-        .get(&log_id)
+        .get(&log_id.to_string())
         .ok_or_else(|| anyhow::anyhow!("log id is missing"))?;
 
     let abi_decoder = ABIDecoder::default();

@@ -125,7 +125,7 @@ fn generate_logged_types(
             } else {
                 log_ids.insert(log_id);
                 Some(program_abi::LoggedType {
-                    log_id,
+                    log_id: log_id.to_string(),
                     application: program_abi::TypeApplication {
                         name: "".to_string(),
                         type_id: type_id.index(),
