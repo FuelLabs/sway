@@ -2002,6 +2002,7 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-error",
+ "sway-ir",
  "sway-types",
  "sway-utils",
  "term-table",

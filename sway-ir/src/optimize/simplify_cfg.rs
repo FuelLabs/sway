@@ -16,12 +16,12 @@ use crate::{
     PassMutability, ScopedPass, Value,
 };
 
-pub const SIMPLIFYCFG_NAME: &str = "simplifycfg";
+pub const SIMPLIFY_CFG_NAME: &str = "simplify-cfg";
 
 pub fn create_simplify_cfg_pass() -> Pass {
     Pass {
-        name: SIMPLIFYCFG_NAME,
-        descr: "merge or remove redundant blocks.",
+        name: SIMPLIFY_CFG_NAME,
+        descr: "Simplify the control flow graph (CFG)",
         deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(simplify_cfg)),
     }

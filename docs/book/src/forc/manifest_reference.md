@@ -91,12 +91,12 @@ name = "wallet_contract"
 
 [build-profile.debug]
 print-asm = { virtual = false, allocated = false, final = true }
-print-ir = false
+print-ir = { initial = false, final = true, modified = false, passes = []}
 terse = false
 
 [build-profile.release]
 print-asm = { virtual = true, allocated = false, final = true }
-print-ir = false
+print-ir = { initial = true, final = false, modified = true, passes = ["dce", "sroa"]}
 terse = true
 ```
 
@@ -106,7 +106,7 @@ Note that providing the corresponding CLI options (like `--asm`) will override t
 
 ```toml
 print-ast = false
-print-ir = false
+print-ir = { initial = false, final = false, modified = false, passes = []}
 print-asm = { virtual = true, allocated = true, final = true }
 terse = false
 time-phases = false
