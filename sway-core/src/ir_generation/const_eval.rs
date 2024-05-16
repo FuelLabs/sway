@@ -341,6 +341,15 @@ fn const_eval_typed_expr(
     expr: &ty::TyExpression,
     allow_configurables: bool,
 ) -> Result<Option<Constant>, ConstEvalError> {
+    match &*lookup.engines.te().get(expr.return_type) {
+        TypeInfo::ErrorRecovery(_) => {
+            return Err(ConstEvalError::CannotBeEvaluatedToConst {
+                span: expr.span.clone(),
+            });
+        }
+        _ => {}
+    }
+
     Ok(match &expr.expression {
         ty::TyExpressionVariant::Literal(Literal::Numeric(n)) => {
             let implied_lit = match &*lookup.engines.te().get(expr.return_type) {
