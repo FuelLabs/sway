@@ -39,7 +39,7 @@ impl TryFrom<B512> for b256 {
     ///
     /// fn foo() {
     ///     let b512_value = B512::new();
-    ///     let b256_value = b256::try_from(b512_value);
+    ///     let b256_value = b256::try_from(b512_value).unwrap();
     /// }
     /// ```
     fn try_from(val: B512) -> Option<Self> {

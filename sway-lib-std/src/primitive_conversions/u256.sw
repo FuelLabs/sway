@@ -25,7 +25,7 @@ impl TryFrom<B512> for u256 {
     ///
     /// fn foo() {
     ///     let b512_value = B512::new();
-    ///     let u256_value = u256::try_from(b512_value);
+    ///     let u256_value = u256::try_from(b512_value).unwrap();
     /// }
     /// ```
     fn try_from(val: B512) -> Option<Self> {
