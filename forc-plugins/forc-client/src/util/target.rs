@@ -1,7 +1,7 @@
 use crate::constants::{
     BETA_2_ENDPOINT_URL, BETA_2_FAUCET_URL, BETA_3_ENDPOINT_URL, BETA_3_FAUCET_URL,
     BETA_4_ENDPOINT_URL, BETA_4_FAUCET_URL, BETA_5_ENDPOINT_URL, BETA_5_FAUCET_URL,
-    DEVNET_ENDPOINT_URL, DEVNET_FAUCET_URL, NODE_URL,
+    DEVNET_ENDPOINT_URL, DEVNET_FAUCET_URL, NODE_URL, TESTNET_ENDPOINT_URL, TESTNET_FAUCET_URL,
 };
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,7 @@ pub enum Target {
     Beta4,
     Beta5,
     Devnet,
+    Testnet,
     Local,
 }
 
@@ -32,6 +33,7 @@ impl Target {
             Target::Beta4 => BETA_4_ENDPOINT_URL,
             Target::Beta5 => BETA_5_ENDPOINT_URL,
             Target::Devnet => DEVNET_ENDPOINT_URL,
+            Target::Testnet => TESTNET_ENDPOINT_URL,
             Target::Local => NODE_URL,
         };
         url.to_string()
@@ -42,13 +44,16 @@ impl Target {
             BETA_2_ENDPOINT_URL => Some(Target::Beta2),
             BETA_3_ENDPOINT_URL => Some(Target::Beta3),
             BETA_4_ENDPOINT_URL => Some(Target::Beta4),
+            BETA_5_ENDPOINT_URL => Some(Target::Beta5),
+            DEVNET_ENDPOINT_URL => Some(Target::Devnet),
+            TESTNET_ENDPOINT_URL => Some(Target::Testnet),
             NODE_URL => Some(Target::Local),
             _ => None,
         }
     }
 
     pub fn testnet() -> Self {
-        Target::Devnet
+        Target::Testnet
     }
 
     pub fn faucet_url(&self) -> String {
@@ -58,6 +63,7 @@ impl Target {
             Target::Beta4 => BETA_4_FAUCET_URL.to_string(),
             Target::Beta5 => BETA_5_FAUCET_URL.to_string(),
             Target::Devnet => DEVNET_FAUCET_URL.to_string(),
+            Target::Testnet => TESTNET_FAUCET_URL.to_string(),
             Target::Local => "http://localhost:3000".to_string(),
         }
     }
@@ -73,14 +79,16 @@ impl FromStr for Target {
             "beta-4" => Ok(Target::Beta4),
             "beta-5" => Ok(Target::Beta5),
             "devnet" => Ok(Target::Devnet),
+            "testnet" => Ok(Target::Testnet),
             "local" => Ok(Target::Local),
             _ => bail!(
-                "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}', '{}', '{}'",
+                "'{s}' is not a valid target name. Possible values: '{}', '{}', '{}', '{}', '{}', '{}', '{}'",
                 Target::Beta2,
                 Target::Beta3,
                 Target::Beta4,
                 Target::Beta5,
                 Target::Devnet,
+                Target::Testnet,
                 Target::Local
             ),
         }
@@ -95,6 +103,7 @@ impl std::fmt::Display for Target {
             Target::Beta4 => "beta-4",
             Target::Beta5 => "beta-5",
             Target::Devnet => "devnet",
+            Target::Testnet => "testnet",
             Target::Local => "local",
         };
         write!(f, "{}", s)
