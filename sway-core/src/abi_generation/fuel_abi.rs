@@ -96,7 +96,7 @@ fn generate_logged_types(
         .logged_types
         .iter()
         .map(|(log_id, type_id)| program_abi::LoggedType {
-            log_id: **log_id as u64,
+            log_id: log_id.to_string(),
             application: program_abi::TypeApplication {
                 name: "".to_string(),
                 type_id: type_id.index(),
