@@ -341,13 +341,10 @@ fn const_eval_typed_expr(
     expr: &ty::TyExpression,
     allow_configurables: bool,
 ) -> Result<Option<Constant>, ConstEvalError> {
-    match &*lookup.engines.te().get(expr.return_type) {
-        TypeInfo::ErrorRecovery(_) => {
-            return Err(ConstEvalError::CannotBeEvaluatedToConst {
-                span: expr.span.clone(),
-            });
-        }
-        _ => {}
+    if let TypeInfo::ErrorRecovery(_) = &*lookup.engines.te().get(expr.return_type) {
+        return Err(ConstEvalError::CannotBeEvaluatedToConst {
+            span: expr.span.clone(),
+        });
     }
 
     Ok(match &expr.expression {
