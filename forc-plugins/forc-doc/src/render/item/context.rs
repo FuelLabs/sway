@@ -472,17 +472,17 @@ impl Renderable for DocImplTrait {
                 a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
                 h3(class="code-header in-band") {
                     : "impl ";
-                    @ if no_deps && is_external_item {
-                        : trait_name.suffix.as_str();
-                    } else {
-                        a(class="trait", href=format!("{trait_link}")) {
-                            : trait_name.suffix.as_str();
-                        }
-                    }
                     @ if !is_inherent {
+                        @ if no_deps && is_external_item {
+                            : trait_name.suffix.as_str();
+                        } else {
+                            a(class="trait", href=format!("{trait_link}")) {
+                                : trait_name.suffix.as_str();
+                            }
+                        }
                         : " for ";
-                        : implementing_for.span.as_str();
                     }
+                    : implementing_for.span.as_str();
                 }
             }
         }
