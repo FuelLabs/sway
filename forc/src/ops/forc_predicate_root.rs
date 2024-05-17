@@ -30,7 +30,7 @@ fn build_opts_from_cmd(cmd: PredicateRootCommand) -> pkg::BuildOpts {
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             asm: cmd.print.asm(),
             bytecode: cmd.print.bytecode,
-            ir: cmd.print.ir,
+            ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
