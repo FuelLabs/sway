@@ -81,7 +81,7 @@ Contracts have an associated `ContractId` type in Sway. The `ContractId` type al
 
 ## Calling a Smart Contract from a Script
 
->**Note**: In most cases, calling a contract should be done from the [Rust SDK](../testing/testing-with-rust.md) or the [TypeScript SDK](../frontend/typescript_sdk.md) which provide a more ergonomic UI for interacting with a contract. However, there are situations where manually writing a script to call a contract is required.
+>**Note**: In most cases, calling a contract should be done from the [Rust SDK](../testing/testing-with-rust.md) or the [TypeScript SDK](https://docs.fuel.network/docs/fuels-ts) which provide a more ergonomic UI for interacting with a contract. However, there are situations where manually writing a script to call a contract is required.
 
 Now that we have defined our interface and implemented it for our contract, we need to know how to actually _call_ our contract. Let's take a look at a contract call:
 
