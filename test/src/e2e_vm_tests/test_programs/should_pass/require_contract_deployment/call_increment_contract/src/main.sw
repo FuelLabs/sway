@@ -6,7 +6,7 @@ use dynamic_contract_call::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x080ca4b6a4661d3cc2138f733cbe54095ce8b910eee73d913c1f43ecad6bf0d2;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x3681cc7e0eab80ceb58fae4a6c840a9ee4b78aa8fc653d97131d22d03f888204;
+const CONTRACT_ID = 0xbbd7710256786342289e5152dc016d9fb883423a693ca25bdd95147acbed1f87;
 
 fn main() -> bool {
     let the_abi = abi(Incrementor, CONTRACT_ID);
