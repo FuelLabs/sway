@@ -354,7 +354,7 @@ impl ItemContext {
         if let Some(inherent_impls) = &self.inherent_impls {
             let mut doc_links = Vec::new();
             for inherent_impl in inherent_impls {
-                for item in inherent_impl.impl_trait.items.clone() {
+                for item in &inherent_impl.impl_trait.items {
                     if let TyTraitItem::Fn(item_fn) = item {
                         let method_name = item_fn.name().to_string();
                         doc_links.push(DocLink {
