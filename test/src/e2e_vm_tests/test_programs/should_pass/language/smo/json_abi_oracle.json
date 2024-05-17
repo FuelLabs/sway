@@ -14,7 +14,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 0,
+      "logId": "0",
       "loggedType": {
         "name": "",
         "type": 7,
@@ -22,7 +22,7 @@
       }
     },
     {
-      "logId": 1,
+      "logId": "1",
       "loggedType": {
         "name": "",
         "type": 1,
