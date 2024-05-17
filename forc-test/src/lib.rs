@@ -663,7 +663,7 @@ fn deployment_transaction(
 }
 
 pub fn decode_log_data(
-    log_id: u64,
+    log_id: &str,
     log_data: &[u8],
     program_abi: &ProgramABI,
 ) -> anyhow::Result<DecodedLog> {
@@ -683,7 +683,7 @@ pub fn decode_log_data(
         .logged_types
         .iter()
         .flatten()
-        .map(|logged_type| (logged_type.log_id, logged_type.application.clone()))
+        .map(|logged_type| (logged_type.log_id.as_str(), logged_type.application.clone()))
         .collect();
 
     let type_application = logged_type_lookup
