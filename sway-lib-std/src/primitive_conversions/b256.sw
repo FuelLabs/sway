@@ -22,6 +22,8 @@ impl TryFrom<Bytes> for b256 {
 
 impl TryFrom<B512> for b256 {
     /// Attempts conversion from a `B512` to a `b256`.
+    /// # Additional Information
+    /// 
     /// If the high bits of the `B512` are not zero, the conversion will fail.
     ///
     /// # Arguments
