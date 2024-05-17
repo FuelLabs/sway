@@ -564,9 +564,12 @@ impl TestContext {
                                         ..
                                     } = log
                                     {
-                                        let decoded_log_data =
-                                            decode_log_data(*rb, data, &pkg.built.program_abi)
-                                                .unwrap();
+                                        let decoded_log_data = decode_log_data(
+                                            &rb.to_string(),
+                                            data,
+                                            &pkg.built.program_abi,
+                                        )
+                                        .unwrap();
                                         let var_value = decoded_log_data.value;
                                         if verbose {
                                             println!(

@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use sway_ir::{
-    create_arg_demotion_pass, create_const_combine_pass, create_const_demotion_pass,
+    create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass,
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes,
-    Context, ExperimentalFlags, PassGroup, PassManager, DCE_NAME, FNDEDUP_DEBUG_PROFILE_NAME,
-    FNDEDUP_RELEASE_PROFILE_NAME, FUNC_DCE_NAME, MEM2REG_NAME, SROA_NAME,
+    Context, ExperimentalFlags, PassGroup, PassManager, DCE_NAME, FN_DCE_NAME,
+    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -135,7 +135,7 @@ fn constants() {
     run_tests("constants", |_first_line, ir: &mut Context| {
         let mut pass_mgr = PassManager::default();
         let mut pass_group = PassGroup::default();
-        let pass = pass_mgr.register(create_const_combine_pass());
+        let pass = pass_mgr.register(create_const_folding_pass());
         pass_group.append_pass(pass);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
@@ -283,8 +283,8 @@ fn fndedup_debug() {
         let mut pass_mgr = PassManager::default();
         let mut pass_group = PassGroup::default();
         register_known_passes(&mut pass_mgr);
-        pass_group.append_pass(FNDEDUP_DEBUG_PROFILE_NAME);
-        pass_group.append_pass(FUNC_DCE_NAME);
+        pass_group.append_pass(FN_DEDUP_DEBUG_PROFILE_NAME);
+        pass_group.append_pass(FN_DCE_NAME);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
 }
@@ -296,8 +296,8 @@ fn fndedup_release() {
         let mut pass_mgr = PassManager::default();
         let mut pass_group = PassGroup::default();
         register_known_passes(&mut pass_mgr);
-        pass_group.append_pass(FNDEDUP_RELEASE_PROFILE_NAME);
-        pass_group.append_pass(FUNC_DCE_NAME);
+        pass_group.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
+        pass_group.append_pass(FN_DCE_NAME);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
 }
