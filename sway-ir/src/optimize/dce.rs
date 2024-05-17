@@ -20,20 +20,20 @@ pub const DCE_NAME: &str = "dce";
 pub fn create_dce_pass() -> Pass {
     Pass {
         name: DCE_NAME,
-        descr: "Dead code elimination.",
+        descr: "Dead code elimination",
         runner: ScopedPass::FunctionPass(PassMutability::Transform(dce)),
         deps: vec![ESCAPED_SYMBOLS_NAME],
     }
 }
 
-pub const FUNC_DCE_NAME: &str = "func_dce";
+pub const FN_DCE_NAME: &str = "fn-dce";
 
-pub fn create_func_dce_pass() -> Pass {
+pub fn create_fn_dce_pass() -> Pass {
     Pass {
-        name: FUNC_DCE_NAME,
-        descr: "Dead function elimination.",
+        name: FN_DCE_NAME,
+        descr: "Dead function elimination",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(func_dce)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(fn_dce)),
     }
 }
 
@@ -215,11 +215,7 @@ pub fn dce(
 ///
 /// Functions which are `pub` will not be removed and only functions within the passed [`Module`]
 /// are considered for removal.
-pub fn func_dce(
-    context: &mut Context,
-    _: &AnalysisResults,
-    module: Module,
-) -> Result<bool, IrError> {
+pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Result<bool, IrError> {
     let entry_fns = module
         .function_iter(context)
         .filter(|func| func.is_entry(context) || func.is_fallback(context))

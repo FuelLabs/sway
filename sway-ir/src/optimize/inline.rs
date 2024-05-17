@@ -21,14 +21,14 @@ use crate::{
     AnalysisResults, BlockArgument, Instruction, Module, Pass, PassMutability, ScopedPass,
 };
 
-pub const INLINE_MODULE_NAME: &str = "inline_module";
+pub const FN_INLINE_NAME: &str = "inline";
 
-pub fn create_inline_in_module_pass() -> Pass {
+pub fn create_fn_inline_pass() -> Pass {
     Pass {
-        name: INLINE_MODULE_NAME,
-        descr: "inline function calls in a module.",
+        name: FN_INLINE_NAME,
+        descr: "Function inlining",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(inline_in_module)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(fn_inline)),
     }
 }
 
@@ -72,7 +72,7 @@ fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Optio
     })
 }
 
-pub fn inline_in_module(
+pub fn fn_inline(
     context: &mut Context,
     _: &AnalysisResults,
     module: Module,
