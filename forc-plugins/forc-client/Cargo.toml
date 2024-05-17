@@ -12,7 +12,7 @@ repository.workspace = true
 anyhow = "1"
 async-trait = "0.1.58"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
-clap = { version = "3", features = ["derive", "env"] }
+clap = { version = "4.5.4", features = ["derive", "env"] }
 devault = "0.1"
 forc = { version = "0.58.0", path = "../../forc" }
 forc-pkg = { version = "0.58.0", path = "../../forc-pkg" }

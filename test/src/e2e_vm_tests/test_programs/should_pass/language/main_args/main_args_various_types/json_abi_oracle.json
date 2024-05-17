@@ -20,7 +20,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 0,
+      "logId": "0",
       "loggedType": {
         "name": "",
         "type": 1,

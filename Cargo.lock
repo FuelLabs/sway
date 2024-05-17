@@ -576,9 +576,6 @@ name = "bytes"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "514de17de45fdb8dc022b1a7975556c53c86f9f0aa5f534b98977b171857c2c9"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "cast"
@@ -691,29 +688,12 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ea181bf566f71cb9a5d17a59e1871af638180a18fb0035c92ae62b705207123"
-dependencies = [
- "atty",
- "bitflags 1.3.2",
- "clap_derive 3.2.25",
- "clap_lex 0.2.4",
- "indexmap 1.9.3",
- "once_cell",
- "strsim 0.10.0",
- "termcolor",
- "textwrap 0.16.1",
-]
-
-[[package]]
-name = "clap"
 version = "4.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90bc066a67923782aa8515dbaea16946c5bcc5addbd668bb80af688e53e548a0"
 dependencies = [
  "clap_builder",
- "clap_derive 4.5.4",
+ "clap_derive",
 ]
 
 [[package]]
@@ -724,18 +704,9 @@ checksum = "ae129e2e766ae0ec03484e609954119f123cc1fe650337e155d03b022f24f7b4"
 dependencies = [
  "anstream",
  "anstyle",
- "clap_lex 0.7.0",
+ "clap_lex",
  "strsim 0.11.1",
  "terminal_size",
-]
-
-[[package]]
-name = "clap_complete"
-version = "3.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f7a2e0a962c45ce25afce14220bc24f9dade0a1787f185cecf96bfba7847cd8"
-dependencies = [
- "clap 3.2.25",
 ]
 
 [[package]]
@@ -749,25 +720,12 @@ dependencies = [
 
 [[package]]
 name = "clap_complete_fig"
-version = "3.2.4"
+version = "4.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed37b4c0c1214673eba6ad8ea31666626bf72be98ffb323067d973c48b4964b9"
+checksum = "54b3e65f91fabdd23cac3d57d39d5d938b4daabd070c335c006dccb866a61110"
 dependencies = [
- "clap 3.2.25",
- "clap_complete 3.2.5",
-]
-
-[[package]]
-name = "clap_derive"
-version = "3.2.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae6371b8bdc8b7d3959e9cf7b22d4435ef3e79e138688421ec654acf8c81b008"
-dependencies = [
- "heck 0.4.1",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
+ "clap 4.5.4",
+ "clap_complete",
 ]
 
 [[package]]
@@ -780,15 +738,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.63",
-]
-
-[[package]]
-name = "clap_lex"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
-dependencies = [
- "os_str_bytes",
 ]
 
 [[package]]
@@ -1457,9 +1406,9 @@ dependencies = [
 
 [[package]]
 name = "deunicode"
-version = "1.4.4"
+version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "322ef0094744e63628e6f0eb2295517f79276a5b342a4c2ff3042566ca181d4e"
+checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
 
 [[package]]
 name = "devault"
@@ -2035,8 +1984,8 @@ dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
- "clap 3.2.25",
- "clap_complete 3.2.5",
+ "clap 4.5.4",
+ "clap_complete",
  "clap_complete_fig",
  "completest-pty",
  "forc-pkg",
@@ -2050,6 +1999,7 @@ dependencies = [
  "serde_json",
  "sway-core",
  "sway-error",
+ "sway-ir",
  "sway-types",
  "sway-utils",
  "term-table",
@@ -2070,7 +2020,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
- "clap 3.2.25",
+ "clap 4.5.4",
  "devault",
  "forc",
  "forc-pkg",
@@ -2106,7 +2056,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "atty",
- "clap 3.2.25",
+ "clap 4.5.4",
  "forc-tracing 0.58.0",
  "forc-util",
  "fuel-core-types",
@@ -2130,7 +2080,7 @@ name = "forc-debug"
 version = "0.58.0"
 dependencies = [
  "anyhow",
- "clap 3.2.25",
+ "clap 4.5.4",
  "dap",
  "escargot",
  "forc-pkg",
@@ -2180,7 +2130,7 @@ name = "forc-fmt"
 version = "0.58.0"
 dependencies = [
  "anyhow",
- "clap 3.2.25",
+ "clap 4.5.4",
  "forc-pkg",
  "forc-tracing 0.58.0",
  "forc-util",
@@ -2197,7 +2147,7 @@ name = "forc-lsp"
 version = "0.58.0"
 dependencies = [
  "anyhow",
- "clap 3.2.25",
+ "clap 4.5.4",
  "sway-lsp",
  "tikv-jemallocator",
  "tokio",
@@ -2248,6 +2198,7 @@ dependencies = [
  "fuel-abi-types",
  "fuel-tx",
  "fuel-vm",
+ "fuels-core",
  "rand",
  "rayon",
  "sway-core",
@@ -2279,7 +2230,7 @@ name = "forc-tx"
 version = "0.58.0"
 dependencies = [
  "anyhow",
- "clap 3.2.25",
+ "clap 4.5.4",
  "devault",
  "forc-util",
  "fuel-tx",
@@ -2296,7 +2247,7 @@ dependencies = [
  "annotate-snippets",
  "ansi_term",
  "anyhow",
- "clap 3.2.25",
+ "clap 4.5.4",
  "dirs 3.0.2",
  "fd-lock 4.0.2",
  "forc-tracing 0.58.0",
@@ -2318,9 +2269,9 @@ dependencies = [
 
 [[package]]
 name = "forc-wallet"
-version = "0.7.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3a20ec61c7c3a3f00e3f0144db7d62d47e928650f2da49648287c65869e9827"
+checksum = "01d7522f7f2cec4cc1748d58ca6a527b4734b79c8c171a506679fb4bb3e0ea3c"
 dependencies = [
  "anyhow",
  "clap 4.5.4",
@@ -2383,9 +2334,9 @@ dependencies = [
 
 [[package]]
 name = "fuel-abi-types"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2351bb0b743c23ac13ac2559756b3929502cd6e29091f2e5302fb9a1bdddaf35"
+checksum = "ee6135cb6e12773a7abf7d6c3a8de6467dee86fcf7293720d33e33feb01dc6d8"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -2737,9 +2688,9 @@ dependencies = [
 
 [[package]]
 name = "fuels"
-version = "0.60.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13f6212d1e08a52222b7120d5a11f350720f5564f2dbf3b825619bd497fdf1bd"
+checksum = "8eeb6fa017c6d695cf4468d21c640857ba1c74d31fdac3277ad4414593a14a7b"
 dependencies = [
  "fuel-core-client",
  "fuel-crypto",
@@ -2753,9 +2704,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-accounts"
-version = "0.60.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf220a834d5425d3e54fe867035dafa5e5313358a505b04e48ecde460571bc0e"
+checksum = "0a55f3ba7346cb73a5565fd7b6ab2c0016be052863323ca076e6ac9fec719759"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2777,9 +2728,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-code-gen"
-version = "0.60.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0df90f02675a65a015a5c7ed86865acb9376b34cc93b2c58208f21286badb02"
+checksum = "8db288a46989c20bc48dee787008959a2a7c17061fe78cf4ae4c1263c80692e1"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -2793,9 +2744,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-core"
-version = "0.60.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be24620ea84d29b56537b21723c4db0853424d3e75599c0ff7f5eaa3ca96143b"
+checksum = "63d0abdc7230e4adb619a3735c237af545dcfdf86f4096b9d1daaf315838987e"
 dependencies = [
  "async-trait",
  "bech32",
@@ -2804,6 +2755,7 @@ dependencies = [
  "fuel-asm",
  "fuel-core-chain-config",
  "fuel-core-client",
+ "fuel-core-types",
  "fuel-crypto",
  "fuel-tx",
  "fuel-types",
@@ -2819,9 +2771,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-macros"
-version = "0.60.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de5713fc740bf297647cdfbed4acc65796b2a3a6e7ab28b9498de3fc89d9b824"
+checksum = "9e137a52541dbd0345bf000301091b5266644fd4de04bb8238457c5c70b9ac4e"
 dependencies = [
  "fuels-code-gen",
  "itertools 0.12.1",
@@ -2833,12 +2785,11 @@ dependencies = [
 
 [[package]]
 name = "fuels-programs"
-version = "0.60.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcafe1b5372ed2b97c2550db28262016df80d78286eeb47e999c6bd3fa3a353a"
+checksum = "ada44df4a718da78add027d1204af8154265fc2f64b60cc28b1bba597df7e5d6"
 dependencies = [
  "async-trait",
- "bytes",
  "fuel-abi-types",
  "fuel-asm",
  "fuel-tx",
@@ -2853,9 +2804,9 @@ dependencies = [
 
 [[package]]
 name = "fuels-test-helpers"
-version = "0.60.0"
+version = "0.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fb2c6749b65cb6a0e6cfd24f140ed4792df0745195c2bceb2033ad5fefc162b"
+checksum = "f46d53ef79da8600d8ef580c0acc859be80b07eef0c9ddc19c61bb04b3cf4c15"
 dependencies = [
  "fuel-core-chain-config",
  "fuel-core-client",
@@ -4084,7 +4035,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap 4.5.4",
- "clap_complete 4.5.2",
+ "clap_complete",
  "env_logger",
  "handlebars",
  "log",
@@ -4106,7 +4057,7 @@ name = "mdbook-forc-documenter"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "clap 3.2.25",
+ "clap 4.5.4",
  "mdbook",
  "semver",
  "serde",
@@ -4743,12 +4694,6 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
-
-[[package]]
-name = "os_str_bytes"
-version = "6.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2355d85b9a3786f481747ced0e0ff2ba35213a1f9bd406ed906554d7af805a1"
 
 [[package]]
 name = "overload"
@@ -6631,7 +6576,7 @@ dependencies = [
 name = "sway-core"
 version = "0.58.0"
 dependencies = [
- "clap 3.2.25",
+ "clap 4.5.4",
  "derivative",
  "dirs 3.0.2",
  "either",
@@ -6651,6 +6596,7 @@ dependencies = [
  "lazy_static",
  "miden-core",
  "object",
+ "parking_lot 0.12.2",
  "pest",
  "pest_derive",
  "petgraph",
@@ -6809,6 +6755,7 @@ dependencies = [
  "lazy_static",
  "num-bigint",
  "num-traits",
+ "parking_lot 0.12.2",
  "rustc-hash",
  "serde",
  "sway-utils",
@@ -7042,15 +6989,6 @@ dependencies = [
  "lazy_static",
  "regex",
  "unicode-width",
-]
-
-[[package]]
-name = "termcolor"
-version = "1.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
-dependencies = [
- "winapi-util",
 ]
 
 [[package]]

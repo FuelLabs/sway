@@ -454,17 +454,17 @@ Common optimizations include constant folding, dead code elimination, and loop o
 The optimization passes are organized as different pass groups inside a [`PassManager (sway-ir/src/pass_manager.rs)`](https://github.com/FuelLabs/sway/blob/6c21a39bea6807b30e5c0ffc4aa5b8db5a0b675b/sway-ir/src/pass_manager.rs#L145), and setup in [`compile_ast_to_ir_to_asm (sway-core/src/lib.rs)`](https://github.com/FuelLabs/sway/blob/6c21a39bea6807b30e5c0ffc4aa5b8db5a0b675b/sway-core/src/lib.rs#L902):
 
 ```rust
-        pass_group.append_pass(CONSTDEMOTION_NAME);
-        pass_group.append_pass(ARGDEMOTION_NAME);
-        pass_group.append_pass(RETDEMOTION_NAME);
-        pass_group.append_pass(MISCDEMOTION_NAME);
+        pass_group.append_pass(CONST_DEMOTION_NAME);
+        pass_group.append_pass(ARG_DEMOTION_NAME);
+        pass_group.append_pass(RET_DEMOTION_NAME);
+        pass_group.append_pass(MISC_DEMOTION_NAME);
 
         // Convert loads and stores to mem_copies where possible.
         pass_group.append_pass(MEMCPYOPT_NAME);
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);
-        pass_group.append_pass(SIMPLIFYCFG_NAME);
+        pass_group.append_pass(SIMPLIFY_CFG_NAME);
 
         match build_config.optimization_level {
             OptLevel::Opt1 => {

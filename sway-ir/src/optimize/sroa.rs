@@ -13,7 +13,7 @@ pub const SROA_NAME: &str = "sroa";
 pub fn create_sroa_pass() -> Pass {
     Pass {
         name: SROA_NAME,
-        descr: "Scalar replacement of aggregates.",
+        descr: "Scalar replacement of aggregates",
         deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(sroa)),
     }
