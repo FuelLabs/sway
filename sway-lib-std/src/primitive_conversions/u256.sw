@@ -8,6 +8,7 @@ use ::b512::B512;
 
 impl TryFrom<B512> for u256 {
     /// Attempts conversion from a `B512` to a `u256`.
+    ///
     /// # Additional Information
     ///
     /// If the high bits of the `B512` are not zero, the conversion will fail.
