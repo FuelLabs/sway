@@ -14,9 +14,9 @@ use sway_core::{
 use sway_error::handler::Handler;
 
 use sway_ir::{
-    create_inline_in_module_pass, register_known_passes, ExperimentalFlags, PassGroup, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME,
-    RETDEMOTION_NAME,
+    create_fn_inline_pass, register_known_passes, ExperimentalFlags, PassGroup, PassManager,
+    ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
+    RET_DEMOTION_NAME,
 };
 
 enum Checker {
@@ -301,10 +301,10 @@ pub(super) async fn run(
                     let mut pass_mgr = PassManager::default();
                     let mut pass_group = PassGroup::default();
                     register_known_passes(&mut pass_mgr);
-                    pass_group.append_pass(CONSTDEMOTION_NAME);
-                    pass_group.append_pass(ARGDEMOTION_NAME);
-                    pass_group.append_pass(RETDEMOTION_NAME);
-                    pass_group.append_pass(MISCDEMOTION_NAME);
+                    pass_group.append_pass(CONST_DEMOTION_NAME);
+                    pass_group.append_pass(ARG_DEMOTION_NAME);
+                    pass_group.append_pass(RET_DEMOTION_NAME);
+                    pass_group.append_pass(MISC_DEMOTION_NAME);
                     pass_group.append_pass(MEMCPYOPT_NAME);
                     pass_group.append_pass(DCE_NAME);
                     if pass_mgr.run(&mut ir, &pass_group).is_err() {
@@ -402,7 +402,7 @@ pub(super) async fn run(
                             if optimisation_inline {
                                 let mut pass_mgr = PassManager::default();
                                 let mut pmgr_config = PassGroup::default();
-                                let inline = pass_mgr.register(create_inline_in_module_pass());
+                                let inline = pass_mgr.register(create_fn_inline_pass());
                                 pmgr_config.append_pass(inline);
                                 let inline_res = pass_mgr.run(&mut ir, &pmgr_config);
                                 if inline_res.is_err() {

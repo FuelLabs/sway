@@ -236,7 +236,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             dca_graph_url_format: cmd.build.print.dca_graph_url_format.clone(),
             asm: cmd.build.print.asm(),
             bytecode: cmd.build.print.bytecode,
-            ir: cmd.build.print.ir,
+            ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
         time_phases: cmd.build.print.time_phases,
