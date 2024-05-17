@@ -17,24 +17,24 @@ use crate::{
     Value,
 };
 
-pub const FNDEDUP_DEBUG_PROFILE_NAME: &str = "fndedup-debug-profile";
-pub const FNDEDUP_RELEASE_PROFILE_NAME: &str = "fndedup-release-profile";
+pub const FN_DEDUP_DEBUG_PROFILE_NAME: &str = "fn-dedup-debug";
+pub const FN_DEDUP_RELEASE_PROFILE_NAME: &str = "fn-dedup-release";
 
 pub fn create_fn_dedup_release_profile_pass() -> Pass {
     Pass {
-        name: FNDEDUP_RELEASE_PROFILE_NAME,
-        descr: "Deduplicate functions, ignore metadata",
+        name: FN_DEDUP_RELEASE_PROFILE_NAME,
+        descr: "Function deduplication with metadata ignored",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fns_release_profile)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fn_release_profile)),
     }
 }
 
 pub fn create_fn_dedup_debug_profile_pass() -> Pass {
     Pass {
-        name: FNDEDUP_DEBUG_PROFILE_NAME,
-        descr: "Deduplicate functions, consider metadata also",
+        name: FN_DEDUP_DEBUG_PROFILE_NAME,
+        descr: "Function deduplication with metadata considered",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fns_debug_profile)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fn_debug_profile)),
     }
 }
 
@@ -335,7 +335,7 @@ pub fn dedup_fns(
     Ok(modified)
 }
 
-fn dedup_fns_debug_profile(
+fn dedup_fn_debug_profile(
     context: &mut Context,
     analysis_results: &AnalysisResults,
     module: Module,
@@ -343,7 +343,7 @@ fn dedup_fns_debug_profile(
     dedup_fns(context, analysis_results, module, false)
 }
 
-fn dedup_fns_release_profile(
+fn dedup_fn_release_profile(
     context: &mut Context,
     analysis_results: &AnalysisResults,
     module: Module,

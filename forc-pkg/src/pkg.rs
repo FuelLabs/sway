@@ -31,7 +31,6 @@ use std::{
     str::FromStr,
     sync::{atomic::AtomicBool, Arc},
 };
-use sway_core::PrintAsm;
 pub use sway_core::Programs;
 use sway_core::{
     abi_generation::{
@@ -50,6 +49,7 @@ use sway_core::{
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
+use sway_core::{PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
@@ -263,7 +263,7 @@ pub struct PrintOpts {
     /// Print the bytecode. This is the final output of the compiler.
     pub bytecode: bool,
     /// Print the generated Sway IR (Intermediate Representation).
-    pub ir: bool,
+    pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
     pub reverse_order: bool,
 }
@@ -1550,7 +1550,7 @@ pub fn sway_build_config(
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .with_print_asm(build_profile.print_asm)
     .with_print_bytecode(build_profile.print_bytecode)
-    .with_print_ir(build_profile.print_ir)
+    .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
     .with_metrics(build_profile.metrics_outfile.clone())
@@ -2070,7 +2070,7 @@ fn build_profile_from_opts(
             .print_dca_graph_url_format
             .clone_from(&print.dca_graph_url_format);
     }
-    profile.print_ir |= print.ir;
+    profile.print_ir |= print.ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
     profile.terse |= pkg.terse;

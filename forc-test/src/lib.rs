@@ -663,7 +663,7 @@ fn deployment_transaction(
 }
 
 pub fn decode_log_data(
-    log_id: u64,
+    log_id: &str,
     log_data: &[u8],
     program_abi: &ProgramABI,
 ) -> anyhow::Result<DecodedLog> {
