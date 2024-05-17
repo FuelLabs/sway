@@ -822,7 +822,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 0,
+      "logId": "0",
       "loggedType": {
         "name": "",
         "type": 2,
@@ -830,7 +830,7 @@
       }
     },
     {
-      "logId": 1,
+      "logId": "1",
       "loggedType": {
         "name": "",
         "type": 2,

@@ -155,7 +155,8 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
                         ..
                     } = log
                     {
-                        let decoded_log_data = decode_log_data(*rb, data, &pkg.built.program_abi)?;
+                        let decoded_log_data =
+                            decode_log_data(&rb.to_string(), data, &pkg.built.program_abi)?;
                         let var_value = decoded_log_data.value;
                         info!("Decoded log value: {}, log rb: {}", var_value, rb);
                     }
