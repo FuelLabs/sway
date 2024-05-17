@@ -50,6 +50,8 @@ impl Symbol {
 /// A `val` can, via GEP instructions, refer indirectly to none, or one
 /// or more symbols.
 ///
+/// If the `val` is not a pointer, an empty set is returned.
+///
 /// Note that this function does not return [Symbol]s potentially reachable
 /// via referencing (`&`), dereferencing (`*`), and raw pointers (`__addr_of`)
 /// and is thus suitable for all IR analysis and manipulation that deals
@@ -84,15 +86,23 @@ pub enum ReferredSymbols {
 }
 
 impl ReferredSymbols {
-    // TODO: Check all the usages of this method and replace it with the
-    //       checked access to either complete or incomplete symbols.
-    //       This is a temporary convenience method until
-    //       we decide case by case how to deal with incomplete set of symbols.
-    //       See: https://github.com/FuelLabs/sway/issues/5924
-    pub fn any(self) -> FxIndexSet<Symbol> {
-        match self {
-            ReferredSymbols::Complete(symbols) | ReferredSymbols::Incomplete(symbols) => symbols,
+    pub fn new(is_complete: bool, symbols: FxIndexSet<Symbol>) -> Self {
+        if is_complete {
+            Self::Complete(symbols)
+        } else {
+            Self::Incomplete(symbols)
         }
+    }
+
+    /// Returns the referred [Symbol]s and the information if they are
+    /// complete (true) or incomplete (false).
+    pub fn consume(self) -> (bool, FxIndexSet<Symbol>) {
+        let is_complete = matches!(self, ReferredSymbols::Complete(_));
+        let syms = match self {
+            ReferredSymbols::Complete(syms) | ReferredSymbols::Incomplete(syms) => syms,
+        };
+
+        (is_complete, syms)
     }
 }
 
@@ -119,6 +129,9 @@ impl ReferredSymbols {
 /// Therefore, the function returns the [ReferredSymbols] enum to denote
 /// if the returned set of symbols is guaranteed to be complete, or if it is
 /// incomplete.
+///
+/// If the `val` is not a pointer, an empty set is returned and marked as
+/// [ReferredSymbols::Complete].
 pub fn get_referred_symbols(context: &Context, val: Value) -> ReferredSymbols {
     get_symbols(context, val, false)
 }
@@ -129,12 +142,17 @@ pub fn get_referred_symbols(context: &Context, val: Value) -> ReferredSymbols {
 /// If `gep_only` is `true` only the [Symbol]s reachable via GEP instructions
 /// are returned. Otherwise, the result also contains [Symbol]s reachable
 /// via referencing (`&`) and dereferencing (`*`).
+///
+/// If the `val` is not a pointer, an empty set is returned and marked as
+/// [ReferredSymbols::Complete].
 fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols {
+    // The input to this recursive function is always a pointer.
+    // The function tracks backwards where the pointer is coming from.
     fn get_symbols_rec(
         context: &Context,
         symbols: &mut FxIndexSet<Symbol>,
         visited: &mut FxHashSet<Value>,
-        val: Value,
+        ptr: Value,
         gep_only: bool,
         is_complete: &mut bool,
     ) {
@@ -158,11 +176,87 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
             }
         }
 
-        if visited.contains(&val) {
+        fn get_symbols_from_u64_address_argument(
+            context: &Context,
+            symbols: &mut FxIndexSet<Symbol>,
+            visited: &mut FxHashSet<Value>,
+            u64_address_arg: BlockArgument,
+            is_complete: &mut bool,
+        ) {
+            if u64_address_arg.block.get_label(context) == "entry" {
+                // The u64 address is coming from a function argument.
+                // Same as in the case of a pointer coming from a function argument,
+                // we collect it.
+                symbols.insert(Symbol::Arg(u64_address_arg));
+            } else {
+                u64_address_arg
+                    .block
+                    .pred_iter(context)
+                    .map(|pred| u64_address_arg.get_val_coming_from(context, pred).unwrap())
+                    .for_each(|v| {
+                        get_symbols_from_u64_address_rec(context, symbols, visited, v, is_complete)
+                    })
+            }
+        }
+
+        // The input to this recursive function is always a `u64` holding an address.
+        // The below chain of instructions are specific to patterns where pointers
+        // are obtained from `u64` addresses and vice versa. This includes:
+        //  - referencing and dereferencing
+        //  - raw pointers (`__addr_of`)
+        //  - GTF intrinsic
+        fn get_symbols_from_u64_address_rec(
+            context: &Context,
+            symbols: &mut FxIndexSet<Symbol>,
+            visited: &mut FxHashSet<Value>,
+            u64_address: Value,
+            is_complete: &mut bool,
+        ) {
+            match context.values[u64_address.0].value {
+                // Follow the sources of the address, and for every source address,
+                // recursively come back to this function.
+                ValueDatum::Argument(arg) => get_symbols_from_u64_address_argument(
+                    context,
+                    symbols,
+                    visited,
+                    arg,
+                    is_complete,
+                ),
+                // 1. Patterns related to references and raw pointers.
+                ValueDatum::Instruction(Instruction {
+                    // The address is coming from a `raw_pointer` or `&T` variable.
+                    op: InstOp::Load(_loaded_from),
+                    ..
+                }) => {
+                    // TODO: https://github.com/FuelLabs/sway/issues/6065
+                    //       We want to track sources of loaded addresses.
+                    //       Currently we don't and simply mark the result as incomplete.
+                    *is_complete = false;
+                }
+                ValueDatum::Instruction(Instruction {
+                    op: InstOp::PtrToInt(ptr_value, _),
+                    ..
+                }) => get_symbols_rec(context, symbols, visited, ptr_value, false, is_complete),
+                // 2. The address is coming from a GTF instruction.
+                ValueDatum::Instruction(Instruction {
+                    // There cannot be a symbol behind it, and so the returned set is complete.
+                    op: InstOp::FuelVm(FuelVmInstruction::Gtf { .. }),
+                    ..
+                }) => (),
+                // In other cases, e.g., getting the integer address from an unsafe pointer
+                // arithmetic, or as a function result, etc. we bail out and mark the
+                // collection as not being guaranteed to be a complete set of all referred symbols.
+                _ => {
+                    *is_complete = false;
+                }
+            }
+        }
+
+        if visited.contains(&ptr) {
             return;
         }
-        visited.insert(val);
-        match context.values[val.0].value {
+        visited.insert(ptr);
+        match context.values[ptr.0].value {
             ValueDatum::Instruction(Instruction {
                 op: InstOp::GetLocal(local),
                 ..
@@ -173,64 +267,67 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
                 op: InstOp::GetElemPtr { base, .. },
                 ..
             }) => get_symbols_rec(context, symbols, visited, base, gep_only, is_complete),
-            // The below chain of instructions are specific to
-            // referencing, dereferencing, and `__addr_of` and do not occur
-            // in other kinds of IR generation.  E.g., `IntToPtr` could be emitted when
-            // GTF intrinsic is compiled, but do not produce
-            // the below patterns which are specific to references and raw pointers.
             ValueDatum::Instruction(Instruction {
-                op: InstOp::IntToPtr(int_value, _),
+                op: InstOp::IntToPtr(u64_address, _),
                 ..
-            }) if !gep_only => {
-                // Ignore this path if only GEP chain is requested.
-                match context.values[int_value.0].value {
-                    ValueDatum::Instruction(Instruction {
-                        op: InstOp::Load(loaded_from),
-                        ..
-                    }) => get_symbols_rec(
-                        context,
-                        symbols,
-                        visited,
-                        loaded_from,
-                        gep_only,
-                        is_complete,
-                    ),
-                    ValueDatum::Instruction(Instruction {
-                        op: InstOp::PtrToInt(ptr_value, _),
-                        ..
-                    }) => {
-                        get_symbols_rec(context, symbols, visited, ptr_value, gep_only, is_complete)
-                    }
-                    ValueDatum::Argument(arg) => {
-                        get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete)
-                    }
-                    // In other cases, e.g., getting the integer address from an unsafe pointer
-                    // arithmetic, or as a function result, etc. we bail out and mark the
-                    // collection as not being guaranteed to be a complete set of all referred symbols.
-                    _ => {
-                        *is_complete = false;
-                    }
-                }
-            }
-            // In case of converting pointer to int for references and raw pointers,
-            // we consider the pointed symbols to be reachable from the `ptr_value`.
+            }) if !gep_only => get_symbols_from_u64_address_rec(
+                context,
+                symbols,
+                visited,
+                u64_address,
+                is_complete,
+            ),
+            // We've reached a configurable at the top of the chain.
+            // There cannot be a symbol behind it, and so the returned set is complete.
             ValueDatum::Instruction(Instruction {
-                op: InstOp::PtrToInt(ptr_value, _),
+                op: InstOp::GetConfig(_, _),
                 ..
-            }) if !gep_only => {
-                get_symbols_rec(context, symbols, visited, ptr_value, gep_only, is_complete)
-            }
+            }) if !gep_only => (),
+            // Note that in this case, the pointer itself is coming from a `Load`,
+            // and not an address. So, we just continue following the pointer.
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::Load(loaded_from),
+                ..
+            }) if !gep_only => get_symbols_rec(
+                context,
+                symbols,
+                visited,
+                loaded_from,
+                gep_only,
+                is_complete,
+            ),
+            ValueDatum::Instruction(Instruction {
+                op: InstOp::CastPtr(ptr_to_cast, _),
+                ..
+            }) if !gep_only => get_symbols_rec(
+                context,
+                symbols,
+                visited,
+                ptr_to_cast,
+                gep_only,
+                is_complete,
+            ),
             ValueDatum::Argument(arg) => {
                 get_argument_symbols(context, symbols, visited, arg, gep_only, is_complete)
             }
+            // We've reached a constant at the top of the chain.
+            // There cannot be a symbol behind it, and so the returned set is complete.
+            ValueDatum::Constant(_) if !gep_only => (),
             _ if !gep_only => {
-                // Same as above, we cannot track the value up the chain and cannot guarantee
-                // that the value is not coming from some of the symbols.
+                // In other cases, e.g., getting the pointer from an ASM block,
+                // or as a function result, etc., we cannot track the value up the chain
+                // and cannot guarantee that the value is not coming from some of the symbols.
+                // So, we bail out and mark the collection as not being guaranteed to be
+                // a complete set of all referred symbols.
                 *is_complete = false;
             }
             // In the case of GEP only access, the returned set is always complete.
             _ => (),
         }
+    }
+
+    if !val.get_type(context).map_or(false, |t| t.is_ptr(context)) {
+        return ReferredSymbols::new(true, IndexSet::default());
     }
 
     let mut visited = FxHashSet::default();
@@ -246,11 +343,7 @@ fn get_symbols(context: &Context, val: Value, gep_only: bool) -> ReferredSymbols
         &mut is_complete,
     );
 
-    if is_complete {
-        ReferredSymbols::Complete(symbols)
-    } else {
-        ReferredSymbols::Incomplete(symbols)
-    }
+    ReferredSymbols::new(is_complete, symbols)
 }
 
 pub fn get_gep_symbol(context: &Context, val: Value) -> Option<Symbol> {
@@ -260,14 +353,28 @@ pub fn get_gep_symbol(context: &Context, val: Value) -> Option<Symbol> {
         .flatten()
 }
 
+/// Return [Symbol] referred by `val` if there is _exactly one_ symbol referred,
+/// or `None` if there are no [Symbol]s referred or if there is more then one
+/// referred.
 pub fn get_referred_symbol(context: &Context, val: Value) -> Option<Symbol> {
-    let syms = get_referred_symbols(context, val).any();
-    (syms.len() == 1)
-        .then(|| syms.iter().next().cloned())
-        .flatten()
+    let syms = get_referred_symbols(context, val);
+    match syms {
+        ReferredSymbols::Complete(syms) => (syms.len() == 1)
+            .then(|| syms.iter().next().cloned())
+            .flatten(),
+        // It might be that we have more than one referred symbol here.
+        ReferredSymbols::Incomplete(_) => None,
+    }
 }
 
-pub type EscapedSymbols = FxHashSet<Symbol>;
+pub enum EscapedSymbols {
+    /// Guarantees that all escaping [Symbol]s are collected.
+    Complete(FxHashSet<Symbol>),
+    /// Denotes that there _might_ be additional escaping [Symbol]s
+    /// out of the collected ones.
+    Incomplete(FxHashSet<Symbol>),
+}
+
 impl AnalysisResultT for EscapedSymbols {}
 
 pub fn compute_escaped_symbols_pass(
@@ -279,33 +386,39 @@ pub fn compute_escaped_symbols_pass(
 }
 
 pub fn compute_escaped_symbols(context: &Context, function: &Function) -> EscapedSymbols {
-    let mut result = FxHashSet::default();
+    let add_from_val = |result: &mut FxHashSet<Symbol>, val: &Value, is_complete: &mut bool| {
+        let (complete, syms) = get_referred_symbols(context, *val).consume();
 
-    let add_from_val = |result: &mut FxHashSet<Symbol>, val: &Value| {
-        get_referred_symbols(context, *val)
-            .any()
-            .iter()
-            .for_each(|s| {
-                result.insert(*s);
-            });
+        *is_complete &= complete;
+
+        syms.iter().for_each(|s| {
+            result.insert(*s);
+        });
     };
+
+    let mut result = FxHashSet::default();
+    let mut is_complete = true;
 
     for (_block, inst) in function.instruction_iter(context) {
         match &inst.get_instruction(context).unwrap().op {
             InstOp::AsmBlock(_, args) => {
                 for arg_init in args.iter().filter_map(|arg| arg.initializer) {
-                    add_from_val(&mut result, &arg_init)
+                    add_from_val(&mut result, &arg_init, &mut is_complete)
                 }
             }
             InstOp::UnaryOp { .. } => (),
             InstOp::BinaryOp { .. } => (),
             InstOp::BitCast(_, _) => (),
             InstOp::Branch(_) => (),
-            InstOp::Call(_, args) => args.iter().for_each(|v| add_from_val(&mut result, v)),
+            InstOp::Call(_, args) => args
+                .iter()
+                .for_each(|v| add_from_val(&mut result, v, &mut is_complete)),
             InstOp::CastPtr(_, _) => (),
             InstOp::Cmp(_, _, _) => (),
             InstOp::ConditionalBranch { .. } => (),
-            InstOp::ContractCall { params, .. } => add_from_val(&mut result, params),
+            InstOp::ContractCall { params, .. } => {
+                add_from_val(&mut result, params, &mut is_complete)
+            }
             InstOp::FuelVm(_) => (),
             InstOp::GetLocal(_) => (),
             InstOp::GetConfig(_, _) => (),
@@ -315,18 +428,22 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
             InstOp::MemCopyBytes { .. } => (),
             InstOp::MemCopyVal { .. } => (),
             InstOp::Nop => (),
-            InstOp::PtrToInt(v, _) => add_from_val(&mut result, v),
+            InstOp::PtrToInt(v, _) => add_from_val(&mut result, v, &mut is_complete),
             InstOp::Ret(_, _) => (),
             InstOp::Store { .. } => (),
         }
     }
 
-    result
+    if is_complete {
+        EscapedSymbols::Complete(result)
+    } else {
+        EscapedSymbols::Incomplete(result)
+    }
 }
 
-/// Pointers that may possibly be loaded from.
-pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
-    match &val.get_instruction(context).unwrap().op {
+/// Pointers that may possibly be loaded from the instruction `inst`.
+pub fn get_loaded_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
+    match &inst.get_instruction(context).unwrap().op {
         InstOp::UnaryOp { .. }
         | InstOp::BinaryOp { .. }
         | InstOp::BitCast(_, _)
@@ -392,20 +509,26 @@ pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
     }
 }
 
-/// Symbols that may possibly be loaded from.
-pub fn get_loaded_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
+/// [Symbol]s that may possibly, directly or indirectly, be loaded from the instruction `inst`.
+pub fn get_loaded_symbols(context: &Context, inst: Value) -> ReferredSymbols {
     let mut res = IndexSet::default();
-    for val in get_loaded_ptr_values(context, val) {
-        for sym in get_referred_symbols(context, val).any() {
+    let mut is_complete = true;
+    for val in get_loaded_ptr_values(context, inst) {
+        let (complete, syms) = get_referred_symbols(context, val).consume();
+
+        is_complete &= complete;
+
+        for sym in syms {
             res.insert(sym);
         }
     }
-    res
+
+    ReferredSymbols::new(is_complete, res)
 }
 
-/// Pointers that may possibly be stored to.
-pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
-    match &val.get_instruction(context).unwrap().op {
+/// Pointers that may possibly be stored to the instruction `inst`.
+pub fn get_stored_ptr_values(context: &Context, inst: Value) -> Vec<Value> {
+    match &inst.get_instruction(context).unwrap().op {
         InstOp::UnaryOp { .. }
         | InstOp::BinaryOp { .. }
         | InstOp::BitCast(_, _)
@@ -449,15 +572,21 @@ pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
     }
 }
 
-/// Symbols that may possibly be stored to.
-pub fn get_stored_symbols(context: &Context, val: Value) -> FxIndexSet<Symbol> {
+/// [Symbol]s that may possibly, directly or indirectly, be stored to the instruction `inst`.
+pub fn get_stored_symbols(context: &Context, inst: Value) -> ReferredSymbols {
     let mut res = IndexSet::default();
-    for val in get_stored_ptr_values(context, val) {
-        for sym in get_referred_symbols(context, val).any() {
+    let mut is_complete = true;
+    for val in get_stored_ptr_values(context, inst) {
+        let (complete, syms) = get_referred_symbols(context, val).consume();
+
+        is_complete &= complete;
+
+        for sym in syms {
             res.insert(sym);
         }
     }
-    res
+
+    ReferredSymbols::new(is_complete, res)
 }
 
 /// Combine a series of GEPs into one.

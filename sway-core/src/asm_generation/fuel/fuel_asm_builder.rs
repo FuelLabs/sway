@@ -656,7 +656,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     val_reg,
                     VirtualRegister::Constant(ConstantRegister::Zero),
                 )),
-                comment: "convert to inversed boolean".into(),
+                comment: "convert to inverted boolean".into(),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
             self.cur_bytecode.push(Op {
@@ -2080,7 +2080,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                             let reg = self.reg_seqr.next();
                             self.cur_bytecode.push(Op {
                                 opcode: Either::Left(VirtualOp::MOVI(reg.clone(), imm)),
-                                comment: "initializer constant into register".into(),
+                                comment: "initialize constant into register".into(),
                                 owning_span: None,
                             });
                             reg

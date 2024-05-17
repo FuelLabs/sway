@@ -6,6 +6,5 @@ pub struct SomeStruct {
 
 impl SomeStruct {
     pub fn g(self) {
-        
     }
 }
