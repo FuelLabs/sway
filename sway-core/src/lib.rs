@@ -577,7 +577,7 @@ pub fn parsed_to_ast(
         // Collect information about the types used in this program
         let types_metadata_result = typed_program.collect_types_metadata(
             handler,
-            &mut CollectTypesMetadataContext::new(engines, experimental),
+            &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
         );
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,

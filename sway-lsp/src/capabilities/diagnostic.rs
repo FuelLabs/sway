@@ -5,7 +5,7 @@ use lsp_types::{Diagnostic, DiagnosticSeverity, DiagnosticTag, Position, Range};
 use serde::{Deserialize, Serialize};
 use sway_error::warning::CompileWarning;
 use sway_error::{error::CompileError, warning::Warning};
-use sway_types::{LineCol, SourceEngine, Spanned};
+use sway_types::{LineCol, LineColRange, SourceEngine, Spanned};
 
 pub(crate) type DiagnosticMap = HashMap<PathBuf, Diagnostics>;
 
@@ -65,7 +65,7 @@ pub fn get_diagnostics(
     diagnostics
 }
 
-fn get_range((start, end): (LineCol, LineCol)) -> Range {
+fn get_range(LineColRange { start, end }: LineColRange) -> Range {
     let pos = |lc: LineCol| Position::new(lc.line as u32 - 1, lc.col as u32 - 1);
     let start = pos(start);
     let end = pos(end);

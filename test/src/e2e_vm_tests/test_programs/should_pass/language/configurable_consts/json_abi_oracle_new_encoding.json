@@ -88,15 +88,6 @@
         "typeArguments": null
       },
       "name": "BOOL",
-      "offset": 14464
-    },
-    {
-      "configurableType": {
-        "name": "",
-        "type": 13,
-        "typeArguments": null
-      },
-      "name": "U8",
       "offset": 14472
     },
     {
@@ -105,8 +96,17 @@
         "type": 13,
         "typeArguments": null
       },
+      "name": "U8",
+      "offset": 14480
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 13,
+        "typeArguments": null
+      },
       "name": "ANOTHERU8",
-      "offset": 14488
+      "offset": 14496
     },
     {
       "configurableType": {
@@ -115,7 +115,7 @@
         "typeArguments": null
       },
       "name": "U16",
-      "offset": 14496
+      "offset": 14504
     },
     {
       "configurableType": {
@@ -124,7 +124,7 @@
         "typeArguments": null
       },
       "name": "U32",
-      "offset": 14504
+      "offset": 14512
     },
     {
       "configurableType": {
@@ -133,7 +133,7 @@
         "typeArguments": null
       },
       "name": "U64",
-      "offset": 14520
+      "offset": 14528
     },
     {
       "configurableType": {
@@ -142,7 +142,7 @@
         "typeArguments": null
       },
       "name": "U256",
-      "offset": 14536
+      "offset": 14544
     },
     {
       "configurableType": {
@@ -151,7 +151,7 @@
         "typeArguments": null
       },
       "name": "ARRAY_U8",
-      "offset": 14568
+      "offset": 14576
     },
     {
       "configurableType": {
@@ -160,7 +160,7 @@
         "typeArguments": null
       },
       "name": "ARRAY_U32",
-      "offset": 14600
+      "offset": 14608
     }
   ],
   "encoding": "1",
@@ -178,7 +178,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": "0",
+      "logId": "3330666440490685604",
       "loggedType": {
         "name": "",
         "type": 0,

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 use crate::SourceId;
@@ -204,8 +206,11 @@ impl Span {
     }
 
     /// Returns the line and column start and end.
-    pub fn line_col(&self) -> (LineCol, LineCol) {
-        (self.start_pos().line_col(), self.end_pos().line_col())
+    pub fn line_col(&self) -> LineColRange {
+        LineColRange {
+            start: self.start_pos().line_col(),
+            end: self.end_pos().line_col(),
+        }
     }
 
     pub fn is_dummy(&self) -> bool {
@@ -238,4 +243,21 @@ pub trait Spanned {
 pub struct LineCol {
     pub line: usize,
     pub col: usize,
+}
+
+pub struct LineColRange {
+    pub start: LineCol,
+    pub end: LineCol,
+}
+
+impl Display for LineColRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("({}, {})", self.start, self.end))
+    }
+}
+
+impl Display for LineCol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("line {}:{}", self.line, self.col))
+    }
 }
