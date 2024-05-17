@@ -12,12 +12,12 @@ use crate::{
     Value, ValueDatum,
 };
 
-pub const ESCAPED_SYMBOLS_NAME: &str = "escaped_symbols";
+pub const ESCAPED_SYMBOLS_NAME: &str = "escaped-symbols";
 
 pub fn create_escaped_symbols_pass() -> Pass {
     Pass {
         name: ESCAPED_SYMBOLS_NAME,
-        descr: "Symbols that escape / cannot be analysed",
+        descr: "Symbols that escape or cannot be analyzed",
         deps: vec![],
         runner: ScopedPass::FunctionPass(PassMutability::Analysis(compute_escaped_symbols_pass)),
     }

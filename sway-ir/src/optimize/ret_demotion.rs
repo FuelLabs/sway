@@ -10,12 +10,12 @@ use crate::{
     IrError, Pass, PassMutability, ScopedPass, Type, Value,
 };
 
-pub const RETDEMOTION_NAME: &str = "retdemotion";
+pub const RET_DEMOTION_NAME: &str = "ret-demotion";
 
 pub fn create_ret_demotion_pass() -> Pass {
     Pass {
-        name: RETDEMOTION_NAME,
-        descr: "By-value function return value demotion to by-reference.",
+        name: RET_DEMOTION_NAME,
+        descr: "Demotion of by-value function return values to by-reference",
         deps: Vec::new(),
         runner: ScopedPass::FunctionPass(PassMutability::Transform(ret_val_demotion)),
     }
