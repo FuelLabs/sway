@@ -9,12 +9,12 @@ use crate::{
 
 use rustc_hash::FxHashMap;
 
-pub const ARGDEMOTION_NAME: &str = "argdemotion";
+pub const ARG_DEMOTION_NAME: &str = "arg-demotion";
 
 pub fn create_arg_demotion_pass() -> Pass {
     Pass {
-        name: ARGDEMOTION_NAME,
-        descr: "By-value function argument demotion to by-reference.",
+        name: ARG_DEMOTION_NAME,
+        descr: "Demotion of by-value function arguments to by-reference",
         deps: Vec::new(),
         runner: ScopedPass::FunctionPass(PassMutability::Transform(arg_demotion)),
     }
