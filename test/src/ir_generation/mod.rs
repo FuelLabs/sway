@@ -230,7 +230,7 @@ pub(super) async fn run(
                     PathBuf::from("/"),
                     build_target,
                 ).with_experimental(sway_core::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding
+                    new_encoding: experimental.new_encoding,
                 });
 
                 // Include unit tests in the build.
@@ -470,7 +470,7 @@ pub(super) async fn run(
 
                 // Parse the IR again, and print it yet again to make sure that IR de/serialisation works.
                 let parsed_ir = sway_ir::parser::parse(&ir_output, engines.se(), sway_ir::ExperimentalFlags {
-                    new_encoding: experimental.new_encoding
+                    new_encoding: experimental.new_encoding,
                 })
                     .unwrap_or_else(|e| panic!("{}: {e}\n{ir_output}", path.display()));
                 let parsed_ir_output = sway_ir::printer::to_string(&parsed_ir);
