@@ -1,7 +1,11 @@
 use crate::{
     asm_generation::{
         from_ir::*,
-        fuel::{compiler_constants, data_section::Entry, fuel_asm_builder::FuelAsmBuilder},
+        fuel::{
+            compiler_constants::{self, TWELVE_BITS},
+            data_section::Entry,
+            fuel_asm_builder::FuelAsmBuilder,
+        },
         ProgramKind,
     },
     asm_lang::{
@@ -123,19 +127,50 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
             // Register ARG_REGS[NUM_ARG_REGISTERS-1] must contain LocalsBase + locals_size
             // so that the callee can index the stack arguments from there.
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADDI(
-                    VirtualRegister::Constant(
-                        ConstantRegister::ARG_REGS
-                            [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
-                    ),
-                    VirtualRegister::Constant(ConstantRegister::LocalsBase),
-                    VirtualImmediate12::new(self.locals_size_bytes(), Span::dummy())
-                        .expect("Too many arguments, cannot handle."),
-                )),
-                comment: "Save address of stack arguments in last arg register".to_string(),
-                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
-            });
+            println!("{}", function.get_name(self.context));
+            if self.locals_size_bytes() <= TWELVE_BITS {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                        VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        VirtualImmediate12::new(self.locals_size_bytes(), Span::dummy())
+                            .expect("Stack size too big for these many arguments, cannot handle."),
+                    )),
+                    comment: "Save address of stack arguments in last arg register".to_string(),
+                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                });
+            } else {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVI(
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                        VirtualImmediate18::new(self.locals_size_bytes(), Span::dummy())
+                            .expect("Stack size too big for these many arguments, cannot handle."),
+                    )),
+                    comment: "Temporarily save the locals size to add up next".to_string(),
+                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                });
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                        VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                    )),
+                    comment: "Save address of stack arguments in last arg register".to_string(),
+                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                });
+            }
         }
 
         // Set a new return address.
