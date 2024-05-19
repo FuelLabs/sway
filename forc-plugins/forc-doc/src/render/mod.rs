@@ -8,7 +8,7 @@ use crate::{
         constant::{ALL_DOC_FILENAME, INDEX_FILENAME},
         index::{AllDocIndex, ModuleIndex},
         link::{DocLink, DocLinks},
-        title::{BlockTitle, DocBlock},
+        title::BlockTitle,
         util::format::docstring::DocStrings,
     },
     RenderPlan,

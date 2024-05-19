@@ -15,7 +15,6 @@ use forc_pkg::{
 };
 use forc_util::default_output_directory;
 use render::RenderedDocumentation;
-use sway_core::fuel_prelude::fuel_crypto::coins_bip32::ecdsa::signature::rand_core::le;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -58,7 +57,6 @@ pub fn compile_html(
     get_doc_dir: &dyn Fn(&Command) -> String,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(PathBuf, Box<PackageManifestFile>)> {
-
     // get manifest directory
     let dir = if let Some(ref path) = build_instructions.manifest_path {
         PathBuf::from(path)

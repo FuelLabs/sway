@@ -14,7 +14,7 @@ use anyhow::Result;
 use sway_core::{
     decl_engine::*,
     language::ty::{self, TyTraitFn, TyTraitInterfaceItem},
-    Engines, TypeEngine, TypeInfo,
+    Engines, TypeInfo,
 };
 use sway_types::{integer_bits::IntegerBits, Ident};
 use swayfmt::parse;

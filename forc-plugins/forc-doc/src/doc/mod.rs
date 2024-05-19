@@ -18,7 +18,7 @@ use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
     Engines,
 };
-use sway_types::{BaseIdent, Named, Spanned};
+use sway_types::{BaseIdent, Spanned};
 
 mod descriptor;
 pub mod module;

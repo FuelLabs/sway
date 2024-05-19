@@ -1,5 +1,4 @@
 use sway_core::{language::ty::TyDecl, TypeInfo};
-use sway_types::integer_bits::IntegerBits;
 
 pub trait DocBlock {
     /// Returns the title of the block that the user will see.
@@ -75,7 +74,10 @@ impl BlockTitle {
             Self::Constants => "constant",
             Self::Functions => "fn",
             Self::Primitives => "primitive",
-            _ => unimplemented!("BlockTitle {:?} is unimplemented, and should not be used this way.", self),
+            _ => unimplemented!(
+                "BlockTitle {:?} is unimplemented, and should not be used this way.",
+                self
+            ),
         }
     }
     pub fn html_title_string(&self) -> String {
@@ -102,7 +104,10 @@ impl DocBlock for TyDecl {
             TyDecl::ConstantDecl { .. } => BlockTitle::Constants,
             TyDecl::FunctionDecl { .. } => BlockTitle::Functions,
             _ => {
-                unreachable!("TyDecls {:?} is non-documentable and should never be matched on.", self)
+                unreachable!(
+                    "TyDecls {:?} is non-documentable and should never be matched on.",
+                    self
+                )
             }
         }
     }
@@ -119,7 +124,10 @@ impl DocBlock for TyDecl {
             TyDecl::ConstantDecl(_) => "constant",
             TyDecl::TypeAliasDecl(_) => "type_alias",
             _ => {
-                unreachable!("TyDecl {:?} is non-documentable and should never be matched on.", self)
+                unreachable!(
+                    "TyDecl {:?} is non-documentable and should never be matched on.",
+                    self
+                )
             }
         }
     }
@@ -134,7 +142,10 @@ impl DocBlock for TypeInfo {
             | sway_core::TypeInfo::B256
             | sway_core::TypeInfo::UnsignedInteger(_) => BlockTitle::Primitives,
             _ => {
-                unimplemented!("TypeInfo {:?} is non-documentable and should never be matched on.", self)
+                unimplemented!(
+                    "TypeInfo {:?} is non-documentable and should never be matched on.",
+                    self
+                )
             }
         }
     }
@@ -147,7 +158,10 @@ impl DocBlock for TypeInfo {
             | sway_core::TypeInfo::B256
             | sway_core::TypeInfo::UnsignedInteger(_) => "primitive",
             _ => {
-                unimplemented!("TypeInfo {:?} is non-documentable and should never be matched on.", self)
+                unimplemented!(
+                    "TypeInfo {:?} is non-documentable and should never be matched on.",
+                    self
+                )
             }
         }
     }

@@ -283,7 +283,7 @@ impl DocImplTrait {
             trait_type_arguments,
             ..
         } = &self.impl_trait;
-        if trait_type_arguments.len() > 0 {
+        if !trait_type_arguments.is_empty() {
             format!(
                 "{}<{}>",
                 trait_name.suffix.as_str(),
@@ -403,19 +403,12 @@ impl ItemContext {
         if let Some(impl_traits) = &self.impl_traits {
             let doc_links = impl_traits
                 .iter()
-                .map(|impl_trait| 
-                    {
-                        DocLink {
+                .map(|impl_trait| DocLink {
                     name: impl_trait.name_with_type_args(),
                     module_info: impl_trait.impl_for_module.clone(),
-                    html_filename: format!(
-                        "{}impl-{}",
-                        IDENTITY,
-                        impl_trait.short_name()
-                    ),
+                    html_filename: format!("{}impl-{}", IDENTITY, impl_trait.short_name()),
                     preview_opt: None,
-                }
-        })
+                })
                 .collect();
             links.insert(BlockTitle::ImplTraits, doc_links);
         }
@@ -521,15 +514,15 @@ impl Renderable for DocImplTrait {
         };
 
         let trait_link = if let Some(module_prefixes) = &self.module_info_override {
-            ModuleInfo::from_vec_str(&module_prefixes).file_path_from_location(
+            ModuleInfo::from_vec_str(module_prefixes).file_path_from_location(
                 &format!("trait.{}.html", short_name),
-                &impl_for_module,
+                impl_for_module,
                 is_external_item,
             )?
         } else {
-            ModuleInfo::from_call_path(&trait_name).file_path_from_location(
+            ModuleInfo::from_call_path(trait_name).file_path_from_location(
                 &format!("trait.{}.html", short_name),
-                &impl_for_module,
+                impl_for_module,
                 is_external_item,
             )?
         };

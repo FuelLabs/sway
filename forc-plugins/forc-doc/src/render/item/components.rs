@@ -6,14 +6,13 @@ use crate::{
         item::context::ItemContext,
         search::generate_searchbar,
         sidebar::{Sidebar, SidebarNav},
-        title::{BlockTitle, DocBlock},
         DocStyle, Renderable,
     },
     RenderPlan, ASSETS_DIR_NAME,
 };
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox};
-use sway_core::{language::ty::TyDecl, TypeInfo};
+
 use sway_types::BaseIdent;
 
 use super::documentable_type::DocumentableType;
