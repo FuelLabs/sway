@@ -24,6 +24,52 @@ impl u32 {
             None
         }
     }
+
+    /// Extends a `u32` to a `u64`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The converted `u32` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 10u32;
+    ///     let result = val.as_u64();
+    ///     assert(result == 10);
+    /// }
+    /// ```
+    pub fn as_u64(self) -> u64 {
+        asm(input: self) {
+            input: u64
+        }
+    }
+}
+
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+impl u32 {
+    /// Extends a `u32` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u32` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2u32;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self.as_u64());
+        asm(input: input) {
+            input: u256
+        }
+    }
 }
 
 impl From<u8> for u32 {
@@ -187,4 +233,24 @@ fn test_u32_try_from_u128() {
     assert(u32_1.unwrap() == 0u32);
 
     assert(u32_2.is_none());
+}
+
+#[test]
+fn test_u32_as_u64() {
+    use ::assert::assert;
+    
+    let val = 2u32;
+    let result = val.as_u64();
+    assert(result == 2);
+}
+
+#[test]
+fn test_u32_as_u256() {
+    use ::assert::assert;
+
+    let val = 2u32;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }

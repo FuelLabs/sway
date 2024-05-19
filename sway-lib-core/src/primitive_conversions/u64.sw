@@ -34,6 +34,28 @@ impl u64 {
             None
         }
     }
+
+    /// Extends a `u64` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u64` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self);
+        asm(input: input) {
+            input: u256
+        }
+    }
 }
 
 impl From<u8> for u64 {
@@ -199,4 +221,15 @@ fn test_u64_try_from_u128() {
     assert(u64_1.unwrap() == 0u64);
 
     assert(u64_2.is_none());
+}
+
+#[test]
+fn test_u64_as_u256() {
+    use ::assert::assert;
+
+    let val = 2;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }

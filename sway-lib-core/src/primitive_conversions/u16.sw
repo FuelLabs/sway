@@ -14,6 +14,73 @@ impl u16 {
             None
         }
     }
+
+    /// Extends a `u16` to a `u32`.
+    ///
+    /// # Returns
+    ///
+    /// * [u32] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 10u16;
+    ///     let result = val.as_u32();
+    ///     assert(result == 10u32);
+    /// }
+    /// ```
+    pub fn as_u32(self) -> u32 {
+        asm(input: self) {
+            input: u32
+        }
+    }
+
+    /// Extends a `u16` to a `u64`.
+    ///
+    /// # Returns
+    ///
+    /// * [u64] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 10u16;
+    ///     let result = val.as_u64();
+    ///     assert(result == 10);
+    /// }
+    /// ```
+    pub fn as_u64(self) -> u64 {
+        asm(input: self) {
+            input: u64
+        }
+    }
+}
+
+// TODO: This must be in a separate impl block until https://github.com/FuelLabs/sway/issues/1548 is resolved
+impl u16 {
+    /// Extends a `u16` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `u16` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val = 2u16;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0000000000000000000000000000000000000000000000000000000000000002u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        let input = (0u64, 0u64, 0u64, self.as_u64());
+        asm(input: input) {
+            input: u256
+        }
+    }
 }
 
 impl From<u8> for u16 {
@@ -168,4 +235,33 @@ fn test_u16_try_from_u128() {
     assert(u16_1.unwrap() == 0u16);
 
     assert(u16_2.is_none());
+}
+
+#[test]
+fn test_u16_as_u64() {
+    use ::assert::assert;
+
+    let val = 2u16;
+    let result = val.as_u64();
+    assert(result == 2);
+}
+
+#[test]
+fn test_u16_as_u32() {
+    use ::assert::assert;
+
+    let val = 2u16;
+    let result = val.as_u32();
+    assert(result == 2u32);
+}
+
+#[test]
+fn test_u16_as_u256() {
+    use ::assert::assert;
+
+    let val = 2u16;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
+    );
 }

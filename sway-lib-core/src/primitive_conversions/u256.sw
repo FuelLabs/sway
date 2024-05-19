@@ -3,6 +3,29 @@ library;
 use ::convert::From;
 use ::u128::U128;
 
+impl u256 {
+    /// Converts a `u256` to a `b256`.
+    ///
+    /// # Returns
+    ///
+    /// * [b256] - The converted `u256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val: u256 = 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20u256;
+    ///     let result = val.as_b256();
+    ///     assert(result == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20);
+    /// }
+    /// ```
+    pub fn as_b256(self) -> b256 {
+        asm(input: self) {
+            input: b256
+        }
+    }
+}
+
 /// Functions for casting between `u256` and other types.
 impl From<u8> for u256 {
     /// Casts a `u8` to a `u256`.

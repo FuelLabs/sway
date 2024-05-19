@@ -5,6 +5,29 @@ use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 use ::u128::U128;
 
+impl b256 {
+    /// Converts a `b256` to a `u256`.
+    ///
+    /// # Returns
+    ///
+    /// * [u256] - The converted `b256` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let val: b256 = 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20;
+    ///     let result = val.as_u256();
+    ///     assert(result == 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20u256);
+    /// }
+    /// ```
+    pub fn as_u256(self) -> u256 {
+        asm(input: self) {
+            input: u256
+        }
+    }
+}
+
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
         if b.len() > 32 {
@@ -150,5 +173,16 @@ fn test_b256_from_tuple() {
     let b256_value = <b256 as From<(u64, u64, u64, u64)>>::from((1, 2, 3, 4));
     assert(
         b256_value == 0x0000000000000001000000000000000200000000000000030000000000000004,
+    );
+}
+
+#[test]
+fn test_b256_as_u256() {
+    use ::assert::assert;
+
+    let val = 0x0000000000000000000000000000000000000000000000000000000000000002;
+    let result = val.as_u256();
+    assert(
+        result == 0x0000000000000000000000000000000000000000000000000000000000000002u256,
     );
 }
