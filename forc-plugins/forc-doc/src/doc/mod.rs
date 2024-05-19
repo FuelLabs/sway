@@ -2,7 +2,7 @@
 use crate::{
     doc::{descriptor::Descriptor, module::ModuleInfo},
     render::{
-        item::{components::*, context::DocImplTrait},
+        item::{components::*, context::DocImplTrait, documentable_type::DocumentableType},
         link::DocLink,
         util::format::docstring::{create_preview, DocStrings},
     },
@@ -72,6 +72,18 @@ impl Documentation {
             })
             .collect::<HashMap<BaseIdent, ModuleInfo>>();
 
+        // Add one documentation page for each primitive type that has an implementation.
+        for (impl_trait, module_info) in impl_traits.iter() {
+            let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id);
+            if let Ok(Descriptor::Documentable(doc)) =
+                Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
+            {
+                if !docs.iter().any(|existing_doc| *existing_doc == doc) {
+                    docs.push(doc);
+                }
+            }
+        }
+
         // match for the spans to add the impl_traits to their corresponding doc:
         // currently this compares the spans as str, but this needs to change
         // to compare the actual types
@@ -79,50 +91,45 @@ impl Documentation {
             let mut impl_trait_vec: Vec<DocImplTrait> = Vec::new();
             let mut inherent_impl_vec: Vec<DocImplTrait> = Vec::new();
 
-            let decl_name = match doc.item_body.ty_decl {
-                TyDecl::StructDecl(ref decl) => {
-                    let struct_decl = engines.de().get_struct(&decl.decl_id);
-                    Some(struct_decl.name().to_string())
-                }
-                TyDecl::EnumDecl(ref decl) => {
-                    let enum_decl = engines.de().get_enum(&decl.decl_id);
-                    Some(enum_decl.name().to_string())
-                }
-                _ => None,
-            };
+            // Check for implementations of the current struct/enum/primitive.
+            match doc.item_body.ty {
+                DocumentableType::Declared(TyDecl::StructDecl(_))
+                | DocumentableType::Declared(TyDecl::EnumDecl(_))
+                | DocumentableType::Primitive(_) => {
+                    let item_name = doc.item_header.item_name.as_str().to_string();
+                    for (impl_trait, module_info) in impl_traits.iter_mut() {
+                        // Check if this implementation is for this struct/enum.
+                        if item_name.as_str() == impl_trait.implementing_for.span.as_str() {
+                            let module_info_override = if let Some(decl_module_info) =
+                                trait_decls.get(&impl_trait.trait_name.suffix)
+                            {
+                                Some(decl_module_info.module_prefixes.clone())
+                            } else {
+                                impl_trait.trait_name = impl_trait
+                                    .trait_name
+                                    .to_fullpath(engines, &typed_program.root.namespace);
+                                None
+                            };
 
-            if let Some(decl_name) = decl_name {
-                for (impl_trait, module_info) in impl_traits.iter_mut() {
-                    // Check if this implementation is for this struct/enum.
-                    if decl_name.as_str() == impl_trait.implementing_for.span.as_str() {
-                        let module_info_override = if let Some(decl_module_info) =
-                            trait_decls.get(&impl_trait.trait_name.suffix)
-                        {
-                            Some(decl_module_info.module_prefixes.clone())
-                        } else {
-                            impl_trait.trait_name = impl_trait
-                                .trait_name
-                                .to_fullpath(engines, &typed_program.root.namespace);
-                            None
-                        };
-
-                        if decl_name.as_str() == impl_trait.trait_name.suffix.span().as_str() {
-                            // If the trait name is the same as the declaration's name, it's an inherent implementation.
-                            inherent_impl_vec.push(DocImplTrait {
-                                impl_for_module: module_info.clone(),
-                                impl_trait: impl_trait.clone(),
-                                module_info_override: None,
-                            });
-                        } else {
-                            // Otherwise, it's an implementation for a trait.
-                            impl_trait_vec.push(DocImplTrait {
-                                impl_for_module: module_info.clone(),
-                                impl_trait: impl_trait.clone(),
-                                module_info_override,
-                            });
+                            if item_name.as_str() == impl_trait.trait_name.suffix.span().as_str() {
+                                // If the trait name is the same as the declaration's name, it's an inherent implementation.
+                                inherent_impl_vec.push(DocImplTrait {
+                                    impl_for_module: module_info.clone(),
+                                    impl_trait: impl_trait.clone(),
+                                    module_info_override: module_info_override.clone(),
+                                });
+                            } else {
+                                // Otherwise, it's an implementation for a trait.
+                                impl_trait_vec.push(DocImplTrait {
+                                    impl_for_module: module_info.clone(),
+                                    impl_trait: impl_trait.clone(),
+                                    module_info_override,
+                                });
+                            }
                         }
                     }
                 }
+                _ => {}
             }
 
             if !impl_trait_vec.is_empty() {
@@ -203,6 +210,7 @@ impl Documentation {
         Ok(())
     }
 }
+
 /// A finalized Document ready to be rendered. We want to retain all
 /// information including spans, fields on structs, variants on enums etc.
 #[derive(Clone, Debug)]
@@ -212,16 +220,17 @@ pub struct Document {
     pub item_body: ItemBody,
     pub raw_attributes: Option<String>,
 }
+
 impl Document {
     /// Creates an HTML file name from the [Document].
     pub fn html_filename(&self) -> String {
         use sway_core::language::ty::TyDecl::StorageDecl;
-        let name = match &self.item_body.ty_decl {
-            StorageDecl { .. } => None,
+        let name = match &self.item_body.ty {
+            &DocumentableType::Declared(StorageDecl { .. }) => None,
             _ => Some(self.item_header.item_name.as_str()),
         };
 
-        Document::create_html_filename(self.item_body.ty_decl.doc_name(), name)
+        Document::create_html_filename(self.item_body.ty.doc_name(), name)
     }
     fn create_html_filename(ty: &str, name: Option<&str>) -> String {
         match name {
@@ -242,6 +251,14 @@ impl Document {
     }
     pub fn preview_opt(&self) -> Option<String> {
         create_preview(self.raw_attributes.clone())
+    }
+}
+
+impl PartialEq for Document {
+    fn eq(&self, other: &Self) -> bool {
+        self.item_header.item_name == other.item_header.item_name
+            && self.item_header.module_info.module_prefixes
+                == other.item_header.module_info.module_prefixes
     }
 }
 

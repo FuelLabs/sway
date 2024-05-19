@@ -8,7 +8,7 @@ use crate::{
         constant::{ALL_DOC_FILENAME, INDEX_FILENAME},
         index::{AllDocIndex, ModuleIndex},
         link::{DocLink, DocLinks},
-        title::{BlockTitle, DocBlockTitle},
+        title::{BlockTitle, DocBlock},
         util::format::docstring::DocStrings,
     },
     RenderPlan,
@@ -198,7 +198,7 @@ impl DerefMut for RenderedDocumentation {
 }
 
 fn populate_doc_links(doc: &Document, doc_links: &mut BTreeMap<BlockTitle, Vec<DocLink>>) {
-    let key = doc.item_body.ty_decl.as_block_title();
+    let key = doc.item_body.ty.as_block_title();
     match doc_links.get_mut(&key) {
         Some(links) => links.push(doc.link()),
         None => {

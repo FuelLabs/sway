@@ -43,6 +43,7 @@ struct JsonSearchItem {
 }
 impl<'a> From<&'a Document> for JsonSearchItem {
     fn from(value: &'a Document) -> Self {
+        let friendly_type_name = value.item_header.item_name.as_str(); // TODO??
         Self {
             name: value.item_body.item_name.to_string(),
             html_filename: value.html_filename(),
@@ -53,7 +54,7 @@ impl<'a> From<&'a Document> for JsonSearchItem {
                 .replace("<br>", "")
                 .replace("<p>", "")
                 .replace("</p>", ""),
-            type_name: value.item_body.ty_decl.friendly_type_name().to_string(),
+            type_name: friendly_type_name.to_string(),
         }
     }
 }
