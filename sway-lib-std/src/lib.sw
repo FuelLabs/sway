@@ -16,6 +16,7 @@ pub mod bytes;
 pub mod math;
 pub mod flags;
 pub mod u128;
+pub mod primitive_conversions;
 pub mod alias;
 pub mod hash;
 pub mod asset_id;

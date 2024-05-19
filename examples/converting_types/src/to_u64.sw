@@ -1,7 +1,7 @@
 library;
 
 // ANCHOR: to_u64_import
-use core::primitive_conversions::u64::*;
+use std::primitive_conversions::u64::*;
 // ANCHOR_END: to_u64_import
 
 pub fn convert_uint_to_u64() {

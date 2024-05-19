@@ -1,7 +1,7 @@
 library;
 
 // ANCHOR: strings_import
-use core::primitive_conversions::str::*;
+use std::primitive_conversions::str::*;
 // ANCHOR_END: strings_import
 
 

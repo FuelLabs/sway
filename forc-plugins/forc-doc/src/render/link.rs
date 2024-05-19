@@ -45,7 +45,7 @@ impl Renderable for DocLinks {
             _ => {
                 for (block_title, mut doc_link) in self.links {
                     doc_link.sort();
-                    links_vec.push((block_title.clone(), doc_link.to_vec()));
+                    links_vec.push((block_title, doc_link));
                 }
             }
         }
@@ -70,7 +70,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : Raw(item.preview_opt.clone().unwrap());
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -94,7 +94,7 @@ impl Renderable for DocLinks {
                                             href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())
                                         ) {
                                             @ if title == BlockTitle::Modules {
-                                                : item.name.clone();
+                                                : item.name;
                                             } else {
                                                 : item.module_info.to_path_literal_string(
                                                     &item.name,
@@ -105,7 +105,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : Raw(item.preview_opt.clone().unwrap());
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
@@ -136,7 +136,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : Raw(item.preview_opt.clone().unwrap());
+                                            : Raw(item.preview_opt.unwrap());
                                         }
                                     }
                                 }
