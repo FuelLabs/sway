@@ -1,6 +1,6 @@
 script;
 
-use std::primitive_conversions::{u16::*, u32::*, u64::*};
+use core::primitive_conversions::{u16::*, u32::*, u64::*};
 
 /* Test Constants */
 const X1: u8 = 4u8;

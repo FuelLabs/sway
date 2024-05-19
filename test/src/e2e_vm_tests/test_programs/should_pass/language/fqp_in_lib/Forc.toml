@@ -6,3 +6,4 @@ name = "fqp_in_lib"
 
 [dependencies]
 std = { path = "../../../../../../../sway-lib-std" }
+core = { path = "../../../../../../../sway-lib-core" }
