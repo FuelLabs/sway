@@ -19,13 +19,21 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::Spanned;
 pub use type_alias::*;
 pub use variable::*;
 
 use crate::{
-    decl_engine::{parsed_engine::ParsedDeclEngineGet, parsed_id::ParsedDeclId},
+    decl_engine::{
+        parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet},
+        parsed_id::ParsedDeclId,
+    },
     engine_threading::{DebugWithEngines, DisplayWithEngines},
+    language::Visibility,
     Engines,
 };
 
@@ -93,6 +101,58 @@ impl Declaration {
             StorageDeclaration(decl_id) => pe.get_storage(decl_id).span(),
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
+        }
+    }
+
+    pub(crate) fn to_fn_ref(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::FunctionDeclaration(decl_id) => Ok(*decl_id),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAFunction {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    pub(crate) fn to_struct_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::StructDeclaration(decl_id) => Ok(*decl_id),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    #[allow(unused)]
+    pub(crate) fn visibility(&self, decl_engine: &ParsedDeclEngine) -> Visibility {
+        match self {
+            Declaration::TraitDeclaration(decl_id) => decl_engine.get_trait(decl_id).visibility,
+            Declaration::ConstantDeclaration(decl_id) => {
+                decl_engine.get_constant(decl_id).visibility
+            }
+            Declaration::StructDeclaration(decl_id) => decl_engine.get_struct(decl_id).visibility,
+            Declaration::EnumDeclaration(decl_id) => decl_engine.get_enum(decl_id).visibility,
+            Declaration::FunctionDeclaration(decl_id) => {
+                decl_engine.get_function(decl_id).visibility
+            }
+            Declaration::TypeAliasDeclaration(decl_id) => {
+                decl_engine.get_type_alias(decl_id).visibility
+            }
+            Declaration::VariableDeclaration(_decl_id) => Visibility::Private,
+            Declaration::ImplTrait(_)
+            | Declaration::ImplSelf(_)
+            | Declaration::StorageDeclaration(_)
+            | Declaration::AbiDeclaration(_)
+            | Declaration::TraitTypeDeclaration(_) => Visibility::Public,
         }
     }
 }

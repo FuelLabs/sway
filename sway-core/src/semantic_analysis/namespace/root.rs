@@ -46,10 +46,32 @@ impl DebugWithEngines for ResolvedDeclaration {
 }
 
 impl ResolvedDeclaration {
+    pub fn expect_parsed(self) -> Declaration {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl,
+            ResolvedDeclaration::Typed(_) => panic!(),
+        }
+    }
+
     pub fn expect_typed(self) -> ty::TyDecl {
         match self {
             ResolvedDeclaration::Parsed(_) => panic!(),
             ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ResolveOptions {
+    pub resolve_parsed: bool,
+    pub resolve_typed: bool,
+}
+
+impl Default for ResolveOptions {
+    fn default() -> Self {
+        Self {
+            resolve_parsed: true,
+            resolve_typed: true,
         }
     }
 }
@@ -65,6 +87,7 @@ impl ResolvedDeclaration {
 #[derive(Clone, Debug)]
 pub struct Root {
     pub(crate) module: Module,
+    pub(crate) resolve_options: ResolveOptions,
 }
 
 impl Root {
@@ -837,43 +860,53 @@ impl Root {
         symbol: &Ident,
         module: &Module,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
-        // Check locally declared items. Any name clash with imports will have already been reported as an error.
-        if let Some(decl) = module.current_items().symbols.get(symbol) {
-            return Ok(ResolvedDeclaration::Typed(decl.clone()));
+        if self.resolve_options.resolve_parsed {
+            // Check locally declared parsed items. Any name clash with imports will have already been reported as an error.
+            if let Some(decl) = module.current_items().parsed_symbols.get(symbol) {
+                return Ok(ResolvedDeclaration::Parsed(decl.clone()));
+            }
         }
-        // Check item imports
-        if let Some((_, _, decl)) = module.current_items().use_item_synonyms.get(symbol) {
-            return Ok(ResolvedDeclaration::Typed(decl.clone()));
-        }
-        // Check glob imports
-        if let Some(decls) = module.current_items().use_glob_synonyms.get(symbol) {
-            if decls.len() == 1 {
-                return Ok(ResolvedDeclaration::Typed(decls[0].1.clone()));
-            } else if decls.is_empty() {
-                return Err(handler.emit_err(CompileError::Internal(
+        if self.resolve_options.resolve_typed {
+            // Check locally declared items. Any name clash with imports will have already been reported as an error.
+            if let Some(decl) = module.current_items().symbols.get(symbol) {
+                return Ok(ResolvedDeclaration::Typed(decl.clone()));
+            }
+            // Check item imports
+            if let Some((_, _, decl)) = module.current_items().use_item_synonyms.get(symbol) {
+                return Ok(ResolvedDeclaration::Typed(decl.clone()));
+            }
+            // Check glob imports
+            if let Some(decls) = module.current_items().use_glob_synonyms.get(symbol) {
+                if decls.len() == 1 {
+                    return Ok(ResolvedDeclaration::Typed(decls[0].1.clone()));
+                } else if decls.is_empty() {
+                    return Err(handler.emit_err(CompileError::Internal(
                     "The name {symbol} was bound in a star import, but no corresponding module paths were found",
                     symbol.span(),
                 )));
-            } else {
-                // Symbol not found
-                return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
-                    name: symbol.clone(),
-                    paths: decls
-                        .iter()
-                        .map(|(path, decl)| {
-                            let mut path_strs = path.iter().map(|x| x.as_str()).collect::<Vec<_>>();
-                            // Add the enum name to the path if the decl is an enum variant.
-                            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                enum_ref, ..
-                            }) = decl
-                            {
-                                path_strs.push(enum_ref.name().as_str())
-                            };
-                            path_strs.join("::")
-                        })
-                        .collect(),
-                    span: symbol.span(),
-                }));
+                } else {
+                    // Symbol not found
+                    return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
+                        name: symbol.clone(),
+                        paths: decls
+                            .iter()
+                            .map(|(path, decl)| {
+                                let mut path_strs =
+                                    path.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+                                // Add the enum name to the path if the decl is an enum variant.
+                                if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                    enum_ref,
+                                    ..
+                                }) = decl
+                                {
+                                    path_strs.push(enum_ref.name().as_str())
+                                };
+                                path_strs.join("::")
+                            })
+                            .collect(),
+                        span: symbol.span(),
+                    }));
+                }
             }
         }
         // Symbol not found
@@ -886,7 +919,10 @@ impl Root {
 
 impl From<Module> for Root {
     fn from(module: Module) -> Self {
-        Root { module }
+        Root {
+            module,
+            resolve_options: Default::default(),
+        }
     }
 }
 
