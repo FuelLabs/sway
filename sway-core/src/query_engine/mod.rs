@@ -47,18 +47,18 @@ pub struct ProgramsCacheEntry {
 pub type ProgramsCacheMap = HashMap<Arc<PathBuf>, ProgramsCacheEntry>;
 
 #[derive(Clone, Debug)]
-pub struct MethodCacheEntry {
+pub struct FunctionCacheEntry {
     pub fn_decl: DeclRef<DeclId<TyFunctionDecl>>,
 }
 
-pub type MethodsCacheMap = HashMap<(IdentUnique, String), MethodCacheEntry>;
+pub type FunctionsCacheMap = HashMap<(IdentUnique, String), FunctionCacheEntry>;
 
 #[derive(Debug, Default, Clone)]
 pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
     parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
-    method_cache: Arc<RwLock<MethodsCacheMap>>,
+    function_cache: Arc<RwLock<FunctionsCacheMap>>,
 }
 
 impl QueryEngine {
@@ -91,7 +91,7 @@ impl QueryEngine {
         ident: IdentUnique,
         sig: TyFunctionSig,
     ) -> Option<DeclRef<DeclId<TyFunctionDecl>>> {
-        let cache = self.method_cache.read().unwrap();
+        let cache = self.function_cache.read();
         cache
             .get(&(ident, sig.get_type_str(engines)))
             .map(|s| s.fn_decl.clone())
@@ -104,10 +104,10 @@ impl QueryEngine {
         sig: TyFunctionSig,
         fn_decl: DeclRef<DeclId<TyFunctionDecl>>,
     ) {
-        let mut cache = self.method_cache.write().unwrap();
+        let mut cache = self.function_cache.write();
         cache.insert(
             (ident, sig.get_type_str(engines)),
-            MethodCacheEntry { fn_decl },
+            FunctionCacheEntry { fn_decl },
         );
     }
 }
