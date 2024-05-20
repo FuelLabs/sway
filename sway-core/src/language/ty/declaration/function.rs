@@ -544,6 +544,7 @@ impl TyFunctionParameter {
 pub struct TyFunctionSig {
     pub return_type: TypeId,
     pub parameters: Vec<TypeId>,
+    pub type_parameters: Vec<TypeId>,
 }
 
 impl DisplayWithEngines for TyFunctionSig {
@@ -554,9 +555,22 @@ impl DisplayWithEngines for TyFunctionSig {
 
 impl DebugWithEngines for TyFunctionSig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let tp_str = if self.type_parameters.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "<{}>",
+                self.type_parameters
+                    .iter()
+                    .map(|p| format!("{}", engines.help_out(p)))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
         write!(
             f,
-            "fn({}) -> {}",
+            "fn{}({}) -> {}",
+            tp_str,
             self.parameters
                 .iter()
                 .map(|p| format!("{}", engines.help_out(p)))
@@ -576,20 +590,39 @@ impl TyFunctionSig {
                 .iter()
                 .map(|p| p.type_argument.type_id)
                 .collect::<Vec<_>>(),
+            type_parameters: fn_decl
+                .type_parameters
+                .iter()
+                .map(|p| p.type_id)
+                .collect::<Vec<_>>(),
         }
     }
 
     pub fn is_concrete(&self, engines: &Engines) -> bool {
         self.return_type.is_concrete(engines)
             && self.parameters.iter().all(|p| p.is_concrete(engines))
+            && self.type_parameters.iter().all(|p| p.is_concrete(engines))
     }
 
     /// Returns a String representing the function.
     /// When the function is monomorphized the returned String is unique.
     /// Two monomorphized functions that generate the same String can be assumed to be the same.
     pub fn get_type_str(&self, engines: &Engines) -> String {
+        let tp_str = if self.type_parameters.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "<{}>",
+                self.type_parameters
+                    .iter()
+                    .map(|p| p.get_type_str(engines))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
         format!(
-            "fn({}) -> {}",
+            "fn{}({}) -> {}",
+            tp_str,
             self.parameters
                 .iter()
                 .map(|p| p.get_type_str(engines))
