@@ -152,7 +152,7 @@ h2,
   border-bottom: 1px solid var(--headings-border-bottom-color);
 }
 h3.code-header {
-  font-size: 1em;
+  font-size: 1.125rem;
   font-weight: 600;
 }
 h4.code-header {
@@ -489,8 +489,8 @@ a#all-types:active {
 .block a,
 h2.location a {
   display: block;
-  padding: 0.25rem;
-  margin-left: 2em;
+  padding: 0.5rem;
+  margin-left: .25rem;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -505,14 +505,18 @@ h2.location a {
 .sidebar h3 {
   font-size: 1.125rem;
   font-weight: 500;
-  padding: 0;
+  padding: 1rem 1rem 0 0;
   margin: 0;
 }
-.sidebar-elems .block {
-  margin-bottom: 2em;
+.sidebar-elems, 
+.sidebar > .version, 
+.sidebar > h2 {
+  padding-left: 24px;
 }
-.sidebar-elems .block li a {
-  white-space: nowrap;
+ul.block, .block li {
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 .mobile-topbar {
   display: none;
@@ -604,18 +608,14 @@ h2.location a {
 .top-doc .docblock h6 {
   font-size: 1rem;
 }
-.docblock h5 {
-  font-size: 1rem;
-}
-.docblock h6 {
-  font-size: 0.875rem;
-}
 .docblock h1,
 .docblock h2,
 .docblock h3,
 .docblock h4,
 .docblock h5,
 .docblock h6 {
+  font-size: 1.125rem;
+  color: var(--main-color);
   border-bottom-color: var(--headings-border-bottom-color);
 }
 .docblock {

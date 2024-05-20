@@ -1172,7 +1172,7 @@ impl<'eng> FnCompiler<'eng> {
                         ));
                     }
                     Some(log_id) => {
-                        convert_literal_to_value(context, &Literal::U64(**log_id as u64))
+                        convert_literal_to_value(context, &Literal::U64(log_id.hash_id))
                     }
                 };
 

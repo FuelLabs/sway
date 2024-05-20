@@ -264,22 +264,25 @@ impl Renderable for Context {
         })
     }
 }
+
 #[derive(Debug, Clone)]
 pub struct DocImplTrait {
     pub impl_for_module: ModuleInfo,
     pub impl_trait: TyImplTrait,
     pub module_info_override: Option<Vec<String>>,
 }
-#[derive(Clone, Debug)]
+
+#[derive(Clone, Debug, Default)]
 /// The context section of an item that appears in the page [ItemBody].
 pub struct ItemContext {
     /// [Context] can be fields on a struct, variants of an enum, etc.
     pub context_opt: Option<Context>,
+    // The implementations for this type.
+    pub inherent_impls: Option<Vec<DocImplTrait>>,
     /// The traits implemented for this type.
     pub impl_traits: Option<Vec<DocImplTrait>>,
-    // TODO: All other Implementation types, eg
-    // implementations on foreign types, method implementations, etc.
 }
+
 impl ItemContext {
     pub fn to_doclinks(&self) -> DocLinks {
         let mut links: BTreeMap<BlockTitle, Vec<DocLink>> = BTreeMap::new();
@@ -347,6 +350,42 @@ impl ItemContext {
                 }
             }
         }
+
+        if let Some(inherent_impls) = &self.inherent_impls {
+            let mut doc_links = Vec::new();
+            for inherent_impl in inherent_impls {
+                for item in &inherent_impl.impl_trait.items {
+                    if let TyTraitItem::Fn(item_fn) = item {
+                        let method_name = item_fn.name().to_string();
+                        doc_links.push(DocLink {
+                            name: method_name.clone(),
+                            module_info: inherent_impl.impl_for_module.clone(),
+                            html_filename: format!("{}method.{}", IDENTITY, method_name),
+                            preview_opt: None,
+                        })
+                    }
+                }
+            }
+            links.insert(BlockTitle::ImplMethods, doc_links);
+        }
+
+        if let Some(impl_traits) = &self.impl_traits {
+            let doc_links = impl_traits
+                .iter()
+                .map(|impl_trait| DocLink {
+                    name: impl_trait.impl_trait.trait_name.suffix.as_str().to_string(),
+                    module_info: impl_trait.impl_for_module.clone(),
+                    html_filename: format!(
+                        "{}impl-{}",
+                        IDENTITY,
+                        impl_trait.impl_trait.trait_name.suffix.as_str()
+                    ),
+                    preview_opt: None,
+                })
+                .collect();
+            links.insert(BlockTitle::ImplTraits, doc_links);
+        }
+
         DocLinks {
             style: DocStyle::Item {
                 title: None,
@@ -379,26 +418,48 @@ impl Renderable for ItemContext {
 
         let impl_traits = match self.impl_traits {
             Some(impl_traits) => {
-                let mut impl_vec: Vec<_> = Vec::with_capacity(impl_traits.len());
+                let mut impl_trait_vec: Vec<_> = Vec::with_capacity(impl_traits.len());
                 for impl_trait in impl_traits {
-                    impl_vec.push(impl_trait.render(render_plan.clone())?);
+                    impl_trait_vec.push(impl_trait.render(render_plan.clone())?);
                 }
-                Some(impl_vec)
+                impl_trait_vec
             }
-            None => None,
+            None => vec![],
+        };
+
+        let inherent_impls = match self.inherent_impls {
+            Some(inherent_impls) => {
+                let mut inherent_impl_vec: Vec<_> = Vec::with_capacity(inherent_impls.len());
+                for inherent_impl in inherent_impls {
+                    inherent_impl_vec.push(inherent_impl.render(render_plan.clone())?);
+                }
+                inherent_impl_vec
+            }
+            None => vec![],
         };
 
         Ok(box_html! {
             @ if let Some(context) = context_opt {
                 : Raw(context);
             }
-            @ if impl_traits.is_some() {
+            @ if !inherent_impls.is_empty() {
+                h2(id="methods", class="small-section-header") {
+                    : "Implementations";
+                    a(href=format!("{IDENTITY}methods"), class="anchor");
+                }
+                div(id="methods-list") {
+                    @ for inherent_impl in inherent_impls {
+                        : inherent_impl;
+                    }
+                }
+            }
+            @ if !impl_traits.is_empty() {
                 h2(id="trait-implementations", class="small-section-header") {
                     : "Trait Implementations";
                     a(href=format!("{IDENTITY}trait-implementations"), class="anchor");
                 }
                 div(id="trait-implementations-list") {
-                    @ for impl_trait in impl_traits.unwrap() {
+                    @ for impl_trait in impl_traits {
                         : impl_trait;
                     }
                 }
@@ -414,6 +475,7 @@ impl Renderable for DocImplTrait {
             implementing_for,
             ..
         } = self.impl_trait;
+        let is_inherent = trait_name.suffix.as_str() == implementing_for.span.as_str();
         let impl_for_module = self.impl_for_module;
         let no_deps = render_plan.no_deps;
         let is_external_item = if let Some(project_root) = trait_name.prefixes.first() {
@@ -446,14 +508,16 @@ impl Renderable for DocImplTrait {
                 a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
                 h3(class="code-header in-band") {
                     : "impl ";
-                    @ if no_deps && is_external_item {
-                        : trait_name.suffix.as_str();
-                    } else {
-                        a(class="trait", href=format!("{trait_link}")) {
+                    @ if !is_inherent {
+                        @ if no_deps && is_external_item {
                             : trait_name.suffix.as_str();
+                        } else {
+                            a(class="trait", href=format!("{trait_link}")) {
+                                : trait_name.suffix.as_str();
+                            }
                         }
+                        : " for ";
                     }
-                    : " for ";
                     : implementing_for.span.as_str();
                 }
             }
@@ -463,7 +527,7 @@ impl Renderable for DocImplTrait {
         Ok(box_html! {
             // check if the implementation has methods
             @ if !rendered_items.is_empty() {
-                details(class="swaydoc-toggle implementors-toggle") {
+                details(class="swaydoc-toggle implementors-toggle", open) {
                     summary {
                         : Raw(impl_for);
                     }
@@ -582,7 +646,7 @@ impl Renderable for TyTraitItem {
                     summary {
                         : Raw(impl_list);
                     }
-                    div(class="doc-block") {
+                    div(class="docblock") {
                         : Raw(attributes);
                     }
                 }

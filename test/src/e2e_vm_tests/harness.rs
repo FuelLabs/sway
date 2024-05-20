@@ -275,10 +275,9 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             ast: false,
             dca_graph: None,
             dca_graph_url_format: None,
-            finalized_asm: run_config.print_finalized_asm,
-            intermediate_asm: false,
+            asm: run_config.print_asm,
             bytecode: false,
-            ir: run_config.print_ir,
+            ir: run_config.print_ir.clone(),
             reverse_order: false,
         },
         pkg: forc_pkg::PkgOpts {
@@ -326,6 +325,7 @@ pub(crate) async fn compile_and_run_unit_tests(
         ]
         .iter()
         .collect();
+
         match std::panic::catch_unwind(|| {
             forc_test::build(forc_test::TestOpts {
                 pkg: forc_pkg::PkgOpts {
@@ -333,6 +333,9 @@ pub(crate) async fn compile_and_run_unit_tests(
                     locked: run_config.locked,
                     terse: !(capture_output || run_config.verbose),
                     ..Default::default()
+                },
+                experimental: ExperimentalFlags {
+                    new_encoding: run_config.experimental.new_encoding,
                 },
                 ..Default::default()
             })

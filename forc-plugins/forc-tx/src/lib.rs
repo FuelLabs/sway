@@ -157,7 +157,7 @@ pub struct Create {
     /// An arbitrary length string of hex-encoded bytes (e.g. "1F2E3D4C5B6A")
     ///
     /// Can be specified multiple times.
-    #[clap(long = "witness", multiple = true, max_values = 255)]
+    #[clap(long = "witness", num_args(0..255))]
     pub witnesses: Vec<String>,
     // Inputs and outputs must follow all other arguments and are parsed separately.
     #[clap(skip)]
@@ -186,7 +186,7 @@ pub struct Script {
     /// An arbitrary length string of hex-encoded bytes (e.g. "1F2E3D4C5B6A")
     ///
     /// Can be specified multiple times.
-    #[clap(long = "witness", multiple = true, max_values = 255)]
+    #[clap(long = "witness", num_args(0..=255))]
     pub witnesses: Vec<String>,
     // Inputs and outputs must follow all other arguments and are parsed separately.
     #[clap(skip)]

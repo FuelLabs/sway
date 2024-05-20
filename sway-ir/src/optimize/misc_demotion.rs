@@ -19,12 +19,12 @@ use crate::{
 
 use rustc_hash::FxHashMap;
 
-pub const MISCDEMOTION_NAME: &str = "miscdemotion";
+pub const MISC_DEMOTION_NAME: &str = "misc-demotion";
 
 pub fn create_misc_demotion_pass() -> Pass {
     Pass {
-        name: MISCDEMOTION_NAME,
-        descr: "By-value miscellaneous demotion to by-reference.",
+        name: MISC_DEMOTION_NAME,
+        descr: "Miscellaneous by-value demotions to by-reference",
         deps: Vec::new(),
         runner: ScopedPass::FunctionPass(PassMutability::Transform(misc_demotion)),
     }

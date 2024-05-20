@@ -26,7 +26,6 @@ pub(super) fn compile_script(
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
-    declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
@@ -35,15 +34,6 @@ pub(super) fn compile_script(
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
-    compile_declarations(
-        engines,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-        declarations,
-    )
-    .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
         context,
@@ -73,7 +63,6 @@ pub(super) fn compile_predicate(
     context: &mut Context,
     entry_function: &DeclId<ty::TyFunctionDecl>,
     namespace: &namespace::Module,
-    declarations: &[ty::TyDecl],
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
@@ -82,15 +71,6 @@ pub(super) fn compile_predicate(
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
-    compile_declarations(
-        engines,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-        declarations,
-    )
-    .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
         context,
@@ -130,15 +110,6 @@ pub(super) fn compile_contract(
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
-    compile_declarations(
-        engines,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-        declarations,
-    )
-    .map_err(|err| vec![err])?;
 
     if let Some(entry_function) = entry_function {
         compile_entry_function(
@@ -202,7 +173,6 @@ pub(super) fn compile_library(
     engines: &Engines,
     context: &mut Context,
     namespace: &namespace::Module,
-    declarations: &[ty::TyDecl],
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
@@ -211,15 +181,6 @@ pub(super) fn compile_library(
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
-    compile_declarations(
-        engines,
-        context,
-        &mut md_mgr,
-        module,
-        namespace,
-        declarations,
-    )
-    .map_err(|err| vec![err])?;
     compile_tests(
         engines,
         context,
@@ -266,77 +227,6 @@ pub(crate) fn compile_constants(
         compile_constants(engines, context, md_mgr, module, submodule_ns)?;
     }
 
-    Ok(())
-}
-
-// We don't really need to compile these declarations other than `const`s since:
-// a) function decls are inlined into their call site and can be (re)created there, though ideally
-//    we'd give them their proper name by compiling them here.
-// b) struct decls are also inlined at their instantiation site.
-// c) ditto for enums.
-//
-// And for structs and enums in particular, we must ignore those with embedded generic types as
-// they are monomorphised only at the instantiation site.  We must ignore the generic declarations
-// altogether anyway.
-fn compile_declarations(
-    engines: &Engines,
-    context: &mut Context,
-    md_mgr: &mut MetadataManager,
-    module: Module,
-    namespace: &namespace::Module,
-    declarations: &[ty::TyDecl],
-) -> Result<(), CompileError> {
-    for declaration in declarations {
-        match declaration {
-            ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
-                let decl = engines.de().get_constant(decl_id);
-                let call_path = decl.call_path.clone();
-                compile_const_decl(
-                    &mut LookupEnv {
-                        engines,
-                        context,
-                        md_mgr,
-                        module,
-                        module_ns: Some(namespace),
-                        function_compiler: None,
-                        lookup: compile_const_decl,
-                    },
-                    &call_path,
-                    &Some((*decl).clone()),
-                )?;
-            }
-
-            ty::TyDecl::FunctionDecl { .. } => {
-                // We no longer compile functions other than `main()` until we can improve the name
-                // resolution.  Currently there isn't enough information in the AST to fully
-                // distinguish similarly named functions and especially trait methods.
-                //
-                //compile_function(context, module, decl).map(|_| ())?
-            }
-            ty::TyDecl::ImplTrait { .. } => {
-                // And for the same reason we don't need to compile impls at all.
-                //
-                // compile_impl(
-                //    context,
-                //    module,
-                //    type_implementing_for,
-                //    methods,
-                //)?,
-            }
-
-            ty::TyDecl::StructDecl { .. }
-            | ty::TyDecl::EnumDecl { .. }
-            | ty::TyDecl::EnumVariantDecl { .. }
-            | ty::TyDecl::TraitDecl { .. }
-            | ty::TyDecl::VariableDecl(_)
-            | ty::TyDecl::AbiDecl { .. }
-            | ty::TyDecl::GenericTypeForFunctionScope { .. }
-            | ty::TyDecl::StorageDecl { .. }
-            | ty::TyDecl::TypeAliasDecl { .. }
-            | ty::TyDecl::TraitTypeDecl { .. }
-            | ty::TyDecl::ErrorRecovery(..) => (),
-        }
-    }
     Ok(())
 }
 

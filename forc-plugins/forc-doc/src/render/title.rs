@@ -18,7 +18,10 @@ pub enum BlockTitle {
     Fields,
     Variants,
     RequiredMethods,
+    ImplMethods,
+    ImplTraits,
 }
+
 impl BlockTitle {
     pub fn as_str(&self) -> &str {
         match self {
@@ -33,6 +36,8 @@ impl BlockTitle {
             Self::Fields => "Fields",
             Self::Variants => "Variants",
             Self::RequiredMethods => "Required Methods",
+            Self::ImplMethods => "Methods",
+            Self::ImplTraits => "Trait Implementations",
         }
     }
     pub fn item_title_str(&self) -> &str {
@@ -48,6 +53,8 @@ impl BlockTitle {
             Self::Fields => "Fields",
             Self::Variants => "Variants",
             Self::RequiredMethods => "Required Methods",
+            Self::ImplMethods => "Methods",
+            Self::ImplTraits => "Trait Implementations",
         }
     }
     pub fn class_title_str(&self) -> &str {

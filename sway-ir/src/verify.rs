@@ -31,11 +31,11 @@ pub fn module_verifier(
     Ok(Box::new(ModuleVerifierResult))
 }
 
-pub const MODULEVERIFIER_NAME: &str = "module_verifier";
+pub const MODULE_VERIFIER_NAME: &str = "module-verifier";
 
 pub fn create_module_verifier_pass() -> Pass {
     Pass {
-        name: MODULEVERIFIER_NAME,
+        name: MODULE_VERIFIER_NAME,
         descr: "Verify module",
         deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Analysis(module_verifier)),
