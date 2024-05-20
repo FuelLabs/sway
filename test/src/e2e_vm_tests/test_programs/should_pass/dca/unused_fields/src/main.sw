@@ -3,7 +3,6 @@ script;
 mod utils;
 use utils::Foo;
 
-
 struct Bar {
     value: u64
 }
