@@ -328,19 +328,19 @@ impl Items {
             let ctx = PartialEqWithEnginesContext::new(engines);
             match cur_decls.iter().position(|(cur_path, cur_decl)| {
                 cur_decl.eq(decl, &ctx)
-		// For some reason the equality check is not sufficient. In some cases items that
-		// are actually identical fail the eq check, so we have to add heuristics for these
-		// cases.
-		//
-	    	// These edge occur because core and std preludes are not reexported correctly. Once
-		// reexports are implemented we can handle the preludes correctly, and then these
-		// edge cases should go away.
-		// See https://github.com/FuelLabs/sway/issues/3113
-		//
-		// As a heuristic we replace any bindings from std and core if the new binding is
-		// also from std or core.  This does not work if the user has declared an item with
-		// the same name as an item in one of the preludes, but this is an edge case that we
-		// will have to live with for now.
+        // For some reason the equality check is not sufficient. In some cases items that
+        // are actually identical fail the eq check, so we have to add heuristics for these
+        // cases.
+        //
+            // These edge occur because core and std preludes are not reexported correctly. Once
+        // reexports are implemented we can handle the preludes correctly, and then these
+        // edge cases should go away.
+        // See https://github.com/FuelLabs/sway/issues/3113
+        //
+        // As a heuristic we replace any bindings from std and core if the new binding is
+        // also from std or core.  This does not work if the user has declared an item with
+        // the same name as an item in one of the preludes, but this is an edge case that we
+        // will have to live with for now.
                     || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
                         && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std"))
             }) {
