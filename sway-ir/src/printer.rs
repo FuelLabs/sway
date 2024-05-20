@@ -18,8 +18,8 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
-    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, IrError, Module,
-    Pass, PassMutability, ScopedPass, UnaryOpKind,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument,
+    ConfigurableContent, IrError, Module, Pass, PassMutability, ScopedPass, UnaryOpKind,
 };
 
 #[derive(Debug)]
@@ -217,6 +217,28 @@ fn module_to_doc<'a>(
     .append(Doc::text_line("}"))
 }
 
+fn config_to_doc(
+    context: &Context,
+    md_namer: &mut MetadataNamer,
+    global_namer: &mut GlobalNamer,
+    configurable: &ConfigurableContent,
+) -> Doc {
+    let ty = configurable.ty.as_string(context);
+    let bytes = configurable
+        .encoded_bytes
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect::<Vec<String>>()
+        .concat();
+    Doc::line(Doc::text(format!(
+        "{} = config {}, {}, 0x{}",
+        configurable.name,
+        ty,
+        configurable.decode_fn.get_name(context),
+        bytes,
+    )))
+}
+
 fn function_to_doc<'a>(
     context: &'a Context,
     md_namer: &mut MetadataNamer,
@@ -348,30 +370,6 @@ fn block_to_doc(
             .map(|ins| instruction_to_doc(context, md_namer, namer, block, &ins))
             .collect(),
     ))
-}
-
-fn config_to_doc(
-    context: &Context,
-    md_namer: &mut MetadataNamer,
-    global_namer: &mut GlobalNamer,
-    const_val: &Value,
-) -> Doc {
-    if let ValueContent {
-        value: ValueDatum::Configurable(configurable),
-        metadata,
-    } = &context.values[const_val.0]
-    {
-        Doc::line(
-            Doc::text(format!(
-                "{} = config {}",
-                global_namer.name(context, const_val),
-                configurable.as_lit_string(context)
-            ))
-            .append(md_namer.md_idx_to_doc(context, metadata)),
-        )
-    } else {
-        unreachable!("Not a constant value.")
-    }
 }
 
 fn constant_to_doc(
@@ -893,6 +891,20 @@ fn instruction_to_doc<'a>(
                     .append(md_namer.md_idx_to_doc(context, metadata)),
                 )
             }
+            InstOp::GetConfig(_, name) => Doc::line(
+                Doc::text(format!(
+                    "{} = get_config {}, {}",
+                    namer.name(context, ins_value),
+                    block
+                        .get_module(context)
+                        .get_global_configurable(context, name)
+                        .unwrap()
+                        .ptr_ty
+                        .as_string(context),
+                    name,
+                ))
+                .append(md_namer.md_idx_to_doc(context, metadata)),
+            ),
             InstOp::IntToPtr(value, ty) => maybe_constant_to_doc(context, md_namer, namer, value)
                 .append(Doc::line(
                     Doc::text(format!(
@@ -1149,13 +1161,6 @@ impl GlobalNamer {
         }
     }
 
-    fn name(&mut self, context: &Context, value: &Value) -> String {
-        match &context.values[value.0].value {
-            ValueDatum::Configurable(_) => self.default_configurable_name(value),
-            _ => todo!(),
-        }
-    }
-
     fn default_configurable_name(&mut self, value: &Value) -> String {
         self.names.get(value).cloned().unwrap_or_else(|| {
             let new_name = format!("c{}", self.next_configurable_idx);
@@ -1193,7 +1198,6 @@ impl Namer {
                 .lookup_arg_name(context, value)
                 .cloned()
                 .unwrap_or_else(|| self.default_name(value)),
-            ValueDatum::Configurable(_) => self.global_namer.name(context, value),
             ValueDatum::Constant(_) => self.default_name(value),
             ValueDatum::Instruction(_) => self.default_name(value),
         }

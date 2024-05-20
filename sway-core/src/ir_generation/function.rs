@@ -11,7 +11,7 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind, TyConstantDecl, TyExpressionVariant},
+        ty::{self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpressionVariant},
         *,
     },
     metadata::MetadataManager,
@@ -207,6 +207,9 @@ impl<'eng> FnCompiler<'eng> {
                     let tcd = self.engines.de().get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
+                }
+                ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
+                    unreachable!()
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
@@ -486,6 +489,9 @@ impl<'eng> FnCompiler<'eng> {
             }
             ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
                 self.compile_const_expr(context, md_mgr, const_decl, span_md_idx)
+            }
+            ty::TyExpressionVariant::ConfigurableExpression { const_decl, .. } => {
+                self.compile_config_expr(context, const_decl, span_md_idx)
             }
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
@@ -2830,6 +2836,21 @@ impl<'eng> FnCompiler<'eng> {
         Ok(result)
     }
 
+    fn compile_config_expr(
+        &mut self,
+        context: &mut Context,
+        decl: &TyConfigurableDecl,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        let name = decl.call_path.suffix.as_str();
+        let val = self
+            .current_block
+            .append(context)
+            .get_config(self.module, name.to_string())
+            .add_metadatum(context, span_md_idx);
+        Ok(TerminatorValue::new(val, context))
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -2859,8 +2880,14 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(const_val, context))
         } else if let Some(config_val) = self
             .module
-            .get_global_configurable(context, &call_path.as_vec_string())
+            .get_global_configurable(context, &call_path.suffix.to_string())
         {
+            let name = call_path.suffix.to_string();
+            let config_val = Value::new_instruction(
+                context,
+                self.current_block,
+                InstOp::GetConfig(self.module, name),
+            );
             Ok(TerminatorValue::new(config_val, context))
         } else {
             Err(CompileError::InternalOwned(

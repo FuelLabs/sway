@@ -488,7 +488,7 @@ impl ty::TyExpression {
 
     pub(crate) fn type_check_variable_expression(
         handler: &Handler,
-        mut ctx: TypeCheckContext,
+        ctx: TypeCheckContext,
         name: Ident,
         span: Span,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -525,98 +525,33 @@ impl ty::TyExpression {
                 let const_decl = (*decl_engine.get_constant(&decl_id)).clone();
                 let decl_name = const_decl.name().clone();
 
-                if !ctx.inside_configurable
-                    && const_decl.is_configurable
-                    && ctx.experimental.new_encoding
-                {
-                    ctx.inside_configurable = true;
+                assert!(!const_decl.is_configurable);
+                ty::TyExpression {
+                    return_type: const_decl.return_type,
+                    expression: ty::TyExpressionVariant::ConstantExpression {
+                        const_decl: Box::new(const_decl),
+                        span: name.span(),
+                        call_path: Some(
+                            CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
+                        ),
+                    },
+                    span,
+                }
+            }
+            Some(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. })) => {
+                let config_decl = (*decl_engine.get_configurable(&decl_id)).clone();
+                let decl_name = config_decl.name().clone();
 
-                    let name_span = name.span();
-                    let the_configurable = Expression {
-                        kind: ExpressionKind::Variable(name),
-                        span: name_span.clone(),
-                    };
-                    // get configurable address
-                    let ptr = Expression {
-                        kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
-                            name: Ident::new_no_span("addr_of".into()),
-                            kind_binding: TypeBinding {
-                                inner: Intrinsic::AddrOf,
-                                type_arguments: TypeArgs::Regular(vec![]),
-                                span: Span::dummy(),
-                            },
-                            arguments: vec![the_configurable.clone()],
-                        }),
-                        span: name_span.clone(),
-                    };
-                    let len = Expression {
-                        kind: ExpressionKind::IntrinsicFunction(IntrinsicFunctionExpression {
-                            name: Ident::new_no_span("size_of_val".into()),
-                            kind_binding: TypeBinding {
-                                inner: Intrinsic::SizeOfVal,
-                                type_arguments: TypeArgs::Regular(vec![]),
-                                span: Span::dummy(),
-                            },
-                            arguments: vec![the_configurable],
-                        }),
-                        span: Span::dummy(),
-                    };
-                    let as_slice = Expression {
-                        kind: ExpressionKind::Asm(Box::new(AsmExpression {
-                            registers: vec![AsmRegisterDeclaration {
-                                name: Ident::new_no_span("slice".into()),
-                                initializer: Some(Expression {
-                                    kind: ExpressionKind::Tuple(vec![ptr, len]),
-                                    span: Span::dummy(),
-                                }),
-                            }],
-                            body: vec![],
-                            returns: Some((
-                                AsmRegister {
-                                    name: "slice".into(),
-                                },
-                                Span::dummy(),
-                            )),
-                            return_type: TypeInfo::RawUntypedSlice,
-                            whole_block_span: Span::dummy(),
-                        })),
-                        span,
-                    };
-
-                    // decode it
-                    Self::type_check_function_application(
-                        handler,
-                        ctx,
-                        TypeBinding {
-                            inner: CallPath {
-                                prefixes: vec![],
-                                suffix: Ident::new_with_override(
-                                    "abi_decode".into(),
-                                    name_span.clone(),
-                                ),
-                                is_absolute: false,
-                            },
-                            type_arguments: TypeArgs::Regular(vec![const_decl
-                                .type_ascription
-                                .clone()]),
-                            span: name_span.clone(),
-                        },
-                        &[as_slice],
-                        name_span.clone(),
-                    )?
-                } else {
-                    ty::TyExpression {
-                        return_type: const_decl.return_type,
-                        expression: ty::TyExpressionVariant::ConstantExpression {
-                            const_decl: Box::new(const_decl),
-                            span: name.span(),
-                            call_path: Some(
-                                CallPath::from(decl_name)
-                                    .to_fullpath(ctx.engines(), ctx.namespace()),
-                            ),
-                        },
-                        span,
-                    }
+                ty::TyExpression {
+                    return_type: config_decl.return_type,
+                    expression: ty::TyExpressionVariant::ConfigurableExpression {
+                        const_decl: Box::new(config_decl),
+                        span: name.span(),
+                        call_path: Some(
+                            CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
+                        ),
+                    },
+                    span,
                 }
             }
             Some(ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. })) => {

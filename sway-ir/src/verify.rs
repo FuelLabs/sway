@@ -293,6 +293,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         indices,
                     } => self.verify_get_elem_ptr(base, elem_ptr_ty, indices)?,
                     InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                    InstOp::GetConfig(_, name) => self.verify_get_config(name)?,
                     InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     InstOp::Load(ptr) => self.verify_load(ptr)?,
                     InstOp::MemCopyBytes {
@@ -784,6 +785,11 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         } else {
             Ok(())
         }
+    }
+
+    fn verify_get_config(&self, name: &String) -> Result<(), IrError> {
+        // TODO
+        Ok(())
     }
 
     fn verify_gtf(&self, index: &Value, _tx_field_id: &u64) -> Result<(), IrError> {

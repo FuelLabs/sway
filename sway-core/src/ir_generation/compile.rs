@@ -34,6 +34,16 @@ pub(super) fn compile_script(
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_configurables(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        logged_types_map,
+        messages_types_map,
+    )
+    .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
         context,
@@ -71,6 +81,16 @@ pub(super) fn compile_predicate(
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_configurables(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        logged_types,
+        messages_types,
+    )
+    .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
         context,
@@ -110,6 +130,16 @@ pub(super) fn compile_contract(
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_configurables(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        logged_types_map,
+        messages_types_map,
+    )
+    .map_err(|err| vec![err])?;
 
     if let Some(entry_function) = entry_function {
         compile_entry_function(
@@ -227,6 +257,80 @@ pub(crate) fn compile_constants(
 
     for submodule_ns in module_ns.submodules().values() {
         compile_constants(engines, context, md_mgr, module, submodule_ns)?;
+    }
+
+    Ok(())
+}
+
+pub(crate) fn compile_configurables(
+    engines: &Engines,
+    context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+    module_ns: &namespace::Module,
+    logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
+) -> Result<(), CompileError> {
+    for decl_name in module_ns.current_items().get_all_declared_symbols() {
+        if let Some(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. })) =
+            module_ns.current_items().symbols.get(decl_name)
+        {
+            let decl = engines.de().get(decl_id);
+
+            let ty = convert_resolved_typeid(
+                engines.te(),
+                engines.de(),
+                context,
+                &decl.type_ascription.type_id,
+                &decl.type_ascription.span,
+            )
+            .unwrap();
+            let ptr_ty = Type::new_ptr(context, ty);
+
+            let v = super::const_eval::compile_constant_expression_to_constant(
+                engines,
+                context,
+                md_mgr,
+                module,
+                Some(module_ns),
+                None,
+                decl.value.as_ref().unwrap(),
+                false,
+            )
+            .unwrap();
+            let encoded_bytes = match v.value {
+                ConstantValue::RawUntypedSlice(bytes) => bytes,
+                _ => unreachable!(),
+            };
+
+            let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
+            let decode_fn = compile_fn(
+                engines,
+                context,
+                md_mgr,
+                module,
+                &*decode_fn,
+                false,
+                None,
+                logged_types_map,
+                messages_types_map,
+                None,
+            )
+            .unwrap();
+
+            let name = decl_name.as_str().to_string();
+            module.add_global_configurable(
+                context,
+                name.clone(),
+                ConfigurableContent {
+                    name,
+                    ty,
+                    ptr_ty,
+                    encoded_bytes,
+                    decode_fn,
+                },
+            );
+        }
     }
 
     Ok(())

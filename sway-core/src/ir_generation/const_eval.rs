@@ -117,8 +117,7 @@ pub(crate) fn compile_const_decl(
     match (
         env.module
             .get_global_constant(env.context, &call_path.as_vec_string()),
-        env.module
-            .get_global_configurable(env.context, &call_path.as_vec_string()),
+        None,
         env.module_ns,
     ) {
         (Some(const_val), _, _) => Ok(Some(const_val)),
@@ -164,6 +163,7 @@ pub(crate) fn compile_const_decl(
                         is_configurable,
                     )?;
 
+                    assert!(!is_configurable);
                     if !is_configurable {
                         env.module.add_global_constant(
                             env.context,
@@ -171,77 +171,7 @@ pub(crate) fn compile_const_decl(
                             const_val,
                         );
                     } else {
-                        let const_val = if env.context.experimental.new_encoding {
-                            // This expression must be `encode(something)`.
-                            // We want the something here
-                            let value_type = match &value.expression {
-                                ty::TyExpressionVariant::FunctionApplication {
-                                    arguments, ..
-                                } => arguments[0].1.return_type,
-                                _ => unreachable!("non encoded configurable inside encoding v1"),
-                            };
-
-                            let abi_encode_size_hint = env
-                                .engines
-                                .te()
-                                .get(value_type)
-                                .abi_encode_size_hint(env.engines);
-
-                            let buffer_size = match abi_encode_size_hint {
-                                AbiEncodeSizeHint::CustomImpl
-                                | AbiEncodeSizeHint::PotentiallyInfinite => {
-                                    return Err(
-                                        CompileError::CannotBeEvaluatedToConfigurableSizeUnknown {
-                                            span: value.span.clone(),
-                                        },
-                                    );
-                                }
-                                AbiEncodeSizeHint::Exact(len) => len,
-                                AbiEncodeSizeHint::Range(_, max) => max,
-                            };
-
-                            let mut bytes =
-                                match &const_val.get_configurable(env.context).unwrap().value {
-                                    ConstantValue::RawUntypedSlice(bytes) => Some(bytes.clone()),
-                                    _ => {
-                                        return Err(CompileError::NonConstantDeclValue {
-                                            span: call_path.span(),
-                                        });
-                                    }
-                                }
-                                .unwrap();
-
-                            // Pad the encoded buffer if needed
-                            assert!(
-                                buffer_size >= bytes.len(),
-                                "assert {} >= {}",
-                                buffer_size,
-                                bytes.len()
-                            );
-                            let padding_size = buffer_size.saturating_sub(bytes.len());
-                            bytes.extend((0..padding_size).map(|_| 0));
-
-                            let elements = bytes
-                                .iter()
-                                .map(|x| Constant::new_uint(env.context, 8, *x as u64))
-                                .collect();
-                            let array = Constant::new_array(
-                                env.context,
-                                Type::get_uint8(env.context),
-                                elements,
-                            );
-                            let md_idx = const_val.get_metadata(env.context);
-                            Value::new_configurable(env.context, array)
-                                .add_metadatum(env.context, md_idx)
-                        } else {
-                            const_val
-                        };
-
-                        env.module.add_global_configurable(
-                            env.context,
-                            call_path.as_vec_string().to_vec(),
-                            const_val,
-                        );
+                        unreachable!()
                     }
                     Ok(Some(const_val))
                 }
@@ -277,13 +207,12 @@ pub(super) fn compile_constant_expression(
         is_configurable,
     )?;
 
+    assert!(!is_configurable);
+
     if !is_configurable {
         Ok(Value::new_constant(context, constant_evaluated).add_metadatum(context, span_id_idx))
     } else {
-        let config_const_name =
-            md_mgr.config_const_name_to_md(context, &std::rc::Rc::from(call_path.suffix.as_str()));
-        let metadata = md_combine(context, &span_id_idx, &config_const_name);
-        Ok(Value::new_configurable(context, constant_evaluated).add_metadatum(context, metadata))
+        unreachable!()
     }
 }
 
@@ -420,6 +349,9 @@ fn const_eval_typed_expr(
                         })
                 }
             }
+        }
+        ty::TyExpressionVariant::ConfigurableExpression { const_decl, .. } => {
+            todo!()
         }
         ty::TyExpressionVariant::VariableExpression {
             name, call_path, ..

@@ -314,6 +314,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
+                InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
                 InstOp::IntToPtr(val, _) => self.compile_no_op_move(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(instr_val, src_val),
                 InstOp::MemCopyBytes {
@@ -1124,6 +1125,22 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         }
     }
 
+    fn compile_get_config(&mut self, addr_val: &Value, name: &String) -> Result<(), CompileError> {
+        // TODO
+        let addr_reg = self.reg_seqr.next();
+        self.cur_bytecode.push(Op {
+            opcode: either::Either::Left(VirtualOp::LB(
+                addr_reg.clone(),
+                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                VirtualImmediate12 { value: 0 },
+            )),
+            comment: format!("read configurable {}", name),
+            owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
+        });
+        self.reg_map.insert(*addr_val, addr_reg);
+        Ok(())
+    }
+
     fn compile_gtf(
         &mut self,
         instr_val: &Value,
@@ -1721,18 +1738,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .get_type(self.context)
             .map_or(true, |ty| !self.is_copy_type(&ty))
         {
-            // NOTE: Very hacky special case here which must be fixed.  We've been given a
-            // configurable constant which doesn't have a pointer type and shouldn't still be using
-            // `store`.
-            if stored_val.is_configurable(self.context) {
-                // So we know it's not a copy type so we actually need a MCP.
-                self.compile_mem_copy_val(instr_val, dst_val, stored_val)
-            } else {
-                Err(CompileError::Internal(
-                    "Attempt to store a non-copy type.",
-                    owning_span.unwrap_or_else(Span::dummy),
-                ))
-            }
+            Err(CompileError::Internal(
+                "Attempt to store a non-copy type.",
+                owning_span.unwrap_or_else(Span::dummy),
+            ))
         } else {
             let stored_ty = stored_val.get_type(self.context).unwrap();
             let byte_len = stored_ty.size(self.context).in_bytes();
@@ -1869,27 +1878,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     self.initialise_constant(constant, None, span).0
                 })
             })
-            .or_else(|| {
-                value.get_configurable(self.context).map(|constant| {
-                    let span = self.md_mgr.val_to_span(self.context, *value);
-                    let config_name = self
-                        .md_mgr
-                        .md_to_config_const_name(self.context, value.get_metadata(self.context))
-                        .unwrap()
-                        .to_string();
-
-                    let initialized =
-                        self.initialise_constant(constant, Some(config_name.clone()), span);
-                    if let Some(data_id) = initialized.1 {
-                        self.data_section.config_map.insert(config_name, data_id.0);
-                    }
-                    initialized.0
-                })
-            })
             .ok_or_else(|| {
+                let span = self.md_mgr.val_to_span(self.context, *value);
+                dbg!(value.with_context(self.context));
+                eprintln!("{}", std::backtrace::Backtrace::force_capture());
                 CompileError::Internal(
                     "An attempt to get register for unknown Value.",
-                    Span::dummy(),
+                    span.unwrap_or(Span::dummy()),
                 )
             })
     }

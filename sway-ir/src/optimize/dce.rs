@@ -130,8 +130,7 @@ pub fn dce(
                         .and_modify(|count| *count += 1)
                         .or_insert(1);
                 }
-                ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
-                }
+                ValueDatum::Constant(_) | ValueDatum::Argument(_) => {}
             }
         }
     }
@@ -165,8 +164,7 @@ pub fn dce(
                         worklist.push(v);
                     }
                 }
-                ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
-                }
+                ValueDatum::Constant(_) | ValueDatum::Argument(_) => {}
             }
         }
         for sym in memory_utils::get_loaded_symbols(context, dead) {
@@ -216,36 +214,20 @@ pub fn dce(
 /// Functions which are `pub` will not be removed and only functions within the passed [`Module`]
 /// are considered for removal.
 pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Result<bool, IrError> {
+    let mut called_fns: HashSet<Function> = HashSet::new();
+
+    // config decode fns
+    for config in context.modules[module.0].global_configurable.iter() {
+        grow_called_function_set(context, config.1.decode_fn, &mut called_fns);
+    }
+
+    // entry fns and fallback
     let entry_fns = module
         .function_iter(context)
         .filter(|func| func.is_entry(context) || func.is_fallback(context))
         .collect::<Vec<_>>();
-    // Recursively find all the functions called by an entry function.
-    fn grow_called_function_set(
-        context: &Context,
-        caller: Function,
-        called_set: &mut HashSet<Function>,
-    ) {
-        if called_set.insert(caller) {
-            // We haven't seen caller before.  Iterate for all that it calls.
-            for func in caller
-                .instruction_iter(context)
-                .filter_map(|(_block, ins_value)| {
-                    ins_value
-                        .get_instruction(context)
-                        .and_then(|ins| match &ins.op {
-                            InstOp::Call(f, _args) => Some(f),
-                            _otherwise => None,
-                        })
-                })
-            {
-                grow_called_function_set(context, *func, called_set);
-            }
-        }
-    }
 
-    // Gather our entry functions together into a set.
-    let mut called_fns: HashSet<Function> = HashSet::new();
+    // expand all called fns
     for entry_fn in entry_fns {
         grow_called_function_set(context, entry_fn, &mut called_fns);
     }
@@ -263,4 +245,28 @@ pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Res
     }
 
     Ok(modified)
+}
+
+// Recursively find all the functions called by an entry function.
+fn grow_called_function_set(
+    context: &Context,
+    caller: Function,
+    called_set: &mut HashSet<Function>,
+) {
+    if called_set.insert(caller) {
+        // We haven't seen caller before.  Iterate for all that it calls.
+        for func in caller
+            .instruction_iter(context)
+            .filter_map(|(_block, ins_value)| {
+                ins_value
+                    .get_instruction(context)
+                    .and_then(|ins| match &ins.op {
+                        InstOp::Call(f, _args) => Some(f),
+                        _otherwise => None,
+                    })
+            })
+        {
+            grow_called_function_set(context, *func, called_set);
+        }
+    }
 }

@@ -225,16 +225,18 @@ pub fn item_to_ast_nodes(
                 attributes,
             )?,
         )),
-        ItemKind::Configurable(item_configurable) => item_configurable_to_constant_declarations(
-            context,
-            handler,
-            engines,
-            item_configurable,
-            &attributes,
-        )?
-        .into_iter()
-        .map(|decl| AstNodeContent::Declaration(Declaration::ConstantDeclaration(decl)))
-        .collect(),
+        ItemKind::Configurable(item_configurable) => {
+            item_configurable_to_configurable_declarations(
+                context,
+                handler,
+                engines,
+                item_configurable,
+                &attributes,
+            )?
+            .into_iter()
+            .map(|decl| AstNodeContent::Declaration(Declaration::ConfigurableDeclaration(decl)))
+            .collect()
+        }
         ItemKind::TypeAlias(item_type_alias) => decl(Declaration::TypeAliasDeclaration(
             item_type_alias_to_type_alias_declaration(
                 context,
@@ -1048,13 +1050,13 @@ fn item_storage_to_storage_declaration(
     Ok(storage_declaration)
 }
 
-fn item_configurable_to_constant_declarations(
+fn item_configurable_to_configurable_declarations(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     item_configurable: ItemConfigurable,
     _attributes: &AttributesMap,
-) -> Result<Vec<ParsedDeclId<ConstantDeclaration>>, ErrorEmitted> {
+) -> Result<Vec<ParsedDeclId<ConfigurableDeclaration>>, ErrorEmitted> {
     let mut errors = Vec::new();
 
     if context.module_has_configurable_block() {
@@ -1063,7 +1065,7 @@ fn item_configurable_to_constant_declarations(
         });
     }
 
-    let declarations: Vec<ParsedDeclId<ConstantDeclaration>> = item_configurable
+    let declarations: Vec<ParsedDeclId<ConfigurableDeclaration>> = item_configurable
         .fields
         .into_inner()
         .into_iter()
@@ -1073,7 +1075,7 @@ fn item_configurable_to_constant_declarations(
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(configurable_field_to_constant_declaration(
+            Ok(Some(configurable_field_to_configurable_declaration(
                 context,
                 handler,
                 engines,
@@ -1087,7 +1089,7 @@ fn item_configurable_to_constant_declarations(
     // Make sure each configurable is declared once
     let mut names_of_declarations = std::collections::HashSet::new();
     declarations.iter().for_each(|decl_id| {
-        let v = engines.pe().get_constant(decl_id);
+        let v = engines.pe().get_configurable(decl_id);
         if !names_of_declarations.insert(v.name.clone()) {
             errors.push(ConvertParseTreeError::DuplicateConfigurable {
                 name: v.name.clone(),
@@ -2488,13 +2490,13 @@ fn storage_field_to_storage_field(
     Ok(storage_field)
 }
 
-fn configurable_field_to_constant_declaration(
+fn configurable_field_to_configurable_declaration(
     context: &mut Context,
     handler: &Handler,
     engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
-) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
+) -> Result<ParsedDeclId<ConfigurableDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
 
     let type_ascription = ty_to_type_argument(context, handler, engines, configurable_field.ty)?;
@@ -2522,17 +2524,15 @@ fn configurable_field_to_constant_declaration(
         value
     };
 
-    let const_decl = ConstantDeclaration {
+    let config_decl = ConfigurableDeclaration {
         name: configurable_field.name,
         type_ascription,
         value: Some(value),
         visibility: Visibility::Public,
-        is_configurable: true,
         attributes,
         span: span.clone(),
     };
-    let const_decl = engines.pe().insert(const_decl);
-    Ok(const_decl)
+    Ok(engines.pe().insert(config_decl))
 }
 
 fn statement_to_ast_nodes(

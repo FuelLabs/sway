@@ -176,16 +176,7 @@
       }
     }
   ],
-  "loggedTypes": [
-    {
-      "logId": "3330666440490685604",
-      "loggedType": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
-    }
-  ],
+  "loggedTypes": [],
   "messagesTypes": [],
   "types": [
     {
@@ -195,121 +186,9 @@
       "typeParameters": null
     },
     {
-      "components": [
-        {
-          "name": "__array_element",
-          "type": 11,
-          "typeArguments": null
-        }
-      ],
-      "type": "[_; 3]",
-      "typeId": 1,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "__array_element",
-          "type": 12,
-          "typeArguments": null
-        }
-      ],
-      "type": "[_; 4]",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "__array_element",
-          "type": 13,
-          "typeArguments": null
-        }
-      ],
-      "type": "[_; 4]",
-      "typeId": 3,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "b256",
-      "typeId": 4,
-      "typeParameters": null
-    },
-    {
       "components": null,
       "type": "bool",
-      "typeId": 5,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "A",
-          "type": 12,
-          "typeArguments": null
-        },
-        {
-          "name": "B",
-          "type": 5,
-          "typeArguments": null
-        }
-      ],
-      "type": "enum MyEnum",
-      "typeId": 6,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "str[4]",
-      "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "x",
-          "type": 12,
-          "typeArguments": null
-        },
-        {
-          "name": "y",
-          "type": 5,
-          "typeArguments": null
-        }
-      ],
-      "type": "struct MyStruct",
-      "typeId": 8,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u16",
-      "typeId": 9,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u256",
-      "typeId": 10,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u32",
-      "typeId": 11,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 12,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u8",
-      "typeId": 13,
+      "typeId": 1,
       "typeParameters": null
     }
   ]

@@ -35,7 +35,6 @@ pub struct ValueContent {
 #[derive(Debug, Clone, DebugWithContext)]
 pub enum ValueDatum {
     Argument(BlockArgument),
-    Configurable(Constant),
     Constant(Constant),
     Instruction(Instruction),
 }
@@ -45,15 +44,6 @@ impl Value {
     pub fn new_argument(context: &mut Context, arg: BlockArgument) -> Value {
         let content = ValueContent {
             value: ValueDatum::Argument(arg),
-            metadata: None,
-        };
-        Value(context.values.insert(content))
-    }
-
-    /// Return a new constant [`Value`].
-    pub fn new_configurable(context: &mut Context, constant: Constant) -> Value {
-        let content = ValueContent {
-            value: ValueDatum::Configurable(constant),
             metadata: None,
         };
         Value(context.values.insert(content))
@@ -102,11 +92,6 @@ impl Value {
     }
 
     /// Return whether this is a constant value.
-    pub fn is_configurable(&self, context: &Context) -> bool {
-        matches!(context.values[self.0].value, ValueDatum::Configurable(_))
-    }
-
-    /// Return whether this is a constant value.
     pub fn is_constant(&self, context: &Context) -> bool {
         matches!(context.values[self.0].value, ValueDatum::Constant(_))
     }
@@ -124,9 +109,7 @@ impl Value {
                     | InstOp::Ret(_, _)
                     | InstOp::FuelVm(FuelVmInstruction::Revert(_) | FuelVmInstruction::JmpMem)
             ),
-            ValueDatum::Argument(..) | ValueDatum::Configurable(..) | ValueDatum::Constant(..) => {
-                false
-            }
+            ValueDatum::Argument(..) | ValueDatum::Constant(..) => false,
         }
     }
 
@@ -176,15 +159,6 @@ impl Value {
     }
 
     /// Get a reference to this value as a constant, iff it is one.
-    pub fn get_configurable<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
-        if let ValueDatum::Configurable(cn) = &context.values[self.0].value {
-            Some(cn)
-        } else {
-            None
-        }
-    }
-
-    /// Get a reference to this value as a constant, iff it is one.
     pub fn get_constant<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
         if let ValueDatum::Constant(cn) = &context.values[self.0].value {
             Some(cn)
@@ -206,7 +180,6 @@ impl Value {
     pub fn get_constant_or_configurable<'a>(&self, context: &'a Context) -> Option<&'a Constant> {
         match &context.values[self.0].value {
             ValueDatum::Constant(cn) => Some(cn),
-            ValueDatum::Configurable(cn) => Some(cn),
             _ => None,
         }
     }
@@ -217,7 +190,6 @@ impl Value {
     pub fn get_type(&self, context: &Context) -> Option<Type> {
         match &context.values[self.0].value {
             ValueDatum::Argument(BlockArgument { ty, .. }) => Some(*ty),
-            ValueDatum::Configurable(c) => Some(c.ty),
             ValueDatum::Constant(c) => Some(c.ty),
             ValueDatum::Instruction(ins) => ins.get_type(context),
         }

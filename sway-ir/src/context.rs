@@ -11,9 +11,13 @@ use slotmap::{DefaultKey, SlotMap};
 use sway_types::SourceEngine;
 
 use crate::{
-    block::BlockContent, function::FunctionContent, local_var::LocalVarContent,
-    metadata::Metadatum, module::Kind, module::ModuleContent, module::ModuleIterator,
-    value::ValueContent, Type, TypeContent,
+    block::BlockContent,
+    function::FunctionContent,
+    local_var::LocalVarContent,
+    metadata::Metadatum,
+    module::{Kind, ModuleContent, ModuleIterator},
+    value::ValueContent,
+    Type, TypeContent,
 };
 
 /// The main IR context handle.

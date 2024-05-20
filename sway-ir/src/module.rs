@@ -8,6 +8,7 @@ use crate::{
     context::Context,
     function::{Function, FunctionIterator},
     value::Value,
+    Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -20,7 +21,16 @@ pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
     pub global_constants: HashMap<Vec<String>, Value>,
-    pub global_configurable: BTreeMap<Vec<String>, Value>,
+    pub global_configurable: BTreeMap<String, ConfigurableContent>,
+}
+
+#[derive(Clone)]
+pub struct ConfigurableContent {
+    pub name: String,
+    pub ty: Type,
+    pub ptr_ty: Type,
+    pub encoded_bytes: Vec<u8>,
+    pub decode_fn: Function,
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.
@@ -78,24 +88,21 @@ impl Module {
     pub fn add_global_configurable(
         &self,
         context: &mut Context,
-        call_path: Vec<String>,
-        config_val: Value,
+        name: String,
+        config_val: ConfigurableContent,
     ) {
         context.modules[self.0]
             .global_configurable
-            .insert(call_path, config_val);
+            .insert(name, config_val);
     }
 
     /// Get a named global configurable value from this module, if found.
-    pub fn get_global_configurable(
+    pub fn get_global_configurable<'a>(
         &self,
-        context: &Context,
-        call_path: &Vec<String>,
-    ) -> Option<Value> {
-        context.modules[self.0]
-            .global_configurable
-            .get(call_path)
-            .copied()
+        context: &'a Context,
+        name: &str,
+    ) -> Option<&'a ConfigurableContent> {
+        context.modules[self.0].global_configurable.get(name)
     }
 
     /// Removed a function from the module.  Returns true if function was found and removed.

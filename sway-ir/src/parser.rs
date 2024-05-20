@@ -25,6 +25,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
+    use slotmap::{DefaultKey, KeyData};
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
     type MdIdxRef = u64;
@@ -66,13 +67,19 @@ mod ir_builder {
                     }
                 }
 
+            rule config_encoded_bytes() -> Vec<u8>
+                = "0x" s:$(hex_digit()*<64>) _ {
+                    hex_string_to_vec(s)
+                }
+
             rule init_config() -> IrAstConfig
-                = value_name:value_assign() "config" _ val_ty:ast_ty() cv:constant()
+                = value_name:value_assign() "config" _ val_ty:ast_ty() _ "," _ decode_fn:id() _ "," _ encoded_bytes:config_encoded_bytes()
                 metadata:comma_metadata_idx()? {
                     IrAstConfig {
                         value_name,
                         ty: val_ty,
-                        const_val: cv,
+                        encoded_bytes,
+                        decode_fn,
                         metadata,
                     }
                 }
@@ -663,7 +670,8 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, ExperimentalFlags, Instruction, UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, ConfigurableContent, ExperimentalFlags, Instruction,
+        UnaryOpKind, B256,
     };
 
     #[derive(Debug)]
@@ -723,6 +731,7 @@ mod ir_builder {
         ContractCall(IrAstTy, String, String, String, String, String),
         GetElemPtr(String, IrAstTy, Vec<String>),
         GetLocal(String),
+        GetConfig(String),
         Gtf(String, u64),
         IntToPtr(String, IrAstTy),
         Load(String),
@@ -752,7 +761,8 @@ mod ir_builder {
     struct IrAstConfig {
         value_name: String,
         ty: IrAstTy,
-        const_val: IrAstConst,
+        encoded_bytes: Vec<u8>,
+        decode_fn: String,
         metadata: Option<MdIdxRef>,
     }
 
@@ -937,7 +947,7 @@ mod ir_builder {
         let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
             module,
-            configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
+            configs_map: build_configs_map(&mut ctx, &module, &ir_ast_mod.configs, &md_map),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -945,6 +955,7 @@ mod ir_builder {
         for fn_decl in ir_ast_mod.fn_decls {
             builder.add_fn_decl(&mut ctx, fn_decl)?;
         }
+
         builder.resolve_calls(&mut ctx)?;
 
         Ok(ctx)
@@ -952,7 +963,7 @@ mod ir_builder {
 
     struct IrBuilder {
         module: Module,
-        configs_map: HashMap<String, Value>,
+        configs_map: HashMap<String, String>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -992,9 +1003,7 @@ mod ir_builder {
                 convert_md_idx(&fn_decl.metadata),
             );
 
-            // Gather all the (new) arg values by name into a map. Initialize this map with all
-            // config variables as they are globally available
-            let mut arg_map = self.configs_map.clone();
+            let mut arg_map = HashMap::default();
             let mut local_map = HashMap::<String, LocalVar>::new();
             for (ty, name, initializer, mutable) in fn_decl.locals {
                 let initializer = initializer.map(|const_init| {
@@ -1278,6 +1287,10 @@ mod ir_builder {
                         .append(context)
                         .get_local(*local_map.get(&local_name).unwrap())
                         .add_metadatum(context, opt_metadata),
+                    IrAstOperation::GetConfig(name) => block
+                        .append(context)
+                        .get_config(self.module, name)
+                        .add_metadatum(context, opt_metadata),
                     IrAstOperation::Gtf(index, tx_field_id) => block
                         .append(context)
                         .gtf(*val_map.get(&index).unwrap(), tx_field_id)
@@ -1417,6 +1430,23 @@ mod ir_builder {
         }
 
         fn resolve_calls(self, context: &mut Context) -> Result<(), IrError> {
+            for (configurable_name, fn_name) in self.configs_map {
+                let decode_fn = self
+                    .module
+                    .function_iter(context)
+                    .find(|x| x.get_name(context) == fn_name)
+                    .unwrap();
+
+                context
+                    .modules
+                    .get_mut(self.module.0)
+                    .unwrap()
+                    .global_configurable
+                    .get_mut(&configurable_name)
+                    .unwrap()
+                    .decode_fn = decode_fn;
+            }
+
             // All of the call instructions are currently invalid (recursive) CALLs to their own
             // function, which need to be replaced with the proper callee function.  We couldn't do
             // it above until we'd gone and created all the functions first.
@@ -1450,28 +1480,36 @@ mod ir_builder {
     fn build_configs_map(
         context: &mut Context,
         module: &Module,
-        ir_configs: Vec<IrAstConfig>,
+        configs: &Vec<IrAstConfig>,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-    ) -> HashMap<String, Value> {
-        ir_configs
+    ) -> HashMap<String, String> {
+        configs
             .iter()
             .map(|config| {
                 let opt_metadata = config
                     .metadata
                     .map(|mdi| md_map.get(&mdi).unwrap())
                     .copied();
-                let as_const = config
-                    .const_val
-                    .value
-                    .as_constant(context, config.ty.clone());
-                let config_val =
-                    Value::new_configurable(context, as_const).add_metadatum(context, opt_metadata);
+
+                let ty = config.ty.to_ir_type(context);
+
+                let config_val = ConfigurableContent {
+                    name: config.value_name.clone(),
+                    ty: ty.clone(),
+                    ptr_ty: Type::new_ptr(context, ty),
+                    // TODO
+                    encoded_bytes: config.encoded_bytes.clone(),
+                    // this will point to the correct function after all functions are compiled
+                    decode_fn: Function(KeyData::default().into()),
+                };
+
                 module.add_global_configurable(
                     context,
-                    vec![config.value_name.clone()],
-                    config_val,
+                    config.value_name.clone(),
+                    config_val.clone(),
                 );
-                (config.value_name.clone(), config_val)
+
+                (config.value_name.clone(), config.decode_fn.clone())
             })
             .collect()
     }
@@ -1528,6 +1566,19 @@ mod ir_builder {
             cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
             if idx % 2 == 1 {
                 bytes[idx / 2] = cur_byte;
+                cur_byte = 0;
+            }
+        }
+        bytes
+    }
+
+    fn hex_string_to_vec(s: &str) -> Vec<u8> {
+        let mut bytes = vec![];
+        let mut cur_byte: u8 = 0;
+        for (idx, ch) in s.chars().enumerate() {
+            cur_byte = (cur_byte << 4) | ch.to_digit(16).unwrap() as u8;
+            if idx % 2 == 1 {
+                bytes.push(cur_byte);
                 cur_byte = 0;
             }
         }

@@ -320,6 +320,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
                     indices,
                 } => todo!(),
                 InstOp::GetLocal(local_var) => todo!(),
+                InstOp::GetConfig(_, name) => todo!(),
                 InstOp::IntToPtr(val, _) => todo!(),
                 InstOp::Load(src_val) => todo!(),
                 InstOp::MemCopyBytes {
@@ -628,7 +629,6 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
                 let rendered = val
                     .get_constant(self.context)
                     .map(|constant| self.render_constant(constant))
-                    .or_else(|| val.get_configurable(self.context).map(|config| todo!()))
                     .or_else(|| todo!());
                 if let Some(rendered) = rendered {
                     rendered

@@ -21,6 +21,10 @@ pub fn possibly_nonzero_u64_expression(
             Some(expr) => possibly_nonzero_u64_expression(namespace, engines, expr),
             None => false,
         },
+        ConfigurableExpression { const_decl, .. } => match &const_decl.value {
+            Some(expr) => possibly_nonzero_u64_expression(namespace, engines, expr),
+            None => false,
+        },
         VariableExpression { name, .. } => {
             match namespace
                 .resolve_symbol_typed(&Handler::default(), engines, name, None)

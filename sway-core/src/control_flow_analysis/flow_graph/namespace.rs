@@ -2,7 +2,7 @@ use super::{EntryPoint, ExitPoint};
 use crate::{
     language::{
         parsed::TreeType,
-        ty::{self, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
+        ty::{self, TyConfigurableDecl, TyConstantDecl, TyFunctionDecl, TyFunctionSig},
         CallPath,
     },
     type_system::TypeInfo,
@@ -83,9 +83,15 @@ impl ControlFlowNamespace {
         self.function_namespace
             .insert((ident, TyFunctionSig::from_fn_decl(fn_decl)), entry);
     }
+
     pub(crate) fn get_constant(&self, const_decl: &TyConstantDecl) -> Option<&NodeIndex> {
         self.const_namespace.get(&const_decl.name().clone())
     }
+
+    pub(crate) fn get_configurable(&self, const_decl: &TyConfigurableDecl) -> Option<&NodeIndex> {
+        todo!()
+    }
+
     #[allow(dead_code)]
     pub(crate) fn insert_constant(
         &mut self,
@@ -95,9 +101,11 @@ impl ControlFlowNamespace {
         self.const_namespace
             .insert(const_decl.name().clone(), declaration_node);
     }
+
     pub(crate) fn get_global_constant(&self, ident: &Ident) -> Option<&NodeIndex> {
         self.const_namespace.get(ident)
     }
+
     pub(crate) fn insert_global_constant(
         &mut self,
         const_name: Ident,
@@ -105,6 +113,7 @@ impl ControlFlowNamespace {
     ) {
         self.const_namespace.insert(const_name, declaration_node);
     }
+
     pub(crate) fn insert_enum(&mut self, enum_name: Ident, enum_decl_index: NodeIndex) {
         self.enum_namespace
             .insert(enum_name.into(), (enum_decl_index, HashMap::new()));

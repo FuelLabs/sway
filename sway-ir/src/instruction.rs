@@ -19,7 +19,7 @@ use crate::{
     local_var::LocalVar,
     pretty::DebugWithContext,
     value::{Value, ValueDatum},
-    AsmInstruction, Constant,
+    AsmInstruction, Constant, Module,
 };
 
 #[derive(Debug, Clone, DebugWithContext)]
@@ -85,6 +85,8 @@ pub enum InstOp {
     FuelVm(FuelVmInstruction),
     /// Return a local variable.
     GetLocal(LocalVar),
+    /// Return a ptr to a config
+    GetConfig(Module, String),
     /// Translate a pointer from a base to a nested element in an aggregate type.
     GetElemPtr {
         base: Value,
@@ -286,7 +288,6 @@ impl InstOp {
             // Load needs to strip the pointer from the source type.
             InstOp::Load(ptr_val) => match &context.values[ptr_val.0].value {
                 ValueDatum::Argument(arg) => arg.ty.get_pointee_type(context),
-                ValueDatum::Configurable(conf) => conf.ty.get_pointee_type(context),
                 ValueDatum::Constant(cons) => cons.ty.get_pointee_type(context),
                 ValueDatum::Instruction(ins) => ins
                     .get_type(context)
@@ -296,6 +297,12 @@ impl InstOp {
             // These return pointer types.
             InstOp::GetElemPtr { elem_ptr_ty, .. } => Some(*elem_ptr_ty),
             InstOp::GetLocal(local_var) => Some(local_var.get_type(context)),
+            InstOp::GetConfig(module, name) => Some(
+                module
+                    .get_global_configurable(context, name)
+                    .unwrap()
+                    .ptr_ty,
+            ),
 
             // Use for casting between pointers and pointer-width integers.
             InstOp::IntToPtr(_, ptr_ty) => Some(*ptr_ty),
@@ -377,6 +384,9 @@ impl InstOp {
             }
             InstOp::GetLocal(_local_var) => {
                 // TODO: Not sure.
+                vec![]
+            }
+            InstOp::GetConfig(_, _) => {
                 vec![]
             }
             InstOp::IntToPtr(v, _) => vec![*v],
@@ -508,6 +518,7 @@ impl InstOp {
                 replace(gas);
             }
             InstOp::GetLocal(_) => (),
+            InstOp::GetConfig(_, _) => (),
             InstOp::GetElemPtr {
                 base,
                 elem_ptr_ty: _,
@@ -668,6 +679,7 @@ impl InstOp {
             | InstOp::FuelVm(FuelVmInstruction::StateLoadWord(_))
             | InstOp::GetElemPtr { .. }
             | InstOp::GetLocal(_)
+            | InstOp::GetConfig(_, _)
             | InstOp::IntToPtr(..)
             | InstOp::Load(_)
             | InstOp::Nop
@@ -1019,6 +1031,10 @@ impl<'a, 'eng> InstructionInserter<'a, 'eng> {
 
     pub fn get_local(self, local_var: LocalVar) -> Value {
         insert_instruction!(self, InstOp::GetLocal(local_var))
+    }
+
+    pub fn get_config(self, module: Module, name: String) -> Value {
+        insert_instruction!(self, InstOp::GetConfig(module, name))
     }
 
     pub fn int_to_ptr(self, value: Value, ty: Type) -> Value {
