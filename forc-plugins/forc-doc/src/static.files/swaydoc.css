@@ -489,8 +489,8 @@ a#all-types:active {
 .block a,
 h2.location a {
   display: block;
-  padding: 0.25rem;
-  margin-left: 2em;
+  padding: 0.5rem;
+  margin-left: .25rem;
   text-overflow: ellipsis;
   overflow: hidden;
 }
@@ -505,14 +505,18 @@ h2.location a {
 .sidebar h3 {
   font-size: 1.125rem;
   font-weight: 500;
-  padding: 0;
+  padding: 1rem 1rem 0 0;
   margin: 0;
 }
-.sidebar-elems .block {
-  margin-bottom: 2em;
+.sidebar-elems, 
+.sidebar > .version, 
+.sidebar > h2 {
+  padding-left: 24px;
 }
-.sidebar-elems .block li a {
-  white-space: nowrap;
+ul.block, .block li {
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
 .mobile-topbar {
   display: none;
