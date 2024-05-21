@@ -13,10 +13,7 @@ pub enum StorageMapError<V> {
 }
 
 /// A persistent key-value pair mapping struct.
-pub struct StorageMap<K, V>
-where
-    K: Hash,
-{}
+pub struct StorageMap<K, V> {}
 
 impl<K, V> StorageKey<StorageMap<K, V>>
 where
