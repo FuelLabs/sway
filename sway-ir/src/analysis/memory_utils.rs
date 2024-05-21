@@ -483,27 +483,34 @@ pub fn combine_indices(context: &Context, val: Value) -> Option<Vec<Value>> {
 }
 
 /// Given a memory pointer instruction, compute the offset of indexed element,
-/// for each symbol that this may alias to.
-pub fn get_memory_offsets(context: &Context, val: Value) -> FxIndexMap<Symbol, u64> {
-    get_gep_referred_symbols(context, val)
-        .into_iter()
-        .filter_map(|sym| {
-            let offset = sym
-                .get_type(context)
-                .get_pointee_type(context)?
-                .get_value_indexed_offset(context, &combine_indices(context, val)?)?;
-            Some((sym, offset))
-        })
-        .collect()
+/// for each symbol that it may alias to.
+/// If for any symbol we can't compute it, return None.
+pub fn get_memory_offsets(context: &Context, val: Value) -> Option<FxIndexMap<Symbol, u64>> {
+    let syms = get_gep_referred_symbols(context, val);
+
+    let mut res: FxIndexMap<Symbol, u64> = FxIndexMap::default();
+    for sym in syms {
+        let offset = sym
+            .get_type(context)
+            .get_pointee_type(context)?
+            .get_value_indexed_offset(context, &combine_indices(context, val)?)?;
+        res.insert(sym, offset);
+    }
+    Some(res)
 }
 
 /// Can memory ranges [val1, val1+len1] and [val2, val2+len2] overlap?
 /// Conservatively returns true if cannot statically determine.
 pub fn may_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let mem_offsets_1 = get_memory_offsets(context, val1);
-    let mem_offsets_2 = get_memory_offsets(context, val2);
+    let (Some(mem_offsets_1), Some(mem_offsets_2)) = (
+        get_memory_offsets(context, val1),
+        get_memory_offsets(context, val2),
+    ) else {
+        return true;
+    };
 
-    for (sym1, off1) in mem_offsets_1 {
+    for (sym1, off1) in dbg!(mem_offsets_1) {
+        println!("{:?}[{}:{}]", sym1, off1, len1);
         if let Some(off2) = mem_offsets_2.get(&sym1) {
             // does off1 + len1 overlap with off2 + len2?
             if (off1 <= *off2 && (off1 + len1 > *off2)) || (*off2 <= off1 && (*off2 + len2 > off1))
@@ -518,8 +525,12 @@ pub fn may_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u
 /// Are memory ranges [val1, val1+len1] and [val2, val2+len2] exactly the same?
 /// Conservatively returns false if cannot statically determine.
 pub fn must_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u64) -> bool {
-    let mem_offsets_1 = get_memory_offsets(context, val1);
-    let mem_offsets_2 = get_memory_offsets(context, val2);
+    let (Some(mem_offsets_1), Some(mem_offsets_2)) = (
+        get_memory_offsets(context, val1),
+        get_memory_offsets(context, val2),
+    ) else {
+        return false;
+    };
 
     if mem_offsets_1.len() != 1 || mem_offsets_2.len() != 1 {
         return false;
