@@ -303,7 +303,7 @@ impl AbiDecode for String {
         let data = buffer.read_bytes(len);
         // Create string from the ptr and len as parts of a raw_slice
         String {
-            bytes: Bytes::from((raw_slice::from_parts::<u8>(data.ptr(), len))),
+            bytes: Bytes::from(raw_slice::from_parts::<u8>(data.ptr(), len)),
         }
     }
 }
