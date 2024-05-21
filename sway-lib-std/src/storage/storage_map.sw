@@ -86,11 +86,7 @@ where
         K: Hash,
     {
         let key = sha256((key, self.field_id()));
-        StorageKey::<V>::new(
-            key,
-            0,
-            key,
-        )
+        StorageKey::<V>::new(key, 0, key)
     }
 
     /// Clears a value previously stored using a key
