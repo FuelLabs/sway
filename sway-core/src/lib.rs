@@ -28,7 +28,7 @@ use crate::source_map::SourceMap;
 pub use asm_generation::from_ir::compile_ir_to_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
-pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm};
+pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
@@ -43,9 +43,9 @@ use sway_ast::AttributeDecl;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{
     create_o1_pass_group, register_known_passes, Context, Kind, Module, PassGroup, PassManager,
-    ARGDEMOTION_NAME, CONSTDEMOTION_NAME, DCE_NAME, FNDEDUP_DEBUG_PROFILE_NAME, FUNC_DCE_NAME,
-    INLINE_MODULE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISCDEMOTION_NAME, MODULEPRINTER_NAME,
-    RETDEMOTION_NAME, SIMPLIFYCFG_NAME, SROA_NAME,
+    PrintPassesOpts, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, DCE_NAME, FN_DCE_NAME,
+    FN_DEDUP_DEBUG_PROFILE_NAME, FN_INLINE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME,
+    RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME,
 };
 use sway_types::constants::DOC_COMMENT_ATTRIBUTE_NAME;
 use sway_types::SourceEngine;
@@ -577,7 +577,7 @@ pub fn parsed_to_ast(
         // Collect information about the types used in this program
         let types_metadata_result = typed_program.collect_types_metadata(
             handler,
-            &mut CollectTypesMetadataContext::new(engines, experimental),
+            &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
         );
         let types_metadata = match types_metadata_result {
             Ok(types_metadata) => types_metadata,
@@ -881,14 +881,14 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         }
         OptLevel::Opt0 => {
             // Inlining is necessary until #4899 is resolved.
-            pass_group.append_pass(INLINE_MODULE_NAME);
+            pass_group.append_pass(FN_INLINE_NAME);
 
             // We run a function deduplication pass that only removes duplicate
             // functions when everything, including the metadata are identical.
-            pass_group.append_pass(FNDEDUP_DEBUG_PROFILE_NAME);
+            pass_group.append_pass(FN_DEDUP_DEBUG_PROFILE_NAME);
 
             // Do DCE so other optimizations run faster.
-            pass_group.append_pass(FUNC_DCE_NAME);
+            pass_group.append_pass(FN_DCE_NAME);
             pass_group.append_pass(DCE_NAME);
         }
     }
@@ -899,17 +899,17 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         //
         // Demote large by-value constants, arguments and return values to by-reference values
         // using temporaries.
-        pass_group.append_pass(CONSTDEMOTION_NAME);
-        pass_group.append_pass(ARGDEMOTION_NAME);
-        pass_group.append_pass(RETDEMOTION_NAME);
-        pass_group.append_pass(MISCDEMOTION_NAME);
+        pass_group.append_pass(CONST_DEMOTION_NAME);
+        pass_group.append_pass(ARG_DEMOTION_NAME);
+        pass_group.append_pass(RET_DEMOTION_NAME);
+        pass_group.append_pass(MISC_DEMOTION_NAME);
 
         // Convert loads and stores to mem_copies where possible.
         pass_group.append_pass(MEMCPYOPT_NAME);
 
         // Run a DCE and simplify-cfg to clean up any obsolete instructions.
         pass_group.append_pass(DCE_NAME);
-        pass_group.append_pass(SIMPLIFYCFG_NAME);
+        pass_group.append_pass(SIMPLIFY_CFG_NAME);
 
         match build_config.optimization_level {
             OptLevel::Opt1 => {
@@ -921,19 +921,17 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         }
     }
 
-    if build_config.print_ir {
-        pass_group.append_pass(MODULEPRINTER_NAME);
-    }
-
     // Run the passes.
-    let res = if let Err(ir_error) = pass_mgr.run(&mut ir, &pass_group) {
-        Err(handler.emit_err(CompileError::InternalOwned(
-            ir_error.to_string(),
-            span::Span::dummy(),
-        )))
-    } else {
-        Ok(())
-    };
+    let print_passes_opts: PrintPassesOpts = (&build_config.print_ir).into();
+    let res =
+        if let Err(ir_error) = pass_mgr.run_with_print(&mut ir, &pass_group, &print_passes_opts) {
+            Err(handler.emit_err(CompileError::InternalOwned(
+                ir_error.to_string(),
+                span::Span::dummy(),
+            )))
+        } else {
+            Ok(())
+        };
     res?;
 
     let final_asm = compile_ir_to_asm(handler, &ir, Some(build_config))?;

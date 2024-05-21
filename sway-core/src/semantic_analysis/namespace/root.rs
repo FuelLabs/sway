@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::{
     module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
 };
@@ -19,9 +21,28 @@ use sway_error::{
 use sway_types::{Named, Spanned};
 use sway_utils::iter_prefixes;
 
+#[derive(Debug)]
 pub enum ResolvedDeclaration {
     Parsed(Declaration),
     Typed(ty::TyDecl),
+}
+
+impl DisplayWithEngines for ResolvedDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => DisplayWithEngines::fmt(decl, f, engines),
+            ResolvedDeclaration::Typed(decl) => DisplayWithEngines::fmt(decl, f, engines),
+        }
+    }
+}
+
+impl DebugWithEngines for ResolvedDeclaration {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => DebugWithEngines::fmt(decl, f, engines),
+            ResolvedDeclaration::Typed(decl) => DebugWithEngines::fmt(decl, f, engines),
+        }
+    }
 }
 
 impl ResolvedDeclaration {

@@ -4,6 +4,14 @@ expected_result_new_encoding = { action = "return_data", value = "00000000000020
 validate_abi = true
 expected_warnings = 26
 
+#check: $()pub struct S
+#nextln: $()This struct field is never accessed.
+#nextln: $()pub enum Enum
+
+#check: $()pub struct S
+#nextln: $()This struct field is never accessed.
+#nextln: $()pub enum Enum
+
 #check: $()pub enum Enum
 #nextln: $()This enum is never used.
 

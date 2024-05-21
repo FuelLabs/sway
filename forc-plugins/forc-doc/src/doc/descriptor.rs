@@ -73,7 +73,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
-                                impl_traits: None,
+                                ..Default::default()
                             },
                         },
                         raw_attributes: attrs_opt,
@@ -110,7 +110,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
-                                impl_traits: None,
+                                ..Default::default()
                             },
                         },
                         raw_attributes: attrs_opt,
@@ -158,7 +158,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: context,
-                                impl_traits: None,
+                                ..Default::default()
                             },
                         },
                         raw_attributes: attrs_opt,
@@ -200,7 +200,7 @@ impl Descriptor {
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
-                            impl_traits: None,
+                            ..Default::default()
                         },
                     },
                     raw_attributes: attrs_opt,
@@ -235,7 +235,7 @@ impl Descriptor {
                         attrs_opt: attrs_opt.clone(),
                         item_context: ItemContext {
                             context_opt: context,
-                            impl_traits: None,
+                            ..Default::default()
                         },
                     },
                     raw_attributes: attrs_opt,
@@ -267,7 +267,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: None,
-                                impl_traits: None,
+                                ..Default::default()
                             },
                         },
                         raw_attributes: attrs_opt,
@@ -300,7 +300,7 @@ impl Descriptor {
                             attrs_opt: attrs_opt.clone(),
                             item_context: ItemContext {
                                 context_opt: None,
-                                impl_traits: None,
+                                ..Default::default()
                             },
                         },
                         raw_attributes: attrs_opt,
