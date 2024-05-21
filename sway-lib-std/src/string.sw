@@ -281,8 +281,10 @@ impl Hash for String {
 
 impl AbiEncode for String {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
+        // Encode the length
         let mut buffer = self.bytes.len().abi_encode(buffer);
 
+        // Encode each byte of the string
         let mut i = 0;
         while i < self.bytes.len() {
             let item = self.bytes.get(i).unwrap();
@@ -296,8 +298,10 @@ impl AbiEncode for String {
 
 impl AbiDecode for String {
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        // Get length and string data
         let len = u64::abi_decode(buffer);
         let data = buffer.read_bytes(len);
+        // Create string from the ptr and len as parts of a raw_slice
         String {
             bytes: Bytes::from(Bytes::from(raw_slice::from_parts::<u8>(data.ptr(), len))),
         }
@@ -556,7 +560,7 @@ fn string_test_abi_encoding() {
 
     let encoded_raw_slice = encoded_string.as_raw_slice();
     let mut buffer_reader = BufferReader::from_parts(encoded_raw_slice.ptr(), encoded_raw_slice.number_of_bytes());
-    
+
     let decoded_string = String::abi_decode(buffer_reader);
 
     assert(string == decoded_string);
