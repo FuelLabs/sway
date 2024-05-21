@@ -279,6 +279,33 @@ impl Hash for String {
     }
 }
 
+impl AbiEncode for String {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        let mut buffer = self.bytes.len().abi_encode(buffer);
+
+        let mut i = 0;
+        while i < self.bytes.len() {
+            let item = self.bytes.get(i).unwrap();
+            buffer = item.abi_encode(buffer);
+            i += 1;
+        }
+
+        buffer
+    }
+}
+
+impl AbiDecode for String {
+    fn abi_decode(ref mut buffer: BufferReader) -> Self {
+        let len = u64::abi_decode(buffer);
+        let data = buffer.read_bytes(len);
+        let raw_slice = raw_slice::from_parts(data.ptr(), len);
+        String {
+            bytes: Bytes::from(raw_slice),
+        }
+    }
+}
+
+
 // Tests
 
 #[test]
