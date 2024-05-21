@@ -85,10 +85,11 @@ where
     where
         K: Hash,
     {
+        let key = sha256((key, self.field_id()));
         StorageKey::<V>::new(
-            sha256((key, self.field_id())),
+            key,
             0,
-            sha256((key, self.field_id())),
+            key,
         )
     }
 
