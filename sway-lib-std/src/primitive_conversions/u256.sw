@@ -1,7 +1,45 @@
 library;
 
-use ::convert::From;
+use ::constants::ZERO_B256;
+use ::convert::{From, TryFrom};
+use ::option::Option::{self, *};
 use ::u128::U128;
+use ::b512::B512;
+
+impl TryFrom<B512> for u256 {
+    /// Attempts conversion from a `B512` to a `u256`.
+    ///
+    /// # Additional Information
+    ///
+    /// If the high bits of the `B512` are not zero, the conversion will fail.
+    ///
+    /// # Arguments
+    ///
+    /// * `val`: [B512] - The `B512` to be converted.
+    ///
+    /// # Returns
+    ///
+    /// * [Option<u256>] - The `u256` representation of the `B512` value.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let b512_value = B512::new();
+    ///     let u256_value = u256::try_from(b512_value).unwrap();
+    /// }
+    /// ```
+    fn try_from(val: B512) -> Option<Self> {
+        let bits = val.bits();
+        if bits[0] == ZERO_B256 {
+            Some(bits[1].as_u256())
+        } else {
+            None
+        }
+    }
+}
 
 /// Functions for casting between `u256` and other types.
 impl From<u8> for u256 {
@@ -254,4 +292,17 @@ fn test_u256_from_tuple() {
     assert(
         u256_value == 0x0000000000000001000000000000000200000000000000030000000000000004_u256,
     );
+}
+
+#[test]
+fn test_u256_try_from_b512() {
+    use ::assert::assert;
+
+    let b512_value = B512::new();
+    let u256_value = u256::try_from(b512_value);
+    assert(u256_value.is_some());
+
+    let b512_value = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001, ZERO_B256));
+    let u256_value = u256::try_from(b512_value);
+    assert(u256_value.is_none());
 }

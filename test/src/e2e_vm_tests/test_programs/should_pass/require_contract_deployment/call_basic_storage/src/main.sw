@@ -2,9 +2,9 @@ script;
 use basic_storage_abi::{BasicStorage, Quad};
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x5c0aef0c1af7601aa6b9fa0fc9efff0e956dcb93f855788222e172e67e717072;
+const CONTRACT_ID = 0x044ab65bcabeebb73c88d8625ce392224c613cb1dae21ebedaa36bf6db1f5f4e;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xd7c6c1747aba495da86842430f16a30e56bc81e38cf2e465af3ef51c298daf9f;
+const CONTRACT_ID = 0x70ea1e451bfa81030215e245f8644aef00043b50c16da4c5ab91fd32ff89a9d1;
 
 fn main() -> u64 {
     let addr = abi(BasicStorage, CONTRACT_ID);

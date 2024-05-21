@@ -3,9 +3,9 @@ script;
 use balance_test_abi::BalanceTest;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x3b8cb681056f61a41e138b8884d7e3bb9332fbd7a8e38e3e0b0ada766cabfa4e;
+const CONTRACT_ID = 0x3120fdd1b99c0c611308aff43a99746cc2c661c69c22aa56331d5f3ce5534ee9;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xe69d378d22d2e635ce34b9e31ae8aea98c5aaa2c60b195fd2ac991594874d5d7;
+const CONTRACT_ID = 0x2393ab4d437acea9f3e916ddd728218ac2dca45dcfabe3b2fe83926a4dc0e737;
 
 fn main() -> bool {
     let balance_test_contract = abi(BalanceTest, CONTRACT_ID);

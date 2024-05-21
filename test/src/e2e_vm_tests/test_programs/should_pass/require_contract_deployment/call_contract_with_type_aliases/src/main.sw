@@ -3,9 +3,9 @@ script;
 use contract_with_type_aliases_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x9d76ecbf446c30ef659efd1157d67d156de02b1e6c2ac2f9c744125571efa229;
+const CONTRACT_ID = 0x0cbeb6efe3104b460be769bdc4ea101ebf16ccc16f2d7b667ec3e1c7f5ce35b5;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x29d25e2e14b1ee458aedd7708e4d36bc433a5e260a76fe4d04ca0c20252386aa;
+const CONTRACT_ID = 0x9e03072a3f094ed4b5af0ca6e1c244bafe8ded847d2c04aab331a9236ae7166a;
 
 fn main() {
     let caller = abi(MyContract, CONTRACT_ID);
