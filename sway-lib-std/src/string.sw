@@ -305,7 +305,6 @@ impl AbiDecode for String {
     }
 }
 
-
 // Tests
 
 #[test]
