@@ -298,9 +298,8 @@ impl AbiDecode for String {
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
         let len = u64::abi_decode(buffer);
         let data = buffer.read_bytes(len);
-        let raw_slice = raw_slice::from_parts(data.ptr(), len);
         String {
-            bytes: Bytes::from(raw_slice),
+            bytes: Bytes::from(Bytes::from(raw_slice::from_parts::<u8>(data.ptr(), len))),
         }
     }
 }
@@ -546,4 +545,19 @@ fn string_test_hash() {
     let string = String::from(bytes);
 
     assert(sha256(string) == sha256(bytes));
+}
+
+#[test]
+fn string_test_abi_encoding() {
+    let string = String::from_ascii_str("fuel");
+
+    let buffer = Buffer::new();
+    let encoded_string = string.abi_encode(buffer);
+
+    let encoded_raw_slice = encoded_string.as_raw_slice();
+    let mut buffer_reader = BufferReader::from_parts(encoded_raw_slice.ptr(), encoded_raw_slice.number_of_bytes());
+    
+    let decoded_string = String::abi_decode(buffer_reader);
+
+    assert(string == decoded_string);
 }
