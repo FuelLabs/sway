@@ -1,6 +1,7 @@
+use super::programs::{AbstractEntry, AbstractProgram, FinalProgram};
 use crate::{
     asm_generation::{
-        asm_builder::{AsmBuilder, AsmBuilderResult},
+        asm_builder::AsmBuilder,
         from_ir::{StateAccessType, Storage},
         fuel::{
             abstract_instruction_set::AbstractInstructionSet,
@@ -8,7 +9,7 @@ use crate::{
             data_section::{DataId, DataSection, Entry},
             register_sequencer::RegisterSequencer,
         },
-        ProgramKind,
+        FinalizedAsm, ProgramKind,
     },
     asm_lang::{
         virtual_register::*, Label, Op, VirtualImmediate06, VirtualImmediate12, VirtualImmediate18,
@@ -16,6 +17,7 @@ use crate::{
     },
     decl_engine::DeclRefFunction,
     metadata::MetadataManager,
+    BuildConfig,
 };
 
 use sway_error::{
@@ -76,22 +78,12 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     pub(super) cur_bytecode: Vec<Op>,
 }
 
-pub type FuelAsmBuilderResult = (
-    DataSection,
-    RegisterSequencer,
-    Vec<(
-        Function,
-        Label,
-        AbstractInstructionSet,
-        Option<DeclRefFunction>,
-    )>,
-    Vec<AbstractInstructionSet>,
-);
-
 impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_to_labels(func)
     }
+
+    fn compile_configurable(&mut self, config: &ConfigurableContent) {}
 
     fn compile_function(
         &mut self,
@@ -101,8 +93,99 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
         self.compile_function(handler, function)
     }
 
-    fn finalize(&self) -> AsmBuilderResult {
-        self.finalize()
+    fn finalize(
+        self,
+        handler: &Handler,
+        build_config: Option<&BuildConfig>,
+        fallback_fn: Option<Label>,
+    ) -> Result<FinalizedAsm, ErrorEmitted> {
+        let FuelAsmBuilder {
+            program_kind,
+            data_section,
+            reg_seqr,
+            context,
+            entries,
+            non_entries,
+            ..
+        } = self;
+
+        let entries = entries
+            .clone()
+            .into_iter()
+            .map(|(f, l, ops, test_decl_ref)| (f, l, AbstractInstructionSet { ops }, test_decl_ref))
+            .collect::<Vec<_>>();
+
+        let non_entries = non_entries
+            .clone()
+            .into_iter()
+            .map(|ops| AbstractInstructionSet { ops })
+            .collect::<Vec<_>>();
+
+        let entries = entries
+            .into_iter()
+            .map(|(func, label, ops, test_decl_ref)| {
+                let selector = func.get_selector(context);
+                let name = func.get_name(context).to_string();
+                AbstractEntry {
+                    test_decl_ref,
+                    selector,
+                    label,
+                    ops,
+                    name,
+                }
+            })
+            .collect();
+
+        let virtual_abstract_program = AbstractProgram::new(
+            program_kind,
+            data_section,
+            entries,
+            non_entries,
+            reg_seqr,
+            crate::ExperimentalFlags {
+                new_encoding: context.experimental.new_encoding,
+            },
+        );
+
+        // Compiled dependencies will not have any content and we
+        // do not want to display their empty ASM structures.
+        // If printing ASM is requested, we want to emit the
+        // actual ASMs generated for the whole program.
+        let program_has_content = !virtual_abstract_program.is_empty();
+
+        if build_config
+            .map(|cfg| cfg.print_asm.virtual_abstract && program_has_content)
+            .unwrap_or(false)
+        {
+            println!(";; ASM: Virtual abstract program");
+            println!("{virtual_abstract_program}\n");
+        }
+
+        let allocated_program = virtual_abstract_program
+            .into_allocated_program(fallback_fn)
+            .map_err(|e| handler.emit_err(e))?;
+
+        if build_config
+            .map(|cfg| cfg.print_asm.allocated_abstract && program_has_content)
+            .unwrap_or(false)
+        {
+            println!(";; ASM: Allocated abstract program");
+            println!("{allocated_program}");
+        }
+
+        let final_program = allocated_program
+            .into_final_program()
+            .map_err(|e| handler.emit_err(e))?;
+
+        if build_config
+            .map(|cfg| cfg.print_asm.r#final && program_has_content)
+            .unwrap_or(false)
+        {
+            println!(";; ASM: Final program");
+            println!("{final_program}");
+        }
+
+        Ok(final_program.finalize())
     }
 }
 
@@ -130,25 +213,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             non_entries: Vec::new(),
             cur_bytecode: Vec::new(),
         }
-    }
-
-    pub fn finalize(&self) -> AsmBuilderResult {
-        AsmBuilderResult::Fuel((
-            self.data_section.clone(),
-            self.reg_seqr,
-            self.entries
-                .clone()
-                .into_iter()
-                .map(|(f, l, ops, test_decl_ref)| {
-                    (f, l, AbstractInstructionSet { ops }, test_decl_ref)
-                })
-                .collect(),
-            self.non_entries
-                .clone()
-                .into_iter()
-                .map(|ops| AbstractInstructionSet { ops })
-                .collect(),
-        ))
     }
 
     pub(super) fn compile_block(

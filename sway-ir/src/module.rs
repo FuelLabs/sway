@@ -116,6 +116,13 @@ impl Module {
             .functions
             .retain(|mod_fn| mod_fn != function);
     }
+
+    pub fn iter_configurables<'a>(
+        &'a self,
+        context: &'a Context,
+    ) -> impl Iterator<Item = &ConfigurableContent> + 'a {
+        context.modules[self.0].global_configurable.values()
+    }
 }
 
 /// An iterator over [`Module`]s within a [`Context`].
