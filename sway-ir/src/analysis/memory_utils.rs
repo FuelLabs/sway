@@ -509,8 +509,7 @@ pub fn may_alias(context: &Context, val1: Value, len1: u64, val2: Value, len2: u
         return true;
     };
 
-    for (sym1, off1) in dbg!(mem_offsets_1) {
-        println!("{:?}[{}:{}]", sym1, off1, len1);
+    for (sym1, off1) in mem_offsets_1 {
         if let Some(off2) = mem_offsets_2.get(&sym1) {
             // does off1 + len1 overlap with off2 + len2?
             if (off1 <= *off2 && (off1 + len1 > *off2)) || (*off2 <= off1 && (*off2 + len2 > off1))
