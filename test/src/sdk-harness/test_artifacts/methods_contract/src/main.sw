@@ -24,8 +24,8 @@ storage {
 impl MethodsContract for Contract {
     #[storage(read, write)]
     fn test_function() -> bool {
-        let identity = bogus();
-        let identity2 = bogus2();
+        let _ = bogus();
+        let _ = bogus2();
         storage
             .stored_struct
             .write(MyStruct {

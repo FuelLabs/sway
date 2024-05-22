@@ -315,6 +315,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "storage_vec_of_storage_string"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "storage_vec_to_vec"
 source = "member"
 dependencies = ["std"]
