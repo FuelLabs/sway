@@ -121,5 +121,5 @@ impl MyContract for Contract {
         EnumWGeneric::b(10)
     }
 
-    fn complex_test(arg1: MegaExample<str[2], b256>) {}
+    fn complex_test(_arg1: MegaExample<str[2], b256>) {}
 }
