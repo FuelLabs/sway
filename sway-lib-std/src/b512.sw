@@ -1,7 +1,6 @@
 //! The `B512` type supports the usage of 64-byte values in Sway which are needed when working with public keys and signatures.
 library;
 
-use ::constants::ZERO_B256;
 use ::convert::From;
 
 /// Stores two `b256`s in contiguous memory.
@@ -51,7 +50,7 @@ impl B512 {
     /// ```
     pub fn new() -> Self {
         Self {
-            bits: [ZERO_B256, ZERO_B256],
+            bits: [b256::zero(), b256::zero()],
         }
     }
 
@@ -64,14 +63,80 @@ impl B512 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{b512::B512, constants::ZERO_B256);
+    /// use std::b512::B512;
     ///
     /// fn foo() {
     ///     let zero = B512::new();
-    ///     assert(zero.bits() == [ZERO_B256, ZERO_B256]);
+    ///     assert(zero.bits() == [b256::zero(), b256::zero()]);
     /// }
     /// ```
     pub fn bits(self) -> [b256; 2] {
         self.bits
     }
+
+    /// Returns the zero value for the `B512` type.
+    ///
+    /// # Returns
+    ///
+    /// * [B512] -> The zero value for the `B512` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let zero_b512 = B512::zero();
+    ///     assert(zero_b512 == B512::from((b256::zero(), b256::zero())));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: [b256::zero(), b256::zero()],
+        }
+    }
+
+    /// Returns whether a `B512` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `B512` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let zero_b512 = B512::zero();
+    ///     assert(zero_b512.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        (self.bits)[0] == b256::zero() && (self.bits)[1] == b256::zero()
+    }
+}
+
+#[test]
+fn test_b512_zero() {
+    use ::assert::assert;
+
+    let zero_b512 = B512::zero();
+    assert(zero_b512.is_zero());
+
+    let other1_b512 = B512::from((
+        b256::zero(),
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
+    assert(!other1_b512.is_zero());
+    let other2_b512 = B512::from((
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+        b256::zero(),
+    ));
+    assert(!other2_b512.is_zero());
+    let other3_b512 = B512::from((
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    ));
+    assert(!other3_b512.is_zero());
 }

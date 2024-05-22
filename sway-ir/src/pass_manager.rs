@@ -411,8 +411,8 @@ pub fn create_o1_pass_group() -> PassGroup {
     let mut o1 = PassGroup::default();
     // Configure to run our passes.
     o1.append_pass(MEM2REG_NAME);
-    o1.append_pass(FN_INLINE_NAME);
     o1.append_pass(FN_DEDUP_RELEASE_PROFILE_NAME);
+    o1.append_pass(FN_INLINE_NAME);
     o1.append_pass(CONST_FOLDING_NAME);
     o1.append_pass(SIMPLIFY_CFG_NAME);
     o1.append_pass(CONST_FOLDING_NAME);

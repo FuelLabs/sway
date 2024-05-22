@@ -628,26 +628,18 @@ where
             let method_name = decl.name.as_str();
 
             if args_types == "()" {
-                code.push_str(&format!("if method_name == \"{method_name}\" {{
+                code.push_str(&format!("if _method_name == \"{method_name}\" {{
                     let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}());
                     __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
                 }}\n"));
             } else {
-                code.push_str(&format!("if method_name == \"{method_name}\" {{
+                code.push_str(&format!("if _method_name == \"{method_name}\" {{
                     let args: {args_types} = decode_second_param::<{args_types}>();
                     let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
                     __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
                 }}\n"));
             }
         }
-
-        let att: String = match (reads, writes) {
-            (true, true) => "#[storage(read, write)]",
-            (true, false) => "#[storage(read)]",
-            (false, true) => "#[storage(write)]",
-            (false, false) => "",
-        }
-        .into();
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);
@@ -659,16 +651,32 @@ where
                 return Err(err);
             };
             let method_name = fallback_fn.name.as_str();
-
+            match fallback_fn.purity {
+                Purity::Pure => {}
+                Purity::Reads => reads = true,
+                Purity::Writes => writes = true,
+                Purity::ReadsWrites => {
+                    reads = true;
+                    writes = true;
+                }
+            }
             format!("let result: raw_slice = encode::<{return_type}>({method_name}()); __contract_ret(result.ptr(), result.len::<u8>());")
         } else {
             // as the old encoding does
             format!("__revert({});", MISMATCHED_SELECTOR_REVERT_CODE)
         };
 
+        let att: String = match (reads, writes) {
+            (true, true) => "#[storage(read, write)]",
+            (true, false) => "#[storage(read)]",
+            (false, true) => "#[storage(write)]",
+            (false, false) => "",
+        }
+        .into();
+
         let code = format!(
             "{att} pub fn __entry() {{
-            let method_name = decode_first_param::<str>();
+            let _method_name = decode_first_param::<str>();
             {code}
             {fallback}
         }}"

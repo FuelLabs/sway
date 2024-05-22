@@ -23,3 +23,6 @@ use ::primitive_conversions::*;
 
 // Logging
 use ::logging::log;
+
+// Math
+use ::math::*;

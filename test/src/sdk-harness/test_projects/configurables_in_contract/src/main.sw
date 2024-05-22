@@ -1,7 +1,5 @@
 contract;
 
-use std::constants::ZERO_B256;
-
 enum EnumWithGeneric<D> {
     VariantOne: D,
     VariantTwo: (),
@@ -22,8 +20,8 @@ configurable {
         field_2: 16,
     },
     ENUM: EnumWithGeneric<bool> = EnumWithGeneric::VariantOne(true),
-    ADDRESS: Address = Address::from(ZERO_B256),
-    CONTRACT_ID: ContractId = ContractId::from(ZERO_B256),
+    ADDRESS: Address = Address::zero(),
+    CONTRACT_ID: ContractId = ContractId::zero(),
 }
 
 abi TestContract {

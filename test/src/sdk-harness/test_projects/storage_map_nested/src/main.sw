@@ -1,6 +1,5 @@
 contract;
 
-use std::constants::ZERO_B256;
 use std::hash::*;
 
 struct M {
@@ -161,7 +160,7 @@ impl ExperimentalStorageTest for Contract {
                 .nested_map_3
                 .get(1)
                 .get(M {
-                    u: ZERO_B256,
+                    u: b256::zero(),
                     v: 3,
                 })
                 .get(1)

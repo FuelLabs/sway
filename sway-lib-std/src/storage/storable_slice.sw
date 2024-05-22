@@ -19,13 +19,13 @@ use ::storage::storage_api::*;
 /// # Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}};
 ///
 /// fn foo() {
 ///     let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-///     assert(read_slice(ZERO_B256).is_none());
-///     write_slice(ZERO_B256, slice);
-///     let stored_slice = read_slice(ZERO_B256).unwrap();
+///     assert(read_slice(b256::zero()).is_none());
+///     write_slice(b256::zero(), slice);
+///     let stored_slice = read_slice(b256::zero()).unwrap();
 ///     assert(slice == stored_slice);
 /// }
 /// ```
@@ -65,13 +65,13 @@ pub fn write_slice(key: b256, slice: raw_slice) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}};
 ///
 /// fn foo {
 ///     let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-///     assert(read_slice(ZERO_B256).is_none());
-///     write_slice(ZERO_B256, slice);
-///     let stored_slice = read_slice(ZERO_B256).unwrap();
+///     assert(read_slice(b256::zero()).is_none());
+///     write_slice(b256::zero(), slice);
+///     let stored_slice = read_slice(b256::zero()).unwrap();
 ///     assert(slice == stored_slice);
 /// }
 /// ```
@@ -111,15 +111,15 @@ pub fn read_slice(key: b256) -> Option<raw_slice> {
 /// # Examples
 ///
 /// ```sway
-/// use std::{alloc::alloc_bytes, storage::{clear_slice, write_slice, read_slice}, constants::ZERO_B256};
+/// use std::{alloc::alloc_bytes, storage::{clear_slice, write_slice, read_slice}};
 ///
 /// fn foo() {
 ///     let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-///     write_slice(ZERO_B256, slice);
-///     assert(read_slice(ZERO_B256).is_some());
-///     let cleared = clear_slice(ZERO_B256);
+///     write_slice(b256::zero(), slice);
+///     assert(read_slice(b256::zero()).is_some());
+///     let cleared = clear_slice(b256::zero());
 ///     assert(cleared);
-///     assert(read_slice(ZERO_B256).is_none());
+///     assert(read_slice(b256::zero()).is_none());
 /// }
 /// ```
 #[storage(read, write)]
