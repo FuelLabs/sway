@@ -1,7 +1,5 @@
 script;
 
-use std::constants::ZERO_B256;
-
 trait MyTrait {
     fn foo();
 }
@@ -19,12 +17,12 @@ fn main() {
     caller.bar {
         gas: 10000,
         coins: 0,
-        asset_id: ZERO_B256,
+        asset_id: b256::zero(),
     }();
     // this is an error, foo is NOT part of public interface
     caller.foo {
         gas: 10000,
         coins: 0,
-        asset_id: ZERO_B256,
+        asset_id: b256::zero(),
     }();
 }
