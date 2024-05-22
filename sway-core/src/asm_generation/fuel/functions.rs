@@ -127,7 +127,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
             // Register ARG_REGS[NUM_ARG_REGISTERS-1] must contain LocalsBase + locals_size
             // so that the callee can index the stack arguments from there.
-            println!("{}", function.get_name(self.context));
             if self.locals_size_bytes() <= TWELVE_BITS {
                 self.cur_bytecode.push(Op {
                     opcode: Either::Left(VirtualOp::ADDI(
