@@ -152,9 +152,8 @@ impl core::ops::Ord for U128 {
     }
 }
 
-// TODO this doesn't work?
-// impl core::ops::OrdEq for U128 {
-// }
+impl core::ops::OrdEq for U128 {}
+
 impl u64 {
     /// Performs addition between two `u64` values, returning a `U128`.
     ///
@@ -629,8 +628,7 @@ impl core::ops::Divide for U128 {
             quotient <<= 1;
             remainder <<= 1;
             remainder.lower = remainder.lower | (self >> i).lower & 1;
-            // TODO use >= once OrdEq can be implemented.
-            if remainder > divisor || remainder == divisor {
+            if remainder >= divisor {
                 remainder -= divisor;
                 quotient.lower = quotient.lower | 1;
             }
