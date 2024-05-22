@@ -1,5 +1,3 @@
-use crate::asm_lang::allocated_ops::AllocatedOp;
-
 pub(crate) mod compiler_constants;
 pub(crate) mod data_section;
 pub(crate) mod register_allocator;
@@ -11,6 +9,8 @@ pub(super) mod fuel_asm_builder;
 pub(super) mod register_sequencer;
 
 pub(super) mod programs;
+
+mod globals_section;
 
 mod analyses;
 mod functions;

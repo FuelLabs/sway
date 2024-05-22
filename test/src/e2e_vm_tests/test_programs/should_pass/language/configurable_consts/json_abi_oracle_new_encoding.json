@@ -184,12 +184,6 @@
       "type": "()",
       "typeId": 0,
       "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "bool",
-      "typeId": 1,
-      "typeParameters": null
     }
   ]
 }

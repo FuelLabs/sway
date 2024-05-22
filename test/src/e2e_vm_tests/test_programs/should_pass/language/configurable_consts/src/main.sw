@@ -5,5 +5,6 @@ configurable {
 }
 
 fn main() {
+    
     assert(BOOL == true);
 }

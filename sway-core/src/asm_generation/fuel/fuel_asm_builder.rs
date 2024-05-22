@@ -1,4 +1,7 @@
-use super::programs::{AbstractEntry, AbstractProgram, FinalProgram};
+use super::{
+    globals_section::GlobalsSection,
+    programs::{AbstractEntry, AbstractProgram, FinalProgram},
+};
 use crate::{
     asm_generation::{
         asm_builder::AsmBuilder,
@@ -20,6 +23,7 @@ use crate::{
     BuildConfig,
 };
 
+use fuel_vm::fuel_types::Immediate12;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
@@ -37,6 +41,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
 
     // Data section is used by the rest of code gen to layout const memory.
     pub(super) data_section: DataSection,
+    globals_section: GlobalsSection,
 
     // Register sequencer dishes out new registers and labels.
     pub(super) reg_seqr: RegisterSequencer,
@@ -76,6 +81,8 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
 
     // In progress VM bytecode ops.
     pub(super) cur_bytecode: Vec<Op>,
+
+    pub(super) before_entries: Vec<Op>,
 }
 
 impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
@@ -83,7 +90,79 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
         self.func_to_labels(func)
     }
 
-    fn compile_configurable(&mut self, config: &ConfigurableContent) {}
+    fn compile_configurable(&mut self, config: &ConfigurableContent) {
+        self.globals_section.insert(&config.name, 1);
+
+        let (decode_fn_label, _) = self.func_label_map.get(&config.decode_fn).unwrap();
+        let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
+            config.encoded_bytes.clone(),
+            None,
+            None,
+        ));
+
+        self.before_entries.push(Op {
+            opcode: Either::Left(VirtualOp::AddrDataId(
+                VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                dataid,
+            )),
+            comment: format!("ptr to {} default value", config.name),
+            owning_span: None,
+        });
+        self.before_entries.push(Op {
+            opcode: Either::Left(VirtualOp::ADDI(
+                VirtualRegister::Constant(ConstantRegister::FuncArg1),
+                VirtualRegister::Constant(ConstantRegister::Zero),
+                VirtualImmediate12 {
+                    value: config.encoded_bytes.len() as u16,
+                },
+            )),
+            comment: format!("length of {} default value", config.name),
+            owning_span: None,
+        });
+
+        // Set a new return address.
+        let ret_label = self.reg_seqr.get_label();
+        self.before_entries.push(Op::save_ret_addr(
+            VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+            ret_label,
+            "",
+            None,
+        ));
+
+        // call decode
+        self.before_entries.push(Op {
+            opcode: Either::Right(crate::asm_lang::ControlFlowOp::Call(*decode_fn_label)),
+            comment: format!("decode {}", config.name),
+            owning_span: None,
+        });
+
+        // save return value
+        let g = self.globals_section.get_by_name(&config.name).unwrap();
+
+        let global_addr = self.reg_seqr.next();
+        self.before_entries.push(Op {
+            opcode: Either::Left(VirtualOp::ADDI(
+                global_addr.clone(),
+                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                VirtualImmediate12 {
+                    value: g.offset_in_bytes as u16,
+                },
+            )),
+            comment: "global addr".into(),
+            owning_span: None,
+        });
+        self.before_entries.push(Op {
+            opcode: Either::Left(VirtualOp::MCPI(
+                global_addr,
+                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
+                VirtualImmediate12 {
+                    value: g.size_in_bytes as u16,
+                },
+            )),
+            comment: "copy bytes".into(),
+            owning_span: None,
+        });
+    }
 
     fn compile_function(
         &mut self,
@@ -102,10 +181,12 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
         let FuelAsmBuilder {
             program_kind,
             data_section,
+            globals_section,
             reg_seqr,
             context,
             entries,
             non_entries,
+            before_entries: before_entry,
             ..
         } = self;
 
@@ -136,9 +217,13 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
             })
             .collect();
 
+        let before_entry = AbstractInstructionSet { ops: before_entry };
+
         let virtual_abstract_program = AbstractProgram::new(
             program_kind,
             data_section,
+            globals_section,
+            before_entry,
             entries,
             non_entries,
             reg_seqr,
@@ -199,6 +284,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         FuelAsmBuilder {
             program_kind,
             data_section,
+            globals_section: GlobalsSection::default(),
             reg_seqr,
             func_label_map: HashMap::new(),
             block_label_map: HashMap::new(),
@@ -212,6 +298,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             entries: Vec::new(),
             non_entries: Vec::new(),
             cur_bytecode: Vec::new(),
+            before_entries: vec![],
         }
     }
 
@@ -1190,18 +1277,22 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     }
 
     fn compile_get_config(&mut self, addr_val: &Value, name: &String) -> Result<(), CompileError> {
-        // TODO
         let addr_reg = self.reg_seqr.next();
+
+        let g = self.globals_section.get_by_name(name).unwrap();
         self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::LB(
+            opcode: either::Either::Left(VirtualOp::ADDI(
                 addr_reg.clone(),
                 VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                VirtualImmediate12 { value: 0 },
+                VirtualImmediate12 {
+                    value: g.offset_in_bytes as u16,
+                },
             )),
-            comment: format!("read configurable {}", name),
+            comment: format!("configurable {} address", name),
             owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
         });
         self.reg_map.insert(*addr_val, addr_reg);
+
         Ok(())
     }
 
