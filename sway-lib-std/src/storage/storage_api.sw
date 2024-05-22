@@ -23,12 +23,12 @@ use ::option::Option::{self, *};
 /// # Examples
 ///
 /// ```sway
-/// use std::{storage::storage_api::{read, write}, constants::ZERO_B256};
+/// use std::storage::storage_api::{read, write};
 ///
 /// fn foo() {
 ///     let five = 5_u64;
-///     write(ZERO_B256, 2, five);
-///     let stored_five = read::<u64>(ZERO_B256, 2).unwrap();
+///     write(b256::zero(), 2, five);
+///     let stored_five = read::<u64>(b256::zero(), 2).unwrap();
 ///     assert(five == stored_five);
 /// }
 /// ```
@@ -76,12 +76,12 @@ pub fn write<T>(slot: b256, offset: u64, value: T) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{storage::storage_api::{read, write}, constants::ZERO_B256};
+/// use std::storage::storage_api::{read, write};
 ///
 /// fn foo() {
 ///     let five = 5_u64;
-///     write(ZERO_B256, 2, five);
-///     let stored_five = read::<u64>(ZERO_B256, 2);
+///     write(b256::zero(), 2, five);
+///     let stored_five = read::<u64>(b256::zero(), 2);
 ///     assert(five == stored_five.unwrap());
 /// }
 /// ```
@@ -123,14 +123,14 @@ pub fn read<T>(slot: b256, offset: u64) -> Option<T> {
 /// # Examples
 ///
 /// ```sway
-/// use std::{storage::storage_api::{read, write, clear}, constants::ZERO_B256};
+/// use std::storage::storage_api::{read, write, clear};
 ///
 /// fn foo() {
 ///     let five = 5_u64;
-///     write(ZERO_B256, 0, five);
-///     let cleared = clear::<u64>(ZERO_B256);
+///     write(b256::zero(), 0, five);
+///     let cleared = clear::<u64>(b256::zero());
 ///     assert(cleared);
-///     assert(read::<u64>(ZERO_B256, 0).is_none());
+///     assert(read::<u64>(b256::zero(), 0).is_none());
 /// }
 /// ```
 #[storage(write)]

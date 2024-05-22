@@ -76,7 +76,9 @@ fn hash_fn(
         hasher: &mut FxHasher,
         ignore_metadata: bool,
     ) {
-        match &context.values.get(v.0).unwrap().value {
+        let val = &context.values.get(v.0).unwrap().value;
+        std::mem::discriminant(val).hash(hasher);
+        match val {
             crate::ValueDatum::Argument(_) | crate::ValueDatum::Instruction(_) => {
                 get_localised_id(v, localised_value_id).hash(hasher)
             }
@@ -227,27 +229,32 @@ fn hash_fn(
                 crate::InstOp::ContractCall { name, .. } => {
                     name.hash(state);
                 }
-                crate::InstOp::FuelVm(fuel_vm_inst) => match fuel_vm_inst {
-                    crate::FuelVmInstruction::Gtf { tx_field_id, .. } => tx_field_id.hash(state),
-                    crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
-                    crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
-                    crate::FuelVmInstruction::Revert(_)
-                    | crate::FuelVmInstruction::JmpMem
-                    | crate::FuelVmInstruction::Smo { .. }
-                    | crate::FuelVmInstruction::StateClear { .. }
-                    | crate::FuelVmInstruction::StateLoadQuadWord { .. }
-                    | crate::FuelVmInstruction::StateLoadWord(_)
-                    | crate::FuelVmInstruction::StateStoreQuadWord { .. }
-                    | crate::FuelVmInstruction::StateStoreWord { .. } => (),
-                    crate::FuelVmInstruction::WideUnaryOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::WideBinaryOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::WideModularOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::WideCmpOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::Retd { ptr, len } => {
-                        ptr.hash(state);
-                        len.hash(state);
+                crate::InstOp::FuelVm(fuel_vm_inst) => {
+                    std::mem::discriminant(fuel_vm_inst).hash(state);
+                    match fuel_vm_inst {
+                        crate::FuelVmInstruction::Gtf { tx_field_id, .. } => {
+                            tx_field_id.hash(state)
+                        }
+                        crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
+                        crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
+                        crate::FuelVmInstruction::Revert(_)
+                        | crate::FuelVmInstruction::JmpMem
+                        | crate::FuelVmInstruction::Smo { .. }
+                        | crate::FuelVmInstruction::StateClear { .. }
+                        | crate::FuelVmInstruction::StateLoadQuadWord { .. }
+                        | crate::FuelVmInstruction::StateLoadWord(_)
+                        | crate::FuelVmInstruction::StateStoreQuadWord { .. }
+                        | crate::FuelVmInstruction::StateStoreWord { .. } => (),
+                        crate::FuelVmInstruction::WideUnaryOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::WideBinaryOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::WideModularOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::WideCmpOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::Retd { ptr, len } => {
+                            ptr.hash(state);
+                            len.hash(state);
+                        }
                     }
-                },
+                }
                 crate::InstOp::GetLocal(local) => function
                     .lookup_local_name(context, local)
                     .unwrap()

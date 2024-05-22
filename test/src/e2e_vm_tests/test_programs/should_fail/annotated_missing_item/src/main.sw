@@ -1,6 +1,6 @@
 script;
 
-use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+use std::{vm::evm::evm_address::EvmAddress};
 
 configurable {
     /// SIGNER: EvmAddress = EvmAddress {
