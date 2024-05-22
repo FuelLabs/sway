@@ -1,4 +1,5 @@
 use crate::{
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{CallPath, Literal},
     TypeInfo,
 };
@@ -49,6 +50,85 @@ pub enum Scrutinee {
     },
 }
 
+impl EqWithEngines for Scrutinee {}
+impl PartialEqWithEngines for Scrutinee {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (
+                Scrutinee::Or { elems, span },
+                Scrutinee::Or {
+                    elems: r_elems,
+                    span: r_span,
+                },
+            ) => elems.eq(r_elems, ctx) && span.eq(r_span),
+            (
+                Scrutinee::Literal { value, span },
+                Scrutinee::Literal {
+                    value: r_value,
+                    span: r_span,
+                },
+            ) => value.eq(r_value) && span.eq(r_span),
+            (
+                Scrutinee::Variable { name, span },
+                Scrutinee::Variable {
+                    name: r_name,
+                    span: r_span,
+                },
+            ) => name.eq(r_name) && span.eq(r_span),
+            (Scrutinee::AmbiguousSingleIdent(ident), Scrutinee::AmbiguousSingleIdent(r_ident)) => {
+                ident.eq(r_ident)
+            }
+            (
+                Scrutinee::StructScrutinee {
+                    struct_name,
+                    fields,
+                    span,
+                },
+                Scrutinee::StructScrutinee {
+                    struct_name: r_struct_name,
+                    fields: r_fields,
+                    span: r_span,
+                },
+            ) => {
+                PartialEqWithEngines::eq(struct_name, r_struct_name, ctx)
+                    && fields.eq(r_fields, ctx)
+                    && span.eq(r_span)
+            }
+            (
+                Scrutinee::EnumScrutinee {
+                    call_path,
+                    value,
+                    span,
+                },
+                Scrutinee::EnumScrutinee {
+                    call_path: r_call_path,
+                    value: r_value,
+                    span: r_span,
+                },
+            ) => {
+                PartialEqWithEngines::eq(call_path, r_call_path, ctx)
+                    && value.eq(r_value, ctx)
+                    && span.eq(r_span)
+            }
+            (
+                Scrutinee::Tuple { elems, span },
+                Scrutinee::Tuple {
+                    elems: r_elems,
+                    span: r_span,
+                },
+            ) => elems.eq(r_elems, ctx) && span.eq(r_span),
+            (
+                Scrutinee::Error { spans, err },
+                Scrutinee::Error {
+                    spans: r_spans,
+                    err: r_err,
+                },
+            ) => spans.eq(r_spans) && err.eq(r_err),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum StructScrutineeField {
@@ -60,6 +140,30 @@ pub enum StructScrutineeField {
         scrutinee: Option<Scrutinee>,
         span: Span,
     },
+}
+
+impl EqWithEngines for StructScrutineeField {}
+impl PartialEqWithEngines for StructScrutineeField {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (StructScrutineeField::Rest { span }, StructScrutineeField::Rest { span: r_span }) => {
+                span == r_span
+            }
+            (
+                StructScrutineeField::Field {
+                    field,
+                    scrutinee,
+                    span,
+                },
+                StructScrutineeField::Field {
+                    field: r_field,
+                    scrutinee: r_scrutinee,
+                    span: r_span,
+                },
+            ) => field.eq(r_field) && scrutinee.eq(r_scrutinee, ctx) && span.eq(r_span),
+            _ => false,
+        }
+    }
 }
 
 impl Spanned for Scrutinee {

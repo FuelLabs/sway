@@ -1,7 +1,12 @@
 use super::{ConstantDeclaration, FunctionDeclaration, TraitTypeDeclaration};
 use crate::{
-    decl_engine::parsed_id::ParsedDeclId, engine_threading::DebugWithEngines, language::CallPath,
-    type_system::TypeArgument, Engines, TypeParameter,
+    decl_engine::parsed_id::ParsedDeclId,
+    engine_threading::{
+        DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    language::CallPath,
+    type_system::TypeArgument,
+    Engines, TypeParameter,
 };
 
 use sway_types::{span::Span, Named, Spanned};
@@ -19,6 +24,20 @@ impl ImplItem {
             ImplItem::Fn(id) => engines.pe().get_function(id).span(),
             ImplItem::Constant(id) => engines.pe().get_constant(id).span(),
             ImplItem::Type(id) => engines.pe().get_trait_type(id).span(),
+        }
+    }
+}
+
+impl EqWithEngines for ImplItem {}
+impl PartialEqWithEngines for ImplItem {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (ImplItem::Fn(lhs), ImplItem::Fn(rhs)) => PartialEqWithEngines::eq(lhs, rhs, ctx),
+            (ImplItem::Constant(lhs), ImplItem::Constant(rhs)) => {
+                PartialEqWithEngines::eq(lhs, rhs, ctx)
+            }
+            (ImplItem::Type(lhs), ImplItem::Type(rhs)) => PartialEqWithEngines::eq(lhs, rhs, ctx),
+            _ => false,
         }
     }
 }
@@ -53,6 +72,21 @@ pub struct ImplTrait {
     pub(crate) block_span: Span,
 }
 
+impl EqWithEngines for ImplTrait {}
+impl PartialEqWithEngines for ImplTrait {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.impl_type_parameters
+            .eq(&other.impl_type_parameters, ctx)
+            && self.trait_name == other.trait_name
+            && self
+                .trait_type_arguments
+                .eq(&other.trait_type_arguments, ctx)
+            && self.implementing_for.eq(&other.implementing_for, ctx)
+            && self.items.eq(&other.items, ctx)
+            && self.block_span == other.block_span
+    }
+}
+
 impl Named for ImplTrait {
     fn name(&self) -> &sway_types::BaseIdent {
         &self.trait_name.suffix
@@ -84,6 +118,17 @@ pub struct ImplSelf {
     pub items: Vec<ImplItem>,
     // the span of the whole impl trait and block
     pub(crate) block_span: Span,
+}
+
+impl EqWithEngines for ImplSelf {}
+impl PartialEqWithEngines for ImplSelf {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.impl_type_parameters
+            .eq(&other.impl_type_parameters, ctx)
+            && self.implementing_for.eq(&other.implementing_for, ctx)
+            && self.items.eq(&other.items, ctx)
+            && self.block_span == other.block_span
+    }
 }
 
 impl Spanned for ImplSelf {

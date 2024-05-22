@@ -1,9 +1,10 @@
+use sway_ast::Intrinsic;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineInsert, DeclId, DeclRef},
-    engine_threading::{PartialEqWithEngines, PartialEqWithEnginesContext},
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
     type_system::priv_prelude::*,
@@ -147,9 +148,31 @@ impl<T> Spanned for TypeBinding<T> {
     }
 }
 
-impl PartialEqWithEngines for TypeBinding<()> {
+impl PartialEqWithEngines for TypeBinding<Ident> {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.span == other.span && self.type_arguments.eq(&other.type_arguments, ctx)
+        self.inner == other.inner
+            && self.span == other.span
+            && self.type_arguments.eq(&other.type_arguments, ctx)
+    }
+}
+
+impl PartialEqWithEngines for TypeBinding<Intrinsic> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.inner == other.inner
+            && self.span == other.span
+            && self.type_arguments.eq(&other.type_arguments, ctx)
+    }
+}
+
+impl<T> EqWithEngines for TypeBinding<T> where T: EqWithEngines {}
+impl<T> PartialEqWithEngines for TypeBinding<T>
+where
+    T: PartialEqWithEngines,
+{
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.inner.eq(&other.inner, ctx)
+            && self.span == other.span
+            && self.type_arguments.eq(&other.type_arguments, ctx)
     }
 }
 
@@ -199,6 +222,13 @@ impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
             .unwrap_or_else(|err| type_engine.insert(engines, TypeInfo::ErrorRecovery(err), None));
 
         Ok(type_id)
+    }
+}
+
+impl EqWithEngines for (TypeInfo, Ident) {}
+impl PartialEqWithEngines for (TypeInfo, Ident) {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.0.eq(&other.0, ctx) && self.1 == other.1
     }
 }
 

@@ -45,22 +45,6 @@ impl OrdWithEngines for TraitSuffix {
     }
 }
 
-impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.prefixes == other.prefixes
-            && self.suffix.eq(&other.suffix, ctx)
-            && self.is_absolute == other.is_absolute
-    }
-}
-impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
-        self.prefixes
-            .cmp(&other.prefixes)
-            .then_with(|| self.suffix.cmp(&other.suffix, ctx))
-            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
-    }
-}
-
 impl DisplayWithEngines for TraitSuffix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
         let res = write!(f, "{}", self.name.as_str());

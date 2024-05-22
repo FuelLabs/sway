@@ -135,7 +135,8 @@ impl PartialEqWithEngines for QualifiedCallPath {
             call_path,
             qualified_path_root,
         } = self;
-        call_path.eq(&other.call_path) && qualified_path_root.eq(&other.qualified_path_root, ctx)
+        PartialEqWithEngines::eq(call_path, &other.call_path, ctx)
+            && qualified_path_root.eq(&other.qualified_path_root, ctx)
     }
 }
 
@@ -185,6 +186,33 @@ pub struct CallPath<T = Ident> {
     // If `is_absolute` is true, then this call path is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
     pub is_absolute: bool,
+}
+
+impl EqWithEngines for CallPath {}
+impl PartialEqWithEngines for CallPath {
+    fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
+        self.prefixes == other.prefixes
+            && self.suffix == other.suffix
+            && self.is_absolute == other.is_absolute
+    }
+}
+
+impl<T: EqWithEngines> EqWithEngines for CallPath<T> {}
+impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.prefixes == other.prefixes
+            && self.suffix.eq(&other.suffix, ctx)
+            && self.is_absolute == other.is_absolute
+    }
+}
+
+impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        self.prefixes
+            .cmp(&other.prefixes)
+            .then_with(|| self.suffix.cmp(&other.suffix, ctx))
+            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
+    }
 }
 
 impl std::convert::From<Ident> for CallPath {
