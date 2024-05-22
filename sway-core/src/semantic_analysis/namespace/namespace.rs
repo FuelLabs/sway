@@ -268,6 +268,7 @@ impl Namespace {
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
+	let is_external = self.module(engines).is_external;
         self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
@@ -284,7 +285,7 @@ impl Namespace {
         new_module.name = Some(mod_name);
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
-        new_module.is_external = false;
+        new_module.is_external = is_external;
         new_module.mod_path = submod_path;
         SubmoduleNamespace {
             namespace: self,
