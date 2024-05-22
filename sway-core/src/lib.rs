@@ -880,12 +880,12 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             pass_group.append_group(create_o1_pass_group());
         }
         OptLevel::Opt0 => {
-            // Inlining is necessary until #4899 is resolved.
-            pass_group.append_pass(FN_INLINE_NAME);
-
             // We run a function deduplication pass that only removes duplicate
             // functions when everything, including the metadata are identical.
             pass_group.append_pass(FN_DEDUP_DEBUG_PROFILE_NAME);
+
+            // Inlining is necessary until #4899 is resolved.
+            pass_group.append_pass(FN_INLINE_NAME);
 
             // Do DCE so other optimizations run faster.
             pass_group.append_pass(FN_DCE_NAME);
