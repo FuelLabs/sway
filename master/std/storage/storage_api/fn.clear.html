@@ -9,14 +9,14 @@
 <li>Clears: <code>1</code></li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{storage::storage_api::{read, write, clear}, constants::ZERO_B256};
+<pre><code class="language-sway">use std::storage::storage_api::{read, write, clear};
 
 fn foo() {
     let five = 5_u64;
-    write(ZERO_B256, 0, five);
-    let cleared = clear::&lt;u64&gt;(ZERO_B256);
+    write(b256::zero(), 0, five);
+    let cleared = clear::&lt;u64&gt;(b256::zero());
     assert(cleared);
-    assert(read::&lt;u64&gt;(ZERO_B256, 0).is_none());
+    assert(read::&lt;u64&gt;(b256::zero(), 0).is_none());
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

@@ -8,11 +8,11 @@
 <li>[Address] - The recipient of the input message at <code>index</code>, if the input’s type is <code>Input::Message</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{constants::ZERO_B256, inputs::input_message_recipient};
+<pre><code class="language-sway">use std::inputs::input_message_recipient;
 
 fn foo() {
     let input_message_recipient = input_message_recipient(0);
-    assert(input_message_recipient != Address::from(ZERO_B256));
+    assert(input_message_recipient != Address::zero());
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

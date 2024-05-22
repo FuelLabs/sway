@@ -11,10 +11,10 @@
 <li>When the contract balance is less than <code>amount</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{constants::ZERO_B256, asset::burn};
+<pre><code class="language-sway">use std::asset::burn;
 
 fn foo() {
-    burn(ZERO_B256, 500);
+    burn(SubId::zero(), 500);
 }
 </code></pre>
 </div></details></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

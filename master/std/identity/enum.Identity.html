@@ -8,12 +8,10 @@
 <li>[Option<!-- raw HTML omitted -->] - <code>Some(Address)</code> if the underlying type is an <code>Address</code>, otherwise <code>None</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::constants::ZERO_B256;
-
-fn foo() {
-    let identity = Identity::Address(Address::from(ZERO_B256));
+<pre><code class="language-sway">fn foo() {
+    let identity = Identity::Address(Address::zero());
     let address = identity.as_address();
-    assert(address == Address::from(ZERO_B256));
+    assert(address == Address::zero());
 }
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_contract_id" class="method trait-impl"><a href="#method.as_contract_id" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.as_contract_id">as_contract_id</a>(self) -&gt; Option&lt;ContractId&gt;</h4></div></summary><div class="docblock"><p>Returns the <code>ContractId</code> of the <code>Identity</code>.</p>
@@ -22,12 +20,10 @@ fn foo() {
 <li>[Option<!-- raw HTML omitted -->] - <code>Some(Contract)</code> if the underlying type is an <code>ContractId</code>, otherwise <code>None</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::constants::ZERO_B256;
-
-fn foo() {
-    let identity = Identity::ContractId(ContractId::from(ZERO_B256));
+<pre><code class="language-sway">fn foo() {
+    let identity = Identity::ContractId(ContractId::zero());
     let contract_id = identity.as_contract_id();
-    assert(contract_id == ContractId::from(ZERO_B256));
+    assert(contract_id == ContractId::zero());
 }
 </code></pre>
 </div></details><details class="swaydoc-toggle method-toggle" open><summary><div id="method.is_address" class="method trait-impl"><a href="#method.is_address" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.is_address">is_address</a>(self) -&gt; bool</h4></div></summary><div class="docblock"><p>Returns whether the <code>Identity</code> represents an <code>Address</code>.</p>
@@ -36,10 +32,8 @@ fn foo() {
 <li>[bool] - Indicates whether the <code>Identity</code> holds an <code>Address</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::constants::ZERO_B256;
-
-fn foo() {
-    let identity = Identity::Address(Address::from(ZERO_B256));
+<pre><code class="language-sway">fn foo() {
+    let identity = Identity::Address(Address::zero());
     assert(identity.is_address());
 }
 </code></pre>
@@ -49,10 +43,8 @@ fn foo() {
 <li>[bool] - Indicates whether the <code>Identity</code> holds a <code>ContractId</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::constants::ZERO_B256;
-
-fn foo() {
-    let identity = Identity::ContractId(ContractId::from(ZERO_B256));
+<pre><code class="language-sway">fn foo() {
+    let identity = Identity::ContractId(ContractId::zero());
     assert(identity.is_contract_id());
 }
 </code></pre>
@@ -62,11 +54,9 @@ fn foo() {
 <li>[b256] - The raw data of the identity.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::constants::ZERO_B256;
-
-fn foo() -&gt; {
-    let my_identity = Identity::Address(Address::from(ZERO_B256));
-    assert(my_identity.bits() == ZERO_B256);
+<pre><code class="language-sway">fn foo() -&gt; {
+    let my_identity = Identity::Address(Address::zero());
+    assert(my_identity.bits() == b256::zero());
 }
 </code></pre>
 </div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/ops/trait.Eq.html">Eq</a> for Identity</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>

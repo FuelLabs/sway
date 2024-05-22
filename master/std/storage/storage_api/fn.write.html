@@ -13,12 +13,12 @@
 <li>Writes: <code>1</code></li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{storage::storage_api::{read, write}, constants::ZERO_B256};
+<pre><code class="language-sway">use std::storage::storage_api::{read, write};
 
 fn foo() {
     let five = 5_u64;
-    write(ZERO_B256, 2, five);
-    let stored_five = read::&lt;u64&gt;(ZERO_B256, 2).unwrap();
+    write(b256::zero(), 2, five);
+    let stored_five = read::&lt;u64&gt;(b256::zero(), 2).unwrap();
     assert(five == stored_five);
 }
 </code></pre>

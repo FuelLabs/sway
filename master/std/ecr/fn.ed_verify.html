@@ -17,11 +17,11 @@ Returns a <code>Result</code> to let the caller choose an error handling strateg
 <li>[Result&lt;bool, EcRecoverError&gt;] - A verified result or an error.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{ecr::ed_verify, b512::B512, constants::ZERO_B256};
+<pre><code class="language-sway">use std::{ecr::ed_verify, b512::B512};
 
 fn foo() {
     let pub_key = 0x314fa58689bbe1da2430517de2d772b384a1c1d2e9cb87e73c6afcf246045b10;
-    let msg = ZERO_B256;
+    let msg = b256::zero();
     let msg_hash = sha256(msg);
     let hi = 0xf38cef9361894be6c6e0eddec28a663d099d7ddff17c8077a1447d7ecb4e6545;
     let lo = 0xf5084560039486d3462dd65a40c80a74709b2f06d450ffc5dc00345c6b2cdd00;

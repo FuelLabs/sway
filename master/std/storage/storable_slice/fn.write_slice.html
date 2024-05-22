@@ -9,13 +9,13 @@
 <li>Writes: <code>2</code></li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}, constants::ZERO_B256};
+<pre><code class="language-sway">use std::{alloc::alloc_bytes, storage::{write_slice, read_slice}};
 
 fn foo() {
     let slice = asm(ptr: (alloc_bytes(1), 1)) { ptr: raw_slice };
-    assert(read_slice(ZERO_B256).is_none());
-    write_slice(ZERO_B256, slice);
-    let stored_slice = read_slice(ZERO_B256).unwrap();
+    assert(read_slice(b256::zero()).is_none());
+    write_slice(b256::zero(), slice);
+    let stored_slice = read_slice(b256::zero()).unwrap();
     assert(slice == stored_slice);
 }
 </code></pre>

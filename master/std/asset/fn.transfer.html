@@ -14,11 +14,11 @@
 <li>When there are no free variable outputs when transferring to an <code>Address</code>.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{constants::ZERO_B256, asset::transfer};
+<pre><code class="language-sway">use std::asset::transfer;
 
 fn foo() {
-    let to_address = Identity::Address(Address::from(ZERO_B256));
-    let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
+    let to_address = Identity::Address(Address::zero());
+    let to_contract_id = Identity::ContractId(ContractId::zero());
     transfer(to_address, AssetId::base(), 500);
     transfer(to_contract_id, AssetId::base(), 500);
 }
