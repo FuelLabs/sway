@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-CF72BC351FBD64D3"
+
+[[package]]
+name = "std"
+source = "path+from-root-CF72BC351FBD64D3"
+dependencies = ["core"]
+
+[[package]]
+name = "storage_vec_of_storage_string"
+source = "member"
+dependencies = ["std"]

@@ -429,6 +429,49 @@ impl U128 {
     pub fn lower(self) -> u64 {
         self.lower
     }
+
+    /// Returns the zero value for the `U128` type.
+    ///
+    /// # Returns
+    ///
+    /// * [U128] -> The zero value for the `U128` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let zero_u128 = U128::zero();
+    ///     assert(zero_u128 == U128::from((0, 0)));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            upper: 0,
+            lower: 0,
+        }
+    }
+
+    /// Returns whether a `U128` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `U128` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::u128::U128;
+    ///
+    /// fn foo() {
+    ///     let zero_u128 = u128::zero();
+    ///     assert(zero_u128.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.upper == 0 && self.lower == 0
+    }
 }
 
 impl core::ops::BitwiseAnd for U128 {
@@ -736,4 +779,19 @@ fn test_u128_from_u64() {
 
     assert(u128_1.as_u64().unwrap() == 0u64);
     assert(u128_2.as_u64().unwrap() == 18446744073709551615u64);
+}
+
+#[test]
+fn test_u128_zero() {
+    let zero_u128 = U128::zero();
+    assert(zero_u128.is_zero());
+
+    let other1_u128 = U128::from((0, 1));
+    assert(!other1_u128.is_zero());
+
+    let other2_u128 = U128::from((1, 0));
+    assert(!other2_u128.is_zero());
+
+    let other3_u128 = U128::from((1, 1));
+    assert(!other3_u128.is_zero());
 }

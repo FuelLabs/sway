@@ -1,10 +1,10 @@
 category = "fail"
 
 # check: x: u64 = 0,
-# nextln: x: b256 = ZERO_B256,
+# nextln: x: b256 = b256::zero(),
 # nextln: $()storage field "x" already declared
 # nextln: x: str[4] = "0000",
 
-# check: x: b256 = ZERO_B256,
+# check: x: b256 = b256::zero(),
 # nextln: x: str[4] = "0000",
 # nextln: $()storage field "x" already declared

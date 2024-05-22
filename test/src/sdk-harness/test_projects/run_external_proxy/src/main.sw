@@ -1,10 +1,9 @@
 contract;
 
 use std::execution::run_external;
-use std::constants::ZERO_B256;
 
 configurable {
-    TARGET: ContractId = ContractId::from(ZERO_B256),
+    TARGET: ContractId = ContractId::zero(),
 }
 
 abi RunExternalTest {

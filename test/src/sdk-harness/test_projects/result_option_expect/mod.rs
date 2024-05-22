@@ -22,7 +22,7 @@ async fn setup() -> (ExpectTestingContract<WalletUnlocked>, ContractId) {
 
 #[tokio::test]
 async fn test_expect_option() {
-    let (instance, id) = setup().await;
+    let (instance, _id) = setup().await;
 
     instance
         .methods()
@@ -34,7 +34,7 @@ async fn test_expect_option() {
 
 #[tokio::test]
 async fn test_expect_result() {
-    let (instance, id) = setup().await;
+    let (instance, _id) = setup().await;
 
     instance
         .methods()
@@ -47,7 +47,7 @@ async fn test_expect_result() {
 #[tokio::test]
 #[should_panic]
 async fn test_expect_option_panic() {
-    let (instance, id) = setup().await;
+    let (instance, _id) = setup().await;
 
     instance
         .methods()
@@ -60,7 +60,7 @@ async fn test_expect_option_panic() {
 #[tokio::test]
 #[should_panic]
 async fn test_expect_result_panic() {
-    let (instance, id) = setup().await;
+    let (instance, _id) = setup().await;
 
     instance
         .methods()
