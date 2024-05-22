@@ -32,7 +32,7 @@ impl EvmAddress {
         self.bits
     }
 
-        /// Returns the zero value for the `EvmAddress` type.
+    /// Returns the zero value for the `EvmAddress` type.
     ///
     /// # Returns
     ///

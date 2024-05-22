@@ -299,7 +299,10 @@ fn test_u256_try_from_b512() {
     let u256_value = u256::try_from(b512_value);
     assert(u256_value.is_some());
 
-    let b512_value = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001, b256::zero()));
+    let b512_value = B512::from((
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+        b256::zero(),
+    ));
     let u256_value = u256::try_from(b512_value);
     assert(u256_value.is_none());
 }

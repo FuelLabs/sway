@@ -239,7 +239,6 @@ impl Logarithm for u256 {
     }
 }
 
-
 impl u8 {
     /// Returns whether a `u8` is set to zero.
     ///
