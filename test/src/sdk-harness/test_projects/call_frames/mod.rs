@@ -1,8 +1,6 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::ContractId};
 
-use sha2::{Digest, Sha256};
-
 abigen!(Contract(
     name = "CallFramesTestContract",
     abi = "test_projects/call_frames/out/release/call_frames-abi.json"
