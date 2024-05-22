@@ -1,5 +1,6 @@
 library;
 
+pub mod constants;
 pub mod error_signals;
 pub mod logging;
 pub mod revert;
@@ -17,17 +18,16 @@ pub mod bytes;
 pub mod math;
 pub mod flags;
 pub mod u128;
+pub mod b512;
 pub mod primitive_conversions;
 pub mod alias;
 pub mod hash;
 pub mod asset_id;
 pub mod contract_id;
 pub mod execution;
-pub mod constants;
 pub mod call_frames;
 pub mod context;
 pub mod external;
-pub mod b512;
 pub mod tx;
 pub mod outputs;
 pub mod address;
