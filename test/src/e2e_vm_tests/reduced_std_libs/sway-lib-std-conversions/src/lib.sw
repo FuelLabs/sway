@@ -16,7 +16,6 @@ pub mod bytes;
 pub mod registers;
 pub mod flags;
 pub mod math;
-pub mod zero;
 pub mod u128;
 pub mod b512;
 pub mod primitive_conversions;

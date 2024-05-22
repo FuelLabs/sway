@@ -1,11 +1,10 @@
 contract;
 
 use std::execution::run_external;
-use std::constants::ZERO_B256;
 
 #[namespace(SRC1822)]
 storage {
-    target: ContractId = ContractId::from(ZERO_B256),
+    target: ContractId = ContractId::zero(),
 }
 
 #[fallback]

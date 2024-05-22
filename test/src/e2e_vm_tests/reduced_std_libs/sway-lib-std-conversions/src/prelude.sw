@@ -26,4 +26,3 @@ use ::logging::log;
 
 // Math
 use ::math::*;
-use ::zero::Zero;
