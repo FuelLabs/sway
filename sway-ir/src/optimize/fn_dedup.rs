@@ -76,7 +76,9 @@ fn hash_fn(
         hasher: &mut FxHasher,
         ignore_metadata: bool,
     ) {
-        match &context.values.get(v.0).unwrap().value {
+        let val = &context.values.get(v.0).unwrap().value;
+        std::mem::discriminant(val).hash(hasher);
+        match val {
             crate::ValueDatum::Argument(_) | crate::ValueDatum::Instruction(_) => {
                 get_localised_id(v, localised_value_id).hash(hasher)
             }
