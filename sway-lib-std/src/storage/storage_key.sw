@@ -2,7 +2,6 @@ library;
 
 use ::option::Option;
 use ::storage::storage_api::*;
-use ::zero::Zero;
 
 impl<T> StorageKey<T> {
     /// Reads a value of type `T` starting at the location specified by `self`. If the value
@@ -114,9 +113,7 @@ impl<T> StorageKey<T> {
             clear::<T>(self.slot(), self.offset())
         }
     }
-}
 
-impl<T> Zero for StorageKey<T> {
     /// Returns the zero value for the `StorageKey<T>` type.
     ///
     /// # Returns
@@ -133,7 +130,7 @@ impl<T> Zero for StorageKey<T> {
     ///     assert(zero_storage_key.field_id() == b256::zero());
     /// }
     /// ```
-    fn zero() -> Self {
+    pub fn zero() -> Self {
         Self::new(b256::zero(), 0, b256::zero())
     }
 
@@ -151,7 +148,7 @@ impl<T> Zero for StorageKey<T> {
     ///     assert(zero_storage_key.is_zero());
     /// }
     /// ```
-    fn is_zero(self) -> bool {
+    pub fn is_zero(self) -> bool {
         self.slot() == b256::zero() && self.field_id() == b256::zero() && self.offset() == 0
     }
 }
@@ -164,4 +161,23 @@ fn test_storage_key_new() {
     assert(key.slot() == b256::zero());
     assert(key.offset() == 0);
     assert(key.field_id() == b256::zero());
+
+    let key = StorageKey::<u64>::new(0x0000000000000000000000000000000000000000000000000000000000000001, 1, 0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(key.slot() == 0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(key.offset() == 1);
+    assert(key.field_id() == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_storage_key_zero() {
+    use ::assert::assert;
+
+    let key = StorageKey::<u64>::zero();
+    assert(key.is_zero());
+    assert(key.slot() == b256::zero());
+    assert(key.offset() == 0);
+    assert(key.field_id() == b256::zero());
+
+    let key = StorageKey::<u64>::new(0x0000000000000000000000000000000000000000000000000000000000000001, 1, 0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(!key.is_zero());
 }

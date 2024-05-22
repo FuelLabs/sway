@@ -4,7 +4,6 @@ library;
 use ::intrinsics::size_of_val;
 use ::convert::From;
 use ::hash::*;
-use ::zero::Zero;
 
 /// The `EvmAddress` type, a struct wrapper around the inner `b256` value.
 pub struct EvmAddress {
@@ -31,6 +30,48 @@ impl EvmAddress {
     /// ```
     pub fn bits(self) -> b256 {
         self.bits
+    }
+
+        /// Returns the zero value for the `EvmAddress` type.
+    ///
+    /// # Returns
+    ///
+    /// * [EvmAddress] -> The zero value for the `EvmAddress` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::evm::EvmAddress;
+    ///
+    /// fn foo() {
+    ///     let zero_evm_address = EvmAddress::zero();
+    ///     assert(zero_evm_address == EvmAddress::from(b256::zero()));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: b256::zero(),
+        }
+    }
+
+    /// Returns whether an `EvmAddress` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `EvmAddress` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::evm::EvmAddress;
+    ///
+    /// fn foo() {
+    ///     let zero_evm_address = EvmAddress::zero();
+    ///     assert(zero_evm_address.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }
 
@@ -105,50 +146,6 @@ impl Hash for EvmAddress {
     }
 }
 
-impl Zero for EvmAddress {
-    /// Returns the zero value for the `EvmAddress` type.
-    ///
-    /// # Returns
-    ///
-    /// * [EvmAddress] -> The zero value for the `EvmAddress` type.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::evm::EvmAddress;
-    ///
-    /// fn foo() {
-    ///     let zero_evm_address = EvmAddress::zero();
-    ///     assert(zero_evm_address == EvmAddress::from(b256::zero()));
-    /// }
-    /// ```
-    fn zero() -> Self {
-        Self {
-            bits: b256::zero(),
-        }
-    }
-
-    /// Returns whether an `EvmAddress` is set to zero.
-    ///
-    /// # Returns
-    ///
-    /// * [bool] -> True if the `EvmAddress` is zero, otherwise false.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// use std::evm::EvmAddress;
-    ///
-    /// fn foo() {
-    ///     let zero_evm_address = EvmAddress::zero();
-    ///     assert(zero_evm_address.is_zero());
-    /// }
-    /// ```
-    fn is_zero(self) -> bool {
-        self.bits == b256::zero()
-    }
-}
-
 #[test]
 fn test_evm_address_from_b256() {
     use ::assert::assert;
@@ -168,4 +165,15 @@ fn test_evm_address_into_b256() {
     let evm_address = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = evm_address.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_evm_address_zero() {
+    use ::assert::assert;
+
+    let evm_address = EvmAddress::zero();
+    assert(evm_address.is_zero());
+
+    let other_evm_address = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(!other_evm_address.is_zero());
 }

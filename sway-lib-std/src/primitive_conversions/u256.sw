@@ -1,6 +1,5 @@
 library;
 
-use ::constants::ZERO_B256;
 use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 use ::u128::U128;
@@ -33,7 +32,7 @@ impl TryFrom<B512> for u256 {
     /// ```
     fn try_from(val: B512) -> Option<Self> {
         let bits = val.bits();
-        if bits[0] == ZERO_B256 {
+        if bits[0] == b256::zero() {
             Some(bits[1].as_u256())
         } else {
             None
@@ -300,7 +299,7 @@ fn test_u256_try_from_b512() {
     let u256_value = u256::try_from(b512_value);
     assert(u256_value.is_some());
 
-    let b512_value = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001, ZERO_B256));
+    let b512_value = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001, b256::zero()));
     let u256_value = u256::try_from(b512_value);
     assert(u256_value.is_none());
 }

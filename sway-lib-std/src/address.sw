@@ -3,7 +3,6 @@ library;
 
 use ::convert::From;
 use ::hash::{Hash, Hasher};
-use ::zero::Zero;
 
 /// The `Address` type, a struct wrapper around the inner `b256` value.
 pub struct Address {
@@ -28,6 +27,44 @@ impl Address {
     /// ```
     pub fn bits(self) -> b256 {
         self.bits
+    }
+
+    /// Returns the zero value for the `Address` type.
+    ///
+    /// # Returns
+    ///
+    /// * [Address] -> The zero value for the `Address` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_address = Address::zero();
+    ///     assert(zero_address == Address:from(b256::zero()));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: b256::zero(),
+        }
+    }
+
+    /// Returns whether an `Address` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `Address` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_address = Address::zero();
+    ///     assert(zero_address.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }
 
@@ -89,46 +126,6 @@ impl Hash for Address {
     }
 }
 
-impl Zero for Address {
-    /// Returns the zero value for the `Address` type.
-    ///
-    /// # Returns
-    ///
-    /// * [Address] -> The zero value for the `Address` type.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let zero_address = Address::zero();
-    ///     assert(zero_address == Address:from(b256::zero()));
-    /// }
-    /// ```
-    fn zero() -> Self {
-        Self {
-            bits: b256::zero(),
-        }
-    }
-
-    /// Returns whether an `Address` is set to zero.
-    ///
-    /// # Returns
-    ///
-    /// * [bool] -> True if the `Address` is zero, otherwise false.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let zero_address = Address::zero();
-    ///     assert(zero_address.is_zero());
-    /// }
-    /// ```
-    fn is_zero(self) -> bool {
-        self.bits == b256::zero()
-    }
-}
-
 #[test]
 fn test_address_from_b256() {
     use ::assert::assert;
@@ -148,4 +145,15 @@ fn test_address_into_b256() {
     let address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = address.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_address_zero() {
+    use ::assert::assert;
+
+    let address = Address::zero();
+    assert(address.is_zero());
+
+    let other_address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(!other_address.is_zero());
 }

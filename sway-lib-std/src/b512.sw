@@ -2,7 +2,6 @@
 library;
 
 use ::convert::From;
-use ::zero::Zero;
 
 /// Stores two `b256`s in contiguous memory.
 /// Guaranteed to be contiguous for use with ec-recover: `std::ecr::ec_recover`.
@@ -74,9 +73,7 @@ impl B512 {
     pub fn bits(self) -> [b256; 2] {
         self.bits
     }
-}
 
-impl Zero for B512 {
     /// Returns the zero value for the `B512` type.
     ///
     /// # Returns
@@ -93,7 +90,7 @@ impl Zero for B512 {
     ///     assert(zero_b512 == B512::from((b256::zero(), b256::zero())));
     /// }
     /// ```
-    fn zero() -> Self {
+    pub fn zero() -> Self {
         Self {
             bits: [b256::zero(), b256::zero()],
         }
@@ -115,7 +112,24 @@ impl Zero for B512 {
     ///     assert(zero_b512.is_zero());
     /// }
     /// ```
-    fn is_zero(self) -> bool {
+    pub fn is_zero(self) -> bool {
         (self.bits)[0] == b256::zero() && (self.bits)[1] == b256::zero()
     }
+}
+
+#[test]
+fn test_b512_zero() {
+    use ::assert::assert;
+
+    let zero_b512 = B512::zero();
+    assert(zero_b512.is_zero());
+
+    let other1_b512 = B512::from((b256::zero(), 0x0000000000000000000000000000000000000000000000000000000000000001));
+    assert(!other1_b512.is_zero());    
+    
+    let other2_b512 = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001, b256::zero()));
+    assert(!other2_b512.is_zero());    
+
+    let other3_b512 = B512::from((0x0000000000000000000000000000000000000000000000000000000000000001, 0x0000000000000000000000000000000000000000000000000000000000000001));
+    assert(!other3_b512.is_zero());    
 }

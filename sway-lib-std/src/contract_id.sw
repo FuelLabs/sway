@@ -3,7 +3,6 @@ library;
 
 use ::convert::From;
 use ::hash::{Hash, Hasher};
-use ::zero::Zero;
 
 /// The `ContractId` type, a struct wrapper around the inner `b256` value.
 pub struct ContractId {
@@ -119,9 +118,7 @@ impl ContractId {
             fp: b256
         })
     }
-}
 
-impl Zero for ContractId {
     /// Returns the zero value for the `ContractId` type.
     ///
     /// # Returns
@@ -136,7 +133,7 @@ impl Zero for ContractId {
     ///     assert(zero_contract_id == ContractId::from(b256::zero()));
     /// }
     /// ```
-    fn zero() -> Self {
+    pub fn zero() -> Self {
         Self {
             bits: b256::zero(),
         }
@@ -156,7 +153,7 @@ impl Zero for ContractId {
     ///     assert(zero_contract_id.is_zero());
     /// }
     /// ```
-    fn is_zero(self) -> bool {
+    pub fn is_zero(self) -> bool {
         self.bits == b256::zero()
     }
 }
@@ -180,4 +177,15 @@ fn test_contract_id_into_b256() {
     let contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = contract_id.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_contract_id_zero() {
+    use ::assert::assert;
+
+    let contract_id = ContractId::zero();
+    assert(contract_id.is_zero());
+
+    let other_contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(!other_contract_id.is_zero());
 }

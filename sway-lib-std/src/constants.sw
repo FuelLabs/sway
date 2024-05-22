@@ -1,8 +1,6 @@
 //! Definitions for constant values in Sway.
 library;
 
-use ::zero::Zero;
-
 /// A b256 of zero value.
 ///
 /// # Additional Information

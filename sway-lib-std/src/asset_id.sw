@@ -5,7 +5,6 @@ use ::alias::SubId;
 use ::contract_id::ContractId;
 use ::convert::From;
 use ::hash::{Hash, Hasher};
-use ::zero::Zero;
 
 /// An AssetId is used for interacting with an asset on the network.
 ///
@@ -181,6 +180,44 @@ impl AssetId {
     pub fn bits(self) -> b256 {
         self.bits
     }
+
+    /// Returns the zero value for the `AssetId` type.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] -> The zero value for the `AssetId` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id == AssetId::from(b256::zero()));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: b256::zero(),
+        }
+    }
+
+    /// Returns whether an `AssetId` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `AssetId` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.bits == b256::zero()
+    }
 }
 
 impl From<AssetId> for b256 {
@@ -201,46 +238,6 @@ impl From<AssetId> for b256 {
     /// ```
     fn from(id: AssetId) -> Self {
         id.bits()
-    }
-}
-
-impl Zero for AssetId {
-    /// Returns the zero value for the `AssetId` type.
-    ///
-    /// # Returns
-    ///
-    /// * [AssetId] -> The zero value for the `AssetId` type.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let zero_asset_id = AssetId::zero();
-    ///     assert(zero_asset_id == AssetId::from(b256::zero()));
-    /// }
-    /// ```
-    fn zero() -> Self {
-        Self {
-            bits: b256::zero(),
-        }
-    }
-
-    /// Returns whether an `AssetId` is set to zero.
-    ///
-    /// # Returns
-    ///
-    /// * [bool] -> True if the `AssetId` is zero, otherwise false.
-    ///
-    /// # Examples
-    ///
-    /// ```sway
-    /// fn foo() {
-    ///     let zero_asset_id = AssetId::zero();
-    ///     assert(zero_asset_id.is_zero());
-    /// }
-    /// ```
-    fn is_zero(self) -> bool {
-        self.bits == b256::zero()
     }
 }
 
@@ -295,4 +292,15 @@ fn test_asset_id_into_b256() {
     let asset = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = asset.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_asset_id_zero() {
+    use ::assert::assert;
+
+    let asset = AssetId::zero();
+    assert(asset.is_zero());
+
+    let other_assert = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(!other_assert.is_zero());
 }
