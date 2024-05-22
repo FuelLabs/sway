@@ -1,6 +1,6 @@
 use fuels::{
     prelude::*,
-    types::{Bits256, ContractId},
+    types::Bits256,
 };
 
 abigen!(Contract(
