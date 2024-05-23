@@ -2,7 +2,7 @@ mod encode;
 use crate::{
     cmd,
     util::{
-        gas::get_gas_used,
+        gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
         tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
@@ -79,8 +79,7 @@ pub async fn run_pkg(
                 .ok_or_else(|| anyhow::anyhow!("Missing json abi string"))?;
             let main_arg_handler = ScriptCallHandler::from_json_abi_str(&package_json_abi)?;
             let args = args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
-            let unresolved_bytes = main_arg_handler.encode_arguments(args.as_slice())?;
-            unresolved_bytes.resolve(0)
+            main_arg_handler.encode_arguments(args.as_slice())?
         }
         (Some(_), Some(_)) => {
             bail!("Both --args and --data provided, must choose one.")
@@ -120,7 +119,7 @@ pub async fn run_pkg(
         script_gas_limit
     // Dry run tx and get `gas_used`
     } else {
-        get_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
+        get_script_gas_used(tb.clone().finalize_without_signature_inner(), &provider).await?
     };
     tb.script_gas_limit(script_gas_limit);
 
@@ -220,10 +219,9 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             ast: cmd.print.ast,
             dca_graph: cmd.print.dca_graph.clone(),
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
-            finalized_asm: cmd.print.finalized_asm,
-            intermediate_asm: cmd.print.intermediate_asm,
+            asm: cmd.print.asm(),
             bytecode: cmd.print.bytecode,
-            ir: cmd.print.ir,
+            ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
         minify: pkg::MinifyOpts {

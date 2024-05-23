@@ -12,7 +12,7 @@ enum Error {
 }
 
 impl AbiEncode for Error {
-    fn abi_encode(self, ref mut buffer: Buffer) {}
+    fn abi_encode(self, buffer: Buffer) -> Buffer { buffer }
 }
 
 impl MyContract for Contract {

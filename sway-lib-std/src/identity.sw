@@ -7,7 +7,6 @@ use ::assert::assert;
 use ::address::Address;
 use ::alias::SubId;
 use ::asset_id::AssetId;
-use ::constants::ZERO_B256;
 use ::contract_id::ContractId;
 use ::hash::{Hash, Hasher};
 use ::option::Option::{self, *};
@@ -40,12 +39,10 @@ impl Identity {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let identity = Identity::Address(Address::from(ZERO_B256));
+    ///     let identity = Identity::Address(Address::zero());
     ///     let address = identity.as_address();
-    ///     assert(address == Address::from(ZERO_B256));
+    ///     assert(address == Address::zero());
     /// }
     /// ```
     pub fn as_address(self) -> Option<Address> {
@@ -64,12 +61,10 @@ impl Identity {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let identity = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     let identity = Identity::ContractId(ContractId::zero());
     ///     let contract_id = identity.as_contract_id();
-    ///     assert(contract_id == ContractId::from(ZERO_B256));
+    ///     assert(contract_id == ContractId::zero());
     /// }
     /// ```
     pub fn as_contract_id(self) -> Option<ContractId> {
@@ -88,10 +83,8 @@ impl Identity {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let identity = Identity::Address(Address::from(ZERO_B256));
+    ///     let identity = Identity::Address(Address::zero());
     ///     assert(identity.is_address());
     /// }
     /// ```
@@ -111,10 +104,8 @@ impl Identity {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let identity = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     let identity = Identity::ContractId(ContractId::zero());
     ///     assert(identity.is_contract_id());
     /// }
     /// ```
@@ -134,11 +125,9 @@ impl Identity {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() -> {
-    ///     let my_identity = Identity::Address(Address::from(ZERO_B256));
-    ///     assert(my_identity.bits() == ZERO_B256);
+    ///     let my_identity = Identity::Address(Address::zero());
+    ///     assert(my_identity.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
@@ -166,7 +155,7 @@ impl Hash for Identity {
 
 #[test]
 fn test_address() {
-    let address = Address::from(ZERO_B256);
+    let address = Address::zero();
     let identity = Identity::Address(address);
     assert(identity.is_address());
     assert(!identity.is_contract_id());
@@ -176,10 +165,10 @@ fn test_address() {
 
 #[test]
 fn test_contract_id() {
-    let id = ZERO_B256;
-    let identity = Identity::ContractId(ContractId::from(ZERO_B256));
+    let id = ContractId::zero();
+    let identity = Identity::ContractId(id);
     assert(!identity.is_address());
     assert(identity.is_contract_id());
-    assert(identity.as_contract_id().unwrap().bits() == id);
+    assert(identity.as_contract_id().unwrap() == id);
     assert(identity.as_address().is_none());
 }

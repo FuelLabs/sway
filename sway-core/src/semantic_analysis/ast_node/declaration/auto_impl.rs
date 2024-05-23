@@ -130,14 +130,16 @@ where
         if body.is_empty() {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code)]
-                fn abi_encode(self, ref mut _buffer: Buffer) {{
+                fn abi_encode(self, buffer: Buffer) -> Buffer {{
+                    buffer
                 }}
             }}")
         } else {
             format!("#[allow(dead_code)] impl{type_parameters_declaration} AbiEncode for {name}{type_parameters_declaration}{type_parameters_constraints} {{
                 #[allow(dead_code)]
-                fn abi_encode(self, ref mut buffer: Buffer) {{
+                fn abi_encode(self, buffer: Buffer) -> Buffer {{
                     {body}
+                    buffer
                 }}
             }}")
         }
@@ -178,7 +180,7 @@ where
 
         for f in decl.fields.iter() {
             code.push_str(&format!(
-                "self.{field_name}.abi_encode(buffer);\n",
+                "let buffer = self.{field_name}.abi_encode(buffer);\n",
                 field_name = f.name.as_str(),
             ));
         }
@@ -249,34 +251,31 @@ where
             .iter()
             .map(|x| {
                 let name = x.name.as_str();
-                match &*engines.te().get(x.type_argument.type_id) {
-                    // Unit
-                    TypeInfo::Tuple(fields) if fields.is_empty() => {
-                        format!(
-                            "{enum_name}::{variant_name} => {{
-                            {tag_value}u64.abi_encode(buffer);
-                        }}, \n",
-                            tag_value = x.tag,
-                            enum_name = enum_name,
-                            variant_name = name
-                        )
-                    }
-                    _ => {
-                        format!(
-                            "{enum_name}::{variant_name}(value) => {{
-                            {tag_value}u64.abi_encode(buffer);
-                            value.abi_encode(buffer);
-                        }}, \n",
-                            tag_value = x.tag,
-                            enum_name = enum_name,
-                            variant_name = name,
-                        )
-                    }
+                if engines.te().get(x.type_argument.type_id).is_unit() {
+                    format!(
+                        "{enum_name}::{variant_name} => {{
+                        {tag_value}u64.abi_encode(buffer)
+                    }}, \n",
+                        tag_value = x.tag,
+                        enum_name = enum_name,
+                        variant_name = name
+                    )
+                } else {
+                    format!(
+                        "{enum_name}::{variant_name}(value) => {{
+                        let buffer = {tag_value}u64.abi_encode(buffer);
+                        let buffer = value.abi_encode(buffer);
+                        buffer
+                    }}, \n",
+                        tag_value = x.tag,
+                        enum_name = enum_name,
+                        variant_name = name,
+                    )
                 }
             })
             .collect::<String>();
 
-        format!("match self {{ {arms} }}")
+        format!("let buffer = match self {{ {arms} }};")
     }
 
     pub fn parse_fn_to_ty_ast_node(
@@ -629,26 +628,18 @@ where
             let method_name = decl.name.as_str();
 
             if args_types == "()" {
-                code.push_str(&format!("if method_name == \"{method_name}\" {{
+                code.push_str(&format!("if _method_name == \"{method_name}\" {{
                     let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}());
                     __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
                 }}\n"));
             } else {
-                code.push_str(&format!("if method_name == \"{method_name}\" {{
+                code.push_str(&format!("if _method_name == \"{method_name}\" {{
                     let args: {args_types} = decode_second_param::<{args_types}>();
                     let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
                     __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
                 }}\n"));
             }
         }
-
-        let att: String = match (reads, writes) {
-            (true, true) => "#[storage(read, write)]",
-            (true, false) => "#[storage(read)]",
-            (false, true) => "#[storage(write)]",
-            (false, false) => "",
-        }
-        .into();
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
             let fallback_fn = engines.de().get(&fallback_fn);
@@ -660,16 +651,32 @@ where
                 return Err(err);
             };
             let method_name = fallback_fn.name.as_str();
-
+            match fallback_fn.purity {
+                Purity::Pure => {}
+                Purity::Reads => reads = true,
+                Purity::Writes => writes = true,
+                Purity::ReadsWrites => {
+                    reads = true;
+                    writes = true;
+                }
+            }
             format!("let result: raw_slice = encode::<{return_type}>({method_name}()); __contract_ret(result.ptr(), result.len::<u8>());")
         } else {
             // as the old encoding does
             format!("__revert({});", MISMATCHED_SELECTOR_REVERT_CODE)
         };
 
+        let att: String = match (reads, writes) {
+            (true, true) => "#[storage(read, write)]",
+            (true, false) => "#[storage(read)]",
+            (false, true) => "#[storage(write)]",
+            (false, false) => "",
+        }
+        .into();
+
         let code = format!(
             "{att} pub fn __entry() {{
-            let method_name = decode_first_param::<str>();
+            let _method_name = decode_first_param::<str>();
             {code}
             {fallback}
         }}"

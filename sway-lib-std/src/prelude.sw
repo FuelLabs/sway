@@ -34,3 +34,6 @@ use ::logging::log;
 
 // Auth
 use ::auth::msg_sender;
+
+// Math
+use ::math::*;

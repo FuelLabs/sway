@@ -17,7 +17,7 @@ pub const MEMCPYOPT_NAME: &str = "memcpyopt";
 pub fn create_memcpyopt_pass() -> Pass {
     Pass {
         name: MEMCPYOPT_NAME,
-        descr: "Memcopy optimization.",
+        descr: "Optimizations related to MemCopy instructions",
         deps: vec![ESCAPED_SYMBOLS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(mem_copy_opt)),
     }

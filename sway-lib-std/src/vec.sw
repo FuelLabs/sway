@@ -651,16 +651,18 @@ impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
 {
-    fn abi_encode(self, ref mut buffer: Buffer) {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
         let len = self.len();
-        buffer.push_u64(len);
+        let mut buffer = len.abi_encode(buffer);
 
         let mut i = 0;
         while i < len {
             let item = self.get(i).unwrap();
-            item.abi_encode(buffer);
+            buffer = item.abi_encode(buffer);
             i += 1;
         }
+
+        buffer
     }
 }
 

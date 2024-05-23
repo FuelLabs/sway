@@ -1,3 +1,4 @@
+//! The iterator trait to iterate over elements.
 library;
 
 use ::option::Option::{self, *};

@@ -25,13 +25,13 @@ use ::outputs::{Output, output_amount, output_count, output_type};
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, asset::mint_to};
+/// use std::asset::mint_to;
 ///
 /// fn foo() {
-///     let to_address = Identity::Address(Address::from(ZERO_B256));
-///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
-///     mint_to(to_address, ZERO_B256, 500);
-///     mint_to(to_contract_id, ZERO_B256, 500);
+///     let to_address = Identity::Address(Address::zero());
+///     let to_contract_id = Identity::ContractId(ContractId::zero());
+///     mint_to(to_address, SubId::zero(), 500);
+///     mint_to(to_contract_id, SubId::zero(), 500);
 /// }
 /// ```
 pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
@@ -49,10 +49,10 @@ pub fn mint_to(to: Identity, sub_id: SubId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, asset::mint};
+/// use std::asset::mint;
 ///
 /// fn foo() {
-///     mint(ZERO_B256, 500);
+///     mint(SubId::zero(), 500);
 /// }
 /// ```
 pub fn mint(sub_id: SubId, amount: u64) {
@@ -79,10 +79,10 @@ pub fn mint(sub_id: SubId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, asset::burn};
+/// use std::asset::burn;
 ///
 /// fn foo() {
-///     burn(ZERO_B256, 500);
+///     burn(SubId::zero(), 500);
 /// }
 /// ```
 pub fn burn(sub_id: SubId, amount: u64) {
@@ -112,11 +112,11 @@ pub fn burn(sub_id: SubId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, asset::transfer};
+/// use std::asset::transfer;
 ///
 /// fn foo() {
-///     let to_address = Identity::Address(Address::from(ZERO_B256));
-///     let to_contract_id = Identity::ContractId(ContractId::from(ZERO_B256));
+///     let to_address = Identity::Address(Address::zero());
+///     let to_contract_id = Identity::ContractId(ContractId::zero());
 ///     transfer(to_address, AssetId::base(), 500);
 ///     transfer(to_contract_id, AssetId::base(), 500);
 /// }
@@ -148,10 +148,10 @@ pub fn transfer(to: Identity, asset_id: AssetId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, asset::force_transfer_to_contract};
+/// use std::asset::force_transfer_to_contract;
 ///
 /// fn foo() {
-///     let to_contract_id = ContractId::from(ZERO_B256);
+///     let to_contract_id = ContractId::zero();
 ///     force_transfer_to_contract(to_contract_id, AssetId::base(), 500);
 /// }
 /// ```
@@ -178,10 +178,10 @@ fn force_transfer_to_contract(to: ContractId, asset_id: AssetId, amount: u64) {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, asset::transfer_to_address};
+/// use std::asset::transfer_to_address;
 ///
 /// fn foo() {
-///     let to_address = Address::from(ZERO_B256);
+///     let to_address = Address::zero();
 ///     transfer_to_address(to_address, AssetId::base(), 500);
 /// }
 /// ```

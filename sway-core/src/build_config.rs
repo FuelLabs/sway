@@ -1,6 +1,12 @@
+use itertools::Itertools;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{collections::BTreeMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
+};
 use strum::{Display, EnumString};
+use sway_ir::{PassManager, PrintPassesOpts};
 
 #[derive(
     Clone,
@@ -50,6 +56,125 @@ impl<'de> serde::Deserialize<'de> for OptLevel {
     }
 }
 
+/// Which ASM to print.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PrintAsm {
+    #[serde(rename = "virtual")]
+    pub virtual_abstract: bool,
+    #[serde(rename = "allocated")]
+    pub allocated_abstract: bool,
+    pub r#final: bool,
+}
+
+impl PrintAsm {
+    pub fn all() -> Self {
+        Self {
+            virtual_abstract: true,
+            allocated_abstract: true,
+            r#final: true,
+        }
+    }
+
+    pub fn abstract_virtual() -> Self {
+        Self {
+            virtual_abstract: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn abstract_allocated() -> Self {
+        Self {
+            allocated_abstract: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn r#final() -> Self {
+        Self {
+            r#final: true,
+            ..Self::default()
+        }
+    }
+}
+
+impl std::ops::BitOrAssign for PrintAsm {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.virtual_abstract |= rhs.virtual_abstract;
+        self.allocated_abstract |= rhs.allocated_abstract;
+        self.r#final |= rhs.r#final;
+    }
+}
+
+/// Which IR states to print.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct PrintIr {
+    pub initial: bool,
+    pub r#final: bool,
+    #[serde(rename = "modified")]
+    pub modified_only: bool,
+    pub passes: Vec<String>,
+}
+
+impl Default for PrintIr {
+    fn default() -> Self {
+        Self {
+            initial: false,
+            r#final: false,
+            modified_only: true, // Default option is more restrictive.
+            passes: vec![],
+        }
+    }
+}
+
+impl PrintIr {
+    pub fn all(modified_only: bool) -> Self {
+        Self {
+            initial: true,
+            r#final: true,
+            modified_only,
+            passes: PassManager::OPTIMIZATION_PASSES
+                .iter()
+                .map(|pass| pass.to_string())
+                .collect_vec(),
+        }
+    }
+
+    pub fn r#final() -> Self {
+        Self {
+            r#final: true,
+            ..Self::default()
+        }
+    }
+}
+
+impl std::ops::BitOrAssign for PrintIr {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.initial |= rhs.initial;
+        self.r#final |= rhs.r#final;
+        // Both sides must request only passes that modify IR
+        // in order for `modified_only` to be true.
+        // Otherwise, displaying passes regardless if they
+        // are modified or not wins.
+        self.modified_only &= rhs.modified_only;
+        for pass in rhs.passes {
+            if !self.passes.contains(&pass) {
+                self.passes.push(pass);
+            }
+        }
+    }
+}
+
+impl From<&PrintIr> for PrintPassesOpts {
+    fn from(value: &PrintIr) -> Self {
+        Self {
+            initial: value.initial,
+            r#final: value.r#final,
+            modified_only: value.modified_only,
+            passes: HashSet::from_iter(value.passes.iter().cloned()),
+        }
+    }
+}
+
 /// Configuration for the overall build and compilation process.
 #[derive(Clone)]
 pub struct BuildConfig {
@@ -60,10 +185,9 @@ pub struct BuildConfig {
     pub(crate) canonical_root_module: Arc<PathBuf>,
     pub(crate) print_dca_graph: Option<String>,
     pub(crate) print_dca_graph_url_format: Option<String>,
-    pub(crate) print_intermediate_asm: bool,
-    pub(crate) print_finalized_asm: bool,
+    pub(crate) print_asm: PrintAsm,
     pub(crate) print_bytecode: bool,
-    pub(crate) print_ir: bool,
+    pub(crate) print_ir: PrintIr,
     pub(crate) include_tests: bool,
     pub(crate) optimization_level: OptLevel,
     pub time_phases: bool,
@@ -108,10 +232,9 @@ impl BuildConfig {
             canonical_root_module: Arc::new(canonical_root_module),
             print_dca_graph: None,
             print_dca_graph_url_format: None,
-            print_intermediate_asm: false,
-            print_finalized_asm: false,
+            print_asm: PrintAsm::default(),
             print_bytecode: false,
-            print_ir: false,
+            print_ir: PrintIr::default(),
             include_tests: false,
             time_phases: false,
             metrics_outfile: None,
@@ -137,18 +260,8 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_print_intermediate_asm(self, a: bool) -> Self {
-        Self {
-            print_intermediate_asm: a,
-            ..self
-        }
-    }
-
-    pub fn with_print_finalized_asm(self, a: bool) -> Self {
-        Self {
-            print_finalized_asm: a,
-            ..self
-        }
+    pub fn with_print_asm(self, print_asm: PrintAsm) -> Self {
+        Self { print_asm, ..self }
     }
 
     pub fn with_print_bytecode(self, a: bool) -> Self {
@@ -158,7 +271,7 @@ impl BuildConfig {
         }
     }
 
-    pub fn with_print_ir(self, a: bool) -> Self {
+    pub fn with_print_ir(self, a: PrintIr) -> Self {
         Self {
             print_ir: a,
             ..self

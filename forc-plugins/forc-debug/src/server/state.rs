@@ -37,7 +37,7 @@ impl ServerState {
     /// Resets the data for a new run of the tests.
     pub fn reset(&mut self) {
         self.started_debugging = false;
-        self.executors = self.original_executors.clone();
+        self.executors.clone_from(&self.original_executors);
         self.built_package = None;
         self.test_setup = None;
         self.test_results = vec![];
@@ -47,7 +47,7 @@ impl ServerState {
 
     /// Initializes the executor stores.
     pub fn init_executors(&mut self, executors: Vec<TestExecutor>) {
-        self.executors = executors.clone();
+        self.executors.clone_from(&executors);
         self.original_executors = executors;
     }
 

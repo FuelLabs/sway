@@ -278,13 +278,14 @@ impl Namespace {
             .cloned()
             .chain(Some(mod_name.clone()))
             .collect();
-        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path.clone());
         // self.module() now refers to a different module, so refetch
         let new_module = self.module_mut(engines);
         new_module.name = Some(mod_name);
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
         new_module.is_external = false;
+        new_module.mod_path = submod_path;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,

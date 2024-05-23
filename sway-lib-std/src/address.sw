@@ -1,4 +1,4 @@
-//! A wrapper around the `b256` type to help enhance type-safety.
+//! The `Address` type used for interacting with addresses on the fuel network.
 library;
 
 use ::convert::From;
@@ -20,15 +20,51 @@ impl Address {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() -> {
-    ///     let my_address = Address::from(ZERO_B256);
-    ///     assert(my_address.bits() == ZERO_B256);
+    ///     let my_address = Address::zero();
+    ///     assert(my_address.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
         self.bits
+    }
+
+    /// Returns the zero value for the `Address` type.
+    ///
+    /// # Returns
+    ///
+    /// * [Address] -> The zero value for the `Address` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_address = Address::zero();
+    ///     assert(zero_address == Address:from(b256::zero()));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: b256::zero(),
+        }
+    }
+
+    /// Returns whether an `Address` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `Address` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_address = Address::zero();
+    ///     assert(zero_address.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }
 
@@ -53,10 +89,8 @@ impl From<b256> for Address {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let address = Address::from(ZERO_B256);
+    ///    let address = Address::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -74,12 +108,10 @@ impl From<Address> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let address = Address::from(ZERO_B256);
+    ///     let address = Address::zero();
     ///     let b256_data: b256 = address.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(address: Address) -> Self {
@@ -113,4 +145,15 @@ fn test_address_into_b256() {
     let address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = address.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_address_zero() {
+    use ::assert::assert;
+
+    let address = Address::zero();
+    assert(address.is_zero());
+
+    let other_address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(!other_address.is_zero());
 }

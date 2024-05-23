@@ -11,8 +11,19 @@
 
 use crate::{context::Context, pretty::DebugWithContext, Constant, ConstantValue, Value};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct Type(pub slotmap::DefaultKey);
+
+impl DebugWithContext for Type {
+    fn fmt_with_context(
+        &self,
+        formatter: &mut std::fmt::Formatter,
+        context: &Context,
+    ) -> std::fmt::Result {
+        self.get_content(context)
+            .fmt_with_context(formatter, context)
+    }
+}
 
 #[derive(Debug, Clone, DebugWithContext, Hash, PartialEq, Eq)]
 pub enum TypeContent {

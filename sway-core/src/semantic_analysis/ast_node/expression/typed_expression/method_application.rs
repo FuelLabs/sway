@@ -426,6 +426,10 @@ pub(crate) fn type_check_method_application(
         .zip(args_buf.iter().cloned())
         .collect::<Vec<_>>();
 
+    // unify the types of the arguments with the types of the parameters from the function declaration
+    let arguments =
+        unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
+
     if ctx.experimental.new_encoding && method.is_contract_call {
         fn call_contract_call(
             ctx: &mut TypeCheckContext,
@@ -615,10 +619,6 @@ pub(crate) fn type_check_method_application(
             }
         }
     }
-
-    // unify the types of the arguments with the types of the parameters from the function declaration
-    let arguments =
-        unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
 
     // This handles the case of substituting the generic blanket type by call_path_typeid.
     if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {

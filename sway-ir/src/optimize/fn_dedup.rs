@@ -13,17 +13,28 @@ use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 
 use crate::{
     build_call_graph, callee_first_order, AnalysisResults, Block, Context, Function, InstOp,
-    Instruction, IrError, Module, Pass, PassMutability, ScopedPass, Value,
+    Instruction, IrError, MetadataIndex, Metadatum, Module, Pass, PassMutability, ScopedPass,
+    Value,
 };
 
-pub const FNDEDUP_NAME: &str = "fndedup";
+pub const FN_DEDUP_DEBUG_PROFILE_NAME: &str = "fn-dedup-debug";
+pub const FN_DEDUP_RELEASE_PROFILE_NAME: &str = "fn-dedup-release";
 
-pub fn create_fn_dedup_pass() -> Pass {
+pub fn create_fn_dedup_release_profile_pass() -> Pass {
     Pass {
-        name: FNDEDUP_NAME,
-        descr: "Deduplicate functions.",
+        name: FN_DEDUP_RELEASE_PROFILE_NAME,
+        descr: "Function deduplication with metadata ignored",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fns)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fn_release_profile)),
+    }
+}
+
+pub fn create_fn_dedup_debug_profile_pass() -> Pass {
+    Pass {
+        name: FN_DEDUP_DEBUG_PROFILE_NAME,
+        descr: "Function deduplication with metadata considered",
+        deps: vec![],
+        runner: ScopedPass::ModulePass(PassMutability::Transform(dedup_fn_debug_profile)),
     }
 }
 
@@ -35,13 +46,20 @@ struct EqClass {
     function_hash_map: FxHashMap<Function, u64>,
 }
 
-fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64 {
+fn hash_fn(
+    context: &Context,
+    function: Function,
+    eq_class: &mut EqClass,
+    ignore_metadata: bool,
+) -> u64 {
     let state = &mut FxHasher::default();
 
     // A unique, but only in this function, ID for values.
     let localised_value_id: &mut FxHashMap<Value, u64> = &mut FxHashMap::default();
     // A unique, but only in this function, ID for blocks.
     let localised_block_id: &mut FxHashMap<Block, u64> = &mut FxHashMap::default();
+    // A unique, but only in this function, ID for MetadataIndex.
+    let metadata_hashes: &mut FxHashMap<MetadataIndex, u64> = &mut FxHashMap::default();
     // TODO: We could do a similar localised ID'ing of local variable names
     // and ASM block arguments too, thereby slightly relaxing the equality check.
 
@@ -54,14 +72,72 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
         context: &Context,
         v: Value,
         localised_value_id: &mut FxHashMap<Value, u64>,
+        metadata_hashes: &mut FxHashMap<MetadataIndex, u64>,
         hasher: &mut FxHasher,
+        ignore_metadata: bool,
     ) {
-        match &context.values.get(v.0).unwrap().value {
+        let val = &context.values.get(v.0).unwrap().value;
+        std::mem::discriminant(val).hash(hasher);
+        match val {
             crate::ValueDatum::Argument(_) | crate::ValueDatum::Instruction(_) => {
                 get_localised_id(v, localised_value_id).hash(hasher)
             }
             crate::ValueDatum::Configurable(c) | crate::ValueDatum::Constant(c) => c.hash(hasher),
         }
+        if let Some(m) = &context.values.get(v.0).unwrap().metadata {
+            if !ignore_metadata {
+                hash_metadata(context, *m, metadata_hashes, hasher)
+            }
+        }
+    }
+
+    fn hash_metadata(
+        context: &Context,
+        m: MetadataIndex,
+        metadata_hashes: &mut FxHashMap<MetadataIndex, u64>,
+        hasher: &mut FxHasher,
+    ) {
+        if let Some(hash) = metadata_hashes.get(&m) {
+            return hash.hash(hasher);
+        }
+
+        let md_contents = context
+            .metadata
+            .get(m.0)
+            .expect("Orphan / missing metadata");
+        let descr = std::mem::discriminant(md_contents);
+        let state = &mut FxHasher::default();
+        // We temporarily set the discriminant as the hash.
+        descr.hash(state);
+        metadata_hashes.insert(m, state.finish());
+
+        fn internal(
+            context: &Context,
+            m: &Metadatum,
+            metadata_hashes: &mut FxHashMap<MetadataIndex, u64>,
+            hasher: &mut FxHasher,
+        ) {
+            match m {
+                Metadatum::Integer(i) => i.hash(hasher),
+                Metadatum::Index(mdi) => hash_metadata(context, *mdi, metadata_hashes, hasher),
+                Metadatum::String(s) => s.hash(hasher),
+                Metadatum::SourceId(sid) => sid.hash(hasher),
+                Metadatum::Struct(name, fields) => {
+                    name.hash(hasher);
+                    fields
+                        .iter()
+                        .for_each(|field| internal(context, field, metadata_hashes, hasher));
+                }
+                Metadatum::List(l) => l
+                    .iter()
+                    .for_each(|i| hash_metadata(context, *i, metadata_hashes, hasher)),
+            }
+        }
+        internal(context, md_contents, metadata_hashes, hasher);
+
+        let m_hash = state.finish();
+        metadata_hashes.insert(m, m_hash);
+        m_hash.hash(hasher);
     }
 
     // Start with the function return type.
@@ -89,7 +165,14 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
             std::mem::discriminant(&inst.op).hash(state);
             // Hash value inputs to instructions in one-go.
             for v in inst.op.get_operands() {
-                hash_value(context, v, localised_value_id, state);
+                hash_value(
+                    context,
+                    v,
+                    localised_value_id,
+                    metadata_hashes,
+                    state,
+                    ignore_metadata,
+                );
             }
             // Hash non-value inputs.
             match &inst.op {
@@ -146,27 +229,32 @@ fn hash_fn(context: &Context, function: Function, eq_class: &mut EqClass) -> u64
                 crate::InstOp::ContractCall { name, .. } => {
                     name.hash(state);
                 }
-                crate::InstOp::FuelVm(fuel_vm_inst) => match fuel_vm_inst {
-                    crate::FuelVmInstruction::Gtf { tx_field_id, .. } => tx_field_id.hash(state),
-                    crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
-                    crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
-                    crate::FuelVmInstruction::Revert(_)
-                    | crate::FuelVmInstruction::JmpMem
-                    | crate::FuelVmInstruction::Smo { .. }
-                    | crate::FuelVmInstruction::StateClear { .. }
-                    | crate::FuelVmInstruction::StateLoadQuadWord { .. }
-                    | crate::FuelVmInstruction::StateLoadWord(_)
-                    | crate::FuelVmInstruction::StateStoreQuadWord { .. }
-                    | crate::FuelVmInstruction::StateStoreWord { .. } => (),
-                    crate::FuelVmInstruction::WideUnaryOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::WideBinaryOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::WideModularOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::WideCmpOp { op, .. } => op.hash(state),
-                    crate::FuelVmInstruction::Retd { ptr, len } => {
-                        ptr.hash(state);
-                        len.hash(state);
+                crate::InstOp::FuelVm(fuel_vm_inst) => {
+                    std::mem::discriminant(fuel_vm_inst).hash(state);
+                    match fuel_vm_inst {
+                        crate::FuelVmInstruction::Gtf { tx_field_id, .. } => {
+                            tx_field_id.hash(state)
+                        }
+                        crate::FuelVmInstruction::Log { log_ty, .. } => log_ty.hash(state),
+                        crate::FuelVmInstruction::ReadRegister(reg) => reg.hash(state),
+                        crate::FuelVmInstruction::Revert(_)
+                        | crate::FuelVmInstruction::JmpMem
+                        | crate::FuelVmInstruction::Smo { .. }
+                        | crate::FuelVmInstruction::StateClear { .. }
+                        | crate::FuelVmInstruction::StateLoadQuadWord { .. }
+                        | crate::FuelVmInstruction::StateLoadWord(_)
+                        | crate::FuelVmInstruction::StateStoreQuadWord { .. }
+                        | crate::FuelVmInstruction::StateStoreWord { .. } => (),
+                        crate::FuelVmInstruction::WideUnaryOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::WideBinaryOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::WideModularOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::WideCmpOp { op, .. } => op.hash(state),
+                        crate::FuelVmInstruction::Retd { ptr, len } => {
+                            ptr.hash(state);
+                            len.hash(state);
+                        }
                     }
-                },
+                }
                 crate::InstOp::GetLocal(local) => function
                     .lookup_local_name(context, local)
                     .unwrap()
@@ -190,6 +278,7 @@ pub fn dedup_fns(
     context: &mut Context,
     _: &AnalysisResults,
     module: Module,
+    ignore_metadata: bool,
 ) -> Result<bool, IrError> {
     let mut modified = false;
     let eq_class = &mut EqClass {
@@ -199,7 +288,7 @@ pub fn dedup_fns(
     let cg = build_call_graph(context, &context.modules.get(module.0).unwrap().functions);
     let callee_first = callee_first_order(&cg);
     for function in callee_first {
-        let hash = hash_fn(context, function, eq_class);
+        let hash = hash_fn(context, function, eq_class, ignore_metadata);
         eq_class
             .hash_set_map
             .entry(hash)
@@ -251,4 +340,20 @@ pub fn dedup_fns(
     }
 
     Ok(modified)
+}
+
+fn dedup_fn_debug_profile(
+    context: &mut Context,
+    analysis_results: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    dedup_fns(context, analysis_results, module, false)
+}
+
+fn dedup_fn_release_profile(
+    context: &mut Context,
+    analysis_results: &AnalysisResults,
+    module: Module,
+) -> Result<bool, IrError> {
+    dedup_fns(context, analysis_results, module, true)
 }

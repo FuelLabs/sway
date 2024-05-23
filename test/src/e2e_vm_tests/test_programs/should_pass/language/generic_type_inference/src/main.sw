@@ -53,7 +53,7 @@ fn simple_option_generics_test() {
 fn test_assert_eq_u64() {
     let a = 42;
     let b = 40 + 2;
-    assert_eq(a, b);
+    utils::assert_eq(a, b);
 }
 
 fn test_try_from() {
