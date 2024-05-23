@@ -12,7 +12,7 @@ pub use lexical_scope::{Items, LexicalScope, LexicalScopeId, LexicalScopePath};
 pub use module::Module;
 pub use namespace::Namespace;
 pub use namespace::TryInsertingTraitImplOnFailure;
-pub use root::Root;
+pub use root::{ResolvedDeclaration, Root};
 pub(super) use trait_map::IsExtendingExistingImpl;
 pub(super) use trait_map::IsImplSelf;
 pub(super) use trait_map::ResolvedTraitImplItem;
