@@ -1,9 +1,6 @@
 contract;
 
-use std::{
-    bytes::Bytes,
-    string::String,
-};
+use std::{bytes::Bytes, string::String,};
 
 // ANCHOR: temp_hash_import
 use std::hash::Hash;
