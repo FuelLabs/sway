@@ -2,14 +2,24 @@ contract;
 
 use std::{
     bytes::Bytes,
-    hash::Hash,
-    storage::{
-        storage_bytes::*,
-        storage_string::*,
-        storage_vec::*,
-    },
     string::String,
 };
+
+// ANCHOR: temp_hash_import
+use std::hash::Hash;
+// ANCHOR: temp_hash_import
+
+// ANCHOR: storage_vec_import
+use std::storage::storage_vec::*;
+// ANCHOR: storage_vec_import
+
+// ANCHOR: storage_bytes_import
+use std::storage::storage_bytes::*;
+// ANCHOR: storage_bytes_import
+
+// ANCHOR: storage_bytes_import
+use std::storage::storage_string::*;
+// ANCHOR: storage_bytes_import
 
 // ANCHOR: advanced_storage_declaration
 storage {
