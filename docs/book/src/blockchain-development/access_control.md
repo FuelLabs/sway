@@ -29,7 +29,7 @@ The `msg_sender` function works as follows:
 
 Many contracts require some form of ownership for access control. The [SRC-5 Ownership Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-5.md) has been defined to provide an interoperable interface for ownership within contracts.
 
-To accomplish this, use the [Ownership Library](https://fuellabs.github.io/sway-libs/book/ownership/index.html) to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some magic value such as `std::constants::ZERO_B256` or otherwise.
+To accomplish this, use the [Ownership Library](https://fuellabs.github.io/sway-libs/book/ownership/index.html) to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some magic value such as `b256::zero()` or otherwise.
 
 - The following is an example of how to properly lock a function such that only the owner may call a function:
 

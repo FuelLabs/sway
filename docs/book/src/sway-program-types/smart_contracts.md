@@ -75,9 +75,13 @@ You may notice once again the similarities between [traits](../advanced/traits.m
 
 Note that the above implementation of the ABI follows the [Checks, Effects, Interactions](https://docs.soliditylang.org/en/v0.6.11/security-considerations.html#re-entrancy) pattern.
 
+## The `ContractId` type
+
+Contracts have an associated `ContractId` type in Sway. The `ContractId` type allows for Sway programs to refer to contracts in the Sway language. Please refer to the [ContractId](../basics/blockchain_types.md#contractid-type) section of the book for more information on `ContractId`s.
+
 ## Calling a Smart Contract from a Script
 
->**Note**: In most cases, calling a contract should be done from the [Rust SDK](../testing/testing-with-rust.md) or the [TypeScript SDK](../frontend/typescript_sdk.md) which provide a more ergonomic UI for interacting with a contract. However, there are situations where manually writing a script to call a contract is required.
+>**Note**: In most cases, calling a contract should be done from the [Rust SDK](../testing/testing-with-rust.md) or the [TypeScript SDK](https://docs.fuel.network/docs/fuels-ts) which provide a more ergonomic UI for interacting with a contract. However, there are situations where manually writing a script to call a contract is required.
 
 Now that we have defined our interface and implemented it for our contract, we need to know how to actually _call_ our contract. Let's take a look at a contract call:
 
@@ -95,4 +99,4 @@ Each special parameter is optional and assumes a default value when skipped:
 
 1. The default value for `gas` is the context gas (i.e. the content of the special register `$cgas`). Refer to the [FuelVM specifications](https://fuellabs.github.io/fuel-specs/master/vm) for more information about context gas.
 2. The default value for `coins` is 0.
-3. The default value for `asset_id` is `ZERO_B256`.
+3. The default value for `asset_id` is `b256::zero()`.

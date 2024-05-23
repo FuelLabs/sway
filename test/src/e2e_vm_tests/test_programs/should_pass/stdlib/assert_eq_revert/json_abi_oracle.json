@@ -1,5 +1,6 @@
 {
   "configurables": [],
+  "encoding": "1",
   "functions": [
     {
       "attributes": null,
@@ -14,15 +15,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 0,
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1,
+      "logId": "1515152261580153489",
       "loggedType": {
         "name": "",
         "type": 1,

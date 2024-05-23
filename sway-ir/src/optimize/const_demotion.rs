@@ -13,12 +13,12 @@ use crate::{
 use rustc_hash::FxHashMap;
 use sway_types::FxIndexMap;
 
-pub const CONSTDEMOTION_NAME: &str = "constdemotion";
+pub const CONST_DEMOTION_NAME: &str = "const-demotion";
 
 pub fn create_const_demotion_pass() -> Pass {
     Pass {
-        name: CONSTDEMOTION_NAME,
-        descr: "By-value constant demotion to by-reference.",
+        name: CONST_DEMOTION_NAME,
+        descr: "Demotion of by-value constants to by-reference",
         deps: Vec::new(),
         runner: ScopedPass::FunctionPass(PassMutability::Transform(const_demotion)),
     }

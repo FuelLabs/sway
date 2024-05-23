@@ -157,6 +157,15 @@ impl<T: DisplayWithEngines> DisplayWithEngines for Vec<T> {
     }
 }
 
+impl DisplayWithEngines for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let file = self
+            .source_id()
+            .and_then(|id| engines.source_engine.get_file_name(id));
+        f.write_fmt(format_args!("Span {{ {:?}, {} }}", file, self.line_col()))
+    }
+}
+
 pub(crate) trait DebugWithEngines {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result;
 }

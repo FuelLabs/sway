@@ -76,28 +76,46 @@ impl Documentation {
         // currently this compares the spans as str, but this needs to change
         // to compare the actual types
         for doc in docs.iter_mut() {
-            let mut impl_vec: Vec<DocImplTrait> = Vec::new();
+            let mut impl_trait_vec: Vec<DocImplTrait> = Vec::new();
+            let mut inherent_impl_vec: Vec<DocImplTrait> = Vec::new();
 
-            match doc.item_body.ty_decl {
+            let decl_name = match doc.item_body.ty_decl {
                 TyDecl::StructDecl(ref decl) => {
-                    for (impl_trait, module_info) in impl_traits.iter_mut() {
-                        let struct_decl = engines.de().get_struct(&decl.decl_id);
-                        if struct_decl.name().as_str() == impl_trait.implementing_for.span.as_str()
-                            && struct_decl.name().as_str()
-                                != impl_trait.trait_name.suffix.span().as_str()
-                        {
-                            let module_info_override = if let Some(decl_module_info) =
-                                trait_decls.get(&impl_trait.trait_name.suffix)
-                            {
-                                Some(decl_module_info.module_prefixes.clone())
-                            } else {
-                                impl_trait.trait_name = impl_trait
-                                    .trait_name
-                                    .to_fullpath(engines, &typed_program.root.namespace);
-                                None
-                            };
+                    let struct_decl = engines.de().get_struct(&decl.decl_id);
+                    Some(struct_decl.name().to_string())
+                }
+                TyDecl::EnumDecl(ref decl) => {
+                    let enum_decl = engines.de().get_enum(&decl.decl_id);
+                    Some(enum_decl.name().to_string())
+                }
+                _ => None,
+            };
 
-                            impl_vec.push(DocImplTrait {
+            if let Some(decl_name) = decl_name {
+                for (impl_trait, module_info) in impl_traits.iter_mut() {
+                    // Check if this implementation is for this struct/enum.
+                    if decl_name.as_str() == impl_trait.implementing_for.span.as_str() {
+                        let module_info_override = if let Some(decl_module_info) =
+                            trait_decls.get(&impl_trait.trait_name.suffix)
+                        {
+                            Some(decl_module_info.module_prefixes.clone())
+                        } else {
+                            impl_trait.trait_name = impl_trait
+                                .trait_name
+                                .to_fullpath(engines, &typed_program.root.namespace);
+                            None
+                        };
+
+                        if decl_name.as_str() == impl_trait.trait_name.suffix.span().as_str() {
+                            // If the trait name is the same as the declaration's name, it's an inherent implementation.
+                            inherent_impl_vec.push(DocImplTrait {
+                                impl_for_module: module_info.clone(),
+                                impl_trait: impl_trait.clone(),
+                                module_info_override: None,
+                            });
+                        } else {
+                            // Otherwise, it's an implementation for a trait.
+                            impl_trait_vec.push(DocImplTrait {
                                 impl_for_module: module_info.clone(),
                                 impl_trait: impl_trait.clone(),
                                 module_info_override,
@@ -105,11 +123,14 @@ impl Documentation {
                         }
                     }
                 }
-                _ => continue,
             }
 
-            if !impl_vec.is_empty() {
-                doc.item_body.item_context.impl_traits = Some(impl_vec);
+            if !impl_trait_vec.is_empty() {
+                doc.item_body.item_context.impl_traits = Some(impl_trait_vec);
+            }
+
+            if !inherent_impl_vec.is_empty() {
+                doc.item_body.item_context.inherent_impls = Some(inherent_impl_vec);
             }
         }
 

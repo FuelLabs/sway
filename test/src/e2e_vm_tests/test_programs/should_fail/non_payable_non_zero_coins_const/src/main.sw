@@ -2,7 +2,6 @@ script;
 
 mod wallet_abi;
 
-use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 const COINS = 42;
@@ -17,6 +16,6 @@ fn main() {
     caller.send_funds {
         gas: 10000,
         coins: COINS,
-        asset_id: ZERO_B256,
+        asset_id: b256::zero(),
     }(amount_to_send, recipient_address);
 }

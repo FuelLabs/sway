@@ -2,7 +2,6 @@
 library;
 
 use ::assert::assert;
-use ::constants::ZERO_B256;
 use ::result::Result::{self, *};
 use ::logging::log;
 
@@ -111,14 +110,14 @@ pub fn timestamp_of_block(block_height: u32) -> u64 {
 /// }
 /// ```
 pub fn block_header_hash(block_height: u32) -> Result<b256, BlockHashError> {
-    let mut header_hash = ZERO_B256;
+    let mut header_hash = b256::zero();
 
     asm(r1: __addr_of(header_hash), r2: block_height) {
         bhsh r1 r2;
     };
 
     // `bhsh` returns b256(0) if the block is not found, so catch this and return an error
-    if header_hash == ZERO_B256 {
+    if header_hash == b256::zero() {
         Err(BlockHashError::BlockHeightTooHigh)
     } else {
         Ok(header_hash)

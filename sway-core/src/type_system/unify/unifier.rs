@@ -428,7 +428,6 @@ impl<'a> Unifier<'a> {
                 self.unify(handler, rtp.type_id, etp.type_id, span);
             });
         } else {
-            dbg!(rn == en, rvs.len() == evs.len(), rtps.len() == etps.len());
             let internal = format!("[{received:?}] versus [{expected:?}]");
             let (received, expected) = self.assign_args(received, expected);
             handler.emit_err(

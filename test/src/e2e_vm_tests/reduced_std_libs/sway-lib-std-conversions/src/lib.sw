@@ -1,5 +1,6 @@
 library;
 
+pub mod constants;
 pub mod error_signals;
 pub mod logging;
 pub mod revert;
@@ -16,6 +17,7 @@ pub mod registers;
 pub mod flags;
 pub mod math;
 pub mod u128;
+pub mod b512;
 pub mod primitive_conversions;
 pub mod array_conversions;
 pub mod bytes_conversions;

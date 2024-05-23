@@ -47,10 +47,8 @@ impl From<b256> for AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///    let asset_id = AssetId::from(ZERO_B256);
+    ///    let asset_id = AssetId::from(b256::zero());
     /// }
     /// ```
     fn from(bits: b256) -> Self {
@@ -73,11 +71,11 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{callframes::contract_id, constants::ZERO_B256};
+    /// use std::callframes::contract_id;
     ///
     /// fn foo() {
     ///     let contract_id = contract_id();
-    ///     let sub_id = ZERO_B256;
+    ///     let sub_id = b256::zero();
     ///
     ///     let asset_id = AssetId::new(contract_id, sub_id);
     /// }
@@ -147,12 +145,12 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, asset::transfer};
+    /// use std::asset::transfer;
     ///
     /// fn foo() {
     ///     let asset_id = AssetId::base();
     ///     let amount = 100;
-    ///     let recipient = Identity::ContractId(ContractId::from(ZERO_B256));
+    ///     let recipient = Identity::ContractId(ContractId::zero());
     ///
     ///     transfer(recipient, asset_id, amount);
     /// ```
@@ -174,15 +172,51 @@ impl AssetId {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() -> {
-    ///     let my_asset = AssetId::from(ZERO_B256);
-    ///     assert(my_asset.bits() == ZERO_B256);
+    ///     let my_asset = AssetId::from(b256::zero());
+    ///     assert(my_asset.bits() == b256::zero());
     /// }
     /// ```
     pub fn bits(self) -> b256 {
         self.bits
+    }
+
+    /// Returns the zero value for the `AssetId` type.
+    ///
+    /// # Returns
+    ///
+    /// * [AssetId] -> The zero value for the `AssetId` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id == AssetId::from(b256::zero()));
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self {
+            bits: b256::zero(),
+        }
+    }
+
+    /// Returns whether an `AssetId` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `AssetId` is zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_asset_id = AssetId::zero();
+    ///     assert(zero_asset_id.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.bits == b256::zero()
     }
 }
 
@@ -196,12 +230,10 @@ impl From<AssetId> for b256 {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let asset_id = AssetId::from(ZERO_B256);
+    ///     let asset_id = AssetId::b256::zero();
     ///     let b256_data: b256 = asset_id.into();
-    ///     assert(b256_data == ZERO_B256);
+    ///     assert(b256_data == b256::zero());
     /// }
     /// ```
     fn from(id: AssetId) -> Self {
@@ -260,4 +292,15 @@ fn test_asset_id_into_b256() {
     let asset = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
     let b256_data: b256 = asset.into();
     assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
+}
+
+#[test]
+fn test_asset_id_zero() {
+    use ::assert::assert;
+
+    let asset = AssetId::zero();
+    assert(asset.is_zero());
+
+    let other_assert = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
+    assert(!other_assert.is_zero());
 }

@@ -79,8 +79,7 @@ pub async fn run_pkg(
                 .ok_or_else(|| anyhow::anyhow!("Missing json abi string"))?;
             let main_arg_handler = ScriptCallHandler::from_json_abi_str(&package_json_abi)?;
             let args = args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
-            let unresolved_bytes = main_arg_handler.encode_arguments(args.as_slice())?;
-            unresolved_bytes.resolve(0)
+            main_arg_handler.encode_arguments(args.as_slice())?
         }
         (Some(_), Some(_)) => {
             bail!("Both --args and --data provided, must choose one.")
@@ -222,7 +221,7 @@ fn build_opts_from_cmd(cmd: &cmd::Run) -> pkg::BuildOpts {
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
             asm: cmd.print.asm(),
             bytecode: cmd.print.bytecode,
-            ir: cmd.print.ir,
+            ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
         minify: pkg::MinifyOpts {
