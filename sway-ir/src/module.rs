@@ -24,7 +24,7 @@ pub struct ModuleContent {
     pub global_configurable: BTreeMap<String, ConfigurableContent>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ConfigurableContent {
     pub name: String,
     pub ty: Type,

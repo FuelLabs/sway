@@ -93,6 +93,8 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     fn compile_configurable(&mut self, config: &ConfigurableContent) {
         let size_in_bytes = config.ty.size(self.context).in_bytes();
 
+        dbg!(config, size_in_bytes);
+
         self.globals_section.insert(&config.name, size_in_bytes);
         let global = self.globals_section.get_by_name(&config.name).unwrap();
 

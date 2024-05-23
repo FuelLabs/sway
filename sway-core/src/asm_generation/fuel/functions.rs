@@ -273,6 +273,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             "--- start of function: {} ---",
             function.get_name(self.context)
         );
+
         self.cur_bytecode.push(match span {
             Some(span) => Op::jump_label_comment(start_label, span, comment),
             None => Op::unowned_jump_label_comment(start_label, comment),
