@@ -91,7 +91,10 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     }
 
     fn compile_configurable(&mut self, config: &ConfigurableContent) {
-        self.globals_section.insert(&config.name, 1);
+        let size_in_bytes = config.ty.size(self.context).in_bytes();
+
+        self.globals_section.insert(&config.name, size_in_bytes);
+        let global = self.globals_section.get_by_name(&config.name).unwrap();
 
         let (decode_fn_label, _) = self.func_label_map.get(&config.decode_fn).unwrap();
         let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
@@ -108,6 +111,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
             comment: format!("ptr to {} default value", config.name),
             owning_span: None,
         });
+
         self.before_entries.push(Op {
             opcode: Either::Left(VirtualOp::ADDI(
                 VirtualRegister::Constant(ConstantRegister::FuncArg1),
@@ -117,6 +121,18 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                 },
             )),
             comment: format!("length of {} default value", config.name),
+            owning_span: None,
+        });
+
+        self.before_entries.push(Op {
+            opcode: Either::Left(VirtualOp::ADDI(
+                VirtualRegister::Constant(ConstantRegister::FuncArg2),
+                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                VirtualImmediate12 {
+                    value: global.offset_in_bytes as u16,
+                },
+            )),
+            comment: format!("ptr to global {} stack address", config.name),
             owning_span: None,
         });
 
@@ -136,32 +152,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
             owning_span: None,
         });
 
-        // save return value
-        let g = self.globals_section.get_by_name(&config.name).unwrap();
-
-        let global_addr = self.reg_seqr.next();
-        self.before_entries.push(Op {
-            opcode: Either::Left(VirtualOp::ADDI(
-                global_addr.clone(),
-                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                VirtualImmediate12 {
-                    value: g.offset_in_bytes as u16,
-                },
-            )),
-            comment: "global addr".into(),
-            owning_span: None,
-        });
-        self.before_entries.push(Op {
-            opcode: Either::Left(VirtualOp::MCPI(
-                global_addr,
-                VirtualRegister::Constant(ConstantRegister::CallReturnValue),
-                VirtualImmediate12 {
-                    value: g.size_in_bytes as u16,
-                },
-            )),
-            comment: "copy bytes".into(),
-            owning_span: None,
-        });
+        self.before_entries.push(Op::unowned_jump_label(ret_label));
     }
 
     fn compile_function(
@@ -592,7 +583,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
             inline_ops.push(Op {
                 opcode: either::Either::Left(opcode),
-                comment: "asm block".into(),
+                comment: op_span.as_str().into(),
                 owning_span: Some(op_span),
             });
         }
@@ -617,7 +608,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let instr_reg = self.reg_seqr.next();
             inline_ops.push(Op {
                 opcode: Either::Left(VirtualOp::MOVE(instr_reg.clone(), ret_reg)),
-                comment: "return value from inline asm".into(),
+                comment: format!("return value from inline asm ({})", ret_reg_name),
                 owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
             });
             self.reg_map.insert(*instr_val, instr_reg);

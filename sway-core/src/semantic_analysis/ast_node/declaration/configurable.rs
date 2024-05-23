@@ -7,13 +7,14 @@ use sway_error::{
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
+    decl_engine::{DeclEngineInsert, ReplaceDecls},
     language::{
         parsed::{self, *},
-        ty::{self, TyConfigurableDecl},
+        ty::{self, TyConfigurableDecl, TyExpression},
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    Engines, SubstTypes, TypeArgument, TypeInfo,
+    Engines, SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
 };
 
 use self::ast_node::typed_expression::{monomorphize_method, resolve_method_name};
@@ -95,24 +96,70 @@ impl ty::TyConfigurableDecl {
                 .te()
                 .insert(engines, TypeInfo::RawUntypedSlice, None),
         );
-        let (decode_fn, _) = resolve_method_name(
-            handler,
-            ctx,
-            &crate::TypeBinding {
-                inner: MethodName::FromModule {
-                    method_name: sway_types::Ident::new_no_span("abi_decode".into()),
-                },
-                type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
-                    type_id: type_ascription.type_id,
-                    initial_type_id: type_ascription.type_id,
+        arguments.push_back(engines.te().insert(
+            engines,
+            TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
+            None,
+        ));
+        arguments.push_back(
+            engines
+                .te()
+                .insert(engines, TypeInfo::RawUntypedSlice, None),
+        );
+
+        let (decode_fn_ref, _, _): (crate::decl_engine::DeclRefFunction, _, _) =
+            crate::TypeBinding::type_check(
+                &mut TypeBinding::<CallPath> {
+                    inner: CallPath {
+                        prefixes: vec![],
+                        suffix: sway_types::Ident::new_no_span("abi_decode_in_place".into()),
+                        is_absolute: false,
+                    },
+                    type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
+                        type_id: type_ascription.type_id,
+                        initial_type_id: type_ascription.type_id,
+                        span: sway_types::Span::dummy(),
+                        call_path_tree: None,
+                    }]),
                     span: sway_types::Span::dummy(),
-                    call_path_tree: None,
-                }]),
-                span: sway_types::Span::dummy(),
-            },
-            arguments,
-        )
-        .unwrap();
+                },
+                handler,
+                ctx.by_ref(),
+            )
+            .unwrap();
+
+        let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_ref)).clone();
+        let decl_mapping = crate::TypeParameter::gather_decl_mapping_from_trait_constraints(
+            handler,
+            ctx.by_ref(),
+            &decode_fn_decl.type_parameters,
+            decode_fn_decl.name.as_str(),
+            &span,
+        )?;
+        decode_fn_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+        let decode_fn_ref = engines
+            .de()
+            .insert(decode_fn_decl)
+            .with_parent(engines.de(), (*decode_fn_ref.id()).into());
+
+        // let (decode_fn, _) = resolve_method_name(
+        //     handler,
+        //     ctx,
+        //     &crate::TypeBinding {
+        //         inner: MethodName::FromModule {
+        //             method_name: sway_types::Ident::new_no_span("abi_decode".into()),
+        //         },
+        //         type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
+        //             type_id: type_ascription.type_id,
+        //             initial_type_id: type_ascription.type_id,
+        //             span: sway_types::Span::dummy(),
+        //             call_path_tree: None,
+        //         }]),
+        //         span: sway_types::Span::dummy(),
+        //     },
+        //     arguments,
+        // )
+        // .unwrap();
 
         Ok(ty::TyConfigurableDecl {
             call_path,
@@ -121,7 +168,7 @@ impl ty::TyConfigurableDecl {
             type_ascription,
             span,
             value,
-            decode_fn: Some(decode_fn),
+            decode_fn: Some(decode_fn_ref),
             visibility,
             implementing_type: None,
         })

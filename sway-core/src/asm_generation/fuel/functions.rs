@@ -380,13 +380,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     fn compile_fn_call_args(&mut self, function: Function) {
         if function.num_args(self.context) <= compiler_constants::NUM_ARG_REGISTERS as usize {
             // All arguments are passed through registers.
-            for (idx, (_, arg_val)) in function.args_iter(self.context).enumerate() {
+            for (idx, (arg, arg_val)) in function.args_iter(self.context).enumerate() {
                 // Make a copy of the args in case we make calls and need to use the arg registers.
                 let arg_copy_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op::register_move(
                     arg_copy_reg.clone(),
                     VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
-                    format!("save arg {idx}"),
+                    format!("save arg {idx} ({arg})"),
                     self.md_mgr.val_to_span(self.context, *arg_val),
                 ));
 

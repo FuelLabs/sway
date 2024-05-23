@@ -61,13 +61,17 @@ struct Cli {
     #[arg(long)]
     update_output_files: bool,
 
-    /// Print out the final IR, if the verbose option is on
+    /// Print out the specifiec IR (separate options with comma), if the verbose option is on
     #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
     print_ir: Option<Vec<String>>,
 
-    /// Print out the ASM, if the verbose option is on
+    /// Print out the specified ASM (separate options with comma), if the verbose option is on
     #[arg(long, num_args(1..=5), value_parser = clap::builder::PossibleValuesParser::new(&PrintAsmCliOpt::CLI_OPTIONS))]
     print_asm: Option<Vec<String>>,
+
+    /// Print out the final bytecode, if the verbose option is on
+    #[arg(long)]
+    print_bytecode: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -90,6 +94,7 @@ pub struct RunConfig {
     pub update_output_files: bool,
     pub print_ir: PrintIr,
     pub print_asm: PrintAsm,
+    pub print_bytecode: bool,
 }
 
 #[tokio::main]
@@ -130,6 +135,7 @@ async fn main() -> Result<()> {
             .print_asm
             .as_ref()
             .map_or(PrintAsm::default(), |opts| PrintAsmCliOpt::from(opts).0),
+        print_bytecode: cli.print_bytecode,
     };
 
     // Check that the tests are consistent
