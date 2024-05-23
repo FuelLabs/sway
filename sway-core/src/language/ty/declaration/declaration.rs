@@ -128,6 +128,23 @@ impl PartialEqWithEngines for TyDecl {
                 TyDecl::EnumDecl(EnumDecl { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
+                TyDecl::EnumVariantDecl(EnumVariantDecl {
+                    enum_ref: l_enum,
+                    variant_name: ln,
+                    ..
+                }),
+                TyDecl::EnumVariantDecl(EnumVariantDecl {
+                    enum_ref: r_enum,
+                    variant_name: rn,
+                    ..
+                }),
+            ) => {
+                ln == rn
+                    && decl_engine
+                        .get_enum(l_enum)
+                        .eq(&decl_engine.get_enum(r_enum), ctx)
+            }
+            (
                 TyDecl::ImplTrait(ImplTrait { decl_id: lid, .. }),
                 TyDecl::ImplTrait(ImplTrait { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
@@ -351,54 +368,7 @@ impl DisplayWithEngines for TyDecl {
 
 impl DebugWithEngines for TyDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
-        let type_engine = engines.te();
-        write!(
-            f,
-            "{} declaration ({})",
-            self.friendly_type_name(),
-            match self {
-                TyDecl::VariableDecl(decl) => {
-                    let TyVariableDecl {
-                        mutability,
-                        name,
-                        type_ascription,
-                        body,
-                        ..
-                    } = &**decl;
-                    let mut builder = String::new();
-                    match mutability {
-                        VariableMutability::Mutable => builder.push_str("mut"),
-                        VariableMutability::RefMutable => builder.push_str("ref mut"),
-                        VariableMutability::Immutable => {}
-                    }
-                    builder.push_str(name.as_str());
-                    builder.push_str(": ");
-                    builder.push_str(
-                        format!(
-                            "{:?}",
-                            engines.help_out(&*type_engine.get(type_ascription.type_id))
-                        )
-                        .as_str(),
-                    );
-                    builder.push_str(" = ");
-                    builder.push_str(format!("{:?}", engines.help_out(body)).as_str());
-                    builder
-                }
-                TyDecl::FunctionDecl(FunctionDecl { decl_id }) => {
-                    engines.de().get(decl_id).name.as_str().into()
-                }
-                TyDecl::TraitDecl(TraitDecl { decl_id }) => {
-                    engines.de().get(decl_id).name.as_str().into()
-                }
-                TyDecl::StructDecl(StructDecl { decl_id }) => {
-                    engines.de().get(decl_id).name().as_str().into()
-                }
-                TyDecl::EnumDecl(EnumDecl { decl_id }) => {
-                    engines.de().get(decl_id).name().as_str().into()
-                }
-                _ => String::new(),
-            }
-        )
+        DisplayWithEngines::fmt(&self, f, engines)
     }
 }
 

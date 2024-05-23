@@ -822,15 +822,7 @@
   ],
   "loggedTypes": [
     {
-      "logId": 0,
-      "loggedType": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      }
-    },
-    {
-      "logId": 1,
+      "logId": "13213829929622723620",
       "loggedType": {
         "name": "",
         "type": 2,

@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-A2C6CB9CD0980A06"
+
+[[package]]
+name = "log_decode"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-A2C6CB9CD0980A06"
+dependencies = ["core"]

@@ -7,8 +7,6 @@ use fuels::{
     types::{input::Input as SdkInput, Bits256},
 };
 
-use std::str::FromStr;
-
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 
 abigen!(
@@ -93,7 +91,7 @@ async fn generate_predicate_inputs(
         .unwrap()
         .with_provider(provider.clone());
 
-    let predicate_code = predicate.code().clone();
+    let predicate_code = predicate.code().to_vec();
 
     let predicate_root = predicate.address();
 

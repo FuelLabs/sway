@@ -2,7 +2,6 @@ script;
 
 mod wallet_abi;
 
-use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 fn main() {
@@ -12,6 +11,6 @@ fn main() {
     caller.receive_funds {
         gas: 10000,
         coins: 42,
-        asset_id: ZERO_B256,
+        asset_id: b256::zero(),
     }();
 }

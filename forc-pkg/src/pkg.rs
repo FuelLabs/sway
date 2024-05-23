@@ -49,6 +49,7 @@ use sway_core::{
     transform::AttributeKind,
     write_dwarf, BuildTarget, Engines, FinalizedEntry, LspConfig,
 };
+use sway_core::{PrintAsm, PrintIr};
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::constants::{CORE, PRELUDE, STD};
 use sway_types::{Ident, Span, Spanned};
@@ -257,19 +258,12 @@ pub struct PrintOpts {
     /// Variables {path}, {line} {col} can be used in the provided format.
     /// An example for vscode would be: "vscode://file/{path}:{line}:{col}"
     pub dca_graph_url_format: Option<String>,
-    /// Print the finalized ASM.
-    ///
-    /// This is the state of the ASM with registers allocated and optimisations applied.
-    pub finalized_asm: bool,
     /// Print the generated ASM.
-    ///
-    /// This is the state of the ASM prior to performing register allocation and other ASM
-    /// optimisations.
-    pub intermediate_asm: bool,
+    pub asm: PrintAsm,
     /// Print the bytecode. This is the final output of the compiler.
     pub bytecode: bool,
     /// Print the generated Sway IR (Intermediate Representation).
-    pub ir: bool,
+    pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
     pub reverse_order: bool,
 }
@@ -1554,10 +1548,9 @@ pub fn sway_build_config(
     )
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
-    .with_print_finalized_asm(build_profile.print_finalized_asm)
-    .with_print_intermediate_asm(build_profile.print_intermediate_asm)
+    .with_print_asm(build_profile.print_asm)
     .with_print_bytecode(build_profile.print_bytecode)
-    .with_print_ir(build_profile.print_ir)
+    .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
     .with_metrics(build_profile.metrics_outfile.clone())
@@ -1603,7 +1596,7 @@ pub fn dependency_namespace(
 
     root_module.write(engines, |root_module| {
         root_module.is_external = true;
-        root_module.name = name.clone();
+        root_module.name.clone_from(&name);
         root_module.visibility = Visibility::Public;
     });
 
@@ -2070,19 +2063,20 @@ fn build_profile_from_opts(
     profile.name = selected_profile_name.into();
     profile.print_ast |= print.ast;
     if profile.print_dca_graph.is_none() {
-        profile.print_dca_graph = print.dca_graph.clone();
+        profile.print_dca_graph.clone_from(&print.dca_graph);
     }
     if profile.print_dca_graph_url_format.is_none() {
-        profile.print_dca_graph_url_format = print.dca_graph_url_format.clone();
+        profile
+            .print_dca_graph_url_format
+            .clone_from(&print.dca_graph_url_format);
     }
-    profile.print_ir |= print.ir;
-    profile.print_finalized_asm |= print.finalized_asm;
+    profile.print_ir |= print.ir.clone();
+    profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
-    profile.print_intermediate_asm |= print.intermediate_asm;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     if profile.metrics_outfile.is_none() {
-        profile.metrics_outfile = metrics_outfile.clone();
+        profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
     profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;

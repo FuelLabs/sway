@@ -39,6 +39,13 @@ impl AbstractProgram {
         }
     }
 
+    /// True if the [AbstractProgram] does not contain any instructions, or entries, or data in the data section.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.non_entries.is_empty()
+            && self.entries.is_empty()
+            && self.data_section.value_pairs.is_empty()
+    }
+
     pub(crate) fn into_allocated_program(
         mut self,
         fallback_fn: Option<crate::asm_lang::Label>,
@@ -284,12 +291,16 @@ impl AbstractProgram {
 
 impl std::fmt::Display for AbstractProgram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, ";; Program kind: {:?}", self.kind)?;
+        writeln!(f, ";; --- Entries ---")?;
         for entry in &self.entries {
-            writeln!(f, "{}", entry.ops)?;
+            writeln!(f, "{}\n", entry.ops)?;
         }
-        for func in &self.non_entries {
-            writeln!(f, "{func}")?;
+        writeln!(f, ";; --- Functions ---")?;
+        for function in &self.non_entries {
+            writeln!(f, "{function}\n")?;
         }
+        writeln!(f, ";; --- Data ---")?;
         write!(f, "{}", self.data_section)
     }
 }

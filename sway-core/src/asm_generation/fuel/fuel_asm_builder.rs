@@ -1716,6 +1716,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         stored_val: &Value,
     ) -> Result<(), CompileError> {
         let owning_span = self.md_mgr.val_to_span(self.context, *instr_val);
+
         if stored_val
             .get_type(self.context)
             .map_or(true, |ty| !self.is_copy_type(&ty))

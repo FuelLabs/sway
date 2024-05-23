@@ -31,11 +31,11 @@ pub fn module_verifier(
     Ok(Box::new(ModuleVerifierResult))
 }
 
-pub const MODULEVERIFIER_NAME: &str = "module_verifier";
+pub const MODULE_VERIFIER_NAME: &str = "module-verifier";
 
 pub fn create_module_verifier_pass() -> Pass {
     Pass {
-        name: MODULEVERIFIER_NAME,
+        name: MODULE_VERIFIER_NAME,
         descr: "Verify module",
         deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Analysis(module_verifier)),
@@ -816,16 +816,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
         // Just confirm `src_val` is a pointer.
-        let r = self
-            .get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
-            .map(|_| ());
-
-        if r.is_err() {
-            let meta = src_val.get_metadata(self.context).unwrap();
-            dbg!(&self.context.metadata[meta.0], &r);
-        }
-
-        r
+        self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
+            .map(|_| ())
     }
 
     fn verify_log(&self, log_val: &Value, log_ty: &Type, log_id: &Value) -> Result<(), IrError> {

@@ -35,11 +35,11 @@ impl<T> StorageKey<T> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, hash::sha256};
+    /// use std::hash::sha256;
     ///
     /// fn foo() {
-    ///     let my_key = StorageKey::<u64>::new(ZERO_B256, 0, sha256(ZERO_B256));
-    ///     assert(my_key.slot() == ZERO_B256);
+    ///     let my_key = StorageKey::<u64>::new(b256::zero(), 0, sha256(b256::zero()));
+    ///     assert(my_key.slot() == b256::zero());
     /// }
     /// ```
     pub fn new(slot: b256, offset: u64, field_id: b256) -> Self {
@@ -59,11 +59,11 @@ impl<T> StorageKey<T> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, hash::sha256};
+    /// use std::hash::sha256;
     ///
     /// fn foo() {
-    ///     let my_key = StorageKey::<u64>::new(ZERO_B256, 0, sha256(ZERO_B256));
-    ///     assert(my_key.slot() == ZERO_B256);
+    ///     let my_key = StorageKey::<u64>::new(b256::zero(), 0, sha256(b256::zero()));
+    ///     assert(my_key.slot() == b256::zero());
     /// }
     /// ```
     pub fn slot(self) -> b256 {
@@ -79,10 +79,10 @@ impl<T> StorageKey<T> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, hash::sha256};
+    /// use std::hash::sha256;
     ///
     /// fn foo() {
-    ///     let my_key = StorageKey::<u64>::new(ZERO_B256, 0, sha256(ZERO_B256));
+    ///     let my_key = StorageKey::<u64>::new(b256::zero(), 0, sha256(b256::zero()));
     ///     assert(my_key.offset() == 0);
     /// }
     /// ```
@@ -105,11 +105,11 @@ impl<T> StorageKey<T> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::{constants::ZERO_B256, hash::sha256};
+    /// use std::hash::sha256;
     ///
     /// fn foo() {
-    ///     let my_key = StorageKey::<u64>::new(ZERO_B256, 0, sha256(ZERO_B256));
-    ///     assert(my_key.field_id() == sha256(ZERO_B256));
+    ///     let my_key = StorageKey::<u64>::new(b256::zero(), 0, sha256(b256::zero()));
+    ///     assert(my_key.field_id() == sha256(b256::zero()));
     /// }
     /// ```
     pub fn field_id(self) -> b256 {

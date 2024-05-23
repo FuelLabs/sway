@@ -71,9 +71,8 @@ The following fields can be provided for a build-profile:
 * `print-ast` - Whether to print out the generated AST or not, defaults to false.
 * `print-dca-graph` - Whether to print out the computed Dead Code Analysis (DCA) graph (in GraphViz DOT format), defaults to false.
 * `print-dca-graph-url-format` - The URL format to be used in the generated DOT file, an example for VS Code would be: `vscode://file/{path}:{line}:{col}`.
-* `print-ir` - Whether to compile to bytecode (false) or to print out the generated IR (true), defaults to false.
-* `print-finalized-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.
-* `print-intermediate-asm` - Whether to compile to bytecode (false) or to print out the generated ASM (true), defaults to false.
+* `print-ir` - Whether to print out the generated Sway IR (Intermediate Representation) or not, defaults to false.
+* `print-asm` - Whether to print out the generated ASM (assembler), defaults to false.
 * `terse` - Terse mode. Limited warning and error output, defaults to false.
 * `time_phases` - Whether to output the time elapsed over each part of the compilation process, defaults to false.
 * `include_tests` -  Whether or not to include test functions in parsing, type-checking, and code generation. This is set to true by invocations like `forc test`, but defaults to false.
@@ -91,27 +90,24 @@ license = "Apache-2.0"
 name = "wallet_contract"
 
 [build-profile.debug]
-print-finalized-asm = false
-print-intermediate-asm = false
-print-ir = false
+print-asm = { virtual = false, allocated = false, final = true }
+print-ir = { initial = false, final = true, modified = false, passes = []}
 terse = false
 
 [build-profile.release]
-print-finalized-asm = false 
-print-intermediate-asm = false
-print-ir = false
+print-asm = { virtual = true, allocated = false, final = true }
+print-ir = { initial = true, final = false, modified = true, passes = ["dce", "sroa"]}
 terse = true
 ```
 
-Since `release` and `debug` implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (debug is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
+Since `release` and `debug` are implicitly included in every manifest file, you can use them by just passing `--release` or by not passing anything (`debug` is default). For using a user defined build profile there is `--build-profile <profile name>` option available to the relevant commands. (For an example see [forc-build](../forc/commands/forc_build.md))
 
-Note that providing the corresponding CLI options (like `--finalized-asm`) will override the selected build profile. For example if you pass both `--release` and `--finalized-asm`, release build profile is omitted and resulting build profile would have a structure like the following:
+Note that providing the corresponding CLI options (like `--asm`) will override the selected build profile. For example if you pass both `--release` and `--asm all`, `release` build profile is overridden and resulting build profile would have a structure like the following:
 
 ```toml
 print-ast = false
-print-ir = false
-print-finalized-asm = false
-print-intermediate-asm = false
+print-ir = { initial = false, final = false, modified = false, passes = []}
+print-asm = { virtual = true, allocated = true, final = true }
 terse = false
 time-phases = false
 include-tests = false

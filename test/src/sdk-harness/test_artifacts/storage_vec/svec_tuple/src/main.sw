@@ -104,7 +104,7 @@ impl MyContract for Contract {
 
     #[storage(write)]
     fn clear() {
-        storage.my_vec.clear();
+        let _ = storage.my_vec.clear();
     }
 
     #[storage(read, write)]

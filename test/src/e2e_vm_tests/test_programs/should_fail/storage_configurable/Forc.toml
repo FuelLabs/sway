@@ -6,4 +6,4 @@ license = "Apache-2.0"
 name = "storage_configurable"
 
 [dependencies]
-std = { path = "../../../../../../../sway-lib-std" }
+std = { path = "../../../../../../sway-lib-std" }

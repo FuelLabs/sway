@@ -155,11 +155,11 @@ pub fn function_print(context: &Context, function: Function) {
     );
 }
 
-pub const MODULEPRINTER_NAME: &str = "module_printer";
+pub const MODULE_PRINTER_NAME: &str = "module-printer";
 
 pub fn create_module_printer_pass() -> Pass {
     Pass {
-        name: MODULEPRINTER_NAME,
+        name: MODULE_PRINTER_NAME,
         descr: "Print module to stdout",
         deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Analysis(module_printer_pass)),
@@ -1120,6 +1120,17 @@ impl Constant {
                     .join(", ")
             ),
             ConstantValue::Reference(constant) => format!("&({})", constant.as_lit_string(context)),
+            ConstantValue::RawUntypedSlice(bytes) => {
+                format!(
+                    "{} 0x{}",
+                    self.ty.as_string(context),
+                    bytes
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<String>>()
+                        .concat()
+                )
+            }
         }
     }
 }

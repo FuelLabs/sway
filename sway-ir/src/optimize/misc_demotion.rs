@@ -10,7 +10,7 @@ use std::ops::Not;
 /// - Fuel ASM block arguments: These are assumed to be pointers for 'by-reference' values.
 /// - Fuel ASM block return values: These are also assumed to be pointers for 'by-reference'
 ///   values.
-/// - Fuel WIde binary operators: Demote binary operands bigger than 64 bits.
+/// - Fuel Wide binary operators: Demote binary operands bigger than 64 bits.
 use crate::{
     asm::AsmArg, AnalysisResults, BinaryOpKind, Constant, Context, FuelVmInstruction, Function,
     InstOp, InstructionInserter, IrError, Pass, PassMutability, Predicate, ScopedPass, Type,
@@ -19,12 +19,12 @@ use crate::{
 
 use rustc_hash::FxHashMap;
 
-pub const MISCDEMOTION_NAME: &str = "miscdemotion";
+pub const MISC_DEMOTION_NAME: &str = "misc-demotion";
 
 pub fn create_misc_demotion_pass() -> Pass {
     Pass {
-        name: MISCDEMOTION_NAME,
-        descr: "By-value miscellaneous demotion to by-reference.",
+        name: MISC_DEMOTION_NAME,
+        descr: "Miscellaneous by-value demotions to by-reference",
         deps: Vec::new(),
         runner: ScopedPass::FunctionPass(PassMutability::Transform(misc_demotion)),
     }
