@@ -257,7 +257,7 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
                         }
                     })?;
 
-                // TODO: Do this via forc-wallet once the functinoality is exposed.
+                // TODO: Do this via forc-wallet once the functionality is exposed.
                 let public_key = PublicKey::from(&secret_key);
                 let hashed = public_key.hash();
                 let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
