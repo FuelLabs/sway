@@ -20,8 +20,6 @@ pub use source_engine::*;
 pub mod span;
 pub use span::*;
 
-pub mod state;
-
 pub mod style;
 
 pub mod ast;

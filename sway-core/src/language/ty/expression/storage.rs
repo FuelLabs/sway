@@ -1,6 +1,6 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{state::StateIndex, Ident, Span, Spanned};
+use sway_types::{u256::U256, Ident, Span, Spanned};
 
 use crate::{engine_threading::*, type_system::TypeId};
 
@@ -8,17 +8,22 @@ use crate::{engine_threading::*, type_system::TypeId};
 #[derive(Clone, Debug)]
 pub struct TyStorageAccess {
     pub fields: Vec<TyStorageAccessDescriptor>,
-    pub(crate) namespace: Option<Ident>,
-    pub(crate) ix: StateIndex,
+    pub storage_field_names: Vec<String>,
+    pub struct_field_names: Vec<String>,
+    pub key: Option<U256>,
     pub storage_keyword_span: Span,
 }
 
 impl EqWithEngines for TyStorageAccess {}
 impl PartialEqWithEngines for TyStorageAccess {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.ix == other.ix
-            && self.fields.len() == other.fields.len()
+        self.fields.len() == other.fields.len()
             && self.fields.eq(&other.fields, ctx)
+            && self.storage_field_names.len() == other.storage_field_names.len()
+            && self.storage_field_names.eq(&other.storage_field_names)
+            && self.struct_field_names.len() == other.struct_field_names.len()
+            && self.struct_field_names.eq(&other.struct_field_names)
+            && self.key.eq(&other.key)
     }
 }
 
@@ -26,13 +31,15 @@ impl HashWithEngines for TyStorageAccess {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageAccess {
             fields,
-            ix,
-            namespace,
             storage_keyword_span,
+            storage_field_names,
+            struct_field_names,
+            key,
         } = self;
         fields.hash(state, engines);
-        ix.hash(state);
-        namespace.hash(state);
+        storage_field_names.hash(state);
+        struct_field_names.hash(state);
+        key.hash(state);
         storage_keyword_span.hash(state);
     }
 }

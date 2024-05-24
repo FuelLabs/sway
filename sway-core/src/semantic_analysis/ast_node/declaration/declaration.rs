@@ -460,6 +460,7 @@ impl TyDecl {
                 let mut fields_buf = Vec::with_capacity(fields.len());
                 for parsed::StorageField {
                     name,
+                    key,
                     initializer,
                     mut type_argument,
                     attributes,
@@ -484,6 +485,7 @@ impl TyDecl {
 
                     fields_buf.push(ty::TyStorageField {
                         name,
+                        key,
                         type_argument,
                         initializer,
                         span: field_span,

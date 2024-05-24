@@ -16,7 +16,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
 };
 use sway_ir::{Context, Module};
-use sway_types::state::StateIndex;
+use sway_types::u256::U256;
 
 impl ty::TyStorageDecl {
     pub(crate) fn get_initialized_storage_slots(
@@ -31,15 +31,14 @@ impl ty::TyStorageDecl {
             let storage_slots = self
                 .fields
                 .iter()
-                .enumerate()
-                .map(|(i, f)| {
+                .map(|f| {
                     f.get_initialized_storage_slots(
                         engines,
                         context,
                         md_mgr,
                         module,
-                        self.storage_namespace().as_ref().map(|id| id.as_str()),
-                        &StateIndex::new(i),
+                        vec![f.name.as_str().to_string()],
+                        f.key.clone(),
                     )
                 })
                 .filter_map(|s| s.map_err(|e| handler.emit_err(e)).ok())
@@ -58,8 +57,8 @@ impl ty::TyStorageField {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-        ns: Option<&str>,
-        ix: &StateIndex,
+        storage_field_names: Vec<String>,
+        key: Option<U256>,
     ) -> Result<Vec<StorageSlot>, CompileError> {
         compile_constant_expression_to_constant(
             engines,
@@ -70,7 +69,9 @@ impl ty::TyStorageField {
             None,
             &self.initializer,
         )
-        .map(|constant| serialize_to_storage_slots(&constant, context, ix, ns, &constant.ty, &[]))
+        .map(|constant| {
+            serialize_to_storage_slots(&constant, context, storage_field_names, key, &constant.ty)
+        })
     }
 }
 

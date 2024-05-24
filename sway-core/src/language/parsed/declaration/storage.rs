@@ -4,7 +4,7 @@ use crate::{
     transform,
     type_system::*,
 };
-use sway_types::{ident::Ident, span::Span, Spanned};
+use sway_types::{ident::Ident, span::Span, u256::U256, Spanned};
 
 #[derive(Debug, Clone)]
 /// A declaration of contract storage. Only valid within contract contexts.
@@ -39,6 +39,7 @@ impl Spanned for StorageDeclaration {
 #[derive(Debug, Clone)]
 pub struct StorageField {
     pub name: Ident,
+    pub key: Option<U256>,
     pub attributes: transform::AttributesMap,
     pub type_argument: TypeArgument,
     pub span: Span,

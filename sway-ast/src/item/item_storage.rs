@@ -15,6 +15,8 @@ impl Spanned for ItemStorage {
 #[derive(Clone, Debug, Serialize)]
 pub struct StorageField {
     pub name: Ident,
+    pub in_token: Option<InToken>,
+    pub key: Option<Literal>,
     pub colon_token: ColonToken,
     pub ty: Ty,
     pub eq_token: EqToken,
