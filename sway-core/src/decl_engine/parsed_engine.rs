@@ -9,7 +9,7 @@ use crate::{
 };
 
 use std::sync::Arc;
-use sway_types::{ModuleId, Spanned};
+use sway_types::{ProgramId, Spanned};
 
 use super::parsed_id::ParsedDeclId;
 
@@ -132,16 +132,16 @@ decl_engine_clear!(
     type_alias_slab, TypeAliasDeclaration;
 );
 
-macro_rules! decl_engine_clear_module {
+macro_rules! decl_engine_clear_program {
     ($(($slab:ident, $getter:expr)),* $(,)?) => {
         impl ParsedDeclEngine {
-            pub fn clear_module(&mut self, module_id: &ModuleId) {
+            pub fn clear_program(&mut self, program_id: &ProgramId) {
                 $(
                     self.$slab.retain(|_k, item| {
                         #[allow(clippy::redundant_closure_call)]
                         let span = $getter(item);
                         match span.source_id() {
-                            Some(source_id) => &source_id.module_id() != module_id,
+                            Some(source_id) => &source_id.program_id() != program_id,
                             None => true,
                         }
                     });
@@ -151,7 +151,7 @@ macro_rules! decl_engine_clear_module {
     };
 }
 
-decl_engine_clear_module!(
+decl_engine_clear_program!(
     (variable_slab, |item: &VariableDeclaration| item.name.span()),
     (function_slab, |item: &FunctionDeclaration| item.name.span()),
     (trait_slab, |item: &TraitDeclaration| item.name.span()),

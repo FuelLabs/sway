@@ -2693,7 +2693,7 @@ pub fn check(
                 let mut module = typed_program
                     .root
                     .namespace
-                    .module_id(engines)
+                    .program_id(engines)
                     .read(engines, |m| m.clone());
                 module.name = Some(Ident::new_no_span(pkg.name.clone()));
                 module.span = Some(

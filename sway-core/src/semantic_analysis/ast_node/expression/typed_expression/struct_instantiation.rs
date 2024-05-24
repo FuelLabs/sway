@@ -327,7 +327,7 @@ fn collect_struct_constructors(
     // Also, strictly speaking, we could also have public module functions that create structs,
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
-    namespace.module_id(engines).read(engines, |m| {
+    namespace.program_id(engines).read(engines, |m| {
         m.current_items()
             .get_items_for_type(engines, struct_type_id)
             .iter()

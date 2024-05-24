@@ -72,8 +72,8 @@ pub enum DirectoryError {
     PathFromUrlFailed { url: String },
     #[error("Unable to create span from path {:?}", path)]
     SpanFromPathFailed { path: String },
-    #[error("No module ID found for path {:?}", path)]
-    ModuleIdNotFound { path: String },
+    #[error("No program ID found for path {:?}", path)]
+    ProgramIdNotFound { path: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]

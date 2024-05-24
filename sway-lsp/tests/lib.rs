@@ -174,7 +174,7 @@ fn did_cache_test() {
         assert!(metrics.len() >= 2);
         for (path, metrics) in metrics {
             if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
-                assert!(metrics.reused_modules >= 1);
+                assert!(metrics.reused_programs >= 1);
             }
         }
         shutdown_and_exit(&mut service).await;
@@ -199,7 +199,7 @@ fn did_change_stress_test() {
             let metrics = lsp::metrics_request(&mut service, &uri).await;
             for (path, metrics) in metrics {
                 if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
-                    assert!(metrics.reused_modules >= 1);
+                    assert!(metrics.reused_programs >= 1);
                 }
             }
         }
