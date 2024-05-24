@@ -14,6 +14,11 @@ pub fn println_warning(txt: &str) {
     tracing::warn!("{}: {}", Colour::Yellow.paint("warning"), txt);
 }
 
+/// Prints a warning message to stdout with the yellow prefix "warning: " only in verbose mode.
+pub fn println_warning_verbose(txt: &str) {
+    tracing::debug!("{}: {}", Colour::Yellow.paint("warning"), txt);
+}
+
 /// Prints a warning message to stderr with the red prefix "error: ".
 pub fn println_error(txt: &str) {
     tracing::warn!("{}: {}", Colour::Red.paint("error"), txt);
