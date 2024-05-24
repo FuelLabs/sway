@@ -6,7 +6,7 @@ use crate::{
 use sway_ir::{Context, MetadataIndex, Metadatum, Value};
 use sway_types::{SourceId, Span};
 
-use std::{collections::HashMap, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 /// IR metadata needs to be consistent between IR generation (converting Spans, etc. to metadata)
 /// and ASM generation (converting the metadata back again).  Here we consolidate all of
@@ -23,14 +23,12 @@ pub(crate) struct MetadataManager {
     md_storage_op_cache: HashMap<MetadataIndex, StorageOperation>,
     md_inline_cache: HashMap<MetadataIndex, Inline>,
     md_test_decl_index_cache: HashMap<MetadataIndex, DeclId<TyFunctionDecl>>,
-    md_config_const_name_cache: HashMap<MetadataIndex, Rc<str>>,
 
     span_md_cache: HashMap<Span, MetadataIndex>,
     file_loc_md_cache: HashMap<SourceId, MetadataIndex>,
     storage_op_md_cache: HashMap<Purity, MetadataIndex>,
     inline_md_cache: HashMap<Inline, MetadataIndex>,
     test_decl_index_md_cache: HashMap<DeclId<TyFunctionDecl>, MetadataIndex>,
-    config_const_name_md_cache: HashMap<Rc<str>, MetadataIndex>,
 }
 
 #[derive(Clone, Copy)]
@@ -300,27 +298,6 @@ impl MetadataManager {
 
             Some(md_idx)
         })
-    }
-
-    pub(crate) fn config_const_name_to_md(
-        &mut self,
-        context: &mut Context,
-        name: &Rc<str>,
-    ) -> Option<MetadataIndex> {
-        self.config_const_name_md_cache
-            .get(name)
-            .copied()
-            .or_else(|| {
-                let md_idx = MetadataIndex::new_struct(
-                    context,
-                    "config_name",
-                    vec![Metadatum::String(name.to_string())],
-                );
-
-                self.config_const_name_md_cache.insert(name.clone(), md_idx);
-
-                Some(md_idx)
-            })
     }
 
     fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(

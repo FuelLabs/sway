@@ -25,7 +25,7 @@ pub fn parse<'eng>(
 // -------------------------------------------------------------------------------------------------
 
 mod ir_builder {
-    use slotmap::{DefaultKey, KeyData};
+    use slotmap::KeyData;
     use sway_types::{ident::Ident, span::Span, u256::U256, SourceEngine};
 
     type MdIdxRef = u64;
@@ -204,6 +204,7 @@ mod ir_builder {
                 / op_contract_call()
                 / op_get_elem_ptr()
                 / op_get_local()
+                / op_get_config()
                 / op_gtf()
                 / op_int_to_ptr()
                 / op_load()
@@ -318,6 +319,11 @@ mod ir_builder {
             rule op_get_local() -> IrAstOperation
                 = "get_local" _ ast_ty() comma() name:id() {
                     IrAstOperation::GetLocal(name)
+                }
+
+            rule op_get_config() -> IrAstOperation
+                = "get_config" _ ast_ty() comma() name:id() {
+                    IrAstOperation::GetConfig(name)
                 }
 
             rule op_gtf() -> IrAstOperation
@@ -935,7 +941,10 @@ mod ir_builder {
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-    use std::{collections::HashMap, iter::FromIterator};
+    use std::{
+        collections::{BTreeMap, HashMap},
+        iter::FromIterator,
+    };
 
     pub(super) fn build_context(
         ir_ast_mod: IrAstModule,
@@ -947,7 +956,7 @@ mod ir_builder {
         let module = Module::new(&mut ctx, ir_ast_mod.kind);
         let mut builder = IrBuilder {
             module,
-            configs_map: build_configs_map(&mut ctx, &module, &ir_ast_mod.configs, &md_map),
+            configs_map: build_configs_map(&mut ctx, &module, ir_ast_mod.configs, &md_map),
             md_map,
             unresolved_calls: Vec::new(),
         };
@@ -963,7 +972,7 @@ mod ir_builder {
 
     struct IrBuilder {
         module: Module,
-        configs_map: HashMap<String, String>,
+        configs_map: BTreeMap<String, String>,
         md_map: HashMap<MdIdxRef, MetadataIndex>,
         unresolved_calls: Vec<PendingCall>,
     }
@@ -1480,11 +1489,11 @@ mod ir_builder {
     fn build_configs_map(
         context: &mut Context,
         module: &Module,
-        configs: &Vec<IrAstConfig>,
+        configs: Vec<IrAstConfig>,
         md_map: &HashMap<MdIdxRef, MetadataIndex>,
-    ) -> HashMap<String, String> {
+    ) -> BTreeMap<String, String> {
         configs
-            .iter()
+            .into_iter()
             .map(|config| {
                 let opt_metadata = config
                     .metadata
@@ -1495,12 +1504,12 @@ mod ir_builder {
 
                 let config_val = ConfigurableContent {
                     name: config.value_name.clone(),
-                    ty: ty.clone(),
+                    ty,
                     ptr_ty: Type::new_ptr(context, ty),
-                    // TODO
-                    encoded_bytes: config.encoded_bytes.clone(),
+                    encoded_bytes: config.encoded_bytes,
                     // this will point to the correct function after all functions are compiled
                     decode_fn: Function(KeyData::default().into()),
+                    opt_metadata,
                 };
 
                 module.add_global_configurable(

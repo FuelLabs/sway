@@ -8,7 +8,7 @@ use crate::{
     context::Context,
     function::{Function, FunctionIterator},
     value::Value,
-    Type,
+    MetadataIndex, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -31,6 +31,7 @@ pub struct ConfigurableContent {
     pub ptr_ty: Type,
     pub encoded_bytes: Vec<u8>,
     pub decode_fn: Function,
+    pub opt_metadata: Option<MetadataIndex>,
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.

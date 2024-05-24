@@ -28,6 +28,7 @@ pub(crate) struct CompiledFunctionCache {
 }
 
 impl CompiledFunctionCache {
+    #[allow(clippy::too_many_arguments)]
     fn ty_function_decl_to_unique_function(
         &mut self,
         engines: &Engines,
@@ -103,8 +104,8 @@ impl CompiledFunctionCache {
                     md_mgr,
                     module,
                     &callee_fn_decl,
-                    &logged_types_map,
-                    &messages_types_map,
+                    logged_types_map,
+                    messages_types_map,
                     is_entry,
                     None,
                     self,

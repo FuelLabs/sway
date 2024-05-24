@@ -186,7 +186,7 @@ fn module_to_doc<'a>(
             module
                 .global_configurable
                 .values()
-                .map(|value| config_to_doc(context, md_namer, value))
+                .map(|value| config_to_doc(context, value))
                 .collect(),
         ),
     ))
@@ -216,11 +216,7 @@ fn module_to_doc<'a>(
     .append(Doc::text_line("}"))
 }
 
-fn config_to_doc(
-    context: &Context,
-    md_namer: &mut MetadataNamer,
-    configurable: &ConfigurableContent,
-) -> Doc {
+fn config_to_doc(context: &Context, configurable: &ConfigurableContent) -> Doc {
     let ty = configurable.ty.as_string(context);
     let bytes = configurable
         .encoded_bytes

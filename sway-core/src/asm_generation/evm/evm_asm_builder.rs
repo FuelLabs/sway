@@ -478,7 +478,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         todo!();
     }
 
-    fn compile_get_config(&mut self, instr_val: &Value, name: &String) {
+    fn compile_get_config(&mut self, instr_val: &Value, name: &str) {
         todo!();
     }
 

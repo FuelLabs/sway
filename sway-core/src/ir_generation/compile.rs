@@ -279,6 +279,7 @@ pub(crate) fn compile_constants(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn compile_configurables(
     engines: &Engines,
     context: &mut Context,
@@ -327,23 +328,12 @@ pub(crate) fn compile_configurables(
                 context,
                 module,
                 md_mgr,
-                &*decode_fn,
+                &decode_fn,
                 logged_types_map,
                 messages_types_map,
             )?;
-            // let decode_fn = compile_fn(
-            //     engines,
-            //     context,
-            //     md_mgr,
-            //     module,
-            //     &*decode_fn,
-            //     false,
-            //     None,
-            //     logged_types_map,
-            //     messages_types_map,
-            //     None,
-            // )
-            // .unwrap();
+
+            let opt_metadata = md_mgr.span_to_md(context, &decl.span);
 
             let name = decl_name.as_str().to_string();
             module.add_global_configurable(
@@ -355,6 +345,7 @@ pub(crate) fn compile_configurables(
                     ptr_ty,
                     encoded_bytes,
                     decode_fn,
+                    opt_metadata,
                 },
             );
         }

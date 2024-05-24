@@ -2807,9 +2807,10 @@ impl<'eng> FnCompiler<'eng> {
             .get_global_constant(context, &call_path.as_vec_string())
         {
             Ok(TerminatorValue::new(const_val, context))
-        } else if let Some(_) = self
+        } else if self
             .module
             .get_global_configurable(context, &call_path.suffix.to_string())
+            .is_some()
         {
             let name = call_path.suffix.to_string();
             let config_val = Value::new_instruction(

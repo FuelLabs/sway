@@ -272,7 +272,7 @@ trait Args {
 
 impl Args for RegId {
     fn print(&self) -> String {
-        format!("{}", print_reg(self.clone()))
+        print_reg(*self)
     }
 }
 impl Args for Imm06 {
@@ -297,12 +297,12 @@ impl Args for Imm24 {
 }
 impl Args for () {
     fn print(&self) -> String {
-        format!("")
+        String::new()
     }
 }
 impl<A: Args> Args for (A,) {
     fn print(&self) -> String {
-        format!("{}", self.0.print())
+        self.0.print()
     }
 }
 impl<A: Args, B: Args> Args for (A, B) {

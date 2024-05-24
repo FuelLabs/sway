@@ -48,6 +48,7 @@ pub(crate) struct AbstractProgram {
 }
 
 impl AbstractProgram {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         kind: ProgramKind,
         data_section: DataSection,
