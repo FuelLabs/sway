@@ -1065,6 +1065,12 @@ fn item_configurable_to_configurable_declarations(
         });
     }
 
+    if let Some(TreeType::Library) = context.program_type() {
+        handler.emit_err(CompileError::ConfigurableInLibrary {
+            span: item_configurable.span(),
+        });
+    }
+
     let declarations: Vec<ParsedDeclId<ConfigurableDeclaration>> = item_configurable
         .fields
         .into_inner()

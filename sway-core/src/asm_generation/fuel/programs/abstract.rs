@@ -6,7 +6,7 @@ use crate::{
             allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
             compiler_constants,
             data_section::{DataSection, Entry},
-            globals_section::{self, GlobalsSection},
+            globals_section::GlobalsSection,
             register_sequencer::RegisterSequencer,
         },
         ProgramKind,
@@ -14,7 +14,7 @@ use crate::{
     asm_lang::{
         allocated_ops::{AllocatedOpcode, AllocatedRegister},
         AllocatedAbstractOp, ConstantRegister, ControlFlowOp, Label, VirtualImmediate12,
-        VirtualImmediate18, VirtualImmediate24, VirtualOp,
+        VirtualImmediate18, VirtualImmediate24,
     },
     decl_engine::DeclRefFunction,
     ExperimentalFlags,

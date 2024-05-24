@@ -147,7 +147,7 @@ pub fn function_print(context: &Context, function: Function) {
         function_to_doc(
             context,
             &mut md_namer,
-            &mut Namer::new(function, GlobalNamer::new()),
+            &mut Namer::new(function),
             context.functions.get(function.0).unwrap()
         )
         .append(md_namer.to_doc(context))
@@ -171,7 +171,6 @@ fn module_to_doc<'a>(
     md_namer: &mut MetadataNamer,
     module: &'a ModuleContent,
 ) -> Doc {
-    let mut global_namer = GlobalNamer::new();
     Doc::line(Doc::Text(format!(
         "{} {{",
         match module.kind {
@@ -187,7 +186,7 @@ fn module_to_doc<'a>(
             module
                 .global_configurable
                 .values()
-                .map(|value| config_to_doc(context, md_namer, &mut global_namer, value))
+                .map(|value| config_to_doc(context, md_namer, value))
                 .collect(),
         ),
     ))
@@ -206,7 +205,7 @@ fn module_to_doc<'a>(
                     function_to_doc(
                         context,
                         md_namer,
-                        &mut Namer::new(*function, global_namer.clone()),
+                        &mut Namer::new(*function),
                         &context.functions[function.0],
                     )
                 })
@@ -220,7 +219,6 @@ fn module_to_doc<'a>(
 fn config_to_doc(
     context: &Context,
     md_namer: &mut MetadataNamer,
-    global_namer: &mut GlobalNamer,
     configurable: &ConfigurableContent,
 ) -> Doc {
     let ty = configurable.ty.as_string(context);
@@ -1147,45 +1145,16 @@ impl Constant {
     }
 }
 
-#[derive(Clone)]
-struct GlobalNamer {
-    names: HashMap<Value, String>,
-    next_configurable_idx: u64,
-}
-
-impl GlobalNamer {
-    fn new() -> Self {
-        GlobalNamer {
-            names: HashMap::new(),
-            next_configurable_idx: 0,
-        }
-    }
-
-    fn default_configurable_name(&mut self, value: &Value) -> String {
-        self.names.get(value).cloned().unwrap_or_else(|| {
-            let new_name = format!("c{}", self.next_configurable_idx);
-            self.next_configurable_idx += 1;
-            self.names.insert(*value, new_name.clone());
-            new_name
-        })
-    }
-}
-
 struct Namer {
     function: Function,
-
-    // To make things easier, each `Namer` also gets a `GlobalNamer` which includes all globally
-    // available names (such as config constants).
-    global_namer: GlobalNamer,
     names: HashMap<Value, String>,
     next_value_idx: u64,
 }
 
 impl Namer {
-    fn new(function: Function, global_namer: GlobalNamer) -> Self {
+    fn new(function: Function) -> Self {
         Namer {
             function,
-            global_namer,
             names: HashMap::new(),
             next_value_idx: 0,
         }

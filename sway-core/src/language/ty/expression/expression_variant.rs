@@ -1265,9 +1265,7 @@ impl UpdateConstantExpression for TyExpressionVariant {
                     *const_decl = Box::new(impl_const);
                 }
             }
-            ConfigurableExpression {
-                ref mut const_decl, ..
-            } => {
+            ConfigurableExpression { .. } => {
                 unreachable!()
             }
             VariableExpression { .. } => (),

@@ -88,7 +88,7 @@ impl ControlFlowNamespace {
         self.const_namespace.get(&const_decl.name().clone())
     }
 
-    pub(crate) fn get_configurable(&self, const_decl: &TyConfigurableDecl) -> Option<&NodeIndex> {
+    pub(crate) fn get_configurable(&self, _const_decl: &TyConfigurableDecl) -> Option<&NodeIndex> {
         todo!()
     }
 

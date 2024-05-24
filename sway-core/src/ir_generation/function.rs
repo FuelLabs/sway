@@ -1,5 +1,4 @@
 use super::{
-    compile::compile_function,
     convert::*,
     lexical_map::LexicalMap,
     storage::{add_to_b256, get_storage_key},
@@ -210,7 +209,7 @@ impl<'eng> FnCompiler<'eng> {
                     self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
                 }
-                ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
+                ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
                     unreachable!()
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
@@ -2808,7 +2807,7 @@ impl<'eng> FnCompiler<'eng> {
             .get_global_constant(context, &call_path.as_vec_string())
         {
             Ok(TerminatorValue::new(const_val, context))
-        } else if let Some(config_val) = self
+        } else if let Some(_) = self
             .module
             .get_global_configurable(context, &call_path.suffix.to_string())
         {

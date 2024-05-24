@@ -137,15 +137,15 @@ impl<'ir, 'eng> AsmBuilder for MidenVMAsmBuilder<'ir, 'eng> {
         })
     }
 
-    fn compile_configurable(&mut self, config: &ConfigurableContent) {
+    fn compile_configurable(&mut self, _config: &ConfigurableContent) {
         todo!()
     }
 
     fn finalize(
         self,
-        handler: &Handler,
-        build_config: Option<&BuildConfig>,
-        fallback_fn: Option<Label>,
+        _handler: &Handler,
+        _build_config: Option<&BuildConfig>,
+        _fallback_fn: Option<Label>,
     ) -> Result<FinalizedAsm, ErrorEmitted> {
         // take each procedure and serialize it with the format described [here](https://wiki.polygon.technology/docs/miden/user_docs/assembly/code_organization/#procedures)
         let mut program = self.finalize_procedure_map();

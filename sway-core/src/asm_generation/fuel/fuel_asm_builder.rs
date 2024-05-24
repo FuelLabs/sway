@@ -1,6 +1,6 @@
 use super::{
     globals_section::GlobalsSection,
-    programs::{AbstractEntry, AbstractProgram, FinalProgram},
+    programs::{AbstractEntry, AbstractProgram},
 };
 use crate::{
     asm_generation::{
@@ -23,7 +23,6 @@ use crate::{
     BuildConfig,
 };
 
-use fuel_vm::fuel_types::Immediate12;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},

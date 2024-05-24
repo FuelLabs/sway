@@ -8,7 +8,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::*,
-    AbiEncodeSizeHint, TypeInfo, UnifyCheck,
+    TypeInfo, UnifyCheck,
 };
 
 use super::{
@@ -22,7 +22,6 @@ use sway_error::error::CompileError;
 use sway_ir::{
     constant::{Constant, ConstantValue},
     context::Context,
-    metadata::combine as md_combine,
     module::Module,
     value::Value,
     InstOp, Instruction, Type, TypeContent,
@@ -190,7 +189,7 @@ pub(super) fn compile_constant_expression(
     module: Module,
     module_ns: Option<&namespace::Module>,
     function_compiler: Option<&FnCompiler>,
-    call_path: &CallPath,
+    _call_path: &CallPath,
     const_expr: &ty::TyExpression,
     is_configurable: bool,
 ) -> Result<Value, CompileError> {
@@ -350,8 +349,8 @@ fn const_eval_typed_expr(
                 }
             }
         }
-        ty::TyExpressionVariant::ConfigurableExpression { const_decl, .. } => {
-            todo!()
+        ty::TyExpressionVariant::ConfigurableExpression { span, .. } => {
+            return Err(ConstEvalError::CannotBeEvaluatedToConst { span: span.clone() });
         }
         ty::TyExpressionVariant::VariableExpression {
             name, call_path, ..

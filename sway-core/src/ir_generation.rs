@@ -10,7 +10,7 @@ mod types;
 use std::collections::HashMap;
 
 use sway_error::error::CompileError;
-use sway_ir::{Context, Function, Kind, MetadataIndex, Module};
+use sway_ir::{Context, Function, Kind, Module};
 use sway_types::{span::Span, Ident, Spanned};
 
 pub(crate) use purity::{check_function_purity, PurityEnv};
@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[derive(Default)]
-struct CompiledFunctionCache {
+pub(crate) struct CompiledFunctionCache {
     recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
 }
 

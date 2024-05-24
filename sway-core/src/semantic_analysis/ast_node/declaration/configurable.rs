@@ -9,15 +9,13 @@ use sway_types::{style::is_screaming_snake_case, Spanned};
 use crate::{
     decl_engine::{DeclEngineInsert, ReplaceDecls},
     language::{
-        parsed::{self, *},
-        ty::{self, TyConfigurableDecl, TyExpression},
+        parsed::*,
+        ty::{self, TyConfigurableDecl},
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    Engines, SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
+    SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
 };
-
-use self::ast_node::typed_expression::{monomorphize_method, resolve_method_name};
 
 impl ty::TyConfigurableDecl {
     pub fn type_check(
@@ -172,34 +170,6 @@ impl ty::TyConfigurableDecl {
             visibility,
             implementing_type: None,
         })
-    }
-
-    /// Used to create a stubbed out constant when the constant fails to
-    /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(
-        engines: &Engines,
-        decl: parsed::ConfigurableDeclaration,
-    ) -> TyConfigurableDecl {
-        let type_engine = engines.te();
-        let parsed::ConfigurableDeclaration {
-            name,
-            span,
-            visibility,
-            type_ascription,
-            ..
-        } = decl;
-        let call_path: CallPath = name.into();
-        TyConfigurableDecl {
-            call_path,
-            span,
-            attributes: Default::default(),
-            return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
-            type_ascription,
-            value: None,
-            visibility,
-            implementing_type: None,
-            decode_fn: None,
-        }
     }
 }
 

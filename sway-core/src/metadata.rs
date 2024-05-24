@@ -180,30 +180,6 @@ impl MetadataManager {
         })
     }
 
-    pub(crate) fn md_to_config_const_name(
-        &mut self,
-        context: &Context,
-        md_idx: Option<MetadataIndex>,
-    ) -> Option<Rc<str>> {
-        Self::for_each_md_idx(context, md_idx, |md_idx| {
-            self.md_config_const_name_cache
-                .get(&md_idx)
-                .cloned()
-                .or_else(|| {
-                    md_idx
-                        .get_content(context)
-                        .unwrap_struct("config_name", 1)
-                        .and_then(|fields| {
-                            fields[0].unwrap_string().map(|name| {
-                                let name: Rc<str> = Rc::from(name);
-                                self.md_config_const_name_cache.insert(md_idx, name.clone());
-                                name
-                            })
-                        })
-                })
-        })
-    }
-
     pub(crate) fn val_to_span(&mut self, context: &Context, value: Value) -> Option<Span> {
         self.md_to_span(context, value.get_metadata(context))
     }

@@ -2149,10 +2149,22 @@ impl ty::TyExpression {
                                 TyDecl::ConstantDecl(constant_decl) => {
                                     let constant_decl =
                                         engines.de().get_constant(&constant_decl.decl_id);
+                                    assert!(!constant_decl.is_configurable);
                                     return Err(handler.emit_err(
                                         CompileError::AssignmentToConstantOrConfigurable {
                                             decl_name: constant_decl.name().clone(),
-                                            is_configurable: constant_decl.is_configurable,
+                                            is_configurable: false,
+                                            lhs_span,
+                                        },
+                                    ));
+                                }
+                                TyDecl::ConfigurableDecl(configurable_decl) => {
+                                    let constant_decl =
+                                        engines.de().get_configurable(&configurable_decl.decl_id);
+                                    return Err(handler.emit_err(
+                                        CompileError::AssignmentToConstantOrConfigurable {
+                                            decl_name: constant_decl.name().clone(),
+                                            is_configurable: true,
                                             lhs_span,
                                         },
                                     ));

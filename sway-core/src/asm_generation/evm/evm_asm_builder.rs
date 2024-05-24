@@ -107,15 +107,15 @@ impl<'ir, 'eng> AsmBuilder for EvmAsmBuilder<'ir, 'eng> {
         self.compile_function(handler, function)
     }
 
-    fn compile_configurable(&mut self, config: &ConfigurableContent) {
+    fn compile_configurable(&mut self, _config: &ConfigurableContent) {
         todo!()
     }
 
     fn finalize(
         self,
-        handler: &Handler,
-        build_config: Option<&crate::BuildConfig>,
-        fallback_fn: Option<Label>,
+        _handler: &Handler,
+        _build_config: Option<&crate::BuildConfig>,
+        _fallback_fn: Option<Label>,
     ) -> Result<FinalizedAsm, ErrorEmitted> {
         let mut global_ops = Vec::new();
         let mut global_abi = Vec::new();
