@@ -151,7 +151,7 @@ impl<'eng> Context<'eng> {
     }
 
     fn verify_metadata(&self, md_idx: Option<MetadataIndex>) -> Result<(), IrError> {
-        // For now we check only that struct tags are valid identiers.
+        // For now we check only that struct tags are valid identifiers.
         if let Some(md_idx) = md_idx {
             match &self.metadata[md_idx.0] {
                 Metadatum::List(md_idcs) => {
