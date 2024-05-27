@@ -29,7 +29,7 @@ impl DocumentableType {
     pub fn friendly_type_name(&self) -> &str {
         match self {
             DocumentableType::Declared(decl) => decl.friendly_type_name(),
-            DocumentableType::Primitive(ty) => "primitive",
+            DocumentableType::Primitive(_) => "primitive",
         }
     }
 }
