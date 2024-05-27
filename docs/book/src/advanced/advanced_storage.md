@@ -12,6 +12,8 @@ For example, here we have a few common nested storage types declared in a `stora
 
 Please note that storage initialization is needed to do this.
 
+> **NOTE**: When importing a storage type, please be sure to use the glob operator i.e. `use std::storage::storage_vec::*`.
+
 ### Storing a `StorageVec<T>` in a `StorageMap<K, V>`
 
 The following demonstrates how to write to a `StorageVec<T>` that is nested in a `StorageMap<T, V>`:
