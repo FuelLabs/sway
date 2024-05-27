@@ -10,11 +10,11 @@ use std::{
 // where the size could be larger than the represented value.
 #[derive(Clone, Debug)]
 pub struct Entry {
-    value: Datum,
-    padding: Padding,
+    pub value: Datum,
+    pub padding: Padding,
     // It is assumed, for now, that only configuration-time constants have a name. Otherwise, this
     // is `None`.
-    name: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -213,7 +213,6 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Entry>,
-    pub config_map: BTreeMap<String, u32>,
 }
 
 impl DataSection {

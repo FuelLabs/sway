@@ -47,7 +47,7 @@ pub struct FinalizedEntry {
 /// the bytecode.
 pub struct CompiledBytecode {
     pub bytecode: Vec<u8>,
-    pub config_const_offsets: BTreeMap<String, u64>,
+    pub named_data_section_entries_offsets: BTreeMap<String, u64>,
 }
 
 impl FinalizedAsm {
@@ -73,13 +73,13 @@ impl FinalizedAsm {
                 } else {
                     Ok(CompiledBytecode {
                         bytecode: assembler.take(),
-                        config_const_offsets: BTreeMap::new(),
+                        named_data_section_entries_offsets: BTreeMap::new(),
                     })
                 }
             }
             InstructionSet::MidenVM { ops } => Ok(CompiledBytecode {
                 bytecode: ops.to_bytecode().into(),
-                config_const_offsets: Default::default(),
+                named_data_section_entries_offsets: Default::default(),
             }),
         }
     }
@@ -145,7 +145,7 @@ fn to_bytecode_mut(
         &ops_padded
     };
 
-    let mut buf = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
+    let mut bytecode = Vec::with_capacity(offset_to_data_section_in_bytes as usize);
 
     if build_config.print_bytecode {
         println!(";; --- START OF TARGET BYTECODE ---\n");
@@ -165,32 +165,35 @@ fn to_bytecode_mut(
         match fuel_op {
             Either::Right(data) => {
                 if build_config.print_bytecode {
-                    print!("{:#010x} ", buf.len());
+                    print!("{:#010x} ", bytecode.len());
                     println!("                                ;; {:?}", data);
                 }
+
                 // Static assert to ensure that we're only dealing with DataSectionOffsetPlaceholder,
                 // a one-word (8 bytes) data within the code. No other uses are known.
                 let _: [u8; 8] = data;
-                buf.extend(data.iter().cloned());
+
+                bytecode.extend(data.iter().cloned());
                 half_word_ix += 2;
             }
-            Either::Left(ops) => {
-                for op in ops {
+            Either::Left(instructions) => {
+                for instruction in instructions {
                     if build_config.print_bytecode {
-                        print!("{:#010x} ", buf.len());
-                        print_instruction(&op);
+                        print!("{:#010x} ", bytecode.len());
+                        print_instruction(&instruction);
                     }
+
                     if let Some(span) = &span {
                         source_map.insert(source_engine, half_word_ix, span);
                     }
 
-                    let bytes = op.to_bytes();
+                    let bytes = instruction.to_bytes();
 
                     if build_config.print_bytecode {
                         println!(";; {bytes:?}")
                     }
 
-                    buf.extend(bytes.iter());
+                    bytecode.extend(bytes.iter());
                     half_word_ix += 1;
                 }
             }
@@ -202,26 +205,28 @@ fn to_bytecode_mut(
     }
 
     assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
-    assert_eq!(buf.len(), offset_to_data_section_in_bytes as usize);
+    assert_eq!(bytecode.len(), offset_to_data_section_in_bytes as usize);
 
-    let config_offsets = data_section
-        .config_map
+    let named_data_section_entries_offsets = (&data_section)
+        .value_pairs
         .iter()
-        .map(|(name, id)| {
+        .enumerate()
+        .filter(|entry| entry.1.name.is_some())
+        .map(|(id, entry)| {
             (
-                name.clone(),
-                offset_to_data_section_in_bytes + data_section.raw_data_id_to_offset(*id) as u64,
+                entry.name.as_ref().unwrap().clone(),
+                offset_to_data_section_in_bytes
+                    + data_section.raw_data_id_to_offset(id as u32) as u64,
             )
         })
         .collect::<BTreeMap<String, u64>>();
 
     let mut data_section = data_section.serialize_to_bytes();
-
-    buf.append(&mut data_section);
+    bytecode.append(&mut data_section);
 
     CompiledBytecode {
-        bytecode: buf,
-        config_const_offsets: config_offsets,
+        bytecode,
+        named_data_section_entries_offsets,
     }
 }
 

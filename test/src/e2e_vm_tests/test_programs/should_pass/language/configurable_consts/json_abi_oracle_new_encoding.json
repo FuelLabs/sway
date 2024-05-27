@@ -184,6 +184,129 @@
       "type": "()",
       "typeId": 0,
       "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 5,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 3]",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 3]",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "B",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum ConfigurableEnum",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[4]",
+      "typeId": 7,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "a",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "b",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct ConfigurableStruct",
+      "typeId": 8,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u16",
+      "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u256",
+      "typeId": 10,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 11,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 12,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 13,
+      "typeParameters": null
     }
   ]
 }

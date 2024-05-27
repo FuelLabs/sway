@@ -51,7 +51,7 @@ pub fn generate_program_abi(
                 .collect();
             let logged_types = generate_logged_types(ctx, engines, types);
             let messages_types = generate_messages_types(ctx, engines, types);
-            let configurables = generate_configurables(ctx, engines, types);
+            let configurables = dbg!(generate_configurables(ctx, engines, types));
             program_abi::ProgramABI {
                 encoding,
                 types: types.to_vec(),
@@ -188,30 +188,26 @@ fn generate_configurables(
         .program
         .configurables
         .iter()
-        .map(
-            |TyConstantDecl {
-                 type_ascription, ..
-             }| program_abi::TypeDeclaration {
-                type_id: type_ascription.type_id.index(),
-                type_field: type_ascription.type_id.get_abi_type_str(
-                    &ctx.to_str_context(engines, false),
-                    engines,
-                    type_ascription.type_id,
-                ),
-                components: type_ascription.type_id.get_abi_type_components(
-                    ctx,
-                    engines,
-                    types,
-                    type_ascription.type_id,
-                ),
-                type_parameters: type_ascription.type_id.get_abi_type_parameters(
-                    ctx,
-                    engines,
-                    types,
-                    type_ascription.type_id,
-                ),
-            },
-        )
+        .map(|decl| program_abi::TypeDeclaration {
+            type_id: decl.type_ascription.type_id.index(),
+            type_field: decl.type_ascription.type_id.get_abi_type_str(
+                &ctx.to_str_context(engines, false),
+                engines,
+                decl.type_ascription.type_id,
+            ),
+            components: decl.type_ascription.type_id.get_abi_type_components(
+                ctx,
+                engines,
+                types,
+                decl.type_ascription.type_id,
+            ),
+            type_parameters: decl.type_ascription.type_id.get_abi_type_parameters(
+                ctx,
+                engines,
+                types,
+                decl.type_ascription.type_id,
+            ),
+        })
         .collect::<Vec<_>>();
 
     // Add the new types to `types`
@@ -221,26 +217,20 @@ fn generate_configurables(
     ctx.program
         .configurables
         .iter()
-        .map(
-            |TyConstantDecl {
-                 call_path,
-                 type_ascription,
-                 ..
-             }| program_abi::Configurable {
-                name: call_path.suffix.to_string(),
-                application: program_abi::TypeApplication {
-                    name: "".to_string(),
-                    type_id: type_ascription.type_id.index(),
-                    type_arguments: type_ascription.type_id.get_abi_type_arguments(
-                        ctx,
-                        engines,
-                        types,
-                        type_ascription.type_id,
-                    ),
-                },
-                offset: 0,
+        .map(|decl| program_abi::Configurable {
+            name: decl.call_path.suffix.to_string(),
+            application: program_abi::TypeApplication {
+                name: "".to_string(),
+                type_id: decl.type_ascription.type_id.index(),
+                type_arguments: decl.type_ascription.type_id.get_abi_type_arguments(
+                    ctx,
+                    engines,
+                    types,
+                    decl.type_ascription.type_id,
+                ),
             },
-        )
+            offset: 0,
+        })
         .collect()
 }
 

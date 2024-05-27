@@ -116,7 +116,7 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
                 let (decode_fn_label, _) = self.func_label_map.get(decode_fn).unwrap();
                 let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
                     encoded_bytes.clone(),
-                    None,
+                    Some(name.clone()),
                     None,
                 ));
 

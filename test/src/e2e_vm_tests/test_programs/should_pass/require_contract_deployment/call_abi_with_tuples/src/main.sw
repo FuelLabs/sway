@@ -6,7 +6,7 @@ use abi_with_tuples::{MyContract, Location, Person};
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xb351aff8258ce46d16a71be666dd2b0b09d72243105c51f4423765824e59cac9;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x17d3f0c7895e749e9aea69b1b1c3b3774e8a84add7275de61065dfa3b9785dee;
+const CONTRACT_ID = 0x062d640b30f9ebc4feb73ca73984f97dc3e8d820261a7bc83f96f25cb34609ef;
 
 fn main() -> bool {
     let the_abi = abi(MyContract, CONTRACT_ID);
