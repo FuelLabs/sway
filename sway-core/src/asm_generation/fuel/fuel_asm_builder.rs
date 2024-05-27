@@ -110,10 +110,10 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
             } => {
                 let size_in_bytes = ty.size(self.context).in_bytes();
 
-                self.globals_section.insert(&name, size_in_bytes);
-                let global = self.globals_section.get_by_name(&name).unwrap();
+                self.globals_section.insert(name, size_in_bytes);
+                let global = self.globals_section.get_by_name(name).unwrap();
 
-                let (decode_fn_label, _) = self.func_label_map.get(&decode_fn).unwrap();
+                let (decode_fn_label, _) = self.func_label_map.get(decode_fn).unwrap();
                 let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
                     encoded_bytes.clone(),
                     None,

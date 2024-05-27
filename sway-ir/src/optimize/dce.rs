@@ -219,7 +219,7 @@ pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Res
     // config decode fns
     for config in context.modules[module.0].global_configurable.iter() {
         if let crate::ConfigurableContent::V1 { decode_fn, .. } = config.1 {
-            grow_called_function_set(context, decode_fn.clone(), &mut called_fns);
+            grow_called_function_set(context, *decode_fn, &mut called_fns);
         }
     }
 

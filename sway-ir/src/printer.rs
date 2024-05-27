@@ -238,10 +238,10 @@ fn config_to_doc(
         ConfigurableContent::V1 {
             name,
             ty,
-            ptr_ty,
             encoded_bytes,
             decode_fn,
             opt_metadata,
+            ..
         } => {
             let ty = ty.as_string(context);
             let bytes = encoded_bytes
