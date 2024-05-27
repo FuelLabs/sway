@@ -2230,7 +2230,7 @@ pub fn contract_id(
     contract.id(salt, &contract.root(), &state_root)
 }
 
-/// Checks if there are conficting `Salt` declarations for the contract dependencies in the graph.
+/// Checks if there are conflicting `Salt` declarations for the contract dependencies in the graph.
 fn validate_contract_deps(graph: &Graph) -> Result<()> {
     // For each contract dependency node in the graph, check if there are conflicting salt
     // declarations.
@@ -2693,7 +2693,7 @@ pub fn check(
                 let mut module = typed_program
                     .root
                     .namespace
-                    .module_id(engines)
+                    .program_id(engines)
                     .read(engines, |m| m.clone());
                 module.name = Some(Ident::new_no_span(pkg.name.clone()));
                 module.span = Some(

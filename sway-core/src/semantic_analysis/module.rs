@@ -362,7 +362,7 @@ impl ty::TyModule {
                         auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
                     if let Ok(node) = fn_generator.generate_contract_entry(
                         engines,
-                        parsed.span.source_id().map(|x| x.module_id()),
+                        parsed.span.source_id().map(|x| x.program_id()),
                         &contract_fns,
                         fallback_fn,
                         handler,

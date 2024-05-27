@@ -458,11 +458,11 @@ pub fn input_predicate_data_length(index: u64) -> Option<u16> {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, inputs::input_message_sender};
+/// use std::inputs::input_message_sender;
 ///
 /// fn foo() {
 ///     let input_message_sender = input_message_sender(0);
-///     assert(input_message_sender != Address::from(ZERO_B256));
+///     assert(input_message_sender != Address::zero());
 /// }
 /// ```
 pub fn input_message_sender(index: u64) -> Address {
@@ -482,11 +482,11 @@ pub fn input_message_sender(index: u64) -> Address {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, inputs::input_message_recipient};
+/// use std::inputs::input_message_recipient;
 ///
 /// fn foo() {
 ///     let input_message_recipient = input_message_recipient(0);
-///     assert(input_message_recipient != Address::from(ZERO_B256));
+///     assert(input_message_recipient != Address::zero());
 /// }
 /// ```
 pub fn input_message_recipient(index: u64) -> Address {
@@ -506,11 +506,11 @@ pub fn input_message_recipient(index: u64) -> Address {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, inputs::input_message_nonce};
+/// use std::inputs::input_message_nonce;
 ///
 /// fn foo() {
 ///     let input_message_nonce = input_message_nonce(0);
-///     assert(input_message_nonce != b256::from(ZERO_B256));
+///     assert(input_message_nonce != b256::zero());
 /// }
 /// ```
 pub fn input_message_nonce(index: u64) -> b256 {

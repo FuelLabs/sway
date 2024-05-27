@@ -1,6 +1,6 @@
 contract;
 
-use std::{constants::ZERO_B256, hash::*};
+use std::hash::*;
 
 struct M {
     u: b256,
@@ -235,7 +235,7 @@ impl ExperimentalStorageTest for Contract {
 
     #[storage(read, write)]
     fn clears_storage_key() -> bool {
-        let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
+        let key = StorageKey::<u64>::zero();
         key.write(42);
 
         assert(key.read() == 42);

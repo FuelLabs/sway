@@ -7,8 +7,6 @@ use fuels::{
     types::{input::Input as SdkInput, Bits256},
 };
 
-use std::str::FromStr;
-
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 
 abigen!(

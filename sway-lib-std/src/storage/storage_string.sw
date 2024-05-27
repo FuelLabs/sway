@@ -36,7 +36,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// ```
     #[storage(read, write)]
     fn write_slice(self, string: String) {
-        write_slice(self.slot(), string.as_raw_slice());
+        write_slice(self.field_id(), string.as_raw_slice());
     }
 
     /// Constructs a `String` type from storage.
@@ -69,7 +69,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// ```
     #[storage(read)]
     fn read_slice(self) -> Option<String> {
-        match read_slice(self.slot()) {
+        match read_slice(self.field_id()) {
             Some(slice) => {
                 Some(String::from(slice))
             },
@@ -111,7 +111,7 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// ```
     #[storage(read, write)]
     fn clear(self) -> bool {
-        clear_slice(self.slot())
+        clear_slice(self.field_id())
     }
 
     /// Returns the length of `String` in storage.
@@ -143,6 +143,6 @@ impl StorableSlice<String> for StorageKey<StorageString> {
     /// ```
     #[storage(read)]
     fn len(self) -> u64 {
-        read::<u64>(self.slot(), 0).unwrap_or(0)
+        read::<u64>(self.field_id(), 0).unwrap_or(0)
     }
 }

@@ -151,7 +151,7 @@ impl<'eng> Context<'eng> {
     }
 
     fn verify_metadata(&self, md_idx: Option<MetadataIndex>) -> Result<(), IrError> {
-        // For now we check only that struct tags are valid identiers.
+        // For now we check only that struct tags are valid identifiers.
         if let Some(md_idx) = md_idx {
             match &self.metadata[md_idx.0] {
                 Metadatum::List(md_idcs) => {
@@ -816,16 +816,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
         // Just confirm `src_val` is a pointer.
-        let r = self
-            .get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
-            .map(|_| ());
-
-        if r.is_err() {
-            let meta = src_val.get_metadata(self.context).unwrap();
-            dbg!(&self.context.metadata[meta.0], &r);
-        }
-
-        r
+        self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
+            .map(|_| ())
     }
 
     fn verify_log(&self, log_val: &Value, log_ty: &Type, log_id: &Value) -> Result<(), IrError> {

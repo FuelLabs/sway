@@ -3,7 +3,6 @@ contract;
 use std::{
     asset::*,
     bytes::Bytes,
-    constants::ZERO_B256,
     context::balance_of,
     message::send_message,
     primitive_conversions::u64::*,

@@ -633,7 +633,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
                 if let Some(rendered) = rendered {
                     rendered
                 } else {
-                    panic!("Not sure what this value is -- is'nt a constant or a configurable. {val:?}")
+                    panic!("Not sure what this value is -- isn't a constant or a configurable. {val:?}")
                 }
             }
         }

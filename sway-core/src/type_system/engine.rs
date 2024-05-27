@@ -13,7 +13,7 @@ use sway_error::{
     handler::{ErrorEmitted, Handler},
     type_error::TypeError,
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, ModuleId, SourceId};
+use sway_types::{integer_bits::IntegerBits, span::Span, ProgramId, SourceId};
 
 use super::unify::unifier::UnifyKind;
 
@@ -67,14 +67,14 @@ impl TypeEngine {
         }
     }
 
-    /// Removes all data associated with `module_id` from the type engine.
-    pub fn clear_module(&mut self, module_id: &ModuleId) {
+    /// Removes all data associated with `program_id` from the type engine.
+    pub fn clear_program(&mut self, program_id: &ProgramId) {
         self.slab.retain(|_, tsi| match tsi.source_id {
-            Some(source_id) => &source_id.module_id() != module_id,
+            Some(source_id) => &source_id.program_id() != program_id,
             None => true,
         });
         self.id_map.write().retain(|tsi, _| match tsi.source_id {
-            Some(source_id) => &source_id.module_id() != module_id,
+            Some(source_id) => &source_id.program_id() != program_id,
             None => true,
         });
     }

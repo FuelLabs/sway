@@ -40,7 +40,7 @@ use sway_core::{
     BuildTarget, Engines, LspConfig, Namespace, Programs,
 };
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
-use sway_types::{ModuleId, SourceEngine, Spanned};
+use sway_types::{ProgramId, SourceEngine, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
@@ -66,7 +66,7 @@ pub struct Session {
     pub sync: SyncWorkspace,
     // Cached diagnostic results that require a lock to access. Readers will wait for writers to complete.
     pub diagnostics: Arc<RwLock<DiagnosticMap>>,
-    pub metrics: DashMap<ModuleId, PerformanceData>,
+    pub metrics: DashMap<ProgramId, PerformanceData>,
 }
 
 impl Default for Session {
@@ -123,9 +123,9 @@ impl Session {
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
     pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
         let path = self.sync.temp_dir()?;
-        let module_id = { engines.se().get_module_id(&path) };
-        if let Some(module_id) = module_id {
-            engines.clear_module(&module_id);
+        let program_id = { engines.se().get_program_id(&path) };
+        if let Some(program_id) = program_id {
+            engines.clear_program(&program_id);
         }
         Ok(())
     }
@@ -301,18 +301,18 @@ pub fn traverse(
         // This is due to the garbage collector removing types from the engines_clone
         // and they have not been re-added due to compilation being skipped.
         let engines_ref = session.engines.read();
-        let engines = if i == results_len - 1 && metrics.reused_modules > 0 {
+        let engines = if i == results_len - 1 && metrics.reused_programs > 0 {
             &*engines_ref
         } else {
             engines_clone
         };
 
-        // Convert the source_id to a path so we can use the manifest path to get the module_id.
+        // Convert the source_id to a path so we can use the manifest path to get the program_id.
         // This is used to store the metrics for the module.
         if let Some(source_id) = lexed.root.tree.span().source_id() {
             let path = engines.se().get_path(source_id);
-            let module_id = module_id_from_path(&path, engines)?;
-            session.metrics.insert(module_id, metrics);
+            let program_id = program_id_from_path(&path, engines)?;
+            session.metrics.insert(program_id, metrics);
         }
 
         // Get a reference to the typed program AST.
@@ -485,17 +485,17 @@ fn create_runnables(
     }
 }
 
-/// Resolves a `ModuleId` from a given `path` using the manifest directory.
-pub(crate) fn module_id_from_path(
+/// Resolves a `ProgramId` from a given `path` using the manifest directory.
+pub(crate) fn program_id_from_path(
     path: &PathBuf,
     engines: &Engines,
-) -> Result<ModuleId, DirectoryError> {
-    let module_id = sway_utils::find_parent_manifest_dir(path)
-        .and_then(|manifest_path| engines.se().get_module_id(&manifest_path))
-        .ok_or_else(|| DirectoryError::ModuleIdNotFound {
+) -> Result<ProgramId, DirectoryError> {
+    let program_id = sway_utils::find_parent_manifest_dir(path)
+        .and_then(|manifest_path| engines.se().get_program_id(&manifest_path))
+        .ok_or_else(|| DirectoryError::ProgramIdNotFound {
             path: path.to_string_lossy().to_string(),
         })?;
-    Ok(module_id)
+    Ok(program_id)
 }
 
 #[cfg(test)]

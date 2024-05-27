@@ -551,7 +551,7 @@ pub fn parsed_to_ast(
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
-    // LSP needs these to build its token map, and they are cleared by `clear_module` as
+    // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.
     if lsp_config.is_none() {
         engines.pe().clear();
@@ -705,7 +705,7 @@ pub fn compile_to_ast(
         // Check if we can re-use the data in the cache.
         if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
-            entry.programs.metrics.reused_modules += 1;
+            entry.programs.metrics.reused_programs += 1;
 
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
@@ -880,12 +880,12 @@ pub(crate) fn compile_ast_to_ir_to_asm(
             pass_group.append_group(create_o1_pass_group());
         }
         OptLevel::Opt0 => {
-            // Inlining is necessary until #4899 is resolved.
-            pass_group.append_pass(FN_INLINE_NAME);
-
             // We run a function deduplication pass that only removes duplicate
             // functions when everything, including the metadata are identical.
             pass_group.append_pass(FN_DEDUP_DEBUG_PROFILE_NAME);
+
+            // Inlining is necessary until #4899 is resolved.
+            pass_group.append_pass(FN_INLINE_NAME);
 
             // Do DCE so other optimizations run faster.
             pass_group.append_pass(FN_DCE_NAME);
