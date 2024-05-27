@@ -16,7 +16,7 @@ impl Spanned for ItemStorage {
 pub struct StorageField {
     pub name: Ident,
     pub in_token: Option<InToken>,
-    pub key: Option<Literal>,
+    pub key_expr: Option<Expr>,
     pub colon_token: ColonToken,
     pub ty: Ty,
     pub eq_token: EqToken,

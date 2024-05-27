@@ -11,7 +11,10 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpressionVariant},
+        ty::{
+            self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpressionVariant,
+            TyStorageField,
+        },
         *,
     },
     metadata::MetadataManager,
@@ -594,12 +597,19 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
-                let span_md_idx = md_mgr.span_to_md(context, &access.span());
+                let span_md_idx: Option<MetadataIndex> = md_mgr.span_to_md(context, &access.span());
+                let key = TyStorageField::get_key_expression_const(
+                    &access.key_expression.clone().map(|v| *v),
+                    self.engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                )?;
                 self.compile_storage_access(
                     context,
                     access.storage_field_names.clone(),
                     access.struct_field_names.clone(),
-                    access.key.clone(),
+                    key,
                     &access.fields,
                     span_md_idx,
                 )

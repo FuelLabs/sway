@@ -460,7 +460,7 @@ impl TyDecl {
                 let mut fields_buf = Vec::with_capacity(fields.len());
                 for parsed::StorageField {
                     name,
-                    key,
+                    key_expression,
                     initializer,
                     mut type_argument,
                     attributes,
@@ -483,9 +483,24 @@ impl TyDecl {
                     let initializer =
                         ty::TyExpression::type_check(handler, ctx.by_ref(), &initializer)?;
 
+                    let mut key_ty_expression = None;
+                    if let Some(key_expression) = key_expression {
+                        let mut key_ctx = ctx.with_type_annotation(type_engine.insert(
+                            engines,
+                            TypeInfo::B256,
+                            None,
+                        ));
+
+                        key_ty_expression = Some(ty::TyExpression::type_check(
+                            handler,
+                            key_ctx.by_ref(),
+                            &key_expression,
+                        )?);
+                    }
+
                     fields_buf.push(ty::TyStorageField {
                         name,
-                        key,
+                        key_expression: key_ty_expression,
                         type_argument,
                         initializer,
                         span: field_span,

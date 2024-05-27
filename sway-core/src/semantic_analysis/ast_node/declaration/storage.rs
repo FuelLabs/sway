@@ -3,7 +3,7 @@ use crate::{
     ir_generation::{
         const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
     },
-    language::ty,
+    language::ty::{self, TyExpression},
     metadata::MetadataManager,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
@@ -15,7 +15,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_ir::{Context, Module};
+use sway_ir::{ConstantValue, Context, Module};
 use sway_types::u256::U256;
 
 impl ty::TyStorageDecl {
@@ -31,16 +31,7 @@ impl ty::TyStorageDecl {
             let storage_slots = self
                 .fields
                 .iter()
-                .map(|f| {
-                    f.get_initialized_storage_slots(
-                        engines,
-                        context,
-                        md_mgr,
-                        module,
-                        vec![f.name.as_str().to_string()],
-                        f.key.clone(),
-                    )
-                })
+                .map(|f| f.get_initialized_storage_slots(engines, context, md_mgr, module))
                 .filter_map(|s| s.map_err(|e| handler.emit_err(e)).ok())
                 .flatten()
                 .collect::<Vec<_>>();
@@ -57,9 +48,9 @@ impl ty::TyStorageField {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-        storage_field_names: Vec<String>,
-        key: Option<U256>,
     ) -> Result<Vec<StorageSlot>, CompileError> {
+        let key =
+            Self::get_key_expression_const(&self.key_expression, engines, context, md_mgr, module)?;
         compile_constant_expression_to_constant(
             engines,
             context,
@@ -70,8 +61,45 @@ impl ty::TyStorageField {
             &self.initializer,
         )
         .map(|constant| {
-            serialize_to_storage_slots(&constant, context, storage_field_names, key, &constant.ty)
+            serialize_to_storage_slots(
+                &constant,
+                context,
+                vec![self.name.as_str().to_string()],
+                key,
+                &constant.ty,
+            )
         })
+    }
+
+    pub(crate) fn get_key_expression_const(
+        key_expression: &Option<TyExpression>,
+        engines: &Engines,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
+    ) -> Result<Option<U256>, CompileError> {
+        if let Some(key_expression) = key_expression {
+            let const_key = compile_constant_expression_to_constant(
+                engines,
+                context,
+                md_mgr,
+                module,
+                None,
+                None,
+                &key_expression,
+                true,
+            )?;
+            if let ConstantValue::B256(key) = const_key.value {
+                return Ok(Some(key));
+            } else {
+                return Err(CompileError::Internal(
+                    "Expected B256 key",
+                    key_expression.span.clone(),
+                ));
+            }
+        } else {
+            Ok(None)
+        }
     }
 }
 

@@ -2486,22 +2486,14 @@ fn storage_field_to_storage_field(
     attributes: AttributesMap,
 ) -> Result<StorageField, ErrorEmitted> {
     let span = storage_field.span();
-    let mut key_opt = None;
-    if let Some(key_literal) = storage_field.key {
-        let key_literal2 = literal_to_literal(context, handler, key_literal.clone())?;
-        if let Literal::U256(key) = key_literal2 {
-            key_opt = Some(key);
-        } else {
-            handler.emit_err(CompileError::Internal(
-                "Expected U256 key in storage field.",
-                key_literal.span(),
-            ));
-        }
+    let mut key_expr_opt = None;
+    if let Some(key_expr) = storage_field.key_expr {
+        key_expr_opt = Some(expr_to_expression(context, handler, engines, key_expr)?);
     }
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
-        key: key_opt,
+        key_expression: key_expr_opt,
         type_argument: ty_to_type_argument(context, handler, engines, storage_field.ty)?,
         span,
         initializer: expr_to_expression(context, handler, engines, storage_field.initializer)?,

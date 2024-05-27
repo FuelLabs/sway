@@ -5,8 +5,10 @@ use basic_storage_abi::*;
 const C1 = 1;
 const S5 = __to_str_array("aaaaa");
 
+const C1KEY: b256 = 0x933a534d4af4c376b0b569e8d8a2c62e635e26f403e124cb91d9c42e83d54373;
+
 storage {
-    c1: u64 = C1,
+    c1 in C1KEY: u8 = C1,
     str0: str[0] = __to_str_array(""),
     str1: str[1] = __to_str_array("a"),
     str2: str[2] = __to_str_array("aa"),
@@ -284,6 +286,9 @@ fn test_storage() {
     assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
     storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
     assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
+
+    assert_eq(storage.c1.slot(), C1KEY);
+    assert_eq(storage.const_b256.slot(), sha256("storage::const_b256"));
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to

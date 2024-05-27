@@ -4,7 +4,7 @@ use sway_error::{
     error::{CompileError, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{u256::U256, Ident, Named, Span, Spanned};
+use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
@@ -99,10 +99,10 @@ impl TyStorageDecl {
             match storage_fields.iter().find(|sf| &sf.name == first_field) {
                 Some(TyStorageField {
                     type_argument,
-                    key,
+                    key_expression,
                     name,
                     ..
-                }) => (type_argument.type_id, key, name),
+                }) => (type_argument.type_id, key_expression, name),
                 None => {
                     return Err(handler.emit_err(CompileError::StorageFieldDoesNotExist {
                         field_name: first_field.into(),
@@ -212,7 +212,7 @@ impl TyStorageDecl {
         Ok((
             TyStorageAccess {
                 fields: access_descriptors,
-                key: initial_field_key.clone(),
+                key_expression: initial_field_key.clone().map(|v| Box::new(v)),
                 storage_field_names: vec![initial_field_name.as_str().to_string()],
                 struct_field_names,
                 storage_keyword_span,
@@ -252,7 +252,7 @@ impl Spanned for TyStorageField {
 #[derive(Clone, Debug)]
 pub struct TyStorageField {
     pub name: Ident,
-    pub key: Option<U256>,
+    pub key_expression: Option<TyExpression>,
     pub type_argument: TypeArgument,
     pub initializer: TyExpression,
     pub(crate) span: Span,
@@ -272,15 +272,16 @@ impl HashWithEngines for TyStorageField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageField {
             name,
+            key_expression,
             type_argument,
             initializer,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             span: _,
             attributes: _,
-            key: _,
         } = self;
         name.hash(state);
+        key_expression.hash(state, engines);
         type_argument.hash(state, engines);
         initializer.hash(state, engines);
     }

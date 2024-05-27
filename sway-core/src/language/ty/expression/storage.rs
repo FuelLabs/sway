@@ -1,8 +1,10 @@
 use std::hash::{Hash, Hasher};
 
-use sway_types::{u256::U256, Ident, Span, Spanned};
+use sway_types::{Ident, Span, Spanned};
 
 use crate::{engine_threading::*, type_system::TypeId};
+
+use super::TyExpression;
 
 /// Describes the full storage access including all the subfields
 #[derive(Clone, Debug)]
@@ -10,7 +12,7 @@ pub struct TyStorageAccess {
     pub fields: Vec<TyStorageAccessDescriptor>,
     pub storage_field_names: Vec<String>,
     pub struct_field_names: Vec<String>,
-    pub key: Option<U256>,
+    pub key_expression: Option<Box<TyExpression>>,
     pub storage_keyword_span: Span,
 }
 
@@ -23,7 +25,7 @@ impl PartialEqWithEngines for TyStorageAccess {
             && self.storage_field_names.eq(&other.storage_field_names)
             && self.struct_field_names.len() == other.struct_field_names.len()
             && self.struct_field_names.eq(&other.struct_field_names)
-            && self.key.eq(&other.key)
+            && self.key_expression.eq(&other.key_expression, ctx)
     }
 }
 
@@ -34,12 +36,12 @@ impl HashWithEngines for TyStorageAccess {
             storage_keyword_span,
             storage_field_names,
             struct_field_names,
-            key,
+            key_expression,
         } = self;
         fields.hash(state, engines);
         storage_field_names.hash(state);
         struct_field_names.hash(state);
-        key.hash(state);
+        key_expression.hash(state, engines);
         storage_keyword_span.hash(state);
     }
 }
