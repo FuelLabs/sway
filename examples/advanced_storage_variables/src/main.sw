@@ -1,16 +1,22 @@
 contract;
 
-use std::{
-    bytes::Bytes,
-    constants::ZERO_B256,
-    hash::Hash,
-    storage::{
-        storage_bytes::*,
-        storage_string::*,
-        storage_vec::*,
-    },
-    string::String,
-};
+use std::{bytes::Bytes, string::String,};
+
+// ANCHOR: temp_hash_import
+use std::hash::Hash;
+// ANCHOR: temp_hash_import
+
+// ANCHOR: storage_vec_import
+use std::storage::storage_vec::*;
+// ANCHOR: storage_vec_import
+
+// ANCHOR: storage_bytes_import
+use std::storage::storage_bytes::*;
+// ANCHOR: storage_bytes_import
+
+// ANCHOR: storage_bytes_import
+use std::storage::storage_string::*;
+// ANCHOR: storage_bytes_import
 
 // ANCHOR: advanced_storage_declaration
 storage {
@@ -81,7 +87,7 @@ impl StorageExample for Contract {
             .push(0x0000000000000000000000000000000000000000000000000000000000000002);
 
         // Set will overwrite the element stored at the given index.
-        storage.storage_vec.set(2, ZERO_B256);
+        storage.storage_vec.set(2, b256::zero());
         // ANCHOR_END: vec_storage_write
     }
     #[storage(read, write)]
@@ -89,11 +95,11 @@ impl StorageExample for Contract {
         // ANCHOR: vec_storage_read
         // Method 1: Access the element directly
         // Note: get() does not remove the element from the vec.
-        let stored_val1: b256 = storage.storage_vec.get(0).unwrap().try_read().unwrap_or(ZERO_B256);
+        let stored_val1: b256 = storage.storage_vec.get(0).unwrap().try_read().unwrap_or(b256::zero());
 
         // Method 2: First get the storage key and then access the value.
         let storage_key2: StorageKey<b256> = storage.storage_vec.get(1).unwrap();
-        let stored_val2: b256 = storage_key2.try_read().unwrap_or(ZERO_B256);
+        let stored_val2: b256 = storage_key2.try_read().unwrap_or(b256::zero());
 
         // pop() will remove the last element from the vec.
         let length: u64 = storage.storage_vec.len();

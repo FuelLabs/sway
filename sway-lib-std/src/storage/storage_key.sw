@@ -19,10 +19,8 @@ impl<T> StorageKey<T> {
     /// # Examples
     ///
     /// ```sway
-    /// use std::constants::ZERO_B256;
-    ///
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);s
+    ///     let r: StorageKey<u64> = StorageKey::new(b256::zero(), 2, b256::zero());s
     ///     // Reads the third word from storage slot with key 0x000...0
     ///     let x: u64 = r.read();
     /// }
@@ -48,7 +46,7 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);
+    ///     let r: StorageKey<u64> = StorageKey::new(b256::zero(), 2, b256::zero());
     ///
     ///     // Reads the third word from storage slot with key 0x000...0
     ///     let x: Option<u64> = r.try_read();
@@ -76,7 +74,7 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);
+    ///     let r: StorageKey<u64> = StorageKey::new(b256::zero(), 2, b256::zero());
     ///
     ///     // Writes 42 at the third word of storage slot with key 0x000...0
     ///     let x = r.write(42);
@@ -97,7 +95,7 @@ impl<T> StorageKey<T> {
     ///
     /// ```sway
     /// fn foo() {
-    ///     let r: StorageKey<u64> = StorageKey::new(ZERO_B256, 2, ZERO_B256);
+    ///     let r: StorageKey<u64> = StorageKey::new(b256::zero(), 2, b256::zero());
     ///     r.write(42);
     ///
     ///     let cleared = r.clear();
@@ -115,15 +113,85 @@ impl<T> StorageKey<T> {
             clear::<T>(self.slot(), self.offset())
         }
     }
+
+    /// Returns the zero value for the `StorageKey<T>` type.
+    ///
+    /// # Returns
+    ///
+    /// * [StorageKey<T>] -> The zero value for the `StorageKey<T>` type.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_storage_key: StorageKey<u64> = StorageKey::zero();
+    ///     assert(zero_storage_key.slot() == b256::zero());
+    ///     assert(zero_storage_key.offset() == 0);
+    ///     assert(zero_storage_key.field_id() == b256::zero());
+    /// }
+    /// ```
+    pub fn zero() -> Self {
+        Self::new(b256::zero(), 0, b256::zero())
+    }
+
+    /// Returns whether a `StorageKey<T>` is set to zero.
+    ///
+    /// # Returns
+    ///
+    /// * [bool] -> True if the `StorageKey<T>` is set to zero, otherwise false.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// fn foo() {
+    ///     let zero_storage_key: StorageKey<u64> = StorageKey::zero();
+    ///     assert(zero_storage_key.is_zero());
+    /// }
+    /// ```
+    pub fn is_zero(self) -> bool {
+        self.slot() == b256::zero() && self.field_id() == b256::zero() && self.offset() == 0
+    }
 }
 
 #[test]
 fn test_storage_key_new() {
-    use ::constants::ZERO_B256;
     use ::assert::assert;
 
-    let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
-    assert(key.slot() == ZERO_B256);
+    let key = StorageKey::<u64>::new(b256::zero(), 0, b256::zero());
+    assert(key.slot() == b256::zero());
     assert(key.offset() == 0);
-    assert(key.field_id() == ZERO_B256);
+    assert(key.field_id() == b256::zero());
+
+    let key = StorageKey::<u64>::new(
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+        1,
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+    assert(
+        key
+            .slot() == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+    assert(key.offset() == 1);
+    assert(
+        key
+            .field_id() == 0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+}
+
+#[test]
+fn test_storage_key_zero() {
+    use ::assert::assert;
+
+    let key = StorageKey::<u64>::zero();
+    assert(key.is_zero());
+    assert(key.slot() == b256::zero());
+    assert(key.offset() == 0);
+    assert(key.field_id() == b256::zero());
+
+    let key = StorageKey::<u64>::new(
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+        1,
+        0x0000000000000000000000000000000000000000000000000000000000000001,
+    );
+    assert(!key.is_zero());
 }

@@ -1,12 +1,10 @@
 contract;
 
-use std::constants::ZERO_B256;
-
 // ANCHOR: basic_storage_declaration
 storage {
     var1: u64 = 1,
-    var2: b256 = ZERO_B256,
-    var3: Address = Address::from(ZERO_B256),
+    var2: b256 = b256::zero(),
+    var3: Address = Address::zero(),
     var4: Option<u8> = None,
 }
 // ANCHOR_END: basic_storage_declaration
@@ -37,8 +35,8 @@ impl StorageExample for Contract {
     fn get_something() {
         // ANCHOR: basic_storage_read
         let var1: u64 = storage.var1.read();
-        let var2: b256 = storage.var2.try_read().unwrap_or(ZERO_B256);
-        let var3: Address = storage.var3.try_read().unwrap_or(Address::from(ZERO_B256));
+        let var2: b256 = storage.var2.try_read().unwrap_or(b256::zero());
+        let var3: Address = storage.var3.try_read().unwrap_or(Address::zero());
         let var4: Option<u8> = storage.var4.try_read().unwrap_or(None);
         // ANCHOR_END: basic_storage_read
     }

@@ -1,7 +1,7 @@
 contract;
 
 storage {
-    b: b256 = std::constants::ZERO_B256,
+    b: b256 = b256::zero(),
 }
 
 abi MyContract {
