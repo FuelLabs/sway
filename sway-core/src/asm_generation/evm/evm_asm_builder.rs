@@ -107,9 +107,7 @@ impl<'ir, 'eng> AsmBuilder for EvmAsmBuilder<'ir, 'eng> {
         self.compile_function(handler, function)
     }
 
-    fn compile_configurable(&mut self, _config: &ConfigurableContent) {
-        todo!()
-    }
+    fn compile_configurable(&mut self, _config: &ConfigurableContent) {}
 
     fn finalize(
         self,
