@@ -160,14 +160,14 @@ impl ServerState {
                             Ok(()) => {
                                 let path = uri.to_file_path().unwrap();
                                 // Find the module id from the path
-                                match session::module_id_from_path(&path, &engines_clone) {
-                                    Ok(module_id) => {
+                                match session::program_id_from_path(&path, &engines_clone) {
+                                    Ok(program_id) => {
                                         // Use the module id to get the metrics for the module
-                                        if let Some(metrics) = session.metrics.get(&module_id) {
+                                        if let Some(metrics) = session.metrics.get(&program_id) {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                             // as the engines_clone might have cleared some types that are still in use.
-                                            if metrics.reused_modules == 0 {
+                                            if metrics.reused_programs == 0 {
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
                                                 mem::swap(

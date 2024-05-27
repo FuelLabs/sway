@@ -551,7 +551,7 @@ pub fn parsed_to_ast(
     check_should_abort(handler, retrigger_compilation.clone())?;
 
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
-    // LSP needs these to build its token map, and they are cleared by `clear_module` as
+    // LSP needs these to build its token map, and they are cleared by `clear_program` as
     // part of the LSP garbage collection functionality instead.
     if lsp_config.is_none() {
         engines.pe().clear();
@@ -705,7 +705,7 @@ pub fn compile_to_ast(
         // Check if we can re-use the data in the cache.
         if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {
             let mut entry = query_engine.get_programs_cache_entry(&path).unwrap();
-            entry.programs.metrics.reused_modules += 1;
+            entry.programs.metrics.reused_programs += 1;
 
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
