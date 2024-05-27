@@ -42,6 +42,7 @@ impl TyDecl {
                 let enum_decl = engines.pe().get_enum(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl)?;
             }
+            parsed::Declaration::EnumVariantDeclaration(_decl) => {}
             parsed::Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(decl_id);
                 let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl);
@@ -195,6 +196,10 @@ impl TyDecl {
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
 
                 decl
+            }
+            parsed::Declaration::EnumVariantDeclaration(_decl) => {
+                // Type-checked above as part of the containing enum.
+                unreachable!()
             }
             parsed::Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(&decl_id);
