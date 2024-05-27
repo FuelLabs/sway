@@ -8,7 +8,7 @@ use crate::{
     context::Context,
     function::{Function, FunctionIterator},
     value::Value,
-    MetadataIndex, Type,
+    Constant, MetadataIndex, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
@@ -30,6 +30,7 @@ pub enum ConfigurableContent {
         name: String,
         ty: Type,
         ptr_ty: Type,
+        constant: Constant,
         opt_metadata: Option<MetadataIndex>,
     },
     V1 {

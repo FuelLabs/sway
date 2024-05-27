@@ -40,7 +40,12 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
 
     // Data section is used by the rest of code gen to layout const memory.
     pub(super) data_section: DataSection,
-    globals_section: GlobalsSection,
+
+    // Globals will be allocated at SSP uninitialized (they will not be zeroed)
+    pub(super) globals_section: GlobalsSection,
+
+    // Maps configurable name to data id, only used by encoding v0
+    pub(super) configurable_v0_data_id: HashMap<String, DataId>,
 
     // Register sequencer dishes out new registers and labels.
     pub(super) reg_seqr: RegisterSequencer,
@@ -91,9 +96,11 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
 
     fn compile_configurable(&mut self, config: &ConfigurableContent) {
         match config {
-            ConfigurableContent::V0 {
-                name, ty, ptr_ty, ..
-            } => todo!(),
+            ConfigurableContent::V0 { name, constant, .. } => {
+                let entry = Entry::from_constant(self.context, constant, Some(name.clone()), None);
+                let dataid = self.data_section.insert_data_value(entry);
+                self.configurable_v0_data_id.insert(name.clone(), dataid);
+            }
             ConfigurableContent::V1 {
                 name,
                 ty,
@@ -288,6 +295,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             program_kind,
             data_section,
             globals_section: GlobalsSection::default(),
+            configurable_v0_data_id: HashMap::default(),
             reg_seqr,
             func_label_map: HashMap::new(),
             block_label_map: HashMap::new(),
@@ -1282,19 +1290,33 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     fn compile_get_config(&mut self, addr_val: &Value, name: &String) -> Result<(), CompileError> {
         let addr_reg = self.reg_seqr.next();
 
-        let g = self.globals_section.get_by_name(name).unwrap();
-        self.cur_bytecode.push(Op {
-            opcode: either::Either::Left(VirtualOp::ADDI(
-                addr_reg.clone(),
-                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                VirtualImmediate12 {
-                    value: g.offset_in_bytes as u16,
-                },
-            )),
-            comment: format!("configurable {} address", name),
-            owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
-        });
-        self.reg_map.insert(*addr_val, addr_reg);
+        // if configurable is at the global_section, it is v1
+        if let Some(g) = self.globals_section.get_by_name(name) {
+            self.cur_bytecode.push(Op {
+                opcode: either::Either::Left(VirtualOp::ADDI(
+                    addr_reg.clone(),
+                    VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                    VirtualImmediate12 {
+                        value: g.offset_in_bytes as u16,
+                    },
+                )),
+                comment: format!("configurable {} address", name),
+                owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
+            });
+            self.reg_map.insert(*addr_val, addr_reg);
+        } else {
+            // Otherwise is configurable with encoding v0 and must be at configurable_v0_data_id
+            let dataid = self.configurable_v0_data_id.get(name).unwrap();
+            self.cur_bytecode.push(Op {
+                opcode: either::Either::Left(VirtualOp::AddrDataId(
+                    addr_reg.clone(),
+                    dataid.clone(),
+                )),
+                comment: format!("configurable {} address", name),
+                owning_span: self.md_mgr.val_to_span(self.context, *addr_val),
+            });
+            self.reg_map.insert(*addr_val, addr_reg);
+        }
 
         Ok(())
     }

@@ -306,7 +306,7 @@ pub(crate) fn compile_configurables(
             .unwrap();
             let ptr_ty = Type::new_ptr(context, ty);
 
-            let v = super::const_eval::compile_constant_expression_to_constant(
+            let constant = super::const_eval::compile_constant_expression_to_constant(
                 engines,
                 context,
                 md_mgr,
@@ -318,8 +318,10 @@ pub(crate) fn compile_configurables(
             )
             .unwrap();
 
+            let opt_metadata = md_mgr.span_to_md(context, &decl.span);
+
             if context.experimental.new_encoding {
-                let encoded_bytes = match v.value {
+                let encoded_bytes = match constant.value {
                     ConstantValue::RawUntypedSlice(bytes) => bytes,
                     _ => unreachable!(),
                 };
@@ -335,8 +337,6 @@ pub(crate) fn compile_configurables(
                     messages_types_map,
                 )?;
 
-                let opt_metadata = md_mgr.span_to_md(context, &decl.span);
-
                 let name = decl_name.as_str().to_string();
                 module.add_global_configurable(
                     context,
@@ -351,19 +351,18 @@ pub(crate) fn compile_configurables(
                     },
                 );
             } else {
-                dbg!(v.value);
-                todo!();
-                // let name = decl_name.as_str().to_string();
-                // module.add_global_configurable(
-                //     context,
-                //     name.clone(),
-                //     ConfigurableContent::V0 {
-                //         name,
-                //         ty,
-                //         ptr_ty,
-                //         opt_metadata,
-                //     },
-                // );
+                let name = decl_name.as_str().to_string();
+                module.add_global_configurable(
+                    context,
+                    name.clone(),
+                    ConfigurableContent::V0 {
+                        name,
+                        ty,
+                        ptr_ty,
+                        constant,
+                        opt_metadata,
+                    },
+                );
             }
         }
     }

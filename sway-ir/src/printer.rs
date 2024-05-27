@@ -186,7 +186,7 @@ fn module_to_doc<'a>(
             module
                 .global_configurable
                 .values()
-                .map(|value| config_to_doc(context, value))
+                .map(|value| config_to_doc(context, value, md_namer))
                 .collect(),
         ),
     ))
@@ -216,12 +216,25 @@ fn module_to_doc<'a>(
     .append(Doc::text_line("}"))
 }
 
-fn config_to_doc(context: &Context, configurable: &ConfigurableContent) -> Doc {
+fn config_to_doc(
+    context: &Context,
+    configurable: &ConfigurableContent,
+    md_namer: &mut MetadataNamer,
+) -> Doc {
     match configurable {
-        ConfigurableContent::V0 { name, ty, .. } => {
-            let ty = ty.as_string(context);
-            Doc::line(Doc::text(format!("{} = config {}", name, ty,)))
-        }
+        ConfigurableContent::V0 {
+            name,
+            constant,
+            opt_metadata,
+            ..
+        } => Doc::line(
+            Doc::text(format!(
+                "{} = config {}",
+                name,
+                constant.as_lit_string(context)
+            ))
+            .append(md_namer.md_idx_to_doc(context, opt_metadata)),
+        ),
         ConfigurableContent::V1 {
             name,
             ty,
@@ -236,13 +249,16 @@ fn config_to_doc(context: &Context, configurable: &ConfigurableContent) -> Doc {
                 .map(|b| format!("{b:02x}"))
                 .collect::<Vec<String>>()
                 .concat();
-            Doc::line(Doc::text(format!(
-                "{} = config {}, {}, 0x{}",
-                name,
-                ty,
-                decode_fn.get_name(context),
-                bytes,
-            )))
+            Doc::line(
+                Doc::text(format!(
+                    "{} = config {}, {}, 0x{}",
+                    name,
+                    ty,
+                    decode_fn.get_name(context),
+                    bytes,
+                ))
+                .append(md_namer.md_idx_to_doc(context, opt_metadata)),
+            )
         }
     }
 }
