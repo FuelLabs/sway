@@ -21,6 +21,23 @@ pub enum TraitItem {
     Error(Box<[Span]>, ErrorEmitted),
 }
 
+impl EqWithEngines for TraitItem {}
+impl PartialEqWithEngines for TraitItem {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (TraitItem::TraitFn(lhs), TraitItem::TraitFn(rhs)) => {
+                PartialEqWithEngines::eq(lhs, rhs, ctx)
+            }
+            (TraitItem::Constant(lhs), TraitItem::Constant(rhs)) => {
+                PartialEqWithEngines::eq(lhs, rhs, ctx)
+            }
+            (TraitItem::Type(lhs), TraitItem::Type(rhs)) => PartialEqWithEngines::eq(lhs, rhs, ctx),
+            (TraitItem::Error(lhs, _), TraitItem::Error(rhs, _)) => lhs.eq(rhs),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub name: Ident,
@@ -31,6 +48,19 @@ pub struct TraitDeclaration {
     pub supertraits: Vec<Supertrait>,
     pub visibility: Visibility,
     pub span: Span,
+}
+
+impl EqWithEngines for TraitDeclaration {}
+impl PartialEqWithEngines for TraitDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name.eq(&other.name)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
+            && self.attributes.eq(&other.attributes)
+            && self.interface_surface.eq(&other.interface_surface, ctx)
+            && PartialEqWithEngines::eq(&self.methods, &other.methods, ctx)
+            && self.supertraits.eq(&other.supertraits, ctx)
+            && self.visibility.eq(&other.visibility)
+    }
 }
 
 impl Named for TraitDeclaration {
@@ -96,6 +126,15 @@ pub struct TraitTypeDeclaration {
     pub attributes: transform::AttributesMap,
     pub ty_opt: Option<TypeArgument>,
     pub span: Span,
+}
+
+impl EqWithEngines for TraitTypeDeclaration {}
+impl PartialEqWithEngines for TraitTypeDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name
+            && self.attributes == other.attributes
+            && self.ty_opt.eq(&other.ty_opt, ctx)
+    }
 }
 
 impl Named for TraitTypeDeclaration {

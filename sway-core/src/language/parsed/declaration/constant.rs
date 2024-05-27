@@ -1,5 +1,7 @@
 use crate::{
-    engine_threading::DebugWithEngines,
+    engine_threading::{
+        DebugWithEngines, EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
     language::{parsed::Expression, Visibility},
     transform, Engines, TypeArgument,
 };
@@ -14,6 +16,19 @@ pub struct ConstantDeclaration {
     pub visibility: Visibility,
     pub is_configurable: bool,
     pub span: Span,
+}
+
+impl EqWithEngines for ConstantDeclaration {}
+impl PartialEqWithEngines for ConstantDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name
+            && self.attributes == other.attributes
+            && self.type_ascription.eq(&other.type_ascription, ctx)
+            && self.value.eq(&other.value, ctx)
+            && self.visibility == other.visibility
+            && self.is_configurable == other.is_configurable
+            && self.span == other.span
+    }
 }
 
 impl Named for ConstantDeclaration {
