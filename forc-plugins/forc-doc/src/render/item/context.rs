@@ -294,8 +294,11 @@ impl DocImplTrait {
         }
     }
 
+    // If the trait name is the same as the declaration's name, it's an inherent implementation.
+    // Otherwise, it's a trait implementation.
     pub fn is_inherent(&self) -> bool {
         self.short_name() == self.impl_trait.implementing_for.span.as_str()
+            || self.short_name() == "r#Self"
     }
 }
 

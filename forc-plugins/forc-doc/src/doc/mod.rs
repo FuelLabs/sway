@@ -18,7 +18,7 @@ use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
     Engines,
 };
-use sway_types::{BaseIdent, Spanned};
+use sway_types::BaseIdent;
 
 mod descriptor;
 pub mod module;
@@ -97,7 +97,7 @@ impl Documentation {
                 | DocumentableType::Declared(TyDecl::EnumDecl(_))
                 | DocumentableType::Primitive(_) => {
                     let item_name = doc.item_header.item_name.as_str().to_string();
-                    for (impl_trait, module_info) in impl_traits.iter_mut() {
+                    for (impl_trait, _) in impl_traits.iter_mut() {
                         // Check if this implementation is for this struct/enum.
                         if item_name.as_str() == impl_trait.implementing_for.span.as_str() {
                             let module_info_override = if let Some(decl_module_info) =
@@ -111,20 +111,16 @@ impl Documentation {
                                 None
                             };
 
-                            if item_name.as_str() == impl_trait.trait_name.suffix.span().as_str() {
-                                // If the trait name is the same as the declaration's name, it's an inherent implementation.
-                                inherent_impl_vec.push(DocImplTrait {
-                                    impl_for_module: module_info.clone(),
-                                    impl_trait: impl_trait.clone(),
-                                    module_info_override: module_info_override.clone(),
-                                });
+                            let doc_impl_trait = DocImplTrait {
+                                impl_for_module: doc.module_info.clone(),
+                                impl_trait: impl_trait.clone(),
+                                module_info_override,
+                            };
+
+                            if doc_impl_trait.is_inherent() {
+                                inherent_impl_vec.push(doc_impl_trait);
                             } else {
-                                // Otherwise, it's an implementation for a trait.
-                                impl_trait_vec.push(DocImplTrait {
-                                    impl_for_module: module_info.clone(),
-                                    impl_trait: impl_trait.clone(),
-                                    module_info_override,
-                                });
+                                impl_trait_vec.push(doc_impl_trait);
                             }
                         }
                     }
