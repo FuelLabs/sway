@@ -2,7 +2,7 @@ use fuel_abi_types::abi::program as program_abi;
 use std::collections::HashSet;
 
 use crate::{
-    language::ty::{TyConstantDecl, TyFunctionDecl, TyProgram, TyProgramKind},
+    language::ty::{TyFunctionDecl, TyProgram, TyProgramKind},
     transform::AttributesMap,
     Engines, TypeId, TypeInfo, TypeParameter,
 };

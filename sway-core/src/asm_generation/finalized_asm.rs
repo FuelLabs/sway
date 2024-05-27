@@ -207,7 +207,7 @@ fn to_bytecode_mut(
     assert_eq!(half_word_ix * 4, offset_to_data_section_in_bytes as usize);
     assert_eq!(bytecode.len(), offset_to_data_section_in_bytes as usize);
 
-    let named_data_section_entries_offsets = (&data_section)
+    let named_data_section_entries_offsets = data_section
         .value_pairs
         .iter()
         .enumerate()
