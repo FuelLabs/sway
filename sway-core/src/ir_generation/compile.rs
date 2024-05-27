@@ -317,37 +317,54 @@ pub(crate) fn compile_configurables(
                 false,
             )
             .unwrap();
-            let encoded_bytes = match v.value {
-                ConstantValue::RawUntypedSlice(bytes) => bytes,
-                _ => unreachable!(),
-            };
 
-            let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
-            let decode_fn = cache.ty_function_decl_to_unique_function(
-                engines,
-                context,
-                module,
-                md_mgr,
-                &decode_fn,
-                logged_types_map,
-                messages_types_map,
-            )?;
+            if context.experimental.new_encoding {
+                let encoded_bytes = match v.value {
+                    ConstantValue::RawUntypedSlice(bytes) => bytes,
+                    _ => unreachable!(),
+                };
 
-            let opt_metadata = md_mgr.span_to_md(context, &decl.span);
+                let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
+                let decode_fn = cache.ty_function_decl_to_unique_function(
+                    engines,
+                    context,
+                    module,
+                    md_mgr,
+                    &decode_fn,
+                    logged_types_map,
+                    messages_types_map,
+                )?;
 
-            let name = decl_name.as_str().to_string();
-            module.add_global_configurable(
-                context,
-                name.clone(),
-                ConfigurableContent {
-                    name,
-                    ty,
-                    ptr_ty,
-                    encoded_bytes,
-                    decode_fn,
-                    opt_metadata,
-                },
-            );
+                let opt_metadata = md_mgr.span_to_md(context, &decl.span);
+
+                let name = decl_name.as_str().to_string();
+                module.add_global_configurable(
+                    context,
+                    name.clone(),
+                    ConfigurableContent::V1 {
+                        name,
+                        ty,
+                        ptr_ty,
+                        encoded_bytes,
+                        decode_fn,
+                        opt_metadata,
+                    },
+                );
+            } else {
+                dbg!(v.value);
+                todo!();
+                // let name = decl_name.as_str().to_string();
+                // module.add_global_configurable(
+                //     context,
+                //     name.clone(),
+                //     ConfigurableContent::V0 {
+                //         name,
+                //         ty,
+                //         ptr_ty,
+                //         opt_metadata,
+                //     },
+                // );
+            }
         }
     }
 

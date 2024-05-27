@@ -25,13 +25,21 @@ pub struct ModuleContent {
 }
 
 #[derive(Clone, Debug)]
-pub struct ConfigurableContent {
-    pub name: String,
-    pub ty: Type,
-    pub ptr_ty: Type,
-    pub encoded_bytes: Vec<u8>,
-    pub decode_fn: Function,
-    pub opt_metadata: Option<MetadataIndex>,
+pub enum ConfigurableContent {
+    V0 {
+        name: String,
+        ty: Type,
+        ptr_ty: Type,
+        opt_metadata: Option<MetadataIndex>,
+    },
+    V1 {
+        name: String,
+        ty: Type,
+        ptr_ty: Type,
+        encoded_bytes: Vec<u8>,
+        decode_fn: Function,
+        opt_metadata: Option<MetadataIndex>,
+    },
 }
 
 /// The different 'kinds' of Sway module: `Contract`, `Library`, `Predicate` or `Script`.

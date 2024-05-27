@@ -90,68 +90,81 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
     }
 
     fn compile_configurable(&mut self, config: &ConfigurableContent) {
-        let size_in_bytes = config.ty.size(self.context).in_bytes();
+        match config {
+            ConfigurableContent::V0 {
+                name, ty, ptr_ty, ..
+            } => todo!(),
+            ConfigurableContent::V1 {
+                name,
+                ty,
+                encoded_bytes,
+                decode_fn,
+                ..
+            } => {
+                let size_in_bytes = ty.size(self.context).in_bytes();
 
-        self.globals_section.insert(&config.name, size_in_bytes);
-        let global = self.globals_section.get_by_name(&config.name).unwrap();
+                self.globals_section.insert(&name, size_in_bytes);
+                let global = self.globals_section.get_by_name(&name).unwrap();
 
-        let (decode_fn_label, _) = self.func_label_map.get(&config.decode_fn).unwrap();
-        let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
-            config.encoded_bytes.clone(),
-            None,
-            None,
-        ));
+                let (decode_fn_label, _) = self.func_label_map.get(&decode_fn).unwrap();
+                let dataid = self.data_section.insert_data_value(Entry::new_byte_array(
+                    encoded_bytes.clone(),
+                    None,
+                    None,
+                ));
 
-        self.before_entries.push(Op {
-            opcode: Either::Left(VirtualOp::AddrDataId(
-                VirtualRegister::Constant(ConstantRegister::FuncArg0),
-                dataid,
-            )),
-            comment: format!("ptr to {} default value", config.name),
-            owning_span: None,
-        });
+                self.before_entries.push(Op {
+                    opcode: Either::Left(VirtualOp::AddrDataId(
+                        VirtualRegister::Constant(ConstantRegister::FuncArg0),
+                        dataid,
+                    )),
+                    comment: format!("ptr to {} default value", name),
+                    owning_span: None,
+                });
 
-        self.before_entries.push(Op {
-            opcode: Either::Left(VirtualOp::ADDI(
-                VirtualRegister::Constant(ConstantRegister::FuncArg1),
-                VirtualRegister::Constant(ConstantRegister::Zero),
-                VirtualImmediate12 {
-                    value: config.encoded_bytes.len() as u16,
-                },
-            )),
-            comment: format!("length of {} default value", config.name),
-            owning_span: None,
-        });
+                self.before_entries.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        VirtualRegister::Constant(ConstantRegister::FuncArg1),
+                        VirtualRegister::Constant(ConstantRegister::Zero),
+                        VirtualImmediate12 {
+                            value: encoded_bytes.len() as u16,
+                        },
+                    )),
+                    comment: format!("length of {} default value", name),
+                    owning_span: None,
+                });
 
-        self.before_entries.push(Op {
-            opcode: Either::Left(VirtualOp::ADDI(
-                VirtualRegister::Constant(ConstantRegister::FuncArg2),
-                VirtualRegister::Constant(ConstantRegister::StackStartPointer),
-                VirtualImmediate12 {
-                    value: global.offset_in_bytes as u16,
-                },
-            )),
-            comment: format!("ptr to global {} stack address", config.name),
-            owning_span: None,
-        });
+                self.before_entries.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        VirtualRegister::Constant(ConstantRegister::FuncArg2),
+                        VirtualRegister::Constant(ConstantRegister::StackStartPointer),
+                        VirtualImmediate12 {
+                            value: global.offset_in_bytes as u16,
+                        },
+                    )),
+                    comment: format!("ptr to global {} stack address", name),
+                    owning_span: None,
+                });
 
-        // Set a new return address.
-        let ret_label = self.reg_seqr.get_label();
-        self.before_entries.push(Op::save_ret_addr(
-            VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
-            ret_label,
-            "",
-            None,
-        ));
+                // Set a new return address.
+                let ret_label = self.reg_seqr.get_label();
+                self.before_entries.push(Op::save_ret_addr(
+                    VirtualRegister::Constant(ConstantRegister::CallReturnAddress),
+                    ret_label,
+                    "",
+                    None,
+                ));
 
-        // call decode
-        self.before_entries.push(Op {
-            opcode: Either::Right(crate::asm_lang::ControlFlowOp::Call(*decode_fn_label)),
-            comment: format!("decode {}", config.name),
-            owning_span: None,
-        });
+                // call decode
+                self.before_entries.push(Op {
+                    opcode: Either::Right(crate::asm_lang::ControlFlowOp::Call(*decode_fn_label)),
+                    comment: format!("decode {}", name),
+                    owning_span: None,
+                });
 
-        self.before_entries.push(Op::unowned_jump_label(ret_label));
+                self.before_entries.push(Op::unowned_jump_label(ret_label));
+            }
+        }
     }
 
     fn compile_function(

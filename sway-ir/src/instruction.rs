@@ -298,7 +298,10 @@ impl InstOp {
             InstOp::GetElemPtr { elem_ptr_ty, .. } => Some(*elem_ptr_ty),
             InstOp::GetLocal(local_var) => Some(local_var.get_type(context)),
             InstOp::GetConfig(module, name) => {
-                Some(module.get_global_configurable(context, name)?.ptr_ty)
+                Some(match module.get_global_configurable(context, name)? {
+                    crate::ConfigurableContent::V0 { ptr_ty, .. } => *ptr_ty,
+                    crate::ConfigurableContent::V1 { ptr_ty, .. } => *ptr_ty,
+                })
             }
 
             // Use for casting between pointers and pointer-width integers.

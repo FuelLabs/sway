@@ -1440,20 +1440,21 @@ mod ir_builder {
 
         fn resolve_calls(self, context: &mut Context) -> Result<(), IrError> {
             for (configurable_name, fn_name) in self.configs_map {
-                let decode_fn = self
+                let f = self
                     .module
                     .function_iter(context)
                     .find(|x| x.get_name(context) == fn_name)
                     .unwrap();
 
-                context
+                if let Some(ConfigurableContent::V1 { decode_fn, .. }) = context
                     .modules
                     .get_mut(self.module.0)
                     .unwrap()
                     .global_configurable
                     .get_mut(&configurable_name)
-                    .unwrap()
-                    .decode_fn = decode_fn;
+                {
+                    *decode_fn = f;
+                }
             }
 
             // All of the call instructions are currently invalid (recursive) CALLs to their own
@@ -1502,7 +1503,7 @@ mod ir_builder {
 
                 let ty = config.ty.to_ir_type(context);
 
-                let config_val = ConfigurableContent {
+                let config_val = ConfigurableContent::V1 {
                     name: config.value_name.clone(),
                     ty,
                     ptr_ty: Type::new_ptr(context, ty),

@@ -2512,7 +2512,11 @@ where
 {
     let mut buffer = BufferReader::from_parts(ptr, len);
     let temp = T::abi_decode(buffer);
-    asm(target: target, temp: __addr_of(temp), size: __size_of::<T>()) {
+    asm(
+        target: target,
+        temp: __addr_of(temp),
+        size: __size_of::<T>(),
+    ) {
         mcp target temp size;
     }
 }

@@ -217,20 +217,34 @@ fn module_to_doc<'a>(
 }
 
 fn config_to_doc(context: &Context, configurable: &ConfigurableContent) -> Doc {
-    let ty = configurable.ty.as_string(context);
-    let bytes = configurable
-        .encoded_bytes
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect::<Vec<String>>()
-        .concat();
-    Doc::line(Doc::text(format!(
-        "{} = config {}, {}, 0x{}",
-        configurable.name,
-        ty,
-        configurable.decode_fn.get_name(context),
-        bytes,
-    )))
+    match configurable {
+        ConfigurableContent::V0 { name, ty, .. } => {
+            let ty = ty.as_string(context);
+            Doc::line(Doc::text(format!("{} = config {}", name, ty,)))
+        }
+        ConfigurableContent::V1 {
+            name,
+            ty,
+            ptr_ty,
+            encoded_bytes,
+            decode_fn,
+            opt_metadata,
+        } => {
+            let ty = ty.as_string(context);
+            let bytes = encoded_bytes
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<Vec<String>>()
+                .concat();
+            Doc::line(Doc::text(format!(
+                "{} = config {}, {}, 0x{}",
+                name,
+                ty,
+                decode_fn.get_name(context),
+                bytes,
+            )))
+        }
+    }
 }
 
 fn function_to_doc<'a>(
@@ -886,17 +900,19 @@ fn instruction_to_doc<'a>(
                 )
             }
             InstOp::GetConfig(_, name) => Doc::line(
-                Doc::text(format!(
-                    "{} = get_config {}, {}",
-                    namer.name(context, ins_value),
-                    block
-                        .get_module(context)
-                        .get_global_configurable(context, name)
-                        .unwrap()
-                        .ptr_ty
-                        .as_string(context),
-                    name,
-                ))
+                match block
+                    .get_module(context)
+                    .get_global_configurable(context, name)
+                    .unwrap()
+                {
+                    ConfigurableContent::V0 { name, ptr_ty, .. }
+                    | ConfigurableContent::V1 { name, ptr_ty, .. } => Doc::text(format!(
+                        "{} = get_config {}, {}",
+                        namer.name(context, ins_value),
+                        ptr_ty.as_string(context),
+                        name,
+                    )),
+                }
                 .append(md_namer.md_idx_to_doc(context, metadata)),
             ),
             InstOp::IntToPtr(value, ty) => maybe_constant_to_doc(context, md_namer, namer, value)
