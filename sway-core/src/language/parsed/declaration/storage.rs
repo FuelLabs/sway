@@ -1,4 +1,9 @@
-use crate::{language::parsed::Expression, transform, type_system::*};
+use crate::{
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::parsed::Expression,
+    transform,
+    type_system::*,
+};
 use sway_types::{ident::Ident, span::Span, Spanned};
 
 #[derive(Debug, Clone)]
@@ -9,6 +14,16 @@ pub struct StorageDeclaration {
     pub fields: Vec<StorageField>,
     pub span: Span,
     pub storage_keyword: Ident,
+}
+
+impl EqWithEngines for StorageDeclaration {}
+impl PartialEqWithEngines for StorageDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.attributes == other.attributes
+            && self.fields.eq(&other.fields, ctx)
+            && self.span == other.span
+            && self.storage_keyword == other.storage_keyword
+    }
 }
 
 impl Spanned for StorageDeclaration {
@@ -28,4 +43,15 @@ pub struct StorageField {
     pub type_argument: TypeArgument,
     pub span: Span,
     pub initializer: Expression,
+}
+
+impl EqWithEngines for StorageField {}
+impl PartialEqWithEngines for StorageField {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name
+            && self.attributes == other.attributes
+            && self.type_argument.eq(&other.type_argument, ctx)
+            && self.span == other.span
+            && self.initializer.eq(&other.initializer, ctx)
+    }
 }

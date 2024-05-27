@@ -1,4 +1,9 @@
-use crate::{language::Visibility, transform, type_system::*};
+use crate::{
+    engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
+    language::Visibility,
+    transform,
+    type_system::*,
+};
 
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
@@ -9,6 +14,17 @@ pub struct TypeAliasDeclaration {
     pub ty: TypeArgument,
     pub visibility: Visibility,
     pub span: Span,
+}
+
+impl EqWithEngines for TypeAliasDeclaration {}
+impl PartialEqWithEngines for TypeAliasDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name
+            && self.attributes == other.attributes
+            && self.ty.eq(&other.ty, ctx)
+            && self.visibility == other.visibility
+            && self.span == other.span
+    }
 }
 
 impl Named for TypeAliasDeclaration {
