@@ -277,24 +277,20 @@ impl DocImplTrait {
         self.impl_trait.trait_name.suffix.as_str().to_string()
     }
 
+    pub fn type_args(&self) -> Vec<String> {
+        self.impl_trait
+            .trait_type_arguments
+            .iter()
+            .map(|arg| arg.span.as_str().to_string())
+            .collect()
+    }
+
     pub fn name_with_type_args(&self) -> String {
-        let TyImplTrait {
-            trait_name,
-            trait_type_arguments,
-            ..
-        } = &self.impl_trait;
-        if !trait_type_arguments.is_empty() {
-            format!(
-                "{}<{}>",
-                trait_name.suffix.as_str(),
-                trait_type_arguments
-                    .iter()
-                    .map(|arg| arg.span.as_str().to_string()) // TODO: links
-                    .collect::<Vec<String>>()
-                    .join(", ")
-            )
+        let type_args = self.type_args();
+        if !type_args.is_empty() {
+            format!("{}<{}>", self.short_name(), type_args.join(", "))
         } else {
-            trait_name.suffix.as_str().to_string()
+            self.short_name()
         }
     }
 
@@ -406,7 +402,7 @@ impl ItemContext {
                 .map(|impl_trait| DocLink {
                     name: impl_trait.name_with_type_args(),
                     module_info: impl_trait.impl_for_module.clone(),
-                    html_filename: format!("{}impl-{}", IDENTITY, impl_trait.short_name()),
+                    html_filename: format!("{}impl-{}", IDENTITY, impl_trait.name_with_type_args()),
                     preview_opt: None,
                 })
                 .collect();
@@ -504,6 +500,7 @@ impl Renderable for DocImplTrait {
         } = &self.impl_trait;
         let short_name = self.short_name();
         let name_with_type_args = self.name_with_type_args();
+        let type_args = self.type_args();
         let is_inherent = self.is_inherent();
         let impl_for_module = &self.impl_for_module;
         let no_deps = render_plan.no_deps;
@@ -534,15 +531,27 @@ impl Renderable for DocImplTrait {
 
         let impl_for = box_html! {
                 div(id=format!("impl-{}", name_with_type_args), class="impl has-srclink") {
-                a(href=format!("{IDENTITY}impl-{}", short_name), class="anchor");
+                a(href=format!("{IDENTITY}impl-{}", name_with_type_args), class="anchor");
                 h3(class="code-header in-band") {
                     : "impl ";
                     @ if !is_inherent {
                         @ if no_deps && is_external_item {
-                            : name_with_type_args; // TODO: args shouldn't be a link
+                            : name_with_type_args;
                         } else {
                             a(class="trait", href=format!("{trait_link}")) {
-                                : name_with_type_args;
+                                : short_name;
+                            }
+                            @ for arg in &type_args {
+                                @ if arg == type_args.first().unwrap() {
+                                    : "<";
+                                }
+                                : arg;
+                                @ if arg != type_args.last().unwrap() {
+                                    : ", ";
+                                }
+                                @ if arg == type_args.last().unwrap() {
+                                    : ">";
+                                }
                             }
                         }
                         : " for ";
