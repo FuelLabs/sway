@@ -349,7 +349,7 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(mod_path) = namespace.module_id(engines).read(engines, |m| {
+            if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
                 if let Some((_, path, _)) = m
                     .current_items()
                     .use_item_synonyms

@@ -47,7 +47,7 @@ pub struct Namespace {
 }
 
 impl Namespace {
-    pub fn module_id(&self, engines: &Engines) -> &Module {
+    pub fn program_id(&self, engines: &Engines) -> &Module {
         self.root
             .module
             .submodule(engines, &self.mod_path)

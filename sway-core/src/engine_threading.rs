@@ -40,12 +40,12 @@ impl Engines {
         &self.source_engine
     }
 
-    /// Removes all data associated with `module_id` from the declaration and type engines.
+    /// Removes all data associated with `program_id` from the declaration and type engines.
     /// It is intended to be used during garbage collection to remove any data that is no longer needed.
-    pub fn clear_module(&mut self, module_id: &sway_types::ModuleId) {
-        self.type_engine.clear_module(module_id);
-        self.decl_engine.clear_module(module_id);
-        self.parsed_decl_engine.clear_module(module_id);
+    pub fn clear_program(&mut self, program_id: &sway_types::ProgramId) {
+        self.type_engine.clear_program(program_id);
+        self.decl_engine.clear_program(program_id);
+        self.parsed_decl_engine.clear_program(program_id);
     }
 
     /// Helps out some `thing: T` by adding `self` as context.

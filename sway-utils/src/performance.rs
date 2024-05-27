@@ -11,7 +11,7 @@ pub struct PerformanceMetric {
 pub struct PerformanceData {
     pub bytecode_size: usize,
     pub metrics: Vec<PerformanceMetric>,
-    pub reused_modules: u64,
+    pub reused_programs: u64,
 }
 
 #[macro_export]
