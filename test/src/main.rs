@@ -61,7 +61,7 @@ struct Cli {
     #[arg(long)]
     update_output_files: bool,
 
-    /// Print out the specifiec IR (separate options with comma), if the verbose option is on
+    /// Print out the specified IR (separate options with comma), if the verbose option is on
     #[arg(long, num_args(1..=18), value_parser = clap::builder::PossibleValuesParser::new(PrintIrCliOpt::cli_options()))]
     print_ir: Option<Vec<String>>,
 
