@@ -916,11 +916,7 @@ fn instruction_to_doc<'a>(
                 )
             }
             InstOp::GetConfig(_, name) => Doc::line(
-                match block
-                    .get_module(context)
-                    .get_config(context, name)
-                    .unwrap()
-                {
+                match block.get_module(context).get_config(context, name).unwrap() {
                     ConfigContent::V0 { name, ptr_ty, .. }
                     | ConfigContent::V1 { name, ptr_ty, .. } => Doc::text(format!(
                         "{} = get_config {}, {}",

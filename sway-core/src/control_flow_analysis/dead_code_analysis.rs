@@ -1472,7 +1472,9 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     .unwrap_or_else(|| leaves.to_vec()))
             }
         }
-        ConstantExpression { decl: const_decl, .. } => {
+        ConstantExpression {
+            decl: const_decl, ..
+        } => {
             let node = if let Some(node) = graph.namespace.get_global_constant(const_decl.name()) {
                 *node
             } else if let Some(node) = graph.namespace.get_constant(const_decl) {
@@ -1486,7 +1488,9 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![node])
         }
-        ConfigurableExpression { decl: const_decl, .. } => {
+        ConfigurableExpression {
+            decl: const_decl, ..
+        } => {
             let node = if let Some(node) = graph.namespace.get_configurable(const_decl) {
                 *node
             } else {

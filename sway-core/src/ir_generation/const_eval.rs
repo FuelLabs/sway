@@ -300,7 +300,9 @@ fn const_eval_typed_expr(
 
             res?
         }
-        ty::TyExpressionVariant::ConstantExpression { decl: const_decl, .. } => {
+        ty::TyExpressionVariant::ConstantExpression {
+            decl: const_decl, ..
+        } => {
             let call_path = &const_decl.call_path;
             let name = &call_path.suffix;
 
