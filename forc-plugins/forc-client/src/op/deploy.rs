@@ -3,28 +3,37 @@ use crate::{
     util::{
         gas::get_estimated_max_fee,
         node_url::get_node_url,
-        pkg::built_pkgs,
-        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
+        pkg::{build_proxy_contract, built_pkgs, update_proxy_address_in_manifest},
+        tx::{
+            bech32_from_secret, check_and_create_wallet_at_default_path, first_user_account,
+            prompt_forc_wallet_password, select_manual_secret_key, select_secret_key,
+            update_proxy_contract_target, TransactionBuilderExt, WalletSelectionMode,
+            TX_SUBMIT_TIMEOUT_MS,
+        },
     },
 };
 use anyhow::{bail, Context, Result};
+use colored::Colorize;
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::default_output_directory;
+use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Output, Salt, TransactionBuilder};
 use fuel_vm::prelude::*;
 use fuels_accounts::provider::Provider;
+use fuels_core::types::bech32::Bech32Address;
 use futures::FutureExt;
-use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
+use pkg::{manifest::build_profile::ExperimentalFlags, BuildOpts, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
@@ -113,6 +122,54 @@ fn validate_and_parse_salts<'a>(
     Ok(contract_salt_map)
 }
 
+async fn deploy_new_proxy(
+    pkg: &BuiltPackage,
+    owner_account_address: &mut Bech32Address,
+    impl_contract: &DeployedContract,
+    build_opts: &BuildOpts,
+    command: &cmd::Deploy,
+    salt: Salt,
+    wallet_mode: &WalletSelectionMode,
+) -> Result<DeployedContract> {
+    println!("  {} proxy contract", "Creating".bold().green());
+    let user_addr = if *owner_account_address != Bech32Address::default() {
+        anyhow::Ok(owner_account_address.clone())
+    } else {
+        // Check if the wallet exists and if not create it at the default path.
+        match wallet_mode {
+            WalletSelectionMode::ForcWallet(password) => {
+                let default_path = default_wallet_path();
+                check_and_create_wallet_at_default_path(&default_path)?;
+                let account = first_user_account(&default_wallet_path(), password)?;
+                *owner_account_address = account.clone();
+                Ok(account)
+            }
+            WalletSelectionMode::Manual => {
+                let secret_key =
+                    select_manual_secret_key(command.default_signer, command.signing_key)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("couldn't resolve the secret key for manual signing")
+                        })?;
+                bech32_from_secret(&secret_key)
+            }
+        }
+    }?;
+    let user_addr_hex: fuels_core::types::Address = user_addr.into();
+    let user_addr = format!("0x{}", user_addr_hex);
+    let pkg_name = pkg.descriptor.manifest_file.project_name();
+    let contract_addr = format!("0x{}", impl_contract.id);
+    let proxy_contract = build_proxy_contract(&user_addr, &contract_addr, pkg_name, build_opts)?;
+    println!("   {} proxy contract", "Deploying".bold().green());
+    let proxy = deploy_pkg(
+        command,
+        &pkg.descriptor.manifest_file,
+        &proxy_contract,
+        salt,
+        wallet_mode,
+    )
+    .await?;
+    Ok(proxy)
+}
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
 /// will be built and deployed.
 ///
@@ -124,7 +181,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
 
-    let mut contract_ids = Vec::new();
+    let mut deployed_contracts = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
     } else {
@@ -136,7 +193,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     if built_pkgs.is_empty() {
         println_warning("No deployable contracts found in the current directory.");
-        return Ok(contract_ids);
+        return Ok(deployed_contracts);
     }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
@@ -156,7 +213,6 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
             // OK to index into salt_input and built_pkgs_with_manifest here,
             // since both are known to be len 1.
-
             let salt = salt_input[0]
                 .parse::<Salt>()
                 .map_err(|e| anyhow::anyhow!(e))
@@ -176,6 +232,14 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        WalletSelectionMode::Manual
+    } else {
+        let password = prompt_forc_wallet_password(&default_wallet_path())?;
+        WalletSelectionMode::ForcWallet(password)
+    };
+
+    let mut owner_account_address = Bech32Address::default();
     for pkg in built_pkgs {
         if pkg
             .descriptor
@@ -197,12 +261,79 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                     bail!("Both `--salt` and `--default-salt` were specified: must choose one")
                 }
             };
-            let contract_id =
-                deploy_pkg(&command, &pkg.descriptor.manifest_file, &pkg, salt).await?;
-            contract_ids.push(contract_id);
+            let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
+            println!(
+                "   {} contract: {}",
+                "Deploying".bold().green(),
+                &pkg.descriptor.name
+            );
+            let deployed_contract = deploy_pkg(
+                &command,
+                &pkg.descriptor.manifest_file,
+                &pkg,
+                salt,
+                &wallet_mode,
+            )
+            .await?;
+            let proxy = &pkg.descriptor.manifest_file.proxy();
+            if let Some(proxy) = proxy {
+                if proxy.enabled {
+                    if let Some(proxy_addr) = &proxy.address {
+                        // Make a call into the contract to update impl contract address to 'deployed_contract'.
+
+                        // Create a contract instance for the proxy contract using default proxy contract abi and
+                        // specified address.
+                        let provider = Provider::connect(node_url.clone()).await?;
+                        // TODO: once https://github.com/FuelLabs/sway/issues/6071 is closed, this will return just a result
+                        // and we won't need to handle the manual prompt based signature case.
+                        let signing_key = select_secret_key(
+                            &wallet_mode,
+                            command.default_signer,
+                            command.signing_key,
+                            &provider,
+                        )
+                        .await?;
+
+                        let signing_key = signing_key.ok_or_else(
+
+                            || anyhow::anyhow!("proxy contract deployments are not supported with manual prompt based signing")
+                        )?;
+                        let proxy_contract =
+                            ContractId::from_str(proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
+
+                        update_proxy_contract_target(
+                            provider,
+                            signing_key,
+                            proxy_contract,
+                            deployed_contract.id,
+                        )
+                        .await?;
+                    } else {
+                        // Deploy a new proxy contract.
+                        let deployed_proxy_contract = deploy_new_proxy(
+                            &pkg,
+                            &mut owner_account_address,
+                            &deployed_contract,
+                            &build_opts,
+                            &command,
+                            salt,
+                            &wallet_mode,
+                        )
+                        .await?;
+
+                        // Update manifest file such that the proxy address field points to the new proxy contract.
+                        update_proxy_address_in_manifest(
+                            &format!("0x{}", deployed_proxy_contract.id),
+                            &pkg.descriptor.manifest_file,
+                        )?;
+                    }
+                }
+            }
+
+            deployed_contracts.push(deployed_contract);
         }
     }
-    Ok(contract_ids)
+    Ok(deployed_contracts)
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
@@ -211,10 +342,10 @@ pub async fn deploy_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
     salt: Salt,
+    wallet_mode: &WalletSelectionMode,
 ) -> Result<DeployedContract> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
     let client = FuelClient::new(node_url.clone())?;
-
     let bytecode = &compiled.bytecode.bytes;
 
     let mut storage_slots =
@@ -231,12 +362,6 @@ pub async fn deploy_pkg(
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-
-    let wallet_mode = if command.manual_signing {
-        WalletSelectionMode::Manual
-    } else {
-        WalletSelectionMode::ForcWallet
-    };
 
     let provider = Provider::connect(node_url.clone()).await?;
 

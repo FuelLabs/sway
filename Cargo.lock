@@ -2032,6 +2032,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap 4.5.4",
+ "colored",
  "devault",
  "forc",
  "forc-pkg",
@@ -2045,6 +2046,7 @@ dependencies = [
  "fuel-crypto",
  "fuel-tx",
  "fuel-vm",
+ "fuels",
  "fuels-accounts",
  "fuels-core",
  "futures",
@@ -2057,6 +2059,7 @@ dependencies = [
  "sway-types",
  "sway-utils",
  "tokio",
+ "toml_edit 0.21.1",
  "tracing",
 ]
 
