@@ -138,6 +138,7 @@ impl AbstractInstructionSet {
                                 && ((offset / 8) + imm.value as u64)
                                     < compiler_constants::TWELVE_BITS =>
                         {
+                            // bail if LW cannot read where this memory is
                             if offset % 8 == 0 {
                                 let new_imm = VirtualImmediate12::new_unchecked(
                                     (offset / 8) + imm.value as u64,

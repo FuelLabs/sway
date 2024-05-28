@@ -488,12 +488,12 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
             }
-            ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
-                self.compile_const_expr(context, md_mgr, const_decl, span_md_idx)
-            }
-            ty::TyExpressionVariant::ConfigurableExpression { const_decl, .. } => {
-                self.compile_config_expr(context, const_decl, span_md_idx)
-            }
+            ty::TyExpressionVariant::ConstantExpression {
+                decl: const_decl, ..
+            } => self.compile_const_expr(context, md_mgr, const_decl, span_md_idx),
+            ty::TyExpressionVariant::ConfigurableExpression {
+                decl: const_decl, ..
+            } => self.compile_config_expr(context, const_decl, span_md_idx),
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
             } => self.compile_var_expr(context, call_path, name, span_md_idx),
@@ -969,7 +969,6 @@ impl<'eng> FnCompiler<'eng> {
                     None,
                     None,
                     &arguments[1],
-                    false,
                 )?;
                 let tx_field_id = match tx_field_id_constant.value {
                     ConstantValue::Uint(n) => n,
@@ -2809,7 +2808,7 @@ impl<'eng> FnCompiler<'eng> {
             Ok(TerminatorValue::new(const_val, context))
         } else if self
             .module
-            .get_global_configurable(context, &call_path.suffix.to_string())
+            .get_config(context, &call_path.suffix.to_string())
             .is_some()
         {
             let name = call_path.suffix.to_string();
@@ -2907,10 +2906,7 @@ impl<'eng> FnCompiler<'eng> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let ty::TyConstantDecl {
-            call_path,
-            value,
-            is_configurable,
-            ..
+            call_path, value, ..
         } = ast_const_decl;
 
         if let Some(value) = value {
@@ -2928,7 +2924,6 @@ impl<'eng> FnCompiler<'eng> {
                 Some(self),
                 call_path,
                 value,
-                *is_configurable,
             );
 
             if is_expression {
@@ -3332,7 +3327,6 @@ impl<'eng> FnCompiler<'eng> {
             None,
             Some(self),
             index_expr,
-            false,
         ) {
             let count = array_type.get_array_len(context).unwrap();
             if constant_value >= count {

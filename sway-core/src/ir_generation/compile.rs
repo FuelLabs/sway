@@ -314,7 +314,6 @@ pub(crate) fn compile_configurables(
                 Some(module_ns),
                 None,
                 decl.value.as_ref().unwrap(),
-                false,
             )
             .unwrap();
 
@@ -338,10 +337,10 @@ pub(crate) fn compile_configurables(
                 )?;
 
                 let name = decl_name.as_str().to_string();
-                module.add_global_configurable(
+                module.add_config(
                     context,
                     name.clone(),
-                    ConfigurableContent::V1 {
+                    ConfigContent::V1 {
                         name,
                         ty,
                         ptr_ty,
@@ -352,10 +351,10 @@ pub(crate) fn compile_configurables(
                 );
             } else {
                 let name = decl_name.as_str().to_string();
-                module.add_global_configurable(
+                module.add_config(
                     context,
                     name.clone(),
-                    ConfigurableContent::V0 {
+                    ConfigContent::V0 {
                         name,
                         ty,
                         ptr_ty,

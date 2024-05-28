@@ -81,7 +81,7 @@ impl Declaration {
         match self {
             VariableDeclaration(_) => "variable",
             ConstantDeclaration(_) => "constant",
-            ConfigurableDeclaration(_) => "config",
+            ConfigurableDeclaration(_) => "configurable",
             TraitTypeDeclaration(_) => "type",
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",

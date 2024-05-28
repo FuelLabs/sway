@@ -35,8 +35,8 @@ impl TyDecl {
                 ctx.insert_parsed_symbol(handler, engines, const_decl.name.clone(), decl)?;
             }
             parsed::Declaration::ConfigurableDeclaration(decl_id) => {
-                let const_decl = engines.pe().get_configurable(decl_id).as_ref().clone();
-                ctx.insert_parsed_symbol(handler, engines, const_decl.name.clone(), decl)?;
+                let config_decl = engines.pe().get_configurable(decl_id).as_ref().clone();
+                ctx.insert_parsed_symbol(handler, engines, config_decl.name.clone(), decl)?;
             }
             parsed::Declaration::TraitTypeDeclaration(decl_id) => {
                 let trait_type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();

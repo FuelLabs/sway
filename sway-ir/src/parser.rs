@@ -68,7 +68,7 @@ mod ir_builder {
                 }
 
             rule config_encoded_bytes() -> Vec<u8>
-                = "0x" s:$(hex_digit()*<64>) _ {
+                = "0x" s:$(hex_digit()*) _ {
                     hex_string_to_vec(s)
                 }
 
@@ -676,8 +676,8 @@ mod ir_builder {
         metadata::{MetadataIndex, Metadatum},
         module::{Kind, Module},
         value::Value,
-        BinaryOpKind, BlockArgument, ConfigurableContent, ExperimentalFlags, Instruction,
-        UnaryOpKind, B256,
+        BinaryOpKind, BlockArgument, ConfigContent, ExperimentalFlags, Instruction, UnaryOpKind,
+        B256,
     };
 
     #[derive(Debug)]
@@ -1446,11 +1446,11 @@ mod ir_builder {
                     .find(|x| x.get_name(context) == fn_name)
                     .unwrap();
 
-                if let Some(ConfigurableContent::V1 { decode_fn, .. }) = context
+                if let Some(ConfigContent::V1 { decode_fn, .. }) = context
                     .modules
                     .get_mut(self.module.0)
                     .unwrap()
-                    .global_configurable
+                    .configs
                     .get_mut(&configurable_name)
                 {
                     *decode_fn = f;
@@ -1503,7 +1503,7 @@ mod ir_builder {
 
                 let ty = config.ty.to_ir_type(context);
 
-                let config_val = ConfigurableContent::V1 {
+                let config_val = ConfigContent::V1 {
                     name: config.value_name.clone(),
                     ty,
                     ptr_ty: Type::new_ptr(context, ty),
@@ -1513,11 +1513,7 @@ mod ir_builder {
                     opt_metadata,
                 };
 
-                module.add_global_configurable(
-                    context,
-                    config.value_name.clone(),
-                    config_val.clone(),
-                );
+                module.add_config(context, config.value_name.clone(), config_val.clone());
 
                 (config.value_name.clone(), config.decode_fn.clone())
             })

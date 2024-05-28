@@ -571,7 +571,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             } = &*config_decl;
             graph
                 .namespace
-                .insert_global_constant(call_path.suffix.clone(), entry_node);
+                .insert_configurable(call_path.suffix.clone(), entry_node);
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -1472,7 +1472,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     .unwrap_or_else(|| leaves.to_vec()))
             }
         }
-        ConstantExpression { const_decl, .. } => {
+        ConstantExpression { decl: const_decl, .. } => {
             let node = if let Some(node) = graph.namespace.get_global_constant(const_decl.name()) {
                 *node
             } else if let Some(node) = graph.namespace.get_constant(const_decl) {
@@ -1486,10 +1486,8 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![node])
         }
-        ConfigurableExpression { const_decl, .. } => {
-            let node = if let Some(node) = graph.namespace.get_global_constant(const_decl.name()) {
-                *node
-            } else if let Some(node) = graph.namespace.get_configurable(const_decl) {
+        ConfigurableExpression { decl: const_decl, .. } => {
+            let node = if let Some(node) = graph.namespace.get_configurable(const_decl) {
                 *node
             } else {
                 return Ok(leaves.to_vec());

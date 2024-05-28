@@ -86,6 +86,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // In progress VM bytecode ops.
     pub(super) cur_bytecode: Vec<Op>,
 
+    // Instructions that will be append after globals allocation, but before the entry function is called.
     pub(super) before_entries: Vec<Op>,
 }
 
@@ -94,14 +95,14 @@ impl<'ir, 'eng> AsmBuilder for FuelAsmBuilder<'ir, 'eng> {
         self.func_to_labels(func)
     }
 
-    fn compile_configurable(&mut self, config: &ConfigurableContent) {
+    fn compile_configurable(&mut self, config: &ConfigContent) {
         match config {
-            ConfigurableContent::V0 { name, constant, .. } => {
+            ConfigContent::V0 { name, constant, .. } => {
                 let entry = Entry::from_constant(self.context, constant, Some(name.clone()), None);
                 let dataid = self.data_section.insert_data_value(entry);
                 self.configurable_v0_data_id.insert(name.clone(), dataid);
             }
-            ConfigurableContent::V1 {
+            ConfigContent::V1 {
                 name,
                 ty,
                 encoded_bytes,
@@ -1305,7 +1306,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             });
             self.reg_map.insert(*addr_val, addr_reg);
         } else {
-            // Otherwise is configurable with encoding v0 and must be at configurable_v0_data_id
+            // Otherwise it is a configurable with encoding v0 and must be at configurable_v0_data_id
             let dataid = self.configurable_v0_data_id.get(name).unwrap();
             self.cur_bytecode.push(Op {
                 opcode: either::Either::Left(VirtualOp::AddrDataId(
@@ -2060,8 +2061,6 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             })
             .ok_or_else(|| {
                 let span = self.md_mgr.val_to_span(self.context, *value);
-                dbg!(value.with_context(self.context));
-                eprintln!("{}", std::backtrace::Backtrace::force_capture());
                 CompileError::Internal(
                     "An attempt to get register for unknown Value.",
                     span.unwrap_or(Span::dummy()),

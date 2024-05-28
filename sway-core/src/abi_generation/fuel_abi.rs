@@ -51,7 +51,7 @@ pub fn generate_program_abi(
                 .collect();
             let logged_types = generate_logged_types(ctx, engines, types);
             let messages_types = generate_messages_types(ctx, engines, types);
-            let configurables = dbg!(generate_configurables(ctx, engines, types));
+            let configurables = generate_configurables(ctx, engines, types);
             program_abi::ProgramABI {
                 encoding,
                 types: types.to_vec(),

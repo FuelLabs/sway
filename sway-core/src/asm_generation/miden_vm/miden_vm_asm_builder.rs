@@ -137,7 +137,7 @@ impl<'ir, 'eng> AsmBuilder for MidenVMAsmBuilder<'ir, 'eng> {
         })
     }
 
-    fn compile_configurable(&mut self, _config: &ConfigurableContent) {
+    fn compile_configurable(&mut self, _config: &ConfigContent) {
         todo!()
     }
 

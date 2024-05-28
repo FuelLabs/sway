@@ -789,7 +789,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_get_config(&self, module: Module, name: &str) -> Result<(), IrError> {
         if !self.context.modules[module.0]
-            .global_configurable
+            .configs
             .contains_key(name)
         {
             Err(IrError::VerifyGetNonExistentPointer)

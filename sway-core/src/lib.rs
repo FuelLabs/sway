@@ -934,9 +934,11 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         };
     res?;
 
-    let final_asm = compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config))?;
-
-    Ok(final_asm)
+    Ok(compile_ir_context_to_finalized_asm(
+        handler,
+        &ir,
+        Some(build_config),
+    )?)
 }
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.

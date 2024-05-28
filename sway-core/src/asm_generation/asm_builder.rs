@@ -1,11 +1,11 @@
 use super::FinalizedAsm;
 use crate::{asm_lang::Label, BuildConfig};
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_ir::{ConfigurableContent, Function};
+use sway_ir::{ConfigContent, Function};
 
 pub trait AsmBuilder {
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label);
-    fn compile_configurable(&mut self, config: &ConfigurableContent);
+    fn compile_configurable(&mut self, config: &ConfigContent);
     fn compile_function(
         &mut self,
         handler: &Handler,

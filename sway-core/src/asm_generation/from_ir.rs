@@ -86,7 +86,7 @@ fn compile(
         }
     }
 
-    for config in module.iter_configurables(context) {
+    for config in module.iter_configs(context) {
         builder.compile_configurable(config);
     }
 

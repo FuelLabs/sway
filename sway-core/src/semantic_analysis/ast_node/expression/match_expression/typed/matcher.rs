@@ -406,14 +406,12 @@ fn match_constant(
     let name = const_decl.name().clone();
     let return_type = const_decl.type_ascription.type_id;
 
-    assert!(!const_decl.is_configurable);
-
     let req = (
         exp.to_owned(),
         ty::TyExpression {
             expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
-                const_decl: Box::new(const_decl),
+                decl: Box::new(const_decl),
                 call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
             },
             return_type,
@@ -427,18 +425,18 @@ fn match_constant(
 fn match_configurable(
     ctx: TypeCheckContext,
     exp: &ty::TyExpression,
-    const_decl: TyConfigurableDecl,
+    decl: TyConfigurableDecl,
     span: Span,
 ) -> ReqDeclTree {
-    let name = const_decl.name().clone();
-    let return_type = const_decl.type_ascription.type_id;
+    let name = decl.name().clone();
+    let return_type = decl.type_ascription.type_id;
 
     let req = (
         exp.to_owned(),
         ty::TyExpression {
             expression: ty::TyExpressionVariant::ConfigurableExpression {
                 span: span.clone(),
-                const_decl: Box::new(const_decl),
+                decl: Box::new(decl),
                 call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
             },
             return_type,

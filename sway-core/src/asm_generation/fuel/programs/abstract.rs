@@ -53,7 +53,7 @@ impl AbstractProgram {
         kind: ProgramKind,
         data_section: DataSection,
         globals_section: GlobalsSection,
-        before_entry: AbstractInstructionSet,
+        before_entries: AbstractInstructionSet,
         entries: Vec<AbstractEntry>,
         non_entries: Vec<AbstractInstructionSet>,
         reg_seqr: RegisterSequencer,
@@ -63,7 +63,7 @@ impl AbstractProgram {
             kind,
             data_section,
             globals_section,
-            before_entries: before_entry,
+            before_entries,
             entries,
             non_entries,
             reg_seqr,
@@ -78,18 +78,14 @@ impl AbstractProgram {
             && self.data_section.value_pairs.is_empty()
     }
 
-    /// Adds prologue, contract method switch, and allocates virtual register
+    /// Adds prologue, globals allocation, before entries, contract method switch, and allocates virtual register
     pub(crate) fn into_allocated_program(
         mut self,
         fallback_fn: Option<crate::asm_lang::Label>,
     ) -> Result<AllocatedProgram, CompileError> {
         let mut prologue = self.build_prologue();
-        self.append_globals(&mut prologue);
-
-        let before_entries = self.before_entries.clone().optimize(&self.data_section);
-        let before_entries = before_entries.verify()?;
-        let mut before_entries = before_entries.allocate_registers()?;
-        prologue.ops.append(&mut before_entries.ops);
+        self.append_globals_allocation(&mut prologue);
+        self.append_before_entries(&mut prologue)?;
 
         match (self.experimental.new_encoding, self.kind) {
             (true, ProgramKind::Contract) => {
@@ -146,6 +142,17 @@ impl AbstractProgram {
             functions,
             entries,
         })
+    }
+
+    fn append_before_entries(
+        &self,
+        prologue: &mut AllocatedAbstractInstructionSet,
+    ) -> Result<(), CompileError> {
+        let before_entries = self.before_entries.clone().optimize(&self.data_section);
+        let before_entries = before_entries.verify()?;
+        let mut before_entries = before_entries.allocate_registers()?;
+        prologue.ops.append(&mut before_entries.ops);
+        Ok(())
     }
 
     /// Builds the asm preamble, which includes metadata and a jump past the metadata.
@@ -327,7 +334,7 @@ impl AbstractProgram {
         });
     }
 
-    fn append_globals(&self, asm: &mut AllocatedAbstractInstructionSet) {
+    fn append_globals_allocation(&self, asm: &mut AllocatedAbstractInstructionSet) {
         let len_in_bytes = self.globals_section.len_in_bytes();
         asm.ops.push(AllocatedAbstractOp {
             opcode: Either::Left(AllocatedOpcode::CFEI(VirtualImmediate24 {

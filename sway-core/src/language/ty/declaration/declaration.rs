@@ -284,12 +284,12 @@ impl SpannedWithEngines for TyDecl {
     fn span(&self, engines: &Engines) -> Span {
         match self {
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
-                let const_decl = engines.de().get(decl_id);
-                const_decl.span.clone()
+                let decl = engines.de().get(decl_id);
+                decl.span.clone()
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
-                let const_decl = engines.de().get(decl_id);
-                const_decl.span.clone()
+                let decl = engines.de().get(decl_id);
+                decl.span.clone()
             }
             TyDecl::TraitTypeDecl(TraitTypeDecl { decl_id }) => {
                 engines.de().get_type(decl_id).span.clone()
@@ -410,8 +410,8 @@ impl CollectTypesMetadata for TyDecl {
                 decl.collect_types_metadata(handler, ctx)?
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
-                let const_decl = decl_engine.get_constant(decl_id);
-                let TyConstantDecl { value, .. } = &*const_decl;
+                let decl = decl_engine.get_constant(decl_id);
+                let TyConstantDecl { value, .. } = &*decl;
                 if let Some(value) = value {
                     value.collect_types_metadata(handler, ctx)?
                 } else {
@@ -419,8 +419,8 @@ impl CollectTypesMetadata for TyDecl {
                 }
             }
             TyDecl::ConfigurableDecl(ConfigurableDecl { decl_id, .. }) => {
-                let const_decl = decl_engine.get_configurable(decl_id);
-                let TyConfigurableDecl { value, .. } = &*const_decl;
+                let decl = decl_engine.get_configurable(decl_id);
+                let TyConfigurableDecl { value, .. } = &*decl;
                 if let Some(value) = value {
                     value.collect_types_metadata(handler, ctx)?
                 } else {

@@ -217,8 +217,8 @@ pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Res
     let mut called_fns: HashSet<Function> = HashSet::new();
 
     // config decode fns
-    for config in context.modules[module.0].global_configurable.iter() {
-        if let crate::ConfigurableContent::V1 { decode_fn, .. } = config.1 {
+    for config in context.modules[module.0].configs.iter() {
+        if let crate::ConfigContent::V1 { decode_fn, .. } = config.1 {
             grow_called_function_set(context, *decode_fn, &mut called_fns);
         }
     }

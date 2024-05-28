@@ -21,11 +21,11 @@ pub struct ModuleContent {
     pub kind: Kind,
     pub functions: Vec<Function>,
     pub global_constants: HashMap<Vec<String>, Value>,
-    pub global_configurable: BTreeMap<String, ConfigurableContent>,
+    pub configs: BTreeMap<String, ConfigContent>,
 }
 
 #[derive(Clone, Debug)]
-pub enum ConfigurableContent {
+pub enum ConfigContent {
     V0 {
         name: String,
         ty: Type,
@@ -59,7 +59,7 @@ impl Module {
             kind,
             functions: Vec::new(),
             global_constants: HashMap::new(),
-            global_configurable: BTreeMap::new(),
+            configs: BTreeMap::new(),
         };
         Module(context.modules.insert(content))
     }
@@ -94,25 +94,14 @@ impl Module {
             .copied()
     }
 
-    /// Add a global configurable value to this module.
-    pub fn add_global_configurable(
-        &self,
-        context: &mut Context,
-        name: String,
-        config_val: ConfigurableContent,
-    ) {
-        context.modules[self.0]
-            .global_configurable
-            .insert(name, config_val);
+    /// Add a config value to this module.
+    pub fn add_config(&self, context: &mut Context, name: String, content: ConfigContent) {
+        context.modules[self.0].configs.insert(name, content);
     }
 
-    /// Get a named global configurable value from this module, if found.
-    pub fn get_global_configurable<'a>(
-        &self,
-        context: &'a Context,
-        name: &str,
-    ) -> Option<&'a ConfigurableContent> {
-        context.modules[self.0].global_configurable.get(name)
+    /// Get a named config content from this module, if found.
+    pub fn get_config<'a>(&self, context: &'a Context, name: &str) -> Option<&'a ConfigContent> {
+        context.modules[self.0].configs.get(name)
     }
 
     /// Removed a function from the module.  Returns true if function was found and removed.
@@ -127,11 +116,11 @@ impl Module {
             .retain(|mod_fn| mod_fn != function);
     }
 
-    pub fn iter_configurables<'a>(
+    pub fn iter_configs<'a>(
         &'a self,
         context: &'a Context,
-    ) -> impl Iterator<Item = &ConfigurableContent> + 'a {
-        context.modules[self.0].global_configurable.values()
+    ) -> impl Iterator<Item = &ConfigContent> + 'a {
+        context.modules[self.0].configs.values()
     }
 }
 

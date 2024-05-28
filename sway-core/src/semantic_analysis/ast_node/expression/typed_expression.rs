@@ -524,12 +524,10 @@ impl ty::TyExpression {
             Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) => {
                 let const_decl = (*decl_engine.get_constant(&decl_id)).clone();
                 let decl_name = const_decl.name().clone();
-
-                assert!(!const_decl.is_configurable);
                 ty::TyExpression {
                     return_type: const_decl.return_type,
                     expression: ty::TyExpressionVariant::ConstantExpression {
-                        const_decl: Box::new(const_decl),
+                        decl: Box::new(const_decl),
                         span: name.span(),
                         call_path: Some(
                             CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
@@ -539,13 +537,13 @@ impl ty::TyExpression {
                 }
             }
             Some(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. })) => {
-                let config_decl = (*decl_engine.get_configurable(&decl_id)).clone();
-                let decl_name = config_decl.name().clone();
+                let decl = (*decl_engine.get_configurable(&decl_id)).clone();
+                let decl_name = decl.name().clone();
 
                 ty::TyExpression {
-                    return_type: config_decl.return_type,
+                    return_type: decl.return_type,
                     expression: ty::TyExpressionVariant::ConfigurableExpression {
-                        const_decl: Box::new(config_decl),
+                        decl: Box::new(decl),
                         span: name.span(),
                         call_path: Some(
                             CallPath::from(decl_name).to_fullpath(ctx.engines(), ctx.namespace()),
@@ -2149,7 +2147,6 @@ impl ty::TyExpression {
                                 TyDecl::ConstantDecl(constant_decl) => {
                                     let constant_decl =
                                         engines.de().get_constant(&constant_decl.decl_id);
-                                    assert!(!constant_decl.is_configurable);
                                     return Err(handler.emit_err(
                                         CompileError::AssignmentToConstantOrConfigurable {
                                             decl_name: constant_decl.name().clone(),
@@ -2158,12 +2155,11 @@ impl ty::TyExpression {
                                         },
                                     ));
                                 }
-                                TyDecl::ConfigurableDecl(configurable_decl) => {
-                                    let constant_decl =
-                                        engines.de().get_configurable(&configurable_decl.decl_id);
+                                TyDecl::ConfigurableDecl(decl) => {
+                                    let decl = engines.de().get_configurable(&decl.decl_id);
                                     return Err(handler.emit_err(
                                         CompileError::AssignmentToConstantOrConfigurable {
-                                            decl_name: constant_decl.name().clone(),
+                                            decl_name: decl.name().clone(),
                                             is_configurable: true,
                                             lhs_span,
                                         },

@@ -119,7 +119,6 @@ impl TyProgram {
                     ..
                 })) => {
                     let decl = (*decl_engine.get_constant(decl_id)).clone();
-                    assert!(!decl.is_configurable);
                     non_configurables_constants.push(decl);
                 }
                 TyAstNodeContent::Declaration(TyDecl::ConfigurableDecl(ConfigurableDecl {

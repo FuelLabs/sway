@@ -57,6 +57,7 @@ pub struct ControlFlowNamespace {
     /// TODO this should be an Ident and not a String, switch when static spans are implemented
     pub(crate) struct_namespace: HashMap<String, StructNamespaceEntry>,
     pub(crate) const_namespace: HashMap<Ident, NodeIndex>,
+    pub(crate) configurable_namespace: HashMap<Ident, NodeIndex>,
     pub(crate) storage: HashMap<Ident, NodeIndex>,
     pub(crate) code_blocks: Vec<ControlFlowCodeBlock>,
     pub(crate) alias: HashMap<IdentUnique, NodeIndex>,
@@ -88,8 +89,8 @@ impl ControlFlowNamespace {
         self.const_namespace.get(&const_decl.name().clone())
     }
 
-    pub(crate) fn get_configurable(&self, _const_decl: &TyConfigurableDecl) -> Option<&NodeIndex> {
-        todo!()
+    pub(crate) fn get_configurable(&self, decl: &TyConfigurableDecl) -> Option<&NodeIndex> {
+        self.configurable_namespace.get(&decl.name().clone())
     }
 
     #[allow(dead_code)]
@@ -112,6 +113,11 @@ impl ControlFlowNamespace {
         declaration_node: NodeIndex,
     ) {
         self.const_namespace.insert(const_name, declaration_node);
+    }
+
+    pub(crate) fn insert_configurable(&mut self, const_name: Ident, declaration_node: NodeIndex) {
+        self.configurable_namespace
+            .insert(const_name, declaration_node);
     }
 
     pub(crate) fn insert_enum(&mut self, enum_name: Ident, enum_decl_index: NodeIndex) {

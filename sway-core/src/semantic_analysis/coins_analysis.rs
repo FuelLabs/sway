@@ -17,11 +17,11 @@ pub fn possibly_nonzero_u64_expression(
         Literal(crate::language::Literal::Numeric(value)) => *value != 0,
         // not a u64 literal, hence we return true to be on the safe side
         Literal(_) => true,
-        ConstantExpression { const_decl, .. } => match &const_decl.value {
+        ConstantExpression { decl, .. } => match &decl.value {
             Some(expr) => possibly_nonzero_u64_expression(namespace, engines, expr),
             None => false,
         },
-        ConfigurableExpression { const_decl, .. } => match &const_decl.value {
+        ConfigurableExpression { decl, .. } => match &decl.value {
             Some(expr) => possibly_nonzero_u64_expression(namespace, engines, expr),
             None => false,
         },

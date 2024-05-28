@@ -18,8 +18,8 @@ use crate::{
     metadata::{MetadataIndex, Metadatum},
     module::{Kind, ModuleContent},
     value::{Value, ValueContent, ValueDatum},
-    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument,
-    ConfigurableContent, IrError, Module, Pass, PassMutability, ScopedPass, UnaryOpKind,
+    AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, BlockArgument, ConfigContent,
+    IrError, Module, Pass, PassMutability, ScopedPass, UnaryOpKind,
 };
 
 #[derive(Debug)]
@@ -184,13 +184,13 @@ fn module_to_doc<'a>(
         4,
         Doc::List(
             module
-                .global_configurable
+                .configs
                 .values()
                 .map(|value| config_to_doc(context, value, md_namer))
                 .collect(),
         ),
     ))
-    .append(if !module.global_configurable.is_empty() {
+    .append(if !module.configs.is_empty() {
         Doc::line(Doc::Empty)
     } else {
         Doc::Empty
@@ -218,11 +218,11 @@ fn module_to_doc<'a>(
 
 fn config_to_doc(
     context: &Context,
-    configurable: &ConfigurableContent,
+    configurable: &ConfigContent,
     md_namer: &mut MetadataNamer,
 ) -> Doc {
     match configurable {
-        ConfigurableContent::V0 {
+        ConfigContent::V0 {
             name,
             constant,
             opt_metadata,
@@ -235,7 +235,7 @@ fn config_to_doc(
             ))
             .append(md_namer.md_idx_to_doc(context, opt_metadata)),
         ),
-        ConfigurableContent::V1 {
+        ConfigContent::V1 {
             name,
             ty,
             encoded_bytes,
@@ -918,11 +918,11 @@ fn instruction_to_doc<'a>(
             InstOp::GetConfig(_, name) => Doc::line(
                 match block
                     .get_module(context)
-                    .get_global_configurable(context, name)
+                    .get_config(context, name)
                     .unwrap()
                 {
-                    ConfigurableContent::V0 { name, ptr_ty, .. }
-                    | ConfigurableContent::V1 { name, ptr_ty, .. } => Doc::text(format!(
+                    ConfigContent::V0 { name, ptr_ty, .. }
+                    | ConfigContent::V1 { name, ptr_ty, .. } => Doc::text(format!(
                         "{} = get_config {}, {}",
                         namer.name(context, ins_value),
                         ptr_ty.as_string(context),
