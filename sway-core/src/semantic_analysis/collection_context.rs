@@ -6,17 +6,32 @@ use crate::{
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{span::Span, Ident};
 
+use super::{ConstShadowingMode, GenericShadowingMode};
+
 #[derive(Clone)]
 /// Contextual state tracked and accumulated throughout symbol collecting.
 pub struct SymbolCollectionContext {
     /// The namespace context accumulated throughout symbol collecting.
     pub(crate) namespace: Namespace,
+
+    /// Whether or not a const declaration shadows previous const declarations sequentially.
+    ///
+    /// This is `Sequential` while checking const declarations in functions, otherwise `ItemStyle`.
+    const_shadowing_mode: ConstShadowingMode,
+    /// Whether or not a generic type parameters shadows previous generic type parameters.
+    ///
+    /// This is `Disallow` everywhere except while checking type parameters bounds in struct instantiation.
+    generic_shadowing_mode: GenericShadowingMode,
 }
 
 impl SymbolCollectionContext {
     /// Initialize a context at the top-level of a module with its namespace.
     pub fn new(namespace: Namespace) -> Self {
-        Self { namespace }
+        Self {
+            namespace,
+            const_shadowing_mode: ConstShadowingMode::ItemStyle,
+            generic_shadowing_mode: GenericShadowingMode::Disallow,
+        }
     }
 
     /// Scope the `CollectionContext` with a new lexical scope.
@@ -59,14 +74,20 @@ impl SymbolCollectionContext {
     /// Short-hand for calling [Items::insert_parsed_symbol].
     pub(crate) fn insert_parsed_symbol(
         &mut self,
-        _handler: &Handler,
+        handler: &Handler,
         engines: &Engines,
         name: Ident,
         item: Declaration,
     ) -> Result<(), ErrorEmitted> {
         self.namespace.module_mut(engines).write(engines, |m| {
-            m.current_items_mut()
-                .insert_parsed_symbol(name.clone(), item.clone())
+            m.current_items_mut().insert_parsed_symbol(
+                handler,
+                engines,
+                name.clone(),
+                item.clone(),
+                self.const_shadowing_mode,
+                self.generic_shadowing_mode,
+            )
         })
     }
 }

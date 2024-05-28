@@ -424,7 +424,7 @@ impl TypeParameter {
                 .get(name_ident)
                 .unwrap();
 
-            match sy {
+            match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                     type_id: parent_type_id,
                     ..

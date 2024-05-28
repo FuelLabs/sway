@@ -130,7 +130,9 @@ impl Parse for ty::TySideEffect {
                                 .namespace
                                 .submodule(ctx.engines, call_path)
                                 .and_then(|module| module.current_items().symbols().get(item))
-                                .and_then(|decl| decl.get_decl_ident(ctx.engines))
+                                .and_then(|decl| {
+                                    decl.expect_typed_ref().get_decl_ident(ctx.engines)
+                                })
                             {
                                 // Update the symbol kind to match the declarations symbol kind
                                 if let Some(decl) =
@@ -446,7 +448,7 @@ impl Parse for ty::TyExpression {
                         .namespace
                         .submodule(ctx.engines, &abi_name.prefixes)
                         .and_then(|module| module.current_items().symbols().get(&abi_name.suffix))
-                        .and_then(|decl| decl.get_decl_ident(ctx.engines))
+                        .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -1164,7 +1166,7 @@ fn collect_call_path_tree(ctx: &ParseContext, tree: &CallPathTree, type_arg: &Ty
                                 .symbols()
                                 .get(&abi_call_path.call_path.suffix)
                         })
-                        .and_then(|decl| decl.get_decl_ident(ctx.engines))
+                        .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
                     {
                         token.type_def = Some(TypeDefinition::Ident(abi_def_ident));
                     }
@@ -1342,7 +1344,7 @@ fn collect_trait_constraint(
             .namespace
             .submodule(ctx.engines, &trait_name.prefixes)
             .and_then(|module| module.current_items().symbols().get(&trait_name.suffix))
-            .and_then(|decl| decl.get_decl_ident(ctx.engines))
+            .and_then(|decl| decl.expect_typed_ref().get_decl_ident(ctx.engines))
         {
             token.type_def = Some(TypeDefinition::Ident(trait_def_ident));
         }
