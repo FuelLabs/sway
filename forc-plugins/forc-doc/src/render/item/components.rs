@@ -6,15 +6,16 @@ use crate::{
         item::context::ItemContext,
         search::generate_searchbar,
         sidebar::{Sidebar, SidebarNav},
-        title::DocBlockTitle,
         DocStyle, Renderable,
     },
     RenderPlan, ASSETS_DIR_NAME,
 };
 use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox};
-use sway_core::language::ty::TyDecl;
+
 use sway_types::BaseIdent;
+
+use super::documentable_type::DocumentableType;
 
 /// All necessary components to render the header portion of
 /// the item html doc.
@@ -74,7 +75,7 @@ impl Renderable for ItemHeader {
 #[derive(Clone, Debug)]
 pub struct ItemBody {
     pub module_info: ModuleInfo,
-    pub ty_decl: TyDecl,
+    pub ty: DocumentableType,
     /// The item name varies depending on type.
     /// We store it during info gathering to avoid
     /// multiple match statements.
@@ -86,7 +87,7 @@ pub struct ItemBody {
 impl SidebarNav for ItemBody {
     fn sidebar(&self) -> Sidebar {
         let style = DocStyle::Item {
-            title: Some(self.ty_decl.as_block_title()),
+            title: Some(self.ty.as_block_title()),
             name: Some(self.item_name.clone()),
         };
         Sidebar::new(
@@ -103,15 +104,15 @@ impl Renderable for ItemBody {
         let sidebar = self.sidebar();
         let ItemBody {
             module_info,
-            ty_decl,
+            ty,
             item_name,
             code_str,
             attrs_opt,
             item_context,
         } = self;
 
-        let decl_ty = ty_decl.doc_name();
-        let block_title = ty_decl.as_block_title();
+        let doc_name = ty.doc_name().to_string();
+        let block_title = ty.as_block_title();
         let sidebar = sidebar.render(render_plan.clone())?;
         let item_context = (item_context.context_opt.is_some()
             || item_context.impl_traits.is_some())
@@ -121,7 +122,7 @@ impl Renderable for ItemBody {
         let rendered_module_anchors = module_info.get_anchors()?;
 
         Ok(box_html! {
-            body(class=format!("swaydoc {decl_ty}")) {
+            body(class=format!("swaydoc {doc_name}")) {
                 : sidebar;
                 // this is the main code block
                 main {
@@ -135,14 +136,14 @@ impl Renderable for ItemBody {
                                         @ for anchor in rendered_module_anchors {
                                             : Raw(anchor);
                                         }
-                                        a(class=&decl_ty, href=IDENTITY) {
+                                        a(class=&doc_name, href=IDENTITY) {
                                             : item_name.as_str();
                                         }
                                     }
                                 }
                             }
                             div(class="docblock item-decl") {
-                                pre(class=format!("sway {}", &decl_ty)) {
+                                pre(class=format!("sway {}", &doc_name)) {
                                     code { : code_str; }
                                 }
                             }
