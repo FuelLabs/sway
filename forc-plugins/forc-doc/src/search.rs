@@ -53,7 +53,7 @@ impl<'a> From<&'a Document> for JsonSearchItem {
                 .replace("<br>", "")
                 .replace("<p>", "")
                 .replace("</p>", ""),
-            type_name: value.item_body.ty_decl.friendly_type_name().to_string(),
+            type_name: value.item_body.ty.friendly_type_name().into(),
         }
     }
 }

@@ -6,7 +6,7 @@ abigen!(Predicate(
     abi = "out/debug/{{project-name}}-abi.json"
 ));
 
-async fn get_predicate_instance() -> (WalletUnlocked, Predicate) {
+async fn get_predicate_instance() -> (WalletUnlocked, Predicate, AssetId) {
     let mut wallets = launch_custom_provider_and_get_wallets(
         WalletsConfig::new(
             Some(1),             /* Single wallet */
@@ -23,11 +23,13 @@ async fn get_predicate_instance() -> (WalletUnlocked, Predicate) {
 
     let provider = wallet.provider().clone().unwrap();
 
+    let base_asset_id = provider.base_asset_id().clone();
+
     let bin_path = "./out/debug/{{project-name}}.bin";
 
     let instance: Predicate = Predicate::load_from(bin_path).unwrap().with_provider(provider.clone());
 
-    (wallet, instance)
+    (wallet, instance, base_asset_id)
 }
 
 async fn check_balances(
@@ -52,19 +54,19 @@ async fn check_balances(
 
 #[tokio::test]
 async fn can_get_predicate_instance() {
-    let (wallet, instance) = get_predicate_instance().await;
+    let (wallet, instance, base_asset_id) = get_predicate_instance().await;
     let predicate_root = instance.address();
 
     // Check balances before funding predicate
     check_balances(&wallet, &instance, Some(1_000_000_000u64), None).await;
 
     // Fund predicate from wallet
-    let _ = wallet.transfer(predicate_root, 1234, BASE_ASSET_ID, TxPolicies::default()).await;
+    let _ = wallet.transfer(predicate_root, 1234, base_asset_id, TxPolicies::default()).await;
 
     // Check balances after funding predicate
     check_balances(&wallet, &instance, Some(999_998_766u64), Some(1234u64)).await;
 
-    let _ = instance.transfer(wallet.address(), 1234, BASE_ASSET_ID, TxPolicies::default()).await;
+    let _ = instance.transfer(wallet.address(), 1234, base_asset_id, TxPolicies::default()).await;
 
     // Check balances after transferring funds out of predicate
     check_balances(&wallet, &instance, Some(1_000_000_000u64), Some(0u64)).await;

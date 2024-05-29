@@ -6,7 +6,7 @@ use crate::{
         item::type_anchor::render_type_anchor,
         link::{DocLink, DocLinks},
         title::BlockTitle,
-        title::DocBlockTitle,
+        title::DocBlock,
         util::format::docstring::DocStrings,
         DocStyle, Renderable,
     },
@@ -53,7 +53,7 @@ impl Renderable for Context {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let mut rendered_list: Vec<String> = Vec::new();
         let mut is_method_block = false;
-        match self.context_type {
+        match &self.context_type {
             ContextType::StructFields(fields) => {
                 for field in fields {
                     let struct_field_id = format!("structfield.{}", field.name.as_str());
@@ -272,6 +272,36 @@ pub struct DocImplTrait {
     pub module_info_override: Option<Vec<String>>,
 }
 
+impl DocImplTrait {
+    pub fn short_name(&self) -> String {
+        self.impl_trait.trait_name.suffix.as_str().to_string()
+    }
+
+    pub fn type_args(&self) -> Vec<String> {
+        self.impl_trait
+            .trait_type_arguments
+            .iter()
+            .map(|arg| arg.span.as_str().to_string())
+            .collect()
+    }
+
+    pub fn name_with_type_args(&self) -> String {
+        let type_args = self.type_args();
+        if !type_args.is_empty() {
+            format!("{}<{}>", self.short_name(), type_args.join(", "))
+        } else {
+            self.short_name()
+        }
+    }
+
+    // If the trait name is the same as the declaration's name, it's an inherent implementation.
+    // Otherwise, it's a trait implementation.
+    pub fn is_inherent(&self) -> bool {
+        self.short_name() == self.impl_trait.implementing_for.span.as_str()
+            || self.short_name() == "r#Self"
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 /// The context section of an item that appears in the page [ItemBody].
 pub struct ItemContext {
@@ -373,13 +403,9 @@ impl ItemContext {
             let doc_links = impl_traits
                 .iter()
                 .map(|impl_trait| DocLink {
-                    name: impl_trait.impl_trait.trait_name.suffix.as_str().to_string(),
+                    name: impl_trait.name_with_type_args(),
                     module_info: impl_trait.impl_for_module.clone(),
-                    html_filename: format!(
-                        "{}impl-{}",
-                        IDENTITY,
-                        impl_trait.impl_trait.trait_name.suffix.as_str()
-                    ),
+                    html_filename: format!("{}impl-{}", IDENTITY, impl_trait.name_with_type_args()),
                     preview_opt: None,
                 })
                 .collect();
@@ -399,7 +425,7 @@ impl Renderable for ItemContext {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
         let context_opt = match self.context_opt {
             Some(context) => {
-                let title = context.context_type.as_block_title();
+                let title = context.context_type.title();
                 let rendered_list = context.render(render_plan.clone())?;
                 let lct = title.html_title_string();
                 Some(
@@ -474,9 +500,12 @@ impl Renderable for DocImplTrait {
             items,
             implementing_for,
             ..
-        } = self.impl_trait;
-        let is_inherent = trait_name.suffix.as_str() == implementing_for.span.as_str();
-        let impl_for_module = self.impl_for_module;
+        } = &self.impl_trait;
+        let short_name = self.short_name();
+        let name_with_type_args = self.name_with_type_args();
+        let type_args = self.type_args();
+        let is_inherent = self.is_inherent();
+        let impl_for_module = &self.impl_for_module;
         let no_deps = render_plan.no_deps;
         let is_external_item = if let Some(project_root) = trait_name.prefixes.first() {
             project_root.as_str() != impl_for_module.project_name()
@@ -484,36 +513,48 @@ impl Renderable for DocImplTrait {
             false
         };
 
-        let trait_link = if let Some(module_prefixes) = self.module_info_override {
-            ModuleInfo::from_vec_str(&module_prefixes).file_path_from_location(
-                &format!("trait.{}.html", trait_name.suffix.as_str()),
-                &impl_for_module,
+        let trait_link = if let Some(module_prefixes) = &self.module_info_override {
+            ModuleInfo::from_vec_str(module_prefixes).file_path_from_location(
+                &format!("trait.{}.html", short_name),
+                impl_for_module,
                 is_external_item,
             )?
         } else {
-            ModuleInfo::from_call_path(&trait_name).file_path_from_location(
-                &format!("trait.{}.html", trait_name.suffix.as_str()),
-                &impl_for_module,
+            ModuleInfo::from_call_path(trait_name).file_path_from_location(
+                &format!("trait.{}.html", short_name),
+                impl_for_module,
                 is_external_item,
             )?
         };
 
         let mut rendered_items = Vec::with_capacity(items.len());
         for item in items {
-            rendered_items.push(item.render(render_plan.clone())?)
+            rendered_items.push(item.clone().render(render_plan.clone())?)
         }
 
         let impl_for = box_html! {
-                div(id=format!("impl-{}", trait_name.suffix.as_str()), class="impl has-srclink") {
-                a(href=format!("{IDENTITY}impl-{}", trait_name.suffix.as_str()), class="anchor");
+                div(id=format!("impl-{}", name_with_type_args), class="impl has-srclink") {
+                a(href=format!("{IDENTITY}impl-{}", name_with_type_args), class="anchor");
                 h3(class="code-header in-band") {
                     : "impl ";
                     @ if !is_inherent {
                         @ if no_deps && is_external_item {
-                            : trait_name.suffix.as_str();
+                            : name_with_type_args;
                         } else {
                             a(class="trait", href=format!("{trait_link}")) {
-                                : trait_name.suffix.as_str();
+                                : short_name;
+                            }
+                            @ for arg in &type_args {
+                                @ if arg == type_args.first().unwrap() {
+                                    : "<";
+                                }
+                                : arg;
+                                @ if arg != type_args.last().unwrap() {
+                                    : ", ";
+                                }
+                                @ if arg == type_args.last().unwrap() {
+                                    : ">";
+                                }
                             }
                         }
                         : " for ";
@@ -670,12 +711,21 @@ pub enum ContextType {
     /// Stores the methods of a trait or abi to be rendered.
     RequiredMethods(Vec<TyTraitFn>),
 }
-impl DocBlockTitle for ContextType {
-    fn as_block_title(&self) -> BlockTitle {
+impl DocBlock for ContextType {
+    fn title(&self) -> BlockTitle {
         match self {
             ContextType::StructFields(_) | ContextType::StorageFields(_) => BlockTitle::Fields,
             ContextType::EnumVariants(_) => BlockTitle::Variants,
             ContextType::RequiredMethods(_) => BlockTitle::RequiredMethods,
+        }
+    }
+
+    fn name(&self) -> &str {
+        match self {
+            ContextType::StructFields(_) => "struct_fields",
+            ContextType::StorageFields(_) => "storage_fields",
+            ContextType::EnumVariants(_) => "enum_variants",
+            ContextType::RequiredMethods(_) => "required_methods",
         }
     }
 }
