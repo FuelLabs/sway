@@ -7,7 +7,7 @@
         "typeArguments": null
       },
       "name": "C0",
-      "offset": 14264
+      "offset": 12584
     },
     {
       "configurableType": {
@@ -16,7 +16,7 @@
         "typeArguments": null
       },
       "name": "C1",
-      "offset": 14288
+      "offset": 12608
     },
     {
       "configurableType": {
@@ -25,7 +25,7 @@
         "typeArguments": null
       },
       "name": "C2",
-      "offset": 14304
+      "offset": 12624
     },
     {
       "configurableType": {
@@ -34,7 +34,7 @@
         "typeArguments": []
       },
       "name": "C3",
-      "offset": 14336
+      "offset": 12656
     },
     {
       "configurableType": {
@@ -43,7 +43,7 @@
         "typeArguments": []
       },
       "name": "C4",
-      "offset": 14352
+      "offset": 12672
     },
     {
       "configurableType": {
@@ -52,7 +52,7 @@
         "typeArguments": []
       },
       "name": "C5",
-      "offset": 14368
+      "offset": 12688
     },
     {
       "configurableType": {
@@ -61,7 +61,7 @@
         "typeArguments": null
       },
       "name": "C6",
-      "offset": 14384
+      "offset": 12704
     },
     {
       "configurableType": {
@@ -70,7 +70,7 @@
         "typeArguments": null
       },
       "name": "C7",
-      "offset": 14400
+      "offset": 12720
     },
     {
       "configurableType": {
@@ -79,7 +79,7 @@
         "typeArguments": null
       },
       "name": "C9",
-      "offset": 14448
+      "offset": 12768
     },
     {
       "configurableType": {
@@ -88,7 +88,7 @@
         "typeArguments": null
       },
       "name": "BOOL",
-      "offset": 14472
+      "offset": 12792
     },
     {
       "configurableType": {
@@ -97,7 +97,7 @@
         "typeArguments": null
       },
       "name": "U8",
-      "offset": 14480
+      "offset": 12800
     },
     {
       "configurableType": {
@@ -106,7 +106,7 @@
         "typeArguments": null
       },
       "name": "ANOTHERU8",
-      "offset": 14496
+      "offset": 12816
     },
     {
       "configurableType": {
@@ -115,7 +115,7 @@
         "typeArguments": null
       },
       "name": "U16",
-      "offset": 14504
+      "offset": 12824
     },
     {
       "configurableType": {
@@ -124,7 +124,7 @@
         "typeArguments": null
       },
       "name": "U32",
-      "offset": 14512
+      "offset": 12832
     },
     {
       "configurableType": {
@@ -133,7 +133,7 @@
         "typeArguments": null
       },
       "name": "U64",
-      "offset": 14528
+      "offset": 12848
     },
     {
       "configurableType": {
@@ -142,7 +142,7 @@
         "typeArguments": null
       },
       "name": "U256",
-      "offset": 14544
+      "offset": 12864
     },
     {
       "configurableType": {
@@ -151,7 +151,7 @@
         "typeArguments": null
       },
       "name": "ARRAY_U8",
-      "offset": 14576
+      "offset": 12896
     },
     {
       "configurableType": {
@@ -160,7 +160,7 @@
         "typeArguments": null
       },
       "name": "ARRAY_U32",
-      "offset": 14608
+      "offset": 12928
     }
   ],
   "encoding": "1",
