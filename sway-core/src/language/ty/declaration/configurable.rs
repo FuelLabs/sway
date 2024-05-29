@@ -20,7 +20,6 @@ use crate::{
 pub struct TyConfigurableDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
-    pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
     pub visibility: Visibility,
     pub attributes: transform::AttributesMap,
     pub return_type: TypeId,
@@ -28,6 +27,8 @@ pub struct TyConfigurableDecl {
     pub span: Span,
     // TODO can we remove this?
     pub implementing_type: Option<TyDecl>,
+    // Only encoding v1 has a decode_fn
+    pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
 }
 
 impl DebugWithEngines for TyConfigurableDecl {
