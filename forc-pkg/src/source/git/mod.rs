@@ -8,6 +8,7 @@ use crate::{
 use anyhow::{anyhow, bail, Context, Result};
 use forc_util::git_checkouts_directory;
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 use std::{
     collections::hash_map,
     fmt, fs,
@@ -28,6 +29,12 @@ pub struct Source {
     pub repo: Url,
     /// A git reference, e.g. a branch or tag.
     pub reference: Reference,
+}
+
+impl Display for Source {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.repo, self.reference)
+    }
 }
 
 /// Used to distinguish between types of git references.
@@ -479,7 +486,7 @@ pub fn pin(fetch_id: u64, name: &str, source: Source) -> Result<Pinned> {
         let commit_id = source
             .reference
             .resolve(&repo)
-            .with_context(|| "failed to resolve reference".to_string())?;
+            .with_context(|| format!("Failed to resolve manifest reference: {source}"))?;
         Ok(format!("{commit_id}"))
     })?;
     Ok(Pinned {

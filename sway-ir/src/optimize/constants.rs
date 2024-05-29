@@ -102,7 +102,12 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                 ..
             },
         )| {
+            // `no_more_dest` will no longer have from_block as a predecessor.
             no_more_dest.remove_pred(context, &from_block);
+            // Although our cbr already branched to `dest`, in case
+            // `no_more_dest` and `dest` are the same, we'll need to re-add
+            // `from_block` as a predecessor for `dest`.
+            dest.block.add_pred(context, &from_block);
             cbr.replace(
                 context,
                 ValueDatum::Instruction(Instruction {
