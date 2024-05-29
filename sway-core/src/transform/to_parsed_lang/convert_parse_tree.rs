@@ -1005,36 +1005,53 @@ fn item_storage_to_storage_declaration(
 ) -> Result<ParsedDeclId<StorageDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_storage.span();
-    let fields: Vec<StorageField> = item_storage
-        .fields
+    let entries: Vec<StorageEntry> = item_storage
+        .entries
         .into_inner()
         .into_iter()
-        .map(|storage_field| {
-            let attributes = item_attrs_to_map(context, handler, &storage_field.attribute_list)?;
+        .map(|storage_entry| {
+            let attributes = item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(storage_field_to_storage_field(
+            Ok(Some(storage_entry_to_storage_entry(
                 context,
                 handler,
                 engines,
-                storage_field.value,
+                storage_entry.value,
                 attributes,
             )?))
         })
-        .filter_map_ok(|field| field)
+        .filter_map_ok(|entry| entry)
         .collect::<Result<_, _>>()?;
 
-    // Make sure each storage field is declared once
-    let mut names_of_fields = std::collections::HashSet::new();
-    for v in fields.iter() {
-        if !names_of_fields.insert(v.name.clone()) {
-            errors.push(ConvertParseTreeError::DuplicateStorageField {
-                name: v.name.clone(),
-                span: v.name.span(),
-            });
+    fn check_duplicate_names(
+        entries: Vec<StorageEntry>,
+        mut errors: &mut Vec<ConvertParseTreeError>,
+    ) {
+        // Make sure each storage field is declared once
+        let mut names_of_fields = std::collections::HashSet::new();
+        for v in entries {
+            if !names_of_fields.insert(v.name().clone()) {
+                errors.push(ConvertParseTreeError::DuplicateStorageField {
+                    name: v.name().clone(),
+                    span: v.name().span(),
+                });
+            }
+            if let StorageEntry::Namespace(namespace) = v {
+                check_duplicate_names(
+                    namespace
+                        .entries
+                        .iter()
+                        .map(|e| (**e).clone())
+                        .collect::<Vec<_>>(),
+                    &mut errors,
+                );
+            }
         }
     }
+
+    check_duplicate_names(entries.clone(), &mut errors);
 
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -1043,7 +1060,7 @@ fn item_storage_to_storage_declaration(
     let storage_declaration = StorageDeclaration {
         attributes,
         span,
-        fields,
+        entries,
         storage_keyword: item_storage.storage_token.into(),
     };
     let storage_declaration = engines.pe().insert(storage_declaration);
@@ -2476,6 +2493,48 @@ fn op_call(
         })),
         span,
     })
+}
+
+fn storage_entry_to_storage_entry(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    storage_entry: sway_ast::StorageEntry,
+    attributes: AttributesMap,
+) -> Result<StorageEntry, ErrorEmitted> {
+    if let Some(storage_field) = storage_entry.field {
+        Ok(StorageEntry::Field(storage_field_to_storage_field(
+            context,
+            handler,
+            engines,
+            storage_field,
+            attributes,
+        )?))
+    } else {
+        let mut entries = vec![];
+        let namespace = storage_entry.namespace.unwrap();
+        for entry in namespace.into_inner().into_iter().map(|storage_entry| {
+            let attributes = item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
+            if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                return Ok::<Option<StorageEntry>, ErrorEmitted>(None);
+            }
+            Ok(Some(storage_entry_to_storage_entry(
+                context,
+                handler,
+                engines,
+                *storage_entry.value,
+                attributes,
+            )?))
+        }) {
+            if let Ok(Some(entry)) = entry {
+                entries.push(Box::new(entry));
+            }
+        }
+        Ok(StorageEntry::Namespace(StorageNamespace {
+            name: storage_entry.name,
+            entries,
+        }))
+    }
 }
 
 fn storage_field_to_storage_field(

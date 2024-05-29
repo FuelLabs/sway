@@ -1,11 +1,12 @@
+use fuel_vm::fuel_tx::field;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Named, Spanned};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRef, ReplaceFunctionImplementingType},
     language::{
-        parsed,
-        ty::{self, FunctionDecl, TyDecl},
+        parsed::{self, StorageEntry},
+        ty::{self, FunctionDecl, TyDecl, TyStorageField},
         CallPath,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
@@ -453,60 +454,97 @@ impl TyDecl {
             parsed::Declaration::StorageDeclaration(decl_id) => {
                 let parsed::StorageDeclaration {
                     span,
-                    fields,
+                    entries,
                     attributes,
                     storage_keyword,
                 } = engines.pe().get_storage(&decl_id).as_ref().clone();
-                let mut fields_buf = Vec::with_capacity(fields.len());
-                for parsed::StorageField {
-                    name,
-                    key_expression,
-                    initializer,
-                    mut type_argument,
-                    attributes,
-                    span: field_span,
-                    ..
-                } in fields
-                {
-                    type_argument.type_id = ctx.resolve_type(
-                        handler,
-                        type_argument.type_id,
-                        &name.span(),
-                        EnforceTypeArguments::Yes,
-                        None,
-                    )?;
+                let mut fields_buf = vec![];
+                fn type_check_storage_entries(
+                    handler: &Handler,
+                    mut ctx: TypeCheckContext,
+                    entries: Vec<StorageEntry>,
+                    mut fields_buf: &mut Vec<TyStorageField>,
+                    namespace_names: Vec<Ident>,
+                ) -> Result<(), ErrorEmitted> {
+                    let engines = ctx.engines;
+                    for entry in entries {
+                        if let StorageEntry::Field(parsed::StorageField {
+                            name,
+                            key_expression,
+                            initializer,
+                            mut type_argument,
+                            attributes,
+                            span: field_span,
+                            ..
+                        }) = entry
+                        {
+                            type_argument.type_id = ctx.by_ref().resolve_type(
+                                handler,
+                                type_argument.type_id,
+                                &name.span(),
+                                EnforceTypeArguments::Yes,
+                                None,
+                            )?;
 
-                    let mut ctx = ctx
-                        .by_ref()
-                        .with_type_annotation(type_argument.type_id)
-                        .with_storage_declaration();
-                    let initializer =
-                        ty::TyExpression::type_check(handler, ctx.by_ref(), &initializer)?;
+                            let mut ctx = ctx
+                                .by_ref()
+                                .with_type_annotation(type_argument.type_id)
+                                .with_storage_declaration();
+                            let initializer =
+                                ty::TyExpression::type_check(handler, ctx.by_ref(), &initializer)?;
 
-                    let mut key_ty_expression = None;
-                    if let Some(key_expression) = key_expression {
-                        let mut key_ctx = ctx.with_type_annotation(type_engine.insert(
-                            engines,
-                            TypeInfo::B256,
-                            None,
-                        ));
+                            let mut key_ty_expression = None;
+                            if let Some(key_expression) = key_expression {
+                                let mut key_ctx = ctx.with_type_annotation(engines.te().insert(
+                                    engines,
+                                    TypeInfo::B256,
+                                    None,
+                                ));
 
-                        key_ty_expression = Some(ty::TyExpression::type_check(
-                            handler,
-                            key_ctx.by_ref(),
-                            &key_expression,
-                        )?);
+                                key_ty_expression = Some(ty::TyExpression::type_check(
+                                    handler,
+                                    key_ctx.by_ref(),
+                                    &key_expression,
+                                )?);
+                            }
+
+                            fields_buf.push(ty::TyStorageField {
+                                name,
+                                namespace_names: namespace_names.clone(),
+                                key_expression: key_ty_expression,
+                                type_argument,
+                                initializer,
+                                span: field_span,
+                                attributes,
+                            });
+                        } else if let StorageEntry::Namespace(namespace) = entry {
+                            let mut new_namespace_names = namespace_names.clone();
+                            new_namespace_names.push(namespace.name);
+                            type_check_storage_entries(
+                                handler,
+                                ctx.by_ref(),
+                                namespace
+                                    .entries
+                                    .iter()
+                                    .map(|e| (**e).clone())
+                                    .collect::<Vec<_>>(),
+                                &mut fields_buf,
+                                new_namespace_names,
+                            )?;
+                        }
                     }
 
-                    fields_buf.push(ty::TyStorageField {
-                        name,
-                        key_expression: key_ty_expression,
-                        type_argument,
-                        initializer,
-                        span: field_span,
-                        attributes,
-                    });
+                    Ok(())
                 }
+
+                type_check_storage_entries(
+                    handler,
+                    ctx.by_ref(),
+                    entries,
+                    &mut fields_buf,
+                    vec![],
+                )?;
+
                 let decl = ty::TyStorageDecl {
                     fields: fields_buf,
                     span,

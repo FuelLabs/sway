@@ -1,10 +1,36 @@
 use crate::{Parse, ParseResult, Parser};
 
-use sway_ast::{keywords::InToken, Expr, ItemStorage, StorageField};
+use sway_ast::{
+    attribute::Annotated,
+    keywords::{ColonToken, InToken},
+    Braces, CommaToken, Expr, ItemStorage, Punctuated, StorageEntry, StorageField,
+};
+use sway_types::BaseIdent;
+
+impl Parse for StorageEntry {
+    fn parse(parser: &mut Parser) -> ParseResult<StorageEntry> {
+        let name: BaseIdent = parser.parse()?;
+        let mut field = None;
+        let mut namespace = None;
+        if parser.peek::<ColonToken>().is_some() || parser.peek::<InToken>().is_some() {
+            let mut f: StorageField = parser.parse()?;
+            f.name = name.clone();
+            field = Some(f);
+        } else {
+            let n: Braces<Punctuated<Annotated<Box<StorageEntry>>, CommaToken>> = parser.parse()?;
+            namespace = Some(n);
+        }
+        Ok(StorageEntry {
+            name,
+            namespace,
+            field,
+        })
+    }
+}
 
 impl Parse for StorageField {
     fn parse(parser: &mut Parser) -> ParseResult<StorageField> {
-        let name = parser.parse()?;
+        let name = BaseIdent::dummy(); // Name will be overrided in StorageEntry parse.
         let in_token: Option<InToken> = parser.take();
         let mut key_opt: Option<Expr> = None;
         if in_token.is_some() {
@@ -29,10 +55,10 @@ impl Parse for StorageField {
 impl Parse for ItemStorage {
     fn parse(parser: &mut Parser) -> ParseResult<ItemStorage> {
         let storage_token = parser.parse()?;
-        let fields = parser.parse()?;
+        let entries = parser.parse()?;
         Ok(ItemStorage {
             storage_token,
-            fields,
+            entries,
         })
     }
 }

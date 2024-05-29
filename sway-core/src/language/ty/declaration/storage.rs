@@ -244,6 +244,7 @@ impl Spanned for TyStorageField {
 #[derive(Clone, Debug)]
 pub struct TyStorageField {
     pub name: Ident,
+    pub namespace_names: Vec<Ident>,
     pub key_expression: Option<TyExpression>,
     pub type_argument: TypeArgument,
     pub initializer: TyExpression,
@@ -255,6 +256,7 @@ impl EqWithEngines for TyStorageField {}
 impl PartialEqWithEngines for TyStorageField {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.name == other.name
+            && self.namespace_names.eq(&other.namespace_names)
             && self.type_argument.eq(&other.type_argument, ctx)
             && self.initializer.eq(&other.initializer, ctx)
     }
@@ -264,6 +266,7 @@ impl HashWithEngines for TyStorageField {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let TyStorageField {
             name,
+            namespace_names,
             key_expression,
             type_argument,
             initializer,
@@ -273,6 +276,7 @@ impl HashWithEngines for TyStorageField {
             attributes: _,
         } = self;
         name.hash(state);
+        namespace_names.hash(state);
         key_expression.hash(state, engines);
         type_argument.hash(state, engines);
         initializer.hash(state, engines);

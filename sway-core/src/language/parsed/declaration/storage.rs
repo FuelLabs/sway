@@ -11,7 +11,7 @@ use sway_types::{ident::Ident, span::Span, Spanned};
 /// All values in this struct are mutable and persistent among executions of the same contract deployment.
 pub struct StorageDeclaration {
     pub attributes: transform::AttributesMap,
-    pub fields: Vec<StorageField>,
+    pub entries: Vec<StorageEntry>,
     pub span: Span,
     pub storage_keyword: Ident,
 }
@@ -29,6 +29,27 @@ impl PartialEqWithEngines for StorageDeclaration {
 impl Spanned for StorageDeclaration {
     fn span(&self) -> sway_types::Span {
         self.span.clone()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StorageNamespace {
+    pub name: Ident,
+    pub entries: Vec<Box<StorageEntry>>,
+}
+
+#[derive(Debug, Clone)]
+pub enum StorageEntry {
+    Namespace(StorageNamespace),
+    Field(StorageField),
+}
+
+impl StorageEntry {
+    pub fn name(&self) -> Ident {
+        match self {
+            StorageEntry::Namespace(namespace) => namespace.name.clone(),
+            StorageEntry::Field(field) => field.name.clone(),
+        }
     }
 }
 
