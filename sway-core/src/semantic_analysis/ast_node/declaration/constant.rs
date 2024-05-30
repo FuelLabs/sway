@@ -109,7 +109,6 @@ impl ty::TyConstantDecl {
             span,
             value,
             visibility,
-            implementing_type: None,
         };
         Ok(decl)
     }
@@ -134,7 +133,6 @@ impl ty::TyConstantDecl {
             type_ascription,
             value: None,
             visibility,
-            implementing_type: None,
         }
     }
 }

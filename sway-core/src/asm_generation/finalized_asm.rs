@@ -166,7 +166,10 @@ fn to_bytecode_mut(
             Either::Right(data) => {
                 if build_config.print_bytecode {
                     print!("{:#010x} ", bytecode.len());
-                    println!("                                ;; {:?}", data);
+                    println!(
+                        "                                                ;; {:?}",
+                        data
+                    );
                 }
 
                 // Static assert to ensure that we're only dealing with DataSectionOffsetPlaceholder,
@@ -232,42 +235,25 @@ fn to_bytecode_mut(
 
 // Code to pretty print bytecode
 fn print_reg(r: RegId) -> String {
-    if r == RegId::BAL {
-        "$bal".to_string()
-    } else if r == RegId::CGAS {
-        "$cgas".to_string()
-    } else if r == RegId::ERR {
-        "$err".to_string()
-    } else if r == RegId::FLAG {
-        "$flag".to_string()
-    } else if r == RegId::FP {
-        "$fp".to_string()
-    } else if r == RegId::GGAS {
-        "$ggas".to_string()
-    } else if r == RegId::HP {
-        "$hp".to_string()
-    } else if r == RegId::IS {
-        "$is".to_string()
-    } else if r == RegId::OF {
-        "$of".to_string()
-    } else if r == RegId::ONE {
-        "$one".to_string()
-    } else if r == RegId::PC {
-        "$pc".to_string()
-    } else if r == RegId::RET {
-        "$ret".to_string()
-    } else if r == RegId::RETL {
-        "$retl".to_string()
-    } else if r == RegId::SP {
-        "$sp".to_string()
-    } else if r == RegId::SSP {
-        "$ssp".to_string()
-    } else if r == RegId::WRITABLE {
-        "$writable".to_string()
-    } else if r == RegId::ZERO {
-        "$zero".to_string()
-    } else {
-        format!("R{:?}", r.to_u8())
+    match r {
+        RegId::BAL => "$bal".to_string(),
+        RegId::CGAS => "$cgas".to_string(),
+        RegId::ERR => "$err".to_string(),
+        RegId::FLAG => "$flag".to_string(),
+        RegId::FP => "$fp".to_string(),
+        RegId::GGAS => "$ggas".to_string(),
+        RegId::HP => "$hp".to_string(),
+        RegId::IS => "$is".to_string(),
+        RegId::OF => "$of".to_string(),
+        RegId::ONE => "$one".to_string(),
+        RegId::PC => "$pc".to_string(),
+        RegId::RET => "$ret".to_string(),
+        RegId::RETL => "$retl".to_string(),
+        RegId::SP => "$sp".to_string(),
+        RegId::SSP => "$ssp".to_string(),
+        RegId::WRITABLE => "$writable".to_string(),
+        RegId::ZERO => "$zero".to_string(),
+        _ => format!("R{:?}", r.to_u8()),
     }
 }
 
@@ -334,7 +320,7 @@ impl<A: Args, B: Args, C: Args, D: Args> Args for (A, B, C, D) {
 
 fn f(name: &str, args: impl Args) {
     let mut line = format!("{name} {}", args.print());
-    let s = " ".repeat(32 - line.len());
+    let s = " ".repeat(48 - line.len());
     line.push_str(&s);
     print!("{line}")
 }

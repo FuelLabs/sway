@@ -150,7 +150,6 @@ impl ty::TyConfigurableDecl {
             value,
             decode_fn,
             visibility,
-            implementing_type: None,
         })
     }
 }

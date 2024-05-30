@@ -1472,12 +1472,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     .unwrap_or_else(|| leaves.to_vec()))
             }
         }
-        ConstantExpression {
-            decl: const_decl, ..
-        } => {
-            let node = if let Some(node) = graph.namespace.get_global_constant(const_decl.name()) {
+        ConstantExpression { decl, .. } => {
+            let node = if let Some(node) = graph.namespace.get_global_constant(decl.name()) {
                 *node
-            } else if let Some(node) = graph.namespace.get_constant(const_decl) {
+            } else if let Some(node) = graph.namespace.get_constant(decl) {
                 *node
             } else {
                 return Ok(leaves.to_vec());
@@ -1488,18 +1486,15 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             }
             Ok(vec![node])
         }
-        ConfigurableExpression {
-            decl: const_decl, ..
-        } => {
-            let node = if let Some(node) = graph.namespace.get_configurable(const_decl) {
-                *node
-            } else {
+        ConfigurableExpression { decl, .. } => {
+            let Some(node) = graph.namespace.get_configurable(decl).cloned() else {
                 return Ok(leaves.to_vec());
             };
 
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());
             }
+
             Ok(vec![node])
         }
         EnumInstantiation {

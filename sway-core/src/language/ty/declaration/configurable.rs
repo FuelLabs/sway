@@ -25,8 +25,6 @@ pub struct TyConfigurableDecl {
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
-    // TODO can we remove this?
-    pub implementing_type: Option<TyDecl>,
     // Only encoding v1 has a decode_fn
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
 }
@@ -48,10 +46,6 @@ impl PartialEqWithEngines for TyConfigurableDecl {
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), ctx)
-            && match (&self.implementing_type, &other.implementing_type) {
-                (Some(self_), Some(other)) => self_.eq(other, ctx),
-                _ => false,
-            }
     }
 }
 
@@ -64,7 +58,6 @@ impl HashWithEngines for TyConfigurableDecl {
             visibility,
             return_type,
             type_ascription,
-            implementing_type,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             attributes: _,
@@ -76,9 +69,6 @@ impl HashWithEngines for TyConfigurableDecl {
         visibility.hash(state);
         type_engine.get(*return_type).hash(state, engines);
         type_ascription.hash(state, engines);
-        if let Some(implementing_type) = implementing_type {
-            (*implementing_type).hash(state, engines);
-        }
     }
 }
 
