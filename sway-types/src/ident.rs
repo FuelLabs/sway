@@ -161,8 +161,8 @@ impl<'de> Deserialize<'de> for Ident {
                 Ok(Ident::new(
                     Span::new(
                         Arc::from(to_string.as_str()),
-                        span.start(),
-                        span.end(),
+                        0,
+                        to_string.len(),
                         None,
                     ).unwrap_or_else(|| span)
                 ))
