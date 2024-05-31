@@ -147,6 +147,8 @@ fn handle_item_trait_imports(
     let dst_mod = ctx.namespace.module(engines);
 
     for (_, (_, src, decl)) in dst_mod.current_items().use_item_synonyms.iter() {
+        let decl = decl.expect_typed_ref();
+
         let src_mod = root_mod.lookup_submodule(handler, engines, src)?;
 
         //  if this is an enum or struct or function, import its implementations

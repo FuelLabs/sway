@@ -37,8 +37,9 @@ impl ResolvedFunctionDecl {
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
 type SourceIdent = Ident;
-pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ty::TyDecl)>>;
-pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl)>;
+pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration)>>;
+pub(super) type ItemSynonyms =
+    im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ResolvedDeclaration)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -469,12 +470,12 @@ impl Items {
         if let Some((ident, (imported_ident, _, decl))) =
             self.use_item_synonyms.get_key_value(&name)
         {
-            append_shadowing_error_typed(
+            append_shadowing_error(
                 ident,
                 decl,
                 true,
                 imported_ident.is_some(),
-                item.expect_typed_ref(),
+                &item,
                 const_shadowing_mode,
             );
         }
@@ -495,7 +496,7 @@ impl Items {
         engines: &Engines,
         symbol: Ident,
         src_path: ModulePathBuf,
-        decl: &ty::TyDecl,
+        decl: &ResolvedDeclaration,
     ) {
         if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
             // Name already bound. Check if the decl is already imported
