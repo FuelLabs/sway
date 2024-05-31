@@ -123,6 +123,9 @@ impl Declaration {
             Declaration::ConstantDeclaration(decl_id) => {
                 decl_engine.get_constant(decl_id).visibility
             }
+            Declaration::ConfigurableDeclaration(decl_id) => {
+                decl_engine.get_configurable(decl_id).visibility
+            }
             Declaration::StructDeclaration(decl_id) => decl_engine.get_struct(decl_id).visibility,
             Declaration::EnumDeclaration(decl_id) => decl_engine.get_enum(decl_id).visibility,
             Declaration::FunctionDeclaration(decl_id) => {

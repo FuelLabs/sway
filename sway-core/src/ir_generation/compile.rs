@@ -2,6 +2,7 @@ use crate::{
     decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
     semantic_analysis::namespace,
     type_system::TypeId,
     types::{LogId, MessageId},
@@ -291,8 +292,9 @@ pub(crate) fn compile_configurables(
     cache: &mut CompiledFunctionCache,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.current_items().get_all_declared_symbols() {
-        if let Some(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. })) =
-            module_ns.current_items().symbols.get(decl_name)
+        if let Some(ResolvedDeclaration::Typed(ty::TyDecl::ConfigurableDecl(
+            ty::ConfigurableDecl { decl_id, .. },
+        ))) = module_ns.current_items().symbols.get(decl_name)
         {
             let decl = engines.de().get(decl_id);
 
