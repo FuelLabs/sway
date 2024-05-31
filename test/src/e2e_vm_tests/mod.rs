@@ -853,7 +853,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
     }
 
     // if new encoding is on, allow a "category_new_encoding"
-    // for tests that should have diference categories
+    // for tests that should have difference categories
     let category = if run_config.experimental.new_encoding {
         toml_content
             .get("category_new_encoding")
