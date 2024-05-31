@@ -470,7 +470,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::Internal("Trying to compile a deferred function application with deferred monomorphization", name.span()));
                 }
                 if let Some(metadata) = selector {
-                    self.compile_contract_call(
+                    self.compile_contract_call_encoding_v0(
                         context,
                         md_mgr,
                         metadata,
@@ -2143,7 +2143,7 @@ impl<'eng> FnCompiler<'eng> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn compile_contract_call(
+    fn compile_contract_call_encoding_v0(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -2302,7 +2302,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Convert selector to U64 and then insert it
-        let sel = call_params.func_selector;
+        let sel = call_params.func_selector.as_ref().unwrap();
         let sel_val = convert_literal_to_value(
             context,
             &Literal::U64(

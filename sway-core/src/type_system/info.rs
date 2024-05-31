@@ -1020,6 +1020,7 @@ impl TypeInfo {
             // TODO-IG: No references in ABIs according to the RFC. Or we want to have them?
             // TODO-IG: Depending on that, we need to handle `Ref` here as well.
             _ => {
+                println!("{}", std::backtrace::Backtrace::force_capture());
                 return Err(handler.emit_err(CompileError::InvalidAbiType {
                     span: error_msg_span.clone(),
                 }));
