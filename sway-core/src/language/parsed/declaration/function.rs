@@ -29,6 +29,20 @@ pub struct FunctionDeclaration {
     pub kind: FunctionDeclarationKind,
 }
 
+impl EqWithEngines for FunctionDeclaration {}
+impl PartialEqWithEngines for FunctionDeclaration {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.purity == other.purity
+            && self.attributes == other.attributes
+            && self.name == other.name
+            && self.visibility == other.visibility
+            && self.body.eq(&other.body, ctx)
+            && self.parameters.eq(&other.parameters, ctx)
+            && self.return_type.eq(&other.return_type, ctx)
+            && self.type_parameters.eq(&other.type_parameters, ctx)
+    }
+}
+
 impl DebugWithEngines for FunctionDeclaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, _engines: &Engines) -> std::fmt::Result {
         f.write_fmt(format_args!("{}", self.name))

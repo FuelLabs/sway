@@ -42,6 +42,7 @@ impl TyDecl {
                 let enum_decl = engines.pe().get_enum(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl)?;
             }
+            parsed::Declaration::EnumVariantDeclaration(_decl) => {}
             parsed::Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(decl_id);
                 let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl);
@@ -196,6 +197,10 @@ impl TyDecl {
 
                 decl
             }
+            parsed::Declaration::EnumVariantDeclaration(_decl) => {
+                // Type-checked above as part of the containing enum.
+                unreachable!()
+            }
             parsed::Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(&decl_id);
                 let span = fn_decl.span.clone();
@@ -282,7 +287,7 @@ impl TyDecl {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
                             let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
-                                m.current_items_mut().insert_symbol(
+                                m.current_items_mut().insert_typed_symbol(
                                     handler,
                                     engines,
                                     Ident::new_no_span(format!(

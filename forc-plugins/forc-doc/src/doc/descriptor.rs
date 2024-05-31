@@ -5,6 +5,7 @@ use crate::{
         item::{
             components::*,
             context::{Context, ContextType, ItemContext},
+            documentable_type::DocumentableType,
         },
         util::format::{code_block::trim_fn_body, docstring::DocStrings},
     },
@@ -13,7 +14,10 @@ use anyhow::Result;
 use sway_core::{
     decl_engine::*,
     language::ty::{self, TyTraitFn, TyTraitInterfaceItem},
+    Engines, TypeInfo,
 };
+use sway_types::{integer_bits::IntegerBits, Ident};
+use swayfmt::parse;
 
 trait RequiredMethods {
     fn to_methods(&self, decl_engine: &DeclEngine) -> Vec<TyTraitFn>;
@@ -33,14 +37,13 @@ pub(crate) enum Descriptor {
 }
 
 impl Descriptor {
-    /// Decides whether a [TyDecl] is [Descriptor::Documentable] and returns a [Document] if so.
+    /// Decides whether a [ty::TyDecl] is [Descriptor::Documentable] and returns a [Document] if so.
     pub(crate) fn from_typed_decl(
         decl_engine: &DeclEngine,
         ty_decl: &ty::TyDecl,
         module_info: ModuleInfo,
         document_private_items: bool,
     ) -> Result<Self> {
-        use swayfmt::parse;
         const CONTRACT_STORAGE: &str = "Contract Storage";
         match ty_decl {
             ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
@@ -65,7 +68,7 @@ impl Descriptor {
                         },
                         item_body: ItemBody {
                             module_info,
-                            ty_decl: ty_decl.clone(),
+                            ty: DocumentableType::Declared(ty_decl.clone()),
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemStruct>(
                                 struct_decl.span.as_str(),
@@ -102,7 +105,7 @@ impl Descriptor {
                         },
                         item_body: ItemBody {
                             module_info,
-                            ty_decl: ty_decl.clone(),
+                            ty: DocumentableType::Declared(ty_decl.clone()),
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemEnum>(
                                 enum_decl.span.as_str(),
@@ -150,7 +153,7 @@ impl Descriptor {
                         },
                         item_body: ItemBody {
                             module_info,
-                            ty_decl: ty_decl.clone(),
+                            ty: DocumentableType::Declared(ty_decl.clone()),
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemTrait>(
                                 trait_decl.span.as_str(),
@@ -194,7 +197,7 @@ impl Descriptor {
                     },
                     item_body: ItemBody {
                         module_info,
-                        ty_decl: ty_decl.clone(),
+                        ty: DocumentableType::Declared(ty_decl.clone()),
                         item_name,
                         code_str: parse::parse_format::<sway_ast::ItemAbi>(abi_decl.span.as_str())?,
                         attrs_opt: attrs_opt.clone(),
@@ -227,7 +230,7 @@ impl Descriptor {
                     },
                     item_body: ItemBody {
                         module_info,
-                        ty_decl: ty_decl.clone(),
+                        ty: DocumentableType::Declared(ty_decl.clone()),
                         item_name,
                         code_str: parse::parse_format::<sway_ast::ItemStorage>(
                             storage_decl.span.as_str(),
@@ -259,7 +262,7 @@ impl Descriptor {
                         },
                         item_body: ItemBody {
                             module_info,
-                            ty_decl: ty_decl.clone(),
+                            ty: DocumentableType::Declared(ty_decl.clone()),
                             item_name,
                             code_str: trim_fn_body(parse::parse_format::<sway_ast::ItemFn>(
                                 fn_decl.span.as_str(),
@@ -292,21 +295,76 @@ impl Descriptor {
                         },
                         item_body: ItemBody {
                             module_info,
-                            ty_decl: ty_decl.clone(),
+                            ty: DocumentableType::Declared(ty_decl.clone()),
                             item_name,
                             code_str: parse::parse_format::<sway_ast::ItemConst>(
                                 const_decl.span.as_str(),
                             )?,
                             attrs_opt: attrs_opt.clone(),
-                            item_context: ItemContext {
-                                context_opt: None,
-                                ..Default::default()
-                            },
+                            item_context: Default::default(),
                         },
                         raw_attributes: attrs_opt,
                     }))
                 }
             }
+            _ => Ok(Descriptor::NonDocumentable),
+        }
+    }
+
+    /// Decides whether a [TypeInfo] is [Descriptor::Documentable] and returns a [Document] if so.
+    pub(crate) fn from_type_info(
+        type_info: &TypeInfo,
+        engines: &Engines,
+        module_info: ModuleInfo,
+    ) -> Result<Self> {
+        // Only primitive types will result in a documentable item. All other type documentation should come
+        // from the a declaration. Since primitive types do not have sway declarations, we can only generate
+        // documentation from their implementations.
+        let item_name = Ident::new_no_span(format!("{}", engines.help_out(type_info)));
+        // Build a fake module info for the primitive type.
+        let module_info = ModuleInfo {
+            module_prefixes: vec![module_info.project_name().into()],
+            attributes: None,
+        };
+        // TODO: Find a way to add descriptions without hardcoding them.
+        let description = match type_info {
+            TypeInfo::StringSlice => "string slice",
+            TypeInfo::StringArray(_) => "fixed-length string",
+            TypeInfo::Boolean => "Boolean true or false",
+            TypeInfo::B256 => "256 bits (32 bytes), i.e. a hash",
+            TypeInfo::UnsignedInteger(bits) => match bits {
+                IntegerBits::Eight => "8-bit unsigned integer",
+                IntegerBits::Sixteen => "16-bit unsigned integer",
+                IntegerBits::ThirtyTwo => "32-bit unsigned integer",
+                IntegerBits::SixtyFour => "64-bit unsigned integer",
+                IntegerBits::V256 => "256-bit unsigned integer",
+            },
+            _ => return Ok(Descriptor::NonDocumentable),
+        };
+        let attrs_opt = Some(description.to_string());
+
+        match type_info {
+            TypeInfo::StringSlice
+            | TypeInfo::StringArray(_)
+            | TypeInfo::Boolean
+            | TypeInfo::B256
+            | TypeInfo::UnsignedInteger(_) => Ok(Descriptor::Documentable(Document {
+                module_info: module_info.clone(),
+                item_header: ItemHeader {
+                    module_info: module_info.clone(),
+                    friendly_name: "primitive",
+                    item_name: item_name.clone(),
+                },
+                item_body: ItemBody {
+                    module_info,
+                    ty: DocumentableType::Primitive(type_info.clone()),
+                    item_name: item_name.clone(),
+                    code_str: item_name.clone().to_string(),
+                    attrs_opt: attrs_opt.clone(),
+                    item_context: Default::default(),
+                },
+                raw_attributes: attrs_opt,
+            })),
             _ => Ok(Descriptor::NonDocumentable),
         }
     }

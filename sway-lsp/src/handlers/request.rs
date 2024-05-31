@@ -502,7 +502,7 @@ pub(crate) async fn metrics(
                     .engines
                     .read()
                     .se()
-                    .get_path_from_module_id(kv.key())
+                    .get_manifest_path_from_program_id(kv.key())
                     .unwrap()
                     .to_string_lossy()
                     .to_string();
