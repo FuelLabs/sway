@@ -37,8 +37,14 @@ impl ty::TyStructDecl {
                 new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
             }
 
-            let mut path: CallPath = name.into();
-            path = path.to_fullpath(ctx.engines(), ctx.namespace());
+            let mut path: CallPath = name.clone().into();
+	    if let Some(ref pkg_name) = ctx.namespace().root_module().name {
+		path.prefixes.push(pkg_name.clone());
+	    };
+	    for mod_path in ctx.namespace().mod_path() {
+		path.prefixes.push(mod_path.clone())
+	    };
+	    path.is_absolute = true;
 
             // create the struct decl
             let decl = ty::TyStructDecl {
