@@ -24,11 +24,15 @@ pub use type_alias::*;
 pub use variable::*;
 
 use crate::{
-    decl_engine::{parsed_engine::ParsedDeclEngineGet, parsed_id::ParsedDeclId},
+    decl_engine::{
+        parsed_engine::{ParsedDeclEngine, ParsedDeclEngineGet},
+        parsed_id::ParsedDeclId,
+    },
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, PartialEqWithEngines,
         PartialEqWithEnginesContext,
     },
+    language::Visibility,
     Engines,
 };
 
@@ -88,8 +92,7 @@ impl Declaration {
         }
     }
 
-    #[allow(dead_code)]
-    fn span(&self, engines: &Engines) -> sway_types::Span {
+    pub fn span(&self, engines: &Engines) -> sway_types::Span {
         use Declaration::*;
         let pe = engines.pe();
         match self {
@@ -106,6 +109,30 @@ impl Declaration {
             StorageDeclaration(decl_id) => pe.get_storage(decl_id).span(),
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
+        }
+    }
+
+    pub(crate) fn visibility(&self, decl_engine: &ParsedDeclEngine) -> Visibility {
+        match self {
+            Declaration::TraitDeclaration(decl_id) => decl_engine.get_trait(decl_id).visibility,
+            Declaration::ConstantDeclaration(decl_id) => {
+                decl_engine.get_constant(decl_id).visibility
+            }
+            Declaration::StructDeclaration(decl_id) => decl_engine.get_struct(decl_id).visibility,
+            Declaration::EnumDeclaration(decl_id) => decl_engine.get_enum(decl_id).visibility,
+            Declaration::FunctionDeclaration(decl_id) => {
+                decl_engine.get_function(decl_id).visibility
+            }
+            Declaration::TypeAliasDeclaration(decl_id) => {
+                decl_engine.get_type_alias(decl_id).visibility
+            }
+            Declaration::VariableDeclaration(_decl_id) => Visibility::Private,
+            Declaration::ImplTrait(_)
+            | Declaration::ImplSelf(_)
+            | Declaration::StorageDeclaration(_)
+            | Declaration::AbiDeclaration(_)
+            | Declaration::TraitTypeDeclaration(_)
+            | Declaration::EnumVariantDeclaration(_) => Visibility::Public,
         }
     }
 }

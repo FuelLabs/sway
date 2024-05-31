@@ -10,8 +10,8 @@ use crate::{
         CallPath, Purity, QualifiedCallPath, Visibility,
     },
     namespace::{
-        IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedTraitImplItem,
-        TryInsertingTraitImplOnFailure,
+        IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
+        ResolvedTraitImplItem, TryInsertingTraitImplOnFailure,
     },
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
@@ -537,7 +537,7 @@ impl<'a> TypeCheckContext<'a> {
                 handler,
                 engines,
                 name,
-                item,
+                ResolvedDeclaration::Typed(item),
                 const_shadowing_mode,
                 generic_shadowing_mode,
             )

@@ -202,24 +202,26 @@ pub(crate) fn compile_constants(
     module_ns: &namespace::Module,
 ) -> Result<(), CompileError> {
     for decl_name in module_ns.current_items().get_all_declared_symbols() {
-        if let Some(ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. })) =
-            module_ns.current_items().symbols.get(decl_name)
-        {
-            let const_decl = engines.de().get_constant(decl_id);
-            let call_path = const_decl.call_path.clone();
-            compile_const_decl(
-                &mut LookupEnv {
-                    engines,
-                    context,
-                    md_mgr,
-                    module,
-                    module_ns: Some(module_ns),
-                    function_compiler: None,
-                    lookup: compile_const_decl,
-                },
-                &call_path,
-                &Some((*const_decl).clone()),
-            )?;
+        if let Some(resolved_decl) = module_ns.current_items().symbols.get(decl_name) {
+            if let ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) =
+                &resolved_decl.expect_typed_ref()
+            {
+                let const_decl = engines.de().get_constant(decl_id);
+                let call_path = const_decl.call_path.clone();
+                compile_const_decl(
+                    &mut LookupEnv {
+                        engines,
+                        context,
+                        md_mgr,
+                        module,
+                        module_ns: Some(module_ns),
+                        function_compiler: None,
+                        lookup: compile_const_decl,
+                    },
+                    &call_path,
+                    &Some((*const_decl).clone()),
+                )?;
+            }
         }
     }
 

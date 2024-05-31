@@ -287,7 +287,7 @@ impl TyDecl {
                         if let ty::TyTraitItem::Fn(f) = i {
                             let decl = engines.de().get(f.id());
                             let _ = ctx.namespace.module_mut(ctx.engines()).write(engines, |m| {
-                                m.current_items_mut().insert_symbol(
+                                m.current_items_mut().insert_typed_symbol(
                                     handler,
                                     engines,
                                     Ident::new_no_span(format!(
