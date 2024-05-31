@@ -685,23 +685,6 @@ impl TyDecl {
         }
     }
 
-    /// Name string used in `forc doc` file path generation that mirrors `cargo doc`.
-    pub fn doc_name(&self) -> &'static str {
-        use TyDecl::*;
-        match self {
-            StructDecl(_) => "struct",
-            EnumDecl(_) => "enum",
-            TraitDecl(_) => "trait",
-            AbiDecl(_) => "abi",
-            StorageDecl(_) => "contract_storage",
-            ImplTrait(_) => "impl_trait",
-            FunctionDecl(_) => "fn",
-            ConstantDecl(_) => "constant",
-            TypeAliasDecl(_) => "type alias",
-            _ => unreachable!("these items are non-documentable"),
-        }
-    }
-
     pub(crate) fn return_type(
         &self,
         handler: &Handler,

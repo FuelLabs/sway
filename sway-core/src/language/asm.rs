@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{BaseIdent, Ident, Span};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct AsmOp {
     pub(crate) op_name: Ident,
     pub(crate) op_args: Vec<Ident>,

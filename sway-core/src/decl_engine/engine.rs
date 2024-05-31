@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use sway_types::{ModuleId, Named, Spanned};
+use sway_types::{Named, ProgramId, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
@@ -184,30 +184,30 @@ decl_engine_index!(constant_slab, ty::TyConstantDecl);
 decl_engine_index!(enum_slab, ty::TyEnumDecl);
 decl_engine_index!(type_alias_slab, ty::TyTypeAliasDecl);
 
-macro_rules! decl_engine_clear_module {
+macro_rules! decl_engine_clear_program {
     ($($slab:ident, $decl:ty);* $(;)?) => {
         impl DeclEngine {
-            pub fn clear_module(&mut self, module_id: &ModuleId) {
+            pub fn clear_program(&mut self, program_id: &ProgramId) {
                 self.parents.write().retain(|key, _| {
                     match key {
                         AssociatedItemDeclId::TraitFn(decl_id) => {
-                            self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                            self.get_trait_fn(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
                         },
                         AssociatedItemDeclId::Function(decl_id) => {
-                            self.get_function(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                            self.get_function(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
                         },
                         AssociatedItemDeclId::Type(decl_id) => {
-                            self.get_type(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                            self.get_type(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
                         },
                         AssociatedItemDeclId::Constant(decl_id) => {
-                            self.get_constant(decl_id).span().source_id().map_or(true, |src_id| &src_id.module_id() != module_id)
+                            self.get_constant(decl_id).span().source_id().map_or(true, |src_id| &src_id.program_id() != program_id)
                         },
                     }
                 });
 
                 $(
                     self.$slab.retain(|_k, ty| match ty.span().source_id() {
-                        Some(source_id) => &source_id.module_id() != module_id,
+                        Some(source_id) => &source_id.program_id() != program_id,
                         None => true,
                     });
                 )*
@@ -216,7 +216,7 @@ macro_rules! decl_engine_clear_module {
     };
 }
 
-decl_engine_clear_module!(
+decl_engine_clear_program!(
     function_slab, ty::TyFunctionDecl;
     trait_slab, ty::TyTraitDecl;
     trait_fn_slab, ty::TyTraitFn;

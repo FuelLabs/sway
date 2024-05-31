@@ -447,14 +447,6 @@ impl<'a> TypeCheckContext<'a> {
         self.abi_mode.clone()
     }
 
-    pub(crate) fn const_shadowing_mode(&self) -> ConstShadowingMode {
-        self.const_shadowing_mode
-    }
-
-    pub(crate) fn generic_shadowing_mode(&self) -> GenericShadowingMode {
-        self.generic_shadowing_mode
-    }
-
     pub(crate) fn purity(&self) -> Purity {
         self.purity
     }

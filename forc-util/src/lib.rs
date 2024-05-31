@@ -5,7 +5,7 @@ use annotate_snippets::{
 };
 use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
-use forc_tracing::{println_red_err, println_yellow_err};
+use forc_tracing::{println_error, println_red_err, println_yellow_err};
 use std::{
     collections::{hash_map, HashSet},
     fmt::Display,
@@ -23,7 +23,6 @@ use sway_error::{
 };
 use sway_types::{LineCol, LineColRange, SourceEngine, Span};
 use sway_utils::constants;
-use tracing::error;
 
 pub mod fs_locking;
 pub mod restricted;
@@ -117,7 +116,7 @@ impl<T> Termination for ForcCliResult<T> {
         match self.result {
             Ok(_) => DEFAULT_SUCCESS_EXIT_CODE.into(),
             Err(e) => {
-                error!("Error: {}", e);
+                println_error(&format!("{}", e));
                 e.exit_code.into()
             }
         }

@@ -36,12 +36,12 @@ pub type ModuleCacheMap = HashMap<ModuleCacheKey, ModuleCacheEntry>;
 
 #[derive(Clone, Debug)]
 pub struct ProgramsCacheEntry {
-    pub path: ModulePath,
+    pub path: Arc<PathBuf>,
     pub programs: Programs,
     pub handler_data: (Vec<CompileError>, Vec<CompileWarning>),
 }
 
-pub type ProgramsCacheMap = HashMap<ModulePath, ProgramsCacheEntry>;
+pub type ProgramsCacheMap = HashMap<Arc<PathBuf>, ProgramsCacheEntry>;
 
 #[derive(Debug, Default, Clone)]
 pub struct QueryEngine {
