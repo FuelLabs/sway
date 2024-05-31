@@ -5,12 +5,12 @@ use crate::{assignable::ElementAccess, priv_prelude::*, PathExprSegment};
 pub mod asm;
 pub mod op_code;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Expr {
     /// A malformed expression.
     ///
     /// Used for parser recovery when we cannot form a more specific node.
-    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip_deserializing, skip_serializing)] ErrorEmitted),
     Path(PathExpr),
     Literal(Literal),
     AbiCast {
@@ -277,13 +277,13 @@ impl Spanned for Expr {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ReassignmentOp {
     pub variant: ReassignmentOpVariant,
     pub span: Span,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ReassignmentOpVariant {
     Equals,
     AddEquals,
@@ -308,7 +308,7 @@ impl ReassignmentOpVariant {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AbiCastArgs {
     pub name: PathType,
     pub comma_token: CommaToken,
@@ -316,7 +316,7 @@ pub struct AbiCastArgs {
 }
 
 #[allow(clippy::type_complexity)]
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct IfExpr {
     pub if_token: IfToken,
     pub condition: IfCondition,
@@ -327,7 +327,7 @@ pub struct IfExpr {
     )>,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum IfCondition {
     Expr(Box<Expr>),
     Let {
@@ -338,7 +338,7 @@ pub enum IfCondition {
     },
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum LoopControlFlow<B, C = ()> {
     Continue(C),
     Break(B),
@@ -358,7 +358,7 @@ impl Spanned for IfExpr {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ExprTupleDescriptor {
     Nil,
     Cons {
@@ -368,7 +368,7 @@ pub enum ExprTupleDescriptor {
     },
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ExprArrayDescriptor {
     Sequence(Punctuated<Expr, CommaToken>),
     Repeat {
@@ -378,7 +378,7 @@ pub enum ExprArrayDescriptor {
     },
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MatchBranch {
     pub pattern: Pattern,
     pub fat_right_arrow_token: FatRightArrowToken,
@@ -392,7 +392,7 @@ impl Spanned for MatchBranch {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum MatchBranchKind {
     Block {
         block: Braces<CodeBlockContents>,
@@ -421,7 +421,7 @@ impl Spanned for MatchBranchKind {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CodeBlockContents {
     pub statements: Vec<Statement>,
     pub final_expr_opt: Option<Box<Expr>>,
@@ -434,7 +434,7 @@ impl Spanned for CodeBlockContents {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ExprStructField {
     pub field_name: Ident,
     pub expr_opt: Option<(ColonToken, Box<Expr>)>,

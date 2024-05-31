@@ -2,7 +2,7 @@ use sway_error::handler::ErrorEmitted;
 
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Pattern {
     Or {
         lhs: Box<Pattern>,
@@ -31,7 +31,7 @@ pub enum Pattern {
     },
     Tuple(Parens<Punctuated<Pattern, CommaToken>>),
     // to handle parser recovery: Error represents an incomplete Constructor
-    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip_deserializing, skip_serializing)] ErrorEmitted),
 }
 
 impl Spanned for Pattern {
@@ -71,7 +71,7 @@ impl Spanned for Pattern {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum PatternStructField {
     Rest {
         token: DoubleDotToken,

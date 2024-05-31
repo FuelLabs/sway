@@ -1,6 +1,6 @@
 use crate::{priv_prelude::*, ItemTraitItem};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ItemAbi {
     pub abi_token: AbiToken,
     pub name: Ident,

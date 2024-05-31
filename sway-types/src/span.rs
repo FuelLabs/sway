@@ -71,6 +71,22 @@ impl PartialEq for Span {
 
 impl Eq for Span {}
 
+impl<'de> Deserialize<'de> for Span {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct SpanVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for SpanVisitor {
+            type Value = Span;
+        
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "Span")
+            }
+        }
+
+        deserializer.deserialize_tuple(2, SpanVisitor)
+    }
+}
+
 impl Serialize for Span {
     // Serialize a tuple two fields: `start` and `end`.
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {

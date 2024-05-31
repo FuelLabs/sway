@@ -26,7 +26,7 @@ impl Spanned for Item {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ItemKind {
     Submodule(Submodule),
     Use(ItemUse),
@@ -41,7 +41,7 @@ pub enum ItemKind {
     Configurable(ItemConfigurable),
     TypeAlias(ItemTypeAlias),
     // to handle parser recovery: Error represents an incomplete item
-    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip_deserializing, skip_serializing)] ErrorEmitted),
 }
 
 impl Spanned for ItemKind {
@@ -64,7 +64,7 @@ impl Spanned for ItemKind {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TypeField {
     pub visibility: Option<PubToken>,
     pub name: Ident,
@@ -83,7 +83,7 @@ impl Spanned for TypeField {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum FnArgs {
     Static(Punctuated<FnArg, CommaToken>),
     NonStatic {
@@ -94,7 +94,7 @@ pub enum FnArgs {
     },
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FnArg {
     pub pattern: Pattern,
     pub colon_token: ColonToken,
@@ -107,7 +107,7 @@ impl Spanned for FnArg {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct FnSignature {
     pub visibility: Option<PubToken>,
     pub fn_token: FnToken,
@@ -135,7 +135,7 @@ impl Spanned for FnSignature {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TraitType {
     pub name: Ident,
     pub type_token: TypeToken,

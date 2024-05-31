@@ -3,7 +3,7 @@ use sway_error::handler::ErrorEmitted;
 use crate::priv_prelude::*;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Statement {
     Let(StatementLet),
     Item(Item),
@@ -12,10 +12,10 @@ pub enum Statement {
         semicolon_token_opt: Option<SemicolonToken>,
     },
     // to handle parser recovery: Error represents an unknown statement
-    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip_deserializing, skip_serializing)] ErrorEmitted),
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct StatementLet {
     pub let_token: LetToken,
     pub pattern: Pattern,

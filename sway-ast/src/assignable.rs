@@ -1,7 +1,7 @@
 use crate::priv_prelude::*;
 
 /// Left-hand side of an assignment.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Assignable {
     /// A single variable or a path to a part of an aggregate.
     /// E.g.:
@@ -23,7 +23,7 @@ pub enum Assignable {
     },
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ElementAccess {
     Var(Ident),
     Index {

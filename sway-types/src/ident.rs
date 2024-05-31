@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{span::Span, Spanned};
 
@@ -92,6 +92,22 @@ impl BaseIdent {
 /// representation, so that namespacing isn't reliant on the span itself, which will
 /// often be different.
 pub type Ident = BaseIdent;
+
+impl<'de> Deserialize<'de> for Ident {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct IdentVisitor;
+        
+        impl<'de> serde::de::Visitor<'de> for IdentVisitor {
+            type Value = Ident;
+        
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "Ident")
+            }
+        }
+
+        deserializer.deserialize_struct("Ident", &["to_string", "span"], IdentVisitor)
+    }
+}
 
 impl Serialize for Ident {
     // Serialize an `Ident` struct with two fields: `to_string` and `span`.

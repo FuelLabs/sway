@@ -2,16 +2,16 @@ use sway_error::handler::ErrorEmitted;
 
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ItemTraitItem {
     Fn(FnSignature, Option<SemicolonToken>),
     Const(ItemConst, Option<SemicolonToken>),
     Type(TraitType, Option<SemicolonToken>),
     // to handle parser recovery: Error represents an incomplete trait item
-    Error(Box<[Span]>, #[serde(skip_serializing)] ErrorEmitted),
+    Error(Box<[Span]>, #[serde(skip_deserializing, skip_serializing)] ErrorEmitted),
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ItemTrait {
     pub visibility: Option<PubToken>,
     pub trait_token: TraitToken,
@@ -61,7 +61,7 @@ impl Spanned for ItemTraitItem {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Traits {
     pub prefix: PathType,
     pub suffixes: Vec<(AddToken, PathType)>,

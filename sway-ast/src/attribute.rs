@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Annotated<T> {
     pub attribute_list: Vec<AttributeDecl>,
     pub value: T,
@@ -13,7 +13,7 @@ pub struct Annotated<T> {
 //    #[attribute(value)]
 //    #[attribute(value0, value1, value2)]
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AttributeDecl {
     pub hash_kind: AttributeHashKind,
     pub attribute: SquareBrackets<Punctuated<Attribute, CommaToken>>,
@@ -42,7 +42,7 @@ impl Spanned for AttributeDecl {
 /// enum Bar {}
 /// #![doc("a Sway enum")]
 /// ```
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum AttributeHashKind {
     /// Inner specifies that the attribute belongs to
     /// the item before it.
@@ -52,7 +52,7 @@ pub enum AttributeHashKind {
     Outer(HashToken),
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AttributeArg {
     pub name: Ident,
     pub value: Option<Literal>,
@@ -68,7 +68,7 @@ impl Spanned for AttributeArg {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Attribute {
     pub name: Ident,
     pub args: Option<Parens<Punctuated<AttributeArg, CommaToken>>>,

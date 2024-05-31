@@ -1,25 +1,25 @@
 use crate::priv_prelude::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Deserialize, Serialize)]
 pub struct LitString {
     pub span: Span,
     pub parsed: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Deserialize, Serialize)]
 pub struct LitChar {
     pub span: Span,
     pub parsed: char,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Deserialize, Serialize)]
 pub struct LitInt {
     pub span: Span,
     pub parsed: BigUint,
     pub ty_opt: Option<(LitIntType, Span)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Deserialize, Serialize)]
 pub enum LitIntType {
     U8,
     U16,
@@ -32,13 +32,13 @@ pub enum LitIntType {
     I64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Deserialize, Serialize)]
 pub struct LitBool {
     pub span: Span,
     pub kind: LitBoolType,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Deserialize, Serialize)]
 pub enum LitBoolType {
     True,
     False,
@@ -53,7 +53,7 @@ impl From<LitBoolType> for bool {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash, Deserialize, Serialize)]
 pub enum Literal {
     String(LitString),
     Char(LitChar),
