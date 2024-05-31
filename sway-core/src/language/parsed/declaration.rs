@@ -19,7 +19,7 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
-use sway_types::Spanned;
+use sway_types::{Ident, Span, Spanned};
 pub use type_alias::*;
 pub use variable::*;
 
@@ -39,6 +39,7 @@ pub enum Declaration {
     TraitDeclaration(ParsedDeclId<TraitDeclaration>),
     StructDeclaration(ParsedDeclId<StructDeclaration>),
     EnumDeclaration(ParsedDeclId<EnumDeclaration>),
+    EnumVariantDeclaration(EnumVariantDeclaration),
     ImplTrait(ParsedDeclId<ImplTrait>),
     ImplSelf(ParsedDeclId<ImplSelf>),
     AbiDeclaration(ParsedDeclId<AbiDeclaration>),
@@ -46,6 +47,13 @@ pub enum Declaration {
     StorageDeclaration(ParsedDeclId<StorageDeclaration>),
     TypeAliasDeclaration(ParsedDeclId<TypeAliasDeclaration>),
     TraitTypeDeclaration(ParsedDeclId<TraitTypeDeclaration>),
+}
+
+#[derive(Debug, Clone)]
+pub struct EnumVariantDeclaration {
+    pub enum_ref: ParsedDeclId<EnumDeclaration>,
+    pub variant_name: Ident,
+    pub variant_decl_span: Span,
 }
 
 impl Declaration {
@@ -71,6 +79,7 @@ impl Declaration {
             TraitDeclaration(_) => "trait",
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
+            EnumVariantDeclaration(_) => "enum variant",
             ImplSelf(_) => "impl self",
             ImplTrait(_) => "impl trait",
             AbiDeclaration(_) => "abi",
@@ -89,6 +98,7 @@ impl Declaration {
             TraitDeclaration(decl_id) => pe.get_trait(decl_id).span(),
             StructDeclaration(decl_id) => pe.get_struct(decl_id).span(),
             EnumDeclaration(decl_id) => pe.get_enum(decl_id).span(),
+            EnumVariantDeclaration(decl) => decl.variant_decl_span.clone(),
             ImplTrait(decl_id) => pe.get_impl_trait(decl_id).span(),
             ImplSelf(decl_id) => pe.get_impl_self(decl_id).span(),
             AbiDeclaration(decl_id) => pe.get_abi(decl_id).span(),

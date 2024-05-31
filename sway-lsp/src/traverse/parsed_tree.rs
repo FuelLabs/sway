@@ -124,6 +124,7 @@ impl Parse for Declaration {
             Declaration::TraitDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StructDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::EnumDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::EnumVariantDeclaration(_decl) => unreachable!(),
             Declaration::ImplTrait(decl_id) => decl_id.parse(ctx),
             Declaration::ImplSelf(decl_id) => decl_id.parse(ctx),
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
