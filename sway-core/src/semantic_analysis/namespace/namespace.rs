@@ -94,7 +94,10 @@ impl Namespace {
 
         Self {
             init: init.clone(),
-            root: Root { module: init },
+            root: Root {
+                module: init,
+                resolve_options: root.resolve_options.clone(),
+            },
             mod_path,
         }
     }
@@ -329,7 +332,7 @@ impl Namespace {
     }
 
     /// Pushes a new submodule to the namespace's module hierarchy.
-    pub fn push_new_submodule(
+    pub fn push_submodule(
         &mut self,
         engines: &Engines,
         mod_name: Ident,

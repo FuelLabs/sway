@@ -550,6 +550,7 @@ impl Dependencies {
             ExpressionKind::FunctionApplication(function_application_expression) => {
                 let FunctionApplicationExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     arguments,
                 } = &**function_application_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, true)
@@ -591,6 +592,7 @@ impl Dependencies {
             ExpressionKind::Struct(struct_expression) => {
                 let StructExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     fields,
                 } = &**struct_expression;
                 self.gather_from_call_path(&call_path_binding.inner, false, false)

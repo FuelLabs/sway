@@ -215,6 +215,12 @@ impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub struct ResolvedCallPath<T, U = Ident> {
+    pub decl: T,
+    pub unresolved_call_path: CallPath<U>,
+}
+
 impl std::convert::From<Ident> for CallPath {
     fn from(other: Ident) -> Self {
         CallPath {

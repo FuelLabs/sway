@@ -1,6 +1,7 @@
 use std::{cmp::Ordering, fmt, hash::Hasher};
 
 use crate::{
+    decl_engine::parsed_id::ParsedDeclId,
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, EqWithEngines, HashWithEngines, OrdWithEngines,
         OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
@@ -22,6 +23,8 @@ pub use method_name::MethodName;
 pub use scrutinee::*;
 use sway_ast::intrinsics::Intrinsic;
 
+use super::{FunctionDeclaration, StructDeclaration};
+
 /// Represents a parsed, but not yet type checked, [Expression](https://en.wikipedia.org/wiki/Expression_(computer_science)).
 #[derive(Debug, Clone)]
 pub struct Expression {
@@ -32,6 +35,8 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub struct FunctionApplicationExpression {
     pub call_path_binding: TypeBinding<CallPath>,
+    pub resolved_call_path_binding:
+        Option<TypeBinding<ResolvedCallPath<ParsedDeclId<FunctionDeclaration>>>>,
     pub arguments: Vec<Expression>,
 }
 
@@ -88,6 +93,8 @@ impl PartialEqWithEngines for ArrayExpression {
 
 #[derive(Debug, Clone)]
 pub struct StructExpression {
+    pub resolved_call_path_binding:
+        Option<TypeBinding<ResolvedCallPath<ParsedDeclId<StructDeclaration>>>>,
     pub call_path_binding: TypeBinding<CallPath>,
     pub fields: Vec<StructExpressionField>,
 }
