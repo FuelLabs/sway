@@ -86,7 +86,7 @@ pub struct FuelAsmBuilder<'ir, 'eng> {
     // In progress VM bytecode ops.
     pub(super) cur_bytecode: Vec<Op>,
 
-    // Instructions that will be append after globals allocation, but before the entry function is called.
+    // Instructions that will be appended after globals allocation, but before the entry function is called.
     pub(super) before_entries: Vec<Op>,
 }
 
