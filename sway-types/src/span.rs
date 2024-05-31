@@ -81,9 +81,31 @@ impl<'de> Deserialize<'de> for Span {
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "Span")
             }
+
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let mut values: Vec<usize> = vec![];
+
+                while let Some(value) = seq.next_element()? {
+                    values.push(value);
+                }
+
+                if values.len() != 2 {
+                    return Err(serde::de::Error::custom(
+                        format!("Invalid Span sequence: expected 2 elements, found {}", values.len())
+                    ));
+                }
+
+                Ok(Span {
+                    // The `src` field is not serialized, so we have to generate a valid one:
+                    src: Arc::from((0 .. values[0] + values[1]).map(|_| ' ').collect::<String>()),
+                    start: values[0],
+                    end: values[1],
+                    source_id: None,
+                })
+            }
         }
 
-        deserializer.deserialize_tuple(2, SpanVisitor)
+        deserializer.deserialize_seq(SpanVisitor)
     }
 }
 

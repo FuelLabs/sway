@@ -103,6 +103,70 @@ impl<'de> Deserialize<'de> for Ident {
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(formatter, "Ident")
             }
+
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                let mut to_string = None;
+                let mut span = None;
+                
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "to_string" => {
+                            if to_string.is_some() {
+                                return Err(serde::de::Error::custom(
+                                    "Invalid Ident: multiple values for \"to_string\""
+                                ));
+                            }
+
+                            let Some(value): Option<String> = map.next_value()? else {
+                                return Err(serde::de::Error::custom(
+                                    "Invalid Ident: missing value for \"to_string\""
+                                ));
+                            };
+    
+                            to_string = Some(value);
+                        }
+    
+                        "span" => {
+                            if span.is_some() {
+                                return Err(serde::de::Error::custom(
+                                    "Invalid Ident: multiple values for \"span\""
+                                ));
+                            }
+
+                            let Some(value): Option<Span> = map.next_value()? else {
+                                return Err(serde::de::Error::custom(
+                                    "Invalid Ident: missing value for \"span\""
+                                ));
+                            };
+    
+                            span = Some(value);
+                        }
+    
+                        _ => return Err(serde::de::Error::custom(format!("Invalid Ident field: {key}"))),
+                    }
+                }
+
+                let Some(to_string) = to_string else {
+                    return Err(serde::de::Error::custom(
+                        "Invalid Ident: missing entry for \"to_string\""
+                    ));
+                };
+                
+                let Some(span) = span else {
+                    return Err(serde::de::Error::custom(
+                        "Invalid Ident: missing entry for \"span\""
+                    ));
+                };
+                
+                Ok(Ident::new(
+                    Span::new(
+                        Arc::from(to_string.as_str()),
+                        span.start(),
+                        span.end(),
+                        None,
+                    ).unwrap_or_else(|| span)
+                ))
+            }
         }
 
         deserializer.deserialize_struct("Ident", &["to_string", "span"], IdentVisitor)

@@ -7,7 +7,7 @@ pub struct PathExpr {
     pub suffix: Vec<(DoubleColonToken, PathExprSegment)>,
     // path expression with incomplete suffix are needed to do
     // parser recovery on inputs like foo::
-    #[serde(skip_serializing)]
+    #[serde(skip_deserializing, skip_serializing)]
     pub incomplete_suffix: bool,
 }
 
