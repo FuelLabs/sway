@@ -475,7 +475,7 @@ impl Dependencies {
         match entry {
             StorageEntry::Namespace(namespace) => self
                 .gather_from_iter(namespace.entries.iter(), |deps, entry| {
-                    deps.gather_from_storage_entry(engines, &*entry)
+                    deps.gather_from_storage_entry(engines, entry)
                 }),
             StorageEntry::Field(field) => {
                 self.gather_from_type_argument(engines, &field.type_argument)

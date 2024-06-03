@@ -94,6 +94,7 @@ impl Items {
         &self.symbols
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_storage_load(
         &self,
         handler: &Handler,

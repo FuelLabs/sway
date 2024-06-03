@@ -463,7 +463,7 @@ impl TyDecl {
                     handler: &Handler,
                     mut ctx: TypeCheckContext,
                     entries: Vec<StorageEntry>,
-                    mut fields_buf: &mut Vec<TyStorageField>,
+                    fields_buf: &mut Vec<TyStorageField>,
                     namespace_names: Vec<Ident>,
                 ) -> Result<(), ErrorEmitted> {
                     let engines = ctx.engines;
@@ -528,7 +528,7 @@ impl TyDecl {
                                     .iter()
                                     .map(|e| (**e).clone())
                                     .collect::<Vec<_>>(),
-                                &mut fields_buf,
+                                fields_buf,
                                 new_namespace_names,
                             )?;
                         }

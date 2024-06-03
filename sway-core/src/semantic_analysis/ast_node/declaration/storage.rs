@@ -90,16 +90,16 @@ impl ty::TyStorageField {
                 module,
                 None,
                 None,
-                &key_expression,
+                key_expression,
                 true,
             )?;
             if let ConstantValue::B256(key) = const_key.value {
-                return Ok(Some(key));
+                Ok(Some(key))
             } else {
-                return Err(CompileError::Internal(
+                Err(CompileError::Internal(
                     "Expected B256 key",
                     key_expression.span.clone(),
-                ));
+                ))
             }
         } else {
             Ok(None)

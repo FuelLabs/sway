@@ -65,6 +65,7 @@ impl TyStorageDecl {
     ///
     /// An error is returned if the above constraints are violated or if the access to the struct fields
     /// fails. E.g, if the struct field does not exists or is an inaccessible private field.
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_storage_load(
         &self,
         handler: &Handler,
@@ -213,7 +214,7 @@ impl TyStorageDecl {
         Ok((
             TyStorageAccess {
                 fields: access_descriptors,
-                key_expression: initial_field_key.clone().map(|v| Box::new(v)),
+                key_expression: initial_field_key.clone().map(Box::new),
                 storage_field_names: namespace_names
                     .iter()
                     .map(|n| n.as_str().to_string())

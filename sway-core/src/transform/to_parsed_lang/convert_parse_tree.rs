@@ -1025,10 +1025,7 @@ fn item_storage_to_storage_declaration(
         .filter_map_ok(|entry| entry)
         .collect::<Result<_, _>>()?;
 
-    fn check_duplicate_names(
-        entries: Vec<StorageEntry>,
-        mut errors: &mut Vec<ConvertParseTreeError>,
-    ) {
+    fn check_duplicate_names(entries: Vec<StorageEntry>, errors: &mut Vec<ConvertParseTreeError>) {
         // Make sure each storage field is declared once
         let mut names_of_fields = std::collections::HashSet::new();
         for v in entries {
@@ -1045,7 +1042,7 @@ fn item_storage_to_storage_declaration(
                         .iter()
                         .map(|e| (**e).clone())
                         .collect::<Vec<_>>(),
-                    &mut errors,
+                    errors,
                 );
             }
         }
@@ -2517,22 +2514,26 @@ fn storage_entry_to_storage_entry(
     } else {
         let mut entries = vec![];
         let namespace = storage_entry.namespace.unwrap();
-        for entry in namespace.into_inner().into_iter().map(|storage_entry| {
-            let attributes = item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
-            if !cfg_eval(context, handler, &attributes, context.experimental)? {
-                return Ok::<Option<StorageEntry>, ErrorEmitted>(None);
-            }
-            Ok(Some(storage_entry_to_storage_entry(
-                context,
-                handler,
-                engines,
-                *storage_entry.value,
-                attributes,
-            )?))
-        }) {
-            if let Ok(Some(entry)) = entry {
-                entries.push(Box::new(entry));
-            }
+        for entry in namespace
+            .into_inner()
+            .into_iter()
+            .flat_map(|storage_entry| {
+                let attributes =
+                    item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
+                if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                    return Ok::<Option<StorageEntry>, ErrorEmitted>(None);
+                }
+                Ok(Some(storage_entry_to_storage_entry(
+                    context,
+                    handler,
+                    engines,
+                    *storage_entry.value,
+                    attributes,
+                )?))
+            })
+            .flatten()
+        {
+            entries.push(Box::new(entry));
         }
         Ok(StorageEntry::Namespace(StorageNamespace {
             name: storage_entry.name,

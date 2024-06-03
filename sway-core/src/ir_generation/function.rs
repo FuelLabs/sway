@@ -3829,6 +3829,7 @@ impl<'eng> FnCompiler<'eng> {
         Ok(TerminatorValue::new(val, context))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
