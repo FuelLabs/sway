@@ -20,32 +20,50 @@ enum InByte8Padding {
 }
 
 /// Hands out storage keys using storage field names or an existing key.
-/// Basically returns sha256("storage::<storage_field_name1>::<storage_field_name2>")
+/// Basically returns sha256("storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>")
 /// or key if defined.
 pub(super) fn get_storage_key(storage_field_names: Vec<String>, key: Option<U256>) -> Bytes32 {
     if let Some(key) = key {
         return key.to_be_bytes().into();
     }
-    let data = format!(
-        "{}{}{}",
-        sway_utils::constants::STORAGE_DOMAIN,
-        sway_utils::constants::STORAGE_FIELD_SEPARATOR,
-        storage_field_names.join(sway_utils::constants::STORAGE_FIELD_SEPARATOR),
-    );
-    Hasher::hash(data)
+
+    Hasher::hash(get_storage_key_string(storage_field_names))
+}
+
+fn get_storage_key_string(storage_field_names: Vec<String>) -> String {
+    if storage_field_names.len() == 1 {
+        format!(
+            "{}{}{}",
+            sway_utils::constants::STORAGE_DOMAIN,
+            sway_utils::constants::STORAGE_FIELD_SEPARATOR,
+            storage_field_names.last().unwrap(),
+        )
+    } else {
+        format!(
+            "{}{}{}{}{}",
+            sway_utils::constants::STORAGE_DOMAIN,
+            sway_utils::constants::STORAGE_NAMESPACE_SEPARATOR,
+            storage_field_names
+                .iter()
+                .take(storage_field_names.len() - 1)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join(sway_utils::constants::STORAGE_NAMESPACE_SEPARATOR),
+            sway_utils::constants::STORAGE_FIELD_SEPARATOR,
+            storage_field_names.last().unwrap(),
+        )
+    }
 }
 
 /// Hands out unique storage field ids using storage field names and struct field names.
-/// Basically returns sha256("storage::<storage_field_name1>::<storage_field_name2>.<struct_field_name1>.<struct_field_name2>")
+/// Basically returns sha256("storage::<storage_namespace_name1>::<storage_namespace_name2>.<storage_field_name>.<struct_field_name1>.<struct_field_name2>")
 pub(super) fn get_storage_field_id(
     storage_field_names: Vec<String>,
     struct_field_names: Vec<String>,
 ) -> Bytes32 {
     let data = format!(
-        "{}{}{}{}",
-        sway_utils::constants::STORAGE_DOMAIN,
-        sway_utils::constants::STORAGE_FIELD_SEPARATOR,
-        storage_field_names.join(sway_utils::constants::STORAGE_FIELD_SEPARATOR),
+        "{}{}",
+        get_storage_key_string(storage_field_names),
         if struct_field_names.is_empty() {
             "".to_string()
         } else {
