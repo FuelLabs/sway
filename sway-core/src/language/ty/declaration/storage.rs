@@ -70,6 +70,7 @@ impl TyStorageDecl {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
+        namespace_names: &[Ident],
         fields: &[Ident],
         storage_fields: &[TyStorageField],
         storage_keyword_span: Span,
@@ -88,7 +89,15 @@ impl TyStorageDecl {
         );
 
         let (initial_field_type, initial_field_key, initial_field_name) =
-            match storage_fields.iter().find(|sf| &sf.name == first_field) {
+            match storage_fields.iter().find(|sf| {
+                &sf.name == first_field
+                    && sf.namespace_names.len() == namespace_names.len()
+                    && sf
+                        .namespace_names
+                        .iter()
+                        .zip(namespace_names.iter())
+                        .all(|(n1, n2)| n1 == n2)
+            }) {
                 Some(TyStorageField {
                     type_argument,
                     key_expression,
@@ -205,7 +214,11 @@ impl TyStorageDecl {
             TyStorageAccess {
                 fields: access_descriptors,
                 key_expression: initial_field_key.clone().map(|v| Box::new(v)),
-                storage_field_names: vec![initial_field_name.as_str().to_string()],
+                storage_field_names: namespace_names
+                    .iter()
+                    .map(|n| n.as_str().to_string())
+                    .chain(vec![initial_field_name.as_str().to_string()])
+                    .collect(),
                 struct_field_names,
                 storage_keyword_span,
             },

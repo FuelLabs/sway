@@ -2185,11 +2185,15 @@ fn expr_to_expression(
                     // Parent is `storage`. We found what we were looking for.
                     Expr::Path(path_expr)
                         if path_expr.root_opt.is_none()
-                            && path_expr.suffix.is_empty()
                             && path_expr.prefix.generics_opt.is_none()
                             && path_expr.prefix.name.as_str() == "storage" =>
                     {
                         break ExpressionKind::StorageAccess(StorageAccessExpression {
+                            namespace_names: path_expr
+                                .suffix
+                                .iter()
+                                .map(|s| s.1.name.clone())
+                                .collect(),
                             field_names: idents.into_iter().rev().cloned().collect(),
                             storage_keyword_span: path_expr.prefix.name.span(),
                         })
@@ -4431,6 +4435,7 @@ fn assignable_to_expression(
                         let field_names = field_names.into_iter().rev().cloned().collect();
                         Expression {
                             kind: ExpressionKind::StorageAccess(StorageAccessExpression {
+                                namespace_names: vec![],
                                 field_names,
                                 storage_keyword_span: storage_name.span(),
                             }),

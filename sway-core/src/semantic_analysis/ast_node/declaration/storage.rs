@@ -64,7 +64,11 @@ impl ty::TyStorageField {
             serialize_to_storage_slots(
                 &constant,
                 context,
-                vec![self.name.as_str().to_string()],
+                self.namespace_names
+                    .iter()
+                    .map(|i| i.as_str().to_string())
+                    .chain(vec![self.name.as_str().to_string()])
+                    .collect(),
                 key,
                 &constant.ty,
             )
