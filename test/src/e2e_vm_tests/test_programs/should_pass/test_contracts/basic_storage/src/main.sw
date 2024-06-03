@@ -3,6 +3,7 @@ use std::{hash::*, storage::storage_api::{read, write}};
 use basic_storage_abi::*;
 
 const C1 = 1;
+const NS1_NS2_C1 = 2;
 const S5 = __to_str_array("aaaaa");
 
 const C1KEY: b256 = 0x933a534d4af4c376b0b569e8d8a2c62e635e26f403e124cb91d9c42e83d54373;
@@ -23,6 +24,11 @@ storage {
 
     const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
     const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
+    ns1 {
+        ns2 {
+            c1: u64 = NS1_NS2_C1,
+        }
+    }
 }
 
 impl BasicStorage for Contract {
@@ -287,8 +293,11 @@ fn test_storage() {
     storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
     assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
 
+    assert_eq(storage::ns1::ns2.c1.read(), NS1_NS2_C1);
+
     assert_eq(storage.c1.slot(), C1KEY);
-    assert_eq(storage.const_b256.slot(), sha256("storage::const_b256"));
+    assert_eq(storage.const_b256.slot(), sha256("storage.const_b256"));
+    assert_eq(storage::ns1::ns2.c1.slot(), sha256("storage::ns1::ns2.c1"));
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to
