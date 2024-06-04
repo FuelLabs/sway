@@ -258,7 +258,7 @@ impl From<raw_slice> for String {
     ///
     /// # Arguments
     ///
-    /// * `slice`: [raw_slice] - The `raw_slice` to convet to a `String`.
+    /// * `slice`: [raw_slice] - The `raw_slice` to convert to a `String`.
     ///
     /// # Returns
     ///
@@ -285,13 +285,13 @@ impl From<raw_slice> for String {
 impl From<String> for raw_slice {
     /// Converts a `String` to a `raw_slice`.
     ///
-    /// # Addtional Information
+    /// # Additional Information
     ///
     /// **NOTE:** To import, use the glob operator i.e. `use std::string::*;`
     ///
     /// # Arguments
     ///
-    /// * `s`: [String] - The `String` to convet to a `raw_slice`.
+    /// * `s`: [String] - The `String` to convert to a `raw_slice`.
     ///
     /// # Returns
     ///

@@ -566,7 +566,7 @@ fn revert_u128_sub() {
 }
 
 #[test]
-fn u128_mutliply() {
+fn u128_multiply() {
     let two = U128::from((0, 2));
     let max_u64 = U128::from((0, u64::max()));
 
