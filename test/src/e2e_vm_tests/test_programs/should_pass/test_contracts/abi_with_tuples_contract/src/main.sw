@@ -1,6 +1,6 @@
 contract;
 
-use abi_with_tuples::{MyContract, Person, Location};
+use abi_with_tuples::{MyContract, Person, Location, some_module::SomeStruct};
 
 impl MyContract for Contract {
     fn bug1(_param: (Person, u64)) -> bool {
@@ -11,7 +11,7 @@ impl MyContract for Contract {
         true
     }
 
-    fn struct_at_return() -> (some_module::SomeStruct,) {
+    fn struct_at_return() -> (SomeStruct,) {
         (SomeStruct { data: 1 },)
     }
 } 
