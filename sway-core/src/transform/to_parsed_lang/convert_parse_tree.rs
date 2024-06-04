@@ -34,9 +34,9 @@ use sway_types::{
         ALLOW_ATTRIBUTE_NAME, CFG_ATTRIBUTE_NAME, CFG_EXPERIMENTAL_NEW_ENCODING,
         CFG_PROGRAM_TYPE_ARG_NAME, CFG_TARGET_ARG_NAME, DEPRECATED_ATTRIBUTE_NAME,
         DOC_ATTRIBUTE_NAME, DOC_COMMENT_ATTRIBUTE_NAME, FALLBACK_ATTRIBUTE_NAME,
-        INLINE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME, STORAGE_PURITY_ATTRIBUTE_NAME,
-        STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME, TEST_ATTRIBUTE_NAME,
-        VALID_ATTRIBUTE_NAMES,
+        INLINE_ATTRIBUTE_NAME, NAMESPACE_ATTRIBUTE_NAME, PAYABLE_ATTRIBUTE_NAME,
+        STORAGE_PURITY_ATTRIBUTE_NAME, STORAGE_PURITY_READ_NAME, STORAGE_PURITY_WRITE_NAME,
+        TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
 };
@@ -4680,6 +4680,13 @@ fn item_attrs_to_map(
         let attrs = attr_decl.attribute.get().into_iter();
         for attr in attrs {
             let name = attr.name.as_str();
+            if name == NAMESPACE_ATTRIBUTE_NAME {
+                handler.emit_warn(CompileWarning {
+                    span: attr_decl.span().clone(),
+                    warning_content: Warning::NamespaceAttributeDeprecated,
+                });
+                continue;
+            }
             if !VALID_ATTRIBUTE_NAMES.contains(&name) {
                 handler.emit_warn(CompileWarning {
                     span: attr_decl.span().clone(),
