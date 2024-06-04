@@ -17,7 +17,7 @@ use crate::{
     Engines, Namespace,
 };
 
-use super::{lexical_scope::SymbolMap, Module, Root};
+use super::{lexical_scope::SymbolMap, root::ResolvedDeclaration, Module, Root};
 
 /// `contract_id_value` is injected here via forc-pkg when producing the `dependency_namespace` for a contract which has tests enabled.
 /// This allows us to provide a contract's `CONTRACT_ID` constant to its own unit tests.
@@ -117,7 +117,7 @@ fn default_with_contract_id_inner(
             );
         }
     };
-    compiled_constants.insert(name, typed_decl);
+    compiled_constants.insert(name, ResolvedDeclaration::Typed(typed_decl));
 
     let mut ret = Module::default();
     ret.current_lexical_scope_mut().items.symbols = compiled_constants;

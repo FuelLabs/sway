@@ -1,1 +1,36 @@
-forc-pkg @kayagokalp
+# Everything else
+* @FuelLabs/leads
+
+# Documentation
+/docs/ @FuelLabs/tooling @FuelLabs/sway-compiler @FuelLabs/application-dev @FuelLabs/Devrel
+
+# Sway files and standard library
+/examples/ @FuelLabs/sway-compiler @FuelLabs/application-dev 
+/sway-lib-core/ @FuelLabs/sway-compiler @FuelLabs/application-dev
+/sway-lib-std/ @FuelLabs/sway-compiler @FuelLabs/application-dev
+
+# Tooling
+/forc/ @FuelLabs/tooling 
+/forc-pkg/ @FuelLabs/tooling 
+/forc-plugins/ @FuelLabs/tooling 
+/forc-test/ @FuelLabs/tooling 
+/forc-tracing/ @FuelLabs/tooling 
+/forc-util/ @FuelLabs/tooling 
+/sway-lsp/ @FuelLabs/tooling 
+/swayfmt/ @FuelLabs/tooling
+
+# Compiler
+/sway-ast/ @FuelLabs/sway-compiler
+/sway-core/ @FuelLabs/sway-compiler
+/sway-error/ @FuelLabs/sway-compiler
+/sway-ir/ @FuelLabs/sway-compiler
+/sway-parse/ @FuelLabs/sway-compiler
+/sway-types/ @FuelLabs/sway-compiler
+/sway-utils/ @FuelLabs/sway-compiler
+/templates/ @FuelLabs/sway-compiler
+/test/ @FuelLabs/sway-compiler
+
+# Root lockfile and deployment scripts
+Cargo.lock @FuelLabs/leads
+/deployment/ @FuelLabs/leads
+

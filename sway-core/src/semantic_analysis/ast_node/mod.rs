@@ -7,7 +7,12 @@ pub(crate) use expression::*;
 pub(crate) use modes::*;
 
 use crate::{
-    language::{parsed::*, ty},
+    engine_threading::SpannedWithEngines,
+    language::{
+        parsed::*,
+        ty::{self, TyDecl},
+    },
+    namespace::TraitMap,
     semantic_analysis::*,
     type_system::*,
     Engines, Ident,
@@ -29,7 +34,7 @@ impl ty::TyAstNode {
         node: &AstNode,
     ) -> Result<(), ErrorEmitted> {
         match node.content.clone() {
-            AstNodeContent::UseStatement(_a) => {}
+            AstNodeContent::UseStatement(_stmt) => {}
             AstNodeContent::IncludeStatement(_i) => (),
             AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
             AstNodeContent::Expression(_expr) => (),
@@ -50,94 +55,16 @@ impl ty::TyAstNode {
 
         let node = ty::TyAstNode {
             content: match node.content.clone() {
-                AstNodeContent::UseStatement(a) => {
-                    let mut is_external = false;
-                    if let Some(submodule) = ctx
-                        .namespace()
-                        .module(engines)
-                        .submodule(engines, &[a.call_path[0].clone()])
-                    {
-                        is_external = submodule.read(engines, |m| m.is_external);
-                    }
-                    let path = if is_external || a.is_absolute {
-                        a.call_path.clone()
-                    } else {
-                        ctx.namespace().prepend_module_path(&a.call_path)
-                    };
-                    let _ = match a.import_type {
-                        ImportType::Star => {
-                            // try a standard starimport first
-                            let star_import_handler = Handler::default();
-                            let import = ctx.star_import(&star_import_handler, &path);
-                            if import.is_ok() {
-                                handler.append(star_import_handler);
-                                import
-                            } else {
-                                // if it doesn't work it could be an enum star import
-                                if let Some((enum_name, path)) = path.split_last() {
-                                    let variant_import_handler = Handler::default();
-                                    let variant_import = ctx.variant_star_import(
-                                        &variant_import_handler,
-                                        path,
-                                        enum_name,
-                                    );
-                                    if variant_import.is_ok() {
-                                        handler.append(variant_import_handler);
-                                        variant_import
-                                    } else {
-                                        handler.append(star_import_handler);
-                                        import
-                                    }
-                                } else {
-                                    handler.append(star_import_handler);
-                                    import
-                                }
-                            }
-                        }
-                        ImportType::SelfImport(_) => {
-                            ctx.self_import(handler, &path, a.alias.clone())
-                        }
-                        ImportType::Item(ref s) => {
-                            // try a standard item import first
-                            let item_import_handler = Handler::default();
-                            let import =
-                                ctx.item_import(&item_import_handler, &path, s, a.alias.clone());
-
-                            if import.is_ok() {
-                                handler.append(item_import_handler);
-                                import
-                            } else {
-                                // if it doesn't work it could be an enum variant import
-                                if let Some((enum_name, path)) = path.split_last() {
-                                    let variant_import_handler = Handler::default();
-                                    let variant_import = ctx.variant_import(
-                                        &variant_import_handler,
-                                        path,
-                                        enum_name,
-                                        s,
-                                        a.alias.clone(),
-                                    );
-                                    if variant_import.is_ok() {
-                                        handler.append(variant_import_handler);
-                                        variant_import
-                                    } else {
-                                        handler.append(item_import_handler);
-                                        import
-                                    }
-                                } else {
-                                    handler.append(item_import_handler);
-                                    import
-                                }
-                            }
-                        }
-                    };
+                AstNodeContent::UseStatement(stmt) => {
+                    handle_use_statement(&mut ctx, engines, &stmt, handler);
+                    handle_item_trait_imports(&mut ctx, engines, handler)?;
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
-                            alias: a.alias,
-                            call_path: a.call_path,
-                            span: a.span,
-                            is_absolute: a.is_absolute,
-                            import_type: a.import_type,
+                            alias: stmt.alias,
+                            call_path: stmt.call_path,
+                            span: stmt.span,
+                            is_absolute: stmt.is_absolute,
+                            import_type: stmt.import_type,
                         }),
                     })
                 }
@@ -207,4 +134,134 @@ impl ty::TyAstNode {
 
         Ok(node)
     }
+}
+
+fn handle_item_trait_imports(
+    ctx: &mut TypeCheckContext<'_>,
+    engines: &Engines,
+    handler: &Handler,
+) -> Result<(), ErrorEmitted> {
+    let mut impls_to_insert = TraitMap::default();
+
+    let root_mod = &ctx.namespace().root().module;
+    let dst_mod = ctx.namespace.module(engines);
+
+    for (_, (_, src, decl)) in dst_mod.current_items().use_item_synonyms.iter() {
+        let src_mod = root_mod.lookup_submodule(handler, engines, src)?;
+
+        //  if this is an enum or struct or function, import its implementations
+        if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
+            impls_to_insert.extend(
+                src_mod
+                    .current_items()
+                    .implemented_traits
+                    .filter_by_type_item_import(type_id, engines),
+                engines,
+            );
+        }
+        // if this is a trait, import its implementations
+        let decl_span = decl.span(engines);
+        if matches!(decl, TyDecl::TraitDecl(_)) {
+            // TODO: we only import local impls from the source namespace
+            // this is okay for now but we'll need to device some mechanism to collect all
+            // available trait impls
+            impls_to_insert.extend(
+                src_mod
+                    .current_items()
+                    .implemented_traits
+                    .filter_by_trait_decl_span(decl_span),
+                engines,
+            );
+        }
+    }
+
+    let dst_mod = ctx.namespace_mut().module_mut(engines);
+    dst_mod
+        .current_items_mut()
+        .implemented_traits
+        .extend(impls_to_insert, engines);
+
+    Ok(())
+}
+
+fn handle_use_statement(
+    ctx: &mut TypeCheckContext<'_>,
+    engines: &Engines,
+    stmt: &UseStatement,
+    handler: &Handler,
+) {
+    let mut is_external = false;
+    if let Some(submodule) = ctx
+        .namespace()
+        .module(engines)
+        .submodule(engines, &[stmt.call_path[0].clone()])
+    {
+        is_external = submodule.read(engines, |m| m.is_external);
+    }
+    let path = if is_external || stmt.is_absolute {
+        stmt.call_path.clone()
+    } else {
+        ctx.namespace().prepend_module_path(&stmt.call_path)
+    };
+    let _ = match stmt.import_type {
+        ImportType::Star => {
+            // try a standard starimport first
+            let star_import_handler = Handler::default();
+            let import = ctx.star_import(&star_import_handler, &path);
+            if import.is_ok() {
+                handler.append(star_import_handler);
+                import
+            } else {
+                // if it doesn't work it could be an enum star import
+                if let Some((enum_name, path)) = path.split_last() {
+                    let variant_import_handler = Handler::default();
+                    let variant_import =
+                        ctx.variant_star_import(&variant_import_handler, path, enum_name);
+                    if variant_import.is_ok() {
+                        handler.append(variant_import_handler);
+                        variant_import
+                    } else {
+                        handler.append(star_import_handler);
+                        import
+                    }
+                } else {
+                    handler.append(star_import_handler);
+                    import
+                }
+            }
+        }
+        ImportType::SelfImport(_) => ctx.self_import(handler, &path, stmt.alias.clone()),
+        ImportType::Item(ref s) => {
+            // try a standard item import first
+            let item_import_handler = Handler::default();
+            let import = ctx.item_import(&item_import_handler, &path, s, stmt.alias.clone());
+
+            if import.is_ok() {
+                handler.append(item_import_handler);
+                import
+            } else {
+                // if it doesn't work it could be an enum variant import
+                if let Some((enum_name, path)) = path.split_last() {
+                    let variant_import_handler = Handler::default();
+                    let variant_import = ctx.variant_import(
+                        &variant_import_handler,
+                        path,
+                        enum_name,
+                        s,
+                        stmt.alias.clone(),
+                    );
+                    if variant_import.is_ok() {
+                        handler.append(variant_import_handler);
+                        variant_import
+                    } else {
+                        handler.append(item_import_handler);
+                        import
+                    }
+                } else {
+                    handler.append(item_import_handler);
+                    import
+                }
+            }
+        }
+    };
 }

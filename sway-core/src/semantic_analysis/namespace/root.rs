@@ -1,15 +1,13 @@
 use std::fmt;
 
-use super::{
-    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
-};
+use super::{module::Module, namespace::Namespace, Ident, ResolvedTraitImplItem};
 use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
     language::{
         parsed::*,
         ty::{self, TyDecl, TyTraitItem},
-        CallPath,
+        CallPath, Visibility,
     },
     namespace::ModulePath,
     TypeId, TypeInfo,
@@ -21,7 +19,7 @@ use sway_error::{
 use sway_types::{Named, Spanned};
 use sway_utils::iter_prefixes;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ResolvedDeclaration {
     Parsed(Declaration),
     Typed(ty::TyDecl),
@@ -50,6 +48,20 @@ impl ResolvedDeclaration {
         match self {
             ResolvedDeclaration::Parsed(_) => panic!(),
             ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+
+    pub fn expect_typed_ref(&self) -> &ty::TyDecl {
+        match self {
+            ResolvedDeclaration::Parsed(_) => panic!(),
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl,
+        }
+    }
+
+    pub(crate) fn visibility(&self, engines: &Engines) -> Visibility {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl.visibility(engines.pe()),
+            ResolvedDeclaration::Typed(decl) => decl.visibility(engines.de()),
         }
     }
 }
@@ -85,14 +97,12 @@ impl Root {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
 
-        let decl_engine = engines.de();
-
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
-            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
+            if is_ancestor(src, dst) || decl.visibility(engines).is_public() {
                 symbols_and_decls.push((symbol.clone(), decl.clone()));
             }
         }
@@ -108,7 +118,7 @@ impl Root {
                 engines,
                 symbol.clone(),
                 src.to_vec(),
-                decl,
+                decl.expect_typed_ref(),
             )
         });
 
@@ -146,42 +156,16 @@ impl Root {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
 
-        let decl_engine = engines.de();
-
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
-        let mut impls_to_insert = TraitMap::default();
         match src_mod.current_items().symbols.get(item).cloned() {
             Some(decl) => {
-                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
+                if !decl.visibility(engines).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
                         name: item.clone(),
                         span: item.span(),
                     });
                 }
 
-                //  if this is an enum or struct or function, import its implementations
-                if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
-                    impls_to_insert.extend(
-                        src_mod
-                            .current_items()
-                            .implemented_traits
-                            .filter_by_type_item_import(type_id, engines),
-                        engines,
-                    );
-                }
-                // if this is a trait, import its implementations
-                let decl_span = decl.span(engines);
-                if let TyDecl::TraitDecl(_) = &decl {
-                    // TODO: we only import local impls from the source namespace
-                    // this is okay for now but we'll need to device some mechanism to collect all available trait impls
-                    impls_to_insert.extend(
-                        src_mod
-                            .current_items()
-                            .implemented_traits
-                            .filter_by_trait_decl_span(decl_span),
-                        engines,
-                    );
-                }
                 // no matter what, import it this way though.
                 let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
                 let check_name_clash = |name| {
@@ -189,6 +173,7 @@ impl Root {
                         handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
                     }
                 };
+                let decl = decl.expect_typed();
                 match alias {
                     Some(alias) => {
                         check_name_clash(&alias);
@@ -214,12 +199,6 @@ impl Root {
             }
         };
 
-        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-        dst_mod
-            .current_items_mut()
-            .implemented_traits
-            .extend(impls_to_insert, engines);
-
         Ok(())
     }
 
@@ -244,14 +223,14 @@ impl Root {
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         match src_mod.current_items().symbols.get(enum_name).cloned() {
             Some(decl) => {
-                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
+                if !decl.visibility(engines).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
                         name: enum_name.clone(),
                         span: enum_name.span(),
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl.expect_typed() {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),
@@ -345,14 +324,14 @@ impl Root {
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         match src_mod.current_items().symbols.get(enum_name).cloned() {
             Some(decl) => {
-                if !decl.visibility(decl_engine).is_public() && !is_ancestor(src, dst) {
+                if !decl.visibility(engines).is_public() && !is_ancestor(src, dst) {
                     handler.emit_err(CompileError::ImportPrivateSymbol {
                         name: enum_name.clone(),
                         span: enum_name.span(),
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
+                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl.expect_typed() {
                     let enum_decl = decl_engine.get_enum(&decl_id);
                     let enum_ref = DeclRef::new(
                         enum_decl.call_path.suffix.clone(),
@@ -412,8 +391,6 @@ impl Root {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
 
-        let decl_engine = engines.de();
-
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
@@ -431,8 +408,8 @@ impl Root {
             all_symbols_and_decls.push((symbol.clone(), decl.clone()));
         }
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
-            if is_ancestor(src, dst) || decl.visibility(decl_engine).is_public() {
-                all_symbols_and_decls.push((symbol.clone(), decl.clone()));
+            if is_ancestor(src, dst) || decl.visibility(engines).is_public() {
+                all_symbols_and_decls.push((symbol.clone(), decl.clone().expect_typed()));
             }
         }
 
@@ -839,7 +816,7 @@ impl Root {
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         // Check locally declared items. Any name clash with imports will have already been reported as an error.
         if let Some(decl) = module.current_items().symbols.get(symbol) {
-            return Ok(ResolvedDeclaration::Typed(decl.clone()));
+            return Ok(decl.clone());
         }
         // Check item imports
         if let Some((_, _, decl)) = module.current_items().use_item_synonyms.get(symbol) {

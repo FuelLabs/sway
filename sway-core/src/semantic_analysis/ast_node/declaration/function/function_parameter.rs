@@ -104,31 +104,23 @@ impl ty::TyFunctionParameter {
     }
 
     pub fn insert_into_namespace(&self, handler: &Handler, mut ctx: TypeCheckContext) {
-        let engines = ctx.engines();
-        let const_shadowing_mode = ctx.const_shadowing_mode();
-        let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx.namespace_mut().module_mut(engines).write(engines, |m| {
-            m.current_items_mut().insert_symbol(
-                handler,
-                engines,
-                self.name.clone(),
-                ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
-                    name: self.name.clone(),
-                    body: ty::TyExpression {
-                        expression: ty::TyExpressionVariant::FunctionParameter,
-                        return_type: self.type_argument.type_id,
-                        span: self.name.span(),
-                    },
-                    mutability: ty::VariableMutability::new_from_ref_mut(
-                        self.is_reference,
-                        self.is_mutable,
-                    ),
+        let _ = ctx.insert_symbol(
+            handler,
+            self.name.clone(),
+            ty::TyDecl::VariableDecl(Box::new(ty::TyVariableDecl {
+                name: self.name.clone(),
+                body: ty::TyExpression {
+                    expression: ty::TyExpressionVariant::FunctionParameter,
                     return_type: self.type_argument.type_id,
-                    type_ascription: self.type_argument.clone(),
-                })),
-                const_shadowing_mode,
-                generic_shadowing_mode,
-            )
-        });
+                    span: self.name.span(),
+                },
+                mutability: ty::VariableMutability::new_from_ref_mut(
+                    self.is_reference,
+                    self.is_mutable,
+                ),
+                return_type: self.type_argument.type_id,
+                type_ascription: self.type_argument.clone(),
+            })),
+        );
     }
 }
