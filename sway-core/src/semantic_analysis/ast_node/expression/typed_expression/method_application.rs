@@ -533,6 +533,36 @@ pub(crate) fn type_check_method_application(
                 span: Span::dummy(),
             });
 
+        // We need the return type to be in scope, so that at call place we have acces to its
+        // AbiDecode impl.
+        let mut types = method.return_type.type_id.extract_inner_types(engines);
+        types.insert(method.return_type.type_id);
+        for t in types {
+            match &*engines.te().get(t) {
+                TypeInfo::Struct(decl_ref) => {
+                    let decl = engines.de().get(decl_ref.id());
+                    let handler = Handler::default();
+                    let _ = ctx.item_import(
+                        &handler,
+                        &decl.call_path.prefixes,
+                        &decl.call_path.suffix,
+                        None,
+                    );
+                }
+                TypeInfo::Enum(decl_ref) => {
+                    let decl = engines.de().get(decl_ref.id());
+                    let handler = Handler::default();
+                    let _ = ctx.item_import(
+                        &handler,
+                        &decl.call_path.prefixes,
+                        &decl.call_path.suffix,
+                        None,
+                    );
+                }
+                _ => {}
+            }
+        }
+
         let args = old_arguments.iter().skip(1).cloned().collect();
         let contract_call = call_contract_call(
             &mut ctx,

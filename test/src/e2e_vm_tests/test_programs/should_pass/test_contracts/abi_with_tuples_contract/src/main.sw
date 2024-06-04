@@ -10,4 +10,8 @@ impl MyContract for Contract {
     fn bug2(_param: (Location, u64)) -> bool {
         true
     }
+
+    fn struct_at_return() -> (some_module::SomeStruct,) {
+        (SomeStruct { data: 1 },)
+    }
 } 
