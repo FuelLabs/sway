@@ -234,7 +234,7 @@ fn handle_use_statement(
         ImportType::Item(ref s) => {
             // try a standard item import first
             let item_import_handler = Handler::default();
-            let import = ctx.item_import(&item_import_handler, &path, s, stmt.alias.clone());
+            let import = ctx.item_import(&item_import_handler, &path, s, stmt.alias.clone(), true);
 
             if import.is_ok() {
                 handler.append(item_import_handler);

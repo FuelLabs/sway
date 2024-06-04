@@ -547,6 +547,7 @@ pub(crate) fn type_check_method_application(
                         &decl.call_path.prefixes,
                         &decl.call_path.suffix,
                         None,
+                        false,
                     );
                 }
                 TypeInfo::Enum(decl_ref) => {
@@ -557,6 +558,7 @@ pub(crate) fn type_check_method_application(
                         &decl.call_path.prefixes,
                         &decl.call_path.suffix,
                         None,
+                        false,
                     );
                 }
                 _ => {}

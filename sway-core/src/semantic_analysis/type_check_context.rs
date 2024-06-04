@@ -1405,12 +1405,13 @@ impl<'a> TypeCheckContext<'a> {
         src: &ModulePath,
         item: &Ident,
         alias: Option<Ident>,
+        bind_name: bool,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .item_import(handler, engines, src, item, &mod_path, alias)
+            .item_import(handler, engines, src, item, &mod_path, alias, bind_name)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.

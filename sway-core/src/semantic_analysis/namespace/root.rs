@@ -138,7 +138,7 @@ impl Root {
         alias: Option<Ident>,
     ) -> Result<(), ErrorEmitted> {
         let (last_item, src) = src.split_last().expect("guaranteed by grammar");
-        self.item_import(handler, engines, src, last_item, dst, alias)
+        self.item_import(handler, engines, src, last_item, dst, alias, true)
     }
 
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
@@ -153,6 +153,7 @@ impl Root {
         item: &Ident,
         dst: &ModulePath,
         alias: Option<Ident>,
+        bind_name: bool,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
 
@@ -174,22 +175,24 @@ impl Root {
                     }
                 };
                 let decl = decl.expect_typed();
-                match alias {
-                    Some(alias) => {
-                        check_name_clash(&alias);
-                        dst_mod
-                            .current_items_mut()
-                            .use_item_synonyms
-                            .insert(alias.clone(), (Some(item.clone()), src.to_vec(), decl))
-                    }
-                    None => {
-                        check_name_clash(item);
-                        dst_mod
-                            .current_items_mut()
-                            .use_item_synonyms
-                            .insert(item.clone(), (None, src.to_vec(), decl))
-                    }
-                };
+                if bind_name {
+                    match alias {
+                        Some(alias) => {
+                            check_name_clash(&alias);
+                            dst_mod
+                                .current_items_mut()
+                                .use_item_synonyms
+                                .insert(alias.clone(), (Some(item.clone()), src.to_vec(), decl))
+                        }
+                        None => {
+                            check_name_clash(item);
+                            dst_mod
+                                .current_items_mut()
+                                .use_item_synonyms
+                                .insert(item.clone(), (None, src.to_vec(), decl))
+                        }
+                    };
+                }
             }
             None => {
                 return Err(handler.emit_err(CompileError::SymbolNotFound {

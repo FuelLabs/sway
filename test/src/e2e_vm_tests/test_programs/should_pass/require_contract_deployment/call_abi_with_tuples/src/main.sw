@@ -32,5 +32,12 @@ fn main() -> bool {
     let a = the_abi.struct_at_return();
     assert(a.0.data == 1);
 
+    // We should be able to call functions on the return type.
+    a.0.g();
+
+    // But we should not be able to reference the type name,
+    // because it is not bound.
+    //let a = SomeStruct { data: 2 }; // This will fail
+
     true
 }
