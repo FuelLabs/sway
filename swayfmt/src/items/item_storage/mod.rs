@@ -10,9 +10,10 @@ use crate::{
         CurlyBrace,
     },
 };
-use std::fmt::Write;
-use sway_ast::{keywords::Token, ItemStorage, StorageField};
-use sway_types::{ast::Delimiter, Spanned};
+use std::{collections::HashMap, fmt::Write};
+use sway_ast::{keywords::Token, ItemStorage, StorageEntry, StorageField};
+use sway_core::namespace;
+use sway_types::{ast::Delimiter, IdentUnique, Spanned};
 
 #[cfg(test)]
 mod tests;
@@ -33,7 +34,7 @@ impl Format for ItemStorage {
 
                 // Add storage token
                 write!(formatted_code, "{}", self.storage_token.span().as_str())?;
-                let fields = self.fields.get();
+                let entries = self.entries.get();
 
                 // Handle opening brace
                 Self::open_curly_brace(formatted_code, formatter)?;
@@ -44,7 +45,7 @@ impl Format for ItemStorage {
                 match formatter.config.structures.field_alignment {
                     FieldAlignment::AlignFields(storage_field_align_threshold) => {
                         writeln!(formatted_code)?;
-                        let value_pairs = &fields
+                        let value_pairs = &entries
                             .value_separator_pairs
                             .iter()
                             // TODO: Handle annotations instead of stripping them
@@ -52,16 +53,40 @@ impl Format for ItemStorage {
                             .collect::<Vec<_>>();
                         // In first iteration we are going to be collecting the lengths of the
                         // struct fields.
-                        let field_length: Vec<usize> = value_pairs
-                            .iter()
-                            .map(|(storage_field, _)| storage_field.name.as_str().len())
-                            .collect();
+                        let mut field_lengths: HashMap<IdentUnique, usize> =
+                            HashMap::<IdentUnique, usize>::new();
+                        fn collect_field_lengths(
+                            entry: &StorageEntry,
+                            ident_size: usize,
+                            current_ident: usize,
+                            field_lenghts: &mut HashMap<IdentUnique, usize>,
+                        ) {
+                            if let Some(namespace) = &entry.namespace {
+                                namespace.clone().into_inner().into_iter().for_each(|e| {
+                                    collect_field_lengths(
+                                        &e.value,
+                                        ident_size,
+                                        current_ident + ident_size,
+                                        field_lenghts,
+                                    )
+                                });
+                            } else if let Some(storage_field) = &entry.field {
+                                field_lenghts.insert(
+                                    storage_field.name.clone().into(),
+                                    current_ident + storage_field.name.as_str().len(),
+                                );
+                            }
+                        }
+                        let ident_size = formatter.config.whitespace.tab_spaces;
+                        value_pairs.iter().for_each(|(storage_entry, _)| {
+                            collect_field_lengths(storage_entry, ident_size, 0, &mut field_lengths)
+                        });
 
                         // Find the maximum length in the `field_length` vector that is still
                         // smaller than `storage_field_align_threshold`.  `max_valid_field_length`:
                         // the length of the field that we are taking as a reference to align.
                         let mut max_valid_field_length = 0;
-                        field_length.iter().for_each(|length| {
+                        field_lengths.iter().for_each(|(_, length)| {
                             if *length > max_valid_field_length
                                 && *length < storage_field_align_threshold
                             {
@@ -69,47 +94,84 @@ impl Format for ItemStorage {
                             }
                         });
 
-                        let value_pairs_iter = value_pairs.iter().enumerate();
-                        for (field_index, (storage_field, comma_token)) in value_pairs_iter.clone()
-                        {
-                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
-                            // Add name
-                            storage_field.name.format(formatted_code, formatter)?;
+                        fn format_entry(
+                            formatted_code: &mut FormattedCode,
+                            formatter: &mut Formatter,
+                            entry: &StorageEntry,
+                            field_lenghts: &HashMap<IdentUnique, usize>,
+                            max_valid_field_length: usize,
+                        ) -> Result<(), FormatterError> {
+                            if let Some(namespace) = &entry.namespace {
+                                entry.name.format(formatted_code, formatter)?;
+                                ItemStorage::open_curly_brace(formatted_code, formatter)?;
 
-                            // `current_field_length`: the length of the current field that we are
-                            // trying to format.
-                            let current_field_length = field_length[field_index];
-                            if current_field_length < max_valid_field_length {
-                                // We need to add alignment between `:` and `ty`
-                                let mut required_alignment =
-                                    max_valid_field_length - current_field_length;
-                                while required_alignment != 0 {
-                                    write!(formatted_code, " ")?;
-                                    required_alignment -= 1;
+                                formatter.shape.code_line.update_expr_new_line(true);
+
+                                namespace.clone().into_inner().into_iter().for_each(|e| {
+                                    format_entry(
+                                        formatted_code,
+                                        formatter,
+                                        &e.value,
+                                        field_lenghts,
+                                        max_valid_field_length,
+                                    );
+                                });
+
+                                ItemStorage::close_curly_brace(formatted_code, formatter)?;
+                            } else if let Some(storage_field) = &entry.field {
+                                // Add name
+                                storage_field.name.format(formatted_code, formatter)?;
+
+                                // `current_field_length`: the length of the current field that we are
+                                // trying to format.
+                                let current_field_length = field_lenghts
+                                    .get(&storage_field.name.clone().into())
+                                    .unwrap()
+                                    .clone();
+                                if current_field_length < max_valid_field_length {
+                                    // We need to add alignment between `:` and `ty`
+                                    let mut required_alignment =
+                                        max_valid_field_length - current_field_length;
+                                    while required_alignment != 0 {
+                                        write!(formatted_code, " ")?;
+                                        required_alignment -= 1;
+                                    }
                                 }
+                                // Add `:`, `ty` & `CommaToken`
+                                write!(
+                                    formatted_code,
+                                    " {} ",
+                                    storage_field.colon_token.ident().as_str(),
+                                )?;
+                                storage_field.ty.format(formatted_code, formatter)?;
+                                write!(
+                                    formatted_code,
+                                    " {} ",
+                                    storage_field.eq_token.ident().as_str()
+                                )?;
+                                storage_field
+                                    .initializer
+                                    .format(formatted_code, formatter)?;
                             }
-                            // Add `:`, `ty` & `CommaToken`
-                            write!(
+
+                            Ok(())
+                        }
+                        for (storage_entry, comma_token) in value_pairs.iter().clone() {
+                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
+                            format_entry(
                                 formatted_code,
-                                " {} ",
-                                storage_field.colon_token.ident().as_str(),
-                            )?;
-                            storage_field.ty.format(formatted_code, formatter)?;
-                            write!(
-                                formatted_code,
-                                " {} ",
-                                storage_field.eq_token.ident().as_str()
-                            )?;
-                            storage_field
-                                .initializer
-                                .format(formatted_code, formatter)?;
+                                formatter,
+                                &storage_entry,
+                                &field_lengths,
+                                max_valid_field_length,
+                            );
                             writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                         }
-                        if let Some(final_value) = &fields.final_value_opt {
+                        if let Some(final_value) = &entries.final_value_opt {
                             final_value.format(formatted_code, formatter)?;
                         }
                     }
-                    FieldAlignment::Off => fields.format(formatted_code, formatter)?,
+                    FieldAlignment::Off => entries.format(formatted_code, formatter)?,
                 }
 
                 // Handle closing brace
@@ -164,8 +226,22 @@ impl CurlyBrace for ItemStorage {
 impl LeafSpans for ItemStorage {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         let mut collected_spans = vec![ByteSpan::from(self.storage_token.span())];
-        collected_spans.append(&mut self.fields.leaf_spans());
+        collected_spans.append(&mut self.entries.leaf_spans());
         collected_spans
+    }
+}
+
+impl LeafSpans for StorageEntry {
+    fn leaf_spans(&self) -> Vec<ByteSpan> {
+        if let Some(namespace) = &self.namespace {
+            let mut collected_spans = vec![ByteSpan::from(self.name.span())];
+            collected_spans.append(&mut namespace.leaf_spans());
+            collected_spans
+        } else if let Some(field) = &self.field {
+            field.leaf_spans()
+        } else {
+            vec![]
+        }
     }
 }
 

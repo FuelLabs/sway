@@ -296,6 +296,7 @@ fn storage_without_alignment() {
         storage {
          var1: Type1=Type1{ foo: 8 },
               var2: Type2=Type2{ bar: 9 },
+              ns1 { var3: u64 = 1 },
         }
         "#,
         r#"contract;
@@ -311,6 +312,9 @@ struct Type2 {
 storage {
     var1: Type1 = Type1 { foo: 8 },
     var2: Type2 = Type2 { bar: 9 },
+    ns1 {
+        var3: u64 = 1,
+    }
 }
 "#,
     );
@@ -333,6 +337,7 @@ struct Type2 {
 storage {
  long_var_name: Type1=Type1{ foo: 8 },
       var2: Type2=Type2{ bar: 9 },
+      ns1 { var3: u64 = 1 },
 }
 "#,
         r#"contract;
@@ -348,6 +353,9 @@ struct Type2 {
 storage {
     long_var_name : Type1 = Type1 { foo: 8 },
     var2          : Type2 = Type2 { bar: 9 },
+    ns1 {
+        var3      : u64 = 1,
+    },
 }
 "#,
         &mut formatter,

@@ -1,11 +1,15 @@
 use crate::{
     constants::RAW_MODIFIER,
     formatter::{shape::LineStyle, *},
-    utils::map::byte_span::{ByteSpan, LeafSpans},
+    utils::{
+        map::byte_span::{ByteSpan, LeafSpans},
+        CurlyBrace,
+    },
 };
 use std::fmt::Write;
 use sway_ast::{
-    keywords::CommaToken, punctuated::Punctuated, ConfigurableField, StorageField, TypeField,
+    keywords::CommaToken, punctuated::Punctuated, ConfigurableField, ItemStorage, StorageEntry,
+    StorageField, TypeField,
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
 
@@ -266,6 +270,41 @@ impl Format for StorageField {
         )?;
 
         self.initializer.format(formatted_code, formatter)?;
+
+        Ok(())
+    }
+}
+
+impl Format for StorageEntry {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        if let Some(field) = &self.field {
+            field.format(formatted_code, formatter);
+        } else if let Some(namespace) = &self.namespace {
+            self.name.format(formatted_code, formatter)?;
+            ItemStorage::open_curly_brace(formatted_code, formatter)?;
+            formatter.shape.code_line.update_expr_new_line(true);
+            namespace
+                .clone()
+                .into_inner()
+                .format(formatted_code, formatter)?;
+            ItemStorage::close_curly_brace(formatted_code, formatter)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<T: Format + Spanned + std::fmt::Debug> Format for Box<T> {
+    fn format(
+        &self,
+        formatted_code: &mut FormattedCode,
+        formatter: &mut Formatter,
+    ) -> Result<(), FormatterError> {
+        (**self).format(formatted_code, formatter);
 
         Ok(())
     }
