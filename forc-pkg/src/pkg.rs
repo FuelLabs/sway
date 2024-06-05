@@ -1444,7 +1444,7 @@ fn fetch_deps(
             (
                 n.clone(),
                 d.dependency.clone(),
-                DepKind::Contract { salt: d.salt },
+                DepKind::Contract { salt: d.salt.0 },
             )
         })
         .chain(

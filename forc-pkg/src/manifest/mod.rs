@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Display,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::Arc,
 };
 use sway_core::{fuel_prelude::fuel_tx, language::parsed::TreeType, parse_tree_type, BuildTarget};
@@ -206,6 +208,36 @@ pub struct Network {
     pub url: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct HexSalt(pub fuel_tx::Salt);
+
+impl FromStr for HexSalt {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // cut 0x from start.
+        let normalized = &s[2..];
+        if &s[0..2] != "0x" {
+            anyhow::bail!("hex salt definition needs to start with 0x.")
+        }
+        let salt: fuel_tx::Salt =
+            fuel_tx::Salt::from_str(normalized).map_err(|e| anyhow::anyhow!("{e}"))?;
+        let hex_salt = Self(salt);
+        Ok(hex_salt)
+    }
+}
+
+impl Display for HexSalt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let salt = self.0;
+        write!(f, "0x{}", salt)
+    }
+}
+
+fn default_hex_salt() -> HexSalt {
+    HexSalt(fuel_tx::Salt::default())
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
@@ -213,8 +245,8 @@ pub struct ContractDependency {
     #[serde(flatten)]
     pub dependency: Dependency,
     #[serde_as(as = "DisplayFromStr")]
-    #[serde(default = "fuel_tx::Salt::default")]
-    pub salt: fuel_tx::Salt,
+    #[serde(default = "default_hex_salt")]
+    pub salt: HexSalt,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -1031,7 +1063,7 @@ mod tests {
 
     #[test]
     fn deserialize_contract_dependency() {
-        let contract_dep_str = r#"{"path": "../", "salt": "1111111111111111111111111111111111111111111111111111111111111111" }"#;
+        let contract_dep_str = r#"{"path": "../", "salt": "0x1111111111111111111111111111111111111111111111111111111111111111" }"#;
 
         let contract_dep_expected: ContractDependency =
             serde_json::from_str(&contract_dep_str).unwrap();
@@ -1043,8 +1075,8 @@ mod tests {
         let dependency = Dependency::Detailed(dependency_det);
         let contract_dep = ContractDependency {
             dependency,
-            salt: fuel_tx::Salt::from_str(
-                "1111111111111111111111111111111111111111111111111111111111111111",
+            salt: HexSalt::from_str(
+                "0x1111111111111111111111111111111111111111111111111111111111111111",
             )
             .unwrap(),
         };
