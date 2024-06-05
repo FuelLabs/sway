@@ -59,7 +59,7 @@ impl Format for ItemStorage {
                             entry: &StorageEntry,
                             ident_size: usize,
                             current_ident: usize,
-                            field_lenghts: &mut HashMap<IdentUnique, usize>,
+                            field_lengths: &mut HashMap<IdentUnique, usize>,
                         ) {
                             if let Some(namespace) = &entry.namespace {
                                 namespace.clone().into_inner().into_iter().for_each(|e| {
@@ -67,11 +67,11 @@ impl Format for ItemStorage {
                                         &e.value,
                                         ident_size,
                                         current_ident + ident_size,
-                                        field_lenghts,
+                                        field_lengths,
                                     )
                                 });
                             } else if let Some(storage_field) = &entry.field {
-                                field_lenghts.insert(
+                                field_lengths.insert(
                                     storage_field.name.clone().into(),
                                     current_ident + storage_field.name.as_str().len(),
                                 );
@@ -98,7 +98,7 @@ impl Format for ItemStorage {
                             formatted_code: &mut FormattedCode,
                             formatter: &mut Formatter,
                             entry: &StorageEntry,
-                            field_lenghts: &HashMap<IdentUnique, usize>,
+                            field_lengths: &HashMap<IdentUnique, usize>,
                             max_valid_field_length: usize,
                         ) -> Result<(), FormatterError> {
                             if let Some(namespace) = &entry.namespace {
@@ -112,7 +112,7 @@ impl Format for ItemStorage {
                                         formatted_code,
                                         formatter,
                                         &e.value,
-                                        field_lenghts,
+                                        field_lengths,
                                         max_valid_field_length,
                                     );
                                 });
@@ -124,7 +124,7 @@ impl Format for ItemStorage {
 
                                 // `current_field_length`: the length of the current field that we are
                                 // trying to format.
-                                let current_field_length = field_lenghts
+                                let current_field_length = field_lengths
                                     .get(&storage_field.name.clone().into())
                                     .unwrap()
                                     .clone();

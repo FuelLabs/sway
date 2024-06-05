@@ -30,7 +30,7 @@ impl Parse for StorageEntry {
 
 impl Parse for StorageField {
     fn parse(parser: &mut Parser) -> ParseResult<StorageField> {
-        let name = BaseIdent::dummy(); // Name will be overrided in StorageEntry parse.
+        let name = BaseIdent::dummy(); // Name will be overridden in StorageEntry parse.
         let in_token: Option<InToken> = parser.take();
         let mut key_opt: Option<Expr> = None;
         if in_token.is_some() {

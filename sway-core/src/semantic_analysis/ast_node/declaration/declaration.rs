@@ -1,4 +1,3 @@
-use fuel_vm::fuel_tx::field;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Named, Spanned};
 
