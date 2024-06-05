@@ -9,4 +9,4 @@ implicit-std = false
 core = { path = "../../../../../../../sway-lib-core" }
 
 [contract-dependencies]
-contract_c = { path = "../contract_c", salt = "0x1111111111111111111111111111111111111111111111111111111111111111" }
+contract_c = { path = "../contract_c", salt = "111111111111111111111111111111111111111111111111111111111111111" }
