@@ -106,7 +106,7 @@ impl UnconstrainedTypeParameters for TypeId {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let mut all_types: BTreeSet<TypeId> = self.extract_inner_types(engines);
+        let mut all_types: BTreeSet<TypeId> = self.extract_inner_types(engines, false);
         all_types.insert(*self);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         all_types.iter().any(|type_id| {
@@ -422,15 +422,23 @@ impl TypeId {
     }
 
     /// Given a `TypeId` `self`, analyze `self` and return all inner
-    /// `TypeId`'s of `self`, not including `self`.
-    pub(crate) fn extract_inner_types(&self, engines: &Engines) -> BTreeSet<TypeId> {
-        fn filter_fn(_type_info: &TypeInfo) -> bool {
-            true
-        }
-        self.extract_any(engines, &filter_fn, 0)
+    /// `TypeId`'s of `self`.
+    pub(crate) fn extract_inner_types(
+        &self,
+        engines: &Engines,
+        include_self: bool,
+    ) -> BTreeSet<TypeId> {
+        let mut set: BTreeSet<TypeId> = self
+            .extract_any(engines, &|_| true, 0)
             .keys()
             .copied()
-            .collect()
+            .collect();
+
+        if include_self {
+            set.insert(*self);
+        }
+
+        set
     }
 
     pub(crate) fn extract_inner_types_with_trait_constraints(
@@ -448,7 +456,7 @@ impl TypeId {
     pub(crate) fn extract_nested_types(self, engines: &Engines) -> Vec<TypeInfo> {
         let type_engine = engines.te();
         let mut inner_types: Vec<TypeInfo> = self
-            .extract_inner_types(engines)
+            .extract_inner_types(engines, false)
             .into_iter()
             .map(|type_id| (*type_engine.get(type_id)).clone())
             .collect();

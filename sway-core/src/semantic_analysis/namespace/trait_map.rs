@@ -658,7 +658,7 @@ impl TraitMap {
 
         // a curried version of the decider protocol to use in the helper functions
         let decider = |left: TypeId, right: TypeId| unify_checker.check(left, right);
-        let mut all_types = type_id.extract_inner_types(engines);
+        let mut all_types = type_id.extract_inner_types(engines, false);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -736,7 +736,7 @@ impl TraitMap {
         };
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_id
-            .extract_inner_types(engines)
+            .extract_inner_types(engines, false)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
