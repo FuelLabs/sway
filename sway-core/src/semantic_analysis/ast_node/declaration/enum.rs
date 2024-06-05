@@ -42,8 +42,9 @@ impl ty::TyEnumDecl {
                 );
             }
 
-            let mut call_path: CallPath = name.into();
-            call_path = call_path.to_fullpath(ctx.engines(), ctx.namespace());
+	    let call_path = CallPath::ident_to_fullpath(name, ctx.namespace());
+//            let mut call_path: CallPath = name.into();
+//            call_path = call_path.to_fullpath(ctx.engines(), ctx.namespace());
 
             // create the enum decl
             let decl = ty::TyEnumDecl {
