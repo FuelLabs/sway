@@ -1025,8 +1025,31 @@ pub fn find_dir_within(dir: &Path, pkg_name: &str) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
 
+    #[test]
+    fn deserialize_contract_dependency() {
+        let contract_dep_str = r#"{"path": "../", "salt": "1111111111111111111111111111111111111111111111111111111111111111" }"#;
+
+        let contract_dep_expected: ContractDependency =
+            serde_json::from_str(&contract_dep_str).unwrap();
+
+        let dependency_det = DependencyDetails {
+            path: Some("../".to_owned()),
+            ..Default::default()
+        };
+        let dependency = Dependency::Detailed(dependency_det);
+        let contract_dep = ContractDependency {
+            dependency,
+            salt: fuel_tx::Salt::from_str(
+                "1111111111111111111111111111111111111111111111111111111111111111",
+            )
+            .unwrap(),
+        };
+        assert_eq!(contract_dep, contract_dep_expected)
+    }
     #[test]
     fn test_invalid_dependency_details_mixed_together() {
         let dependency_details_path_branch = DependencyDetails {
