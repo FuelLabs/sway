@@ -8,11 +8,13 @@ use super::{
     root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
-    ModulePath, ModulePathBuf,
+    ModuleName, ModulePath, ModulePathBuf,
 };
 
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
+use rustc_hash::FxHasher;
+use std::hash::BuildHasherDefault;
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
@@ -55,11 +57,46 @@ impl Namespace {
     }
 
     /// Initialise the namespace at its root from the given initial namespace.
+    /// If the root module contains submodules these are now considered external.
     pub fn init_root(root: Root) -> Self {
+	assert!(!root.module.is_external, "The root module must not be external during compilation");
         let mod_path = vec![];
+
+	// A copy of the root module is used to initialize every new submodule in the program.
+	// 
+	// Every submodule that has been added before calling init_root is now considered
+	// external, which we have to enforce at this point.
+	fn clone_with_submodules_external(module: &Module) -> Module {
+	    let mut new_submods = im::HashMap::<ModuleName, Module, BuildHasherDefault<FxHasher>>::default();
+	    for (name, submod) in module.submodules.iter() {
+		let new_submod = clone_with_submodules_external(submod);
+		new_submods.insert(name.clone(), new_submod);
+	    };
+//	    println!("Setting submodule {} with path {} to external", if let Some(ref name) = module.name { name.as_str() } else { "" } , module.mod_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"));
+	    Module {
+		submodules: new_submods,
+		lexical_scopes: module.lexical_scopes.clone(),
+		current_lexical_scope_id: module.current_lexical_scope_id.clone(),
+		name: module.name.clone(),
+		visibility: module.visibility.clone(),
+		span: module.span.clone(),
+		is_external: true,
+		mod_path: module.mod_path.clone(),
+	    }
+	}
+
+	let mut init = clone_with_submodules_external(&root.module);
+	// The init module itself is not external
+	init.is_external = false;
+//	println!("init module name: {}", if let Some(ref name) = init.name { name.as_str() } else { "" });    
+//	println!("init submodules:");
+//	for (submod_name, submod) in init.submodules.iter() {
+//	    println!("- {}: is_external = {}", submod_name.as_str(), submod.is_external);
+//	}
+
         Self {
-            init: root.module.clone(),
-            root,
+            init: init.clone(),
+            root: Root { module: init },
             mod_path,
         }
     }
@@ -267,6 +304,21 @@ impl Namespace {
         visibility: Visibility,
         module_span: Span,
     ) -> SubmoduleNamespace {
+//	let module = self.module(engines);
+// 	println!("Module name {}", if let Some(ref mod_name) = module.name { mod_name.as_str() } else { "" } );
+// 	println!("Submodule name {}", mod_name.as_str());
+//	println!("Current submodules:");
+//	for (submod_name, submod) in module.submodules.iter() {
+//	    println!("- {}: is_external = {}", submod_name.as_str(), submod.is_external);
+//	    if let Some(ref mod_name) = module.name {
+//		if mod_name.as_str() == "use_absolute_path" && submod_name.as_str() == "core" && !submod.is_external {
+//		panic!("core is not external for user-defined module");
+//		}
+//	    }
+//	}
+//	println!("Entering submodule {}", mod_name.as_str());
+//	println!("is_external: {}", module.is_external);
+//	println!();
         let init = self.init.clone();
 	let is_external = self.module(engines).is_external;
         self.module_mut(engines)
@@ -287,6 +339,13 @@ impl Namespace {
         new_module.visibility = visibility;
         new_module.is_external = is_external;
         new_module.mod_path = submod_path;
+// 	println!("New module name {}", if let Some(ref mod_name) = new_module.name { mod_name.as_str() } else { "" } );
+//	println!("New module current submodules:");
+//	for (submod_name, submod) in new_module.submodules.iter() {
+//	    println!("- {}: is_external = {}", submod_name.as_str(), submod.is_external);
+//	}
+//	println!("new_module is_external: {}", new_module.is_external);
+//	println!();
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,

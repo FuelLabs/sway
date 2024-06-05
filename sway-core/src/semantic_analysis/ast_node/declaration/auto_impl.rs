@@ -377,11 +377,13 @@ where
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let (decl, namespace) = ctx
+	let tmp = ctx
             .scoped_and_namespace(|ctx| {
                 TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
-            })
-            .unwrap();
+            });
+
+	println!("{:#?}", handler);
+        let (decl, namespace) = tmp.unwrap();
 
         // Uncomment this to understand why auto impl failed for a type.
         // println!("{:#?}", handler);

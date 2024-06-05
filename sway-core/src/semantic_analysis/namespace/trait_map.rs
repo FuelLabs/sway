@@ -310,6 +310,10 @@ impl TraitMap {
                             )
                         }
                     );
+//		    if trait_name.suffix.as_str() == "Trait" {
+//			dbg!(&trait_name);
+//			dbg!(&trait_name_str);
+//		    };
                     handler.emit_err(CompileError::ConflictingImplsForTraitAndType {
                         trait_name: trait_name_str,
                         type_implementing_for: engines.help_out(type_id).to_string(),

@@ -80,6 +80,10 @@ pub struct Root {
 }
 
 impl Root {
+//    pub fn set_external(&mut self, is_external: bool) {
+//	self.module.is_external = is_external
+//    }
+    
     ////// IMPORT //////
 
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
@@ -98,7 +102,6 @@ impl Root {
         self.check_module_privacy(handler, engines, src)?;
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
-
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
@@ -117,7 +120,7 @@ impl Root {
             dst_mod.current_items_mut().insert_glob_use_symbol(
                 engines,
                 symbol.clone(),
-                src.to_vec(),
+		src.to_vec(),
                 decl.expect_typed_ref(),
             )
         });

@@ -69,6 +69,15 @@ pub(crate) fn instantiate_struct_field_access(
 
     let field = match decl.find_field(&field_to_access) {
         Some(field) => {
+//	    if decl.call_path.suffix.as_str() == "TestStruct" {
+//		dbg!(&field.name);
+//		dbg!(&decl.call_path.prefixes);
+//		for field in decl.fields.iter() {
+//		    dbg!(&field.name);
+//		}
+//		dbg!(&decl.span.as_str());
+//	    };
+//	    
             if is_public_struct_access && field.is_private() {
                 return Err(handler.emit_err(CompileError::StructFieldIsPrivate {
                     field_name: (&field_to_access).into(),

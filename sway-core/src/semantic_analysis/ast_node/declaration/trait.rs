@@ -112,11 +112,7 @@ impl TyTraitDecl {
             // to allow methods to use those functions
             ctx.insert_trait_implementation(
                 handler,
-                CallPath {
-                    prefixes: vec![],
-                    suffix: name.clone(),
-                    is_absolute: false,
-                },
+		CallPath::ident_to_fullpath(name.clone(), ctx.namespace),
                 new_type_parameters.iter().map(|x| x.into()).collect(),
                 self_type,
                 &dummy_interface_surface,
@@ -180,11 +176,7 @@ impl TyTraitDecl {
             // to allow methods to use those functions
             ctx.insert_trait_implementation(
                 handler,
-                CallPath {
-                    prefixes: vec![],
-                    suffix: name.clone(),
-                    is_absolute: false,
-                },
+                CallPath::ident_to_fullpath(name.clone(), ctx.namespace()),
                 new_type_parameters.iter().map(|x| x.into()).collect(),
                 self_type,
                 &dummy_interface_surface,
