@@ -1066,7 +1066,7 @@ mod tests {
         let contract_dep_str = r#"{"path": "../", "salt": "0x1111111111111111111111111111111111111111111111111111111111111111" }"#;
 
         let contract_dep_expected: ContractDependency =
-            serde_json::from_str(&contract_dep_str).unwrap();
+            serde_json::from_str(contract_dep_str).unwrap();
 
         let dependency_det = DependencyDetails {
             path: Some("../".to_owned()),
