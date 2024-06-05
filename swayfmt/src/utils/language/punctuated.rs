@@ -282,7 +282,7 @@ impl Format for StorageEntry {
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
         if let Some(field) = &self.field {
-            field.format(formatted_code, formatter);
+            field.format(formatted_code, formatter)?;
         } else if let Some(namespace) = &self.namespace {
             self.name.format(formatted_code, formatter)?;
             ItemStorage::open_curly_brace(formatted_code, formatter)?;
@@ -304,7 +304,7 @@ impl<T: Format + Spanned + std::fmt::Debug> Format for Box<T> {
         formatted_code: &mut FormattedCode,
         formatter: &mut Formatter,
     ) -> Result<(), FormatterError> {
-        (**self).format(formatted_code, formatter);
+        (**self).format(formatted_code, formatter)?;
 
         Ok(())
     }

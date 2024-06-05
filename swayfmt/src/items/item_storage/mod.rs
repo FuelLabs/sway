@@ -12,7 +12,6 @@ use crate::{
 };
 use std::{collections::HashMap, fmt::Write};
 use sway_ast::{keywords::Token, ItemStorage, StorageEntry, StorageField};
-use sway_core::namespace;
 use sway_types::{ast::Delimiter, IdentUnique, Spanned};
 
 #[cfg(test)]
@@ -107,15 +106,15 @@ impl Format for ItemStorage {
 
                                 formatter.shape.code_line.update_expr_new_line(true);
 
-                                namespace.clone().into_inner().into_iter().for_each(|e| {
+                                for e in namespace.clone().into_inner().into_iter() {
                                     format_entry(
                                         formatted_code,
                                         formatter,
                                         &e.value,
                                         field_lengths,
                                         max_valid_field_length,
-                                    );
-                                });
+                                    )?;
+                                }
 
                                 ItemStorage::close_curly_brace(formatted_code, formatter)?;
                             } else if let Some(storage_field) = &entry.field {
@@ -126,9 +125,8 @@ impl Format for ItemStorage {
                                 // trying to format.
                                 let current_field_length = field_lengths
                                     .get(&storage_field.name.clone().into())
-                                    .unwrap()
-                                    .clone();
-                                if current_field_length < max_valid_field_length {
+                                    .unwrap();
+                                if *current_field_length < max_valid_field_length {
                                     // We need to add alignment between `:` and `ty`
                                     let mut required_alignment =
                                         max_valid_field_length - current_field_length;
@@ -161,10 +159,10 @@ impl Format for ItemStorage {
                             format_entry(
                                 formatted_code,
                                 formatter,
-                                &storage_entry,
+                                storage_entry,
                                 &field_lengths,
                                 max_valid_field_length,
-                            );
+                            )?;
                             writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                         }
                         if let Some(final_value) = &entries.final_value_opt {
