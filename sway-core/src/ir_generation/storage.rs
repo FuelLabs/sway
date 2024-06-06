@@ -30,7 +30,7 @@ pub(super) fn get_storage_key(storage_field_names: Vec<String>, key: Option<U256
     Hasher::hash(get_storage_key_string(storage_field_names))
 }
 
-fn get_storage_key_string(storage_field_names: Vec<String>) -> String {
+pub fn get_storage_key_string(storage_field_names: Vec<String>) -> String {
     if storage_field_names.len() == 1 {
         format!(
             "{}{}{}",

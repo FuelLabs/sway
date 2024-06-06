@@ -122,6 +122,11 @@ pub enum Warning {
     UsingDeprecated {
         message: String,
     },
+    DuplicatedStorageKey {
+        key: String,
+        field1: String,
+        field2: String,
+    },
 }
 
 impl fmt::Display for Warning {
@@ -272,6 +277,7 @@ impl fmt::Display for Warning {
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
             UsingDeprecated { message } => write!(f, "{}", message),
+            DuplicatedStorageKey { key, field1, field2 } => write!(f, "Two storage fields are using the same storage key.\nFirst field: {field1}\nSecond field: {field2}\nKey: {key}"),
         }
     }
 }

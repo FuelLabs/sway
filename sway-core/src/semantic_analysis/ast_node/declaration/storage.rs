@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use crate::{
     fuel_prelude::fuel_tx::StorageSlot,
     ir_generation::{
-        const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
+        const_eval::compile_constant_expression_to_constant,
+        storage::{get_storage_key_string, serialize_to_storage_slots},
     },
-    language::ty::{self, TyExpression},
+    language::ty::{self, TyExpression, TyStorageField},
     metadata::MetadataManager,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
@@ -11,12 +14,14 @@ use crate::{
     },
     Engines,
 };
+use fuel_vm::fuel_tx::Bytes32;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
+    warning::CompileWarning,
 };
 use sway_ir::{ConstantValue, Context, Module};
-use sway_types::u256::U256;
+use sway_types::{u256::U256, Spanned};
 
 impl ty::TyStorageDecl {
     pub(crate) fn get_initialized_storage_slots(
@@ -28,10 +33,47 @@ impl ty::TyStorageDecl {
         module: Module,
     ) -> Result<Vec<StorageSlot>, ErrorEmitted> {
         handler.scope(|handler| {
+            let mut slot_fields = HashMap::<Bytes32, TyStorageField>::new();
             let storage_slots = self
                 .fields
                 .iter()
-                .map(|f| f.get_initialized_storage_slots(engines, context, md_mgr, module))
+                .map(|f| {
+                    let slots = f.get_initialized_storage_slots(engines, context, md_mgr, module);
+
+                    // Check if slot with same key was already used and throw warning.
+                    if let Ok(slots) = slots.clone() {
+                        for s in slots.into_iter() {
+                            if let Some(old_field) = slot_fields.insert(*s.key(), f.clone()) {
+                                handler.emit_warn(CompileWarning {
+                                    span: f.span(),
+                                    warning_content:
+                                        sway_error::warning::Warning::DuplicatedStorageKey {
+                                            key: format!("{:X} ", s.key()),
+                                            field1: get_storage_key_string(
+                                                old_field
+                                                    .namespace_names
+                                                    .iter()
+                                                    .map(|i| i.as_str().to_string())
+                                                    .chain(vec![old_field
+                                                        .name
+                                                        .as_str()
+                                                        .to_string()])
+                                                    .collect::<Vec<_>>(),
+                                            ),
+                                            field2: get_storage_key_string(
+                                                f.namespace_names
+                                                    .iter()
+                                                    .map(|i| i.as_str().to_string())
+                                                    .chain(vec![f.name.as_str().to_string()])
+                                                    .collect::<Vec<_>>(),
+                                            ),
+                                        },
+                                })
+                            }
+                        }
+                    }
+                    slots
+                })
                 .filter_map(|s| s.map_err(|e| handler.emit_err(e)).ok())
                 .flatten()
                 .collect::<Vec<_>>();
