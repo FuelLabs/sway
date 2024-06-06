@@ -1,5 +1,6 @@
 use crate::{
     language::{parsed::Declaration, Visibility},
+    namespace::ModulePath,
     semantic_analysis::Namespace,
     Engines,
 };
@@ -89,5 +90,94 @@ impl SymbolCollectionContext {
                 self.generic_shadowing_mode,
             )
         })
+    }
+
+    /// Returns a mutable reference to the current namespace.
+    pub fn namespace_mut(&mut self) -> &mut Namespace {
+        &mut self.namespace
+    }
+
+    /// Returns a reference to the current namespace.
+    pub fn namespace(&self) -> &Namespace {
+        &self.namespace
+    }
+
+    /// Short-hand for performing a [Module::star_import] with `mod_path` as the destination.
+    pub(crate) fn star_import(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+    ) -> Result<(), ErrorEmitted> {
+        let mod_path = self.namespace().mod_path.clone();
+        self.namespace_mut()
+            .root
+            .star_import(handler, engines, src, &mod_path)
+    }
+
+    /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
+    pub(crate) fn variant_star_import(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        enum_name: &Ident,
+    ) -> Result<(), ErrorEmitted> {
+        let mod_path = self.namespace().mod_path.clone();
+        self.namespace_mut()
+            .root
+            .variant_star_import(handler, engines, src, &mod_path, enum_name)
+    }
+
+    /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
+    pub(crate) fn self_import(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        alias: Option<Ident>,
+    ) -> Result<(), ErrorEmitted> {
+        let mod_path = self.namespace().mod_path.clone();
+        self.namespace_mut()
+            .root
+            .self_import(handler, engines, src, &mod_path, alias)
+    }
+
+    /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.
+    pub(crate) fn item_import(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        item: &Ident,
+        alias: Option<Ident>,
+    ) -> Result<(), ErrorEmitted> {
+        let mod_path = self.namespace().mod_path.clone();
+        self.namespace_mut()
+            .root
+            .item_import(handler, engines, src, item, &mod_path, alias)
+    }
+
+    /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn variant_import(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        src: &ModulePath,
+        enum_name: &Ident,
+        variant_name: &Ident,
+        alias: Option<Ident>,
+    ) -> Result<(), ErrorEmitted> {
+        let mod_path = self.namespace().mod_path.clone();
+        self.namespace_mut().root.variant_import(
+            handler,
+            engines,
+            src,
+            enum_name,
+            variant_name,
+            &mod_path,
+            alias,
+        )
     }
 }

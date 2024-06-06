@@ -525,7 +525,6 @@ pub fn parsed_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<ty::TyProgram, ErrorEmitted> {
-
     let experimental = build_config
         .map(|x| x.experimental)
         .unwrap_or(ExperimentalFlags {

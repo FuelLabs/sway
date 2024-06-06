@@ -437,11 +437,11 @@ impl Items {
              item: &ResolvedDeclaration,
              const_shadowing_mode: ConstShadowingMode| {
                 match (decl, item) {
-                    (ResolvedDeclaration::Parsed(_decl), ResolvedDeclaration::Parsed(_item)) => {
-                        // TODO: Do not handle any shadowing errors while handling parsed declarations yet,
-                        // or else we will emit errors in a different order from the source code order.
-                        // Update this once the full AST resolving pass is in.
-                    }
+                    // TODO: Do not handle any shadowing errors while handling parsed declarations yet,
+                    // or else we will emit errors in a different order from the source code order.
+                    // Update this once the full AST resolving pass is in.
+                    (ResolvedDeclaration::Typed(_decl), ResolvedDeclaration::Parsed(_item)) => {}
+                    (ResolvedDeclaration::Parsed(_decl), ResolvedDeclaration::Parsed(_item)) => {}
                     (ResolvedDeclaration::Typed(decl), ResolvedDeclaration::Typed(item)) => {
                         append_shadowing_error_typed(
                             ident,
