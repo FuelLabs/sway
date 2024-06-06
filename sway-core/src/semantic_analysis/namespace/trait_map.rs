@@ -22,7 +22,7 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
+    IncludeSelf, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
 };
 
 use super::TryInsertingTraitImplOnFailure;
@@ -658,7 +658,7 @@ impl TraitMap {
 
         // a curried version of the decider protocol to use in the helper functions
         let decider = |left: TypeId, right: TypeId| unify_checker.check(left, right);
-        let mut all_types = type_id.extract_inner_types(engines, false);
+        let mut all_types = type_id.extract_inner_types(engines, IncludeSelf::No);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -736,7 +736,7 @@ impl TraitMap {
         };
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_id
-            .extract_inner_types(engines, false)
+            .extract_inner_types(engines, IncludeSelf::No)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions

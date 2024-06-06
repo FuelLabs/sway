@@ -256,11 +256,15 @@ impl UnconstrainedTypeParameters for TyFunctionDecl {
             let mut inner = param
                 .type_argument
                 .type_id
-                .extract_inner_types(engines, false);
+                .extract_inner_types(engines, IncludeSelf::No);
             inner.insert(param.type_argument.type_id);
             inner
         }));
-        all_types.extend(self.return_type.type_id.extract_inner_types(engines, false));
+        all_types.extend(
+            self.return_type
+                .type_id
+                .extract_inner_types(engines, IncludeSelf::No),
+        );
         all_types.insert(self.return_type.type_id);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         all_types.iter().any(|type_id| {

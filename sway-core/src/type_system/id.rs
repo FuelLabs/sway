@@ -27,6 +27,11 @@ use std::{
 
 const EXTRACT_ANY_MAX_DEPTH: usize = 128;
 
+pub enum IncludeSelf {
+    Yes,
+    No,
+}
+
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
@@ -106,7 +111,7 @@ impl UnconstrainedTypeParameters for TypeId {
         type_parameter: &TypeParameter,
     ) -> bool {
         let type_engine = engines.te();
-        let mut all_types: BTreeSet<TypeId> = self.extract_inner_types(engines, false);
+        let mut all_types: BTreeSet<TypeId> = self.extract_inner_types(engines, IncludeSelf::No);
         all_types.insert(*self);
         let type_parameter_info = type_engine.get(type_parameter.type_id);
         all_types.iter().any(|type_id| {
@@ -426,7 +431,7 @@ impl TypeId {
     pub(crate) fn extract_inner_types(
         &self,
         engines: &Engines,
-        include_self: bool,
+        include_self: IncludeSelf,
     ) -> BTreeSet<TypeId> {
         let mut set: BTreeSet<TypeId> = self
             .extract_any(engines, &|_| true, 0)
@@ -434,7 +439,7 @@ impl TypeId {
             .copied()
             .collect();
 
-        if include_self {
+        if matches!(include_self, IncludeSelf::Yes) {
             set.insert(*self);
         }
 
@@ -456,7 +461,7 @@ impl TypeId {
     pub(crate) fn extract_nested_types(self, engines: &Engines) -> Vec<TypeInfo> {
         let type_engine = engines.te();
         let mut inner_types: Vec<TypeInfo> = self
-            .extract_inner_types(engines, false)
+            .extract_inner_types(engines, IncludeSelf::No)
             .into_iter()
             .map(|type_id| (*type_engine.get(type_id)).clone())
             .collect();
