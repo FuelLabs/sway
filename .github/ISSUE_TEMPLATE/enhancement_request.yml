@@ -15,6 +15,7 @@ body:
       options:
         - compiler
         - forc
+        - forc-deploy
         - forc-lsp
         - forc-fmt
         - another forc plugin
