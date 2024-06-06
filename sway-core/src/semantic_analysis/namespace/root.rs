@@ -116,7 +116,7 @@ impl Root {
             dst_mod.current_items_mut().insert_glob_use_symbol(
                 engines,
                 symbol.clone(),
-		src.to_vec(),
+                src.to_vec(),
                 decl.expect_typed_ref(),
             )
         });

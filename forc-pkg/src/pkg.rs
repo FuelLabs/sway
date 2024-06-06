@@ -1632,7 +1632,7 @@ pub fn dependency_namespace(
                 module
             }
         };
-	dep_namespace.is_external = true;
+        dep_namespace.is_external = true;
         root_module.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
@@ -1647,7 +1647,7 @@ pub fn dependency_namespace(
             root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
         }
     }
-    
+
     let mut root = namespace::Root::from(root_module);
 
     let _ = root.star_import_with_reexports(

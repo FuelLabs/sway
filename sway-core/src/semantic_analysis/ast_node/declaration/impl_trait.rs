@@ -305,12 +305,12 @@ impl TyImplTrait {
                 let self_type_id = self_type_param.type_id;
 
                 // create the trait name
-		let suffix = match &&*type_engine.get(implementing_for.type_id) {
-                        TypeInfo::Custom {
-                            qualified_call_path: call_path,
-                            ..
-                        } => call_path.call_path.suffix.clone(),
-                        _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
+                let suffix = match &&*type_engine.get(implementing_for.type_id) {
+                    TypeInfo::Custom {
+                        qualified_call_path: call_path,
+                        ..
+                    } => call_path.call_path.suffix.clone(),
+                    _ => Ident::new_with_override("r#Self".into(), implementing_for.span()),
                 };
                 let trait_name = CallPath::ident_to_fullpath(suffix, ctx.namespace());
 

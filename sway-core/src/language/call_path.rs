@@ -335,17 +335,17 @@ impl CallPath {
     /// This function is intended to be used while typechecking the identifier declaration, i.e.,
     /// before the identifier is added to the environment.
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
-	let mut res : Self = suffix.clone().into();
-	if let Some(ref pkg_name) = namespace.root_module().name {
-	    res.prefixes.push(pkg_name.clone())
-	};
-	for mod_path in namespace.mod_path() {
-	    res.prefixes.push(mod_path.clone())
-	};
-	res.is_absolute = true;
-	res
+        let mut res: Self = suffix.clone().into();
+        if let Some(ref pkg_name) = namespace.root_module().name {
+            res.prefixes.push(pkg_name.clone())
+        };
+        for mod_path in namespace.mod_path() {
+            res.prefixes.push(mod_path.clone())
+        }
+        res.is_absolute = true;
+        res
     }
-    
+
     /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
@@ -358,7 +358,7 @@ impl CallPath {
             return self.clone();
         }
 
-	if self.prefixes.is_empty() {
+        if self.prefixes.is_empty() {
             // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
             // combination of the package name in which the symbol is defined and the path to the
             // current submodule.
@@ -367,10 +367,9 @@ impl CallPath {
             let mut is_absolute = false;
 
             if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
-		if m.current_items().symbols().contains_key(&self.suffix) {
-		    None
-		}
-                else if let Some((_, path, _)) = m
+                if m.current_items().symbols().contains_key(&self.suffix) {
+                    None
+                } else if let Some((_, path, _)) = m
                     .current_items()
                     .use_item_synonyms
                     .get(&self.suffix)

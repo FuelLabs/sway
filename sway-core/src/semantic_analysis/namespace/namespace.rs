@@ -11,10 +11,10 @@ use super::{
     ModuleName, ModulePath, ModulePathBuf,
 };
 
-use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::span::Span;
 use rustc_hash::FxHasher;
 use std::hash::BuildHasherDefault;
+use sway_error::handler::{ErrorEmitted, Handler};
+use sway_types::span::Span;
 
 /// Enum used to pass a value asking for insertion of type into trait map when an implementation
 /// of the trait cannot be found.
@@ -59,34 +59,38 @@ impl Namespace {
     /// Initialise the namespace at its root from the given initial namespace.
     /// If the root module contains submodules these are now considered external.
     pub fn init_root(root: Root) -> Self {
-	assert!(!root.module.is_external, "The root module must not be external during compilation");
+        assert!(
+            !root.module.is_external,
+            "The root module must not be external during compilation"
+        );
         let mod_path = vec![];
 
-	// A copy of the root module is used to initialize every new submodule in the program.
-	// 
-	// Every submodule that has been added before calling init_root is now considered
-	// external, which we have to enforce at this point.
-	fn clone_with_submodules_external(module: &Module) -> Module {
-	    let mut new_submods = im::HashMap::<ModuleName, Module, BuildHasherDefault<FxHasher>>::default();
-	    for (name, submod) in module.submodules.iter() {
-		let new_submod = clone_with_submodules_external(submod);
-		new_submods.insert(name.clone(), new_submod);
-	    };
-	    Module {
-		submodules: new_submods,
-		lexical_scopes: module.lexical_scopes.clone(),
-		current_lexical_scope_id: module.current_lexical_scope_id.clone(),
-		name: module.name.clone(),
-		visibility: module.visibility.clone(),
-		span: module.span.clone(),
-		is_external: true,
-		mod_path: module.mod_path.clone(),
-	    }
-	}
+        // A copy of the root module is used to initialize every new submodule in the program.
+        //
+        // Every submodule that has been added before calling init_root is now considered
+        // external, which we have to enforce at this point.
+        fn clone_with_submodules_external(module: &Module) -> Module {
+            let mut new_submods =
+                im::HashMap::<ModuleName, Module, BuildHasherDefault<FxHasher>>::default();
+            for (name, submod) in module.submodules.iter() {
+                let new_submod = clone_with_submodules_external(submod);
+                new_submods.insert(name.clone(), new_submod);
+            }
+            Module {
+                submodules: new_submods,
+                lexical_scopes: module.lexical_scopes.clone(),
+                current_lexical_scope_id: module.current_lexical_scope_id.clone(),
+                name: module.name.clone(),
+                visibility: module.visibility.clone(),
+                span: module.span.clone(),
+                is_external: true,
+                mod_path: module.mod_path.clone(),
+            }
+        }
 
-	let mut init = clone_with_submodules_external(&root.module);
-	// The init module itself is not external
-	init.is_external = false;
+        let mut init = clone_with_submodules_external(&root.module);
+        // The init module itself is not external
+        init.is_external = false;
 
         Self {
             init: init.clone(),
@@ -299,7 +303,7 @@ impl Namespace {
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
-	let is_external = self.module(engines).is_external;
+        let is_external = self.module(engines).is_external;
         self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())

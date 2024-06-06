@@ -42,7 +42,7 @@ impl ty::TyEnumDecl {
                 );
             }
 
-	    let call_path = CallPath::ident_to_fullpath(name, ctx.namespace());
+            let call_path = CallPath::ident_to_fullpath(name, ctx.namespace());
 
             // create the enum decl
             let decl = ty::TyEnumDecl {
