@@ -216,10 +216,9 @@ impl FromStr for HexSalt {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // cut 0x from start.
-        let normalized = &s[2..];
-        if &s[0..2] != "0x" {
-            anyhow::bail!("hex salt definition needs to start with 0x.")
-        }
+        let normalized = s
+            .strip_prefix("0x")
+            .ok_or_else(|| anyhow::anyhow!("hex salt declaration needs to start with 0x"))?;
         let salt: fuel_tx::Salt =
             fuel_tx::Salt::from_str(normalized).map_err(|e| anyhow::anyhow!("{e}"))?;
         let hex_salt = Self(salt);
