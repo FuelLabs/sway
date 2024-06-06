@@ -79,9 +79,9 @@ impl Namespace {
             Module {
                 submodules: new_submods,
                 lexical_scopes: module.lexical_scopes.clone(),
-                current_lexical_scope_id: module.current_lexical_scope_id.clone(),
+                current_lexical_scope_id: module.current_lexical_scope_id,
                 name: module.name.clone(),
-                visibility: module.visibility.clone(),
+                visibility: module.visibility,
                 span: module.span.clone(),
                 is_external: true,
                 mod_path: module.mod_path.clone(),
