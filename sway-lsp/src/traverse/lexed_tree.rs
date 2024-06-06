@@ -9,7 +9,8 @@ use sway_ast::{
     ExprTupleDescriptor, FnArg, FnArgs, FnSignature, IfCondition, IfExpr, ItemAbi,
     ItemConfigurable, ItemConst, ItemEnum, ItemFn, ItemImpl, ItemImplItem, ItemKind, ItemStorage,
     ItemStruct, ItemTrait, ItemTypeAlias, ItemUse, MatchBranchKind, ModuleKind, Pattern,
-    PatternStructField, Statement, StatementLet, StorageField, TraitType, Ty, TypeField, UseTree,
+    PatternStructField, Statement, StatementLet, StorageEntry, StorageField, TraitType, Ty,
+    TypeField, UseTree,
 };
 use sway_core::language::{lexed::LexedProgram, HasSubmodules};
 use sway_types::{Ident, Span, Spanned};
@@ -404,11 +405,26 @@ impl Parse for ItemStorage {
     fn parse(&self, ctx: &ParseContext) {
         insert_keyword(ctx, self.storage_token.span());
 
-        self.fields
+        self.entries
             .get()
             .into_iter()
             .par_bridge()
-            .for_each(|field| field.value.parse(ctx));
+            .for_each(|entry| entry.value.parse(ctx));
+    }
+}
+
+impl Parse for StorageEntry {
+    fn parse(&self, ctx: &ParseContext) {
+        if let Some(namespace) = &self.namespace {
+            namespace
+                .clone()
+                .into_inner()
+                .into_iter()
+                .par_bridge()
+                .for_each(|entry| entry.value.parse(ctx));
+        } else if let Some(field) = &self.field {
+            field.parse(ctx);
+        }
     }
 }
 
