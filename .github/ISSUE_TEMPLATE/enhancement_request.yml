@@ -1,6 +1,6 @@
 name: Enhancement Request
 description: Suggest an enhancement for this project.
-labels: [enhancement]
+labels: [enhancement, triage]
 body:
   - type: markdown
     attributes:
