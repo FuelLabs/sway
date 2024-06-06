@@ -234,8 +234,8 @@ where
 
         use std::fmt::Write;
         let mut code = String::new();
-        writeln!(&mut code, "let variant: u64 = buffer.decode::<u64>();").unwrap();
-        writeln!(&mut code, "match variant {{ {arms} _ => __revert(0), }}").unwrap();
+        let _ = writeln!(&mut code, "let variant: u64 = buffer.decode::<u64>();");
+        let _ = writeln!(&mut code, "match variant {{ {arms} _ => __revert(0), }}");
 
         Some(code)
     }
@@ -306,7 +306,7 @@ where
 
         let decl = match nodes[0].content {
             AstNodeContent::Declaration(Declaration::FunctionDeclaration(f)) => f,
-            _ => todo!(),
+            _ => unreachable!("unexpected node"),
         };
 
         if handler.has_errors() {
@@ -324,20 +324,18 @@ where
         assert!(!handler.has_warnings(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let (decl, namespace) = ctx
-            .scoped_and_namespace(|ctx| {
-                TyDecl::type_check(
-                    &handler,
-                    ctx,
-                    parsed::Declaration::FunctionDeclaration(decl),
-                )
-            })
-            .unwrap();
-
-        assert!(!handler.has_warnings(), "{:?}", handler);
+        let r = ctx.scoped_and_namespace(|ctx| {
+            TyDecl::type_check(
+                &handler,
+                ctx,
+                parsed::Declaration::FunctionDeclaration(decl),
+            )
+        });
 
         // Uncomment this to understand why an entry function was not generated
         // println!("{:#?}", handler);
+
+        let (decl, namespace) = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
@@ -371,20 +369,20 @@ where
 
         let decl = match nodes[0].content {
             AstNodeContent::Declaration(Declaration::ImplTrait(f)) => f,
-            _ => todo!(),
+            _ => unreachable!("unexpected item"),
         };
 
         assert!(!handler.has_errors(), "{:?}", handler);
 
         let ctx = self.ctx.by_ref();
-        let (decl, namespace) = ctx
-            .scoped_and_namespace(|ctx| {
-                TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
-            })
-            .unwrap();
+        let r = ctx.scoped_and_namespace(|ctx| {
+            TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
+        });
 
         // Uncomment this to understand why auto impl failed for a type.
         // println!("{:#?}", handler);
+
+        let (decl, namespace) = r.map_err(|_| handler.clone())?;
 
         if handler.has_errors() || matches!(decl, TyDecl::ErrorRecovery(_, _)) {
             Err(handler)
@@ -785,7 +783,7 @@ where
         if let Some(constraint_not_satisfied) = constraint_not_satisfied {
             let ty = match constraint_not_satisfied {
                 CompileError::TraitConstraintNotSatisfied { ty, .. } => ty,
-                _ => unreachable!(),
+                _ => unreachable!("unexpected error"),
             };
             handler.emit_err(CompileError::CouldNotGenerateEntryMissingImpl {
                 ty,
