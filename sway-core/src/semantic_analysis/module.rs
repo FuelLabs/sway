@@ -281,7 +281,6 @@ impl ty::TyModule {
                     .iter()
                     .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
                     .unwrap();
-//		println!("Typechecking submodule {}", name.as_str());
                 Ok((
                     name.clone(),
                     ty::TySubmodule::type_check(

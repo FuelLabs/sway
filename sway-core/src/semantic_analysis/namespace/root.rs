@@ -80,10 +80,6 @@ pub struct Root {
 }
 
 impl Root {
-//    pub fn set_external(&mut self, is_external: bool) {
-//	self.module.is_external = is_external
-//    }
-    
     ////// IMPORT //////
 
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given

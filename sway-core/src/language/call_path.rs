@@ -329,6 +329,11 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
+    /// Create a full [CallPath] from aiven an [Ident] and the [Namespace] in which the [Ident] is
+    /// declared.
+    ///
+    /// This function is intended to be used while typechecking the identifier declaration, i.e.,
+    /// before the identifier is added to the environment.
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
 	let mut res : Self = suffix.clone().into();
 	if let Some(ref pkg_name) = namespace.root_module().name {
@@ -353,11 +358,6 @@ impl CallPath {
             return self.clone();
         }
 
-//	let problem = self.suffix.as_str() == "AbiEncode";
-//	if problem {
-//	    println!("namespace mod_path: \"{}\"", namespace.mod_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"));
-//	}
-
 	if self.prefixes.is_empty() {
             // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
             // combination of the package name in which the symbol is defined and the path to the
@@ -368,7 +368,6 @@ impl CallPath {
 
             if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
 		if m.current_items().symbols().contains_key(&self.suffix) {
-//		    if problem { println!("No prefix, local binding"); };
 		    None
 		}
                 else if let Some((_, path, _)) = m
@@ -377,7 +376,6 @@ impl CallPath {
                     .get(&self.suffix)
                     .cloned()
                 {
-//		    if problem { println!("No prefix, item import, path: {}", path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::")); };
                     Some(path)
                 } else if let Some(paths_and_decls) = m
                     .current_items()
@@ -386,14 +384,11 @@ impl CallPath {
                     .cloned()
                 {
                     if paths_and_decls.len() == 1 {
-//			if problem { println!("No prefix, glob import, path: {}", paths_and_decls[0].0.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::")); };
                         Some(paths_and_decls[0].0.clone())
                     } else {
-//			if problem { println!("No prefix, non-one glob imports"); };
                         None
                     }
                 } else {
-//		    if problem { println!("No prefix, no binding"); };
                     None
                 }
             }) {
@@ -404,12 +399,7 @@ impl CallPath {
                     .submodule(engines, &[mod_path[0].clone()]);
                 if let Some(submodule) = submodule {
                     is_external = submodule.read(engines, |m| m.is_external);
-//		    println!("Found submodule. is_external = {}", is_external);
                 }
-//		else {
-//		    println!("No submodule found.");
-//		}
-//		if problem { println!("is_external: {}", is_external); };
             }
 
             let mut prefixes: Vec<Ident> = vec![];
@@ -428,10 +418,6 @@ impl CallPath {
 
             prefixes.extend(synonym_prefixes);
 
-//	    if problem {
-//		println!("final prefix: {}", prefixes.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"));
-//	    };
-	    
             CallPath {
                 prefixes,
                 suffix: self.suffix.clone(),

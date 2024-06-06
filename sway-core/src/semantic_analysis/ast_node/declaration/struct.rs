@@ -37,29 +37,6 @@ impl ty::TyStructDecl {
                 new_fields.push(ty::TyStructField::type_check(handler, ctx.by_ref(), field)?);
             }
 
-
-
-	    
-//             let mut path: CallPath = name.clone().into();
-// 	    //path = path.to_fullpath(ctx.engines, ctx.namespace());
-// //	    if !ctx.namespace().module(ctx.engines).is_external {
-// 		if let Some(ref pkg_name) = ctx.namespace().root_module().name {
-// 		    path.prefixes.push(pkg_name.clone());
-// 		};
-// //	    };
-// 	    for mod_path in ctx.namespace().mod_path() {
-// 		path.prefixes.push(mod_path.clone())
-// 	    };
-// 	    path.is_absolute = true;
-// 
-// //	    if name.as_str() == "BufferReader"
-// //		|| name.as_str() == "TestStruct"
-// //	    {
-// //		dbg!(&name);
-// //		dbg!(&path.prefixes);
-// //		dbg!(&span);
-// 	    //	    };
-
 	    let path = CallPath::ident_to_fullpath(name, ctx.namespace());
 	    
             // create the struct decl

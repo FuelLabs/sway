@@ -1595,7 +1595,6 @@ pub fn dependency_namespace(
     };
 
     root_module.write(engines, |root_module| {
-//        root_module.is_external = true;
         root_module.name.clone_from(&name);
         root_module.visibility = Visibility::Public;
     });
@@ -2350,8 +2349,6 @@ pub fn build(
                 Err(errs) => return fail(&[], &errs),
             };
 
-//	    dep_namespace.set_external(false);
-	    
             let compiled_without_tests = compile(
                 &descriptor,
                 &profile,
@@ -2425,8 +2422,6 @@ pub fn build(
             }
         };
 
-//	dep_namespace.set_external(false);
-	
         let mut compiled = compile(
             &descriptor,
             &profile,
@@ -2650,8 +2645,6 @@ pub fn check(
             experimental,
         )
         .expect("failed to create dependency namespace");
-
-//	dep_namespace.set_external(false);
 
         let profile = BuildProfile {
             terse: terse_mode,

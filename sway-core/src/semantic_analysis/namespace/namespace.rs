@@ -72,7 +72,6 @@ impl Namespace {
 		let new_submod = clone_with_submodules_external(submod);
 		new_submods.insert(name.clone(), new_submod);
 	    };
-//	    println!("Setting submodule {} with path {} to external", if let Some(ref name) = module.name { name.as_str() } else { "" } , module.mod_path.iter().map(|x| x.as_str()).collect::<Vec<_>>().join("::"));
 	    Module {
 		submodules: new_submods,
 		lexical_scopes: module.lexical_scopes.clone(),
@@ -88,11 +87,6 @@ impl Namespace {
 	let mut init = clone_with_submodules_external(&root.module);
 	// The init module itself is not external
 	init.is_external = false;
-//	println!("init module name: {}", if let Some(ref name) = init.name { name.as_str() } else { "" });    
-//	println!("init submodules:");
-//	for (submod_name, submod) in init.submodules.iter() {
-//	    println!("- {}: is_external = {}", submod_name.as_str(), submod.is_external);
-//	}
 
         Self {
             init: init.clone(),
@@ -304,21 +298,6 @@ impl Namespace {
         visibility: Visibility,
         module_span: Span,
     ) -> SubmoduleNamespace {
-//	let module = self.module(engines);
-// 	println!("Module name {}", if let Some(ref mod_name) = module.name { mod_name.as_str() } else { "" } );
-// 	println!("Submodule name {}", mod_name.as_str());
-//	println!("Current submodules:");
-//	for (submod_name, submod) in module.submodules.iter() {
-//	    println!("- {}: is_external = {}", submod_name.as_str(), submod.is_external);
-//	    if let Some(ref mod_name) = module.name {
-//		if mod_name.as_str() == "use_absolute_path" && submod_name.as_str() == "core" && !submod.is_external {
-//		panic!("core is not external for user-defined module");
-//		}
-//	    }
-//	}
-//	println!("Entering submodule {}", mod_name.as_str());
-//	println!("is_external: {}", module.is_external);
-//	println!();
         let init = self.init.clone();
 	let is_external = self.module(engines).is_external;
         self.module_mut(engines)
@@ -339,13 +318,6 @@ impl Namespace {
         new_module.visibility = visibility;
         new_module.is_external = is_external;
         new_module.mod_path = submod_path;
-// 	println!("New module name {}", if let Some(ref mod_name) = new_module.name { mod_name.as_str() } else { "" } );
-//	println!("New module current submodules:");
-//	for (submod_name, submod) in new_module.submodules.iter() {
-//	    println!("- {}: is_external = {}", submod_name.as_str(), submod.is_external);
-//	}
-//	println!("new_module is_external: {}", new_module.is_external);
-//	println!();
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
