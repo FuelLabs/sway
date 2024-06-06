@@ -13,6 +13,8 @@ use sway_ast::{
 };
 use sway_types::{ast::PunctKind, Ident, Spanned};
 
+use self::shape::ExprKind;
+
 use super::expr::should_write_multiline;
 
 impl<T, P> Format for Punctuated<T, P>
@@ -287,10 +289,18 @@ impl Format for StorageEntry {
             self.name.format(formatted_code, formatter)?;
             ItemStorage::open_curly_brace(formatted_code, formatter)?;
             formatter.shape.code_line.update_expr_new_line(true);
-            namespace
-                .clone()
-                .into_inner()
-                .format(formatted_code, formatter)?;
+            formatter.with_shape(
+                formatter
+                    .shape
+                    .with_code_line_from(LineStyle::Multiline, ExprKind::Struct),
+                |formatter| -> Result<(), FormatterError> {
+                    namespace
+                        .clone()
+                        .into_inner()
+                        .format(formatted_code, formatter)?;
+                    Ok(())
+                },
+            )?;
             ItemStorage::close_curly_brace(formatted_code, formatter)?;
         }
 

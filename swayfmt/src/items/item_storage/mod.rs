@@ -80,6 +80,14 @@ impl Format for ItemStorage {
                         value_pairs.iter().for_each(|(storage_entry, _)| {
                             collect_field_lengths(storage_entry, ident_size, 0, &mut field_lengths)
                         });
+                        if let Some(final_value) = &entries.final_value_opt {
+                            collect_field_lengths(
+                                &final_value.value,
+                                ident_size,
+                                0,
+                                &mut field_lengths,
+                            );
+                        }
 
                         // Find the maximum length in the `field_length` vector that is still
                         // smaller than `storage_field_align_threshold`.  `max_valid_field_length`:
@@ -100,13 +108,15 @@ impl Format for ItemStorage {
                             field_lengths: &HashMap<IdentUnique, usize>,
                             max_valid_field_length: usize,
                         ) -> Result<(), FormatterError> {
+                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                             if let Some(namespace) = &entry.namespace {
                                 entry.name.format(formatted_code, formatter)?;
                                 ItemStorage::open_curly_brace(formatted_code, formatter)?;
+                                writeln!(formatted_code)?;
 
-                                formatter.shape.code_line.update_expr_new_line(true);
-
-                                for e in namespace.clone().into_inner().into_iter() {
+                                for (e, comma_token) in
+                                    namespace.clone().into_inner().value_separator_pairs
+                                {
                                     format_entry(
                                         formatted_code,
                                         formatter,
@@ -114,6 +124,19 @@ impl Format for ItemStorage {
                                         field_lengths,
                                         max_valid_field_length,
                                     )?;
+                                    writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
+                                }
+                                if let Some(final_value) =
+                                    &namespace.clone().into_inner().final_value_opt
+                                {
+                                    format_entry(
+                                        formatted_code,
+                                        formatter,
+                                        &final_value.value,
+                                        field_lengths,
+                                        max_valid_field_length,
+                                    )?;
+                                    writeln!(formatted_code)?;
                                 }
 
                                 ItemStorage::close_curly_brace(formatted_code, formatter)?;
@@ -155,7 +178,6 @@ impl Format for ItemStorage {
                             Ok(())
                         }
                         for (storage_entry, comma_token) in value_pairs.iter().clone() {
-                            write!(formatted_code, "{}", formatter.indent_to_str()?)?;
                             format_entry(
                                 formatted_code,
                                 formatter,
@@ -166,7 +188,14 @@ impl Format for ItemStorage {
                             writeln!(formatted_code, "{}", comma_token.ident().as_str())?;
                         }
                         if let Some(final_value) = &entries.final_value_opt {
-                            final_value.format(formatted_code, formatter)?;
+                            format_entry(
+                                formatted_code,
+                                formatter,
+                                &final_value.value,
+                                &field_lengths,
+                                max_valid_field_length,
+                            )?;
+                            writeln!(formatted_code)?;
                         }
                     }
                     FieldAlignment::Off => entries.format(formatted_code, formatter)?,
