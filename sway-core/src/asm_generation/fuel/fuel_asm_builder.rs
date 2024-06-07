@@ -1115,6 +1115,17 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 
                 Ok(())
             }
+            Some(Storage::Const(c)) => {
+                let instr_reg = self.reg_seqr.next();
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVI(instr_reg.clone(), c.clone())),
+                    comment: "get local constant".into(),
+                    owning_span,
+                });
+                self.reg_map.insert(*instr_val, instr_reg);
+
+                Ok(())
+            }
             _ => Err(CompileError::Internal(
                 "Malformed storage for local var found.",
                 self.md_mgr
@@ -1866,7 +1877,23 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .or_else(|| {
                 value.get_constant(self.context).map(|constant| {
                     let span = self.md_mgr.val_to_span(self.context, *value);
-                    self.initialise_constant(constant, None, span).0
+                    match constant.value {
+                        // If it's a small enough constant, just initialize using an IMM value.
+                        ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
+                            let imm = VirtualImmediate18::new_unchecked(
+                                c,
+                                "Cannot happen, we just checked",
+                            );
+                            let reg = self.reg_seqr.next();
+                            self.cur_bytecode.push(Op {
+                                opcode: Either::Left(VirtualOp::MOVI(reg.clone(), imm)),
+                                comment: "initializer constant into register".into(),
+                                owning_span: None,
+                            });
+                            reg
+                        }
+                        _ => self.initialise_constant(constant, None, span).0,
+                    }
                 })
             })
             .or_else(|| {
