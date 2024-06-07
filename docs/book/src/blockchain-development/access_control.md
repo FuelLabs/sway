@@ -27,7 +27,7 @@ The `msg_sender` function works as follows:
 
 ## Contract Ownership
 
-Many contracts require some form of ownership for access control. The [SRC-5 Ownership Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-5.md) has been defined to provide an interoperable interface for ownership within contracts.
+Many contracts require some form of ownership for access control. The [SRC-5 Ownership Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-5-ownership.md) has been defined to provide an interoperable interface for ownership within contracts.
 
 To accomplish this, use the [Ownership Library](https://fuellabs.github.io/sway-libs/book/ownership/index.html) to keep track of the owner. This allows setting and revoking ownership using the variants `Some(..)` and `None` respectively. This is better, safer, and more readable than using the `Identity` type directly where revoking ownership has to be done using some magic value such as `b256::zero()` or otherwise.
 
@@ -67,7 +67,7 @@ Setting ownership can be done in one of two ways; During compile time or run tim
 
 [Sway-Libs](../reference/sway_libs.md) provides the following libraries to enable further access control.
 
-- [Ownership Library](https://fuellabs.github.io/sway-libs/book/ownership/index.html); used to apply restrictions on functions such that only a **single** user may call them. This library provides helper functions for the [SRC-5; Ownership Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-5.md).
+- [Ownership Library](https://fuellabs.github.io/sway-libs/book/ownership/index.html); used to apply restrictions on functions such that only a **single** user may call them. This library provides helper functions for the [SRC-5; Ownership Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-5-ownership.md).
 - [Admin Library](https://fuellabs.github.io/sway-libs/book/admin/index.html); used to apply restrictions on functions such that only a select few users may call them like a whitelist.
 - [Pausable Library](https://fuellabs.github.io/sway-libs/book/pausable/index.html); allows contracts to implement an emergency stop mechanism.
 - [Reentrancy Guard Library](https://fuellabs.github.io/sway-libs/book/reentrancy/index.html); used to detect and prevent reentrancy attacks.
