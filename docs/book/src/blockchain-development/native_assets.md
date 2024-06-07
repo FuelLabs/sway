@@ -14,7 +14,7 @@ On the FuelVM, _all_ assets are native and the process for sending _any_ native 
 
 While you would still need a smart contract to handle the minting and burning of assets, the sending and receiving of these assets can be done independently of the asset contract.
 
-Just like the EVM however, Fuel has a standard that describes a standard API for Native Assets using the Sway Language. The ERC-20 equivalent for the Sway Language is the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md).
+Just like the EVM however, Fuel has a standard that describes a standard API for Native Assets using the Sway Language. The ERC-20 equivalent for the Sway Language is the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md).
 
 > **NOTE** It is important to note that Fuel does not have tokens.
 
@@ -22,7 +22,7 @@ Just like the EVM however, Fuel has a standard that describes a standard API for
 
 On the EVM, an ERC-721 token or NFT is a contract that contains multiple tokens which are non-fungible with one another.
 
-On the FuelVM, the ERC-721 equivalent is a Native Asset where each asset has a supply of one. This is defined in the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md#non-fungible-asset-restrictions) under the Non-Fungible Asset Restrictions.
+On the FuelVM, the ERC-721 equivalent is a Native Asset where each asset has a supply of one. This is defined in the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md#non-fungible-asset-restrictions) under the Non-Fungible Asset Restrictions.
 
 In practice, this means all NFTs are treated the same as any other Native Asset on Fuel. When writing Sway code, no additional cases for handling non-fungible and fungible assets are required.
 
@@ -106,7 +106,7 @@ You may also mint an asset to a specific entity with the `std::asset::mint_to()`
 {{#include ../../../../examples/native_asset/src/main.sw:mint_to_asset}}
 ```
 
-If you intend to allow external users to mint assets using your contract, the [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-3.md#fn-mintrecipient-identity-vault_sub_id-subid-amount-u64) defines a standard API for minting assets. The [Sway-Libs Asset Library](https://fuellabs.github.io/sway-libs/book/asset/supply.html) also provides an additional library to support implementations of the SRC-3 Standard into your contract.
+If you intend to allow external users to mint assets using your contract, the [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md#fn-mintrecipient-identity-vault_sub_id-subid-amount-u64) defines a standard API for minting assets. The [Sway-Libs Asset Library](https://fuellabs.github.io/sway-libs/book/asset/supply.html) also provides an additional library to support implementations of the SRC-3 Standard into your contract.
 
 ### Burning a Native Asset
 
@@ -116,7 +116,7 @@ To burn an asset, the `std::asset::burn()` function must be called internally fr
 {{#include ../../../../examples/native_asset/src/main.sw:burn_asset}}
 ```
 
-If you intend to allow external users to burn assets using your contract, the [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-3.md#fn-mintrecipient-identity-vault_sub_id-subid-amount-u64) defines a standard API for burning assets. The [Sway-Libs Asset Library](https://fuellabs.github.io/sway-libs/book/asset/supply.html) also provides an additional library to support implementations of the SRC-3 Standard into your contract.
+If you intend to allow external users to burn assets using your contract, the [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md#fn-mintrecipient-identity-vault_sub_id-subid-amount-u64) defines a standard API for burning assets. The [Sway-Libs Asset Library](https://fuellabs.github.io/sway-libs/book/asset/supply.html) also provides an additional library to support implementations of the SRC-3 Standard into your contract.
 
 ### Transfer a Native Asset
 
@@ -176,16 +176,16 @@ There are a number of standards developed to enable further functionality for Na
 
 We currently have the following standards for Native Assets:
 
-- [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md) defines the implementation of a standard API for Native Assets using the Sway Language.
-- [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-3.md) is used to enable mint and burn functionality for Native Assets.
-- [SRC-7; Arbitrary Asset Metadata Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-7.md) is used to store metadata for Native Assets.
-- [SRC-6; Vault Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-6.md) defines the implementation of a standard API for asset vaults developed in Sway.
+- [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md) defines the implementation of a standard API for Native Assets using the Sway Language.
+- [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md) is used to enable mint and burn functionality for Native Assets.
+- [SRC-7; Arbitrary Asset Metadata Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-7-asset-metadata.md) is used to store metadata for Native Assets.
+- [SRC-6; Vault Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-6-vault.md) defines the implementation of a standard API for asset vaults developed in Sway.
 
 ## Native Asset Libraries
 
 Additional Libraries have been developed to allow you to quickly create an deploy dApps that follow the [Sway Standards](https://github.com/FuelLabs/sway-standards).
 
-- [Asset Library](https://fuellabs.github.io/sway-libs/book/asset/index.html) provides functionality to implement the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md), [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-3.md), and [SRC-7; Arbitrary Asset Metadata Standard](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-7.md) standards.
+- [Asset Library](https://fuellabs.github.io/sway-libs/book/asset/index.html) provides functionality to implement the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md), [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md), and [SRC-7; Arbitrary Asset Metadata Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-7-asset-metadata.md) standards.
 
 <!-- native_assets:example:end -->
 
@@ -193,7 +193,7 @@ Additional Libraries have been developed to allow you to quickly create an deplo
 
 In this fully fleshed out example, we show a native asset contract which mints a single asset. This is the equivalent to the ERC-20 Standard use in Ethereum. Note there are no token approval functions.
 
-It implements the [SRC-20; Native Asset](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md), [SRC-3; Mint and Burn](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-3.md), and [SRC-5; Ownership](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-5.md) standards. It does not use any external libraries.
+It implements the [SRC-20; Native Asset](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md), [SRC-3; Mint and Burn](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md), and [SRC-5; Ownership](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-5-ownership.md) standards. It does not use any external libraries.
 
 ```sway
 // ERC20 equivalent in Sway.
@@ -335,7 +335,7 @@ fn require_access_owner() {
 
 In this fully fleshed out example, we show a native asset contract which mints multiple assets. This is the equivalent to the ERC-1155 Standard use in Ethereum. Note there are no token approval functions.
 
-It implements the [SRC-20; Native Asset](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-20.md), [SRC-3; Mint and Burn](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-3.md), and [SRC-5; Ownership](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-5.md) standards. It does not use any external libraries.
+It implements the [SRC-20; Native Asset](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md), [SRC-3; Mint and Burn](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md), and [SRC-5; Ownership](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-5-ownership.md) standards. It does not use any external libraries.
 
 ```sway
 // ERC1155 equivalent in Sway.
