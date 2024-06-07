@@ -329,7 +329,7 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
-    /// Create a full [CallPath] from aiven an [Ident] and the [Namespace] in which the [Ident] is
+    /// Create a full [CallPath] from a given [Ident] and the [Namespace] in which the [Ident] is
     /// declared.
     ///
     /// This function is intended to be used while typechecking the identifier declaration, i.e.,
