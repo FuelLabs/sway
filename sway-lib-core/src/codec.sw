@@ -91,6 +91,23 @@ impl BufferReader {
         }
     }
 
+    pub fn read_8_bytes<T>(ref mut self) -> T {
+        let v = asm(ptr: self.ptr, val) {
+            lw val ptr i0;
+            val: T
+        };
+        self.ptr = __ptr_add::<u8>(self.ptr, 8);
+        v
+    }
+
+    pub fn read_32_bytes<T>(ref mut self) -> T {
+        let v = asm(ptr: self.ptr) {
+            ptr: T
+        };
+        self.ptr = __ptr_add::<u8>(self.ptr, 32);
+        v
+    }
+
     pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
         let slice = asm(ptr: (self.ptr, count)) {
             ptr: raw_slice
@@ -116,12 +133,7 @@ impl BufferReader {
             self.ptr = __ptr_add::<u8>(self.ptr, 1);
             v
         } else {
-            let v = asm(ptr: self.ptr, val) {
-                lw val ptr i0;
-                val: T
-            };
-            self.ptr = __ptr_add::<u8>(self.ptr, 8);
-            v
+            self.read_8_bytes::<T>()
         }
     }
 
@@ -2518,19 +2530,19 @@ pub trait AbiDecode {
 
 impl AbiDecode for b256 {
     fn abi_decode(ref mut buffer: BufferReader) -> b256 {
-        buffer.read::<b256>()
+        buffer.read_32_bytes::<b256>()
     }
 }
 
 impl AbiDecode for u256 {
     fn abi_decode(ref mut buffer: BufferReader) -> u256 {
-        buffer.read::<u256>()
+        buffer.read_32_bytes::<u256>()
     }
 }
 
 impl AbiDecode for u64 {
     fn abi_decode(ref mut buffer: BufferReader) -> u64 {
-        buffer.read::<u64>()
+        buffer.read_8_bytes::<u64>()
     }
 }
 
@@ -2568,17 +2580,14 @@ impl AbiDecode for bool {
 
 impl AbiDecode for raw_slice {
     fn abi_decode(ref mut buffer: BufferReader) -> raw_slice {
-        let len = u64::abi_decode(buffer);
-        let data = buffer.read_bytes(len);
-        asm(s: (data.ptr(), len)) {
-            s: raw_slice
-        }
+        let len = buffer.read_8_bytes::<u64>();
+        buffer.read_bytes(len)
     }
 }
 
 impl AbiDecode for str {
     fn abi_decode(ref mut buffer: BufferReader) -> str {
-        let len = u64::abi_decode(buffer);
+        let len = buffer.read_8_bytes::<u64>();
         let data = buffer.read_bytes(len);
         asm(s: (data.ptr(), len)) {
             s: str
