@@ -46,7 +46,7 @@ pub fn msg_asset_id() -> AssetId {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -74,7 +74,7 @@ pub fn code_size() -> u64 {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -99,7 +99,7 @@ pub fn first_param() -> u64 {
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Returns
 ///
@@ -141,7 +141,7 @@ where
 /// # Additional Information
 ///
 /// More information on data from call frames can be found in the Fuel Specs.
-/// https://specs.fuel.network/master/fuel-vm/index.html?search=#call-frames
+/// https://docs.fuel.network/docs/specs/fuel-vm/#call-frames
 ///
 /// # Arguments
 ///
