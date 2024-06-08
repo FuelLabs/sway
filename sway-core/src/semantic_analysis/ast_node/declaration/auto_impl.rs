@@ -632,7 +632,7 @@ where
                 }}\n"));
             } else {
                 code.push_str(&format!("if _method_name == \"{method_name}\" {{
-                    let args: {args_types} = decode_second_param::<{args_types}>();
+                    let args: {args_types} = _buffer.decode::<{args_types}>();
                     let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
                     __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
                 }}\n"));
@@ -674,6 +674,7 @@ where
 
         let code = format!(
             "{att} pub fn __entry() {{
+            let mut _buffer = BufferReader::from_second_parameter();
             let _method_name = decode_first_param::<str>();
             {code}
             {fallback}
