@@ -22,12 +22,11 @@ impl AsRawSlice for Buffer {
 
 pub struct BufferReader {
     ptr: raw_ptr,
-    pos: u64,
 }
 
 impl BufferReader {
     pub fn from_parts(ptr: raw_ptr, _len: u64) -> BufferReader {
-        BufferReader { ptr, pos: 0 }
+        BufferReader { ptr }
     }
 
     pub fn from_first_parameter() -> BufferReader {
@@ -43,7 +42,6 @@ impl BufferReader {
             ptr: asm(ptr: ptr) {
                 ptr: raw_ptr
             },
-            pos: 0,
         }
     }
 
@@ -60,14 +58,13 @@ impl BufferReader {
             ptr: asm(ptr: ptr) {
                 ptr: raw_ptr
             },
-            pos: 0,
         }
     }
 
     pub fn from_script_data() -> BufferReader {
         let ptr = __gtf::<raw_ptr>(0, 0xA); // SCRIPT_DATA
         let _len = __gtf::<u64>(0, 0x4); // SCRIPT_DATA_LEN
-        BufferReader { ptr, pos: 0 }
+        BufferReader { ptr }
     }
 
     pub fn from_predicate_data() -> BufferReader {
@@ -83,55 +80,47 @@ impl BufferReader {
             0u8 => {
                 let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
                 let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
-                BufferReader { ptr, pos: 0 }
+                BufferReader { ptr}
             },
             2u8 => {
                 let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
                 let _len = __gtf::<u64>(predicate_index, 0x247); // INPUT_MESSAGE_PREDICATE_DATA_LENGTH
-                BufferReader { ptr, pos: 0 }
+                BufferReader { ptr }
             },
             _ => __revert(0),
         }
     }
 
     pub fn read_bytes(ref mut self, count: u64) -> raw_slice {
-        let next_pos = self.pos + count;
-
-        let ptr = self.ptr.add::<u8>(self.pos);
-        let slice = asm(ptr: (ptr, count)) {
+        let slice = asm(ptr: (self.ptr, count)) {
             ptr: raw_slice
         };
-
-        self.pos = next_pos;
-
+        self.ptr = __ptr_add::<u8>(self.ptr, count);
         slice
     }
 
     pub fn read<T>(ref mut self) -> T {
-        let ptr = self.ptr.add::<u8>(self.pos);
-
         let size = __size_of::<T>();
-        let next_pos = self.pos + size;
 
         if __is_reference_type::<T>() {
-            let v = asm(ptr: ptr) {
+            let v = asm(ptr: self.ptr) {
                 ptr: T
             };
-            self.pos = next_pos;
+            self.ptr = __ptr_add::<u8>(self.ptr, size);
             v
         } else if size == 1 {
-            let v = asm(ptr: ptr, val) {
+            let v = asm(ptr: self.ptr, val) {
                 lb val ptr i0;
                 val: T
             };
-            self.pos = next_pos;
+            self.ptr = __ptr_add::<u8>(self.ptr, 1);
             v
         } else {
-            let v = asm(ptr: ptr, val) {
+            let v = asm(ptr: self.ptr, val) {
                 lw val ptr i0;
                 val: T
             };
-            self.pos = next_pos;
+            self.ptr = __ptr_add::<u8>(self.ptr, 8);
             v
         }
     }
