@@ -1,0 +1,50 @@
+name: Enhancement Request
+description: Suggest an enhancement for this project.
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **Thank you for filing an enhancement request!**
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Related Component
+      description: Which component does this relate to?
+      options:
+        - compiler
+        - forc
+        - forc-deploy
+        - forc-lsp
+        - forc-fmt
+        - another forc plugin
+        - other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem you are trying to solve
+      description: >
+        A clear and concise description of the problem this enhancement request is trying to solve.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solution you'd like
+      description: >
+        A clear and concise description of what you want to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: >
+        Any additional context or information you feel may be relevant to the issue.

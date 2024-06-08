@@ -2405,7 +2405,7 @@ fn long_doc_break_new_line() {
 ///                             ▴ptr                    ▴VM_MAX_RAM
 /// ```
 /// For more information, see the Fuel Spec for [VM Initialization](https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization)
-/// and the VM Instruction Set for [Memory Allocation](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory).
+/// and the VM Instruction Set for [Memory Allocation](https://docs.fuel.network/docs/specs/fuel-vm/instruction-set#aloc-allocate-memory).
 ///
 /// # Arguments
 /// 
@@ -2499,7 +2499,7 @@ pub fn alloc_bytes(count: u64) -> raw_ptr {
 ///                             ▴ptr                    ▴VM_MAX_RAM
 /// ```
 /// For more information, see the Fuel Spec for [VM Initialization](https://fuellabs.github.io/fuel-specs/master/vm#vm-initialization)
-/// and the VM Instruction Set for [Memory Allocation](https://fuellabs.github.io/fuel-specs/master/vm/instruction_set.html#aloc-allocate-memory).
+/// and the VM Instruction Set for [Memory Allocation](https://docs.fuel.network/docs/specs/fuel-vm/instruction-set#aloc-allocate-memory).
 ///
 /// # Arguments
 ///
