@@ -1,5 +1,9 @@
 //! Optimization passes for manipulating constant values.
 
+use std::collections::HashMap;
+
+use rustc_hash::FxHashMap;
+
 use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
@@ -40,6 +44,11 @@ pub fn fold_constants(
         }
 
         if combine_binary_op(context, &function) {
+            modified = true;
+            continue;
+        }
+
+        if remove_useless_binary_op(context, &function) {
             modified = true;
             continue;
         }
@@ -241,6 +250,50 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
     })
 }
 
+fn remove_useless_binary_op(context: &mut Context, function: &Function) -> bool {
+    let candidate =
+        function
+            .instruction_iter(context)
+            .find_map(
+                |(block, candidate)| match &context.values[candidate.0].value {
+                    ValueDatum::Instruction(Instruction {
+                        op: InstOp::BinaryOp { op, arg1, arg2 },
+                        ..
+                    }) if arg1.is_constant(context) || arg2.is_constant(context) => {
+                        let val1 = arg1.get_constant(context).map(|x| &x.value);
+                        let val2 = arg2.get_constant(context).map(|x| &x.value);
+
+                        use crate::BinaryOpKind::*;
+                        use ConstantValue::*;
+                        match (op, &val1, &val2) {
+                            // 0 + arg2
+                            (Add, Some(Uint(0)), _) => Some((block, candidate, arg2.clone())),
+                            // arg1 + 0
+                            (Add, _, Some(Uint(0))) => Some((block, candidate, arg1.clone())),
+                            // 1 * arg2
+                            (Mul, Some(Uint(1)), _) => Some((block, candidate, arg2.clone())),
+                            // arg1 * 1
+                            (Mul, _, Some(Uint(1))) => Some((block, candidate, arg1.clone())),
+                            // arg1 / 1
+                            (Div, _, Some(Uint(1))) => Some((block, candidate, arg1.clone())),
+                            // arg1 / 1
+                            (Sub, _, Some(Uint(0))) => Some((block, candidate, arg1.clone())),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                },
+            );
+
+    candidate.map_or(false, |(block, candidate, new_value)| {
+        block.remove_instruction(context, candidate);
+
+        let replace_map = FxHashMap::from_iter([(candidate, new_value.clone())]);
+        block.replace_values(context, &replace_map);
+        true
+    })
+}
+
 fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
     let candidate = function
         .instruction_iter(context)
@@ -392,6 +445,33 @@ mod tests {
         }
     ",
             Some(["const u64 6"]),
+        );
+    }
+
+    #[test]
+    fn ok_remove_useless_mul() {
+        assert_optimization(
+            &[CONST_FOLDING_NAME],
+            "entry fn main() -> u64 {
+                local u64 LOCAL
+            entry():
+                zero = const u64 0, !0
+                one = const u64 1, !0
+                l_ptr = get_local ptr u64, LOCAL, !0
+                l = load l_ptr, !0
+                result1 = mul l, one, !0
+                result2 = mul one, result1, !0
+                result3 = add result2, zero, !0
+                result4 = add zero, result3, !0
+                result5 = div result4, one, !0
+                result6 = sub result5, zero, !0
+                ret u64 result6, !0
+         }",
+            Some([
+                "v0 = get_local ptr u64, LOCAL",
+                "v1 = load v0",
+                "ret u64 v1",
+            ]),
         );
     }
 }
