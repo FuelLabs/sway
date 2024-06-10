@@ -1879,7 +1879,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                     let span = self.md_mgr.val_to_span(self.context, *value);
                     match constant.value {
                         // If it's a small enough constant, just initialize using an IMM value.
-                        ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
+                        // (exceptions for zero and one as they have special registers).
+                        ConstantValue::Uint(c)
+                            if c <= compiler_constants::EIGHTEEN_BITS && !(c == 0 || c == 1) =>
+                        {
                             let imm = VirtualImmediate18::new_unchecked(
                                 c,
                                 "Cannot happen, we just checked",
