@@ -158,11 +158,11 @@ implicit-std = false
 enabled = true
 ```
 
-If there is no `address` field present under the proxy table, like the example above, forc automatically creates a proxy contract based on [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-14.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating the proxy contract, the target is set to the current contract, and owner of the proxy is set to the account that is signing the transaction for deployment.
+If there is no `address` field present under the proxy table, like the example above, forc automatically creates a proxy contract based on [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating the proxy contract, the target is set to the current contract, and owner of the proxy is set to the account that is signing the transaction for deployment.
 
 This means that if you simply enable proxy in the `Forc.toml`, forc will automatically deploy a proxy contract for you and you do not need to make anything manually. After deploying the proxy contract the `address` of it is added into the `address` field of the proxy table.
 
-If you want to update the target of an [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/SRCs/src-14.md) compliant proxy contract rather than deploying a new one, simply add its `address` in the `address` field, like the following example:
+If you want to update the target of an [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) compliant proxy contract rather than deploying a new one, simply add its `address` in the `address` field, like the following example:
 
 ```TOML
 [project]
