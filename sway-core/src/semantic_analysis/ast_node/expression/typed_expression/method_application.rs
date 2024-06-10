@@ -533,6 +533,17 @@ pub(crate) fn type_check_method_application(
                 span: Span::dummy(),
             });
 
+        // We need all impls of return type to be in scope, so that at call place we have access to its
+        // AbiDecode impl.
+        for type_id in method
+            .return_type
+            .type_id
+            .extract_inner_types(engines, IncludeSelf::Yes)
+        {
+            let handler = Handler::default();
+            ctx.impls_import(&handler, engines, type_id);
+        }
+
         let args = old_arguments.iter().skip(1).cloned().collect();
         let contract_call = call_contract_call(
             &mut ctx,
