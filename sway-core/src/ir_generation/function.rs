@@ -2302,6 +2302,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Convert selector to U64 and then insert it
+        assert!(!context.experimental.new_encoding);
         let sel = call_params.func_selector.as_ref().unwrap();
         let sel_val = convert_literal_to_value(
             context,
