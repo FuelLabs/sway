@@ -20,8 +20,8 @@ fn option_eq() {
     let struct_2 = Some(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
     let enum_2 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    // let array_1 = Some([0u64, 0u64]);
-    // let array_2 = Some([0u64, 0u64]);
+    let _array_1 = Some([0u64, 0u64]);
+    let _array_2 = Some([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let mut bytes_2 = Bytes::new();
@@ -39,6 +39,7 @@ fn option_eq() {
     assert(b256_1 == b256_2);
     assert(struct_1 == struct_2);
     assert(enum_1 == enum_2);
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1 == array_2);
     assert(heap_1 == heap_2);
     assert(none_1 == none_2);
@@ -64,8 +65,8 @@ fn option_ne() {
     let struct_2 = Some(Address::from(0x0000000000000000000000000000000000000000000000000000000000000002));
     let enum_1 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
     let enum_2 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000002)));
-    // let array_1 = Some([0u64, 0u64]);
-    // let array_2 = Some([0u64, 1u64]);
+    let _array_1 = Some([0u64, 0u64]);
+    let _array_2 = Some([0u64, 1u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let mut bytes_2 = Bytes::new();
@@ -82,6 +83,7 @@ fn option_ne() {
     assert(b256_1 != b256_2);
     assert(struct_1 != struct_2);
     assert(enum_1 != enum_2);
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1 != array_2);
     assert(heap_1 != heap_2);
     assert(none_1 != u64_1);
@@ -161,7 +163,7 @@ fn option_unwrap() {
     let b256_1 = Some(0x0000000000000000000000000000000000000000000000000000000000000001);
     let struct_1 = Some(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    // let array_1 = Some([0u64, 0u64]);
+    let _array_1 = Some([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let heap_1 = Some(bytes_1);
@@ -183,6 +185,7 @@ fn option_unwrap() {
         enum_1
             .unwrap() == Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)),
     );
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1.unwrap() == [0u64, 0u64]);
     assert(heap_1.unwrap() == bytes_1);
 }
@@ -205,7 +208,7 @@ fn option_unwrap_or() {
     let b256_1 = Some(0x0000000000000000000000000000000000000000000000000000000000000001);
     let struct_1 = Some(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    // let array_1 = Some([0u64, 0u64]);
+    let _array_1 = Some([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let heap_1 = Some(bytes_1);
@@ -228,6 +231,7 @@ fn option_unwrap_or() {
         enum_1
             .unwrap_or(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000002))) == Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)),
     );
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1.unwrap_or([1u64, 1u64]) == [0u64, 0u64]);
     assert(heap_1.unwrap_or(Bytes::new()) == bytes_1);
     assert(none_1.unwrap_or(10u64) == 10u64);
@@ -245,7 +249,7 @@ fn option_ok_or() {
     let b256_1 = Some(0x0000000000000000000000000000000000000000000000000000000000000001);
     let struct_1 = Some(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    //let array_1 = Some([0u64, 0u64]);
+    let _array_1 = Some([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let heap_1 = Some(bytes_1);
@@ -289,6 +293,7 @@ fn option_ok_or() {
         ),
         Result::Err => revert(0),
     };
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // match array_1.ok_or([1u64, 1u64]) {
     //     Result::Ok(underlying) => assert(underlying == [0u64, 0u64]),
     //     Result::Err => revert(0),
@@ -315,7 +320,7 @@ fn option_expect() {
     let b256_1 = Some(0x0000000000000000000000000000000000000000000000000000000000000001);
     let struct_1 = Some(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1 = Some(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    // let array_1 = Some([0u64, 0u64]);
+    let _array_1 = Some([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let heap_1 = Some(bytes_1);
@@ -337,6 +342,7 @@ fn option_expect() {
         enum_1
             .expect("Failed Test") == Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)),
     );
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1.expect("Failed Test") == [0u64, 0u64]);
     assert(heap_1.expect("Failed Test") == bytes_1);
 }

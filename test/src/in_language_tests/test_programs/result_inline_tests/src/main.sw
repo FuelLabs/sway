@@ -74,7 +74,7 @@ fn result_unwrap() {
     let b256_1: Result<b256, str> = Ok(0x0000000000000000000000000000000000000000000000000000000000000001);
     let struct_1: Result<Address, str> = Ok(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1: Result<Identity, str> = Ok(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    // let array_1: Result<[u64; 2], str> = Ok([0u64, 0u64]);
+    let _array_1: Result<[u64; 2], str> = Ok([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let heap_1: Result<Bytes, str> = Ok(bytes_1);
@@ -96,6 +96,7 @@ fn result_unwrap() {
         enum_1
             .unwrap() == Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)),
     );
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1.unwrap() == [0u64, 0u64]);
     assert(heap_1.unwrap() == bytes_1);
 }
@@ -118,7 +119,7 @@ fn result_unwrap_or() {
     let b256_1: Result<b256, str> = Ok(0x0000000000000000000000000000000000000000000000000000000000000001);
     let struct_1: Result<Address, str> = Ok(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1: Result<Identity, str> = Ok(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    // let array_1: Result<[u64; 2], str> = Ok([0u64, 0u64]);
+    let _array_1: Result<[u64; 2], str> = Ok([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let heap_1: Result<Bytes, str> = Ok(bytes_1);
@@ -141,6 +142,7 @@ fn result_unwrap_or() {
         enum_1
             .unwrap_or(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000002))) == Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)),
     );
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1.unwrap_or([1u64, 1u64]) == [0u64, 0u64]);
     assert(heap_1.unwrap_or(Bytes::new()) == bytes_1);
     assert(err_1.unwrap_or(10u64) == 10u64);
@@ -158,7 +160,7 @@ fn result_expect() {
     let b256_1: Result<b256, str> = Ok(0x0000000000000000000000000000000000000000000000000000000000000001);
     let struct_1: Result<Address, str> = Ok(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001));
     let enum_1: Result<Identity, str> = Ok(Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)));
-    // let array_1: Result<[u64; 2], str> = Ok([0u64, 0u64]);
+    let _array_1: Result<[u64; 2], str> = Ok([0u64, 0u64]);
     let mut bytes_1 = Bytes::new();
     bytes_1.push(1u8);
     let heap_1: Result<Bytes, str> = Ok(bytes_1);
@@ -180,6 +182,7 @@ fn result_expect() {
         enum_1
             .expect("Failed Test") == Identity::Address(Address::from(0x0000000000000000000000000000000000000000000000000000000000000001)),
     );
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // assert(array_1.expect("Failed Test") == [0u64, 0u64]);
     assert(heap_1.expect("Failed Test") == bytes_1);
 }

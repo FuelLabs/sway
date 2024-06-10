@@ -67,6 +67,7 @@ fn assert_assert_eq() {
     p.push(69u8);
     assert_eq(o, p);
 
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved.
     // assert_eq array
     // let value = 0xBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEFBEEF;
     // let mut q: [u64; 3] = [0, 0, 0];
@@ -146,6 +147,7 @@ fn assert_assert_ne() {
     p.push(70u8);
     assert_ne(o, p);
 
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved.
     // assert_ne array
     // let mut q: [u64; 3] = [1, 2, 3];
     // let mut r: [u64; 3] = [0, 0, 0];

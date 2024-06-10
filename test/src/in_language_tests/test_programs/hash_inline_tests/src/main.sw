@@ -2,8 +2,6 @@ library;
 
 use std::{bytes::Bytes, hash::{Hash, Hasher, keccak256, sha256, sha256_str_array},};
 
-// NOTE: There are no tests for the Hasher struct as there is nothing that can be asserted
-
 #[test()]
 fn hash_hasher_write_str() {
     let mut hasher = Hasher::new();

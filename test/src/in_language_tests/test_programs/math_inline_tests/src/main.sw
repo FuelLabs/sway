@@ -1,7 +1,5 @@
 library;
 
-// NO IMPLEMENTATION FOR "Exponent" TRAIT
-
 #[test]
 fn math_root_u256() {
     let max_u256 = u256::max();

@@ -1,12 +1,6 @@
 library;
 
-use std::{
-    b512::B512,
-    vm::evm::{
-        evm_address::EvmAddress,
-        ecr::ec_recover_evm_address,
-    }
-};
+use std::{b512::B512, vm::evm::{ecr::ec_recover_evm_address, evm_address::EvmAddress,}};
 
 #[test]
 fn ecr_ec_recover() {
@@ -27,7 +21,6 @@ fn ecr_ec_recover() {
     let signature_2: B512 = B512::from((hi_2, lo_2));
 
     let result_2 = ec_recover_evm_address(signature_2, msg_hash_2);
-    
+
     assert(result_2.is_err());
 }
-

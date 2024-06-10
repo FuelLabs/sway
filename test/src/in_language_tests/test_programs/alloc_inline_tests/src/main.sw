@@ -41,15 +41,7 @@ fn alloc_alloc() {
         iter += 1;
     }
 
-    // Can alloc enum
-    // let identity_ptr = alloc::<Identity>(1);
-    // assert(identity_ptr.read::<Identity>() == Identity::Address(Address::zero()));
-    // identity_ptr.write(Identity::Address(Address::from(b256::max())));
-    // assert(
-    //     identity_ptr
-    //         .read::<Identity>() == Identity::Address(Address::from(b256::max())),
-    // );
-
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // Can alloc array
     // let array_ptr = alloc::<[u64; 1]>(2);
     // assert(array_ptr.read::<u64>() == 0u64);
@@ -103,20 +95,7 @@ fn alloc_realloc() {
     assert(realloc_address_ptr.read::<Address>() == Address::from(b256::max()));
     assert(realloc_address_ptr.add::<Address>(1).read::<Address>() == Address::zero());
 
-    // Can alloc enum
-    // let identity_ptr = alloc::<Identity>(1);
-    // identity_ptr.write(Identity::Address(Address::from(b256::max())));
-    // let realloc_identity_ptr = realloc::<Identity>(identity_ptr, 1, 2);
-    // assert(
-    //     realloc_identity_ptr
-    //         .read::<Identity>() == Identity::Address(Address::from(b256::max())),
-    // );
-    // assert(
-    //     realloc_identity_ptr
-    //         .add::<Identity>(1)
-    //         .read::<Identity>() == Identity::Address(Address::from(b256::zero())),
-    // );
-
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // Can realloc array
     // let array_ptr = alloc::<[u64; 1]>(2);
     // array_ptr.write(u64::max());
@@ -214,15 +193,7 @@ fn alloc_alloc_bytes() {
     address_ptr.write(Address::from(b256::max()));
     assert(address_ptr.read::<Address>() == Address::from(b256::max()));
 
-    // Can alloc enum
-    // let identity_ptr = alloc_bytes(__size_of_val::<Identity>(Identity::Address(Address::zero())));
-    // assert(identity_ptr.read::<Identity>() == Identity::Address(Address::zero()));
-    // identity_ptr.write(Identity::Address(Address::from(b256::max())));
-    // assert(
-    //     identity_ptr
-    //         .read::<Identity>() == Identity::Address(Address::from(b256::max())),
-    // );
-
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved 
     // Can alloc array
     // let array_ptr = alloc_bytes(__size_of::<[u64; 1]>() * 2);
     // assert(array_ptr.read::<u64>() == 0u64);
@@ -289,24 +260,7 @@ fn alloc_realloc_bytes() {
     assert(realloc_address_ptr.read::<Address>() == Address::from(b256::max()));
     assert(realloc_address_ptr.add::<Address>(1).read::<Address>() == Address::zero());
 
-    // Can alloc enum
-    // let identity_ptr = alloc_bytes(__size_of_val::<Identity>(Identity::Address(Address::zero())));
-    // identity_ptr.write(Identity::Address(Address::from(b256::max())));
-    // let realloc_identity_ptr = realloc_bytes(
-    //     identity_ptr,
-    //     __size_of_val::<Identity>(Identity::Address(Address::zero())),
-    //     __size_of_val::<Identity>(Identity::Address(Address::zero())) * 2,
-    // );
-    // assert(
-    //     realloc_identity_ptr
-    //         .read::<Identity>() == Identity::Address(Address::from(b256::max())),
-    // );
-    // assert(
-    //     realloc_identity_ptr
-    //         .add::<Identity>(1)
-    //         .read::<Identity>() == Identity::Address(Address::from(b256::zero())),
-    // );
-
+    // TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6086 is resolved
     // Can realloc array
     // let array_ptr = alloc_bytes(__size_of::<[u64; 1]>() * 2);
     // array_ptr.write(u64::max());

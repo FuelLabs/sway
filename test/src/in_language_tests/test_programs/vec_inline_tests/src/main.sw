@@ -645,7 +645,7 @@ fn vec_from_raw_slice() {
     assert(vec.len() == slice.len::<u64>());
 }
 
-// Uncomment when https://github.com/FuelLabs/sway/issues/6085 is resolved
+// TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6085 is resolved
 // #[test()]
 // fn vec_into_raw_slice() {
 //     // Glob operator needed for From<Vec> for raw_slice
@@ -659,7 +659,7 @@ fn vec_from_raw_slice() {
 //     assert(vec.len() == slice.len::<u64>());
 // }
 
-// Uncomment when https://github.com/FuelLabs/sway/issues/6085 is resolved
+// TODO: Uncomment when https://github.com/FuelLabs/sway/issues/6085 is resolved
 // #[test()]
 // fn vec_raw_slice_from() {
 //     // Glob operator needed for From<Vec> for raw_slice

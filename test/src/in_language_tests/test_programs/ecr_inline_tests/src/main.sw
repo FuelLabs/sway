@@ -60,7 +60,7 @@ fn ecr_ec_recover_r1() {
     let msg_hash_2 = 0x1e45523606c96c98ba970ff7cf9511fab8b25e1bcd52ced30b81df1e4a9c4323;
     let signature_2: B512 = B512::from((hi_2, lo_2));
     let result_2 = ec_recover_r1(signature_2, msg_hash_2);
-    
+
     assert(result_2.is_err());
 }
 
@@ -81,7 +81,7 @@ fn ecr_ec_recover_address() {
     let msg_hash_2 = 0xee45573606c96c98ba970ff7cf9511f1b8b25e6bcd52ced30b89df1e4a9c4323;
     let signature_2: B512 = B512::from((hi_2, lo_2));
     let result_2 = ec_recover_address(signature_2, msg_hash_2);
-    
+
     assert(result_2.is_err());
 }
 
