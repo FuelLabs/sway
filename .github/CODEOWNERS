@@ -2,12 +2,12 @@
 * @FuelLabs/leads
 
 # Documentation
-/docs/ @FuelLabs/tooling @FuelLabs/sway-compiler @FuelLabs/application-dev @FuelLabs/Devrel
+/docs/ @FuelLabs/tooling @FuelLabs/sway-compiler @FuelLabs/swayex @FuelLabs/Devrel
 
 # Sway files and standard library
-/examples/ @FuelLabs/sway-compiler @FuelLabs/application-dev 
-/sway-lib-core/ @FuelLabs/sway-compiler @FuelLabs/application-dev
-/sway-lib-std/ @FuelLabs/sway-compiler @FuelLabs/application-dev
+/examples/ @FuelLabs/sway-compiler @FuelLabs/swayex 
+/sway-lib-core/ @FuelLabs/sway-compiler @FuelLabs/swayex
+/sway-lib-std/ @FuelLabs/sway-compiler @FuelLabs/swayex
 
 # Tooling
 /forc/ @FuelLabs/tooling 
