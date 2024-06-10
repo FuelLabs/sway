@@ -1,0 +1,69 @@
+name: Bug Report
+description: Create a report to help us improve.
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        **Thank you for filing a bug report!**
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Related Component
+      description: Which component does this relate to?
+      options:
+        - compiler
+        - forc
+        - forc-deploy
+        - forc-lsp
+        - forc-fmt
+        - another forc plugin
+        - other
+      default: 0
+    validations:
+      required: true        
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: >
+        A clear and concise description of what the bug is,
+        including what currently happens and what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: The steps to reproduce the bug.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solutions
+    attributes:
+      label: Possible Solution(s)
+      description: >
+        Not obligatory, but suggest a fix/reason for the bug,
+        or ideas how to implement the addition or change.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+
+  - type: textarea
+    id: components
+    attributes:
+      label: Installed components
+      description: Output of `fuelup check`, if using `fuelup`. Otherwise, list the relevant component(s) and version(s).
+      render: console
+    validations:
+      required: true
