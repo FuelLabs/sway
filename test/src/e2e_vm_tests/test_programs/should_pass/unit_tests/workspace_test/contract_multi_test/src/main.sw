@@ -17,7 +17,7 @@ fn test_foo() {
 
 #[test(should_revert)]
 fn test_fail() {
-    let contract_id = 0x0e92e0e9e366124ded23d8c8a9f4dfdc4a966c665387d22b1c977a6a9c3b0653;
+    let contract_id = 0x348a1d42f7df43a5ba54385c9ed100c309e738916f5104fb149cf96c7cdd0894;
     let caller = abi(MyContract, contract_id);
     let result = caller.test_function {}();
     assert(result == false)
@@ -25,7 +25,7 @@ fn test_fail() {
 
 #[test]
 fn test_success() {
-    let contract_id = 0x0e92e0e9e366124ded23d8c8a9f4dfdc4a966c665387d22b1c977a6a9c3b0653;
+    let contract_id = 0x348a1d42f7df43a5ba54385c9ed100c309e738916f5104fb149cf96c7cdd0894;
     let caller = abi(MyContract, contract_id);
     let result = caller.test_function {}();
     assert(result == true)

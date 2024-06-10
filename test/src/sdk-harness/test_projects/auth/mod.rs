@@ -5,7 +5,11 @@ use fuels::{
     },
     prelude::*,
     tx::UtxoId,
-    types::{ContractId, message::{Message, MessageStatus}, coin::{Coin, CoinStatus}, Bytes32},
+    types::{
+        coin::{Coin, CoinStatus},
+        message::{Message, MessageStatus},
+        Bytes32, ContractId,
+    },
 };
 use std::str::FromStr;
 
@@ -124,7 +128,7 @@ async fn can_get_predicate_address() {
 
     // Setup Predciate
     let hex_predicate_address: &str =
-        "0x413c19386a356dc93c35f384cd34efa65f8779d8da3f1bac783bc18edab08a3c";
+        "0x603856cc6c3d2d5f2d7460b2811fe3a3bf1554a4e7e70c411a9da94ea29ad929";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -136,6 +140,10 @@ async fn can_get_predicate_address() {
             .unwrap()
             .with_provider(first_wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);
+
+    // If this test fails, it can be the predicate address
+    // Uncomment the next line, get the predicate address and update above.
+    //dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -242,7 +250,6 @@ async fn when_incorrect_predicate_address_passed() {
         .unwrap();
 }
 
-
 #[tokio::test]
 async fn can_get_predicate_address_in_message() {
     // Setup Predciate address
@@ -278,9 +285,11 @@ async fn can_get_predicate_address_in_message() {
     };
     let mut coin_vec: Vec<Coin> = Vec::new();
     coin_vec.push(coin);
-    
+
     let mut wallet = WalletUnlocked::new_random(None);
-    let provider = setup_test_provider(coin_vec, message_vec, None, None).await.unwrap();
+    let provider = setup_test_provider(coin_vec, message_vec, None, None)
+        .await
+        .unwrap();
     wallet.set_provider(provider.clone());
 
     // Setup Predciate
@@ -299,7 +308,7 @@ async fn can_get_predicate_address_in_message() {
         .await
         .unwrap();
     assert_eq!(balance, message_amount);
-    
+
     // Spend the message
     predicate
         .transfer(
@@ -308,7 +317,8 @@ async fn can_get_predicate_address_in_message() {
             AssetId::default(),
             TxPolicies::default(),
         )
-        .await.unwrap();
+        .await
+        .unwrap();
 
     // The predicate has spent the funds
     let predicate_balance = predicate
@@ -318,9 +328,6 @@ async fn can_get_predicate_address_in_message() {
     assert_eq!(predicate_balance, 0);
 
     // Funds were transferred
-    let wallet_balance = wallet
-        .get_asset_balance(&AssetId::default())
-        .await
-        .unwrap();
+    let wallet_balance = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
     assert_eq!(wallet_balance, message_amount);
 }

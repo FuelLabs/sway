@@ -1,9 +1,5 @@
 //! Optimization passes for manipulating constant values.
 
-use std::collections::HashMap;
-
-use rustc_hash::FxHashMap;
-
 use crate::{
     constant::{Constant, ConstantValue},
     context::Context,
@@ -13,6 +9,7 @@ use crate::{
     value::ValueDatum,
     AnalysisResults, BranchToWithArgs, Instruction, Pass, PassMutability, Predicate, ScopedPass,
 };
+use rustc_hash::FxHashMap;
 
 pub const CONST_FOLDING_NAME: &str = "const-folding";
 
@@ -265,7 +262,7 @@ fn remove_useless_binary_op(context: &mut Context, function: &Function) -> bool 
 
                         use crate::BinaryOpKind::*;
                         use ConstantValue::*;
-                        match (op, &val1, &val2) {
+                        match (op, val1, val2) {
                             // 0 + arg2
                             (Add, Some(Uint(0)), _) => Some((block, candidate, arg2.clone())),
                             // arg1 + 0
@@ -276,7 +273,7 @@ fn remove_useless_binary_op(context: &mut Context, function: &Function) -> bool 
                             (Mul, _, Some(Uint(1))) => Some((block, candidate, arg1.clone())),
                             // arg1 / 1
                             (Div, _, Some(Uint(1))) => Some((block, candidate, arg1.clone())),
-                            // arg1 / 1
+                            // arg1 - 0
                             (Sub, _, Some(Uint(0))) => Some((block, candidate, arg1.clone())),
                             _ => None,
                         }
@@ -285,11 +282,11 @@ fn remove_useless_binary_op(context: &mut Context, function: &Function) -> bool 
                 },
             );
 
-    candidate.map_or(false, |(block, candidate, new_value)| {
-        block.remove_instruction(context, candidate);
+    candidate.map_or(false, |(block, old_value, new_value)| {
+        let replace_map = FxHashMap::from_iter([(old_value, new_value)]);
+        function.replace_values(context, &replace_map, None);
 
-        let replace_map = FxHashMap::from_iter([(candidate, new_value.clone())]);
-        block.replace_values(context, &replace_map);
+        block.remove_instruction(context, old_value);
         true
     })
 }
