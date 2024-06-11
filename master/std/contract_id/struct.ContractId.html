@@ -16,7 +16,6 @@
 </code></pre>
 </div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-ContractId" class="impl has-srclink"><a href="#impl-ContractId" class="anchor"></a><h3 class="code-header in-band">impl ContractId</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.this" class="method trait-impl"><a href="#method.this" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.this">this</a>() -&gt; ContractId</h4></div></summary><div class="docblock"><p>Returns the ContractId of the currently executing contract.</p>
 <h1>Additional Information</h1>
-<p>This is equivalent to std::callframes::contract_id().</p>
 <p><strong><em>Note:</em></strong> If called in an external context, this will <strong>not</strong> return a ContractId.<br />
 If called externally, will actually return a pointer to the Transaction Id (Wrapped in the ContractId struct).</p>
 <h1>Returns</h1>

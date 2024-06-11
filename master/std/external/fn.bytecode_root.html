@@ -8,10 +8,10 @@
 <li>[b256] - The bytecode root of the contract.</li>
 </ul>
 <h1>Examples</h1>
-<pre><code class="language-sway">use std::{external::bytecode_root, call_frames::contract_id};
+<pre><code class="language-sway">use std::external::bytecode_root;
 
 fn foo() {
-    let root_of_this_contract = bytecode_root(contract_id());
+    let root_of_this_contract = bytecode_root(ContractId::this());
     assert(root_of_this_contract != b256::zero());
 }
 </code></pre>

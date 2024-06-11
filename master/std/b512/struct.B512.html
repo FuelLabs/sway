@@ -84,4 +84,21 @@ fn foo() {
     assert(result);
 }
 </code></pre>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;(b256, b256)&gt;" class="impl has-srclink"><a href="#impl-From&lt;(b256, b256)&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;(b256, b256)&gt; for B512</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(components: (b256, b256)) -&gt; Self</h4></div></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;(b256, b256)&gt;" class="impl has-srclink"><a href="#impl-From&lt;(b256, b256)&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;(b256, b256)&gt; for B512</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(components: (b256, b256)) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts from a <code>b256</code> tuple to a <code>B512</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>components</code>: [(b256, b256)] - The <code>(b256, b256)</code> tuple to convert to a <code>B512</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[B512] - The newly created <code>B512</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::b512::B512;
+
+fn foo() {
+    let tuple: (b256, b256) = (b256::zero(), b256::zero());
+    let b512 = B512::from(tuple);
+}
+</code></pre>
+</div></details></div></details></div></section><section id="search" class="search-results"></section></div></main><script src="../../static.files/highlight.js"></script><script>hljs.highlightAll();</script></body></html>

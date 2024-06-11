@@ -145,7 +145,25 @@ fn foo() {
 }
 </code></pre>
 </div></details></div></details></div><h2 id="trait-implementations" class="small-section-header">Trait Implementations<a href="#trait-implementations" class="anchor"></a></h2><div id="trait-implementations-list"><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;Bytes&gt;" class="impl has-srclink"><a href="#impl-From&lt;Bytes&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;Bytes&gt; for String</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(b: Bytes) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-AsRawSlice" class="impl has-srclink"><a href="#impl-AsRawSlice" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/raw_slice/trait.AsRawSlice.html">AsRawSlice</a> for String</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.as_raw_slice" class="method trait-impl"><a href="#method.as_raw_slice" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.as_raw_slice">as_raw_slice</a>(self) -&gt; raw_slice</h4></div></summary><div class="docblock"><p>Returns a raw slice to all of the elements in the string.</p>
-</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;raw_slice&gt;" class="impl has-srclink"><a href="#impl-From&lt;raw_slice&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;raw_slice&gt; for String</h3></div></summary><div class="impl-items"><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/ops/trait.Eq.html">Eq</a> for String</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-From&lt;raw_slice&gt;" class="impl has-srclink"><a href="#impl-From&lt;raw_slice&gt;" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../convert/trait.From.html">From</a>&lt;raw_slice&gt; for String</h3></div></summary><div class="impl-items"><details class="swaydoc-toggle method-toggle" open><summary><div id="method.from" class="method trait-impl"><a href="#method.from" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.from">from</a>(slice: raw_slice) -&gt; Self</h4></div></summary><div class="docblock"><p>Converts a <code>raw_slice</code> to a <code>String</code>.</p>
+<h1>Arguments</h1>
+<ul>
+<li><code>slice</code>: [raw_slice] - The <code>raw_slice</code> to convert to a <code>String</code>.</li>
+</ul>
+<h1>Returns</h1>
+<ul>
+<li>[String] - The newly created <code>String</code>.</li>
+</ul>
+<h1>Examples</h1>
+<pre><code class="language-sway">use std::{alloc::alloc, string::*};
+
+fn foo() {
+    let ptr = alloc::&lt;u64&gt;(1);
+    let slice = raw_slice::from_parts::&lt;u64&gt;(ptr, 1);
+    let string: String = String::from(slice);
+}
+</code></pre>
+</div></details></div></details><details class="swaydoc-toggle implementors-toggle" open><summary><div id="impl-Eq" class="impl has-srclink"><a href="#impl-Eq" class="anchor"></a><h3 class="code-header in-band">impl <a class="trait" href="../../core/ops/trait.Eq.html">Eq</a> for String</h3></div></summary><div class="impl-items"><div id="method.eq" class="method trait-impl"><a href="#method.eq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.eq">eq</a>(self, other: Self) -&gt; bool</h4></div><details class="swaydoc-toggle method-toggle" open><summary><div id="method.neq" class="method trait-impl"><a href="#method.neq" class="anchor"></a><h4 class="code-header">fn <a class="fnname" href="#method.neq">neq</a>(self, other: Self) -&gt; bool</h4></div></summary><div class="docblock"><p>Evaluates if two values of the same type are not equal.</p>
 <h1>Additional Information</h1>
 <p>This function is inherited when <code>eq()</code> is implemented.</p>
 <h1>Arguments</h1>
