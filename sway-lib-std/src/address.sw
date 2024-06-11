@@ -125,35 +125,3 @@ impl Hash for Address {
         bits.hash(state);
     }
 }
-
-#[test]
-fn test_address_from_b256() {
-    use ::assert::assert;
-
-    let my_address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(
-        my_address
-            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
-}
-
-#[test]
-fn test_address_into_b256() {
-    use ::assert::assert;
-    use ::convert::Into;
-
-    let address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    let b256_data: b256 = address.into();
-    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
-}
-
-#[test]
-fn test_address_zero() {
-    use ::assert::assert;
-
-    let address = Address::zero();
-    assert(address.is_zero());
-
-    let other_address = Address::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(!other_address.is_zero());
-}

@@ -97,6 +97,11 @@ impl AssetId {
 
     /// Creates a new AssetId with the default SubId for the current contract.
     ///
+    /// # Additional Information
+    ///
+    /// **WARNING** If called in an external context, this will **not** return a correct AssetId.
+    /// If called externally, will actually use the Transaction Id as a the ContractId.
+    ///
     /// # Returns
     ///
     /// * [AssetId] - The AssetId of the asset. Computed by hashing the ContractId and the default SubId.
@@ -239,68 +244,4 @@ impl From<AssetId> for b256 {
     fn from(id: AssetId) -> Self {
         id.bits()
     }
-}
-
-#[test()]
-fn test_hasher_sha256_asset_id() {
-    use ::assert::assert;
-    let mut hasher = Hasher::new();
-    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000000)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
-
-    let mut hasher = Hasher::new();
-    AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
-}
-
-#[test()]
-fn test_hasher_sha256_contract_id() {
-    use ::assert::assert;
-    let mut hasher = Hasher::new();
-    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000000)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925);
-
-    let mut hasher = Hasher::new();
-    ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001)
-        .hash(hasher);
-    let s256 = hasher.sha256();
-    assert(s256 == 0xec4916dd28fc4c10d78e287ca5d9cc51ee1ae73cbfde08c6b37324cbfaac8bc5);
-}
-
-#[test]
-fn test_asset_id_from_b256() {
-    use ::assert::assert;
-
-    let my_asset = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(
-        my_asset
-            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
-}
-
-#[test]
-fn test_asset_id_into_b256() {
-    use ::assert::assert;
-    use ::convert::Into;
-
-    let asset = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    let b256_data: b256 = asset.into();
-    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
-}
-
-#[test]
-fn test_asset_id_zero() {
-    use ::assert::assert;
-
-    let asset = AssetId::zero();
-    assert(asset.is_zero());
-
-    let other_assert = AssetId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(!other_assert.is_zero());
 }

@@ -1,9 +1,5 @@
 library;
 
-// ANCHOR: to_u16_import
-use std::{primitive_conversions::{u16::*, u32::*, u64::*,},};
-// ANCHOR_END: to_u16_import
-
 pub fn convert_uint_to_u16() {
     // Convert any unsigned integer to `u16`
     // ANCHOR: to_u16
