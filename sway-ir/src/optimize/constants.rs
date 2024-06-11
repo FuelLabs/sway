@@ -264,17 +264,17 @@ fn remove_useless_binary_op(context: &mut Context, function: &Function) -> bool 
                         use ConstantValue::*;
                         match (op, val1, val2) {
                             // 0 + arg2
-                            (Add, Some(Uint(0)), _) => Some((block, candidate, arg2.clone())),
+                            (Add, Some(Uint(0)), _) => Some((block, candidate, *arg2)),
                             // arg1 + 0
-                            (Add, _, Some(Uint(0))) => Some((block, candidate, arg1.clone())),
+                            (Add, _, Some(Uint(0))) => Some((block, candidate, *arg1)),
                             // 1 * arg2
-                            (Mul, Some(Uint(1)), _) => Some((block, candidate, arg2.clone())),
+                            (Mul, Some(Uint(1)), _) => Some((block, candidate, *arg2)),
                             // arg1 * 1
-                            (Mul, _, Some(Uint(1))) => Some((block, candidate, arg1.clone())),
+                            (Mul, _, Some(Uint(1))) => Some((block, candidate, *arg1)),
                             // arg1 / 1
-                            (Div, _, Some(Uint(1))) => Some((block, candidate, arg1.clone())),
+                            (Div, _, Some(Uint(1))) => Some((block, candidate, *arg1)),
                             // arg1 - 0
-                            (Sub, _, Some(Uint(0))) => Some((block, candidate, arg1.clone())),
+                            (Sub, _, Some(Uint(0))) => Some((block, candidate, *arg1)),
                             _ => None,
                         }
                     }

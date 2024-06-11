@@ -80,7 +80,7 @@ impl BufferReader {
             0u8 => {
                 let ptr = __gtf::<raw_ptr>(predicate_index, 0x20C); // INPUT_COIN_PREDICATE_DATA
                 let _len = __gtf::<u64>(predicate_index, 0x20A); // INPUT_COIN_PREDICATE_DATA_LENGTH
-                BufferReader { ptr}
+                BufferReader { ptr }
             },
             2u8 => {
                 let ptr = __gtf::<raw_ptr>(predicate_index, 0x24A); // INPUT_MESSAGE_PREDICATE_DATA
