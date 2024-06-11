@@ -133,7 +133,6 @@ impl ty::TyStorageField {
                 None,
                 None,
                 key_expression,
-                true,
             )?;
             if let ConstantValue::B256(key) = const_key.value {
                 Ok(Some(key))
