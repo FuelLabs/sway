@@ -6,7 +6,7 @@ use ::result::Result::{self, *};
 use ::logging::log;
 
 /// Error type for when the block hash cannot be found.
-enum BlockHashError {
+pub enum BlockHashError {
     /// Error returned when the block hash cannot be found.
     BlockHeightTooHigh: (),
 }
@@ -122,33 +122,4 @@ pub fn block_header_hash(block_height: u32) -> Result<b256, BlockHashError> {
     } else {
         Ok(header_hash)
     }
-}
-
-////////////////////////////////////////////////////////////////////
-// Tests
-////////////////////////////////////////////////////////////////////
-
-#[test(should_revert)]
-fn test_block_header_hash_err_current_height() {
-    // Get the header hash of the current block. Each time this test runs, the block height will be 1. calling BHSH with a height >= current height will fail.
-    let mut hash = block_header_hash(height());
-    let correct_error = match hash {
-        Ok(_) => false,
-        Err(BlockHashError::BlockHeightTooHigh) => true,
-    };
-
-    assert(correct_error);
-}
-
-#[test(should_revert)]
-fn test_block_header_hash_err_future_height() {
-    // Try to get header hash of a block in the future
-    // The function should return a BlockHashError
-    let hash = block_header_hash(height() + 1u32);
-    let correct_error = match hash {
-        Ok(_) => false,
-        Err(BlockHashError::BlockHeightTooHigh) => true,
-    };
-
-    assert(correct_error);
 }

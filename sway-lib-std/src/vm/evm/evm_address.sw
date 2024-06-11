@@ -145,35 +145,3 @@ impl Hash for EvmAddress {
         bits.hash(state);
     }
 }
-
-#[test]
-fn test_evm_address_from_b256() {
-    use ::assert::assert;
-
-    let evm_address = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(
-        evm_address
-            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
-}
-
-#[test]
-fn test_evm_address_into_b256() {
-    use ::assert::assert;
-    use ::convert::Into;
-
-    let evm_address = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    let b256_data: b256 = evm_address.into();
-    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
-}
-
-#[test]
-fn test_evm_address_zero() {
-    use ::assert::assert;
-
-    let evm_address = EvmAddress::zero();
-    assert(evm_address.is_zero());
-
-    let other_evm_address = EvmAddress::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(!other_evm_address.is_zero());
-}
