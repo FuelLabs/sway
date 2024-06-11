@@ -1596,7 +1596,6 @@ pub fn dependency_namespace(
     };
 
     root_module.write(engines, |root_module| {
-        root_module.is_external = true;
         root_module.name.clone_from(&name);
         root_module.visibility = Visibility::Public;
     });
@@ -1607,7 +1606,7 @@ pub fn dependency_namespace(
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_edge = edge.weight();
-        let dep_namespace = match dep_edge.kind {
+        let mut dep_namespace = match dep_edge.kind {
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
@@ -1629,12 +1628,12 @@ pub fn dependency_namespace(
                     contract_id_value,
                     experimental,
                 )?;
-                module.is_external = true;
                 module.name = name;
                 module.visibility = Visibility::Public;
                 module
             }
         };
+        dep_namespace.is_external = true;
         root_module.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {

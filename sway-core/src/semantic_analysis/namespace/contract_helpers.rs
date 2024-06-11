@@ -99,7 +99,6 @@ fn default_with_contract_id_inner(
     let mut ns = Namespace::init_root(root);
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
     ns.root.module.name = ns_name;
-    ns.root.module.is_external = true;
     ns.root.module.visibility = Visibility::Public;
     let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
     let typed_node = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();

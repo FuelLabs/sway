@@ -375,7 +375,7 @@ impl ty::TyAbiDecl {
             // from the same ABI later, during method application typechecking.
             let _ = ctx.insert_trait_implementation(
                 &Handler::default(),
-                CallPath::from(self.name.clone()),
+                CallPath::ident_to_fullpath(self.name.clone(), ctx.namespace()),
                 vec![],
                 type_id,
                 &all_items,
