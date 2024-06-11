@@ -143,6 +143,7 @@ impl TyScrutinee {
             ty::TyScrutineeVariant::Variable(_) => true,
             ty::TyScrutineeVariant::Literal(_) => false,
             ty::TyScrutineeVariant::Constant { .. } => false,
+            ty::TyScrutineeVariant::Configurable { .. } => false,
             ty::TyScrutineeVariant::StructScrutinee { fields, .. } => fields
                 .iter()
                 .filter_map(|x| x.scrutinee.as_ref())

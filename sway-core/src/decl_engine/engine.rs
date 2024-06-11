@@ -12,8 +12,9 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStorageDecl,
-        TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyTypeAliasDecl,
+        self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl,
+        TyImplTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+        TyTypeAliasDecl,
     },
 };
 
@@ -29,6 +30,7 @@ pub struct DeclEngine {
     storage_slab: ConcurrentSlab<TyStorageDecl>,
     abi_slab: ConcurrentSlab<TyAbiDecl>,
     constant_slab: ConcurrentSlab<TyConstantDecl>,
+    configurable_slab: ConcurrentSlab<TyConfigurableDecl>,
     enum_slab: ConcurrentSlab<TyEnumDecl>,
     type_alias_slab: ConcurrentSlab<TyTypeAliasDecl>,
 
@@ -47,6 +49,7 @@ impl Clone for DeclEngine {
             storage_slab: self.storage_slab.clone(),
             abi_slab: self.abi_slab.clone(),
             constant_slab: self.constant_slab.clone(),
+            configurable_slab: self.configurable_slab.clone(),
             enum_slab: self.enum_slab.clone(),
             type_alias_slab: self.type_alias_slab.clone(),
             parents: RwLock::new(self.parents.read().clone()),
@@ -107,6 +110,7 @@ decl_engine_get!(struct_slab, ty::TyStructDecl);
 decl_engine_get!(storage_slab, ty::TyStorageDecl);
 decl_engine_get!(abi_slab, ty::TyAbiDecl);
 decl_engine_get!(constant_slab, ty::TyConstantDecl);
+decl_engine_get!(configurable_slab, ty::TyConfigurableDecl);
 decl_engine_get!(enum_slab, ty::TyEnumDecl);
 decl_engine_get!(type_alias_slab, ty::TyTypeAliasDecl);
 
@@ -143,6 +147,7 @@ decl_engine_insert!(struct_slab, ty::TyStructDecl);
 decl_engine_insert!(storage_slab, ty::TyStorageDecl);
 decl_engine_insert!(abi_slab, ty::TyAbiDecl);
 decl_engine_insert!(constant_slab, ty::TyConstantDecl);
+decl_engine_insert!(configurable_slab, ty::TyConfigurableDecl);
 decl_engine_insert!(enum_slab, ty::TyEnumDecl);
 decl_engine_insert!(type_alias_slab, ty::TyTypeAliasDecl);
 
@@ -164,6 +169,7 @@ decl_engine_replace!(struct_slab, ty::TyStructDecl);
 decl_engine_replace!(storage_slab, ty::TyStorageDecl);
 decl_engine_replace!(abi_slab, ty::TyAbiDecl);
 decl_engine_replace!(constant_slab, ty::TyConstantDecl);
+decl_engine_replace!(configurable_slab, ty::TyConfigurableDecl);
 decl_engine_replace!(enum_slab, ty::TyEnumDecl);
 decl_engine_replace!(type_alias_slab, ty::TyTypeAliasDecl);
 
@@ -181,6 +187,7 @@ decl_engine_index!(struct_slab, ty::TyStructDecl);
 decl_engine_index!(storage_slab, ty::TyStorageDecl);
 decl_engine_index!(abi_slab, ty::TyAbiDecl);
 decl_engine_index!(constant_slab, ty::TyConstantDecl);
+decl_engine_index!(configurable_slab, ty::TyConfigurableDecl);
 decl_engine_index!(enum_slab, ty::TyEnumDecl);
 decl_engine_index!(type_alias_slab, ty::TyTypeAliasDecl);
 
@@ -226,6 +233,7 @@ decl_engine_clear_program!(
     storage_slab, ty::TyStorageDecl;
     abi_slab, ty::TyAbiDecl;
     constant_slab, ty::TyConstantDecl;
+    configurable_slab, ty::TyConfigurableDecl;
     enum_slab, ty::TyEnumDecl;
     type_alias_slab, ty::TyTypeAliasDecl;
 );
@@ -403,6 +411,18 @@ impl DeclEngine {
     pub fn get_constant<I>(&self, index: &I) -> Arc<ty::TyConstantDecl>
     where
         DeclEngine: DeclEngineGet<I, ty::TyConstantDecl>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [DeclEngineGet] for [DeclEngine]
+    ///
+    /// Calling [DeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_configurable<I>(&self, index: &I) -> Arc<ty::TyConfigurableDecl>
+    where
+        DeclEngine: DeclEngineGet<I, ty::TyConfigurableDecl>,
     {
         self.get(index)
     }

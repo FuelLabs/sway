@@ -308,6 +308,7 @@ pub fn compute_escaped_symbols(context: &Context, function: &Function) -> Escape
             InstOp::ContractCall { params, .. } => add_from_val(&mut result, params),
             InstOp::FuelVm(_) => (),
             InstOp::GetLocal(_) => (),
+            InstOp::GetConfig(_, _) => (),
             InstOp::GetElemPtr { .. } => (),
             InstOp::IntToPtr(_, _) => (),
             InstOp::Load(_) => (),
@@ -335,6 +336,7 @@ pub fn get_loaded_ptr_values(context: &Context, val: Value) -> Vec<Value> {
         | InstOp::Nop
         | InstOp::CastPtr(_, _)
         | InstOp::GetLocal(_)
+        | InstOp::GetConfig(_, _)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],
         InstOp::PtrToInt(src_val_ptr, _) => vec![*src_val_ptr],
@@ -415,6 +417,7 @@ pub fn get_stored_ptr_values(context: &Context, val: Value) -> Vec<Value> {
         | InstOp::Ret(_, _)
         | InstOp::CastPtr(_, _)
         | InstOp::GetLocal(_)
+        | InstOp::GetConfig(_, _)
         | InstOp::GetElemPtr { .. }
         | InstOp::IntToPtr(_, _) => vec![],
         InstOp::ContractCall { params, .. } => vec![*params],

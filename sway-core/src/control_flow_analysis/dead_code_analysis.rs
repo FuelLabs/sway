@@ -564,6 +564,30 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                 Ok(leaves.to_vec())
             }
         }
+        ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
+            let config_decl = decl_engine.get_configurable(decl_id);
+            let ty::TyConfigurableDecl {
+                call_path, value, ..
+            } = &*config_decl;
+            graph
+                .namespace
+                .insert_configurable(call_path.suffix.clone(), entry_node);
+            if let Some(value) = &value {
+                connect_expression(
+                    engines,
+                    &value.expression,
+                    graph,
+                    &[entry_node],
+                    exit_node,
+                    "constant declaration expression",
+                    tree_type,
+                    value.span.clone(),
+                    options,
+                )
+            } else {
+                Ok(leaves.to_vec())
+            }
+        }
         ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. }) => {
             let fn_decl = decl_engine.get_function(decl_id);
             connect_typed_fn_decl(
@@ -1448,10 +1472,10 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
                     .unwrap_or_else(|| leaves.to_vec()))
             }
         }
-        ConstantExpression { const_decl, .. } => {
-            let node = if let Some(node) = graph.namespace.get_global_constant(const_decl.name()) {
+        ConstantExpression { decl, .. } => {
+            let node = if let Some(node) = graph.namespace.get_global_constant(decl.name()) {
                 *node
-            } else if let Some(node) = graph.namespace.get_constant(const_decl) {
+            } else if let Some(node) = graph.namespace.get_constant(decl) {
                 *node
             } else {
                 return Ok(leaves.to_vec());
@@ -1460,6 +1484,17 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             for leaf in leaves {
                 graph.add_edge(*leaf, node, "".into());
             }
+            Ok(vec![node])
+        }
+        ConfigurableExpression { decl, .. } => {
+            let Some(node) = graph.namespace.get_configurable(decl).cloned() else {
+                return Ok(leaves.to_vec());
+            };
+
+            for leaf in leaves {
+                graph.add_edge(*leaf, node, "".into());
+            }
+
             Ok(vec![node])
         }
         EnumInstantiation {
@@ -2459,6 +2494,9 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::VariableDecl(_) => false,
             ty::TyDecl::ConstantDecl(ty::ConstantDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_constant(decl_id).attributes.clone())
+            }
+            ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
+                allow_dead_code(decl_engine.get_configurable(decl_id).attributes.clone())
             }
             ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type(decl_id).attributes.clone())

@@ -215,6 +215,7 @@ fn analyze_expression(
         // base cases: no warnings can be emitted
         Literal(_)
         | ConstantExpression { .. }
+        | ConfigurableExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | StorageAccess(_)
@@ -494,6 +495,7 @@ fn effects_of_expression(engines: &Engines, expr: &ty::TyExpression) -> HashSet<
     match &expr.expression {
         Literal(_)
         | ConstantExpression { .. }
+        | ConfigurableExpression { .. }
         | VariableExpression { .. }
         | FunctionParameter
         | Break

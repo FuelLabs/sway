@@ -82,7 +82,7 @@ fn hash_fn(
             crate::ValueDatum::Argument(_) | crate::ValueDatum::Instruction(_) => {
                 get_localised_id(v, localised_value_id).hash(hasher)
             }
-            crate::ValueDatum::Configurable(c) | crate::ValueDatum::Constant(c) => c.hash(hasher),
+            crate::ValueDatum::Constant(c) => c.hash(hasher),
         }
         if let Some(m) = &context.values.get(v.0).unwrap().metadata {
             if !ignore_metadata {
@@ -259,6 +259,7 @@ fn hash_fn(
                     .lookup_local_name(context, local)
                     .unwrap()
                     .hash(state),
+                crate::InstOp::GetConfig(_, name) => name.hash(state),
                 crate::InstOp::GetElemPtr { elem_ptr_ty, .. } => elem_ptr_ty.hash(state),
                 crate::InstOp::IntToPtr(_, ty) => ty.hash(state),
                 crate::InstOp::Load(_) => (),

@@ -1,6 +1,26 @@
-use super::{AllocatedProgram, FinalProgram};
+use super::{FinalProgram, FnName, SelectorOpt};
 
-use crate::asm_generation::fuel::allocated_abstract_instruction_set::AllocatedAbstractInstructionSet;
+use crate::{
+    asm_generation::{
+        fuel::{
+            allocated_abstract_instruction_set::AllocatedAbstractInstructionSet,
+            data_section::DataSection,
+        },
+        ProgramKind,
+    },
+    asm_lang::Label,
+    decl_engine::DeclRefFunction,
+};
+
+/// An [AllocatedProgram] represents code which has allocated registers but still has abstract
+/// control flow.
+pub(crate) struct AllocatedProgram {
+    pub(crate) kind: ProgramKind,
+    pub(crate) data_section: DataSection,
+    pub(crate) prologue: AllocatedAbstractInstructionSet,
+    pub(crate) functions: Vec<AllocatedAbstractInstructionSet>,
+    pub(crate) entries: Vec<(SelectorOpt, Label, FnName, Option<DeclRefFunction>)>,
+}
 
 impl AllocatedProgram {
     pub(crate) fn into_final_program(mut self) -> Result<FinalProgram, crate::CompileError> {
@@ -29,7 +49,7 @@ impl AllocatedProgram {
             })
             .collect();
 
-        Ok(FinalProgram::Fuel {
+        Ok(FinalProgram {
             kind: self.kind,
             data_section: self.data_section,
             ops,

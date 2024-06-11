@@ -592,6 +592,7 @@ fn inline_instruction(
             InstOp::GetLocal(local_var) => {
                 new_block.append(context).get_local(map_local(local_var))
             }
+            InstOp::GetConfig(module, name) => new_block.append(context).get_config(module, name),
             InstOp::IntToPtr(value, ty) => {
                 new_block.append(context).int_to_ptr(map_value(value), ty)
             }
