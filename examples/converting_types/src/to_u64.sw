@@ -1,9 +1,5 @@
 library;
 
-// ANCHOR: to_u64_import
-use std::primitive_conversions::u64::*;
-// ANCHOR_END: to_u64_import
-
 pub fn convert_uint_to_u64() {
     // Convert any unsigned integer to `u64`
     // ANCHOR: to_u64
