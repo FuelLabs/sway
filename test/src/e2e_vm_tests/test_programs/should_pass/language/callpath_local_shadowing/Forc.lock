@@ -1,0 +1,13 @@
+[[package]]
+name = "callpath_local_shadowing"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "core"
+source = "path+from-root-779BB769D43AD4B7"
+
+[[package]]
+name = "std"
+source = "path+from-root-779BB769D43AD4B7"
+dependencies = ["core"]

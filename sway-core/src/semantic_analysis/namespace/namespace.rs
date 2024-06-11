@@ -8,9 +8,11 @@ use super::{
     root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
-    ModulePath, ModulePathBuf,
+    ModuleName, ModulePath, ModulePathBuf,
 };
 
+use rustc_hash::FxHasher;
+use std::hash::BuildHasherDefault;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 
@@ -55,11 +57,44 @@ impl Namespace {
     }
 
     /// Initialise the namespace at its root from the given initial namespace.
+    /// If the root module contains submodules these are now considered external.
     pub fn init_root(root: Root) -> Self {
+        assert!(
+            !root.module.is_external,
+            "The root module must not be external during compilation"
+        );
         let mod_path = vec![];
+
+        // A copy of the root module is used to initialize every new submodule in the program.
+        //
+        // Every submodule that has been added before calling init_root is now considered
+        // external, which we have to enforce at this point.
+        fn clone_with_submodules_external(module: &Module) -> Module {
+            let mut new_submods =
+                im::HashMap::<ModuleName, Module, BuildHasherDefault<FxHasher>>::default();
+            for (name, submod) in module.submodules.iter() {
+                let new_submod = clone_with_submodules_external(submod);
+                new_submods.insert(name.clone(), new_submod);
+            }
+            Module {
+                submodules: new_submods,
+                lexical_scopes: module.lexical_scopes.clone(),
+                current_lexical_scope_id: module.current_lexical_scope_id,
+                name: module.name.clone(),
+                visibility: module.visibility,
+                span: module.span.clone(),
+                is_external: true,
+                mod_path: module.mod_path.clone(),
+            }
+        }
+
+        let mut init = clone_with_submodules_external(&root.module);
+        // The init module itself is not external
+        init.is_external = false;
+
         Self {
-            init: root.module.clone(),
-            root,
+            init: init.clone(),
+            root: Root { module: init },
             mod_path,
         }
     }
@@ -268,6 +303,7 @@ impl Namespace {
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
+        let is_external = self.module(engines).is_external;
         self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
@@ -284,7 +320,7 @@ impl Namespace {
         new_module.name = Some(mod_name);
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
-        new_module.is_external = false;
+        new_module.is_external = is_external;
         new_module.mod_path = submod_path;
         SubmoduleNamespace {
             namespace: self,
