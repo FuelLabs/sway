@@ -2,6 +2,7 @@ use crate::{
     decl_engine::{DeclEngineGet, DeclId, DeclRefFunction},
     language::{ty, Visibility},
     metadata::MetadataManager,
+    namespace::ResolvedDeclaration,
     semantic_analysis::namespace,
     type_system::TypeId,
     types::{LogId, MessageId},
@@ -12,6 +13,7 @@ use super::{
     const_eval::{compile_const_decl, LookupEnv},
     convert::convert_resolved_typeid,
     function::FnCompiler,
+    CompiledFunctionCache,
 };
 
 use sway_error::{error::CompileError, handler::Handler};
@@ -29,11 +31,23 @@ pub(super) fn compile_script(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Script);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_configurables(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        logged_types_map,
+        messages_types_map,
+        cache,
+    )
+    .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
         context,
@@ -43,6 +57,7 @@ pub(super) fn compile_script(
         logged_types_map,
         messages_types_map,
         None,
+        cache,
     )?;
     compile_tests(
         engines,
@@ -52,6 +67,7 @@ pub(super) fn compile_script(
         logged_types_map,
         messages_types_map,
         test_fns,
+        cache,
     )?;
 
     Ok(module)
@@ -66,11 +82,23 @@ pub(super) fn compile_predicate(
     logged_types: &HashMap<TypeId, LogId>,
     messages_types: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Predicate);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_configurables(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        logged_types,
+        messages_types,
+        cache,
+    )
+    .map_err(|err| vec![err])?;
     compile_entry_function(
         engines,
         context,
@@ -80,6 +108,7 @@ pub(super) fn compile_predicate(
         &HashMap::new(),
         &HashMap::new(),
         None,
+        cache,
     )?;
     compile_tests(
         engines,
@@ -89,6 +118,7 @@ pub(super) fn compile_predicate(
         logged_types,
         messages_types,
         test_fns,
+        cache,
     )?;
 
     Ok(module)
@@ -105,11 +135,23 @@ pub(super) fn compile_contract(
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
     engines: &Engines,
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Contract);
     let mut md_mgr = MetadataManager::default();
 
     compile_constants(engines, context, &mut md_mgr, module, namespace).map_err(|err| vec![err])?;
+    compile_configurables(
+        engines,
+        context,
+        &mut md_mgr,
+        module,
+        namespace,
+        logged_types_map,
+        messages_types_map,
+        cache,
+    )
+    .map_err(|err| vec![err])?;
 
     if let Some(entry_function) = entry_function {
         compile_entry_function(
@@ -121,6 +163,7 @@ pub(super) fn compile_contract(
             logged_types_map,
             messages_types_map,
             None,
+            cache,
         )?;
     }
 
@@ -133,6 +176,7 @@ pub(super) fn compile_contract(
             logged_types_map,
             messages_types_map,
             engines,
+            cache,
         )?;
     }
 
@@ -150,6 +194,7 @@ pub(super) fn compile_contract(
                     logged_types_map,
                     messages_types_map,
                     engines,
+                    cache,
                 )?;
             }
         }
@@ -163,6 +208,7 @@ pub(super) fn compile_contract(
         logged_types_map,
         messages_types_map,
         test_fns,
+        cache,
     )?;
 
     Ok(module)
@@ -176,6 +222,7 @@ pub(super) fn compile_library(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Module, Vec<CompileError>> {
     let module = Module::new(context, Kind::Library);
     let mut md_mgr = MetadataManager::default();
@@ -189,6 +236,7 @@ pub(super) fn compile_library(
         logged_types_map,
         messages_types_map,
         test_fns,
+        cache,
     )?;
 
     Ok(module)
@@ -233,6 +281,97 @@ pub(crate) fn compile_constants(
 }
 
 #[allow(clippy::too_many_arguments)]
+pub(crate) fn compile_configurables(
+    engines: &Engines,
+    context: &mut Context,
+    md_mgr: &mut MetadataManager,
+    module: Module,
+    module_ns: &namespace::Module,
+    logged_types_map: &HashMap<TypeId, LogId>,
+    messages_types_map: &HashMap<TypeId, MessageId>,
+    cache: &mut CompiledFunctionCache,
+) -> Result<(), CompileError> {
+    for decl_name in module_ns.current_items().get_all_declared_symbols() {
+        if let Some(ResolvedDeclaration::Typed(ty::TyDecl::ConfigurableDecl(
+            ty::ConfigurableDecl { decl_id, .. },
+        ))) = module_ns.current_items().symbols.get(decl_name)
+        {
+            let decl = engines.de().get(decl_id);
+
+            let ty = convert_resolved_typeid(
+                engines.te(),
+                engines.de(),
+                context,
+                &decl.type_ascription.type_id,
+                &decl.type_ascription.span,
+            )
+            .unwrap();
+            let ptr_ty = Type::new_ptr(context, ty);
+
+            let constant = super::const_eval::compile_constant_expression_to_constant(
+                engines,
+                context,
+                md_mgr,
+                module,
+                Some(module_ns),
+                None,
+                decl.value.as_ref().unwrap(),
+            )
+            .unwrap();
+
+            let opt_metadata = md_mgr.span_to_md(context, &decl.span);
+
+            if context.experimental.new_encoding {
+                let encoded_bytes = match constant.value {
+                    ConstantValue::RawUntypedSlice(bytes) => bytes,
+                    _ => unreachable!(),
+                };
+
+                let decode_fn = engines.de().get(decl.decode_fn.as_ref().unwrap().id());
+                let decode_fn = cache.ty_function_decl_to_unique_function(
+                    engines,
+                    context,
+                    module,
+                    md_mgr,
+                    &decode_fn,
+                    logged_types_map,
+                    messages_types_map,
+                )?;
+
+                let name = decl_name.as_str().to_string();
+                module.add_config(
+                    context,
+                    name.clone(),
+                    ConfigContent::V1 {
+                        name,
+                        ty,
+                        ptr_ty,
+                        encoded_bytes,
+                        decode_fn,
+                        opt_metadata,
+                    },
+                );
+            } else {
+                let name = decl_name.as_str().to_string();
+                module.add_config(
+                    context,
+                    name.clone(),
+                    ConfigContent::V0 {
+                        name,
+                        ty,
+                        ptr_ty,
+                        constant,
+                        opt_metadata,
+                    },
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(super) fn compile_function(
     engines: &Engines,
     context: &mut Context,
@@ -243,6 +382,7 @@ pub(super) fn compile_function(
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Option<Function>, Vec<CompileError>> {
     // Currently monomorphization of generics is inlined into main() and the functions with generic
     // args are still present in the AST declarations, but they can be ignored.
@@ -260,6 +400,7 @@ pub(super) fn compile_function(
             logged_types_map,
             messages_types_map,
             test_decl_ref,
+            cache,
         )
         .map(Some)
     }
@@ -275,6 +416,7 @@ pub(super) fn compile_entry_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     let is_entry = true;
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
@@ -288,6 +430,7 @@ pub(super) fn compile_entry_function(
         messages_types_map,
         is_entry,
         test_decl_ref,
+        cache,
     )
     .map(|f| f.expect("entry point should never contain generics"))
 }
@@ -301,6 +444,7 @@ pub(super) fn compile_tests(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_fns: &[(Arc<ty::TyFunctionDecl>, DeclRefFunction)],
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Vec<Function>, Vec<CompileError>> {
     test_fns
         .iter()
@@ -314,6 +458,7 @@ pub(super) fn compile_tests(
                 logged_types_map,
                 messages_types_map,
                 Some(decl_ref.clone()),
+                cache,
             )
         })
         .collect()
@@ -331,6 +476,7 @@ fn compile_fn(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     test_decl_ref: Option<DeclRefFunction>,
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     let type_engine = engines.te();
     let decl_engine = engines.de();
@@ -426,6 +572,7 @@ fn compile_fn(
         func,
         logged_types_map,
         messages_types_map,
+        cache,
     );
     let mut ret_val = compiler.compile_code_block_to_value(context, md_mgr, body)?;
 
@@ -476,6 +623,7 @@ fn compile_abi_method(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     engines: &Engines,
+    cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let handler = Handler::default();
@@ -511,5 +659,6 @@ fn compile_abi_method(
         logged_types_map,
         messages_types_map,
         None,
+        cache,
     )
 }

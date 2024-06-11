@@ -20,6 +20,7 @@ pub enum TyScrutineeVariant {
     Literal(Literal),
     Variable(Ident),
     Constant(Ident, Literal, TyConstantDecl),
+    Configurable(Ident, Literal, TyConfigurableDecl),
     StructScrutinee {
         struct_ref: DeclRefStruct,
         fields: Vec<TyStructScrutineeField>,

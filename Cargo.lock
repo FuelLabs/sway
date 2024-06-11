@@ -61,21 +61,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alloc-no-stdlib"
-version = "2.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc7bb162ec39d46ab1ca8c77bf72e890535becd1751bb45f64c597edb4c8c6b3"
-
-[[package]]
-name = "alloc-stdlib"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94fb8275041c72129eb51b7d0322c29b8387a0386127718b096429201a5d6ece"
-dependencies = [
- "alloc-no-stdlib",
-]
-
-[[package]]
 name = "allocator-api2"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -503,27 +488,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3078c7629b62d3f0439517fa394996acacc5cbc91c5a20d8c658e77abd503a71"
 dependencies = [
  "generic-array",
-]
-
-[[package]]
-name = "brotli"
-version = "3.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d640d25bc63c50fb1f0b545ffd80207d2e10a4c965530809b40ba3386825c391"
-dependencies = [
- "alloc-no-stdlib",
- "alloc-stdlib",
- "brotli-decompressor",
-]
-
-[[package]]
-name = "brotli-decompressor"
-version = "2.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e2e4afe60d7dd600fdd3de8d0f08c2b7ec039712e3b6137ff98b7004e82de4f"
-dependencies = [
- "alloc-no-stdlib",
- "alloc-stdlib",
 ]
 
 [[package]]
@@ -2557,18 +2521,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuel-etk-4byte"
-version = "0.3.1-dev"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20de1b9dab67b0d41d84c931b34f15c4913d5f01f737f65e607d22073ef08773"
-dependencies = [
- "bincode",
- "brotli",
- "lazy_static",
- "serde",
-]
-
-[[package]]
 name = "fuel-etk-asm"
 version = "0.3.1-dev"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2582,18 +2534,6 @@ dependencies = [
  "rand",
  "sha3",
  "snafu",
-]
-
-[[package]]
-name = "fuel-etk-dasm"
-version = "0.3.1-dev"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79d079b7d3316144601a77f6d3fe54cbf354f5c74e1ce3e86d43289bf0b16462"
-dependencies = [
- "fuel-etk-4byte",
- "fuel-etk-asm",
- "fuel-etk-ops",
- "hex",
 ]
 
 [[package]]
@@ -6609,7 +6549,6 @@ dependencies = [
  "fuel-abi-types",
  "fuel-ethabi",
  "fuel-etk-asm",
- "fuel-etk-dasm",
  "fuel-etk-ops",
  "fuel-vm",
  "gimli",

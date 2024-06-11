@@ -462,7 +462,7 @@ jobs:
       - name: Install Forc
         run: cargo install --locked --debug --path ./forc
       - name: Run Unit Tests
-        run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std
+        run: forc build --path sway-lib-core && forc test --path sway-lib-core && forc build --path sway-lib-std && forc test --path sway-lib-std && forc build --path test/src/in_language_tests & forc test --path test/src/in_language_tests
 
   forc-pkg-fuels-deps-check:
     runs-on: ubuntu-latest

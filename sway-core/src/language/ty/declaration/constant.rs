@@ -21,12 +21,10 @@ pub struct TyConstantDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
-    pub is_configurable: bool,
     pub attributes: transform::AttributesMap,
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
-    pub implementing_type: Option<TyDecl>,
 }
 
 impl DebugWithEngines for TyConstantDecl {
@@ -43,14 +41,9 @@ impl PartialEqWithEngines for TyConstantDecl {
             && self.value.eq(&other.value, ctx)
             && self.visibility == other.visibility
             && self.type_ascription.eq(&other.type_ascription, ctx)
-            && self.is_configurable == other.is_configurable
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), ctx)
-            && match (&self.implementing_type, &other.implementing_type) {
-                (Some(self_), Some(other)) => self_.eq(other, ctx),
-                _ => false,
-            }
     }
 }
 
@@ -63,8 +56,6 @@ impl HashWithEngines for TyConstantDecl {
             visibility,
             return_type,
             type_ascription,
-            is_configurable,
-            implementing_type,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             attributes: _,
@@ -75,10 +66,6 @@ impl HashWithEngines for TyConstantDecl {
         visibility.hash(state);
         type_engine.get(*return_type).hash(state, engines);
         type_ascription.hash(state, engines);
-        is_configurable.hash(state);
-        if let Some(implementing_type) = implementing_type {
-            (*implementing_type).hash(state, engines);
-        }
     }
 }
 

@@ -5,7 +5,6 @@ use std::{
     bytes::Bytes,
     context::balance_of,
     message::send_message,
-    primitive_conversions::u64::*,
 };
 
 abi TestFuelCoin {

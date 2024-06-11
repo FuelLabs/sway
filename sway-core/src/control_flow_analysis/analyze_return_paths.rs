@@ -206,7 +206,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         | ty::TyDecl::TypeAliasDecl(_)
         | ty::TyDecl::TraitTypeDecl(_)
         | ty::TyDecl::GenericTypeForFunctionScope(_) => Ok(leaves.to_vec()),
-        ty::TyDecl::VariableDecl(_) | ty::TyDecl::ConstantDecl(_) => {
+        ty::TyDecl::VariableDecl(_)
+        | ty::TyDecl::ConstantDecl(_)
+        | ty::TyDecl::ConfigurableDecl(_) => {
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
             for leaf in leaves {
                 graph.add_edge(*leaf, entry_node, "".into());
