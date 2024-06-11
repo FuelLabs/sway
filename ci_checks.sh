@@ -48,5 +48,5 @@ echo "[workspace]" >> test-proj/Cargo.toml &&
 rm -R test-proj &&
 cargo run --locked --release --bin test -- --target evm --locked &&
 cargo run --locked -p forc -- build --locked --path ./test/src/sdk-harness &&
-cargo test --locked --manifest-path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
+cargo test --locked --path ./test/src/sdk-harness/Cargo.toml -- --nocapture &&
 cargo run --locked --release --bin test -- --locked
