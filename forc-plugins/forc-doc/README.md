@@ -78,7 +78,7 @@ $ cargo install --path forc-plugins/forc-doc
 Great! Let's check everything is working as intended. Try running `forc doc` on one of the test directories:
 
 ```sh
-$ forc doc --manifest-path src/tests/data/impl_traits --open
+$ forc doc --path src/tests/data/impl_traits --open
 ```
 
 If it succeeded, you should be seeing the test docs in your browser.
