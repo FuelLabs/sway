@@ -1904,9 +1904,13 @@ pub fn compile(
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
-            configurables.retain(|c| compiled.config_const_offsets.contains_key(&c.name));
+            configurables.retain(|c| {
+                compiled
+                    .named_data_section_entries_offsets
+                    .contains_key(&c.name)
+            });
             // Set the actual offsets in the JSON object
-            for (config, offset) in compiled.config_const_offsets {
+            for (config, offset) in compiled.named_data_section_entries_offsets {
                 if let Some(idx) = configurables.iter().position(|c| c.name == config) {
                     configurables[idx].offset = offset;
                 }

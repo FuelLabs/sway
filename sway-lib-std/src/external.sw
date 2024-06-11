@@ -16,10 +16,10 @@ use ::contract_id::ContractId;
 /// # Examples
 ///
 /// ```sway
-/// use std::{external::bytecode_root, call_frames::contract_id};
+/// use std::external::bytecode_root;
 ///
 /// fn foo() {
-///     let root_of_this_contract = bytecode_root(contract_id());
+///     let root_of_this_contract = bytecode_root(ContractId::this());
 ///     assert(root_of_this_contract != b256::zero());
 /// }
 /// ```

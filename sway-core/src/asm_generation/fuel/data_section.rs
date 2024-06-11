@@ -1,20 +1,16 @@
 use sway_ir::{size_bytes_round_up_to_word_alignment, Constant, ConstantValue, Context, Padding};
 
-use std::{
-    collections::BTreeMap,
-    fmt::{self, Write},
-    iter::repeat,
-};
+use std::{fmt, iter::repeat};
 
 // An entry in the data section.  It's important for the size to be correct, especially for unions
 // where the size could be larger than the represented value.
 #[derive(Clone, Debug)]
 pub struct Entry {
-    value: Datum,
-    padding: Padding,
+    pub value: Datum,
+    pub padding: Padding,
     // It is assumed, for now, that only configuration-time constants have a name. Otherwise, this
     // is `None`.
-    name: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -213,7 +209,6 @@ impl fmt::Display for DataId {
 pub struct DataSection {
     /// the data to be put in the data section of the asm
     pub value_pairs: Vec<Entry>,
-    pub config_map: BTreeMap<String, u32>,
 }
 
 impl DataSection {
@@ -322,6 +317,7 @@ impl fmt::Display for DataSection {
             }
         }
 
+        use std::fmt::Write;
         let mut data_buf = String::new();
         for (ix, entry) in self.value_pairs.iter().enumerate() {
             writeln!(

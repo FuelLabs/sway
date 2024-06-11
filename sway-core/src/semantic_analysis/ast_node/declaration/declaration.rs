@@ -34,6 +34,10 @@ impl TyDecl {
                 let const_decl = engines.pe().get_constant(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, const_decl.name.clone(), decl)?;
             }
+            parsed::Declaration::ConfigurableDeclaration(decl_id) => {
+                let config_decl = engines.pe().get_configurable(decl_id).as_ref().clone();
+                ctx.insert_parsed_symbol(handler, engines, config_decl.name.clone(), decl)?;
+            }
             parsed::Declaration::TraitTypeDeclaration(decl_id) => {
                 let trait_type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, trait_type_decl.name.clone(), decl)?;
@@ -171,6 +175,22 @@ impl TyDecl {
                 };
                 let typed_const_decl: ty::TyDecl = decl_engine.insert(const_decl.clone()).into();
                 ctx.insert_symbol(handler, const_decl.name().clone(), typed_const_decl.clone())?;
+                typed_const_decl
+            }
+            parsed::Declaration::ConfigurableDeclaration(decl_id) => {
+                let decl = engines.pe().get_configurable(&decl_id).as_ref().clone();
+                let span = decl.span.clone();
+                let config_decl =
+                    match ty::TyConfigurableDecl::type_check(handler, ctx.by_ref(), decl) {
+                        Ok(res) => res,
+                        Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
+                    };
+                let typed_const_decl: ty::TyDecl = decl_engine.insert(config_decl.clone()).into();
+                ctx.insert_symbol(
+                    handler,
+                    config_decl.name().clone(),
+                    typed_const_decl.clone(),
+                )?;
                 typed_const_decl
             }
             parsed::Declaration::TraitTypeDeclaration(decl_id) => {
@@ -543,6 +563,10 @@ impl TypeCheckAnalysis for TyDecl {
                 let const_decl = ctx.engines.de().get_constant(&node.decl_id);
                 const_decl.type_check_analyze(handler, ctx)?;
             }
+            TyDecl::ConfigurableDecl(node) => {
+                let const_decl = ctx.engines.de().get_configurable(&node.decl_id);
+                const_decl.type_check_analyze(handler, ctx)?;
+            }
             TyDecl::FunctionDecl(node) => {
                 let fn_decl = ctx.engines.de().get_function(&node.decl_id);
                 fn_decl.type_check_analyze(handler, ctx)?;
@@ -595,6 +619,10 @@ impl TypeCheckFinalization for TyDecl {
             TyDecl::ConstantDecl(node) => {
                 let mut const_decl = (*ctx.engines.de().get_constant(&node.decl_id)).clone();
                 const_decl.type_check_finalize(handler, ctx)?;
+            }
+            TyDecl::ConfigurableDecl(node) => {
+                let mut config_decl = (*ctx.engines.de().get_configurable(&node.decl_id)).clone();
+                config_decl.type_check_finalize(handler, ctx)?;
             }
             TyDecl::FunctionDecl(node) => {
                 let mut fn_decl = (*ctx.engines.de().get_function(&node.decl_id)).clone();

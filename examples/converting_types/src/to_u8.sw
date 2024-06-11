@@ -1,9 +1,5 @@
 library;
 
-// ANCHOR: to_u8_import
-use std::{primitive_conversions::{u16::*, u32::*, u64::*, u8::*,},};
-// ANCHOR_END: to_u8_import
-
 pub fn convert_uint_to_u8() {
     // Convert any unsigned integer to `u8`
     // ANCHOR: to_u8

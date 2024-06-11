@@ -45,7 +45,12 @@ pub enum TyExpressionVariant {
     },
     ConstantExpression {
         span: Span,
-        const_decl: Box<TyConstantDecl>,
+        decl: Box<TyConstantDecl>,
+        call_path: Option<CallPath>,
+    },
+    ConfigurableExpression {
+        span: Span,
+        decl: Box<TyConfigurableDecl>,
         call_path: Option<CallPath>,
     },
     VariableExpression {
@@ -213,12 +218,12 @@ impl PartialEqWithEngines for TyExpressionVariant {
                 Self::ConstantExpression {
                     call_path: l_call_path,
                     span: l_span,
-                    const_decl: _,
+                    decl: _,
                 },
                 Self::ConstantExpression {
                     call_path: r_call_path,
                     span: r_span,
-                    const_decl: _,
+                    decl: _,
                 },
             ) => l_call_path == r_call_path && l_span == r_span,
             (
@@ -456,7 +461,14 @@ impl HashWithEngines for TyExpressionVariant {
                 rhs.hash(state, engines);
             }
             Self::ConstantExpression {
-                const_decl,
+                decl: const_decl,
+                span: _,
+                call_path: _,
+            } => {
+                const_decl.hash(state, engines);
+            }
+            Self::ConfigurableExpression {
+                decl: const_decl,
                 span: _,
                 call_path: _,
             } => {
@@ -655,7 +667,8 @@ impl SubstTypes for TyExpressionVariant {
                 lhs.subst(type_mapping, engines);
                 rhs.subst(type_mapping, engines);
             },
-            ConstantExpression { const_decl, .. } => const_decl.subst(type_mapping, engines),
+            ConstantExpression { decl, .. } => decl.subst(type_mapping, engines),
+            ConfigurableExpression { decl, .. } => decl.subst(type_mapping, engines),
             VariableExpression { .. } => HasChanges::No,
             Tuple { fields } => fields.subst(type_mapping, engines),
             Array {
@@ -843,8 +856,9 @@ impl ReplaceDecls for TyExpressionVariant {
                     has_changes |= (*rhs).replace_decls(decl_mapping, handler, ctx)?;
                     Ok(has_changes)
                 }
-                ConstantExpression { const_decl, .. } => {
-                    const_decl.replace_decls(decl_mapping, handler, ctx)
+                ConstantExpression { decl, .. } => decl.replace_decls(decl_mapping, handler, ctx),
+                ConfigurableExpression { decl, .. } => {
+                    decl.replace_decls(decl_mapping, handler, ctx)
                 }
                 VariableExpression { .. } => Ok(false),
                 Tuple { fields } => {
@@ -1004,8 +1018,11 @@ impl TypeCheckAnalysis for TyExpressionVariant {
                 lhs.type_check_analyze(handler, ctx)?;
                 rhs.type_check_analyze(handler, ctx)?
             }
-            TyExpressionVariant::ConstantExpression { const_decl, .. } => {
-                const_decl.type_check_analyze(handler, ctx)?
+            TyExpressionVariant::ConstantExpression { decl, .. } => {
+                decl.type_check_analyze(handler, ctx)?
+            }
+            TyExpressionVariant::ConfigurableExpression { decl, .. } => {
+                decl.type_check_analyze(handler, ctx)?
             }
             TyExpressionVariant::VariableExpression { .. } => {}
             TyExpressionVariant::Tuple { fields } => {
@@ -1121,8 +1138,11 @@ impl TypeCheckFinalization for TyExpressionVariant {
                     lhs.type_check_finalize(handler, ctx)?;
                     rhs.type_check_finalize(handler, ctx)?
                 }
-                TyExpressionVariant::ConstantExpression { const_decl, .. } => {
-                    const_decl.type_check_finalize(handler, ctx)?
+                TyExpressionVariant::ConstantExpression { decl, .. } => {
+                    decl.type_check_finalize(handler, ctx)?
+                }
+                TyExpressionVariant::ConfigurableExpression { decl, .. } => {
+                    decl.type_check_finalize(handler, ctx)?
                 }
                 TyExpressionVariant::VariableExpression { .. } => {}
                 TyExpressionVariant::Tuple { fields } => {
@@ -1234,14 +1254,15 @@ impl UpdateConstantExpression for TyExpressionVariant {
                 (*lhs).update_constant_expression(engines, implementing_type);
                 (*rhs).update_constant_expression(engines, implementing_type);
             }
-            ConstantExpression {
-                ref mut const_decl, ..
-            } => {
+            ConstantExpression { ref mut decl, .. } => {
                 if let Some(impl_const) =
-                    find_const_decl_from_impl(implementing_type, engines.de(), const_decl)
+                    find_const_decl_from_impl(implementing_type, engines.de(), decl)
                 {
-                    *const_decl = Box::new(impl_const);
+                    *decl = Box::new(impl_const);
                 }
+            }
+            ConfigurableExpression { .. } => {
+                unreachable!()
             }
             VariableExpression { .. } => (),
             Tuple { fields } => fields
@@ -1425,8 +1446,11 @@ impl DebugWithEngines for TyExpressionVariant {
                     elem_to_access_num
                 )
             }
-            TyExpressionVariant::ConstantExpression { const_decl, .. } => {
-                format!("\"{}\" constant exp", const_decl.name().as_str())
+            TyExpressionVariant::ConstantExpression { decl, .. } => {
+                format!("\"{}\" constant exp", decl.name().as_str())
+            }
+            TyExpressionVariant::ConfigurableExpression { decl, .. } => {
+                format!("\"{}\" configurable exp", decl.name().as_str())
             }
             TyExpressionVariant::VariableExpression { name, .. } => {
                 format!("\"{}\" variable exp", name.as_str())

@@ -1,9 +1,5 @@
 library;
 
-// ANCHOR: to_u32_import
-use std::{primitive_conversions::{u32::*, u64::*,},};
-// ANCHOR_END: to_u32_import
-
 pub fn convert_uint_to_u32() {
     // Convert any unsigned integer to `u32`
     // ANCHOR: to_u32
