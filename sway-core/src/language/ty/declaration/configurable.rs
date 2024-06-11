@@ -7,7 +7,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclMapping, ReplaceDecls},
+    decl_engine::{DeclId, DeclMapping, DeclRef, ReplaceDecls},
     engine_threading::*,
     has_changes,
     language::{ty::*, CallPath, Visibility},
@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-pub struct TyConstantDecl {
+pub struct TyConfigurableDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
@@ -25,16 +25,18 @@ pub struct TyConstantDecl {
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
+    // Only encoding v1 has a decode_fn
+    pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
 }
 
-impl DebugWithEngines for TyConstantDecl {
+impl DebugWithEngines for TyConfigurableDecl {
     fn fmt(&self, f: &mut fmt::Formatter<'_>, _engines: &Engines) -> fmt::Result {
         write!(f, "{}", self.call_path)
     }
 }
 
-impl EqWithEngines for TyConstantDecl {}
-impl PartialEqWithEngines for TyConstantDecl {
+impl EqWithEngines for TyConfigurableDecl {}
+impl PartialEqWithEngines for TyConfigurableDecl {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         let type_engine = ctx.engines().te();
         self.call_path == other.call_path
@@ -47,10 +49,10 @@ impl PartialEqWithEngines for TyConstantDecl {
     }
 }
 
-impl HashWithEngines for TyConstantDecl {
+impl HashWithEngines for TyConfigurableDecl {
     fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
         let type_engine = engines.te();
-        let TyConstantDecl {
+        let TyConfigurableDecl {
             call_path,
             value,
             visibility,
@@ -60,6 +62,7 @@ impl HashWithEngines for TyConstantDecl {
             // reliable source of obj v. obj distinction
             attributes: _,
             span: _,
+            decode_fn: _, // this is defined entirely by the type ascription
         } = self;
         call_path.hash(state);
         value.hash(state, engines);
@@ -69,19 +72,19 @@ impl HashWithEngines for TyConstantDecl {
     }
 }
 
-impl Named for TyConstantDecl {
+impl Named for TyConfigurableDecl {
     fn name(&self) -> &Ident {
         &self.call_path.suffix
     }
 }
 
-impl Spanned for TyConstantDecl {
+impl Spanned for TyConfigurableDecl {
     fn span(&self) -> Span {
         self.span.clone()
     }
 }
 
-impl SubstTypes for TyConstantDecl {
+impl SubstTypes for TyConfigurableDecl {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         has_changes! {
             self.return_type.subst(type_mapping, engines);
@@ -91,7 +94,7 @@ impl SubstTypes for TyConstantDecl {
     }
 }
 
-impl ReplaceDecls for TyConstantDecl {
+impl ReplaceDecls for TyConfigurableDecl {
     fn replace_decls_inner(
         &mut self,
         decl_mapping: &DeclMapping,

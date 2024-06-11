@@ -19,13 +19,20 @@ use crate::{
     instruction::{FuelVmInstruction, InstOp},
     value::{Value, ValueDatum},
     BranchToWithArgs, DebugWithContext, Instruction, InstructionInserter, InstructionIterator,
-    Type,
+    Module, Type,
 };
 
 /// A wrapper around an [ECS](https://github.com/orlp/slotmap) handle into the
 /// [`Context`].
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, DebugWithContext)]
 pub struct Block(pub slotmap::DefaultKey);
+
+impl Block {
+    pub fn get_module<'a>(&self, context: &'a Context) -> &'a Module {
+        let f = context.blocks[self.0].function;
+        &context.functions[f.0].module
+    }
+}
 
 #[doc(hidden)]
 pub struct BlockContent {

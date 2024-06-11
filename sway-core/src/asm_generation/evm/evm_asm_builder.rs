@@ -2,9 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     asm_generation::{
-        asm_builder::{AsmBuilder, AsmBuilderResult},
-        from_ir::StateAccessType,
-        ProgramKind,
+        asm_builder::AsmBuilder, from_ir::StateAccessType, fuel::data_section::DataSection,
+        instruction_set::InstructionSet, FinalizedAsm, ProgramABI, ProgramKind,
     },
     asm_lang::Label,
     metadata::MetadataManager,
@@ -108,28 +107,14 @@ impl<'ir, 'eng> AsmBuilder for EvmAsmBuilder<'ir, 'eng> {
         self.compile_function(handler, function)
     }
 
-    fn finalize(&self) -> AsmBuilderResult {
-        self.finalize()
-    }
-}
+    fn compile_configurable(&mut self, _config: &ConfigContent) {}
 
-#[allow(unused_variables)]
-#[allow(dead_code)]
-impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
-    pub fn new(program_kind: ProgramKind, context: &'ir Context<'eng>) -> Self {
-        Self {
-            program_kind,
-            sections: Vec::new(),
-            func_label_map: HashMap::new(),
-            block_label_map: HashMap::new(),
-            context,
-            md_mgr: MetadataManager::default(),
-            label_idx: 0,
-            cur_section: None,
-        }
-    }
-
-    pub fn finalize(&self) -> AsmBuilderResult {
+    fn finalize(
+        self,
+        _handler: &Handler,
+        _build_config: Option<&crate::BuildConfig>,
+        _fallback_fn: Option<Label>,
+    ) -> Result<FinalizedAsm, ErrorEmitted> {
         let mut global_ops = Vec::new();
         let mut global_abi = Vec::new();
 
@@ -156,11 +141,29 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
         ctor.ops.append(&mut global_ops);
         global_abi.append(&mut ctor.abi);
 
-        AsmBuilderResult::Evm(EvmAsmBuilderResult {
+        let final_program = EvmFinalProgram {
             ops: ctor.ops.clone(),
-            ops_runtime: ctor.ops,
             abi: global_abi,
-        })
+        };
+
+        Ok(final_program.finalize())
+    }
+}
+
+#[allow(unused_variables)]
+#[allow(dead_code)]
+impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
+    pub fn new(program_kind: ProgramKind, context: &'ir Context<'eng>) -> Self {
+        Self {
+            program_kind,
+            sections: Vec::new(),
+            func_label_map: HashMap::new(),
+            block_label_map: HashMap::new(),
+            context,
+            md_mgr: MetadataManager::default(),
+            label_idx: 0,
+            cur_section: None,
+        }
     }
 
     fn generate_constructor(
@@ -340,6 +343,7 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
                     indices,
                 } => self.compile_get_elem_ptr(instr_val, base, elem_ptr_ty, indices),
                 InstOp::GetLocal(local_var) => self.compile_get_local(instr_val, local_var),
+                InstOp::GetConfig(_, name) => self.compile_get_config(instr_val, name),
                 InstOp::IntToPtr(val, _) => self.compile_int_to_ptr(instr_val, val),
                 InstOp::Load(src_val) => self.compile_load(handler, instr_val, src_val)?,
                 InstOp::MemCopyBytes {
@@ -469,6 +473,10 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
     }
 
     fn compile_get_local(&mut self, instr_val: &Value, local_var: &LocalVar) {
+        todo!();
+    }
+
+    fn compile_get_config(&mut self, instr_val: &Value, name: &str) {
         todo!();
     }
 
@@ -706,5 +714,24 @@ impl<'ir, 'eng> EvmAsmBuilder<'ir, 'eng> {
             self.block_label_map.insert(*block, label);
             label
         })
+    }
+}
+
+struct EvmFinalProgram {
+    ops: Vec<etk_asm::ops::AbstractOp>,
+    abi: Vec<ethabi::operation::Operation>,
+}
+
+impl EvmFinalProgram {
+    fn finalize(self) -> FinalizedAsm {
+        FinalizedAsm {
+            data_section: DataSection {
+                ..Default::default()
+            },
+            program_section: InstructionSet::Evm { ops: self.ops },
+            program_kind: ProgramKind::Script,
+            entries: vec![],
+            abi: Some(ProgramABI::Evm(self.abi)),
+        }
     }
 }

@@ -103,8 +103,6 @@ pub struct TypeCheckContext<'a> {
 
     /// Set of experimental flags
     pub experimental: ExperimentalFlags,
-
-    pub inside_configurable: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -132,7 +130,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: false,
             storage_declaration: false,
             experimental,
-            inside_configurable: false,
         }
     }
 
@@ -175,7 +172,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: false,
             storage_declaration: false,
             experimental,
-            inside_configurable: false,
         }
     }
 
@@ -206,7 +202,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-            inside_configurable: self.inside_configurable,
         }
     }
 
@@ -234,7 +229,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-            inside_configurable: self.inside_configurable,
         };
         with_scoped_ctx(ctx)
     }
@@ -263,7 +257,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-            inside_configurable: self.inside_configurable,
         };
         Ok((with_scoped_ctx(ctx)?, namespace))
     }

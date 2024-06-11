@@ -8,8 +8,8 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_to_asm, compile_to_ast, ir_generation::compile_program, namespace, BuildTarget,
-    Engines,
+    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program, namespace,
+    BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
 
@@ -421,7 +421,7 @@ pub(super) async fn run(
 
                             // Compile to ASM.
                             let handler = Handler::default();
-                            let asm_result = compile_ir_to_asm(&handler, &ir, None);
+                            let asm_result = compile_ir_context_to_finalized_asm(&handler, &ir, None);
                             let (errors, _warnings) = handler.consume();
 
                             if asm_result.is_err() || !errors.is_empty() {

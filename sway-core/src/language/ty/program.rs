@@ -21,7 +21,7 @@ pub struct TyProgram {
     pub kind: TyProgramKind,
     pub root: TyModule,
     pub declarations: Vec<TyDecl>,
-    pub configurables: Vec<TyConstantDecl>,
+    pub configurables: Vec<TyConfigurableDecl>,
     pub storage_slots: Vec<StorageSlot>,
     pub logged_types: Vec<(LogId, TypeId)>,
     pub messages_types: Vec<(MessageId, TypeId)>,
@@ -65,15 +65,15 @@ impl TyProgram {
         kind: parsed::TreeType,
         package_name: &str,
         experimental: ExperimentalFlags,
-    ) -> Result<(TyProgramKind, Vec<TyDecl>, Vec<TyConstantDecl>), ErrorEmitted> {
+    ) -> Result<(TyProgramKind, Vec<TyDecl>, Vec<TyConfigurableDecl>), ErrorEmitted> {
         // Extract program-kind-specific properties from the root nodes.
 
         let ty_engine = engines.te();
         let decl_engine = engines.de();
 
         // Validate all submodules
-        let mut non_configurables_constants = Vec::<TyConstantDecl>::new();
-        let mut configurables = Vec::<TyConstantDecl>::new();
+        let mut non_configurables_constants = vec![];
+        let mut configurables = vec![];
         for (_, submodule) in &root.submodules {
             match Self::validate_root(
                 handler,
@@ -118,12 +118,15 @@ impl TyProgram {
                     decl_id,
                     ..
                 })) => {
-                    let config_decl = (*decl_engine.get_constant(decl_id)).clone();
-                    if config_decl.is_configurable {
-                        configurables.push(config_decl);
-                    } else {
-                        non_configurables_constants.push(config_decl);
-                    }
+                    let decl = (*decl_engine.get_constant(decl_id)).clone();
+                    non_configurables_constants.push(decl);
+                }
+                TyAstNodeContent::Declaration(TyDecl::ConfigurableDecl(ConfigurableDecl {
+                    decl_id,
+                    ..
+                })) => {
+                    let decl = (*decl_engine.get_configurable(decl_id)).clone();
+                    configurables.push(decl);
                 }
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself, except for ABI supertraits, which do not expose their methods to

@@ -203,6 +203,7 @@ pub(crate) enum VirtualOp {
     // subtly complex: $rB is in bytes and points to some mem address. The immediate
     // third argument is a _word_ offset from that byte address.
     LoadDataId(VirtualRegister, DataId),
+    AddrDataId(VirtualRegister, DataId),
     Undefined,
 }
 
@@ -314,6 +315,8 @@ impl VirtualOp {
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
             LoadDataId(r1, _i) => vec![r1],
+            AddrDataId(r1, _) => vec![r1],
+
             Undefined => vec![],
         })
         .into_iter()
@@ -370,6 +373,7 @@ impl VirtualOp {
             | GTF(_, _, _)
             // Virtual OPs
             | LoadDataId(_, _)
+            | AddrDataId(_, _)
              => self.def_registers().iter().any(|vreg| matches!(vreg, VirtualRegister::Constant(_))),
             // Memory write and jump
             WQOP(_, _, _, _)
@@ -527,6 +531,7 @@ impl VirtualOp {
             | BLOB(_)
             | DataSectionOffsetPlaceholder
             | LoadDataId(_, _)
+            | AddrDataId(_, _)
             | Undefined => vec![],
         })
         .into_iter()
@@ -640,6 +645,8 @@ impl VirtualOp {
             BLOB(_imm) => vec![],
             DataSectionOffsetPlaceholder => vec![],
             LoadDataId(_r1, _i) => vec![],
+            AddrDataId(_r1, _i) => vec![],
+
             Undefined => vec![],
         })
         .into_iter()
@@ -754,6 +761,7 @@ impl VirtualOp {
             /* Non-VM Instructions */
             BLOB(_imm) => vec![],
             LoadDataId(r1, _i) => vec![r1],
+            AddrDataId(r1, _i) => vec![r1],
             DataSectionOffsetPlaceholder => vec![],
             Undefined => vec![],
         })
@@ -1180,6 +1188,7 @@ impl VirtualOp {
             BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
             LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
+            AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
         }
     }
@@ -1637,6 +1646,9 @@ impl VirtualOp {
             DataSectionOffsetPlaceholder => AllocatedOpcode::DataSectionOffsetPlaceholder,
             LoadDataId(reg1, label) => {
                 AllocatedOpcode::LoadDataId(map_reg(&mapping, reg1), label.clone())
+            }
+            AddrDataId(reg1, label) => {
+                AllocatedOpcode::AddrDataId(map_reg(&mapping, reg1), label.clone())
             }
             Undefined => AllocatedOpcode::Undefined,
         }

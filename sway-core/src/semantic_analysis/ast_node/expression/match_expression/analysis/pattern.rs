@@ -120,6 +120,7 @@ impl Pattern {
             ty::TyScrutineeVariant::Variable(_) => Pattern::Wildcard,
             ty::TyScrutineeVariant::Literal(value) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::Constant(_, value, _) => Pattern::from_literal(value),
+            ty::TyScrutineeVariant::Configurable(_, value, _) => Pattern::from_literal(value),
             ty::TyScrutineeVariant::StructScrutinee {
                 struct_ref,
                 fields,

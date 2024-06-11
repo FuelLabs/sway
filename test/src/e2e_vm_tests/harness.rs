@@ -276,7 +276,7 @@ pub(crate) async fn compile_to_bytes(file_name: &str, run_config: &RunConfig) ->
             dca_graph: None,
             dca_graph_url_format: None,
             asm: run_config.print_asm,
-            bytecode: false,
+            bytecode: run_config.print_bytecode,
             ir: run_config.print_ir.clone(),
             reverse_order: false,
         },

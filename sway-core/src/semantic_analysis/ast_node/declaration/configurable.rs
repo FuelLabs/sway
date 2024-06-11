@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use sway_error::{
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
@@ -5,30 +7,30 @@ use sway_error::{
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
+    decl_engine::{DeclEngineInsert, ReplaceDecls},
     language::{
-        parsed::{self, *},
-        ty::{self, TyConstantDecl},
+        parsed::*,
+        ty::{self, TyConfigurableDecl},
         CallPath,
     },
     semantic_analysis::{type_check_context::EnforceTypeArguments, *},
-    Engines, SubstTypes, TypeInfo,
+    SubstTypes, TypeArgument, TypeBinding, TypeCheckTypeBinding, TypeInfo,
 };
 
-impl ty::TyConstantDecl {
+impl ty::TyConfigurableDecl {
     pub fn type_check(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        decl: ConstantDeclaration,
+        decl: ConfigurableDeclaration,
     ) -> Result<Self, ErrorEmitted> {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        let ConstantDeclaration {
+        let ConfigurableDeclaration {
             name,
             span,
             mut type_ascription,
             value,
-            is_configurable,
             attributes,
             visibility,
         } = decl;
@@ -53,8 +55,8 @@ impl ty::TyConstantDecl {
             })
         }
 
-        // Configurables will be encoded and must be type_checked into "slice"
-        let (value, return_type) = if is_configurable && ctx.experimental.new_encoding {
+        // Configurables using encoding v1 will be encoded and must be type_checked into "slice"
+        let (value, decode_fn) = if ctx.experimental.new_encoding {
             let mut ctx = ctx
                 .by_ref()
                 .with_type_annotation(type_engine.insert(engines, TypeInfo::RawUntypedSlice, None))
@@ -65,11 +67,61 @@ impl ty::TyConstantDecl {
                     .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
             });
 
-            (
-                value,
-                type_engine.insert(engines, TypeInfo::RawUntypedSlice, None),
-            )
+            let mut arguments = VecDeque::default();
+            arguments.push_back(
+                engines
+                    .te()
+                    .insert(engines, TypeInfo::RawUntypedSlice, None),
+            );
+            arguments.push_back(engines.te().insert(
+                engines,
+                TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
+                None,
+            ));
+            arguments.push_back(
+                engines
+                    .te()
+                    .insert(engines, TypeInfo::RawUntypedSlice, None),
+            );
+
+            let (decode_fn_ref, _, _): (crate::decl_engine::DeclRefFunction, _, _) =
+                crate::TypeBinding::type_check(
+                    &mut TypeBinding::<CallPath> {
+                        inner: CallPath {
+                            prefixes: vec![],
+                            suffix: sway_types::Ident::new_no_span("abi_decode_in_place".into()),
+                            is_absolute: false,
+                        },
+                        type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
+                            type_id: type_ascription.type_id,
+                            initial_type_id: type_ascription.type_id,
+                            span: sway_types::Span::dummy(),
+                            call_path_tree: None,
+                        }]),
+                        span: sway_types::Span::dummy(),
+                    },
+                    handler,
+                    ctx.by_ref(),
+                )
+                .unwrap();
+
+            let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_ref)).clone();
+            let decl_mapping = crate::TypeParameter::gather_decl_mapping_from_trait_constraints(
+                handler,
+                ctx.by_ref(),
+                &decode_fn_decl.type_parameters,
+                decode_fn_decl.name.as_str(),
+                &span,
+            )?;
+            decode_fn_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            let decode_fn_ref = engines
+                .de()
+                .insert(decode_fn_decl)
+                .with_parent(engines.de(), (*decode_fn_ref.id()).into());
+
+            (value, Some(decode_fn_ref))
         } else {
+            // while configurables using encoding v0 will typed as the configurable type itself
             let mut ctx = ctx
                 .by_ref()
                 .with_type_annotation(type_ascription.type_id)
@@ -82,62 +134,27 @@ impl ty::TyConstantDecl {
                 ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
             });
-            // Integers are special in the sense that we can't only rely on the type of `expression`
-            // to get the type of the variable. The type of the variable *has* to follow
-            // `type_ascription` if `type_ascription` is a concrete integer type that does not
-            // conflict with the type of `expression` (i.e. passes the type checking above).
-            let return_type = match &*type_engine.get(type_ascription.type_id) {
-                TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-                _ => match &value {
-                    Some(value) => value.return_type,
-                    None => type_ascription.type_id,
-                },
-            };
 
-            (value, return_type)
+            (value, None)
         };
 
         let mut call_path: CallPath = name.into();
         call_path = call_path.to_fullpath(engines, ctx.namespace());
 
-        // create the const decl
-        let decl = ty::TyConstantDecl {
+        Ok(ty::TyConfigurableDecl {
             call_path,
             attributes,
-            return_type,
+            return_type: type_ascription.type_id,
             type_ascription,
             span,
             value,
+            decode_fn,
             visibility,
-        };
-        Ok(decl)
-    }
-
-    /// Used to create a stubbed out constant when the constant fails to
-    /// compile, preventing cascading namespace errors.
-    pub(crate) fn error(engines: &Engines, decl: parsed::ConstantDeclaration) -> TyConstantDecl {
-        let type_engine = engines.te();
-        let parsed::ConstantDeclaration {
-            name,
-            span,
-            visibility,
-            type_ascription,
-            ..
-        } = decl;
-        let call_path: CallPath = name.into();
-        TyConstantDecl {
-            call_path,
-            span,
-            attributes: Default::default(),
-            return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
-            type_ascription,
-            value: None,
-            visibility,
-        }
+        })
     }
 }
 
-impl TypeCheckAnalysis for TyConstantDecl {
+impl TypeCheckAnalysis for TyConfigurableDecl {
     fn type_check_analyze(
         &self,
         handler: &Handler,
@@ -150,7 +167,7 @@ impl TypeCheckAnalysis for TyConstantDecl {
     }
 }
 
-impl TypeCheckFinalization for TyConstantDecl {
+impl TypeCheckFinalization for TyConfigurableDecl {
     fn type_check_finalize(
         &mut self,
         handler: &Handler,
