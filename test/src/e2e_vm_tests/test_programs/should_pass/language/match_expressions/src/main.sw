@@ -18,7 +18,7 @@ fn inc_i(ref mut i: u64) -> Struct {
     Struct { x: 21, y: 21, z: 1 }
 }
 
-fn main() -> u64 {
+fn main() {
     let x = match 8 {
         7 => { 4 },
         9 => { 5 },
@@ -86,8 +86,18 @@ fn main() -> u64 {
     };
     assert(i == 11);
 
-    match 42 {
+    let r = match 42 {
         0 => { 24 },
         foo => { foo },
-    }
+    };
+    assert(r == 42);
+
+    // string slice
+
+    let r = match "b" {
+        "get_a" => { 1 },
+        "get_b" => { 2 },
+        _ => { 3 },
+    };
+    assert(r == 2);
 }
