@@ -1355,12 +1355,13 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         src: &ModulePath,
+	visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .star_import(handler, engines, src, &mod_path)
+            .star_import(handler, engines, src, &mod_path, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -1369,12 +1370,13 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &ModulePath,
         enum_name: &Ident,
+	visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .variant_star_import(handler, engines, src, &mod_path, enum_name)
+            .variant_star_import(handler, engines, src, &mod_path, enum_name, visibility)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -1383,12 +1385,13 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &ModulePath,
         alias: Option<Ident>,
+	visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .self_import(handler, engines, src, &mod_path, alias)
+            .self_import(handler, engines, src, &mod_path, alias, visibility)
     }
 
     // Import all impls for a struct/enum. Do nothing for other types.
@@ -1437,12 +1440,13 @@ impl<'a> TypeCheckContext<'a> {
         src: &ModulePath,
         item: &Ident,
         alias: Option<Ident>,
+	visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
             .root
-            .item_import(handler, engines, src, item, &mod_path, alias)
+            .item_import(handler, engines, src, item, &mod_path, alias, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -1454,6 +1458,7 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
+	visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
@@ -1465,6 +1470,7 @@ impl<'a> TypeCheckContext<'a> {
             variant_name,
             &mod_path,
             alias,
+	    visibility,
         )
     }
 

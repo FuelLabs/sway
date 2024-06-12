@@ -4,7 +4,7 @@ use crate::{
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
-        CallPath,
+        CallPath, Visibility,
     },
     namespace::*,
     semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
@@ -36,9 +36,11 @@ impl ResolvedFunctionDecl {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
+
 type SourceIdent = Ident;
-pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ty::TyDecl)>>;
-pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl)>;
+
+pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ty::TyDecl, Visibility)>>;
+pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl, Visibility)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -466,7 +468,7 @@ impl Items {
             );
         }
 
-        if let Some((ident, (imported_ident, _, decl))) =
+        if let Some((ident, (imported_ident, _, decl, _))) =
             self.use_item_synonyms.get_key_value(&name)
         {
             append_shadowing_error_typed(
@@ -496,12 +498,14 @@ impl Items {
         symbol: Ident,
         src_path: ModulePathBuf,
         decl: &ty::TyDecl,
+	visibility: Visibility,
     ) {
         if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
             // Name already bound. Check if the decl is already imported
             let ctx = PartialEqWithEnginesContext::new(engines);
-            match cur_decls.iter().position(|(cur_path, cur_decl)| {
+            match cur_decls.iter().position(|(cur_path, cur_decl, _)| {
                 cur_decl.eq(decl, &ctx)
+		    // TODO: This shouldn't be necessary anymore
         // For some reason the equality check is not sufficient. In some cases items that
         // are actually identical fail the eq check, so we have to add heuristics for these
         // cases.
@@ -524,15 +528,15 @@ impl Items {
                     // This appears to be an issue with the core prelude, and will probably no
                     // longer be necessary once reexports are implemented:
                     // https://github.com/FuelLabs/sway/issues/3113
-                    cur_decls[index] = (src_path.to_vec(), decl.clone());
+                    cur_decls[index] = (src_path.to_vec(), decl.clone(), visibility);
                 }
                 None => {
                     // New decl for this name. Add it to the end
-                    cur_decls.push((src_path.to_vec(), decl.clone()));
+                    cur_decls.push((src_path.to_vec(), decl.clone(), visibility));
                 }
             }
         } else {
-            let new_vec = vec![(src_path.to_vec(), decl.clone())];
+            let new_vec = vec![(src_path.to_vec(), decl.clone(), visibility)];
             self.use_glob_synonyms.insert(symbol, new_vec);
         }
     }

@@ -146,7 +146,7 @@ fn handle_item_trait_imports(
     let root_mod = &ctx.namespace().root().module;
     let dst_mod = ctx.namespace.module(engines);
 
-    for (_, (_, src, decl)) in dst_mod.current_items().use_item_synonyms.iter() {
+    for (_, (_, src, decl, _)) in dst_mod.current_items().use_item_synonyms.iter() {
         let src_mod = root_mod.lookup_submodule(handler, engines, src)?;
 
         //  if this is an enum or struct or function, import its implementations
@@ -207,7 +207,7 @@ fn handle_use_statement(
         ImportType::Star => {
             // try a standard starimport first
             let star_import_handler = Handler::default();
-            let import = ctx.star_import(&star_import_handler, &path);
+            let import = ctx.star_import(&star_import_handler, &path, stmt.reexport);
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
@@ -216,7 +216,7 @@ fn handle_use_statement(
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
                     let variant_import =
-                        ctx.variant_star_import(&variant_import_handler, path, enum_name);
+                        ctx.variant_star_import(&variant_import_handler, path, enum_name, stmt.reexport);
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -230,11 +230,11 @@ fn handle_use_statement(
                 }
             }
         }
-        ImportType::SelfImport(_) => ctx.self_import(handler, &path, stmt.alias.clone()),
+        ImportType::SelfImport(_) => ctx.self_import(handler, &path, stmt.alias.clone(), stmt.reexport),
         ImportType::Item(ref s) => {
             // try a standard item import first
             let item_import_handler = Handler::default();
-            let import = ctx.item_import(&item_import_handler, &path, s, stmt.alias.clone());
+            let import = ctx.item_import(&item_import_handler, &path, s, stmt.alias.clone(), stmt.reexport);
 
             if import.is_ok() {
                 handler.append(item_import_handler);
@@ -249,6 +249,7 @@ fn handle_use_statement(
                         enum_name,
                         s,
                         stmt.alias.clone(),
+			stmt.reexport
                     );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
