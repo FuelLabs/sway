@@ -1,5 +1,6 @@
-use std::ops::ControlFlow;
+use std::{collections::BTreeMap, ops::ControlFlow};
 
+use sway_ast::Literal;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
@@ -7,14 +8,19 @@ use crate::{
     compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
     language::{
         parsed::*,
-        ty::{self, TyExpression},
+        ty::{self, TyExpression, TyExpressionVariant},
     },
     semantic_analysis::{
         ast_node::expression::typed_expression::instantiate_if_expression,
         expression::match_expression::typed::instantiate::Instantiate, TypeCheckContext,
     },
-    CompileError, TypeId,
+    CompileError, TypeId, TypeInfo,
 };
+
+#[derive(Default, Debug)]
+struct TrieNode {
+    next: BTreeMap<char, usize>,
+}
 
 impl ty::TyMatchExpression {
     pub(crate) fn type_check(
@@ -58,7 +64,7 @@ impl ty::TyMatchExpression {
         Ok((typed_exp, typed_scrutinees))
     }
 
-    pub(crate) fn convert_to_typed_if_expression(
+    pub(crate) fn desugar(
         self,
         handler: &Handler,
         ctx: TypeCheckContext,
@@ -76,14 +82,60 @@ impl ty::TyMatchExpression {
             );
         }
 
-        let typed_if_exp = handler.scope(|handler| {
-            self.convert_to_typed_if_expression_inner(instantiate, ctx, handler)
-        })?;
+        let typed_if_exp =
+            handler.scope(
+                |handler| match &*ctx.engines().te().get(self.value_type_id) {
+                    TypeInfo::StringSlice => self.desugar_to_radix_tree(instantiate, ctx, handler),
+                    _ => self.desugar_to_typed_if_expression(instantiate, ctx, handler),
+                },
+            )?;
 
         Ok(typed_if_exp)
     }
 
-    fn convert_to_typed_if_expression_inner(
+    fn desugar_to_radix_tree(
+        &self,
+        instantiate: Instantiate,
+        mut ctx: TypeCheckContext<'_>,
+        handler: &Handler,
+    ) -> Result<TyExpression, ErrorEmitted> {
+        let mut branches = self
+            .branches
+            .iter()
+            .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
+                Some(TyExpressionVariant::FunctionApplication { arguments, .. }) => {
+                    match &arguments[1].1.expression {
+                        TyExpressionVariant::Literal(crate::language::Literal::String(v)) => {
+                            Some(v.as_str().to_string())
+                        }
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        let mut nodes = vec![TrieNode::default()];
+        for b in branches {
+            let mut current = 0;
+            for c in b.chars() {
+                if let Some(next) = nodes[current].next.get(&c) {
+                    current = *next;
+                    continue;
+                }
+
+                let next = nodes.len();
+                nodes[current].next.insert(c, next);
+                current = next;
+                nodes.push(TrieNode::default());
+            }
+        }
+        dbg!(nodes);
+
+        todo!("desugar_to_radix_tree");
+    }
+
+    fn desugar_to_typed_if_expression(
         &self,
         instantiate: Instantiate,
         mut ctx: TypeCheckContext<'_>,
