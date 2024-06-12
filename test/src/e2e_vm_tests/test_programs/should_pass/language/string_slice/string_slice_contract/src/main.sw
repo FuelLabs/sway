@@ -12,7 +12,7 @@ impl MyContract for Contract {
 
 #[test]
 fn test_success() {
-    let contract_id = 0x403f0f71c484bf32babd07717ea3c3ff0710f47a9b9aef8023292fa2b740f6c6;
+    let contract_id = 0xdf476984192908f69312709c24090819fd64b3d2efa974bafd616c1811cd5572;
     let caller = abi(MyContract, contract_id);
     let result = caller.test_function("a");
     assert(result == "a")
