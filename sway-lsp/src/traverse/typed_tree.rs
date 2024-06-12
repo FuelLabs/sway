@@ -76,6 +76,7 @@ impl Parse for ty::TyDecl {
         match self {
             ty::TyDecl::VariableDecl(decl) => decl.parse(ctx),
             ty::TyDecl::ConstantDecl(decl) => decl.parse(ctx),
+            ty::TyDecl::ConfigurableDecl(decl) => decl.parse(ctx),
             ty::TyDecl::FunctionDecl(decl) => decl.parse(ctx),
             ty::TyDecl::TraitDecl(decl) => decl.parse(ctx),
             ty::TyDecl::StructDecl(decl) => decl.parse(ctx),
@@ -271,12 +272,23 @@ impl Parse for ty::TyExpression {
                 rhs.parse(ctx);
             }
             ty::TyExpressionVariant::ConstantExpression {
-                ref const_decl,
+                ref decl,
                 span,
                 call_path,
                 ..
             } => {
-                collect_const_decl(ctx, const_decl, Some(&Ident::new(span.clone())));
+                collect_const_decl(ctx, decl, Some(&Ident::new(span.clone())));
+                if let Some(call_path) = call_path {
+                    collect_call_path_prefixes(ctx, &call_path.prefixes);
+                }
+            }
+            ty::TyExpressionVariant::ConfigurableExpression {
+                ref decl,
+                span,
+                call_path,
+                ..
+            } => {
+                collect_configurable_decl(ctx, decl, Some(&Ident::new(span.clone())));
                 if let Some(call_path) = call_path {
                     collect_call_path_prefixes(ctx, &call_path.prefixes);
                 }
@@ -590,6 +602,13 @@ impl Parse for ty::ConstantDecl {
     fn parse(&self, ctx: &ParseContext) {
         let const_decl = ctx.engines.de().get_constant(&self.decl_id);
         collect_const_decl(ctx, &const_decl, None);
+    }
+}
+
+impl Parse for ty::ConfigurableDecl {
+    fn parse(&self, ctx: &ParseContext) {
+        let decl = ctx.engines.de().get_configurable(&self.decl_id);
+        collect_configurable_decl(ctx, &decl, None);
     }
 }
 
@@ -962,15 +981,21 @@ impl Parse for ty::TyIntrinsicFunctionKind {
 impl Parse for ty::TyScrutinee {
     fn parse(&self, ctx: &ParseContext) {
         use ty::TyScrutineeVariant::{
-            CatchAll, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple, Variable,
+            CatchAll, Configurable, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple,
+            Variable,
         };
         match &self.variant {
             CatchAll => {}
-            Constant(name, _, const_decl) => {
+            Constant(name, _, decl) => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
                     token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
-                    token.type_def =
-                        Some(TypeDefinition::Ident(const_decl.call_path.suffix.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
+                }
+            }
+            Configurable(name, _, decl) => {
+                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
+                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
+                    token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
                 }
             }
             Literal(_) => {
@@ -1204,6 +1229,25 @@ fn collect_const_decl(ctx: &ParseContext, const_decl: &ty::TyConstantDecl, ident
         collect_call_path_tree(ctx, call_path_tree, &const_decl.type_ascription);
     }
     if let Some(value) = &const_decl.value {
+        value.parse(ctx);
+    }
+}
+
+fn collect_configurable_decl(
+    ctx: &ParseContext,
+    decl: &ty::TyConfigurableDecl,
+    ident: Option<&Ident>,
+) {
+    let key = ctx.ident(ident.unwrap_or(decl.name()));
+
+    if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&key) {
+        token.typed = Some(TypedAstToken::TypedConfigurableDeclaration(decl.clone()));
+        token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
+    }
+    if let Some(call_path_tree) = &decl.type_ascription.call_path_tree {
+        collect_call_path_tree(ctx, call_path_tree, &decl.type_ascription);
+    }
+    if let Some(value) = &decl.value {
         value.parse(ctx);
     }
 }

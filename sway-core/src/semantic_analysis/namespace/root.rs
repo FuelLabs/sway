@@ -98,7 +98,6 @@ impl Root {
         self.check_module_privacy(handler, engines, src)?;
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
-
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
         let mut symbols_and_decls = vec![];
         for (symbol, decl) in src_mod.current_items().symbols.iter() {

@@ -1,9 +1,9 @@
 use super::{
-    compile::compile_function,
     convert::*,
     lexical_map::LexicalMap,
     storage::{add_to_b256, get_storage_key},
     types::*,
+    CompiledFunctionCache,
 };
 use crate::{
     engine_threading::*,
@@ -11,7 +11,7 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind, TyConstantDecl, TyExpressionVariant},
+        ty::{self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpressionVariant},
         *,
     },
     metadata::MetadataManager,
@@ -95,7 +95,7 @@ pub(crate) struct FnCompiler<'eng> {
     block_to_continue_to: Option<Block>,
     current_fn_param: Option<ty::TyFunctionParameter>,
     lexical_map: LexicalMap,
-    recreated_fns: HashMap<(Span, Vec<TypeId>, Vec<TypeId>), Function>,
+    cache: &'eng mut CompiledFunctionCache,
     // This is a map from the type IDs of a logged type and the ID of the corresponding log
     logged_types_map: HashMap<TypeId, LogId>,
     // This is a map from the type IDs of a message data type and the ID of the corresponding smo
@@ -111,6 +111,7 @@ impl<'eng> FnCompiler<'eng> {
         function: Function,
         logged_types_map: &HashMap<TypeId, LogId>,
         messages_types_map: &HashMap<TypeId, MessageId>,
+        cache: &'eng mut CompiledFunctionCache,
     ) -> Self {
         let lexical_map = LexicalMap::from_iter(
             function
@@ -125,7 +126,7 @@ impl<'eng> FnCompiler<'eng> {
             block_to_break_to: None,
             block_to_continue_to: None,
             lexical_map,
-            recreated_fns: HashMap::new(),
+            cache,
             current_fn_param: None,
             logged_types_map: logged_types_map.clone(),
             messages_types_map: messages_types_map.clone(),
@@ -207,6 +208,9 @@ impl<'eng> FnCompiler<'eng> {
                     let tcd = self.engines.de().get_constant(decl_id);
                     self.compile_const_decl(context, md_mgr, &tcd, span_md_idx, false)?;
                     Ok(None)
+                }
+                ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { .. }) => {
+                    unreachable!()
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
                     let ted = self.engines.de().get_enum(decl_id);
@@ -484,9 +488,12 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::LazyOperator { op, lhs, rhs } => {
                 self.compile_lazy_op(context, md_mgr, op, lhs, rhs, span_md_idx)
             }
-            ty::TyExpressionVariant::ConstantExpression { const_decl, .. } => {
-                self.compile_const_expr(context, md_mgr, const_decl, span_md_idx)
-            }
+            ty::TyExpressionVariant::ConstantExpression {
+                decl: const_decl, ..
+            } => self.compile_const_expr(context, md_mgr, const_decl, span_md_idx),
+            ty::TyExpressionVariant::ConfigurableExpression {
+                decl: const_decl, ..
+            } => self.compile_config_expr(context, const_decl, span_md_idx),
             ty::TyExpressionVariant::VariableExpression {
                 name, call_path, ..
             } => self.compile_var_expr(context, call_path, name, span_md_idx),
@@ -962,7 +969,6 @@ impl<'eng> FnCompiler<'eng> {
                     None,
                     None,
                     &arguments[1],
-                    false,
                 )?;
                 let tx_field_id = match tx_field_id_constant.value {
                     ConstantValue::Uint(n) => n,
@@ -2438,87 +2444,15 @@ impl<'eng> FnCompiler<'eng> {
         callee: &ty::TyFunctionDecl,
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
-        // The compiler inlines everything very lazily.  Function calls include the body of the
-        // callee (i.e., the callee_body arg above). Library functions are provided in an initial
-        // namespace from Forc and when the parser builds the AST (or is it during type checking?)
-        // these function bodies are embedded.
-        //
-        // Here we build little single-use instantiations of the callee and then call them.  Naming
-        // is not yet absolute so we must ensure the function names are unique.
-        //
-
-        // Eventually we need to Do It Properly and inline into the AST only when necessary, and
-        // compile the standard library to an actual module.
-
-        // Get the callee from the cache if we've already compiled it.  We can't insert it with
-        // .entry() since `compile_function()` returns a Result we need to handle.  The key to our
-        // cache, to uniquely identify a function instance, is the span and the type IDs of any
-        // args and type parameters.  It's using the Sway types rather than IR types, which would
-        // be more accurate but also more fiddly.
-
-        let no_span = callee.span().as_str().is_empty();
-        let is_autogenerated = if let Some(s) = callee.span.source_id() {
-            context
-                .source_engine
-                .get_path(s)
-                .starts_with("<autogenerated>")
-        } else {
-            false
-        };
-        let (fn_key, item) = if no_span || is_autogenerated {
-            (None, None)
-        } else {
-            let fn_key = (
-                callee.span(),
-                callee
-                    .parameters
-                    .iter()
-                    .map(|p| p.type_argument.type_id)
-                    .collect(),
-                callee.type_parameters.iter().map(|tp| tp.type_id).collect(),
-            );
-
-            (
-                Some(fn_key.clone()),
-                self.recreated_fns.get(&fn_key).copied(),
-            )
-        };
-
-        let new_callee = match item {
-            Some(func) => func,
-            None => {
-                let callee_fn_decl = ty::TyFunctionDecl {
-                    type_parameters: Vec::new(),
-                    name: Ident::new(Span::from_string(format!(
-                        "{}_{}",
-                        callee.name,
-                        context.get_unique_id()
-                    ))),
-                    parameters: callee.parameters.clone(),
-                    ..callee.clone()
-                };
-                let is_entry = false;
-                let new_func = compile_function(
-                    self.engines,
-                    context,
-                    md_mgr,
-                    self.module,
-                    &callee_fn_decl,
-                    &self.logged_types_map,
-                    &self.messages_types_map,
-                    is_entry,
-                    None,
-                )
-                .map_err(|mut x| x.pop().unwrap())?
-                .unwrap();
-
-                if let Some(fn_key) = fn_key {
-                    self.recreated_fns.insert(fn_key, new_func);
-                }
-
-                new_func
-            }
-        };
+        let new_callee = self.cache.ty_function_decl_to_unique_function(
+            self.engines,
+            context,
+            self.module,
+            md_mgr,
+            callee,
+            &self.logged_types_map,
+            &self.messages_types_map,
+        )?;
 
         // Now actually call the new function.
         let mut args = Vec::with_capacity(ast_args.len());
@@ -2830,6 +2764,21 @@ impl<'eng> FnCompiler<'eng> {
         Ok(result)
     }
 
+    fn compile_config_expr(
+        &mut self,
+        context: &mut Context,
+        decl: &TyConfigurableDecl,
+        span_md_idx: Option<MetadataIndex>,
+    ) -> Result<TerminatorValue, CompileError> {
+        let name = decl.call_path.suffix.as_str();
+        let val = self
+            .current_block
+            .append(context)
+            .get_config(self.module, name.to_string())
+            .add_metadatum(context, span_md_idx);
+        Ok(TerminatorValue::new(val, context))
+    }
+
     fn compile_var_expr(
         &mut self,
         context: &mut Context,
@@ -2857,10 +2806,17 @@ impl<'eng> FnCompiler<'eng> {
             .get_global_constant(context, &call_path.as_vec_string())
         {
             Ok(TerminatorValue::new(const_val, context))
-        } else if let Some(config_val) = self
+        } else if self
             .module
-            .get_global_configurable(context, &call_path.as_vec_string())
+            .get_config(context, &call_path.suffix.to_string())
+            .is_some()
         {
+            let name = call_path.suffix.to_string();
+            let config_val = Value::new_instruction(
+                context,
+                self.current_block,
+                InstOp::GetConfig(self.module, name),
+            );
             Ok(TerminatorValue::new(config_val, context))
         } else {
             Err(CompileError::InternalOwned(
@@ -2950,10 +2906,7 @@ impl<'eng> FnCompiler<'eng> {
         // This is local to the function, so we add it to the locals, rather than the module
         // globals like other const decls.
         let ty::TyConstantDecl {
-            call_path,
-            value,
-            is_configurable,
-            ..
+            call_path, value, ..
         } = ast_const_decl;
 
         if let Some(value) = value {
@@ -2971,7 +2924,6 @@ impl<'eng> FnCompiler<'eng> {
                 Some(self),
                 call_path,
                 value,
-                *is_configurable,
             );
 
             if is_expression {
@@ -3375,7 +3327,6 @@ impl<'eng> FnCompiler<'eng> {
             None,
             Some(self),
             index_expr,
-            false,
         ) {
             let count = array_type.get_array_len(context).unwrap();
             if constant_value >= count {

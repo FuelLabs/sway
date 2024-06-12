@@ -293,6 +293,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         indices,
                     } => self.verify_get_elem_ptr(base, elem_ptr_ty, indices)?,
                     InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                    InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
                     InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     InstOp::Load(ptr) => self.verify_load(ptr)?,
                     InstOp::MemCopyBytes {
@@ -780,6 +781,14 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
             .values()
             .any(|var| var == local_var)
         {
+            Err(IrError::VerifyGetNonExistentPointer)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn verify_get_config(&self, module: Module, name: &str) -> Result<(), IrError> {
+        if !self.context.modules[module.0].configs.contains_key(name) {
             Err(IrError::VerifyGetNonExistentPointer)
         } else {
             Ok(())

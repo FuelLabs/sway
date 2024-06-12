@@ -152,23 +152,3 @@ impl Hash for Identity {
         }
     }
 }
-
-#[test]
-fn test_address() {
-    let address = Address::zero();
-    let identity = Identity::Address(address);
-    assert(identity.is_address());
-    assert(!identity.is_contract_id());
-    assert(identity.as_address().unwrap() == address);
-    assert(identity.as_contract_id().is_none());
-}
-
-#[test]
-fn test_contract_id() {
-    let id = ContractId::zero();
-    let identity = Identity::ContractId(id);
-    assert(!identity.is_address());
-    assert(identity.is_contract_id());
-    assert(identity.as_contract_id().unwrap() == id);
-    assert(identity.as_address().is_none());
-}

@@ -104,13 +104,11 @@ impl ty::TyConstantDecl {
         let decl = ty::TyConstantDecl {
             call_path,
             attributes,
-            is_configurable,
             return_type,
             type_ascription,
             span,
             value,
             visibility,
-            implementing_type: None,
         };
         Ok(decl)
     }
@@ -133,10 +131,8 @@ impl ty::TyConstantDecl {
             attributes: Default::default(),
             return_type: type_engine.insert(engines, TypeInfo::Unknown, None),
             type_ascription,
-            is_configurable: false,
             value: None,
             visibility,
-            implementing_type: None,
         }
     }
 }

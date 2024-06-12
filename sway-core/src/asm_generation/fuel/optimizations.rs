@@ -20,13 +20,14 @@ impl AbstractInstructionSet {
     // computations left untouched, to be later removed by a DCE pass.
     pub(crate) fn const_indexing_aggregates_function(mut self, data_section: &DataSection) -> Self {
         // Poor man's SSA (local ... per block).
-        #[derive(PartialEq, Eq, Hash, Clone)]
+        #[derive(PartialEq, Eq, Hash, Clone, Debug)]
         struct VRegDef {
             reg: VirtualRegister,
             ver: u32,
         }
 
         // What does a register contain?
+        #[derive(Debug)]
         enum RegContents {
             Constant(u64),
             BaseOffset(VRegDef, u64),
@@ -57,6 +58,9 @@ impl AbstractInstructionSet {
         }
 
         for op in &mut self.ops {
+            // Uncomment to debug what this optimization is doing
+            // let op_before = op.clone();
+
             fn process_add(
                 reg_contents: &mut FxHashMap<VirtualRegister, RegContents>,
                 latest_version: &mut FxHashMap<VirtualRegister, u32>,
@@ -135,16 +139,20 @@ impl AbstractInstructionSet {
                                 && ((offset / 8) + imm.value as u64)
                                     < compiler_constants::TWELVE_BITS =>
                         {
-                            let new_imm = VirtualImmediate12::new_unchecked(
-                                (offset / 8) + imm.value as u64,
-                                "Immediate offset too big for LW",
-                            );
-                            let new_lw = VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
-                            // The register defined is no more useful for us. Forget anything from its past.
-                            reg_contents.remove(dest);
-                            record_new_def(&mut latest_version, dest);
-                            // Replace the LW with a new one in-place.
-                            *op = new_lw;
+                            // bail if LW cannot read where this memory is
+                            if offset % 8 == 0 {
+                                let new_imm = VirtualImmediate12::new_unchecked(
+                                    (offset / 8) + imm.value as u64,
+                                    "Immediate offset too big for LW",
+                                );
+                                let new_lw =
+                                    VirtualOp::LW(dest.clone(), base_reg.reg.clone(), new_imm);
+                                // The register defined is no more useful for us. Forget anything from its past.
+                                reg_contents.remove(dest);
+                                record_new_def(&mut latest_version, dest);
+                                // Replace the LW with a new one in-place.
+                                *op = new_lw;
+                            }
                         }
                         _ => {
                             reg_contents.remove(dest);
@@ -182,6 +190,20 @@ impl AbstractInstructionSet {
                     reg_contents.clear();
                 }
             }
+
+            // Uncomment to debug what this optimization is doing
+            // let before = op_before.opcode.to_string();
+            // let after = op.opcode.to_string();
+
+            // println!("{}", before);
+            // if before != after {
+            //     println!("    optimized to");
+            //     println!("    {}", after);
+            //     println!("    using");
+            //     for (k, v) in reg_contents.iter() {
+            //         println!("    - {:?} -> {:?}", k, v);
+            //     }
+            // }
         }
 
         self
