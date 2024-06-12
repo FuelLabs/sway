@@ -9,7 +9,7 @@
         "vscode": {
             "extensions": [
                 "fuellabs.sway-vscode-plugin",
-                "rust-lang.rust-analyzer"
+                "rust-lang.rust-analyzer1"
             ]
         }
     }
