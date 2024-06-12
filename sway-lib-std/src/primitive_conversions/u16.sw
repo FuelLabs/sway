@@ -4,18 +4,6 @@ use ::convert::{From, TryFrom};
 use ::option::Option::{self, *};
 use ::u128::U128;
 
-impl u16 {
-    pub fn try_as_u8(self) -> Option<u8> {
-        if self <= u8::max().as_u16() {
-            Some(asm(input: self) {
-                input: u8
-            })
-        } else {
-            None
-        }
-    }
-}
-
 impl From<u8> for u16 {
     /// Casts a `u8` to a `u16`.
     ///
