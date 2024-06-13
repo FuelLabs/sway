@@ -91,18 +91,15 @@ pub(crate) fn instantiate_function_application(
 
         function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
 
-        let are_type_parameters_concrete = function_decl
-            .type_parameters
-            .iter()
-            .all(|p| p.type_id.is_concrete(engines));
         let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
 
         function_return_type_id = function_decl.return_type.type_id;
+        let function_is_type_check_finalized = function_decl.is_type_check_finalized;
         let new_decl_ref = decl_engine
             .insert(function_decl)
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
-        if method_sig.is_concrete(engines) && are_type_parameters_concrete {
+        if method_sig.is_concrete(engines) && function_is_type_check_finalized {
             ctx.engines().qe().insert_function(
                 engines,
                 function_ident,

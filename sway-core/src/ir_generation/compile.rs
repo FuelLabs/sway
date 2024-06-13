@@ -490,12 +490,20 @@ fn compile_fn(
         purity,
         span,
         is_trait_method_dummy,
+        is_type_check_finalized,
         ..
     } = ast_fn_decl;
 
     if *is_trait_method_dummy {
         return Err(vec![CompileError::InternalOwned(
             format!("Method {name} is a trait method dummy and was not properly replaced."),
+            span.clone(),
+        )]);
+    }
+
+    if !*is_type_check_finalized {
+        return Err(vec![CompileError::InternalOwned(
+            format!("Method {name} did not finalize type checking phase."),
             span.clone(),
         )]);
     }

@@ -55,6 +55,7 @@ pub struct TyFunctionDecl {
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub is_trait_method_dummy: bool,
+    pub is_type_check_finalized: bool,
     pub kind: TyFunctionDeclKind,
 }
 
@@ -182,6 +183,7 @@ impl HashWithEngines for TyFunctionDecl {
             implementing_for_typeid: _,
             where_clause: _,
             is_trait_method_dummy: _,
+            is_type_check_finalized: _,
             kind: _,
         } = self;
         name.hash(state);
@@ -341,6 +343,7 @@ impl TyFunctionDecl {
             type_parameters: Default::default(),
             where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
+            is_type_check_finalized: true,
             kind: match kind {
                 FunctionDeclarationKind::Default => TyFunctionDeclKind::Default,
                 FunctionDeclarationKind::Entry => TyFunctionDeclKind::Entry,

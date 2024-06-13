@@ -683,17 +683,12 @@ pub(crate) fn type_check_method_application(
             }
         }
 
-        let are_type_parameters_concrete = method
-            .type_parameters
-            .iter()
-            .all(|p| p.type_id.is_concrete(engines));
-
         let method_sig = TyFunctionSig::from_fn_decl(&method);
 
         method_return_type_id = method.return_type.type_id;
         decl_engine.replace(*fn_ref.id(), method.clone());
 
-        if method_sig.is_concrete(engines) && are_type_parameters_concrete {
+        if method_sig.is_concrete(engines) && method.is_type_check_finalized {
             ctx.engines()
                 .qe()
                 .insert_function(engines, method_ident, method_sig, fn_ref.clone());
