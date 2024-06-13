@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 
 use sway_error::{
+    error::CompileError,
     handler::{ErrorEmitted, Handler},
     warning::{CompileWarning, Warning},
 };
@@ -84,26 +85,41 @@ impl ty::TyConfigurableDecl {
                     .insert(engines, TypeInfo::RawUntypedSlice, None),
             );
 
-            let (decode_fn_ref, _, _): (crate::decl_engine::DeclRefFunction, _, _) =
-                crate::TypeBinding::type_check(
-                    &mut TypeBinding::<CallPath> {
-                        inner: CallPath {
-                            prefixes: vec![],
-                            suffix: sway_types::Ident::new_no_span("abi_decode_in_place".into()),
-                            is_absolute: false,
-                        },
-                        type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
-                            type_id: type_ascription.type_id,
-                            initial_type_id: type_ascription.type_id,
-                            span: sway_types::Span::dummy(),
-                            call_path_tree: None,
-                        }]),
-                        span: sway_types::Span::dummy(),
+            let value_span = value
+                .as_ref()
+                .map(|x| x.span.clone())
+                .unwrap_or_else(|| span.clone());
+            let abi_decode_in_place_handler = Handler::default();
+            let r = crate::TypeBinding::type_check(
+                &mut TypeBinding::<CallPath> {
+                    inner: CallPath {
+                        prefixes: vec![],
+                        suffix: sway_types::Ident::new_with_override(
+                            "abi_decode_in_place".into(),
+                            value_span.clone(),
+                        ),
+                        is_absolute: false,
                     },
-                    handler,
-                    ctx.by_ref(),
-                )
-                .unwrap();
+                    type_arguments: crate::TypeArgs::Regular(vec![TypeArgument {
+                        type_id: type_ascription.type_id,
+                        initial_type_id: type_ascription.type_id,
+                        span: sway_types::Span::dummy(),
+                        call_path_tree: None,
+                    }]),
+                    span: value_span.clone(),
+                },
+                &abi_decode_in_place_handler,
+                ctx.by_ref(),
+            );
+
+            // Map expected errors to more understandable ones
+            handler.map_and_emit_errors_from(abi_decode_in_place_handler, |e| match e {
+                CompileError::SymbolNotFound { span, .. } => {
+                    Some(CompileError::ConfigurableMissingAbiDecodeInPlace { span })
+                }
+                e => Some(e),
+            })?;
+            let (decode_fn_ref, _, _): (crate::decl_engine::DeclRefFunction, _, _) = r?;
 
             let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_ref)).clone();
             let decl_mapping = crate::TypeParameter::gather_decl_mapping_from_trait_constraints(

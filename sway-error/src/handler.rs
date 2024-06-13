@@ -106,6 +106,25 @@ impl Handler {
     {
         self.inner.borrow_mut().errors.retain(f)
     }
+
+    // Map all errors from `other` into this handler. If any mapping return none it is ignored. This
+    // method returns if any error was mapped or not.
+    pub fn map_and_emit_errors_from(
+        &self,
+        other: Handler,
+        mut f: impl FnMut(CompileError) -> Option<CompileError>,
+    ) -> Result<(), ErrorEmitted> {
+        let mut emitted = Ok(());
+
+        let (errs, _) = other.consume();
+        for err in errs {
+            if let Some(err) = (f)(err) {
+                emitted = Err(self.emit_err(err));
+            }
+        }
+
+        emitted
+    }
 }
 
 /// Proof that an error was emitted through a `Handler`.
