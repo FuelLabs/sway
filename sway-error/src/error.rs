@@ -2446,7 +2446,7 @@ impl ToDiagnostic for CompileError {
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
-                    format!("")
+                    String::new()
                 ),
                 hints: vec![],
                 help: vec![
