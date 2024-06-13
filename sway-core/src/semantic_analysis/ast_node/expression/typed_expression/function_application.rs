@@ -95,11 +95,15 @@ pub(crate) fn instantiate_function_application(
 
         function_return_type_id = function_decl.return_type.type_id;
         let function_is_type_check_finalized = function_decl.is_type_check_finalized;
+        let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
         let new_decl_ref = decl_engine
             .insert(function_decl)
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
-        if method_sig.is_concrete(engines) && function_is_type_check_finalized {
+        if method_sig.is_concrete(engines)
+            && function_is_type_check_finalized
+            && !function_is_trait_method_dummy
+        {
             ctx.engines().qe().insert_function(
                 engines,
                 function_ident,
