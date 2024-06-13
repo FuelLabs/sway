@@ -6,7 +6,8 @@ use ::contract_id::ContractId;
 use ::identity::Identity;
 use ::option::Option::{self, *};
 use ::result::Result::{self, *};
-use ::inputs::{Input, input_coin_owner, input_count, input_type};
+use ::inputs::{Input, input_coin_owner, input_count, input_message_recipient, input_type};
+use ::revert::revert;
 
 /// The error type used when an `Identity` cannot be determined.
 pub enum AuthError {
@@ -206,5 +207,13 @@ pub fn predicate_address() -> Address {
         r1: u64
     };
 
-    input_coin_owner(predicate_index).unwrap()
+    let type_of_input = input_type(predicate_index);
+
+    match type_of_input {
+        Input::Coin => input_coin_owner(predicate_index).unwrap(),
+        Input::Message => input_message_recipient(predicate_index),
+        _ => {
+            revert(0)
+        }
+    }
 }
