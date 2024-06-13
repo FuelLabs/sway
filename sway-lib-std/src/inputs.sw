@@ -108,7 +108,7 @@ pub fn input_type(index: u64) -> Input {
 ///
 /// # Returns
 ///
-/// * [u8] - The number of inputs in the transaction.
+/// * [u16] - The number of inputs in the transaction.
 ///
 /// # Examples
 ///
@@ -117,13 +117,13 @@ pub fn input_type(index: u64) -> Input {
 ///
 /// fn foo() {
 ///     let input_count = input_count();
-///     assert(input_count == 1);
+///     assert(input_count == 1_u16);
 /// }
 /// ```
-pub fn input_count() -> u8 {
+pub fn input_count() -> u16 {
     match tx_type() {
-        Transaction::Script => __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT),
-        Transaction::Create => __gtf::<u8>(0, GTF_CREATE_INPUTS_COUNT),
+        Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
+        Transaction::Create => __gtf::<u16>(0, GTF_CREATE_INPUTS_COUNT),
     }
 }
 
@@ -299,7 +299,7 @@ pub fn input_asset_id(index: u64) -> Option<AssetId> {
 ///
 /// # Returns
 ///
-/// * [Option<u8>] - The witness index of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
+/// * [Option<u16>] - The witness index of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples
 ///
@@ -311,10 +311,10 @@ pub fn input_asset_id(index: u64) -> Option<AssetId> {
 ///     assert(input_witness_index.is_some()); // Ensure the input has a witness index.
 /// }
 /// ```
-pub fn input_witness_index(index: u64) -> Option<u8> {
+pub fn input_witness_index(index: u64) -> Option<u16> {
     match input_type(index) {
-        Input::Coin => Some(__gtf::<u8>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
-        Input::Message => Some(__gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
+        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
+        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
         Input::Contract => None,
     }
 }
@@ -327,7 +327,7 @@ pub fn input_witness_index(index: u64) -> Option<u8> {
 ///
 /// # Returns
 ///
-/// * [Option<u16>] - The predicate length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
+/// * [Option<u64>] - The predicate length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples
 ///
@@ -336,13 +336,13 @@ pub fn input_witness_index(index: u64) -> Option<u8> {
 ///
 /// fn foo() {
 ///     let input_predicate_length = input_predicate_length(0);
-///     assert(input_predicate_length.unwrap() != 0u16);
+///     assert(input_predicate_length.unwrap() != 0u64);
 /// }
 /// ```
-pub fn input_predicate_length(index: u64) -> Option<u16> {
+pub fn input_predicate_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
-        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
+        Input::Coin => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
+        Input::Message => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
         Input::Contract => None,
     }
 }
@@ -404,7 +404,7 @@ pub fn input_predicate(index: u64) -> Bytes {
     if wrapped.is_none() {
         revert(0);
     };
-    let length = wrapped.unwrap().as_u64();
+    let length = wrapped.unwrap();
     let new_ptr = alloc_bytes(length);
     match input_predicate_pointer(index) {
         Some(d) => {
@@ -423,7 +423,7 @@ pub fn input_predicate(index: u64) -> Bytes {
 ///
 /// # Returns
 ///
-/// * [Option<u16>] - The predicate data length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
+/// * [Option<u64>] - The predicate data length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples
 ///
@@ -432,13 +432,13 @@ pub fn input_predicate(index: u64) -> Bytes {
 ///
 /// fn foo() {
 ///     let input_predicate_data_length = input_predicate_data_length(0);
-///     assert(input_predicate_data_length.unwrap() != 0_u16);
+///     assert(input_predicate_data_length.unwrap() != 0_u64);
 /// }
 /// ```
-pub fn input_predicate_data_length(index: u64) -> Option<u16> {
+pub fn input_predicate_data_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
-        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
+        Input::Coin => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
+        Input::Message => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
         Input::Contract => None,
     }
 }
@@ -525,7 +525,7 @@ pub fn input_message_nonce(index: u64) -> b256 {
 ///
 /// # Returns
 ///
-/// * [u16] - The length of the input message at `index`, if the input's type is `Input::Message`.
+/// * [u64] - The length of the input message at `index`, if the input's type is `Input::Message`.
 ///
 /// # Examples
 ///
@@ -534,11 +534,11 @@ pub fn input_message_nonce(index: u64) -> b256 {
 ///
 /// fn foo() {
 ///     let input_message_length = input_message_length(0);
-///     assert(input_message_length != 0_u16);
+///     assert(input_message_length != 0_u64);
 /// }
 /// ```
-pub fn input_message_data_length(index: u64) -> u16 {
-    __gtf::<u16>(index, GTF_INPUT_MESSAGE_DATA_LENGTH)
+pub fn input_message_data_length(index: u64) -> u64 {
+    __gtf::<u64>(index, GTF_INPUT_MESSAGE_DATA_LENGTH)
 }
 
 /// Gets the data of the input message at `index`.
@@ -570,7 +570,7 @@ pub fn input_message_data(index: u64, offset: u64) -> Bytes {
     assert(valid_input_type(index, Input::Message));
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
     let data_with_offset = data.add_uint_offset(offset);
-    let length = input_message_data_length(index).as_u64();
+    let length = input_message_data_length(index);
     let new_ptr = alloc_bytes(length);
 
     data_with_offset.copy_bytes_to(new_ptr, length);

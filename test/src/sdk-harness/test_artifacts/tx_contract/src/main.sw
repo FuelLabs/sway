@@ -42,10 +42,10 @@ abi TxContractTest {
     fn get_input_message_sender(index: u64) -> Address;
     fn get_input_message_recipient(index: u64) -> Address;
     fn get_input_message_nonce(index: u64) -> b256;
-    fn get_input_witness_index(index: u64) -> u8;
-    fn get_input_message_data_length(index: u64) -> u16;
-    fn get_input_predicate_length(index: u64) -> u16;
-    fn get_input_predicate_data_length(index: u64) -> u16;
+    fn get_input_witness_index(index: u64) -> u16;
+    fn get_input_message_data_length(index: u64) -> u64;
+    fn get_input_predicate_length(index: u64) -> u64;
+    fn get_input_predicate_data_length(index: u64) -> u64;
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool;
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool;
 
@@ -139,16 +139,16 @@ impl TxContractTest for Contract {
     fn get_input_message_nonce(index: u64) -> b256 {
         input_message_nonce(index)
     }
-    fn get_input_witness_index(index: u64) -> u8 {
+    fn get_input_witness_index(index: u64) -> u16 {
         input_witness_index(index).unwrap()
     }
-    fn get_input_message_data_length(index: u64) -> u16 {
+    fn get_input_message_data_length(index: u64) -> u64 {
         input_message_data_length(index)
     }
-    fn get_input_predicate_length(index: u64) -> u16 {
+    fn get_input_predicate_length(index: u64) -> u64 {
         input_predicate_length(index).unwrap()
     }
-    fn get_input_predicate_data_length(index: u64) -> u16 {
+    fn get_input_predicate_data_length(index: u64) -> u64 {
         input_predicate_data_length(index).unwrap()
     }
     fn get_input_message_data(index: u64, offset: u64, expected: [u8; 3]) -> bool {
@@ -164,7 +164,7 @@ impl TxContractTest for Contract {
 
     fn get_input_predicate(index: u64, bytecode: Vec<u8>) -> bool {
         let code = input_predicate(index);
-        assert(input_predicate_length(index).unwrap().as_u64() == bytecode.len());
+        assert(input_predicate_length(index).unwrap() == bytecode.len());
         let mut i = 0;
         while i < bytecode.len() {
             assert(bytecode.get(i).unwrap() == code.get(i).unwrap());
