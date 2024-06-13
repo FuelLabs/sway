@@ -742,7 +742,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data(), Some(&[0, 3][..]));
+                assert_eq!(receipts[1].data(), Some(&[0, 0, 0, 0, 0, 0, 0, 3][..]));
             }
 
             #[tokio::test]
@@ -777,7 +777,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                let len = predicate_bytecode.len() as u16;
+                let len = predicate_bytecode.len() as u64;
                 assert_eq!(receipts[1].data(), Some(len.to_be_bytes().as_slice()));
             }
 
@@ -812,7 +812,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].data(), Some(0u16.to_le_bytes().as_slice()));
+                assert_eq!(receipts[1].data(), Some(0u64.to_le_bytes().as_slice()));
             }
 
             #[tokio::test]
