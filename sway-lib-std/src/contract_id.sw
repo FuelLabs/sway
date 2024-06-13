@@ -36,7 +36,6 @@ impl core::ops::Eq for ContractId {
     }
 }
 
-/// Functions for casting between the `b256` and `ContractId` types.
 impl From<b256> for ContractId {
     /// Casts raw `b256` data to a `ContractId`.
     ///
@@ -92,8 +91,6 @@ impl ContractId {
     /// Returns the ContractId of the currently executing contract.
     ///
     /// # Additional Information
-    ///
-    /// This is equivalent to std::callframes::contract_id().
     ///
     /// **_Note:_** If called in an external context, this will **not** return a ContractId.
     /// If called externally, will actually return a pointer to the Transaction Id (Wrapped in the ContractId struct).
@@ -156,36 +153,4 @@ impl ContractId {
     pub fn is_zero(self) -> bool {
         self.bits == b256::zero()
     }
-}
-
-#[test]
-fn test_contract_id_from_b256() {
-    use ::assert::assert;
-
-    let my_contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(
-        my_contract_id
-            .bits() == 0x0000000000000000000000000000000000000000000000000000000000000001,
-    );
-}
-
-#[test]
-fn test_contract_id_into_b256() {
-    use ::assert::assert;
-    use ::convert::Into;
-
-    let contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    let b256_data: b256 = contract_id.into();
-    assert(b256_data == 0x0000000000000000000000000000000000000000000000000000000000000001);
-}
-
-#[test]
-fn test_contract_id_zero() {
-    use ::assert::assert;
-
-    let contract_id = ContractId::zero();
-    assert(contract_id.is_zero());
-
-    let other_contract_id = ContractId::from(0x0000000000000000000000000000000000000000000000000000000000000001);
-    assert(!other_contract_id.is_zero());
 }

@@ -8,9 +8,14 @@ pub use miden_vm::*;
 pub mod from_ir;
 pub mod fuel;
 pub mod instruction_set;
-mod programs;
 
 mod finalized_asm;
 pub use finalized_asm::{CompiledBytecode, FinalizedAsm, FinalizedEntry};
 
-pub(crate) use programs::ProgramKind;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProgramKind {
+    Contract,
+    Library,
+    Predicate,
+    Script,
+}

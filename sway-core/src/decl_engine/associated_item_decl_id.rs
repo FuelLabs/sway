@@ -3,7 +3,7 @@ use sway_types::{Named, Span, Spanned};
 
 use crate::{
     decl_engine::*,
-    engine_threading::DisplayWithEngines,
+    engine_threading::{DebugWithEngines, DisplayWithEngines},
     language::ty::{self, TyFunctionDecl},
     Engines,
 };
@@ -128,6 +128,38 @@ impl DisplayWithEngines for AssociatedItemDeclId {
             }
             Self::Type(decl_id) => {
                 write!(f, "decl(type {})", engines.de().get(decl_id).name())
+            }
+        }
+    }
+}
+
+impl DebugWithEngines for AssociatedItemDeclId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
+        match self {
+            Self::TraitFn(decl_id) => {
+                let decl = engines.de().get(decl_id);
+                write!(f, "decl(trait function {:?})", engines.help_out(decl))
+            }
+            Self::Function(decl_id) => {
+                write!(
+                    f,
+                    "decl(function {:?})",
+                    engines.help_out(engines.de().get(decl_id))
+                )
+            }
+            Self::Constant(decl_id) => {
+                write!(
+                    f,
+                    "decl(constant {:?})",
+                    engines.help_out(engines.de().get(decl_id))
+                )
+            }
+            Self::Type(decl_id) => {
+                write!(
+                    f,
+                    "decl(type {:?})",
+                    engines.help_out(engines.de().get(decl_id))
+                )
             }
         }
     }

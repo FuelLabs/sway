@@ -221,6 +221,12 @@ impl TyAstNode {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
+                TyDecl::ConfigurableDecl(decl) => {
+                    let decl = engines.de().get(&decl.decl_id);
+                    if let Some(value) = &decl.value {
+                        value.check_deprecated(engines, handler, allow_deprecated);
+                    }
+                }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
@@ -279,6 +285,7 @@ impl TyAstNode {
                 TyAstNodeContent::Declaration(node) => match node {
                     TyDecl::VariableDecl(_decl) => {}
                     TyDecl::ConstantDecl(_decl) => {}
+                    TyDecl::ConfigurableDecl(_decl) => {}
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {
                         let fn_decl_id = decl.decl_id;

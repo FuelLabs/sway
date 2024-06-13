@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::{
     build_config::ExperimentalFlags,
-    decl_engine::{DeclEngineInsert, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
@@ -11,7 +11,7 @@ use crate::{
     },
     namespace::{
         IsExtendingExistingImpl, IsImplSelf, ModulePath, ResolvedDeclaration,
-        ResolvedTraitImplItem, TryInsertingTraitImplOnFailure,
+        ResolvedTraitImplItem, TraitMap, TryInsertingTraitImplOnFailure,
     },
     semantic_analysis::{
         ast_node::{AbiMode, ConstShadowingMode},
@@ -103,8 +103,6 @@ pub struct TypeCheckContext<'a> {
 
     /// Set of experimental flags
     pub experimental: ExperimentalFlags,
-
-    pub inside_configurable: bool,
 }
 
 impl<'a> TypeCheckContext<'a> {
@@ -132,7 +130,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: false,
             storage_declaration: false,
             experimental,
-            inside_configurable: false,
         }
     }
 
@@ -175,7 +172,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: false,
             storage_declaration: false,
             experimental,
-            inside_configurable: false,
         }
     }
 
@@ -206,7 +202,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-            inside_configurable: self.inside_configurable,
         }
     }
 
@@ -234,7 +229,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-            inside_configurable: self.inside_configurable,
         };
         with_scoped_ctx(ctx)
     }
@@ -263,7 +257,6 @@ impl<'a> TypeCheckContext<'a> {
             defer_monomorphization: self.defer_monomorphization,
             storage_declaration: self.storage_declaration,
             experimental: self.experimental,
-            inside_configurable: self.inside_configurable,
         };
         Ok((with_scoped_ctx(ctx)?, namespace))
     }
@@ -1396,6 +1389,45 @@ impl<'a> TypeCheckContext<'a> {
         self.namespace_mut()
             .root
             .self_import(handler, engines, src, &mod_path, alias)
+    }
+
+    // Import all impls for a struct/enum. Do nothing for other types.
+    pub(crate) fn impls_import(&mut self, handler: &Handler, engines: &Engines, type_id: TypeId) {
+        let type_info = engines.te().get(type_id);
+
+        let decl_call_path = match &*type_info {
+            TypeInfo::Enum(decl_ref) => {
+                let decl = engines.de().get(decl_ref.id());
+                decl.call_path.clone()
+            }
+            TypeInfo::Struct(decl_ref) => {
+                let decl = engines.de().get(decl_ref.id());
+                decl.call_path.clone()
+            }
+            _ => return,
+        };
+
+        let mut impls_to_insert = TraitMap::default();
+
+        let root_mod = &self.namespace().root().module;
+        let Ok(src_mod) = root_mod.lookup_submodule(handler, engines, &decl_call_path.prefixes)
+        else {
+            return;
+        };
+
+        impls_to_insert.extend(
+            src_mod
+                .current_items()
+                .implemented_traits
+                .filter_by_type_item_import(type_id, engines),
+            engines,
+        );
+
+        let dst_mod = self.namespace_mut().module_mut(engines);
+        dst_mod
+            .current_items_mut()
+            .implemented_traits
+            .extend(impls_to_insert, engines);
     }
 
     /// Short-hand for performing a [Module::item_import] with `mod_path` as the destination.

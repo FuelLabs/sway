@@ -25,7 +25,7 @@ pub mod type_system;
 use crate::ir_generation::check_function_purity;
 use crate::query_engine::ModuleCacheEntry;
 use crate::source_map::SourceMap;
-pub use asm_generation::from_ir::compile_ir_to_asm;
+pub use asm_generation::from_ir::compile_ir_context_to_finalized_asm;
 use asm_generation::FinalizedAsm;
 pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
@@ -934,9 +934,7 @@ pub(crate) fn compile_ast_to_ir_to_asm(
         };
     res?;
 
-    let final_asm = compile_ir_to_asm(handler, &ir, Some(build_config))?;
-
-    Ok(final_asm)
+    compile_ir_context_to_finalized_asm(handler, &ir, Some(build_config))
 }
 
 /// Given input Sway source code, compile to [CompiledBytecode], containing the asm in bytecode form.

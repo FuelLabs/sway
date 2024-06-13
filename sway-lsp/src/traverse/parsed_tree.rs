@@ -19,11 +19,12 @@ use sway_core::{
     language::{
         parsed::{
             AbiCastExpression, AbiDeclaration, AmbiguousPathExpression, ArrayExpression,
-            ArrayIndexExpression, AstNode, AstNodeContent, ConstantDeclaration, Declaration,
-            DelineatedPathExpression, EnumDeclaration, EnumVariant, Expression, ExpressionKind,
-            ForLoopExpression, FunctionApplicationExpression, FunctionDeclaration,
-            FunctionParameter, IfExpression, ImplItem, ImplSelf, ImplTrait, ImportType,
-            IncludeStatement, IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
+            ArrayIndexExpression, AstNode, AstNodeContent, ConfigurableDeclaration,
+            ConstantDeclaration, Declaration, DelineatedPathExpression, EnumDeclaration,
+            EnumVariant, Expression, ExpressionKind, ForLoopExpression,
+            FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
+            ImplItem, ImplSelf, ImplTrait, ImportType, IncludeStatement,
+            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
             QualifiedPathType, ReassignmentExpression, ReassignmentTarget, RefExpression,
             Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
@@ -129,6 +130,7 @@ impl Parse for Declaration {
             Declaration::ImplSelf(decl_id) => decl_id.parse(ctx),
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::ConfigurableDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.parse(ctx),
@@ -854,6 +856,24 @@ impl Parse for ParsedDeclId<ConstantDeclaration> {
             ctx.ident(&const_decl.name),
             Token::from_parsed(
                 AstToken::Declaration(Declaration::ConstantDeclaration(*self)),
+                SymbolKind::Const,
+            ),
+        );
+        const_decl.type_ascription.parse(ctx);
+        if let Some(value) = &const_decl.value {
+            value.parse(ctx);
+        }
+        const_decl.attributes.parse(ctx);
+    }
+}
+
+impl Parse for ParsedDeclId<ConfigurableDeclaration> {
+    fn parse(&self, ctx: &ParseContext) {
+        let const_decl = ctx.engines.pe().get_configurable(self);
+        ctx.tokens.insert(
+            ctx.ident(&const_decl.name),
+            Token::from_parsed(
+                AstToken::Declaration(Declaration::ConfigurableDeclaration(*self)),
                 SymbolKind::Const,
             ),
         );

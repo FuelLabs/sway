@@ -1,10 +1,13 @@
+# Everything else
+* @FuelLabs/leads
+
 # Documentation
-/docs/ @FuelLabs/tooling @FuelLabs/sway-compiler @FuelLabs/application-dev @FuelLabs/Devrel
+/docs/ @FuelLabs/tooling @FuelLabs/sway-compiler @FuelLabs/swayex @FuelLabs/Devrel
 
 # Sway files and standard library
-/examples/ @FuelLabs/sway-compiler @FuelLabs/application-dev 
-/sway-lib-core/ @FuelLabs/sway-compiler @FuelLabs/application-dev
-/sway-lib-std/ @FuelLabs/sway-compiler @FuelLabs/application-dev
+/examples/ @FuelLabs/sway-compiler @FuelLabs/swayex 
+/sway-lib-core/ @FuelLabs/sway-compiler @FuelLabs/swayex
+/sway-lib-std/ @FuelLabs/sway-compiler @FuelLabs/swayex
 
 # Tooling
 /forc/ @FuelLabs/tooling 
@@ -27,8 +30,7 @@
 /templates/ @FuelLabs/sway-compiler
 /test/ @FuelLabs/sway-compiler
 
-# Everything else, including root lockfile and deployment scripts
-Cargo.lock @IGI-111 @JoshuaBatty
-/deployment/ @IGI-111 @JoshuaBatty
-* @IGI-111 @JoshuaBatty
+# Root lockfile and deployment scripts
+Cargo.lock @FuelLabs/leads
+/deployment/ @FuelLabs/leads
 

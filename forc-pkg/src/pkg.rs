@@ -1444,7 +1444,7 @@ fn fetch_deps(
             (
                 n.clone(),
                 d.dependency.clone(),
-                DepKind::Contract { salt: d.salt },
+                DepKind::Contract { salt: d.salt.0 },
             )
         })
         .chain(
@@ -1595,7 +1595,6 @@ pub fn dependency_namespace(
     };
 
     root_module.write(engines, |root_module| {
-        root_module.is_external = true;
         root_module.name.clone_from(&name);
         root_module.visibility = Visibility::Public;
     });
@@ -1606,7 +1605,7 @@ pub fn dependency_namespace(
         let dep_node = edge.target();
         let dep_name = kebab_to_snake_case(&edge.weight().name);
         let dep_edge = edge.weight();
-        let dep_namespace = match dep_edge.kind {
+        let mut dep_namespace = match dep_edge.kind {
             DepKind::Library => lib_namespace_map
                 .get(&dep_node)
                 .cloned()
@@ -1628,12 +1627,12 @@ pub fn dependency_namespace(
                     contract_id_value,
                     experimental,
                 )?;
-                module.is_external = true;
                 module.name = name;
                 module.visibility = Visibility::Public;
                 module
             }
         };
+        dep_namespace.is_external = true;
         root_module.insert_submodule(dep_name, dep_namespace);
         let dep = &graph[dep_node];
         if dep.name == CORE {
@@ -1905,9 +1904,13 @@ pub fn compile(
     if let ProgramABI::Fuel(ref mut program_abi) = program_abi {
         if let Some(ref mut configurables) = program_abi.configurables {
             // Filter out all dead configurables (i.e. ones without offsets in the bytecode)
-            configurables.retain(|c| compiled.config_const_offsets.contains_key(&c.name));
+            configurables.retain(|c| {
+                compiled
+                    .named_data_section_entries_offsets
+                    .contains_key(&c.name)
+            });
             // Set the actual offsets in the JSON object
-            for (config, offset) in compiled.config_const_offsets {
+            for (config, offset) in compiled.named_data_section_entries_offsets {
                 if let Some(idx) = configurables.iter().position(|c| c.name == config) {
                     configurables[idx].offset = offset;
                 }

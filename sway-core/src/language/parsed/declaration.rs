@@ -1,4 +1,5 @@
 mod abi;
+mod configurable;
 mod constant;
 mod r#enum;
 pub mod function;
@@ -12,6 +13,7 @@ mod variable;
 use std::fmt;
 
 pub use abi::*;
+pub use configurable::*;
 pub use constant::*;
 pub use function::*;
 pub use impl_trait::*;
@@ -48,6 +50,7 @@ pub enum Declaration {
     ImplSelf(ParsedDeclId<ImplSelf>),
     AbiDeclaration(ParsedDeclId<AbiDeclaration>),
     ConstantDeclaration(ParsedDeclId<ConstantDeclaration>),
+    ConfigurableDeclaration(ParsedDeclId<ConfigurableDeclaration>),
     StorageDeclaration(ParsedDeclId<StorageDeclaration>),
     TypeAliasDeclaration(ParsedDeclId<TypeAliasDeclaration>),
     TraitTypeDeclaration(ParsedDeclId<TraitTypeDeclaration>),
@@ -78,6 +81,7 @@ impl Declaration {
         match self {
             VariableDeclaration(_) => "variable",
             ConstantDeclaration(_) => "constant",
+            ConfigurableDeclaration(_) => "configurable",
             TraitTypeDeclaration(_) => "type",
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",
@@ -106,6 +110,7 @@ impl Declaration {
             ImplSelf(decl_id) => pe.get_impl_self(decl_id).span(),
             AbiDeclaration(decl_id) => pe.get_abi(decl_id).span(),
             ConstantDeclaration(decl_id) => pe.get_constant(decl_id).span(),
+            ConfigurableDeclaration(decl_id) => pe.get_configurable(decl_id).span(),
             StorageDeclaration(decl_id) => pe.get_storage(decl_id).span(),
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
@@ -117,6 +122,9 @@ impl Declaration {
             Declaration::TraitDeclaration(decl_id) => decl_engine.get_trait(decl_id).visibility,
             Declaration::ConstantDeclaration(decl_id) => {
                 decl_engine.get_constant(decl_id).visibility
+            }
+            Declaration::ConfigurableDeclaration(decl_id) => {
+                decl_engine.get_configurable(decl_id).visibility
             }
             Declaration::StructDeclaration(decl_id) => decl_engine.get_struct(decl_id).visibility,
             Declaration::EnumDeclaration(decl_id) => decl_engine.get_enum(decl_id).visibility,

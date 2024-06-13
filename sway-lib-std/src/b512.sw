@@ -16,8 +16,27 @@ impl core::ops::Eq for B512 {
     }
 }
 
-/// Functions for casting between `B512` and an array of two `b256`s.
 impl From<(b256, b256)> for B512 {
+    /// Converts from a `b256` tuple to a `B512`.
+    ///
+    /// # Arguments
+    ///
+    /// * `components`: [(b256, b256)] - The `(b256, b256)` tuple to convert to a `B512`.
+    ///
+    /// # Returns
+    ///
+    /// * [B512] - The newly created `B512`.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::B512;
+    ///
+    /// fn foo() {
+    ///     let tuple: (b256, b256) = (b256::zero(), b256::zero());
+    ///     let b512 = B512::from(tuple);
+    /// }
+    /// ```
     fn from(components: (b256, b256)) -> Self {
         Self {
             bits: [components.0, components.1],
@@ -26,6 +45,30 @@ impl From<(b256, b256)> for B512 {
 }
 
 impl From<B512> for (b256, b256) {
+    /// Converts from a `B512` to a `b256` tuple.
+    ///
+    /// # Additional Information
+    ///
+    /// **NOTE:** To import, use the glob operator i.e. `use std::b512::*;`
+    ///
+    /// # Arguments
+    ///
+    /// * `val`: [B512] - The `B512` to convert to a tuple.
+    ///
+    /// # Returns
+    ///
+    /// * [(b256, b256)] - The newly created tuple.
+    ///
+    /// # Examples
+    ///
+    /// ```sway
+    /// use std::b512::*;
+    ///
+    /// fn foo() {
+    ///     let b512 = B512::zero();
+    ///     let tuple: (b256, b256) = (b256, b256)::from(b512);
+    /// }
+    /// ```
     fn from(val: B512) -> (b256, b256) {
         ((val.bits)[0], (val.bits)[1])
     }
@@ -115,28 +158,4 @@ impl B512 {
     pub fn is_zero(self) -> bool {
         (self.bits)[0] == b256::zero() && (self.bits)[1] == b256::zero()
     }
-}
-
-#[test]
-fn test_b512_zero() {
-    use ::assert::assert;
-
-    let zero_b512 = B512::zero();
-    assert(zero_b512.is_zero());
-
-    let other1_b512 = B512::from((
-        b256::zero(),
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-    ));
-    assert(!other1_b512.is_zero());
-    let other2_b512 = B512::from((
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-        b256::zero(),
-    ));
-    assert(!other2_b512.is_zero());
-    let other3_b512 = B512::from((
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-        0x0000000000000000000000000000000000000000000000000000000000000001,
-    ));
-    assert(!other3_b512.is_zero());
 }
