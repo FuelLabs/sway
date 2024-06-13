@@ -691,6 +691,7 @@ pub(crate) fn type_check_method_application(
         if method_sig.is_concrete(engines)
             && method.is_type_check_finalized
             && !method.is_trait_method_dummy
+            && !ctx.defer_monomorphization()
         {
             ctx.engines()
                 .qe()
