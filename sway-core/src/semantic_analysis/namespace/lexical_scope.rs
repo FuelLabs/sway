@@ -67,23 +67,17 @@ pub struct Items {
     /// An ordered map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
     pub(crate) implemented_traits: TraitMap,
-    /// Represents the absolute path from which a symbol was imported.
-    ///
-    /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
-    /// path `foo::bar::Baz`.
-    ///
-    /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
+    /// Contains symbols imported using star imports (`use foo::*`.).
     ///
     /// When star importing from multiple modules the same name may be imported more than once. This
     /// is not an error, but it is an error to use the name without a module path. To represent
     /// this, use_glob_synonyms maps identifiers to a vector of (module path, type declaration)
     /// tuples.
-    ///
-    /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
+    pub(crate) use_glob_synonyms: GlobSynonyms,
+    /// Contains symbols imported using item imports (`use foo::bar`).
     ///
     /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
     /// as the optional source identifier for error reporting purposes.
-    pub(crate) use_glob_synonyms: GlobSynonyms,
     pub(crate) use_item_synonyms: ItemSynonyms,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
