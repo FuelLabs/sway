@@ -69,12 +69,13 @@ impl AbstractInstructionSet {
                 c2: u64,
             ) {
                 match reg_contents.get(opd1) {
-                    Some(RegContents::Constant(c1)) => {
+                    Some(RegContents::Constant(c1)) if c1.checked_add(c2).is_some() => {
                         reg_contents.insert(dest.clone(), RegContents::Constant(c1 + c2));
                         record_new_def(latest_version, dest);
                     }
                     Some(RegContents::BaseOffset(base_reg, offset))
-                        if get_def_version(latest_version, &base_reg.reg) == base_reg.ver =>
+                        if get_def_version(latest_version, &base_reg.reg) == base_reg.ver
+                            && offset.checked_add(c2).is_some() =>
                     {
                         reg_contents.insert(
                             dest.clone(),

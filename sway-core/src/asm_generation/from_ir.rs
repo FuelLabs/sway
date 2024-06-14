@@ -10,6 +10,9 @@ use super::{
     MidenVMAsmBuilder,
 };
 use crate::{asm_generation::ProgramKind, BuildConfig, BuildTarget};
+
+use crate::asm_lang::VirtualImmediate18;
+
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_ir::{Context, Kind, Module};
 
@@ -105,8 +108,9 @@ fn compile(
 
 #[derive(Clone, Debug)]
 pub(super) enum Storage {
-    Data(DataId), // Const storage in the data section.
+    Data(DataId),              // Const storage in the data section.
     Stack(u64), // Storage in the runtime stack starting at an absolute word offset.  Essentially a global.
+    Const(VirtualImmediate18), // An immediate value that can be moved to a register using MOVI.
 }
 
 pub enum StateAccessType {
