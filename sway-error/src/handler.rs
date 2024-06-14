@@ -107,7 +107,7 @@ impl Handler {
         self.inner.borrow_mut().errors.retain(f)
     }
 
-    // Map all errors from `other` into this handler. If any mapping return none it is ignored. This
+    // Map all errors from `other` into this handler. If any mapping returns `None` it is ignored. This
     // method returns if any error was mapped or not.
     pub fn map_and_emit_errors_from(
         &self,
