@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-0BC651BA55CEC1B1"
+
+[[package]]
+name = "glob_imported_items"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-0BC651BA55CEC1B1"
+dependencies = ["core"]
