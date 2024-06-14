@@ -2442,7 +2442,7 @@ impl ToDiagnostic for CompileError {
                 }
             },
             ConfigurableMissingAbiDecodeInPlace { span } => Diagnostic {
-                reason: Some(Reason::new(code(1), "Configurables need a function named \"abi_decode_in_place\" to be in scope.".to_string())),
+                reason: Some(Reason::new(code(1), "Configurables need a function named \"abi_decode_in_place\" to be in scope".to_string())),
                 issue: Issue::error(
                     source_engine,
                     span.clone(),
