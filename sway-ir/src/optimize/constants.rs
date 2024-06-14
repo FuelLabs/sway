@@ -213,8 +213,8 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
                         (Xor, Uint(l), Uint(r)) => Some(Uint(l ^ r)),
                         (Xor, U256(l), U256(r)) => Some(U256(l ^ r)),
 
-                        (Mod, Uint(l), Uint(r)) => Some(Uint(l % r)),
-                        (Mod, U256(l), U256(r)) => Some(U256(l % r)),
+                        (Mod, Uint(l), Uint(r)) => l.checked_rem(*r).map(Uint),
+                        (Mod, U256(l), U256(r)) => l.checked_rem(r).map(U256),
 
                         (Rsh, Uint(l), Uint(r)) => u32::try_from(*r)
                             .ok()
@@ -350,6 +350,7 @@ mod tests {
         assert_operator("u64", "sub", "0", Some("1"), None);
         assert_operator("u64", "mul", &u64::MAX.to_string(), Some("2"), None);
         assert_operator("u64", "div", "1", Some("0"), None);
+        assert_operator("u64", "mod", "1", Some("0"), None);
 
         assert_operator("u64", "rsh", "1", Some("64"), None);
         assert_operator("u64", "lsh", "1", Some("64"), None);
