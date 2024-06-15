@@ -32,7 +32,7 @@ Rust shines because it can use zero-cost abstractions and its sophisticated borr
 
 On a blockchain, both deployment of a contract and its execution are expensive.
 Memory usage is low and execution time is short.
-This makes complex memory management in general much too expensive to be worthwhile and Rust's borrow checker a burden with no upside.
+This makes complex memory management in general too expensive to be worthwhile and Rust's borrow checker a burden with no upside.
 
 General purpose programming languages in general are ill suited to this environment because their design has to assume execution on a general-purpose computing environment.
 
