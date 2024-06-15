@@ -30,7 +30,7 @@ Whilst Rust is a great systems programming language (and Sway itself is written 
 
 Rust shines because it can use zero-cost abstractions and its sophisticated borrow-checker memory model to achieve impressive runtime performance for complex programs without a garbage collector.
 
-On a blockchain, cost of execution and deployment is scarce.
+On a blockchain, both deployment of a contract and its execution are expensive.
 Memory usage is low and execution time is short.
 This makes complex memory management in general much too expensive to be worthwhile and Rust's borrow checker a burden with no upside.
 
