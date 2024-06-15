@@ -49,7 +49,7 @@ You can learn more about the different program types and how they fit together i
 
 **Q: Do I need to install anything?**
 
-If you want to develop with Sway in your local environment, you need to install [`fuelup`](https://docs.fuel.network/guides/installation/) and your editor of choice that supports LSP, such as [VSCode](https://code.visualstudio.com/).
+If you want to develop with Sway in your local environment, you need to install [`fuelup`](https://docs.fuel.network/guides/installation/) and your editor of choice that supports LSP, such as [VSCode](https://code.visualstudio.com/). There is also a [VSCode Plugin](https://marketplace.visualstudio.com/items?itemName=FuelLabs.sway-vscode-plugin) that can be helpful in development.
 
 If you don't want to install anything just yet, you can use the [Sway Playground](https://www.sway-playground.org/) to edit, compile, and deploy Sway code.
 
