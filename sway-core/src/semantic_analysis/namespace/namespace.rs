@@ -94,10 +94,7 @@ impl Namespace {
 
         Self {
             init: init.clone(),
-            root: Root {
-                module: init,
-                resolve_options: root.resolve_options.clone(),
-            },
+            root: Root { module: init },
             mod_path,
         }
     }
