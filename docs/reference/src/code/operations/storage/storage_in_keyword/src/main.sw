@@ -22,14 +22,13 @@ enum Role {
     NoAccess: (),
 }
 
-// based on sha256("storage.current_owners")
-const HASH_KEY: b256 = 0x84f905e3f560d70fbfab9ffcd92198998ce6f936e3d45f8fcb16b00f6a6a8d7e;
+const HASH_KEY: b256 = 0x7616e5793ef977b22465f0c843bcad56155c4369245f347bcc8a61edb08b7645;
 
 // ANCHOR_END: data_structures
 // ANCHOR: initialization
 storage {
     // ANCHOR: in_keyword
-    new_current_owners in HASH_KEY: u64 = 0,
+    current_owners in HASH_KEY: u64 = 0,
     // ANCHOR_END: in_keyword
     explicit_declaration: Owner = Owner {
         maximum_owners: 10,

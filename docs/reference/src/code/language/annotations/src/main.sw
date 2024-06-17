@@ -22,7 +22,7 @@ fn read() {
 #[storage(write)]
 // ANCHOR_END: write
 fn write() {
-    storage.var.write(storage::my_storage_namespace.var.read() + 1);
+    storage::my_storage_namespace.var.write(storage::my_storage_namespace.var.read() + 1);
 }
 
 // ANCHOR: read_write
@@ -30,7 +30,7 @@ fn write() {
 // ANCHOR_END: read_write
 fn read_write() {
     let var = storage::my_storage_namespace.var.read();
-    storage.var.write(var + 1);
+    storage::my_storage_namespace.var.write(var + 1);
 }
 
 fn example() {

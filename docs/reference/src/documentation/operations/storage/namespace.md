@@ -8,11 +8,13 @@ The hash calculations determining the position of variables in a block with name
 ## Example
 
 A namespace can be declared as follows:
+
 ```sway
 {{#include ../../../../code/language/annotations/src/main.sw:storage_namespace}}
 ```
 
 A variable inside a namespace can be accessed as follows:
+
 ```sway
 {{#include ../../../../code/language/annotations/src/main.sw:storage_namespace_access}}
 ```
