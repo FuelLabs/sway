@@ -1,31 +1,35 @@
 contract;
 
 // ANCHOR: storage_namespace
-#[namespace(my_storage_namespace)]
 storage {
-    // ANCHOR_END: storage_namespace
-    var: u64 = 0,
+    my_storage_namespace {
+        // ANCHOR_END: storage_namespace
+        var: u64 = 0,
+    }
 }
 
 // ANCHOR: read
 #[storage(read)]
 // ANCHOR_END: read
 fn read() {
-    let variable = storage.var.read();
+    // ANCHOR: storage_namespace_access
+    let variable = storage::my_storage_namespace.var.read();
+    // ANCHOR_END: storage_namespace_access
+
 }
 
 // ANCHOR: write
 #[storage(write)]
 // ANCHOR_END: write
 fn write() {
-    storage.var.write(storage.var.read() + 1);
+    storage.var.write(storage::my_storage_namespace.var.read() + 1);
 }
 
 // ANCHOR: read_write
 #[storage(read, write)]
 // ANCHOR_END: read_write
 fn read_write() {
-    let var = storage.var.read();
+    let var = storage::my_storage_namespace.var.read();
     storage.var.write(var + 1);
 }
 
