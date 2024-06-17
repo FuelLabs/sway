@@ -2,8 +2,11 @@ use parking_lot::RwLock;
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::SystemTime};
 use sway_error::error::CompileError;
 use sway_error::warning::CompileWarning;
+use sway_types::IdentUnique;
 
-use crate::Programs;
+use crate::decl_engine::{DeclId, DeclRef};
+use crate::language::ty::{TyFunctionDecl, TyFunctionSig};
+use crate::{Engines, Programs};
 
 pub type ModulePath = Arc<PathBuf>;
 
@@ -43,11 +46,19 @@ pub struct ProgramsCacheEntry {
 
 pub type ProgramsCacheMap = HashMap<Arc<PathBuf>, ProgramsCacheEntry>;
 
+#[derive(Clone, Debug)]
+pub struct FunctionCacheEntry {
+    pub fn_decl: DeclRef<DeclId<TyFunctionDecl>>,
+}
+
+pub type FunctionsCacheMap = HashMap<(IdentUnique, String), FunctionCacheEntry>;
+
 #[derive(Debug, Default, Clone)]
 pub struct QueryEngine {
     // We want the below types wrapped in Arcs to optimize cloning from LSP.
     parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
+    function_cache: Arc<RwLock<FunctionsCacheMap>>,
 }
 
 impl QueryEngine {
@@ -72,5 +83,31 @@ impl QueryEngine {
     pub fn insert_programs_cache_entry(&self, entry: ProgramsCacheEntry) {
         let mut cache = self.programs_cache.write();
         cache.insert(entry.path.clone(), entry);
+    }
+
+    pub fn get_function(
+        &self,
+        engines: &Engines,
+        ident: IdentUnique,
+        sig: TyFunctionSig,
+    ) -> Option<DeclRef<DeclId<TyFunctionDecl>>> {
+        let cache = self.function_cache.read();
+        cache
+            .get(&(ident, sig.get_type_str(engines)))
+            .map(|s| s.fn_decl.clone())
+    }
+
+    pub fn insert_function(
+        &self,
+        engines: &Engines,
+        ident: IdentUnique,
+        sig: TyFunctionSig,
+        fn_decl: DeclRef<DeclId<TyFunctionDecl>>,
+    ) {
+        let mut cache = self.function_cache.write();
+        cache.insert(
+            (ident, sig.get_type_str(engines)),
+            FunctionCacheEntry { fn_decl },
+        );
     }
 }
