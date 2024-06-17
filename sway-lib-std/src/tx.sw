@@ -1,7 +1,6 @@
 //! Transaction field getters.
 library;
 
-use ::constants::ZERO_B256;
 use ::revert::revert;
 use ::option::Option::{self, *};
 
@@ -14,14 +13,13 @@ pub const GTF_SCRIPT_SCRIPT_DATA_LENGTH = 0x004;
 pub const GTF_SCRIPT_INPUTS_COUNT = 0x005;
 pub const GTF_SCRIPT_OUTPUTS_COUNT = 0x006;
 pub const GTF_SCRIPT_WITNESSES_COUNT = 0x007;
-pub const GTF_SCRIPT_RECEIPTS_ROOT = 0x008;
 pub const GTF_SCRIPT_SCRIPT = 0x009;
 pub const GTF_SCRIPT_SCRIPT_DATA = 0x00A;
 pub const GTF_SCRIPT_INPUT_AT_INDEX = 0x00B;
 pub const GTF_SCRIPT_OUTPUT_AT_INDEX = 0x00C;
 pub const GTF_SCRIPT_WITNESS_AT_INDEX = 0x00D;
+pub const GTF_TX_LENGTH = 0x00E;
 
-// pub const GTF_CREATE_BYTECODE_LENGTH = 0x100;
 // pub const GTF_CREATE_BYTECODE_WITNESS_INDEX = 0x101;
 // pub const GTF_CREATE_STORAGE_SLOTS_COUNT = 0x102;
 pub const GTF_CREATE_INPUTS_COUNT = 0x103;
@@ -37,7 +35,7 @@ pub const GTF_WITNESS_DATA_LENGTH = 0x400;
 pub const GTF_WITNESS_DATA = 0x401;
 
 pub const GTF_POLICY_TYPES = 0x500;
-pub const GTF_POLICY_GAS_PRICE = 0x501;
+pub const GTF_POLICY_TIP = 0x501;
 pub const GTF_POLICY_WITNESS_LIMIT = 0x502;
 pub const GTF_POLICY_MATURITY = 0x503;
 pub const GTF_POLICY_MAX_FEE = 0x504;
@@ -86,7 +84,7 @@ pub fn tx_type() -> Transaction {
     }
 }
 
-const GAS_PRICE_POLICY: u32 = 1u32 << 0;
+const TIP_POLICY: u32 = 1u32 << 0;
 const MATURITY_POLICY: u32 = 1u32 << 1;
 const WITNESS_LIMIT_POLICY: u32 = 1u32 << 2;
 const MAX_FEE_POLICY: u32 = 1u32 << 3;
@@ -96,26 +94,26 @@ fn policies() -> u32 {
     __gtf::<u32>(0, GTF_POLICY_TYPES)
 }
 
-/// Get the gas price for the transaction, if it is set.
+/// Get the tip for the transaction, if it is set.
 ///
 /// # Returns
 ///
-/// * [Option<u64>] - The gas price for the transaction.
+/// * [Option<u64>] - The tip for the transaction.
 ///
 /// # Examples
 ///
 /// ```sway
-/// use std::tx::tx_gas_price;
+/// use std::tx::tx_tip;
 ///
 /// fn foo() {
-///     let gas_price = tx_gas_price();
-///     log(gas_price);
+///     let tip = tx_tip();
+///     log(tip);
 /// }
 /// ```
-pub fn tx_gas_price() -> Option<u64> {
+pub fn tx_tip() -> Option<u64> {
     let bits = policies();
-    if bits & GAS_PRICE_POLICY > 0 {
-        Some(__gtf::<u64>(0, GTF_POLICY_GAS_PRICE))
+    if bits & TIP_POLICY > 0 {
+        Some(__gtf::<u64>(0, GTF_POLICY_TIP))
     } else {
         None
     }
@@ -157,10 +155,10 @@ pub fn script_gas_limit() -> u64 {
 ///     log(maturity);
 /// }
 /// ```
-pub fn tx_maturity() -> Option<u32> {
+pub fn tx_maturity() -> Option<u64> {
     let bits = policies();
     if bits & MATURITY_POLICY > 0 {
-        Some(__gtf::<u32>(0, GTF_POLICY_GAS_PRICE))
+        Some(__gtf::<u64>(0, GTF_POLICY_MATURITY))
     } else {
         None
     }
@@ -372,33 +370,6 @@ pub fn tx_witness_data<T>(index: u64) -> T {
     }
 }
 
-/// Get the transaction receipts root.
-///
-/// # Returns
-///
-/// * [b256] - The transaction receipts root.
-///
-/// # Reverts
-///
-/// * When the transaction type is of type `Transaction::Create`.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::tx::tx_receipts_root;
-///
-/// fn foo() {
-///     let receipts_root = tx_receipts_root();
-///     log(receipts_root);
-/// }
-/// ```
-pub fn tx_receipts_root() -> b256 {
-    match tx_type() {
-        Transaction::Script => __gtf::<raw_ptr>(0, GTF_SCRIPT_RECEIPTS_ROOT).read::<b256>(),
-        _ => revert(0),
-    }
-}
-
 /// Get the transaction script start pointer.
 ///
 /// # Returns
@@ -541,7 +512,7 @@ pub fn tx_script_bytecode_hash() -> b256 {
     match tx_type() {
         Transaction::Script => {
             // Get the script memory details
-            let mut result_buffer = ZERO_B256;
+            let mut result_buffer = b256::zero();
             let script_length = tx_script_length();
             let script_ptr = tx_script_start_pointer();
 

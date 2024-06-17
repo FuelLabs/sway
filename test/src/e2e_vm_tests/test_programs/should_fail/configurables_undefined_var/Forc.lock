@@ -1,0 +1,8 @@
+[[package]]
+name = "configurables_undefined_var"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-37EE290E49DDBF00"

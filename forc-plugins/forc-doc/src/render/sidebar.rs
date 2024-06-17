@@ -80,7 +80,7 @@ impl Renderable for Sidebar {
         // and render it from Raw in the final output.
         let styled_content = match &self.style {
             DocStyle::ProjectIndex(_) => {
-                let nav_links = self.nav.links;
+                let nav_links = &self.nav.links;
                 let all_items = format!("See all {}'s items", self.module_info.project_name());
                 box_html! {
                     div(class="sidebar-elems") {
@@ -106,7 +106,7 @@ impl Renderable for Sidebar {
                 .unwrap()
             }
             DocStyle::AllDoc(_) => {
-                let nav_links = self.nav.links;
+                let nav_links = &self.nav.links;
                 box_html! {
                     div(class="sidebar-elems") {
                         a(id="all-types", href=INDEX_FILENAME) {
@@ -132,13 +132,18 @@ impl Renderable for Sidebar {
             }
             _ => box_html! {
                 div(class="sidebar-elems") {
-                    section {
-                        div(class="block") {
-                            ul {
-                                @ for (title, _) in self.nav.links {
+                    @ for (title, doc_links) in &self.nav.links {
+                        section {
+                            h3 {
+                                a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
+                                    : title.as_str();
+                                }
+                            }
+                            ul(class="block method") {
+                                @ for doc_link in doc_links {
                                     li {
-                                        a(href=format!("{}{}", IDENTITY, title.html_title_string())) {
-                                            : title.as_str();
+                                        a(href=format!("{}", doc_link.html_filename)) {
+                                            : doc_link.name.clone();
                                         }
                                     }
                                 }

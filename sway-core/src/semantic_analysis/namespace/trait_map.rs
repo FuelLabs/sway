@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     fmt,
     hash::{DefaultHasher, Hash, Hasher},
+    sync::Arc,
 };
 
 use hashbrown::HashSet;
@@ -21,7 +22,7 @@ use crate::{
         CallPath,
     },
     type_system::{SubstTypes, TypeId},
-    TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
+    IncludeSelf, TraitConstraint, TypeArgument, TypeEngine, TypeInfo, TypeSubstMap, UnifyCheck,
 };
 
 use super::TryInsertingTraitImplOnFailure;
@@ -41,22 +42,6 @@ impl OrdWithEngines for TraitSuffix {
         self.name
             .cmp(&other.name)
             .then_with(|| self.args.cmp(&other.args, ctx))
-    }
-}
-
-impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
-    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.prefixes == other.prefixes
-            && self.suffix.eq(&other.suffix, ctx)
-            && self.is_absolute == other.is_absolute
-    }
-}
-impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
-    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
-        self.prefixes
-            .cmp(&other.prefixes)
-            .then_with(|| self.suffix.cmp(&other.suffix, ctx))
-            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
     }
 }
 
@@ -85,7 +70,7 @@ impl DebugWithEngines for TraitSuffix {
     }
 }
 
-type TraitName = CallPath<TraitSuffix>;
+type TraitName = Arc<CallPath<TraitSuffix>>;
 
 #[derive(Clone, Debug)]
 struct TraitKey {
@@ -235,7 +220,7 @@ impl TraitMap {
                             args: map_trait_type_args,
                         },
                     ..
-                } = map_trait_name;
+                } = &*map_trait_name.clone();
 
                 let unify_checker = UnifyCheck::non_generic_constraint_subset(engines);
 
@@ -385,14 +370,14 @@ impl TraitMap {
                     }
                 }
             }
-            let trait_name: TraitName = CallPath {
+            let trait_name: TraitName = Arc::new(CallPath {
                 prefixes: trait_name.prefixes,
                 suffix: TraitSuffix {
                     name: trait_name.suffix,
                     args: trait_type_args,
                 },
                 is_absolute: trait_name.is_absolute,
-            };
+            });
 
             // even if there is a conflicting definition, add the trait anyway
             self.insert_inner(
@@ -673,7 +658,7 @@ impl TraitMap {
 
         // a curried version of the decider protocol to use in the helper functions
         let decider = |left: TypeId, right: TypeId| unify_checker.check(left, right);
-        let mut all_types = type_id.extract_inner_types(engines);
+        let mut all_types = type_id.extract_inner_types(engines, IncludeSelf::No);
         all_types.insert(type_id);
         let all_types = all_types.into_iter().collect::<Vec<_>>();
         self.filter_by_type_inner(engines, all_types, decider)
@@ -751,7 +736,7 @@ impl TraitMap {
         };
         let mut trait_map = self.filter_by_type_inner(engines, vec![type_id], decider);
         let all_types = type_id
-            .extract_inner_types(engines)
+            .extract_inner_types(engines, IncludeSelf::No)
             .into_iter()
             .collect::<Vec<_>>();
         // a curried version of the decider protocol to use in the helper functions
@@ -799,6 +784,18 @@ impl TraitMap {
                         engines,
                     );
                 } else if decider(*type_id, *map_type_id) {
+                    let mut insertable = true;
+                    if let TypeInfo::UnknownGeneric {
+                        is_from_type_parameter,
+                        ..
+                    } = *engines.te().get(*map_type_id)
+                    {
+                        insertable = !is_from_type_parameter
+                            || matches!(
+                                *engines.te().get(*type_id),
+                                TypeInfo::UnknownGeneric { .. }
+                            );
+                    }
                     let type_mapping = TypeSubstMap::from_superset_and_subset(
                         type_engine,
                         decl_engine,
@@ -809,34 +806,41 @@ impl TraitMap {
                     let trait_items: TraitItems = map_trait_items
                         .clone()
                         .into_iter()
-                        .map(|(name, item)| match &item {
+                        .filter_map(|(name, item)| match &item {
                             ResolvedTraitImplItem::Parsed(_item) => todo!(),
                             ResolvedTraitImplItem::Typed(item) => match item {
                                 ty::TyTraitItem::Fn(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
-                                    decl.subst(&type_mapping, engines);
-                                    let new_ref = decl_engine
-                                        .insert(decl)
-                                        .with_parent(decl_engine, decl_ref.id().into());
-                                    (name, ResolvedTraitImplItem::Typed(TyImplItem::Fn(new_ref)))
+                                    if decl.is_trait_method_dummy && !insertable {
+                                        None
+                                    } else {
+                                        decl.subst(&type_mapping, engines);
+                                        let new_ref = decl_engine
+                                            .insert(decl)
+                                            .with_parent(decl_engine, decl_ref.id().into());
+                                        Some((
+                                            name,
+                                            ResolvedTraitImplItem::Typed(TyImplItem::Fn(new_ref)),
+                                        ))
+                                    }
                                 }
                                 ty::TyTraitItem::Constant(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                                     decl.subst(&type_mapping, engines);
                                     let new_ref = decl_engine.insert(decl);
-                                    (
+                                    Some((
                                         name,
                                         ResolvedTraitImplItem::Typed(TyImplItem::Constant(new_ref)),
-                                    )
+                                    ))
                                 }
                                 ty::TyTraitItem::Type(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                                     decl.subst(&type_mapping, engines);
                                     let new_ref = decl_engine.insert(decl);
-                                    (
+                                    Some((
                                         name,
                                         ResolvedTraitImplItem::Typed(TyImplItem::Type(new_ref)),
-                                    )
+                                    ))
                                 }
                             },
                         })
@@ -963,7 +967,7 @@ impl TraitMap {
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: &[TypeArgument],
     ) -> Vec<ResolvedTraitImplItem> {
         let type_engine = engines.te();
         let unify_check = UnifyCheck::non_dynamic_equality(engines);
@@ -1008,7 +1012,7 @@ impl TraitMap {
         engines: &Engines,
         type_id: TypeId,
         trait_name: &CallPath,
-        trait_type_args: Vec<TypeArgument>,
+        trait_type_args: &[TypeArgument],
     ) -> Vec<ty::TyTraitItem> {
         self.get_items_for_type_and_trait_name_and_trait_type_arguments(
             engines,
@@ -1060,7 +1064,7 @@ impl TraitMap {
                 ResolvedTraitImplItem::Parsed(impl_item) => match impl_item {
                     ImplItem::Fn(fn_ref) => {
                         let decl = engines.pe().get_function(&fn_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1073,7 +1077,7 @@ impl TraitMap {
                     }
                     ImplItem::Constant(const_ref) => {
                         let decl = engines.pe().get_constant(&const_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1086,7 +1090,7 @@ impl TraitMap {
                     }
                     ImplItem::Type(type_ref) => {
                         let decl = engines.pe().get_trait_type(&type_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1101,7 +1105,7 @@ impl TraitMap {
                 ResolvedTraitImplItem::Typed(ty_impl_item) => match ty_impl_item {
                     ty::TyTraitItem::Fn(fn_ref) => {
                         let decl = engines.de().get_function(&fn_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1114,7 +1118,7 @@ impl TraitMap {
                     }
                     ty::TyTraitItem::Constant(const_ref) => {
                         let decl = engines.de().get_constant(&const_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.call_path.suffix.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1127,7 +1131,7 @@ impl TraitMap {
                     }
                     ty::TyTraitItem::Type(type_ref) => {
                         let decl = engines.de().get_type(&type_ref);
-                        let trait_call_path_string = engines.help_out(trait_key.name).to_string();
+                        let trait_call_path_string = engines.help_out(&*trait_key.name).to_string();
                         if decl.name.as_str() == symbol.as_str()
                             && (as_trait.is_none()
                                 || as_trait.clone().unwrap().to_string() == trait_call_path_string)
@@ -1351,6 +1355,7 @@ impl TraitMap {
 
                     // TODO: use a better span
                     handler.emit_err(CompileError::TraitConstraintNotSatisfied {
+                        type_id: type_id.index(),
                         ty: engines.help_out(type_id).to_string(),
                         trait_name: format!("{}{}", trait_name, type_arguments_string),
                         span: access_span.clone(),

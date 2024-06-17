@@ -25,7 +25,7 @@ use crate::{
 
 use super::{
     collection_context::SymbolCollectionContext,
-    declaration::auto_impl::{self, AutoImplAbiEncodeContext},
+    declaration::auto_impl::{self, EncodingAutoImplContext},
 };
 
 #[derive(Clone, Debug)]
@@ -131,7 +131,7 @@ impl ModuleDepGraph {
                 let result = fs::write(graph_path.clone(), output);
                 if let Some(error) = result.err() {
                     tracing::error!(
-                        "There was an issue while outputing module dep analysis graph to path {graph_path:?}\n{error}"
+                        "There was an issue while outputting module dep analysis graph to path {graph_path:?}\n{error}"
                     );
                 }
             }
@@ -302,7 +302,8 @@ impl ty::TyModule {
             tree.root_nodes.clone(),
         )?;
 
-        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), ordered_nodes)?;
+        let mut all_nodes = Self::type_check_nodes(handler, ctx.by_ref(), &ordered_nodes)?;
+
         let submodules = submodules_res?;
 
         let fallback_fn = collect_fallback_fn(&all_nodes, engines, handler)?;
@@ -319,7 +320,8 @@ impl ty::TyModule {
         if ctx.experimental.new_encoding {
             let main_decl = all_nodes.iter_mut().find_map(|x| match &mut x.content {
                 ty::TyAstNodeContent::Declaration(ty::TyDecl::FunctionDecl(decl)) => {
-                    (decl.name.as_str() == "main").then(|| engines.de().get(&decl.decl_id))
+                    let fn_decl = engines.de().get_function(&decl.decl_id);
+                    (fn_decl.name.as_str() == "main").then_some(fn_decl)
                 }
                 _ => None,
             });
@@ -327,19 +329,25 @@ impl ty::TyModule {
             match (&kind, main_decl.is_some()) {
                 (TreeType::Predicate, true) => {
                     let mut fn_generator =
-                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_predicate_entry(engines, main_decl.as_ref().unwrap())
-                        .unwrap();
-                    all_nodes.push(node)
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    if let Ok(node) = fn_generator.generate_predicate_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    ) {
+                        all_nodes.push(node)
+                    }
                 }
                 (TreeType::Script, true) => {
                     let mut fn_generator =
-                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_script_entry(engines, main_decl.as_ref().unwrap())
-                        .unwrap();
-                    all_nodes.push(node)
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    if let Ok(node) = fn_generator.generate_script_entry(
+                        engines,
+                        main_decl.as_ref().unwrap(),
+                        handler,
+                    ) {
+                        all_nodes.push(node)
+                    }
                 }
                 (TreeType::Contract, _) => {
                     // collect all contract methods
@@ -351,16 +359,16 @@ impl ty::TyModule {
                         .collect::<Vec<_>>();
 
                     let mut fn_generator =
-                        auto_impl::AutoImplAbiEncodeContext::new(&mut ctx).unwrap();
-                    let node = fn_generator
-                        .generate_contract_entry(
-                            engines,
-                            parsed.span.source_id().map(|x| x.module_id()),
-                            &contract_fns,
-                            fallback_fn,
-                        )
-                        .unwrap();
-                    all_nodes.push(node)
+                        auto_impl::EncodingAutoImplContext::new(&mut ctx).unwrap();
+                    if let Ok(node) = fn_generator.generate_contract_entry(
+                        engines,
+                        parsed.span.source_id().map(|x| x.program_id()),
+                        &contract_fns,
+                        fallback_fn,
+                        handler,
+                    ) {
+                        all_nodes.push(node)
+                    }
                 }
                 _ => {}
             }
@@ -420,10 +428,10 @@ impl ty::TyModule {
     fn type_check_nodes(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        nodes: Vec<AstNode>,
+        nodes: &[AstNode],
     ) -> Result<Vec<ty::TyAstNode>, ErrorEmitted> {
         let engines = ctx.engines();
-        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), &nodes, |decl| {
+        let all_abiencode_impls = Self::get_all_impls(ctx.by_ref(), nodes, |decl| {
             decl.trait_name.suffix.as_str() == "AbiEncode"
         });
 
@@ -449,7 +457,7 @@ impl ty::TyModule {
                 let mut generated = vec![];
                 if let (true, Some(mut ctx)) = (
                     auto_impl_encoding_traits,
-                    AutoImplAbiEncodeContext::new(&mut ctx),
+                    EncodingAutoImplContext::new(&mut ctx),
                 ) {
                     match &node.content {
                         TyAstNodeContent::Declaration(decl @ TyDecl::StructDecl(_))
@@ -569,9 +577,13 @@ impl ty::TySubmodule {
             mod_name_span: _,
             visibility,
         } = submodule;
-        parent_ctx.enter_submodule(mod_name, *visibility, module.span.clone(), |submod_ctx| {
-            ty::TyModule::collect(handler, engines, submod_ctx, module)
-        })
+        parent_ctx.enter_submodule(
+            engines,
+            mod_name,
+            *visibility,
+            module.span.clone(),
+            |submod_ctx| ty::TyModule::collect(handler, engines, submod_ctx, module),
+        )
     }
 
     pub fn type_check(

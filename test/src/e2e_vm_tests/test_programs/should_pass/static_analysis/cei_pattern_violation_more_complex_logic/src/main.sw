@@ -12,7 +12,7 @@ abi EnglishAuction {
     fn bid(auction_id: u64, bid_asset: AuctionAsset);
 
     #[storage(read, write)]
-    fn create(bid_asset: AuctionAsset, duration: u64, inital_price: u64, reserve_price: Option<u64>, seller: Identity, sell_asset: AuctionAsset) -> u64;
+    fn create(bid_asset: AuctionAsset, duration: u64, initial_price: u64, reserve_price: Option<u64>, seller: Identity, sell_asset: AuctionAsset) -> u64;
 }
 
 abi NFT {
@@ -23,7 +23,6 @@ abi NFT {
 use std::{
     block::height,
     call_frames::{
-        contract_id,
         msg_asset_id,
     },
     context::msg_amount,
@@ -79,7 +78,7 @@ impl EnglishAuction for Contract {
 
         match total_bid {
             AuctionAsset::NFTAsset(nft_asset) => {
-                transfer_nft(nft_asset, sender, Identity::ContractId(contract_id()));
+                transfer_nft(nft_asset, sender, Identity::ContractId(ContractId::this()));
             },
             AuctionAsset::TokenAsset(token_asset) => {
                 require(token_asset == 42, 42);
@@ -120,7 +119,7 @@ impl EnglishAuction for Contract {
                 let sender = msg_sender().unwrap();
                 // TODO: Remove this when StorageVec in structs is supported
                 require(initial_price == 1, 42);
-                transfer_nft(asset, sender, Identity::ContractId(contract_id()));
+                transfer_nft(asset, sender, Identity::ContractId(ContractId::this()));
             }
         }
 

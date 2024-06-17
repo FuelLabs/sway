@@ -1,5 +1,5 @@
 use crate::{
-    engine_threading::*,
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::ty::{TyEnumDecl, TyStructDecl},
     type_system::{priv_prelude::*, unify::occurs_check::OccursCheck},
 };
@@ -204,7 +204,7 @@ impl<'a> UnifyCheck<'a> {
 
     pub(crate) fn check(&self, left: TypeId, right: TypeId) -> bool {
         use TypeInfo::*;
-        use UnifyCheckMode::*;
+        use UnifyCheckMode::NonGenericConstraintSubset;
         if left == right {
             return true;
         }
@@ -222,8 +222,13 @@ impl<'a> UnifyCheck<'a> {
     }
 
     fn check_inner(&self, left: TypeId, right: TypeId) -> bool {
-        use TypeInfo::*;
-        use UnifyCheckMode::*;
+        use TypeInfo::{
+            Alias, Array, ContractCaller, Custom, Enum, ErrorRecovery, Never, Numeric, Placeholder,
+            Ref, StringArray, StringSlice, Struct, Tuple, Unknown, UnknownGeneric, UnsignedInteger,
+        };
+        use UnifyCheckMode::{
+            Coercion, ConstraintSubset, NonDynamicEquality, NonGenericConstraintSubset,
+        };
 
         if left == right {
             return true;
@@ -383,11 +388,13 @@ impl<'a> UnifyCheck<'a> {
                             name: ln,
                             trait_constraints: ltc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                         UnknownGeneric {
                             name: rn,
                             trait_constraints: rtc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                     ) => ln == rn && rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
                     // any type can be coerced into a generic,
@@ -450,11 +457,13 @@ impl<'a> UnifyCheck<'a> {
                             name: _,
                             trait_constraints: ltc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                         UnknownGeneric {
                             name: _,
                             trait_constraints: rtc,
                             parent: _,
+                            is_from_type_parameter: _,
                         },
                     ) => rtc.eq(ltc, &PartialEqWithEnginesContext::new(self.engines)),
 
@@ -498,11 +507,13 @@ impl<'a> UnifyCheck<'a> {
                         name: rn,
                         trait_constraints: rtc,
                         parent: _,
+                        is_from_type_parameter: _,
                     },
                     TypeInfo::UnknownGeneric {
                         name: en,
                         trait_constraints: etc,
                         parent: _,
+                        is_from_type_parameter: _,
                     },
                 ) => {
                     rn.as_str() == en.as_str()
@@ -598,8 +609,10 @@ impl<'a> UnifyCheck<'a> {
     /// `left` can be coerced into `right`.
     ///
     fn check_multiple(&self, left: &[TypeId], right: &[TypeId]) -> bool {
-        use TypeInfo::*;
-        use UnifyCheckMode::*;
+        use TypeInfo::{Numeric, Placeholder, Unknown, UnsignedInteger};
+        use UnifyCheckMode::{
+            Coercion, ConstraintSubset, NonDynamicEquality, NonGenericConstraintSubset,
+        };
 
         // invariant 1. `left` and `right` are of the same length _n_
         if left.len() != right.len() {
@@ -654,9 +667,9 @@ impl<'a> UnifyCheck<'a> {
                         }
                     }
                 }
-                for (i, j) in constraints.into_iter() {
-                    let a = left_types.get(i).unwrap();
-                    let b = left_types.get(j).unwrap();
+                for (i, j) in &constraints {
+                    let a = left_types.get(*i).unwrap();
+                    let b = left_types.get(*j).unwrap();
                     if matches!(&self.mode, Coercion)
                         && (matches!(
                             (&**a, &**b),

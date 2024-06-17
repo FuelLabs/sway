@@ -2,40 +2,45 @@
 use crate::{
     doc::{descriptor::Descriptor, module::ModuleInfo},
     render::{
-        item::{components::*, context::DocImplTrait},
+        item::{components::*, context::DocImplTrait, documentable_type::DocumentableType},
         link::DocLink,
-        util::format::docstring::*,
+        util::format::docstring::{create_preview, DocStrings},
     },
 };
 use anyhow::Result;
-use std::{collections::HashMap, option::Option};
+use std::{
+    collections::HashMap,
+    ops::{Deref, DerefMut},
+    option::Option,
+};
 use sway_core::{
     decl_engine::DeclEngine,
     language::ty::{TyAstNodeContent, TyDecl, TyImplTrait, TyModule, TyProgram, TySubmodule},
+    Engines,
 };
-use sway_types::{BaseIdent, Spanned};
+use sway_types::BaseIdent;
 
 mod descriptor;
 pub mod module;
 
 #[derive(Default, Clone)]
-pub(crate) struct Documentation(pub(crate) Vec<Document>);
+pub struct Documentation(pub Vec<Document>);
+
 impl Documentation {
     /// Gather [Documentation] from the [TyProgram].
-    pub(crate) fn from_ty_program(
-        decl_engine: &DeclEngine,
+    pub fn from_ty_program(
+        engines: &Engines,
         project_name: &str,
         typed_program: &TyProgram,
         document_private_items: bool,
     ) -> Result<Documentation> {
         // the first module prefix will always be the project name
-        let namespace = &typed_program.root.namespace;
-        let mut docs: Documentation = Default::default();
+        let mut docs = Documentation::default();
         let mut impl_traits: Vec<(TyImplTrait, ModuleInfo)> = Vec::new();
         let module_info = ModuleInfo::from_ty_module(vec![project_name.to_owned()], None);
         Documentation::from_ty_module(
-            decl_engine,
-            module_info,
+            engines.de(),
+            &module_info,
             &typed_program.root,
             &mut docs,
             &mut impl_traits,
@@ -49,7 +54,7 @@ impl Documentation {
             let module_prefix =
                 ModuleInfo::from_ty_module(vec![project_name.to_owned()], attributes);
             Documentation::from_ty_submodule(
-                decl_engine,
+                engines.de(),
                 typed_submodule,
                 &mut docs,
                 &mut impl_traits,
@@ -58,7 +63,6 @@ impl Documentation {
             )?;
         }
         let trait_decls = docs
-            .0
             .iter()
             .filter_map(|d| {
                 (d.item_header.friendly_name == "trait").then_some((
@@ -68,42 +72,68 @@ impl Documentation {
             })
             .collect::<HashMap<BaseIdent, ModuleInfo>>();
 
+        // Add one documentation page for each primitive type that has an implementation.
+        for (impl_trait, module_info) in impl_traits.iter() {
+            let impl_for_type = engines.te().get(impl_trait.implementing_for.type_id);
+            if let Ok(Descriptor::Documentable(doc)) =
+                Descriptor::from_type_info(impl_for_type.as_ref(), engines, module_info.clone())
+            {
+                if !docs.iter().any(|existing_doc| *existing_doc == doc) {
+                    docs.push(doc);
+                }
+            }
+        }
+
         // match for the spans to add the impl_traits to their corresponding doc:
         // currently this compares the spans as str, but this needs to change
         // to compare the actual types
-        for doc in &mut docs.0 {
-            let mut impl_vec: Vec<DocImplTrait> = Vec::new();
+        for doc in docs.iter_mut() {
+            let mut impl_trait_vec: Vec<DocImplTrait> = Vec::new();
+            let mut inherent_impl_vec: Vec<DocImplTrait> = Vec::new();
 
-            match doc.item_body.ty_decl {
-                TyDecl::StructDecl(ref struct_decl) => {
-                    for (impl_trait, module_info) in impl_traits.iter_mut() {
-                        if struct_decl.name.as_str() == impl_trait.implementing_for.span.as_str()
-                            && struct_decl.name.as_str()
-                                != impl_trait.trait_name.suffix.span().as_str()
-                        {
+            // Check for implementations of the current struct/enum/primitive.
+            match doc.item_body.ty {
+                DocumentableType::Declared(TyDecl::StructDecl(_))
+                | DocumentableType::Declared(TyDecl::EnumDecl(_))
+                | DocumentableType::Primitive(_) => {
+                    let item_name = doc.item_header.item_name.as_str().to_string();
+                    for (impl_trait, _) in impl_traits.iter_mut() {
+                        // Check if this implementation is for this struct/enum.
+                        if item_name.as_str() == impl_trait.implementing_for.span.as_str() {
                             let module_info_override = if let Some(decl_module_info) =
                                 trait_decls.get(&impl_trait.trait_name.suffix)
                             {
-                                Some(decl_module_info.module_prefixes.to_owned())
+                                Some(decl_module_info.module_prefixes.clone())
                             } else {
-                                impl_trait.trait_name =
-                                    impl_trait.trait_name.to_fullpath(namespace);
+                                impl_trait.trait_name = impl_trait
+                                    .trait_name
+                                    .to_fullpath(engines, &typed_program.root.namespace);
                                 None
                             };
 
-                            impl_vec.push(DocImplTrait {
-                                impl_for_module: module_info.clone(),
+                            let doc_impl_trait = DocImplTrait {
+                                impl_for_module: doc.module_info.clone(),
                                 impl_trait: impl_trait.clone(),
                                 module_info_override,
-                            });
+                            };
+
+                            if doc_impl_trait.is_inherent() {
+                                inherent_impl_vec.push(doc_impl_trait);
+                            } else {
+                                impl_trait_vec.push(doc_impl_trait);
+                            }
                         }
                     }
                 }
-                _ => continue,
+                _ => {}
             }
 
-            if !impl_vec.is_empty() {
-                doc.item_body.item_context.impl_traits = Some(impl_vec);
+            if !impl_trait_vec.is_empty() {
+                doc.item_body.item_context.impl_traits = Some(impl_trait_vec);
+            }
+
+            if !inherent_impl_vec.is_empty() {
+                doc.item_body.item_context.inherent_impls = Some(inherent_impl_vec);
             }
         }
 
@@ -111,7 +141,7 @@ impl Documentation {
     }
     fn from_ty_module(
         decl_engine: &DeclEngine,
-        module_info: ModuleInfo,
+        module_info: &ModuleInfo,
         ty_module: &TyModule,
         docs: &mut Documentation,
         impl_traits: &mut Vec<(TyImplTrait, ModuleInfo)>,
@@ -123,7 +153,7 @@ impl Documentation {
                     impl_traits.push((
                         (*decl_engine.get_impl_trait(&impl_trait.decl_id)).clone(),
                         module_info.clone(),
-                    ))
+                    ));
                 } else {
                     let desc = Descriptor::from_typed_decl(
                         decl_engine,
@@ -133,7 +163,7 @@ impl Documentation {
                     )?;
 
                     if let Descriptor::Documentable(doc) = desc {
-                        docs.0.push(doc)
+                        docs.push(doc);
                     }
                 }
             }
@@ -155,7 +185,7 @@ impl Documentation {
             .push(typed_submodule.mod_name_span.as_str().to_owned());
         Documentation::from_ty_module(
             decl_engine,
-            module_info.clone(),
+            &module_info.clone(),
             &typed_submodule.module,
             docs,
             impl_traits,
@@ -176,25 +206,27 @@ impl Documentation {
         Ok(())
     }
 }
+
 /// A finalized Document ready to be rendered. We want to retain all
 /// information including spans, fields on structs, variants on enums etc.
 #[derive(Clone, Debug)]
-pub(crate) struct Document {
-    pub(crate) module_info: ModuleInfo,
-    pub(crate) item_header: ItemHeader,
-    pub(crate) item_body: ItemBody,
-    pub(crate) raw_attributes: Option<String>,
+pub struct Document {
+    pub module_info: ModuleInfo,
+    pub item_header: ItemHeader,
+    pub item_body: ItemBody,
+    pub raw_attributes: Option<String>,
 }
+
 impl Document {
     /// Creates an HTML file name from the [Document].
-    pub(crate) fn html_filename(&self) -> String {
+    pub fn html_filename(&self) -> String {
         use sway_core::language::ty::TyDecl::StorageDecl;
-        let name = match &self.item_body.ty_decl {
-            StorageDecl { .. } => None,
+        let name = match &self.item_body.ty {
+            &DocumentableType::Declared(StorageDecl { .. }) => None,
             _ => Some(self.item_header.item_name.as_str()),
         };
 
-        Document::create_html_filename(self.item_body.ty_decl.doc_name(), name)
+        Document::create_html_filename(self.item_body.ty.doc_name(), name)
     }
     fn create_html_filename(ty: &str, name: Option<&str>) -> String {
         match name {
@@ -205,7 +237,7 @@ impl Document {
         }
     }
     /// Generate link info used in navigation between docs.
-    pub(crate) fn link(&self) -> DocLink {
+    pub fn link(&self) -> DocLink {
         DocLink {
             name: self.item_header.item_name.as_str().to_owned(),
             module_info: self.module_info.clone(),
@@ -213,7 +245,28 @@ impl Document {
             preview_opt: self.preview_opt(),
         }
     }
-    pub(crate) fn preview_opt(&self) -> Option<String> {
+    pub fn preview_opt(&self) -> Option<String> {
         create_preview(self.raw_attributes.clone())
+    }
+}
+
+impl PartialEq for Document {
+    fn eq(&self, other: &Self) -> bool {
+        self.item_header.item_name == other.item_header.item_name
+            && self.item_header.module_info.module_prefixes
+                == other.item_header.module_info.module_prefixes
+    }
+}
+
+impl Deref for Documentation {
+    type Target = Vec<Document>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Documentation {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

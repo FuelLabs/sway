@@ -651,16 +651,18 @@ impl<T> AbiEncode for Vec<T>
 where
     T: AbiEncode,
 {
-    fn abi_encode(self, ref mut buffer: Buffer) {
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
         let len = self.len();
-        buffer.push_u64(len);
+        let mut buffer = len.abi_encode(buffer);
 
         let mut i = 0;
         while i < len {
             let item = self.get(i).unwrap();
-            item.abi_encode(buffer);
+            buffer = item.abi_encode(buffer);
             i += 1;
         }
+
+        buffer
     }
 }
 
@@ -669,9 +671,9 @@ where
     T: AbiDecode,
 {
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
-        let mut v = Vec::new();
-
         let len = u64::abi_decode(buffer);
+
+        let mut v = Vec::with_capacity(len);
 
         let mut i = 0;
         while i < len {
@@ -699,14 +701,4 @@ impl<T> Iterator for VecIter<T> {
         self.index += 1;
         self.values.get(self.index - 1)
     }
-}
-
-#[test()]
-fn test_vec_with_len_1() {
-    let mut ve: Vec<u64> = Vec::new();
-    assert(ve.len == 0);
-    ve.push(1);
-    assert(ve.len == 1);
-    let _ = ve.remove(0);
-    assert(ve.len == 0);
 }

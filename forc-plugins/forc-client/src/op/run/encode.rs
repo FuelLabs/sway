@@ -1,6 +1,6 @@
 use crate::util::encode::{Token, Type};
 use fuel_abi_types::abi::full_program::FullProgramABI;
-use fuels_core::{codec::ABIEncoder, types::unresolved_bytes::UnresolvedBytes};
+use fuels_core::codec::{ABIEncoder, EncoderConfig};
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct ScriptCallHandler {
@@ -36,7 +36,7 @@ impl ScriptCallHandler {
     /// Encode the provided values with script's main argument types.
     ///
     /// Returns an error if the provided value count does not match the number of arguments.
-    pub(crate) fn encode_arguments(&self, values: &[&str]) -> anyhow::Result<UnresolvedBytes> {
+    pub(crate) fn encode_arguments(&self, values: &[&str]) -> anyhow::Result<Vec<u8>> {
         let main_arg_types = &self.main_arg_types;
         let expected_arg_count = main_arg_types.len();
         let provided_arg_count = values.len();
@@ -53,7 +53,8 @@ impl ScriptCallHandler {
             .map(|(ty, val)| Token::from_type_and_value(ty, val).map(|token| token.0))
             .collect::<anyhow::Result<Vec<_>>>()?;
 
-        Ok(ABIEncoder::encode(tokens.as_slice())?)
+        let abi_encoder = ABIEncoder::new(EncoderConfig::default());
+        Ok(abi_encoder.encode(tokens.as_slice())?)
     }
 }
 
@@ -95,14 +96,8 @@ mod tests {
         let call_handler = ScriptCallHandler::from_json_abi_str(test_json_abi).unwrap();
         let values = ["2", "true"];
 
-        let test_data_offset = 0;
-        let encoded_bytes = call_handler
-            .encode_arguments(&values)
-            .unwrap()
-            .resolve(test_data_offset);
-        let expected_bytes = vec![
-            2u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        ];
+        let encoded_bytes = call_handler.encode_arguments(&values).unwrap();
+        let expected_bytes = vec![2u8, 1u8];
         assert_eq!(encoded_bytes, expected_bytes);
     }
 

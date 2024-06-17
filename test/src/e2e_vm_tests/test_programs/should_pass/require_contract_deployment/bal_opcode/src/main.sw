@@ -1,12 +1,11 @@
 script;
 
-use std::constants::BASE_ASSET_ID;
 use balance_test_abi::BalanceTest;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x3b8cb681056f61a41e138b8884d7e3bb9332fbd7a8e38e3e0b0ada766cabfa4e;
+const CONTRACT_ID = 0x3120fdd1b99c0c611308aff43a99746cc2c661c69c22aa56331d5f3ce5534ee9;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x2d15bdaa30e59eb25bab934e9533d10ace0a971ae942e47119e49ef411978d34;
+const CONTRACT_ID = 0x9dac51d44d9d053eb2bf1f68bfdbd889ddfdcb470727cda2e1a132f5660f63a6;
 
 fn main() -> bool {
     let balance_test_contract = abi(BalanceTest, CONTRACT_ID);
@@ -15,7 +14,7 @@ fn main() -> bool {
     }
     ();
 
-    let balance = asm(asset_bal, asset: BASE_ASSET_ID, id: CONTRACT_ID) {
+    let balance = asm(asset_bal, asset: AssetId::base(), id: CONTRACT_ID) {
         bal asset_bal asset id;
         asset_bal: u64
     };

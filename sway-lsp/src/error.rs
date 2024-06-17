@@ -72,6 +72,8 @@ pub enum DirectoryError {
     PathFromUrlFailed { url: String },
     #[error("Unable to create span from path {:?}", path)]
     SpanFromPathFailed { path: String },
+    #[error("No program ID found for path {:?}", path)]
+    ProgramIdNotFound { path: String },
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -80,7 +82,7 @@ pub enum RenameError {
     TokenNotFound,
     #[error("Token is not part of the user's workspace")]
     TokenNotPartOfWorkspace,
-    #[error("Keywords and instrinsics are unable to be renamed")]
+    #[error("Keywords and intrinsics are unable to be renamed")]
     SymbolKindNotAllowed,
     #[error("Invalid name {:?}: not an identifier", name)]
     InvalidName { name: String },

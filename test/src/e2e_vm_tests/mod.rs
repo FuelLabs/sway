@@ -10,6 +10,7 @@ use anyhow::{anyhow, bail, Result};
 use colored::*;
 use core::fmt;
 use forc_pkg::BuildProfile;
+use forc_test::decode_log_data;
 use fuel_vm::fuel_tx;
 use fuel_vm::prelude::*;
 use regex::Regex;
@@ -94,6 +95,7 @@ struct TestDescription {
     validate_abi: bool,
     validate_storage_slots: bool,
     supported_targets: HashSet<BuildTarget>,
+    expected_decoded_test_logs: Option<Vec<String>>,
     unsupported_profiles: Vec<&'static str>,
     checker: FileCheck,
     run_config: RunConfig,
@@ -274,6 +276,7 @@ impl TestContext {
             validate_storage_slots,
             checker,
             run_config,
+            expected_decoded_test_logs,
             ..
         } = test;
 
@@ -293,11 +296,13 @@ impl TestContext {
 
         match category {
             TestCategory::Runs => {
-                let expected_result = expected_result.unwrap();
+                let expected_result = expected_result.expect("No expected result found. This is likely because test.toml is missing either an \"expected_result_new_encoding\" or \"expected_result\" entry");
 
                 let (result, out) =
                     run_and_capture_output(|| harness::compile_to_bytes(&name, &run_config)).await;
                 *output = out;
+
+                check_file_checker(checker, &name, output)?;
 
                 let compiled = result?;
 
@@ -538,6 +543,8 @@ impl TestContext {
                     harness::compile_and_run_unit_tests(&name, &run_config, true).await;
                 *output = out;
 
+                let mut decoded_logs = vec![];
+
                 result.map(|tested_pkgs| {
                     let mut failed = vec![];
                     for pkg in tested_pkgs {
@@ -546,6 +553,32 @@ impl TestContext {
                                 println!("Test: {} {}", test.name, test.passed());
                                 for log in test.logs.iter() {
                                     println!("{:?}", log);
+                                }
+                            }
+
+                            if expected_decoded_test_logs.is_some() {
+                                for log in test.logs.iter() {
+                                    if let Receipt::LogData {
+                                        rb,
+                                        data: Some(data),
+                                        ..
+                                    } = log
+                                    {
+                                        let decoded_log_data = decode_log_data(
+                                            &rb.to_string(),
+                                            data,
+                                            &pkg.built.program_abi,
+                                        )
+                                        .unwrap();
+                                        let var_value = decoded_log_data.value;
+                                        if verbose {
+                                            println!(
+                                                "Decoded log value: {}, log rb: {}",
+                                                var_value, rb
+                                            );
+                                        }
+                                        decoded_logs.push(var_value);
+                                    }
                                 }
                             }
 
@@ -561,12 +594,20 @@ impl TestContext {
                         }
                     }
 
+                    let expected_decoded_test_logs = expected_decoded_test_logs.unwrap_or_default();
+
                     if !failed.is_empty() {
                         println!("FAILED!! output:\n{}", output);
                         panic!(
                             "For {name}\n{} tests failed:\n{}",
                             failed.len(),
                             failed.into_iter().collect::<String>()
+                        );
+                    } else if expected_decoded_test_logs != decoded_logs {
+                        println!("FAILED!! output:\n{}", output);
+                        panic!(
+                            "For {name}\ncollected decoded logs: {:?}\nexpected decoded logs: {:?}",
+                            decoded_logs, expected_decoded_test_logs
                         );
                     }
                 })
@@ -626,7 +667,7 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
     // Be mindful that this can explode exponentially the number of tests
     // that run because one expansion expands on top of another
     let mut tests = tests;
-    let expansions = ["new_encoding"];
+    let expansions: [&str; 0] = [];
     for expansion in expansions {
         tests = tests
             .into_iter()
@@ -857,6 +898,19 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
             Some(other) => Err(anyhow!("Unknown category '{}'.", other)),
         })?;
 
+    let expected_decoded_test_logs = if let Some(toml::Value::Array(a)) =
+        toml_content.get("expected_decoded_test_logs")
+    {
+        if category != TestCategory::UnitTestsPass {
+            bail!("`expected_decoded_test_logs` is only valid for `unt_tests_pass` type of tests")
+        }
+        a.iter()
+            .map(|elem| elem.as_str().map(|s| s.to_string()))
+            .collect::<Option<Vec<_>>>()
+    } else {
+        None
+    };
+
     // Abort early if we find a FailsToCompile test without any Checker directives.
     if category == TestCategory::FailsToCompile && checker.is_empty() {
         bail!("'fail' tests must contain some FileCheck verification directives.");
@@ -1038,6 +1092,7 @@ fn parse_test_toml(path: &Path, run_config: &RunConfig) -> Result<TestDescriptio
         unsupported_profiles,
         checker: file_check,
         run_config: run_config.clone(),
+        expected_decoded_test_logs,
     })
 }
 

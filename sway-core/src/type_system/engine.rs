@@ -6,13 +6,14 @@ use crate::{
 };
 use core::fmt::Write;
 use hashbrown::{hash_map::RawEntryMut, HashMap};
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
     type_error::TypeError,
 };
-use sway_types::{integer_bits::IntegerBits, span::Span, ModuleId, SourceId};
+use sway_types::{integer_bits::IntegerBits, span::Span, ProgramId, SourceId};
 
 use super::unify::unifier::UnifyKind;
 
@@ -26,7 +27,7 @@ impl Clone for TypeEngine {
     fn clone(&self) -> Self {
         TypeEngine {
             slab: self.slab.clone(),
-            id_map: RwLock::new(self.id_map.read().unwrap().clone()),
+            id_map: RwLock::new(self.id_map.read().clone()),
         }
     }
 }
@@ -40,14 +41,12 @@ impl TypeEngine {
         ty: TypeInfo,
         source_id: Option<&SourceId>,
     ) -> TypeId {
-        let source_id = source_id
-            .map(Clone::clone)
-            .or_else(|| info_to_source_id(&ty));
+        let source_id = source_id.copied().or_else(|| info_to_source_id(&ty));
         let tsi = TypeSourceInfo {
             type_info: ty.clone().into(),
             source_id,
         };
-        let mut id_map = self.id_map.write().unwrap();
+        let mut id_map = self.id_map.write();
 
         let hash_builder = id_map.hasher().clone();
         let ty_hash = make_hasher(&hash_builder, engines)(&tsi);
@@ -68,19 +67,16 @@ impl TypeEngine {
         }
     }
 
-    /// Removes all data associated with `module_id` from the type engine.
-    pub fn clear_module(&mut self, module_id: &ModuleId) {
+    /// Removes all data associated with `program_id` from the type engine.
+    pub fn clear_program(&mut self, program_id: &ProgramId) {
         self.slab.retain(|_, tsi| match tsi.source_id {
-            Some(source_id) => &source_id.module_id() != module_id,
+            Some(source_id) => &source_id.program_id() != program_id,
             None => true,
         });
-        self.id_map
-            .write()
-            .unwrap()
-            .retain(|tsi, _| match tsi.source_id {
-                Some(source_id) => &source_id.module_id() != module_id,
-                None => true,
-            });
+        self.id_map.write().retain(|tsi, _| match tsi.source_id {
+            Some(source_id) => &source_id.program_id() != program_id,
+            None => true,
+        });
     }
 
     pub fn replace(&self, id: TypeId, new_value: TypeSourceInfo) {
@@ -132,7 +128,7 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) {
-        self.unify_helper(
+        Self::unify_helper(
             handler,
             engines,
             received,
@@ -162,7 +158,7 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) {
-        self.unify_helper(
+        Self::unify_helper(
             handler,
             engines,
             received,
@@ -192,7 +188,7 @@ impl TypeEngine {
         help_text: &str,
         err_override: Option<CompileError>,
     ) {
-        self.unify_helper(
+        Self::unify_helper(
             handler,
             engines,
             received,
@@ -206,7 +202,6 @@ impl TypeEngine {
 
     #[allow(clippy::too_many_arguments)]
     fn unify_helper(
-        &self,
         handler: &Handler,
         engines: &Engines,
         received: TypeId,
@@ -326,12 +321,12 @@ impl TypeEngine {
 
         match &&*self.get(type_id) {
             TypeInfo::Enum(decl_ref) => {
-                for variant_type in decl_engine.get_enum(decl_ref).variants.iter() {
+                for variant_type in &decl_engine.get_enum(decl_ref).variants {
                     self.decay_numeric(handler, engines, variant_type.type_argument.type_id, span)?;
                 }
             }
             TypeInfo::Struct(decl_ref) => {
-                for field in decl_engine.get_struct(decl_ref).fields.iter() {
+                for field in &decl_engine.get_struct(decl_ref).fields {
                     self.decay_numeric(handler, engines, field.type_argument.type_id, span)?;
                 }
             }
@@ -341,7 +336,7 @@ impl TypeEngine {
                 }
             }
             TypeInfo::Array(elem_ty, _length) => {
-                self.decay_numeric(handler, engines, elem_ty.type_id, span)?
+                self.decay_numeric(handler, engines, elem_ty.type_id, span)?;
             }
             TypeInfo::Ptr(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,
             TypeInfo::Slice(targ) => self.decay_numeric(handler, engines, targ.type_id, span)?,

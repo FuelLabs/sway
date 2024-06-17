@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub trait GetDeclIdent {
-    fn get_decl_ident(&self) -> Option<Ident>;
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident>;
 }
 
 #[derive(Clone, Debug)]
@@ -61,12 +61,11 @@ impl DebugWithEngines for TyAstNode {
 }
 
 impl SubstTypes for TyAstNode {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         match self.content {
             TyAstNodeContent::Declaration(ref mut decl) => decl.subst(type_mapping, engines),
             TyAstNodeContent::Expression(ref mut expr) => expr.subst(type_mapping, engines),
-            TyAstNodeContent::SideEffect(_) => (),
-            TyAstNodeContent::Error(_, _) => (),
+            TyAstNodeContent::SideEffect(_) | TyAstNodeContent::Error(_, _) => HasChanges::No,
         }
     }
 }
@@ -136,8 +135,8 @@ impl CollectTypesMetadata for TyAstNode {
 }
 
 impl GetDeclIdent for TyAstNode {
-    fn get_decl_ident(&self) -> Option<Ident> {
-        self.content.get_decl_ident()
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident> {
+        self.content.get_decl_ident(engines)
     }
 }
 
@@ -222,6 +221,12 @@ impl TyAstNode {
                         value.check_deprecated(engines, handler, allow_deprecated);
                     }
                 }
+                TyDecl::ConfigurableDecl(decl) => {
+                    let decl = engines.de().get(&decl.decl_id);
+                    if let Some(value) = &decl.value {
+                        value.check_deprecated(engines, handler, allow_deprecated);
+                    }
+                }
                 TyDecl::TraitTypeDecl(_) => {}
                 TyDecl::FunctionDecl(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
@@ -280,6 +285,7 @@ impl TyAstNode {
                 TyAstNodeContent::Declaration(node) => match node {
                     TyDecl::VariableDecl(_decl) => {}
                     TyDecl::ConstantDecl(_decl) => {}
+                    TyDecl::ConfigurableDecl(_decl) => {}
                     TyDecl::TraitTypeDecl(_) => {}
                     TyDecl::FunctionDecl(decl) => {
                         let fn_decl_id = decl.decl_id;
@@ -419,9 +425,9 @@ impl CollectTypesMetadata for TyAstNodeContent {
 }
 
 impl GetDeclIdent for TyAstNodeContent {
-    fn get_decl_ident(&self) -> Option<Ident> {
+    fn get_decl_ident(&self, engines: &Engines) -> Option<Ident> {
         match self {
-            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(),
+            TyAstNodeContent::Declaration(decl) => decl.get_decl_ident(engines),
             TyAstNodeContent::Expression(_expr) => None, //expr.get_decl_ident(),
             TyAstNodeContent::SideEffect(_) => None,
             TyAstNodeContent::Error(_, _) => None,

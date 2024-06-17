@@ -7,7 +7,6 @@ use ::alloc::alloc_bytes;
 use ::assert::assert;
 use ::asset_id::AssetId;
 use ::bytes::Bytes;
-use ::constants::BASE_ASSET_ID;
 use ::contract_id::ContractId;
 use ::option::Option::{self, *};
 use ::revert::revert;
@@ -30,19 +29,12 @@ const GTF_INPUT_TYPE = 0x200;
 pub const GTF_INPUT_COIN_OWNER = 0x203;
 pub const GTF_INPUT_COIN_AMOUNT = 0x204;
 pub const GTF_INPUT_COIN_ASSET_ID = 0x205;
-// pub const GTF_INPUT_COIN_TX_POINTER = 0x206;
 pub const GTF_INPUT_COIN_WITNESS_INDEX = 0x207;
-pub const GTF_INPUT_COIN_MATURITY = 0x208;
 pub const GTF_INPUT_COIN_PREDICATE_LENGTH = 0x209;
 pub const GTF_INPUT_COIN_PREDICATE_DATA_LENGTH = 0x20A;
 pub const GTF_INPUT_COIN_PREDICATE = 0x20B;
 pub const GTF_INPUT_COIN_PREDICATE_DATA = 0x20C;
 
-// pub const GTF_INPUT_CONTRACT_TX_ID = 0x220;
-// pub const GTF_INPUT_CONTRACT_OUTPUT_INDEX = 0x221;
-// pub const GTF_INPUT_CONTRACT_BALANCE_ROOT = 0x222;
-// pub const GTF_INPUT_CONTRACT_STATE_ROOT = 0x223;
-// pub const GTF_INPUT_CONTRACT_TX_POINTER = 0x224;
 // pub const GTF_INPUT_CONTRACT_CONTRACT_ID = 0x225;
 pub const GTF_INPUT_MESSAGE_SENDER = 0x240;
 pub const GTF_INPUT_MESSAGE_RECIPIENT = 0x241;
@@ -116,7 +108,7 @@ pub fn input_type(index: u64) -> Input {
 ///
 /// # Returns
 ///
-/// * [u8] - The number of inputs in the transaction.
+/// * [u16] - The number of inputs in the transaction.
 ///
 /// # Examples
 ///
@@ -125,13 +117,13 @@ pub fn input_type(index: u64) -> Input {
 ///
 /// fn foo() {
 ///     let input_count = input_count();
-///     assert(input_count == 1);
+///     assert(input_count == 1_u16);
 /// }
 /// ```
-pub fn input_count() -> u8 {
+pub fn input_count() -> u16 {
     match tx_type() {
-        Transaction::Script => __gtf::<u8>(0, GTF_SCRIPT_INPUTS_COUNT),
-        Transaction::Create => __gtf::<u8>(0, GTF_CREATE_INPUTS_COUNT),
+        Transaction::Script => __gtf::<u16>(0, GTF_SCRIPT_INPUTS_COUNT),
+        Transaction::Create => __gtf::<u16>(0, GTF_CREATE_INPUTS_COUNT),
     }
 }
 
@@ -263,11 +255,12 @@ pub fn input_predicate_data_pointer(index: u64) -> Option<raw_ptr> {
 ///     assert(input_predicate_data == 100);
 /// }
 /// ```
-pub fn input_predicate_data<T>(index: u64) -> T {
-    match input_predicate_data_pointer(index) {
-        Some(d) => d.read::<T>(),
-        None => revert(0),
-    }
+pub fn input_predicate_data<T>(index: u64) -> T
+where
+    T: AbiDecode,
+{
+    use core::codec::decode_predicate_data_by_index;
+    decode_predicate_data_by_index::<T>(index)
 }
 
 /// Gets the AssetId of the input at `index`.
@@ -283,17 +276,17 @@ pub fn input_predicate_data<T>(index: u64) -> T {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::BASE_ASSET_ID, inputs::input_asset_id};
+/// use std::inputs::input_asset_id;
 ///
 /// fn foo() {
 ///     let input_asset_id = input_asset_id(0);
-///     assert(input_asset_id.unwrap() == BASE_ASSET_ID);
+///     assert(input_asset_id.unwrap() == AssetId::base());
 /// }
 /// ```
 pub fn input_asset_id(index: u64) -> Option<AssetId> {
     match input_type(index) {
         Input::Coin => Some(AssetId::from(__gtf::<b256>(index, GTF_INPUT_COIN_ASSET_ID))),
-        Input::Message => Some(BASE_ASSET_ID),
+        Input::Message => Some(AssetId::base()),
         Input::Contract => None,
     }
 }
@@ -306,7 +299,7 @@ pub fn input_asset_id(index: u64) -> Option<AssetId> {
 ///
 /// # Returns
 ///
-/// * [Option<u8>] - The witness index of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
+/// * [Option<u16>] - The witness index of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples
 ///
@@ -318,10 +311,10 @@ pub fn input_asset_id(index: u64) -> Option<AssetId> {
 ///     assert(input_witness_index.is_some()); // Ensure the input has a witness index.
 /// }
 /// ```
-pub fn input_witness_index(index: u64) -> Option<u8> {
+pub fn input_witness_index(index: u64) -> Option<u16> {
     match input_type(index) {
-        Input::Coin => Some(__gtf::<u8>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
-        Input::Message => Some(__gtf::<u8>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
+        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_WITNESS_INDEX)),
+        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_WITNESS_INDEX)),
         Input::Contract => None,
     }
 }
@@ -334,7 +327,7 @@ pub fn input_witness_index(index: u64) -> Option<u8> {
 ///
 /// # Returns
 ///
-/// * [Option<u16>] - The predicate length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
+/// * [Option<u64>] - The predicate length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples
 ///
@@ -343,13 +336,13 @@ pub fn input_witness_index(index: u64) -> Option<u8> {
 ///
 /// fn foo() {
 ///     let input_predicate_length = input_predicate_length(0);
-///     assert(input_predicate_length.unwrap() != 0u16);
+///     assert(input_predicate_length.unwrap() != 0u64);
 /// }
 /// ```
-pub fn input_predicate_length(index: u64) -> Option<u16> {
+pub fn input_predicate_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
-        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
+        Input::Coin => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_LENGTH)),
+        Input::Message => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_LENGTH)),
         Input::Contract => None,
     }
 }
@@ -411,7 +404,7 @@ pub fn input_predicate(index: u64) -> Bytes {
     if wrapped.is_none() {
         revert(0);
     };
-    let length = wrapped.unwrap().as_u64();
+    let length = wrapped.unwrap();
     let new_ptr = alloc_bytes(length);
     match input_predicate_pointer(index) {
         Some(d) => {
@@ -430,7 +423,7 @@ pub fn input_predicate(index: u64) -> Bytes {
 ///
 /// # Returns
 ///
-/// * [Option<u16>] - The predicate data length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
+/// * [Option<u64>] - The predicate data length of the input at `index`, if the input's type is `Input::Coin` or `Input::Message`, else `None`.
 ///
 /// # Examples
 ///
@@ -439,50 +432,18 @@ pub fn input_predicate(index: u64) -> Bytes {
 ///
 /// fn foo() {
 ///     let input_predicate_data_length = input_predicate_data_length(0);
-///     assert(input_predicate_data_length.unwrap() != 0_u16);
+///     assert(input_predicate_data_length.unwrap() != 0_u64);
 /// }
 /// ```
-pub fn input_predicate_data_length(index: u64) -> Option<u16> {
+pub fn input_predicate_data_length(index: u64) -> Option<u64> {
     match input_type(index) {
-        Input::Coin => Some(__gtf::<u16>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
-        Input::Message => Some(__gtf::<u16>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
+        Input::Coin => Some(__gtf::<u64>(index, GTF_INPUT_COIN_PREDICATE_DATA_LENGTH)),
+        Input::Message => Some(__gtf::<u64>(index, GTF_INPUT_MESSAGE_PREDICATE_DATA_LENGTH)),
         Input::Contract => None,
     }
 }
 
 // Coin Inputs
-
-/// Gets the maturity from the input at `index`.
-///
-/// # Additional Information
-///
-/// The maturity of an input refers to the number of blocks that must pass before the input can be spent.
-///
-/// # Arguments
-///
-/// * `index`: [u64] - The index of the input to check.
-///
-/// # Returns
-///
-/// * [Option<u32>] - The maturity of the input at `index`, if the input's type is `Input::Coin`, else `None`.
-///
-///
-/// # Examples
-///
-/// ```sway
-/// use std::inputs::input_maturity;
-///
-/// fn foo() {
-///     let input_maturity = input_maturity(0);
-///     assert(input_maturity.unwrap() == 0_u32);
-/// }
-/// ```
-pub fn input_maturity(index: u64) -> Option<u32> {
-    match input_type(index) {
-        Input::Coin => Some(__gtf::<u32>(index, GTF_INPUT_COIN_MATURITY)),
-        _ => None,
-    }
-}
 
 /// Gets the sender of the input message at `index`.
 ///
@@ -497,11 +458,11 @@ pub fn input_maturity(index: u64) -> Option<u32> {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, inputs::input_message_sender};
+/// use std::inputs::input_message_sender;
 ///
 /// fn foo() {
 ///     let input_message_sender = input_message_sender(0);
-///     assert(input_message_sender != Address::from(ZERO_B256));
+///     assert(input_message_sender != Address::zero());
 /// }
 /// ```
 pub fn input_message_sender(index: u64) -> Address {
@@ -521,11 +482,11 @@ pub fn input_message_sender(index: u64) -> Address {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, inputs::input_message_recipient};
+/// use std::inputs::input_message_recipient;
 ///
 /// fn foo() {
 ///     let input_message_recipient = input_message_recipient(0);
-///     assert(input_message_recipient != Address::from(ZERO_B256));
+///     assert(input_message_recipient != Address::zero());
 /// }
 /// ```
 pub fn input_message_recipient(index: u64) -> Address {
@@ -545,11 +506,11 @@ pub fn input_message_recipient(index: u64) -> Address {
 /// # Examples
 ///
 /// ```sway
-/// use std::{constants::ZERO_B256, inputs::input_message_nonce};
+/// use std::inputs::input_message_nonce;
 ///
 /// fn foo() {
 ///     let input_message_nonce = input_message_nonce(0);
-///     assert(input_message_nonce != b256::from(ZERO_B256));
+///     assert(input_message_nonce != b256::zero());
 /// }
 /// ```
 pub fn input_message_nonce(index: u64) -> b256 {
@@ -564,7 +525,7 @@ pub fn input_message_nonce(index: u64) -> b256 {
 ///
 /// # Returns
 ///
-/// * [u16] - The length of the input message at `index`, if the input's type is `Input::Message`.
+/// * [u64] - The length of the input message at `index`, if the input's type is `Input::Message`.
 ///
 /// # Examples
 ///
@@ -573,11 +534,11 @@ pub fn input_message_nonce(index: u64) -> b256 {
 ///
 /// fn foo() {
 ///     let input_message_length = input_message_length(0);
-///     assert(input_message_length != 0_u16);
+///     assert(input_message_length != 0_u64);
 /// }
 /// ```
-pub fn input_message_data_length(index: u64) -> u16 {
-    __gtf::<u16>(index, GTF_INPUT_MESSAGE_DATA_LENGTH)
+pub fn input_message_data_length(index: u64) -> u64 {
+    __gtf::<u64>(index, GTF_INPUT_MESSAGE_DATA_LENGTH)
 }
 
 /// Gets the data of the input message at `index`.
@@ -609,7 +570,7 @@ pub fn input_message_data(index: u64, offset: u64) -> Bytes {
     assert(valid_input_type(index, Input::Message));
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
     let data_with_offset = data.add_uint_offset(offset);
-    let length = input_message_data_length(index).as_u64();
+    let length = input_message_data_length(index);
     let new_ptr = alloc_bytes(length);
 
     data_with_offset.copy_bytes_to(new_ptr, length);

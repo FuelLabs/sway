@@ -31,11 +31,11 @@ pub fn module_verifier(
     Ok(Box::new(ModuleVerifierResult))
 }
 
-pub const MODULEVERIFIER_NAME: &str = "module_verifier";
+pub const MODULE_VERIFIER_NAME: &str = "module-verifier";
 
 pub fn create_module_verifier_pass() -> Pass {
     Pass {
-        name: MODULEVERIFIER_NAME,
+        name: MODULE_VERIFIER_NAME,
         descr: "Verify module",
         deps: vec![],
         runner: ScopedPass::ModulePass(PassMutability::Analysis(module_verifier)),
@@ -151,7 +151,7 @@ impl<'eng> Context<'eng> {
     }
 
     fn verify_metadata(&self, md_idx: Option<MetadataIndex>) -> Result<(), IrError> {
-        // For now we check only that struct tags are valid identiers.
+        // For now we check only that struct tags are valid identifiers.
         if let Some(md_idx) = md_idx {
             match &self.metadata[md_idx.0] {
                 Metadatum::List(md_idcs) => {
@@ -293,6 +293,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         indices,
                     } => self.verify_get_elem_ptr(base, elem_ptr_ty, indices)?,
                     InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
+                    InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
                     InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
                     InstOp::Load(ptr) => self.verify_load(ptr)?,
                     InstOp::MemCopyBytes {
@@ -786,6 +787,14 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         }
     }
 
+    fn verify_get_config(&self, module: Module, name: &str) -> Result<(), IrError> {
+        if !self.context.modules[module.0].configs.contains_key(name) {
+            Err(IrError::VerifyGetNonExistentPointer)
+        } else {
+            Ok(())
+        }
+    }
+
     fn verify_gtf(&self, index: &Value, _tx_field_id: &u64) -> Result<(), IrError> {
         // We should perhaps verify that _tx_field_id fits in a twelve bit immediate
         if !index.get_type(self.context).is(Type::is_uint, self.context) {
@@ -816,16 +825,8 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_load(&self, src_val: &Value) -> Result<(), IrError> {
         // Just confirm `src_val` is a pointer.
-        let r = self
-            .get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
-            .map(|_| ());
-
-        if r.is_err() {
-            let meta = src_val.get_metadata(self.context).unwrap();
-            dbg!(&self.context.metadata[meta.0], &r);
-        }
-
-        r
+        self.get_ptr_type(src_val, IrError::VerifyLoadFromNonPointer)
+            .map(|_| ())
     }
 
     fn verify_log(&self, log_val: &Value, log_ty: &Type, log_id: &Value) -> Result<(), IrError> {

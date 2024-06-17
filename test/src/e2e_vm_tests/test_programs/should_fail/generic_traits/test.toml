@@ -28,8 +28,15 @@ category = "fail"
 # nextln: $()}
 # nextln: $()Trait "generic_traits::Multiple<u64>" is already implemented for type "FooBarData<F>".
 
+# check: $()Self type of an impl block is not valid
 # check: $()impl<T> Returner<T> for Self {
-# check: $()"Self" is not valid in the self type of an impl block
+# nextln: $()"Self" is not a valid type in the self type of a trait impl block.
+
+# check: $()Self type of an impl block is not valid
+# check: $()impl<T> Returner<T> for _ {
+# nextln: $()Placeholder `_` is not a valid type in the self type of a trait impl block.
+# check: $()Are you trying to implement trait "Returner" for any type?
+# check: $()impl SomeTrait for _
 
 # check: $()my_trait_method() -> Self {
 # check: $()1u64

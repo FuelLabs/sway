@@ -1,12 +1,10 @@
 use crate::{
-    decl_engine::*,
+    decl_engine::{DeclMapping, InterfaceItemMap, ItemMap},
     engine_threading::*,
-    language::{
-        ty::{self},
-        CallPath,
-    },
+    has_changes,
+    language::{ty, CallPath},
     namespace::TryInsertingTraitImplOnFailure,
-    semantic_analysis::*,
+    semantic_analysis::{GenericShadowingMode, TypeCheckContext},
     type_system::priv_prelude::*,
 };
 
@@ -98,11 +96,11 @@ impl OrdWithEngines for TypeParameter {
 }
 
 impl SubstTypes for TypeParameter {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.type_id.subst(type_mapping, engines);
-        self.trait_constraints
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.type_id.subst(type_mapping, engines);
+            self.trait_constraints.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -133,7 +131,7 @@ impl DebugWithEngines for TypeParameter {
 impl fmt::Debug for TypeParameter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let _ = write!(f, "{}: {:?}", self.name_ident, self.type_id);
-        for c in self.trait_constraints.iter() {
+        for c in &self.trait_constraints {
             let _ = write!(f, "+ {:?}", c.trait_name);
         }
         write!(f, "")
@@ -151,6 +149,7 @@ impl TypeParameter {
                 name: name.clone(),
                 trait_constraints: VecSet(vec![]),
                 parent: None,
+                is_from_type_parameter: true,
             },
             span.source_id(),
         );
@@ -176,30 +175,8 @@ impl TypeParameter {
             });
         let name_a = Ident::new_with_override("self".into(), self.name_ident.span());
         let name_b = Ident::new_with_override("Self".into(), self.name_ident.span());
-        let const_shadowing_mode = ctx.const_shadowing_mode();
-        let generic_shadowing_mode = ctx.generic_shadowing_mode();
-        let _ = ctx
-            .namespace_mut()
-            .module_mut()
-            .current_items_mut()
-            .insert_symbol(
-                handler,
-                name_a,
-                type_parameter_decl.clone(),
-                const_shadowing_mode,
-                generic_shadowing_mode,
-            );
-        let _ = ctx
-            .namespace_mut()
-            .module_mut()
-            .current_items_mut()
-            .insert_symbol(
-                handler,
-                name_b,
-                type_parameter_decl,
-                const_shadowing_mode,
-                generic_shadowing_mode,
-            );
+        let _ = ctx.insert_symbol(handler, name_a, type_parameter_decl.clone());
+        let _ = ctx.insert_symbol(handler, name_b, type_parameter_decl);
     }
 
     /// Type check a list of [TypeParameter] and return a new list of
@@ -218,7 +195,7 @@ impl TypeParameter {
         }
 
         handler.scope(|handler| {
-            for type_param in type_params.into_iter() {
+            for type_param in type_params {
                 new_type_params.push(
                     match TypeParameter::type_check(handler, ctx.by_ref(), type_param) {
                         Ok(res) => res,
@@ -230,12 +207,8 @@ impl TypeParameter {
             // Type check trait constraints only after type checking all type parameters.
             // This is required because a trait constraint may use other type parameters.
             // Ex: `struct Struct2<A, B> where A : MyAdd<B>`
-            for type_param in new_type_params.iter() {
-                TypeParameter::type_check_trait_constraints(
-                    handler,
-                    ctx.by_ref(),
-                    type_param.clone(),
-                )?;
+            for type_param in &new_type_params {
+                TypeParameter::type_check_trait_constraints(handler, ctx.by_ref(), type_param)?;
             }
 
             Ok(new_type_params)
@@ -307,6 +280,7 @@ impl TypeParameter {
             name: _,
             trait_constraints: _,
             parent,
+            is_from_type_parameter: _,
         } = &*type_engine.get(type_id)
         {
             *parent
@@ -322,6 +296,7 @@ impl TypeParameter {
                 name: name_ident.clone(),
                 trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
                 parent,
+                is_from_type_parameter: true,
             },
             name_ident.span().source_id(),
         );
@@ -346,7 +321,7 @@ impl TypeParameter {
     fn type_check_trait_constraints(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        type_parameter: TypeParameter,
+        type_parameter: &TypeParameter,
     ) -> Result<(), ErrorEmitted> {
         let type_engine = ctx.engines.te();
 
@@ -357,7 +332,7 @@ impl TypeParameter {
             .collect();
 
         // Type check the trait constraints.
-        for trait_constraint in trait_constraints_with_supertraits.iter_mut() {
+        for trait_constraint in &mut trait_constraints_with_supertraits {
             trait_constraint.type_check(handler, ctx.by_ref())?;
         }
 
@@ -367,6 +342,7 @@ impl TypeParameter {
             name: _,
             trait_constraints: _,
             parent,
+            is_from_type_parameter: _,
         } = &*type_engine.get(type_parameter.type_id)
         {
             *parent
@@ -382,9 +358,10 @@ impl TypeParameter {
                     name: type_parameter.name_ident.clone(),
                     trait_constraints: VecSet(trait_constraints_with_supertraits.clone()),
                     parent,
+                    is_from_type_parameter: true,
                 }
                 .into(),
-                source_id: type_parameter.name_ident.span().source_id().cloned(),
+                source_id: type_parameter.name_ident.span().source_id().copied(),
             },
         );
 
@@ -412,7 +389,7 @@ impl TypeParameter {
         mut ctx: TypeCheckContext,
     ) -> Result<(), ErrorEmitted> {
         // Insert the trait constraints into the namespace.
-        for trait_constraint in self.trait_constraints.iter() {
+        for trait_constraint in &self.trait_constraints {
             TraitConstraint::insert_into_namespace(
                 handler,
                 ctx.by_ref(),
@@ -441,13 +418,13 @@ impl TypeParameter {
 
             let sy = ctx
                 .namespace()
-                .module()
+                .module(ctx.engines())
                 .current_items()
                 .symbols
                 .get(name_ident)
                 .unwrap();
 
-            match sy {
+            match sy.expect_typed_ref() {
                 ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
                     type_id: parent_type_id,
                     ..
@@ -456,6 +433,7 @@ impl TypeParameter {
                         name,
                         trait_constraints,
                         parent,
+                        is_from_type_parameter,
                     } = &*ctx.engines().te().get(*type_id)
                     {
                         if parent.is_some() {
@@ -469,9 +447,10 @@ impl TypeParameter {
                                     name: name.clone(),
                                     trait_constraints: trait_constraints.clone(),
                                     parent: Some(*parent_type_id),
+                                    is_from_type_parameter: *is_from_type_parameter,
                                 }
                                 .into(),
-                                source_id: name.span().source_id().cloned(),
+                                source_id: name.span().source_id().copied(),
                             },
                         );
                     }
@@ -513,7 +492,7 @@ impl TypeParameter {
         let engines = ctx.engines();
 
         handler.scope(|handler| {
-            for type_param in type_parameters.iter() {
+            for type_param in type_parameters {
                 let TypeParameter {
                     type_id,
                     trait_constraints,
@@ -523,7 +502,7 @@ impl TypeParameter {
                 // Check to see if the trait constraints are satisfied.
                 match ctx
                     .namespace_mut()
-                    .module_mut()
+                    .module_mut(engines)
                     .current_items_mut()
                     .implemented_traits
                     .check_if_trait_constraints_are_satisfied_for_type(
@@ -538,7 +517,7 @@ impl TypeParameter {
                     Err(_) => continue,
                 }
 
-                for trait_constraint in trait_constraints.iter() {
+                for trait_constraint in trait_constraints {
                     let TraitConstraint {
                         trait_name,
                         type_arguments: trait_type_arguments,
@@ -610,7 +589,7 @@ fn handle_trait(
                 item_refs.extend(trait_item_refs);
                 impld_item_refs.extend(trait_impld_item_refs);
 
-                for supertrait in trait_decl.supertraits.iter() {
+                for supertrait in &trait_decl.supertraits {
                     let (
                         supertrait_interface_item_refs,
                         supertrait_item_refs,
@@ -638,7 +617,9 @@ fn handle_trait(
                     .iter()
                     .map(|trait_decl| {
                         // In the case of an internal library, always add :: to the candidate call path.
-                        let import_path = trait_decl.call_path.to_import_path(ctx.namespace());
+                        let import_path = trait_decl
+                            .call_path
+                            .to_import_path(ctx.engines(), ctx.namespace());
                         if import_path == trait_decl.call_path {
                             // If external library.
                             import_path.to_string()

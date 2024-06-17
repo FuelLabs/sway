@@ -1,11 +1,11 @@
 use crate::cli::BuildCommand;
 use forc_pkg as pkg;
 use forc_util::ForcResult;
-use pkg::manifest::build_profile::ExperimentalFlags;
+use pkg::{manifest::build_profile::ExperimentalFlags, MemberFilter};
 
 pub fn build(cmd: BuildCommand) -> ForcResult<pkg::Built> {
     let opts = opts_from_cmd(cmd);
-    let built = pkg::build_with_options(opts)?;
+    let built = pkg::build_with_options(&opts)?;
     Ok(built)
 }
 
@@ -22,11 +22,11 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         },
         print: pkg::PrintOpts {
             ast: cmd.build.print.ast,
-            dca_graph: cmd.build.print.dca_graph,
-            dca_graph_url_format: cmd.build.print.dca_graph_url_format,
-            finalized_asm: cmd.build.print.finalized_asm,
-            intermediate_asm: cmd.build.print.intermediate_asm,
-            ir: cmd.build.print.ir,
+            dca_graph: cmd.build.print.dca_graph.clone(),
+            dca_graph_url_format: cmd.build.print.dca_graph_url_format.clone(),
+            asm: cmd.build.print.asm(),
+            bytecode: cmd.build.print.bytecode,
+            ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
         time_phases: cmd.build.print.time_phases,
@@ -42,9 +42,9 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
         debug_outfile: cmd.build.output.debug_file,
         build_target: cmd.build.build_target,
         tests: cmd.tests,
-        member_filter: Default::default(),
+        member_filter: MemberFilter::default(),
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

@@ -9,8 +9,9 @@ use sway_lsp::{
 };
 use sway_lsp_test_utils::{
     assert_server_requests, dir_contains_forc_manifest, doc_comments_dir, e2e_language_dir,
-    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, runnables_test_dir,
-    self_impl_reassignment_dir, sway_workspace_dir, test_fixtures_dir,
+    e2e_test_dir, generic_impl_self_dir, get_fixture, load_sway_example, random_delay,
+    runnables_test_dir, self_impl_reassignment_dir, setup_panic_hook, sway_workspace_dir,
+    test_fixtures_dir,
 };
 use tower_lsp::LspService;
 
@@ -113,7 +114,7 @@ macro_rules! test_lsp_capability {
 
         // Call the specific LSP capability function that was passed in.
         let _ = $capability(&server, &uri).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     }};
 }
 
@@ -136,7 +137,7 @@ fn initialize() {
             initialization_options: None,
             ..Default::default()
         };
-        let _ = request::handle_initialize(&server, params);
+        let _ = request::handle_initialize(&server, &params);
     });
 }
 
@@ -145,7 +146,7 @@ fn did_open() {
     run_async!({
         let server = ServerState::default();
         let _ = open(&server, e2e_test_dir().join("src/main.sw")).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -154,7 +155,7 @@ fn did_change() {
     run_async!({
         let (mut service, _) = LspService::new(ServerState::new);
         let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-        let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
         service.inner().wait_for_parsing().await;
         shutdown_and_exit(&mut service).await;
     });
@@ -167,13 +168,13 @@ fn did_cache_test() {
             .custom_method("sway/metrics", ServerState::metrics)
             .finish();
         let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
-        let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
         service.inner().wait_for_parsing().await;
         let metrics = lsp::metrics_request(&mut service, &uri).await;
         assert!(metrics.len() >= 2);
         for (path, metrics) in metrics {
             if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
-                assert!(metrics.reused_modules >= 1);
+                assert!(metrics.reused_programs >= 1);
             }
         }
         shutdown_and_exit(&mut service).await;
@@ -191,14 +192,14 @@ fn did_change_stress_test() {
         let uri = init_and_open(&mut service, bench_dir.join("src/main.sw")).await;
         let times = 400;
         for version in 0..times {
-            let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
+            let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
             if version == 0 {
                 service.inner().wait_for_parsing().await;
             }
             let metrics = lsp::metrics_request(&mut service, &uri).await;
             for (path, metrics) in metrics {
                 if path.contains("sway-lib-core") || path.contains("sway-lib-std") {
-                    assert!(metrics.reused_modules >= 1);
+                    assert!(metrics.reused_programs >= 1);
                 }
             }
         }
@@ -211,12 +212,7 @@ fn did_change_stress_test_random_wait() {
     run_async!({
         let test_duration = tokio::time::Duration::from_secs(5 * 60); // 5 minutes timeout
         let test_future = async {
-            std::env::set_var("RUST_BACKTRACE", "1");
-            let default_panic = std::panic::take_hook();
-            std::panic::set_hook(Box::new(move |panic_info| {
-                default_panic(panic_info); // Print the panic message
-                std::process::exit(1);
-            }));
+            setup_panic_hook();
             let (mut service, _) = LspService::new(ServerState::new);
             let example_dir = sway_workspace_dir()
                 .join(e2e_language_dir())
@@ -225,7 +221,7 @@ fn did_change_stress_test_random_wait() {
             let times = 60;
             for version in 0..times {
                 //eprintln!("version: {}", version);
-                let _ = lsp::did_change_request(&mut service, &uri, version + 1).await;
+                let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
                 if version == 0 {
                     service.inner().wait_for_parsing().await;
                 }
@@ -255,6 +251,77 @@ fn did_change_stress_test_random_wait() {
     });
 }
 
+fn garbage_collection_runner(path: PathBuf) {
+    run_async!({
+        setup_panic_hook();
+        let (mut service, _) = LspService::new(ServerState::new);
+        // set the garbage collection frequency to 1
+        service
+            .inner()
+            .config
+            .write()
+            .garbage_collection
+            .gc_frequency = 1;
+        let uri = init_and_open(&mut service, path).await;
+        let times = 60;
+        for version in 1..times {
+            //eprintln!("version: {}", version);
+            let params = if rand::random::<u64>() % 3 < 1 {
+                // enter keypress at line 20
+                lsp::create_did_change_params(
+                    &uri,
+                    version,
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    0,
+                )
+            } else {
+                // backspace keypress at line 21
+                lsp::create_did_change_params(
+                    &uri,
+                    version,
+                    Position {
+                        line: 20,
+                        character: 0,
+                    },
+                    Position {
+                        line: 21,
+                        character: 0,
+                    },
+                    1,
+                )
+            };
+            let _ = lsp::did_change_request(&mut service, &uri, version, Some(params)).await;
+            if version == 0 {
+                service.inner().wait_for_parsing().await;
+            }
+            // wait for a random amount of time to simulate typing
+            random_delay().await;
+        }
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn garbage_collection_storage() {
+    let p = sway_workspace_dir()
+        .join("sway-lsp/tests/fixtures/garbage_collection/storage_contract")
+        .join("src/main.sw");
+    garbage_collection_runner(p);
+}
+
+#[test]
+fn garbage_collection_paths() {
+    let p = test_fixtures_dir().join("tokens/paths/src/main.sw");
+    garbage_collection_runner(p);
+}
+
 #[test]
 fn lsp_syncs_with_workspace_edits() {
     run_async!({
@@ -270,11 +337,24 @@ fn lsp_syncs_with_workspace_edits() {
             def_path: uri.as_str(),
         };
         lsp::definition_check(service.inner(), &go_to).await;
-        let _ = lsp::did_change_request(&mut service, &uri, 1).await;
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
         service.inner().wait_for_parsing().await;
         go_to.def_line = 20;
         lsp::definition_check_with_req_offset(service.inner(), &mut go_to, 45, 24).await;
         shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
+fn compilation_succeeds_when_triggered_from_module() {
+    run_async!({
+        let server = ServerState::default();
+        let _ = open(
+            &server,
+            test_fixtures_dir().join("tokens/modules/src/test_mod.sw"),
+        )
+        .await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -284,7 +364,7 @@ fn show_ast() {
         let server = ServerState::default();
         let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
         lsp::show_ast_request(&server, &uri, "typed", None).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -295,7 +375,7 @@ fn visualize() {
         let server = ServerState::default();
         let uri = open(&server, e2e_test_dir().join("src/main.sw")).await;
         lsp::visualize_request(&server, &uri, "build_plan").await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -316,7 +396,7 @@ fn go_to_definition() {
             def_path: uri.as_str(),
         };
         lsp::definition_check(&server, &go_to).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -372,7 +452,7 @@ fn go_to_definition_for_fields() {
         // Foo
         lsp::definition_check(&server, &opt_go_to).await;
 
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -422,7 +502,7 @@ fn go_to_definition_inside_turbofish() {
         lsp::definition_check_with_req_offset(&server, &mut res_go_to, 23, 27).await;
         lsp::definition_check_with_req_offset(&server, &mut res_go_to, 24, 33).await;
 
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -536,7 +616,7 @@ fn go_to_definition_for_matches() {
         // ExampleStruct.variable
         lsp::definition_check(&server, &go_to).await;
 
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -579,7 +659,7 @@ fn go_to_definition_for_modules() {
         // mod deep_mod;
         lsp::definition_check(&server, &opt_go_to).await;
 
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -953,7 +1033,7 @@ fn go_to_definition_for_paths() {
         // dfun
         // lsp::definition_check(&server, &go_to).await;
 
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -984,7 +1064,7 @@ fn go_to_definition_for_traits() {
         trait_go_to.req_char = 20;
         trait_go_to.def_line = 3;
         lsp::definition_check(&server, &trait_go_to).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1077,7 +1157,7 @@ fn go_to_definition_for_variables() {
         lsp::definition_check_with_req_offset(&server, &mut go_to, 60, 50).await;
         lsp::definition_check_with_req_offset(&server, &mut go_to, 61, 50).await;
 
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1523,7 +1603,7 @@ fn go_to_definition_for_storage() {
         // storage.var1.z.x
         lsp::definition_check(&server, &go_to).await;
 
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1550,7 +1630,7 @@ fn hover_docs_for_consts() {
         hover.req_char = 49;
         hover.documentation = vec![" CONSTANT_2 has a value of 200"];
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1571,7 +1651,7 @@ fn hover_docs_for_functions() {
         documentation: vec!["```sway\npub fn bar(p: Point) -> Point\n```\n---\n A function declaration with struct as a function parameter\n\n---\nGo to [Point](command:sway.goToLocation?%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A5%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Ftokens%2Ffunctions%2Fsrc%2Fmain.sw%22%7D%5D \"functions::Point\")"],
     };
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1584,13 +1664,13 @@ fn hover_docs_for_structs() {
             test_fixtures_dir().join("tokens/structs/src/main.sw"),
         )
         .await;
-        let data_documention = "```sway\nenum Data\n```\n---\n My data enum";
+        let data_documentation = "```sway\nenum Data\n```\n---\n My data enum";
 
         let mut hover = HoverDocumentation {
             req_uri: &uri,
             req_line: 12,
             req_char: 10,
-            documentation: vec![data_documention],
+            documentation: vec![data_documentation],
         };
         lsp::hover_request(&server, &hover).await;
         hover.req_line = 13;
@@ -1610,7 +1690,7 @@ fn hover_docs_for_structs() {
             documentation: vec!["```sway\nstruct MyStruct\n```\n---\n My struct type"],
         };
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1639,7 +1719,7 @@ fn hover_docs_for_enums() {
         hover.req_char = 29;
         hover.documentation = vec![" Docs for variants"];
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1656,7 +1736,7 @@ fn hover_docs_for_abis() {
             documentation: vec!["```sway\nabi MyContract\n```\n---\n Docs for MyContract"],
         };
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1677,7 +1757,7 @@ fn hover_docs_for_variables() {
             documentation: vec!["```sway\nlet variable8: ContractCaller<TestAbi>\n```\n---"],
         };
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1694,7 +1774,7 @@ fn hover_docs_with_code_examples() {
             documentation: vec!["```sway\nstruct Data\n```\n---\n Struct holding:\n\n 1. A `value` of type `NumberOrString`\n 2. An `address` of type `u64`"],
         };
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1715,7 +1795,7 @@ fn hover_docs_for_self_keywords() {
         hover.req_char = 24;
         hover.documentation = vec!["```sway\nstruct MyStruct\n```\n---\n\n---\n[2 implementations](command:sway.peekLocations?%5B%7B%22locations%22%3A%5B%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A4%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A2%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%2C%7B%22range%22%3A%7B%22end%22%3A%7B%22character%22%3A1%2C%22line%22%3A14%7D%2C%22start%22%3A%7B%22character%22%3A0%2C%22line%22%3A6%7D%7D%2C%22uri%22%3A%22file","sway%2Fsway-lsp%2Ftests%2Ffixtures%2Fcompletion%2Fsrc%2Fmain.sw%22%7D%5D%7D%5D \"Go to implementations\")"];
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1741,7 +1821,7 @@ fn hover_docs_for_boolean_keywords() {
         hover.req_char = 31;
         hover.documentation = vec!["\n```sway\ntrue\n```\n\n---\n\n A value of type [`bool`] representing logical **true**.\n\n Logically `true` is not equal to [`false`].\n\n ## Control structures that check for **true**\n\n Several of Sway's control structures will check for a `bool` condition evaluating to **true**.\n\n   * The condition in an [`if`] expression must be of type `bool`.\n     Whenever that condition evaluates to **true**, the `if` expression takes\n     on the value of the first block. If however, the condition evaluates\n     to `false`, the expression takes on value of the `else` block if there is one.\n\n   * [`while`] is another control flow construct expecting a `bool`-typed condition.\n     As long as the condition evaluates to **true**, the `while` loop will continually\n     evaluate its associated block.\n\n   * [`match`] arms can have guard clauses on them."];
         lsp::hover_request(&server, &hover).await;
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1858,7 +1938,7 @@ fn rename() {
             new_name: "NEW_TYPE_NAME", // from ZERO_B256
         };
         assert_eq!(lsp::prepare_rename_request(&server, &rename).await, None);
-        let _ = server.shutdown_server().await;
+        let _ = server.shutdown_server();
     });
 }
 
@@ -1996,7 +2076,7 @@ lsp_capability_test!(
     test_fixtures_dir().join("completion/src/main.sw")
 );
 
-// This method iterates over all of the examples in the e2e langauge should_pass dir
+// This method iterates over all of the examples in the e2e language should_pass dir
 // and saves the lexed, parsed, and typed ASTs to the users home directory.
 // This makes it easy to grep for certain compiler types to inspect their use cases,
 // providing necessary context when working on the traversal modules.
@@ -2046,5 +2126,5 @@ async fn write_all_example_asts() {
             lsp::show_ast_request(&server, &uri, "typed", example_dir).await;
         }
     }
-    let _ = server.shutdown_server().await;
+    let _ = server.shutdown_server();
 }

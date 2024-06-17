@@ -22,7 +22,7 @@ impl Format for Statement {
 /// Remove arguments from the expression if the expression is a method call if
 /// the method is a simple two path call (foo.bar()). This needed because in
 /// method calls of two parts they are never broke into multiple lines.
-/// Arguments however can be be broken into multiple lines, and that is handled
+/// Arguments however can be broken into multiple lines, and that is handled
 /// by `write_function_call_arguments`
 fn remove_arguments_from_expr(expr: Expr) -> Expr {
     match expr {

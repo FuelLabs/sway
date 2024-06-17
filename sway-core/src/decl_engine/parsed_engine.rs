@@ -2,14 +2,14 @@ use crate::{
     concurrent_slab::ConcurrentSlab,
     decl_engine::*,
     language::parsed::{
-        AbiDeclaration, ConstantDeclaration, EnumDeclaration, FunctionDeclaration, ImplSelf,
-        ImplTrait, StorageDeclaration, StructDeclaration, TraitDeclaration, TraitFn,
-        TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
+        AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration, EnumVariant,
+        FunctionDeclaration, ImplSelf, ImplTrait, StorageDeclaration, StructDeclaration,
+        TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
     },
 };
 
 use std::sync::Arc;
-use sway_types::{ModuleId, Spanned};
+use sway_types::{ProgramId, Spanned};
 
 use super::parsed_id::ParsedDeclId;
 
@@ -27,7 +27,9 @@ pub struct ParsedDeclEngine {
     storage_slab: ConcurrentSlab<StorageDeclaration>,
     abi_slab: ConcurrentSlab<AbiDeclaration>,
     constant_slab: ConcurrentSlab<ConstantDeclaration>,
+    configurable_slab: ConcurrentSlab<ConfigurableDeclaration>,
     enum_slab: ConcurrentSlab<EnumDeclaration>,
+    enum_variant_slab: ConcurrentSlab<EnumVariant>,
     type_alias_slab: ConcurrentSlab<TypeAliasDeclaration>,
 }
 
@@ -72,7 +74,9 @@ decl_engine_get!(struct_slab, StructDeclaration);
 decl_engine_get!(storage_slab, StorageDeclaration);
 decl_engine_get!(abi_slab, AbiDeclaration);
 decl_engine_get!(constant_slab, ConstantDeclaration);
+decl_engine_get!(configurable_slab, ConfigurableDeclaration);
 decl_engine_get!(enum_slab, EnumDeclaration);
+decl_engine_get!(enum_variant_slab, EnumVariant);
 decl_engine_get!(type_alias_slab, TypeAliasDeclaration);
 
 macro_rules! decl_engine_insert {
@@ -101,7 +105,9 @@ decl_engine_insert!(struct_slab, StructDeclaration);
 decl_engine_insert!(storage_slab, StorageDeclaration);
 decl_engine_insert!(abi_slab, AbiDeclaration);
 decl_engine_insert!(constant_slab, ConstantDeclaration);
+decl_engine_insert!(configurable_slab, ConfigurableDeclaration);
 decl_engine_insert!(enum_slab, EnumDeclaration);
+decl_engine_insert!(enum_variant_slab, EnumVariant);
 decl_engine_insert!(type_alias_slab, TypeAliasDeclaration);
 
 macro_rules! decl_engine_clear {
@@ -132,16 +138,16 @@ decl_engine_clear!(
     type_alias_slab, TypeAliasDeclaration;
 );
 
-macro_rules! decl_engine_clear_module {
+macro_rules! decl_engine_clear_program {
     ($(($slab:ident, $getter:expr)),* $(,)?) => {
         impl ParsedDeclEngine {
-            pub fn clear_module(&mut self, module_id: &ModuleId) {
+            pub fn clear_program(&mut self, program_id: &ProgramId) {
                 $(
                     self.$slab.retain(|_k, item| {
                         #[allow(clippy::redundant_closure_call)]
                         let span = $getter(item);
                         match span.source_id() {
-                            Some(source_id) => &source_id.module_id() != module_id,
+                            Some(source_id) => &source_id.program_id() != program_id,
                             None => true,
                         }
                     });
@@ -151,7 +157,7 @@ macro_rules! decl_engine_clear_module {
     };
 }
 
-decl_engine_clear_module!(
+decl_engine_clear_program!(
     (variable_slab, |item: &VariableDeclaration| item.name.span()),
     (function_slab, |item: &FunctionDeclaration| item.name.span()),
     (trait_slab, |item: &TraitDeclaration| item.name.span()),
@@ -285,6 +291,18 @@ impl ParsedDeclEngine {
     ///
     /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
+    pub fn get_configurable<I>(&self, index: &I) -> Arc<ConfigurableDeclaration>
+    where
+        ParsedDeclEngine: ParsedDeclEngineGet<I, ConfigurableDeclaration>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
+    ///
+    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
     pub fn get_trait_type<I>(&self, index: &I) -> Arc<TraitTypeDeclaration>
     where
         ParsedDeclEngine: ParsedDeclEngineGet<I, TraitTypeDeclaration>,
@@ -300,6 +318,18 @@ impl ParsedDeclEngine {
     pub fn get_enum<I>(&self, index: &I) -> Arc<EnumDeclaration>
     where
         ParsedDeclEngine: ParsedDeclEngineGet<I, EnumDeclaration>,
+    {
+        self.get(index)
+    }
+
+    /// Friendly helper method for calling the `get` method from the
+    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
+    ///
+    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
+    /// this method adds additional syntax that some users may find helpful.
+    pub fn get_enum_variant<I>(&self, index: &I) -> Arc<EnumVariant>
+    where
+        ParsedDeclEngine: ParsedDeclEngineGet<I, EnumVariant>,
     {
         self.get(index)
     }

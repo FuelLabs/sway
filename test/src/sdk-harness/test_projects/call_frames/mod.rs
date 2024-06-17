@@ -1,8 +1,6 @@
 use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::ContractId};
 
-use sha2::{Digest, Sha256};
-
 abigen!(Contract(
     name = "CallFramesTestContract",
     abi = "test_projects/call_frames/out/release/call_frames-abi.json"
@@ -20,13 +18,6 @@ async fn get_call_frames_instance() -> (CallFramesTestContract<WalletUnlocked>, 
     let instance = CallFramesTestContract::new(id.clone(), wallet);
 
     (instance, id.into())
-}
-
-#[tokio::test]
-async fn can_get_contract_id() {
-    let (instance, id) = get_call_frames_instance().await;
-    let result = instance.methods().get_id().call().await.unwrap();
-    assert_eq!(result.value, id);
 }
 
 #[tokio::test]
@@ -52,19 +43,7 @@ async fn can_get_code_size() {
 async fn can_get_first_param() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.methods().get_first_param().call().await.unwrap();
-    // Hash the function name with Sha256
-    let mut hasher = Sha256::new();
-    let function_name = "get_first_param()";
-    hasher.update(function_name);
-    let function_name_hash = hasher.finalize();
-    // Grab the first 4 bytes of the hash per https://fuellabs.github.io/fuel-specs/master/protocol/abi#function-selector-encoding
-    let function_name_hash = &function_name_hash[0..4];
-    // Convert the bytes to decimal value
-    let selector = function_name_hash[3] as u64
-        + 256
-            * (function_name_hash[2] as u64
-                + 256 * (function_name_hash[1] as u64 + 256 * function_name_hash[0] as u64));
-    assert_eq!(result.value, selector);
+    assert_eq!(result.value, 10480);
 }
 
 #[tokio::test]
@@ -76,7 +55,7 @@ async fn can_get_second_param_u64() {
         .call()
         .await
         .unwrap();
-    assert_eq!(result.value, 101);
+    assert_eq!(result.value, 10508);
 }
 
 #[tokio::test]

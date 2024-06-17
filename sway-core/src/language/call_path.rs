@@ -49,6 +49,16 @@ impl PartialEqWithEngines for CallPathTree {
     }
 }
 
+impl<T: PartialEqWithEngines> EqWithEngines for Vec<T> {}
+impl<T: PartialEqWithEngines> PartialEqWithEngines for Vec<T> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        self.iter().zip(other.iter()).all(|(a, b)| a.eq(b, ctx))
+    }
+}
+
 impl OrdWithEngines for CallPathTree {
     fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
         let CallPathTree {
@@ -125,7 +135,8 @@ impl PartialEqWithEngines for QualifiedCallPath {
             call_path,
             qualified_path_root,
         } = self;
-        call_path.eq(&other.call_path) && qualified_path_root.eq(&other.qualified_path_root, ctx)
+        PartialEqWithEngines::eq(call_path, &other.call_path, ctx)
+            && qualified_path_root.eq(&other.qualified_path_root, ctx)
     }
 }
 
@@ -175,6 +186,33 @@ pub struct CallPath<T = Ident> {
     // If `is_absolute` is true, then this call path is an absolute path from
     // the project root namespace. If not, then it is relative to the current namespace.
     pub is_absolute: bool,
+}
+
+impl EqWithEngines for CallPath {}
+impl PartialEqWithEngines for CallPath {
+    fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
+        self.prefixes == other.prefixes
+            && self.suffix == other.suffix
+            && self.is_absolute == other.is_absolute
+    }
+}
+
+impl<T: EqWithEngines> EqWithEngines for CallPath<T> {}
+impl<T: PartialEqWithEngines> PartialEqWithEngines for CallPath<T> {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.prefixes == other.prefixes
+            && self.suffix.eq(&other.suffix, ctx)
+            && self.is_absolute == other.is_absolute
+    }
+}
+
+impl<T: OrdWithEngines> OrdWithEngines for CallPath<T> {
+    fn cmp(&self, other: &Self, ctx: &OrdWithEnginesContext) -> Ordering {
+        self.prefixes
+            .cmp(&other.prefixes)
+            .then_with(|| self.suffix.cmp(&other.suffix, ctx))
+            .then_with(|| self.is_absolute.cmp(&other.is_absolute))
+    }
 }
 
 impl std::convert::From<Ident> for CallPath {
@@ -233,7 +271,7 @@ impl<T: Spanned> Spanned for CallPath<T> {
                 })
                 .peekable();
             if prefixes_spans.peek().is_some() {
-                Span::join(Span::join_all(prefixes_spans), self.suffix.span())
+                Span::join(Span::join_all(prefixes_spans), &self.suffix.span())
             } else {
                 self.suffix.span()
             }
@@ -291,6 +329,23 @@ impl CallPath {
             .collect::<Vec<_>>()
     }
 
+    /// Create a full [CallPath] from a given [Ident] and the [Namespace] in which the [Ident] is
+    /// declared.
+    ///
+    /// This function is intended to be used while typechecking the identifier declaration, i.e.,
+    /// before the identifier is added to the environment.
+    pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
+        let mut res: Self = suffix.clone().into();
+        if let Some(ref pkg_name) = namespace.root_module().name {
+            res.prefixes.push(pkg_name.clone())
+        };
+        for mod_path in namespace.mod_path() {
+            res.prefixes.push(mod_path.clone())
+        }
+        res.is_absolute = true;
+        res
+    }
+
     /// Convert a given [CallPath] to a symbol to a full [CallPath] from the root of the project
     /// in which the symbol is declared. For example, given a path `pkga::SOME_CONST` where `pkga`
     /// is an _internal_ library of a package named `my_project`, the corresponding call path is
@@ -298,7 +353,7 @@ impl CallPath {
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are considered full already
     /// and are left unchanged since `std` is a root of the package `std`.
-    pub fn to_fullpath(&self, namespace: &Namespace) -> CallPath {
+    pub fn to_fullpath(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
         if self.is_absolute {
             return self.clone();
         }
@@ -311,17 +366,38 @@ impl CallPath {
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(use_synonym) = namespace
-                .module()
-                .current_items()
-                .use_synonyms
-                .get(&self.suffix)
-            {
-                synonym_prefixes = use_synonym.0.clone();
+            if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
+                if m.current_items().symbols().contains_key(&self.suffix) {
+                    None
+                } else if let Some((_, path, _)) = m
+                    .current_items()
+                    .use_item_synonyms
+                    .get(&self.suffix)
+                    .cloned()
+                {
+                    Some(path)
+                } else if let Some(paths_and_decls) = m
+                    .current_items()
+                    .use_glob_synonyms
+                    .get(&self.suffix)
+                    .cloned()
+                {
+                    if paths_and_decls.len() == 1 {
+                        Some(paths_and_decls[0].0.clone())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }) {
+                synonym_prefixes.clone_from(&mod_path);
                 is_absolute = true;
-                let submodule = namespace.module().submodule(&[use_synonym.0[0].clone()]);
+                let submodule = namespace
+                    .module(engines)
+                    .submodule(engines, &[mod_path[0].clone()]);
                 if let Some(submodule) = submodule {
-                    is_external = submodule.is_external;
+                    is_external = submodule.read(engines, |m| m.is_external);
                 }
             }
 
@@ -346,13 +422,16 @@ impl CallPath {
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
-        } else if let Some(m) = namespace.module().submodule(&[self.prefixes[0].clone()]) {
+        } else if let Some(m) = namespace
+            .module(engines)
+            .submodule(engines, &[self.prefixes[0].clone()])
+        {
             // If some prefixes are already present, attempt to complete the path by adding the
             // package name and the path to the current submodule.
             //
             // If the path starts with an external module (i.e. a module that is imported in
             // `Forc.toml`), then do not change it since it's a complete path already.
-            if m.is_external {
+            if m.read(engines, |m| m.is_external) {
                 CallPath {
                     prefixes: self.prefixes.clone(),
                     suffix: self.suffix.clone(),
@@ -360,7 +439,7 @@ impl CallPath {
                 }
             } else {
                 let mut prefixes: Vec<Ident> = vec![];
-                if let Some(pkg_name) = &namespace.root_module().name {
+                if let Some(pkg_name) = &namespace.root_module().read(engines, |m| m.name.clone()) {
                     prefixes.push(pkg_name.clone());
                 }
                 for mod_path in namespace.mod_path() {
@@ -390,11 +469,11 @@ impl CallPath {
     /// `my_project`, the corresponding call path is `pkga::SOME_CONST`.
     ///
     /// Paths to _external_ libraries such `std::lib1::lib2::my_obj` are left unchanged.
-    pub fn to_import_path(&self, namespace: &Namespace) -> CallPath {
-        let converted = self.to_fullpath(namespace);
+    pub fn to_import_path(&self, engines: &Engines, namespace: &Namespace) -> CallPath {
+        let converted = self.to_fullpath(engines, namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root_module().name == Some(first.clone()) {
+            if namespace.root_module().read(engines, |m| m.name.clone()) == Some(first.clone()) {
                 return converted.lshift();
             }
         }

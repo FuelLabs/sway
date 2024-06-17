@@ -10,17 +10,17 @@ use std::collections::BTreeMap;
 
 /// Used for creating links between docs.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct DocLink {
-    pub(crate) name: String,
-    pub(crate) module_info: ModuleInfo,
-    pub(crate) html_filename: String,
-    pub(crate) preview_opt: Option<String>,
+pub struct DocLink {
+    pub name: String,
+    pub module_info: ModuleInfo,
+    pub html_filename: String,
+    pub preview_opt: Option<String>,
 }
 #[derive(Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub(crate) struct DocLinks {
-    pub(crate) style: DocStyle,
+pub struct DocLinks {
+    pub style: DocStyle,
     /// The title and link info for each doc item.
-    pub(crate) links: BTreeMap<BlockTitle, Vec<DocLink>>,
+    pub links: BTreeMap<BlockTitle, Vec<DocLink>>,
 }
 impl Renderable for DocLinks {
     fn render(self, _render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
@@ -45,7 +45,7 @@ impl Renderable for DocLinks {
             _ => {
                 for (block_title, mut doc_link) in self.links {
                     doc_link.sort();
-                    links_vec.push((block_title, doc_link));
+                    links_vec.push((block_title.clone(), doc_link.to_vec()));
                 }
             }
         }
@@ -70,7 +70,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : Raw(item.preview_opt.unwrap());
+                                            : Raw(item.preview_opt.clone().unwrap());
                                         }
                                     }
                                 }
@@ -94,7 +94,7 @@ impl Renderable for DocLinks {
                                             href=item.module_info.file_path_at_location(&item.html_filename, item.module_info.project_name())
                                         ) {
                                             @ if title == BlockTitle::Modules {
-                                                : item.name;
+                                                : item.name.clone();
                                             } else {
                                                 : item.module_info.to_path_literal_string(
                                                     &item.name,
@@ -105,7 +105,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : Raw(item.preview_opt.unwrap());
+                                            : Raw(item.preview_opt.clone().unwrap());
                                         }
                                     }
                                 }
@@ -136,7 +136,7 @@ impl Renderable for DocLinks {
                                     }
                                     @ if item.preview_opt.is_some() {
                                         div(class="item-right docblock-short") {
-                                            : Raw(item.preview_opt.unwrap());
+                                            : Raw(item.preview_opt.clone().unwrap());
                                         }
                                     }
                                 }

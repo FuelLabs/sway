@@ -6,8 +6,9 @@ license = "Apache-2.0"
 name = "contract_a"
 
 [dependencies]
+core = { path = "../../../../../../../sway-lib-core" }
 std = { path = "../../../../reduced_std_libs/sway-lib-std-assert/" }
 
 [contract-dependencies]
-contract_b = { path = "../contract_b", salt = "0x11111111111111111111111111111111111111111111111111111111111111111" }
-contract_c = { path = "../contract_c", salt = "0x00000000000000000000000000000000000000000000000000000000000000000" }
+contract_b = { path = "../contract_b", salt = "0x1111111111111111111111111111111111111111111111111111111111111111" }
+contract_c = { path = "../contract_c", salt = "0x0000000000000000000000000000000000000000000000000000000000000000" }

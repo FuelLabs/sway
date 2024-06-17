@@ -3,12 +3,9 @@ use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
     accounts::wallet::{Wallet, WalletUnlocked},
-    core::codec::ABIEncoder,
+    core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
-    types::{
-        input::Input, transaction_builders::ScriptTransactionBuilder,
-        unresolved_bytes::UnresolvedBytes, Token,
-    },
+    types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
 };
 use std::str::FromStr;
 
@@ -45,13 +42,11 @@ async fn create_predicate(
     let mut tx = ScriptTransactionBuilder::prepare_transfer(
         wallet_coins,
         vec![output_coin, output_change],
-        TxPolicies::default().with_gas_price(1),
-        provider.network_info().await.unwrap(),
+        Default::default(),
     )
     .with_script(op::ret(RegId::ONE).to_bytes().to_vec());
 
-    wallet.sign_transaction(&mut tx);
-
+    tx.add_signer(wallet.clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
     provider.send_transaction(tx).await.unwrap();
 }
@@ -63,11 +58,11 @@ async fn submit_to_predicate(
     amount_to_predicate: u64,
     asset_id: AssetId,
     receiver_address: Address,
-    predicate_data: UnresolvedBytes,
+    predicate_data: Vec<u8>,
 ) {
     let filter = ResourceFilter {
         from: predicate_address.into(),
-        asset_id,
+        asset_id: Some(asset_id),
         amount: amount_to_predicate,
         ..Default::default()
     };
@@ -93,8 +88,7 @@ async fn submit_to_predicate(
     let new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],
-        TxPolicies::default(),
-        provider.network_info().await.unwrap(),
+        Default::default(),
     )
     .build(provider)
     .await
@@ -117,11 +111,13 @@ struct Validation {
     total_complete: u64,
 }
 
-fn encode_struct(predicate_struct: Validation) -> UnresolvedBytes {
+fn encode_struct(predicate_struct: Validation) -> Vec<u8> {
     let has_account = Token::Bool(predicate_struct.has_account);
     let total_complete = Token::U64(predicate_struct.total_complete);
     let token_struct: Vec<Token> = vec![has_account, total_complete];
-    ABIEncoder::encode(&token_struct).unwrap()
+    ABIEncoder::new(EncoderConfig::default())
+        .encode(&token_struct)
+        .unwrap()
 }
 
 #[tokio::test]

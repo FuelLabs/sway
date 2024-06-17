@@ -4,13 +4,15 @@ use crate::{
 };
 
 use super::{
-    module::{Module, ResolvedDeclaration},
-    root::Root,
+    module::Module,
+    root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
-    ModulePath, ModulePathBuf,
+    ModuleName, ModulePath, ModulePathBuf,
 };
 
+use rustc_hash::FxHasher;
+use std::hash::BuildHasherDefault;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 
@@ -47,12 +49,52 @@ pub struct Namespace {
 }
 
 impl Namespace {
+    pub fn program_id(&self, engines: &Engines) -> &Module {
+        self.root
+            .module
+            .submodule(engines, &self.mod_path)
+            .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
+    }
+
     /// Initialise the namespace at its root from the given initial namespace.
+    /// If the root module contains submodules these are now considered external.
     pub fn init_root(root: Root) -> Self {
+        assert!(
+            !root.module.is_external,
+            "The root module must not be external during compilation"
+        );
         let mod_path = vec![];
+
+        // A copy of the root module is used to initialize every new submodule in the program.
+        //
+        // Every submodule that has been added before calling init_root is now considered
+        // external, which we have to enforce at this point.
+        fn clone_with_submodules_external(module: &Module) -> Module {
+            let mut new_submods =
+                im::HashMap::<ModuleName, Module, BuildHasherDefault<FxHasher>>::default();
+            for (name, submod) in module.submodules.iter() {
+                let new_submod = clone_with_submodules_external(submod);
+                new_submods.insert(name.clone(), new_submod);
+            }
+            Module {
+                submodules: new_submods,
+                lexical_scopes: module.lexical_scopes.clone(),
+                current_lexical_scope_id: module.current_lexical_scope_id,
+                name: module.name.clone(),
+                visibility: module.visibility,
+                span: module.span.clone(),
+                is_external: true,
+                mod_path: module.mod_path.clone(),
+            }
+        }
+
+        let mut init = clone_with_submodules_external(&root.module);
+        // The init module itself is not external
+        init.is_external = false;
+
         Self {
-            init: root.module.clone(),
-            root,
+            init: init.clone(),
+            root: Root { module: init },
             mod_path,
         }
     }
@@ -85,21 +127,28 @@ impl Namespace {
     }
 
     /// Access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module(&self) -> &Module {
-        &self.root.module[&self.mod_path]
+    pub fn module(&self, engines: &Engines) -> &Module {
+        self.root
+            .module
+            .lookup_submodule(&Handler::default(), engines, &self.mod_path)
+            .unwrap()
     }
 
     /// Mutable access to the current [Module], i.e. the module at the inner `mod_path`.
-    pub fn module_mut(&mut self) -> &mut Module {
-        &mut self.root.module[&self.mod_path]
+    pub fn module_mut(&mut self, engines: &Engines) -> &mut Module {
+        self.root
+            .module
+            .lookup_submodule_mut(&Handler::default(), engines, &self.mod_path)
+            .unwrap()
     }
 
     pub fn lookup_submodule_from_absolute_path(
         &self,
         handler: &Handler,
+        engines: &Engines,
         path: &[Ident],
     ) -> Result<&Module, ErrorEmitted> {
-        self.root.module.lookup_submodule(handler, path)
+        self.root.module.lookup_submodule(handler, engines, path)
     }
 
     /// Returns true if the current module being checked is a direct or indirect submodule of
@@ -115,6 +164,7 @@ impl Namespace {
     /// the `true_if_same` is returned.
     pub(crate) fn module_is_submodule_of(
         &self,
+        _engines: &Engines,
         absolute_module_path: &ModulePath,
         true_if_same: bool,
     ) -> bool {
@@ -188,7 +238,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_symbol(handler, engines, mod_path, symbol, self_type)
     }
 
@@ -201,7 +250,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_symbol(handler, engines, &self.mod_path, symbol, self_type)
     }
 
@@ -238,7 +286,6 @@ impl Namespace {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         self.root
-            .module
             .resolve_call_path(handler, engines, &self.mod_path, call_path, self_type)
     }
 
@@ -250,12 +297,14 @@ impl Namespace {
     /// finishing with the dependency.
     pub(crate) fn enter_submodule(
         &mut self,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
     ) -> SubmoduleNamespace {
         let init = self.init.clone();
-        self.module_mut()
+        let is_external = self.module(engines).is_external;
+        self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
             .or_insert(init);
@@ -265,13 +314,14 @@ impl Namespace {
             .cloned()
             .chain(Some(mod_name.clone()))
             .collect();
-        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path);
+        let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path.clone());
         // self.module() now refers to a different module, so refetch
-        let new_module = self.module_mut();
+        let new_module = self.module_mut(engines);
         new_module.name = Some(mod_name);
         new_module.span = Some(module_span);
         new_module.visibility = visibility;
-        new_module.is_external = false;
+        new_module.is_external = is_external;
+        new_module.mod_path = submod_path;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
@@ -281,6 +331,7 @@ impl Namespace {
     /// Pushes a new submodule to the namespace's module hierarchy.
     pub fn push_new_submodule(
         &mut self,
+        engines: &Engines,
         mod_name: Ident,
         visibility: Visibility,
         module_span: Span,
@@ -291,7 +342,7 @@ impl Namespace {
             span: Some(module_span),
             ..Default::default()
         };
-        self.module_mut()
+        self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
             .or_insert(module);

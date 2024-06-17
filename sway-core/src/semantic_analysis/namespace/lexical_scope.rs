@@ -1,6 +1,6 @@
 use crate::{
-    decl_engine::{parsed_id::ParsedDeclId, *},
-    engine_threading::Engines,
+    decl_engine::{parsed_engine::ParsedDeclEngineGet, parsed_id::ParsedDeclId, *},
+    engine_threading::{Engines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
@@ -11,7 +11,7 @@ use crate::{
     type_system::*,
 };
 
-use super::{module::ResolvedDeclaration, TraitMap};
+use super::{root::ResolvedDeclaration, TraitMap};
 
 use sway_error::{
     error::{CompileError, StructFieldUsageContext},
@@ -20,13 +20,6 @@ use sway_error::{
 use sway_types::{span::Span, Spanned};
 
 use std::sync::Arc;
-
-/// Is this a glob (`use foo::*;`) import?
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) enum GlobImport {
-    Yes,
-    No,
-}
 
 pub enum ResolvedFunctionDecl {
     Parsed(ParsedDeclId<FunctionDeclaration>),
@@ -42,11 +35,10 @@ impl ResolvedFunctionDecl {
     }
 }
 
-pub(super) type ParsedSymbolMap = im::OrdMap<Ident, Declaration>;
-pub(super) type SymbolMap = im::OrdMap<Ident, ty::TyDecl>;
-// The `Vec<Ident>` path is absolute.
-pub(super) type UseSynonyms = im::HashMap<Ident, (Vec<Ident>, GlobImport, ty::TyDecl)>;
-pub(super) type UseAliases = im::HashMap<String, Ident>;
+pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
+type SourceIdent = Ident;
+pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ty::TyDecl)>>;
+pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -71,21 +63,27 @@ pub struct LexicalScope {
 /// The set of items that exist within some lexical scope via declaration or importing.
 #[derive(Clone, Debug, Default)]
 pub struct Items {
-    /// An ordered map from `Ident`s to their associated parsed declarations.
-    pub(crate) parsed_symbols: ParsedSymbolMap,
-    /// An ordered map from `Ident`s to their associated typed declarations.
+    /// An ordered map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
     pub(crate) implemented_traits: TraitMap,
     /// Represents the absolute path from which a symbol was imported.
     ///
     /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
     /// path `foo::bar::Baz`.
-    pub(crate) use_synonyms: UseSynonyms,
-    /// Represents an alternative name for an imported symbol.
     ///
-    /// Aliases are introduced with syntax like `use foo::bar as baz;` syntax, where `baz` is an
-    /// alias for `bar`.
-    pub(crate) use_aliases: UseAliases,
+    /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
+    ///
+    /// When star importing from multiple modules the same name may be imported more than once. This
+    /// is not an error, but it is an error to use the name without a module path. To represent
+    /// this, use_glob_synonyms maps identifiers to a vector of (module path, type declaration)
+    /// tuples.
+    ///
+    /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
+    ///
+    /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
+    /// as the optional source identifier for error reporting purposes.
+    pub(crate) use_glob_synonyms: GlobSynonyms,
+    pub(crate) use_item_synonyms: ItemSynonyms,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
 }
@@ -101,7 +99,7 @@ impl Items {
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
-        fields: Vec<Ident>,
+        fields: &[Ident],
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
     ) -> Result<(ty::TyStorageAccess, TypeId), ErrorEmitted> {
@@ -143,23 +141,168 @@ impl Items {
 
     pub(crate) fn insert_parsed_symbol(
         &mut self,
+        handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: Declaration,
+        const_shadowing_mode: ConstShadowingMode,
+        generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
-        self.parsed_symbols.insert(name, item);
-
-        Ok(())
+        self.insert_symbol(
+            handler,
+            engines,
+            name,
+            ResolvedDeclaration::Parsed(item),
+            const_shadowing_mode,
+            generic_shadowing_mode,
+        )
     }
 
-    pub(crate) fn insert_symbol(
+    pub(crate) fn insert_typed_symbol(
         &mut self,
         handler: &Handler,
+        engines: &Engines,
         name: Ident,
         item: ty::TyDecl,
         const_shadowing_mode: ConstShadowingMode,
         generic_shadowing_mode: GenericShadowingMode,
     ) -> Result<(), ErrorEmitted> {
-        let append_shadowing_error =
+        self.insert_symbol(
+            handler,
+            engines,
+            name,
+            ResolvedDeclaration::Typed(item),
+            const_shadowing_mode,
+            generic_shadowing_mode,
+        )
+    }
+
+    pub(crate) fn insert_symbol(
+        &mut self,
+        handler: &Handler,
+        engines: &Engines,
+        name: Ident,
+        item: ResolvedDeclaration,
+        const_shadowing_mode: ConstShadowingMode,
+        generic_shadowing_mode: GenericShadowingMode,
+    ) -> Result<(), ErrorEmitted> {
+        let parsed_decl_engine = engines.pe();
+        let decl_engine = engines.de();
+
+        #[allow(unused)]
+        let append_shadowing_error_parsed =
+            |ident: &Ident,
+             decl: &Declaration,
+             is_use: bool,
+             is_alias: bool,
+             item: &Declaration,
+             const_shadowing_mode: ConstShadowingMode| {
+                use Declaration::*;
+                match (
+                    ident,
+                    decl,
+                    is_use,
+                    is_alias,
+                    &item,
+                    const_shadowing_mode,
+                    generic_shadowing_mode,
+                ) {
+                    // variable shadowing a constant
+                    (
+                        constant_ident,
+                        ConstantDeclaration(decl_id),
+                        is_imported_constant,
+                        is_alias,
+                        VariableDeclaration { .. },
+                        _,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantsCannotBeShadowed {
+                            variable_or_constant: "Variable".to_string(),
+                            name: (&name).into(),
+                            constant_span: constant_ident.span(),
+                            constant_decl: if is_imported_constant {
+                                parsed_decl_engine.get(decl_id).span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
+                        });
+                    }
+                    // constant shadowing a constant sequentially
+                    (
+                        constant_ident,
+                        ConstantDeclaration(decl_id),
+                        is_imported_constant,
+                        is_alias,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::Sequential,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantsCannotBeShadowed {
+                            variable_or_constant: "Constant".to_string(),
+                            name: (&name).into(),
+                            constant_span: constant_ident.span(),
+                            constant_decl: if is_imported_constant {
+                                parsed_decl_engine.get(decl_id).span.clone()
+                            } else {
+                                Span::dummy()
+                            },
+                            is_alias,
+                        });
+                    }
+                    // constant shadowing a variable
+                    (_, VariableDeclaration(decl_id), _, _, ConstantDeclaration { .. }, _, _) => {
+                        handler.emit_err(CompileError::ConstantShadowsVariable {
+                            name: (&name).into(),
+                            variable_span: parsed_decl_engine.get(decl_id).name.span(),
+                        });
+                    }
+                    // constant shadowing a constant item-style (outside of a function body)
+                    (
+                        _,
+                        ConstantDeclaration { .. },
+                        _,
+                        _,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
+                            name: name.clone(),
+                            span: name.span(),
+                        });
+                    }
+                    // type or type alias shadowing another type or type alias
+                    // trait/abi shadowing another trait/abi
+                    // type or type alias shadowing a trait/abi, or vice versa
+                    (
+                        _,
+                        StructDeclaration { .. }
+                        | EnumDeclaration { .. }
+                        | TypeAliasDeclaration { .. }
+                        | TraitDeclaration { .. }
+                        | AbiDeclaration { .. },
+                        _,
+                        _,
+                        StructDeclaration { .. }
+                        | EnumDeclaration { .. }
+                        | TypeAliasDeclaration { .. }
+                        | TraitDeclaration { .. }
+                        | AbiDeclaration { .. },
+                        _,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::MultipleDefinitionsOfName {
+                            name: name.clone(),
+                            span: name.span(),
+                        });
+                    }
+                    _ => {}
+                }
+            };
+
+        let append_shadowing_error_typed =
             |ident: &Ident,
              decl: &ty::TyDecl,
              is_use: bool,
@@ -191,7 +334,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
@@ -213,7 +356,7 @@ impl Items {
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
                             constant_decl: if is_imported_constant {
-                                constant_decl.decl_span.clone()
+                                decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
@@ -285,17 +428,53 @@ impl Items {
                 }
             };
 
-        if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
-            append_shadowing_error(ident, decl, false, false, &item, const_shadowing_mode);
-        }
+        let append_shadowing_error =
+            |ident: &Ident,
+             decl: &ResolvedDeclaration,
+             is_use: bool,
+             is_alias: bool,
+             item: &ResolvedDeclaration,
+             const_shadowing_mode: ConstShadowingMode| {
+                match (decl, item) {
+                    (ResolvedDeclaration::Parsed(_decl), ResolvedDeclaration::Parsed(_item)) => {
+                        // TODO: Do not handle any shadowing errors while handling parsed declarations yet,
+                        // or else we will emit errors in a different order from the source code order.
+                        // Update this once the full AST resolving pass is in.
+                    }
+                    (ResolvedDeclaration::Typed(decl), ResolvedDeclaration::Typed(item)) => {
+                        append_shadowing_error_typed(
+                            ident,
+                            decl,
+                            is_use,
+                            is_alias,
+                            item,
+                            const_shadowing_mode,
+                        )
+                    }
+                    _ => unreachable!(),
+                }
+            };
 
-        if let Some((ident, (_, GlobImport::No, decl))) = self.use_synonyms.get_key_value(&name) {
+        if let Some((ident, decl)) = self.symbols.get_key_value(&name) {
             append_shadowing_error(
                 ident,
                 decl,
+                false,
+                false,
+                &item.clone(),
+                const_shadowing_mode,
+            );
+        }
+
+        if let Some((ident, (imported_ident, _, decl))) =
+            self.use_item_synonyms.get_key_value(&name)
+        {
+            append_shadowing_error_typed(
+                ident,
+                decl,
                 true,
-                self.use_aliases.get(&name.to_string()).is_some(),
-                &item,
+                imported_ident.is_some(),
+                item.expect_typed_ref(),
                 const_shadowing_mode,
             );
         }
@@ -305,10 +484,63 @@ impl Items {
         Ok(())
     }
 
+    // Add a new binding into use_glob_synonyms. The symbol may already be bound by an earlier
+    // insertion, in which case the new binding is added as well so that multiple bindings exist.
+    //
+    // There are a few edge cases were a new binding will replace an old binding. These edge cases
+    // are a consequence of the prelude reexports not being implemented properly. See comments in
+    // the code for details.
+    pub(crate) fn insert_glob_use_symbol(
+        &mut self,
+        engines: &Engines,
+        symbol: Ident,
+        src_path: ModulePathBuf,
+        decl: &ty::TyDecl,
+    ) {
+        if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
+            // Name already bound. Check if the decl is already imported
+            let ctx = PartialEqWithEnginesContext::new(engines);
+            match cur_decls.iter().position(|(cur_path, cur_decl)| {
+                cur_decl.eq(decl, &ctx)
+        // For some reason the equality check is not sufficient. In some cases items that
+        // are actually identical fail the eq check, so we have to add heuristics for these
+        // cases.
+        //
+            // These edge occur because core and std preludes are not reexported correctly. Once
+        // reexports are implemented we can handle the preludes correctly, and then these
+        // edge cases should go away.
+        // See https://github.com/FuelLabs/sway/issues/3113
+        //
+        // As a heuristic we replace any bindings from std and core if the new binding is
+        // also from std or core.  This does not work if the user has declared an item with
+        // the same name as an item in one of the preludes, but this is an edge case that we
+        // will have to live with for now.
+                    || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
+                        && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std"))
+            }) {
+                Some(index) => {
+                    // The name is already bound to this decl, but
+                    // we need to replace the binding to make the paths work out.
+                    // This appears to be an issue with the core prelude, and will probably no
+                    // longer be necessary once reexports are implemented:
+                    // https://github.com/FuelLabs/sway/issues/3113
+                    cur_decls[index] = (src_path.to_vec(), decl.clone());
+                }
+                None => {
+                    // New decl for this name. Add it to the end
+                    cur_decls.push((src_path.to_vec(), decl.clone()));
+                }
+            }
+        } else {
+            let new_vec = vec![(src_path.to_vec(), decl.clone())];
+            self.use_glob_synonyms.insert(symbol, new_vec);
+        }
+    }
+
     pub(crate) fn check_symbol(&self, name: &Ident) -> Result<ResolvedDeclaration, CompileError> {
         self.symbols
             .get(name)
-            .map(|ty_decl| ResolvedDeclaration::Typed(ty_decl.clone()))
+            .cloned()
             .ok_or_else(|| CompileError::SymbolNotFound {
                 name: name.clone(),
                 span: name.span(),
@@ -409,7 +641,10 @@ impl Items {
                 }));
             }
         };
-        let mut symbol = symbol.return_type(handler, engines)?;
+        let mut symbol = match symbol {
+            ResolvedDeclaration::Parsed(_) => unreachable!(),
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl.return_type(handler, engines)?,
+        };
         let mut symbol_span = base_name.span();
         let mut parent_rover = symbol;
         let mut full_span_for_error = base_name.span();
@@ -427,7 +662,7 @@ impl Items {
                 ) => {
                     let struct_decl = decl_engine.get_struct(&decl_ref);
                     let (struct_can_be_changed, is_public_struct_access) =
-                        StructAccessInfo::get_info(&struct_decl, namespace).into();
+                        StructAccessInfo::get_info(engines, &struct_decl, namespace).into();
 
                     let field_type_id = match struct_decl.find_field(field_name) {
                         Some(struct_field) => {
@@ -459,8 +694,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = field_type_id;
                     symbol_span = field_name.span().clone();
-                    full_span_for_error =
-                        Span::join(full_span_for_error, field_name.span().clone());
+                    full_span_for_error = Span::join(full_span_for_error, &field_name.span());
                 }
                 (TypeInfo::Tuple(fields), ty::ProjectionKind::TupleField { index, index_span }) => {
                     let field_type_opt = {
@@ -483,7 +717,7 @@ impl Items {
                     parent_rover = symbol;
                     symbol = *field_type;
                     symbol_span = index_span.clone();
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (
                     TypeInfo::Array(elem_ty, _),
@@ -499,7 +733,7 @@ impl Items {
                     // we would need to bring the full span of the index all the way from
                     // the parsing stage. An effort that doesn't pay off at the moment.
                     // TODO: Include the closing square bracket into the error span.
-                    full_span_for_error = Span::join(full_span_for_error, index_span.clone());
+                    full_span_for_error = Span::join(full_span_for_error, index_span);
                 }
                 (actually, ty::ProjectionKind::StructField { name }) => {
                     return Err(handler.emit_err(CompileError::FieldAccessOnNonStruct {

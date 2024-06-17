@@ -3,7 +3,7 @@ use clap::Parser;
 use forc_pkg::source::IPFSNode;
 
 forc_util::cli_examples! {
-    crate::Command {
+    crate::cli::Command {
         [ Build the docs for a project in the current path => "forc doc"]
         [ Build the docs for a project in the current path and open it in the browser => "forc doc --open" ]
         [ Build the docs for a project located in another path => "forc doc --manifest-path {path}" ]
@@ -53,6 +53,7 @@ pub struct Command {
     #[cfg(test)]
     pub(crate) doc_path: Option<String>,
 
+    /// Disable the "new encoding" feature
     #[clap(long)]
-    pub experimental_new_encoding: bool,
+    pub no_encoding_v1: bool,
 }

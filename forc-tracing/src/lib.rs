@@ -14,6 +14,11 @@ pub fn println_warning(txt: &str) {
     tracing::warn!("{}: {}", Colour::Yellow.paint("warning"), txt);
 }
 
+/// Prints a warning message to stdout with the yellow prefix "warning: " only in verbose mode.
+pub fn println_warning_verbose(txt: &str) {
+    tracing::debug!("{}: {}", Colour::Yellow.paint("warning"), txt);
+}
+
 /// Prints a warning message to stderr with the red prefix "error: ".
 pub fn println_error(txt: &str) {
     tracing::warn!("{}: {}", Colour::Red.paint("error"), txt);
@@ -119,10 +124,9 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
             })
         })
         .or_else(|| {
-            options.silent.and_then(|silent| match silent {
-                true => Some(LevelFilter::OFF),
-                _ => None,
-            })
+            options
+                .silent
+                .and_then(|silent| if silent { Some(LevelFilter::OFF) } else { None })
         });
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()

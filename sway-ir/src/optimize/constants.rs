@@ -1,8 +1,4 @@
 //! Optimization passes for manipulating constant values.
-//!
-//! - combining - compile time evaluation of constant expressions.
-//!   - combine insert_values - reduce expressions which insert a constant value into a constant
-//!     struct.
 
 use crate::{
     constant::{Constant, ConstantValue},
@@ -14,19 +10,19 @@ use crate::{
     AnalysisResults, BranchToWithArgs, Instruction, Pass, PassMutability, Predicate, ScopedPass,
 };
 
-pub const CONSTCOMBINE_NAME: &str = "constcombine";
+pub const CONST_FOLDING_NAME: &str = "const-folding";
 
-pub fn create_const_combine_pass() -> Pass {
+pub fn create_const_folding_pass() -> Pass {
     Pass {
-        name: CONSTCOMBINE_NAME,
-        descr: "constant folding.",
+        name: CONST_FOLDING_NAME,
+        descr: "Constant folding",
         deps: vec![],
-        runner: ScopedPass::FunctionPass(PassMutability::Transform(combine_constants)),
+        runner: ScopedPass::FunctionPass(PassMutability::Transform(fold_constants)),
     }
 }
 
-/// Find constant expressions which can be reduced to fewer opterations.
-pub fn combine_constants(
+/// Find constant expressions which can be reduced to fewer operations.
+pub fn fold_constants(
     context: &mut Context,
     _: &AnalysisResults,
     function: Function,
@@ -106,7 +102,12 @@ fn combine_cbr(context: &mut Context, function: &Function) -> Result<bool, IrErr
                 ..
             },
         )| {
+            // `no_more_dest` will no longer have from_block as a predecessor.
             no_more_dest.remove_pred(context, &from_block);
+            // Although our cbr already branched to `dest`, in case
+            // `no_more_dest` and `dest` are the same, we'll need to re-add
+            // `from_block` as a predecessor for `dest`.
+            dest.block.add_pred(context, &from_block);
             cbr.replace(
                 context,
                 ValueDatum::Instruction(Instruction {
@@ -212,8 +213,8 @@ fn combine_binary_op(context: &mut Context, function: &Function) -> bool {
                         (Xor, Uint(l), Uint(r)) => Some(Uint(l ^ r)),
                         (Xor, U256(l), U256(r)) => Some(U256(l ^ r)),
 
-                        (Mod, Uint(l), Uint(r)) => Some(Uint(l % r)),
-                        (Mod, U256(l), U256(r)) => Some(U256(l % r)),
+                        (Mod, Uint(l), Uint(r)) => l.checked_rem(*r).map(Uint),
+                        (Mod, U256(l), U256(r)) => l.checked_rem(r).map(U256),
 
                         (Rsh, Uint(l), Uint(r)) => u32::try_from(*r)
                             .ok()
@@ -282,7 +283,7 @@ fn combine_unary_op(context: &mut Context, function: &Function) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::optimize::tests::*;
+    use crate::{optimize::tests::*, CONST_FOLDING_NAME};
 
     fn assert_operator(t: &str, opcode: &str, l: &str, r: Option<&str>, result: Option<&str>) {
         let expected = result.map(|result| format!("v0 = const {t} {result}"));
@@ -300,7 +301,7 @@ mod tests {
             r_inst = r.map_or("".into(), |r| format!("r = const {t} {r}")),
             result_inst = r.map_or("", |_| " r,")
         );
-        assert_optimization(&["constcombine"], &body, expected);
+        assert_optimization(&[CONST_FOLDING_NAME], &body, expected);
     }
 
     #[test]
@@ -349,6 +350,7 @@ mod tests {
         assert_operator("u64", "sub", "0", Some("1"), None);
         assert_operator("u64", "mul", &u64::MAX.to_string(), Some("2"), None);
         assert_operator("u64", "div", "1", Some("0"), None);
+        assert_operator("u64", "mod", "1", Some("0"), None);
 
         assert_operator("u64", "rsh", "1", Some("64"), None);
         assert_operator("u64", "lsh", "1", Some("64"), None);
@@ -360,7 +362,7 @@ mod tests {
 
         // `sub 1` is used to guarantee that the assert string is unique
         assert_optimization(
-            &["constcombine"],
+            &[CONST_FOLDING_NAME],
             "
         entry fn main() -> u64 {
             entry():
@@ -377,7 +379,7 @@ mod tests {
 
         // Binary Operators
         assert_optimization(
-            &["constcombine"],
+            &[CONST_FOLDING_NAME],
             "
         entry fn main() -> u64 {
             entry():

@@ -11,9 +11,13 @@ use slotmap::{DefaultKey, SlotMap};
 use sway_types::SourceEngine;
 
 use crate::{
-    block::BlockContent, function::FunctionContent, local_var::LocalVarContent,
-    metadata::Metadatum, module::Kind, module::ModuleContent, module::ModuleIterator,
-    value::ValueContent, Type, TypeContent,
+    block::BlockContent,
+    function::FunctionContent,
+    local_var::LocalVarContent,
+    metadata::Metadatum,
+    module::{Kind, ModuleContent, ModuleIterator},
+    value::ValueContent,
+    Type, TypeContent,
 };
 
 /// The main IR context handle.
@@ -68,7 +72,7 @@ impl<'eng> Context<'eng> {
         self.source_engine
     }
 
-    /// Return an interator for every module in this context.
+    /// Return an iterator for every module in this context.
     pub fn module_iter(&self) -> ModuleIterator {
         ModuleIterator::new(self)
     }

@@ -9,6 +9,7 @@ use sway_types::{Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
+    has_changes,
     language::{ty::*, Literal},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
@@ -53,9 +54,11 @@ impl HashWithEngines for TyExpression {
 }
 
 impl SubstTypes for TyExpression {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.expression.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.return_type.subst(type_mapping, engines);
+            self.expression.subst(type_mapping, engines);
+        }
     }
 }
 
@@ -303,6 +306,7 @@ impl CollectTypesMetadata for TyExpression {
             // `TyExpression::return_type`. Variable expressions are just names of variables.
             VariableExpression { .. }
             | ConstantExpression { .. }
+            | ConfigurableExpression { .. }
             | StorageAccess { .. }
             | Literal(_)
             | AbiName(_)

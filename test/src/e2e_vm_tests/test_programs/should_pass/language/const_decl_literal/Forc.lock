@@ -1,0 +1,8 @@
+[[package]]
+name = "const_decl_literal"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-CF582537254C5032"

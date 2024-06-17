@@ -6,9 +6,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use sway_types::{FxIndexMap, FxIndexSet};
 
 use crate::{
-    get_symbol, get_symbols, memory_utils, AnalysisResults, Block, Context, EscapedSymbols,
-    Function, InstOp, Instruction, IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol,
-    Type, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_gep_referred_symbols, get_gep_symbol, get_referred_symbol, get_referred_symbols,
+    memory_utils, AnalysisResults, Block, Context, EscapedSymbols, Function, InstOp, Instruction,
+    IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value, ValueDatum,
+    ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -16,7 +17,7 @@ pub const MEMCPYOPT_NAME: &str = "memcpyopt";
 pub fn create_memcpyopt_pass() -> Pass {
     Pass {
         name: MEMCPYOPT_NAME,
-        descr: "Memcopy optimization.",
+        descr: "Optimizations related to MemCopy instructions",
         deps: vec![ESCAPED_SYMBOLS_NAME],
         runner: ScopedPass::FunctionPass(PassMutability::Transform(mem_copy_opt)),
     }
@@ -35,17 +36,27 @@ pub fn mem_copy_opt(
     Ok(modified)
 }
 
-struct InstInfo {
-    // The block in which an instruction is
-    block: Block,
-    // Relative (use only for comparison) position of instruction in `block`.
-    pos: usize,
-}
-
 fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Result<bool, IrError> {
+    struct InstInfo {
+        // The block containing the instruction.
+        block: Block,
+        // Relative (use only for comparison) position of instruction in `block`.
+        pos: usize,
+    }
+
+    // All instructions that load from the `Symbol`.
     let mut loads_map = FxHashMap::<Symbol, Vec<Value>>::default();
+    // All instructions that store to the `Symbol`.
     let mut stores_map = FxHashMap::<Symbol, Vec<Value>>::default();
+    // All load and store instructions.
     let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
+    // Symbols that escape.
+    // TODO: The below code does its own logic to calculate escaping symbols.
+    //       It does not cover all escaping cases, though. E.g., contract calls, etc.
+    //       In general, the question is why it does not use `memory_utils::compute_escaped_symbols`.
+    //       My assumption is that it was written before `memory_utils::compute_escaped_symbols`
+    //       got available.
+    //       See: https://github.com/FuelLabs/sway/issues/5924
     let mut escaping_uses = FxHashSet::<Symbol>::default();
 
     for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {
@@ -56,7 +67,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 op: InstOp::Load(src_val_ptr),
                 ..
             } => {
-                if let Some(local) = get_symbol(context, *src_val_ptr) {
+                if let Some(local) = get_referred_symbol(context, *src_val_ptr) {
                     loads_map
                         .entry(local)
                         .and_modify(|loads| loads.push(inst))
@@ -68,7 +79,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 op: InstOp::Store { dst_val_ptr, .. },
                 ..
             } => {
-                if let Some(local) = get_symbol(context, *dst_val_ptr) {
+                if let Some(local) = get_referred_symbol(context, *dst_val_ptr) {
                     stores_map
                         .entry(local)
                         .and_modify(|stores| stores.push(inst))
@@ -77,12 +88,20 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 }
             }
             Instruction {
+                op: InstOp::PtrToInt(value, _),
+                ..
+            } => {
+                if let Some(local) = get_referred_symbol(context, *value) {
+                    escaping_uses.insert(local);
+                }
+            }
+            Instruction {
                 op: InstOp::AsmBlock(_, args),
                 ..
             } => {
                 for arg in args {
                     if let Some(arg) = arg.initializer {
-                        if let Some(local) = get_symbol(context, arg) {
+                        if let Some(local) = get_referred_symbol(context, arg) {
                             escaping_uses.insert(local);
                         }
                     }
@@ -93,7 +112,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                 ..
             } => {
                 for arg in args {
-                    if let Some(local) = get_symbol(context, *arg) {
+                    if let Some(local) = get_referred_symbol(context, *arg) {
                         escaping_uses.insert(local);
                     }
                 }
@@ -103,10 +122,17 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
     }
 
     let mut to_delete = FxHashSet::<Value>::default();
+    // Candidates for replacements. The map's key `Symbol` is the
+    // destination `Symbol` that can be replaced with the
+    // map's value `Symbol`, the source.
+    // Replacement is possible (among other criteria explained below)
+    // only if the Store of the source is the only storing to the destination.
     let candidates: FxHashMap<Symbol, Symbol> = function
         .instruction_iter(context)
         .enumerate()
         .filter_map(|(pos, (block, instr_val))| {
+            // 1. Go through all the Store instructions whose source is
+            // a Load instruction...
             instr_val
                 .get_instruction(context)
                 .and_then(|instr| {
@@ -120,7 +146,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                         ..
                     } = instr
                     {
-                        get_symbol(context, *dst_val_ptr).and_then(|dst_local| {
+                        get_gep_symbol(context, *dst_val_ptr).and_then(|dst_local| {
                             stored_val
                                 .get_instruction(context)
                                 .map(|src_instr| (src_instr, stored_val, dst_local))
@@ -136,13 +162,16 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                         ..
                     } = src_instr
                     {
-                        get_symbol(context, *src_val_ptr)
+                        get_gep_symbol(context, *src_val_ptr)
                             .map(|src_local| (stored_val, dst_local, src_local))
                     } else {
                         None
                     }
                 })
                 .and_then(|(src_load, dst_local, src_local)| {
+                    // 2. ... and pick the (dest_local, src_local) pairs that fulfill the
+                    //    below criteria, in other words, where `dest_local` can be
+                    //    replaced with `src_local`.
                     let (temp_empty1, temp_empty2, temp_empty3) = (vec![], vec![], vec![]);
                     let dst_local_stores = stores_map.get(&dst_local).unwrap_or(&temp_empty1);
                     let src_local_stores = stores_map.get(&src_local).unwrap_or(&temp_empty2);
@@ -162,7 +191,7 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                             let instr_info = instr_info_map.get(load_val).unwrap();
                             instr_info.block == block && instr_info.pos > pos
                         })
-                        // We don't deal with ASM blocks.
+                        // We don't deal with ASM blocks and function calls.
                         || escaping_uses.contains(&dst_local)
                         // We don't deal part copies.
                         || dst_local.get_type(context) != src_local.get_type(context)
@@ -178,28 +207,32 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
         })
         .collect();
 
-    // if we have A replaces B and B replaces C, then A must replace C also.
-    fn closure(candidates: &FxHashMap<Symbol, Symbol>, src_local: &Symbol) -> Option<Symbol> {
+    // If we have A replaces B and B replaces C, then A must replace C also.
+    // Recursively searches for the final replacement for the `local`.
+    // Returns `None` if the `local` cannot be replaced.
+    fn get_replace_with(candidates: &FxHashMap<Symbol, Symbol>, local: &Symbol) -> Option<Symbol> {
         candidates
-            .get(src_local)
-            .map(|replace_with| closure(candidates, replace_with).unwrap_or(*replace_with))
+            .get(local)
+            .map(|replace_with| get_replace_with(candidates, replace_with).unwrap_or(*replace_with))
     }
 
     // If the source is an Arg, we replace uses of destination with Arg.
-    // otherwise (`get_local`), we replace the local symbol in-place.
+    // Otherwise (`get_local`), we replace the local symbol in-place.
     enum ReplaceWith {
         InPlaceLocal(LocalVar),
         Value(Value),
     }
 
     // Because we can't borrow context for both iterating and replacing, do it in 2 steps.
+    // `replaces` are the original GetLocal instructions with the corresponding replacements
+    // of their arguments.
     let replaces: Vec<_> = function
         .instruction_iter(context)
         .filter_map(|(_block, value)| match value.get_instruction(context) {
             Some(Instruction {
                 op: InstOp::GetLocal(local),
                 ..
-            }) => closure(&candidates, &Symbol::Local(*local)).map(|replace_with| {
+            }) => get_replace_with(&candidates, &Symbol::Local(*local)).map(|replace_with| {
                 (
                     value,
                     match replace_with {
@@ -261,10 +294,10 @@ fn local_copy_prop(
 
     // Currently (as we scan a block) available `memcpy`s.
     let mut available_copies: FxHashSet<Value>;
-    // Map a symbol to the available `memcpy`s of which its a source.
+    // Map a symbol to the available `memcpy`s of which it's a source.
     let mut src_to_copies: FxIndexMap<Symbol, FxIndexSet<Value>>;
-    // Map a symbol to the available `memcpy`s of which its a destination.
-    // (multiple memcpys for the same destination may be available when
+    // Map a symbol to the available `memcpy`s of which it's a destination.
+    // (multiple `memcpy`s for the same destination may be available when
     // they are partial / field writes, and don't alias).
     let mut dest_to_copies: FxIndexMap<Symbol, FxIndexSet<Value>>;
 
@@ -277,8 +310,8 @@ fn local_copy_prop(
         src_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
         dest_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
     ) {
-        let syms = get_symbols(context, value);
-        for sym in syms {
+        let rs = get_referred_symbols(context, value);
+        for sym in rs.any() {
             if let Some(copies) = src_to_copies.get_mut(&sym) {
                 for copy in &*copies {
                     let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
@@ -334,8 +367,8 @@ fn local_copy_prop(
         dest_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
     ) {
         if let (Some(dst_sym), Some(src_sym)) = (
-            get_symbol(context, dst_val_ptr),
-            get_symbol(context, src_val_ptr),
+            get_gep_symbol(context, dst_val_ptr),
+            get_gep_symbol(context, src_val_ptr),
         ) {
             if escaped_symbols.contains(&dst_sym) || escaped_symbols.contains(&src_sym) {
                 return;
@@ -404,7 +437,7 @@ fn local_copy_prop(
     ) -> bool {
         // For every `memcpy` that src_val_ptr is a destination of,
         // check if we can do the load from the source of that memcpy.
-        if let Some(src_sym) = get_symbol(context, src_val_ptr) {
+        if let Some(src_sym) = get_referred_symbol(context, src_val_ptr) {
             if escaped_symbols.contains(&src_sym) {
                 return false;
             }
@@ -437,8 +470,8 @@ fn local_copy_prop(
                     // if the memcpy copies the entire symbol, we could
                     // insert a new GEP from the source of the memcpy.
                     if let (Some(memcpy_src_sym), Some(memcpy_dst_sym), Some(new_indices)) = (
-                        get_symbol(context, src_ptr_memcpy),
-                        get_symbol(context, dst_ptr_memcpy),
+                        get_gep_symbol(context, src_ptr_memcpy),
+                        get_gep_symbol(context, dst_ptr_memcpy),
                         memory_utils::combine_indices(context, src_val_ptr),
                     ) {
                         let memcpy_src_sym_type = memcpy_src_sym
@@ -494,7 +527,8 @@ fn local_copy_prop(
                 dest_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
             ) {
                 for arg in args {
-                    let max_size = get_symbols(context, *arg)
+                    let max_size = get_referred_symbols(context, *arg)
+                        .any()
                         .iter()
                         .filter_map(|sym| {
                             sym.get_type(context)
@@ -713,7 +747,7 @@ fn is_clobbered(
         .skip_while(|i| i != &store_val);
     assert!(iter.next().unwrap() == store_val);
 
-    let src_symbols = get_symbols(context, src_ptr);
+    let src_symbols = get_gep_referred_symbols(context, src_ptr);
 
     // Scan backwards till we encounter load_val, checking if
     // any store aliases with src_ptr.
@@ -736,7 +770,7 @@ fn is_clobbered(
                 ..
             }) = inst.get_instruction(context)
             {
-                if get_symbols(context, *dst_val_ptr)
+                if get_gep_referred_symbols(context, *dst_val_ptr)
                     .iter()
                     .any(|sym| src_symbols.contains(sym))
                 {

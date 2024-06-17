@@ -2,7 +2,6 @@ script;
 
 mod wallet_abi;
 
-use std::constants::ZERO_B256;
 use wallet_abi::Wallet;
 
 fn main() {
@@ -12,10 +11,10 @@ fn main() {
     let recipient_address = Address::from(0x9299da6c73e6dc03eeabcce242bb347de3f5f56cd1c70926d76526d7ed199b8b);
     let zero = 0;
     let coins = zero;
-    // `coins:` is indirectly zero, this shouls pass
+    // `coins:` is indirectly zero, this should pass
     caller.send_funds {
         gas: 10000,
         coins: coins,
-        asset_id: ZERO_B256,
+        asset_id: b256::zero(),
     }(amount_to_send, recipient_address);
 }

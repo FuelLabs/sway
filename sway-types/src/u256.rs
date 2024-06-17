@@ -47,6 +47,14 @@ impl U256 {
         let r = (&self.0).shl(other);
         (r.bits() <= 256).then_some(Self(r))
     }
+
+    pub fn checked_rem(&self, other: &U256) -> Option<U256> {
+        if other.0 == BigUint::ZERO {
+            None
+        } else {
+            Some(U256(&self.0 % &other.0))
+        }
+    }
 }
 
 impl std::fmt::Display for U256 {
@@ -129,7 +137,7 @@ impl<'a> std::ops::Not for &'a U256 {
 
     fn not(self) -> Self::Output {
         let mut bytes = self.to_be_bytes();
-        for b in bytes.iter_mut() {
+        for b in &mut bytes {
             *b = !*b;
         }
         U256(BigUint::from_bytes_be(&bytes))

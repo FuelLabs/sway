@@ -1,6 +1,5 @@
 contract;
 
-use std::constants::ZERO_B256;
 use std::hash::*;
 
 struct M {
@@ -82,7 +81,7 @@ impl ExperimentalStorageTest for Contract {
         assert(storage.nested_map_1.get(1).get(1).get(0).read() == 7);
         assert(storage.nested_map_1.get(1).get(1).get(1).read() == 8);
 
-        // Thes combinations of keys are not set
+        // These combinations of keys are not set
         assert(storage.nested_map_1.get(2).get(1).get(1).try_read().is_none());
         assert(storage.nested_map_1.get(1).get(2).get(1).try_read().is_none());
         assert(storage.nested_map_1.get(1).get(1).get(2).try_read().is_none());
@@ -115,9 +114,9 @@ impl ExperimentalStorageTest for Contract {
         assert(storage.nested_map_2.get((0, 1)).get(_0000).get(0).read() == m1);
         assert(storage.nested_map_2.get((0, 1)).get(_0001).get(1).read() == m2);
 
-        // Thes combinations of keys are not set
+        // These combinations of keys are not set
         assert(storage.nested_map_2.get((2, 0)).get(_0001).get(1).try_read().is_none());
-        assert(storage.nested_map_2.get((1, 1)).get(_0002 ).get(0).try_read().is_none());
+        assert(storage.nested_map_2.get((1, 1)).get(_0002).get(0).try_read().is_none());
         assert(storage.nested_map_2.get((1, 1)).get(_0001).get(2).try_read().is_none());
     }
 
@@ -154,12 +153,20 @@ impl ExperimentalStorageTest for Contract {
         assert(storage.nested_map_3.get(1).get(m1).get(0).read() == e1);
         assert(storage.nested_map_3.get(1).get(m2).get(1).read() == e2);
 
-        // Thes combinations of keys are not set
+        // These combinations of keys are not set
         assert(storage.nested_map_3.get(2).get(m2).get(1).try_read().is_none());
-        assert(storage.nested_map_3.get(1).get(M {
-            u: ZERO_B256,
-            v: 3,
-        }).get(1).try_read().is_none());
+        assert(
+            storage
+                .nested_map_3
+                .get(1)
+                .get(M {
+                    u: b256::zero(),
+                    v: 3,
+                })
+                .get(1)
+                .try_read()
+                .is_none(),
+        );
         assert(storage.nested_map_3.get(1).get(m2).get(2).try_read().is_none());
     }
 }

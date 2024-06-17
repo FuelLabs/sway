@@ -30,4 +30,5 @@ sway-lsp/tests/**/Forc.lock
 forc-plugins/forc-debug/tests/**/Forc.lock
 
 # Generated files in example directories
-examples/**/Forc.lock
+examples/**/*/Forc.lock
+docs/reference/src/code/examples/**/*/Forc.lock

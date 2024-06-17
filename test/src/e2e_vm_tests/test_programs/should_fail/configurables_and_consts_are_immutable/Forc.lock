@@ -1,0 +1,8 @@
+[[package]]
+name = "configurables_and_consts_are_immutable"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-4356F81B463050D4"

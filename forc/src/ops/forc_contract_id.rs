@@ -28,7 +28,7 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
             please do so within the `[contract-dependencies]` table."
         )
     }
-    let built = build_with_options(build_options)?;
+    let built = build_with_options(&build_options)?;
     for (pinned_contract, built_contract) in built.into_members() {
         let salt = command
             .salt
@@ -37,8 +37,7 @@ pub fn contract_id(command: ContractIdCommand) -> Result<()> {
             .unwrap_or_else(fuel_tx::Salt::zeroed);
         let name = &pinned_contract.name;
         let storage_slots = built_contract.storage_slots.clone();
-        let contract_id =
-            pkg::contract_id(built_contract.bytecode.bytes.clone(), storage_slots, &salt);
+        let contract_id = pkg::contract_id(&built_contract.bytecode.bytes, storage_slots, &salt);
         println_green(&format!(" {name}"));
         info!("      Contract id: 0x{contract_id}");
     }
@@ -60,9 +59,9 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             ast: cmd.print.ast,
             dca_graph: cmd.print.dca_graph.clone(),
             dca_graph_url_format: cmd.print.dca_graph_url_format.clone(),
-            finalized_asm: cmd.print.finalized_asm,
-            intermediate_asm: cmd.print.intermediate_asm,
-            ir: cmd.print.ir,
+            asm: cmd.print.asm(),
+            bytecode: cmd.print.bytecode,
+            ir: cmd.print.ir(),
             reverse_order: cmd.print.reverse_order,
         },
         time_phases: cmd.print.time_phases,
@@ -80,7 +79,7 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
         tests: false,
         member_filter: pkg::MemberFilter::only_contracts(),
         experimental: ExperimentalFlags {
-            new_encoding: cmd.experimental_new_encoding,
+            new_encoding: !cmd.no_encoding_v1,
         },
     }
 }

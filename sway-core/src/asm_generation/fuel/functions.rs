@@ -1,7 +1,11 @@
 use crate::{
     asm_generation::{
         from_ir::*,
-        fuel::{compiler_constants, data_section::Entry, fuel_asm_builder::FuelAsmBuilder},
+        fuel::{
+            compiler_constants::{self, TWELVE_BITS},
+            data_section::Entry,
+            fuel_asm_builder::FuelAsmBuilder,
+        },
         ProgramKind,
     },
     asm_lang::{
@@ -22,7 +26,7 @@ use sway_error::{
 };
 use sway_types::{Ident, Span};
 
-use super::{compiler_constants::NUM_ARG_REGISTERS, data_section::DataId};
+use super::compiler_constants::NUM_ARG_REGISTERS;
 
 /// A summary of the adopted calling convention:
 ///
@@ -123,19 +127,49 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             }
             // Register ARG_REGS[NUM_ARG_REGISTERS-1] must contain LocalsBase + locals_size
             // so that the callee can index the stack arguments from there.
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::ADDI(
-                    VirtualRegister::Constant(
-                        ConstantRegister::ARG_REGS
-                            [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
-                    ),
-                    VirtualRegister::Constant(ConstantRegister::LocalsBase),
-                    VirtualImmediate12::new(self.locals_size_bytes(), Span::dummy())
-                        .expect("Too many arguments, cannot handle."),
-                )),
-                comment: "Save address of stack arguments in last arg register".to_string(),
-                owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
-            });
+            if self.locals_size_bytes() <= TWELVE_BITS {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADDI(
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                        VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        VirtualImmediate12::new(self.locals_size_bytes(), Span::dummy())
+                            .expect("Stack size too big for these many arguments, cannot handle."),
+                    )),
+                    comment: "Save address of stack arguments in last arg register".to_string(),
+                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                });
+            } else {
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::MOVI(
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                        VirtualImmediate18::new(self.locals_size_bytes(), Span::dummy())
+                            .expect("Stack size too big for these many arguments, cannot handle."),
+                    )),
+                    comment: "Temporarily save the locals size to add up next".to_string(),
+                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                });
+                self.cur_bytecode.push(Op {
+                    opcode: Either::Left(VirtualOp::ADD(
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                        VirtualRegister::Constant(ConstantRegister::LocalsBase),
+                        VirtualRegister::Constant(
+                            ConstantRegister::ARG_REGS
+                                [(compiler_constants::NUM_ARG_REGISTERS - 1) as usize],
+                        ),
+                    )),
+                    comment: "Save address of stack arguments in last arg register".to_string(),
+                    owning_span: self.md_mgr.val_to_span(self.context, *instr_val),
+                });
+            }
         }
 
         // Set a new return address.
@@ -239,6 +273,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             "--- start of function: {} ---",
             function.get_name(self.context)
         );
+
         self.cur_bytecode.push(match span {
             Some(span) => Op::jump_label_comment(start_label, span, comment),
             None => Op::unowned_jump_label_comment(start_label, comment),
@@ -346,13 +381,13 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
     fn compile_fn_call_args(&mut self, function: Function) {
         if function.num_args(self.context) <= compiler_constants::NUM_ARG_REGISTERS as usize {
             // All arguments are passed through registers.
-            for (idx, (_, arg_val)) in function.args_iter(self.context).enumerate() {
+            for (idx, (arg_name, arg_val)) in function.args_iter(self.context).enumerate() {
                 // Make a copy of the args in case we make calls and need to use the arg registers.
                 let arg_copy_reg = self.reg_seqr.next();
                 self.cur_bytecode.push(Op::register_move(
                     arg_copy_reg.clone(),
                     VirtualRegister::Constant(ConstantRegister::ARG_REGS[idx]),
-                    format!("save arg {idx}"),
+                    format!("save arg {idx} ({arg_name})"),
                     self.md_mgr.val_to_span(self.context, *arg_val),
                 ));
 
@@ -767,44 +802,69 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         // Otherwise they go in runtime allocated space, either a register or on the stack.
         //
         // Stack offsets are in words to both enforce alignment and simplify use with LW/SW.
-        let (stack_base_words, init_mut_vars) =
-            function.locals_iter(self.context).fold(
-                (0, Vec::new()),
-                |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
-                    if let (false, Some(constant)) = (
-                        ptr.is_mutable(self.context),
-                        ptr.get_initializer(self.context),
-                    ) {
-                        let data_id = self.data_section.insert_data_value(Entry::from_constant(
-                            self.context,
-                            constant,
-                            None,
-                            None,
-                        ));
-                        self.ptr_map.insert(*ptr, Storage::Data(data_id));
-                        (stack_base_words, init_mut_vars)
-                    } else {
-                        self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
-
-                        let ptr_ty = ptr.get_inner_type(self.context);
-                        let var_size = ptr_ty.size(self.context);
-
-                        if let Some(constant) = ptr.get_initializer(self.context) {
+        let (stack_base_words, init_mut_vars) = function.locals_iter(self.context).fold(
+            (0, Vec::new()),
+            |(stack_base_words, mut init_mut_vars), (_name, ptr)| {
+                if let (false, Some(constant)) = (
+                    ptr.is_mutable(self.context),
+                    ptr.get_initializer(self.context),
+                ) {
+                    match constant.value {
+                        ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
+                            self.ptr_map.insert(
+                                *ptr,
+                                Storage::Const(VirtualImmediate18::new_unchecked(
+                                    c,
+                                    "Cannot happen, we just checked",
+                                )),
+                            );
+                        }
+                        _ => {
                             let data_id = self.data_section.insert_data_value(
                                 Entry::from_constant(self.context, constant, None, None),
                             );
-
-                            init_mut_vars.push(InitMutVars {
-                                stack_base_words,
-                                var_size: var_size.clone(),
-                                data_id,
-                            });
+                            self.ptr_map.insert(*ptr, Storage::Data(data_id));
                         }
-
-                        (stack_base_words + var_size.in_words(), init_mut_vars)
                     }
-                },
-            );
+                    (stack_base_words, init_mut_vars)
+                } else {
+                    self.ptr_map.insert(*ptr, Storage::Stack(stack_base_words));
+
+                    let ptr_ty = ptr.get_inner_type(self.context);
+                    let var_size = ptr_ty.size(self.context);
+
+                    if let Some(constant) = ptr.get_initializer(self.context) {
+                        match constant.value {
+                            ConstantValue::Uint(c) if c <= compiler_constants::EIGHTEEN_BITS => {
+                                let imm = VirtualImmediate18::new_unchecked(
+                                    c,
+                                    "Cannot happen, we just checked",
+                                );
+                                dbg!();
+                                init_mut_vars.push(InitMutVars {
+                                    stack_base_words,
+                                    var_size: var_size.clone(),
+                                    data: Storage::Const(imm),
+                                });
+                            }
+                            _ => {
+                                let data_id = self.data_section.insert_data_value(
+                                    Entry::from_constant(self.context, constant, None, None),
+                                );
+
+                                init_mut_vars.push(InitMutVars {
+                                    stack_base_words,
+                                    var_size: var_size.clone(),
+                                    data: Storage::Data(data_id),
+                                });
+                            }
+                        }
+                    }
+
+                    (stack_base_words + var_size.in_words(), init_mut_vars)
+                }
+            },
+        );
 
         // Reserve space on the stack (in bytes) for all our locals which require it.  Firstly save
         // the current $sp.
@@ -812,7 +872,11 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         self.cur_bytecode.push(Op::register_move(
             locals_base_reg.clone(),
             VirtualRegister::Constant(ConstantRegister::StackPointer),
-            "save locals base register",
+            format!(
+                "save locals base register for {}",
+                function.get_name(self.context)
+            )
+            .to_string(),
             None,
         ));
 
@@ -848,7 +912,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
         for InitMutVars {
             stack_base_words,
             var_size,
-            data_id,
+            data,
         } in init_mut_vars
         {
             if var_size.in_bytes() == 0 {
@@ -856,14 +920,29 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
                 continue;
             }
             // Load our initialiser from the data section.
-            self.cur_bytecode.push(Op {
-                opcode: Either::Left(VirtualOp::LoadDataId(
-                    VirtualRegister::Constant(ConstantRegister::Scratch),
-                    data_id,
-                )),
-                comment: "load initializer from data section".to_owned(),
-                owning_span: None,
-            });
+            match data {
+                Storage::Data(data_id) => {
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::LoadDataId(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            data_id,
+                        )),
+                        comment: "load initializer from data section".to_owned(),
+                        owning_span: None,
+                    });
+                }
+                Storage::Stack(_) => panic!("Initializer cannot be on the stack"),
+                Storage::Const(c) => {
+                    self.cur_bytecode.push(Op {
+                        opcode: Either::Left(VirtualOp::MOVI(
+                            VirtualRegister::Constant(ConstantRegister::Scratch),
+                            c.clone(),
+                        )),
+                        comment: "load initializer from register".into(),
+                        owning_span: None,
+                    });
+                }
+            }
 
             // Get the stack offset in bytes rather than words.
             let var_stack_off_bytes = stack_base_words * 8;
@@ -981,5 +1060,5 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
 struct InitMutVars {
     stack_base_words: u64,
     var_size: TypeSize,
-    data_id: DataId,
+    data: Storage,
 }

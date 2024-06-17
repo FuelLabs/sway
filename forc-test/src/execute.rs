@@ -1,3 +1,4 @@
+use crate::maxed_consensus_params;
 use crate::setup::TestSetup;
 use crate::TestResult;
 use crate::TEST_METADATA_SEED;
@@ -12,8 +13,10 @@ use fuel_vm::{
     storage::MemoryStorage,
 };
 use rand::{Rng, SeedableRng};
+
 use tx::Receipt;
 
+use vm::interpreter::InterpreterParams;
 use vm::state::DebugEval;
 use vm::state::ProgramState;
 
@@ -21,7 +24,7 @@ use vm::state::ProgramState;
 #[derive(Debug, Clone)]
 pub struct TestExecutor {
     pub interpreter: Interpreter<MemoryStorage, tx::Script, NotSupportedEcal>,
-    pub tx_builder: tx::TransactionBuilder<tx::Script>,
+    pub tx: vm::checked_transaction::Ready<tx::Script>,
     pub test_entry: PkgTestEntry,
     pub name: String,
 }
@@ -36,13 +39,13 @@ pub enum DebugResult {
 }
 
 impl TestExecutor {
-    pub fn new(
+    pub fn build(
         bytecode: &[u8],
         test_offset: u32,
         test_setup: TestSetup,
         test_entry: &PkgTestEntry,
         name: String,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let storage = test_setup.storage().clone();
 
         // Patch the bytecode to jump to the relevant test.
@@ -57,20 +60,22 @@ impl TestExecutor {
         let utxo_id = rng.gen();
         let amount = 1;
         let maturity = 1.into();
-        let asset_id = rng.gen();
+        // NOTE: fuel-core is using dynamic asset id and interacting with the fuel-core, using static
+        // asset id is not correct. But since forc-test maintains its own interpreter instance, correct
+        // base asset id is indeed the static `tx::AssetId::BASE`.
+        let asset_id = tx::AssetId::BASE;
         let tx_pointer = rng.gen();
+        let block_height = (u32::MAX >> 1).into();
+        let gas_price = 0;
 
-        let mut tx_builder = tx::TransactionBuilder::script(bytecode, script_input_data)
-            .add_unsigned_coin_input(
-                secret_key,
-                utxo_id,
-                amount,
-                asset_id,
-                tx_pointer,
-                0u32.into(),
-            )
-            .maturity(maturity)
-            .clone();
+        let mut tx_builder = tx::TransactionBuilder::script(bytecode, script_input_data);
+
+        let params = maxed_consensus_params();
+
+        tx_builder
+            .with_params(params)
+            .add_unsigned_coin_input(secret_key, utxo_id, amount, asset_id, tx_pointer)
+            .maturity(maturity);
 
         let mut output_index = 1;
         // Insert contract ids into tx input
@@ -90,31 +95,44 @@ impl TestExecutor {
                 }));
             output_index += 1;
         }
-        let consensus_params = tx_builder.get_params().clone();
 
+        let consensus_params = tx_builder.get_params().clone();
         // Temporarily finalize to calculate `script_gas_limit`
         let tmp_tx = tx_builder.clone().finalize();
         // Get `max_gas` used by everything except the script execution. Add `1` because of rounding.
         let max_gas =
             tmp_tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
         // Increase `script_gas_limit` to the maximum allowed value.
-        tx_builder.script_gas_limit(consensus_params.tx_params().max_gas_per_tx - max_gas);
+        tx_builder.script_gas_limit(consensus_params.tx_params().max_gas_per_tx() - max_gas);
 
-        TestExecutor {
-            interpreter: Interpreter::with_storage(storage, consensus_params.into()),
-            tx_builder,
+        // We need to increase the tx size limit as the default is 110 * 1024 and for big tests
+        // such as std and core this is not enough.
+
+        let tx = tx_builder
+            .finalize_checked(block_height)
+            .into_ready(
+                gas_price,
+                consensus_params.gas_costs(),
+                consensus_params.fee_params(),
+            )
+            .map_err(|e| anyhow::anyhow!("{e:?}"))?;
+
+        let interpreter_params = InterpreterParams::new(gas_price, &consensus_params);
+
+        Ok(TestExecutor {
+            interpreter: Interpreter::with_storage(storage, interpreter_params),
+            tx,
             test_entry: test_entry.clone(),
             name,
-        }
+        })
     }
 
     /// Execute the test with breakpoints enabled.
     pub fn start_debugging(&mut self) -> anyhow::Result<DebugResult> {
-        let block_height = (u32::MAX >> 1).into();
         let start = std::time::Instant::now();
         let transition = self
             .interpreter
-            .transact(self.tx_builder.finalize_checked(block_height))
+            .transact(self.tx.clone())
             .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
         let state = *transition.state();
         if let ProgramState::RunProgram(DebugEval::Breakpoint(breakpoint)) = state {
@@ -171,11 +189,10 @@ impl TestExecutor {
     }
 
     pub fn execute(&mut self) -> anyhow::Result<TestResult> {
-        let block_height = (u32::MAX >> 1).into();
         let start = std::time::Instant::now();
         let transition = self
             .interpreter
-            .transact(self.tx_builder.finalize_checked(block_height))
+            .transact(self.tx.clone())
             .map_err(|err: InterpreterError<_>| anyhow::anyhow!(err))?;
         let state = *transition.state();
 

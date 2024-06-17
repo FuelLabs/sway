@@ -22,7 +22,7 @@ pub(crate) fn instantiate_enum(
     mut ctx: TypeCheckContext,
     enum_ref: DeclRefEnum,
     enum_variant_name: Ident,
-    args_opt: Option<Vec<Expression>>,
+    args_opt: Option<&[Expression]>,
     call_path_binding: TypeBinding<CallPath>,
     call_path_decl: ty::TyDecl,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
@@ -54,10 +54,7 @@ pub(crate) fn instantiate_enum(
     // If there is an instantiator, it must match up with the type. If there is not an
     // instantiator, then the type of the enum is necessarily the unit type.
 
-    match (
-        &args[..],
-        &*type_engine.get(enum_variant.type_argument.type_id),
-    ) {
+    match (&args, &*type_engine.get(enum_variant.type_argument.type_id)) {
         ([], ty) if ty.is_unit() => Ok(ty::TyExpression {
             return_type: type_engine.insert(
                 engines,
@@ -146,9 +143,8 @@ pub(crate) fn instantiate_enum(
             // TODO-IG: Remove the `handler.scope` once https://github.com/FuelLabs/sway/issues/5606 gets solved.
             //          We need it here so that we can short-circuit in case of a `TypeMismatch` error which is
             //          not treated as an error in the `type_check()`'s result.
-            let typed_expr = handler.scope(|handler| {
-                ty::TyExpression::type_check(handler, enum_ctx, single_expr.clone())
-            })?;
+            let typed_expr = handler
+                .scope(|handler| ty::TyExpression::type_check(handler, enum_ctx, single_expr))?;
 
             // Create the resulting enum type based on the enum we have instantiated.
             // Note that we clone the `enum_ref` but the unification we do below will

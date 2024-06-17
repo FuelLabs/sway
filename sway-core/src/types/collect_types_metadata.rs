@@ -9,6 +9,7 @@ use std::{
 };
 
 use crate::{type_system::TypeId, Engines, ExperimentalFlags};
+use sha2::{Digest, Sha256};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Ident, Span};
 
@@ -16,18 +17,17 @@ use sway_types::{Ident, Span};
 /// error to signal to the user that more type information is needed.
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct LogId(usize);
-
-impl std::ops::Deref for LogId {
-    type Target = usize;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
+pub struct LogId {
+    pub hash_id: u64,
 }
 
 impl LogId {
-    pub fn new(index: usize) -> LogId {
-        LogId(index)
+    pub fn new(string: String) -> LogId {
+        let mut hasher = Sha256::new();
+        hasher.update(string);
+        let result = hasher.finalize();
+        let hash_id = u64::from_be_bytes(result[0..8].try_into().unwrap());
+        LogId { hash_id }
     }
 }
 
@@ -61,28 +61,18 @@ pub enum TypeMetadata {
 // A simple context that only contains a single counter for now but may expand in the future.
 pub struct CollectTypesMetadataContext<'cx> {
     // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
-    // obtain a unique ID for a given log instance.
-    log_id_counter: usize,
-
-    // Consume this and update it via the methods implemented for CollectTypesMetadataContext to
     // obtain a unique ID for a given smo instance.
     message_id_counter: usize,
 
     call_site_spans: Vec<Arc<Mutex<HashMap<TypeId, Span>>>>,
     pub(crate) engines: &'cx Engines,
 
+    pub(crate) program_name: String,
+
     pub experimental: ExperimentalFlags,
 }
 
 impl<'cx> CollectTypesMetadataContext<'cx> {
-    pub fn log_id_counter(&self) -> usize {
-        self.log_id_counter
-    }
-
-    pub fn log_id_counter_mut(&mut self) -> &mut usize {
-        &mut self.log_id_counter
-    }
-
     pub fn message_id_counter(&self) -> usize {
         self.message_id_counter
     }
@@ -108,7 +98,7 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
     }
 
     pub fn call_site_get(&mut self, type_id: &TypeId) -> Option<Span> {
-        for lock in self.call_site_spans.iter() {
+        for lock in &self.call_site_spans {
             if let Ok(hash_map) = lock.lock() {
                 let opt = hash_map.get(type_id).cloned();
                 if opt.is_some() {
@@ -119,13 +109,17 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
         None
     }
 
-    pub fn new(engines: &'cx Engines, experimental: ExperimentalFlags) -> Self {
+    pub fn new(
+        engines: &'cx Engines,
+        experimental: ExperimentalFlags,
+        program_name: String,
+    ) -> Self {
         let mut ctx = Self {
             engines,
-            log_id_counter: 0,
             message_id_counter: 0,
             call_site_spans: vec![],
             experimental,
+            program_name,
         };
         ctx.call_site_push();
         ctx

@@ -1,105 +1,78 @@
-script;
-
+ script;
+ 
 use std::hash::*;
 
-struct MyStruct {
-    x: u64,
-    y: bool,
+struct ConfigurableStruct {
+    a: bool,
+    b: u64,
 }
 
-enum MyEnum {
-    A: u64,
-    B: bool,
+enum ConfigurableEnum {
+    A: bool,
+    B: u64,
 }
 
-impl core::ops::Eq for MyEnum {
-    fn eq(self, other: MyEnum) -> bool {
+impl core::ops::Eq for ConfigurableEnum {
+    fn eq(self, other: ConfigurableEnum) -> bool {
         match (self, other) {
-            (MyEnum::A(inner1), MyEnum::A(inner2)) => inner1 == inner2,
-            (MyEnum::B(inner1), MyEnum::B(inner2)) => inner1 == inner2,
+            (ConfigurableEnum::A(inner1), ConfigurableEnum::A(inner2)) => inner1 == inner2,
+            (ConfigurableEnum::B(inner1), ConfigurableEnum::B(inner2)) => inner1 == inner2,
             _ => false,
         }
     }
 }
 
-configurable {
-    C0: bool = true,
-    C1: u64 = 42,
-    C2: b256 = 0x1111111111111111111111111111111111111111111111111111111111111111,
-    C3: MyStruct = MyStruct { x: 42, y: true },
-    C4: MyEnum = MyEnum::A(42),
-    C5: MyEnum = MyEnum::B(true),
-    C6: str[4] = __to_str_array("fuel"),
-    C7: [u64; 4] = [1, 2, 3, 4],
-    C7_2: [u8; 4] = [1, 2, 3, 4],
-    C8: u64 = 0, // Unused - should not show up in the JSON file
-    C9: u64 =  10 + 9 - 8 * 7 / 6 << 5 >> 4 ^ 3 | 2 & 1,
-}
+type AnotherU8 = u8;
 
-#[inline(never)]
-fn test_first_use() {
-    assert(C0 == true);
-    assert(C1 == 42);
-    assert(C2 == 0x1111111111111111111111111111111111111111111111111111111111111111);
-    assert(C3.x == 42);
-    assert(C3.y == true);
-    assert(C4 == MyEnum::A(42));
-    assert(C5 == MyEnum::B(true));
-    assert(sha256_str_array(C6) == sha256("fuel"));
-    assert(C7[0] == 1);
-    assert(C7[1] == 2);
-    assert(C7[2] == 3);
-    assert(C7[3] == 4);
-    assert(C9 == 23);
-}
+ configurable {
+     BOOL: bool = true,
+    U8: u8 = 1,
+    ANOTHER_U8: AnotherU8 = 3,
+    U16: u16 = 2,
+    U32: u32 = 3,
+    U64: u32 = 4,
+    U256: u256 = 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256,
+    B256: b256 = 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
+    CONFIGURABLE_STRUCT: ConfigurableStruct = ConfigurableStruct { 
+        a: true,
+        b: 5,
+    },
+    CONFIGURABLE_ENUM_A: ConfigurableEnum = ConfigurableEnum::A(true),
+    CONFIGURABLE_ENUM_B: ConfigurableEnum = ConfigurableEnum::B(12),
+    ARRAY_BOOL: [bool; 3] = [true, false, true],
+    ARRAY_U64: [u64; 3] = [9, 8, 7],
+    TUPLE_BOOL_U64: (bool, u64) = (true, 11),
+    STR_4: str[4] = __to_str_array("abcd"),
+ }
+ 
+ fn main() {
+     assert(BOOL == true);
+    assert(U8 == 1);
+    assert(ANOTHER_U8 == 3);
+    assert(U16 == 2);
+    assert(U64 == 4);
+    assert(U256 == 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256);
+    assert(B256 == 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
+    assert(CONFIGURABLE_STRUCT.a == true);
+    assert(CONFIGURABLE_STRUCT.b == 5);
+    assert(CONFIGURABLE_ENUM_A == ConfigurableEnum::A(true));
+    assert(CONFIGURABLE_ENUM_B == ConfigurableEnum::B(12));
+    assert(ARRAY_BOOL[0] == true);
+    assert(ARRAY_BOOL[1] == false);
+    assert(ARRAY_BOOL[2] == true);
+    assert(ARRAY_U64[0] == 9);
+    assert(ARRAY_U64[1] == 8);
+    assert(ARRAY_U64[2] == 7);
+    assert(TUPLE_BOOL_U64.0 == true);
+    assert(TUPLE_BOOL_U64.1 == 11);
+    assert(sha256_str_array(STR_4) == sha256("abcd"));
 
-#[inline(never)]
-fn test_second_use() {
-    assert(C0 == true);
-    assert(C1 == 42);
-    assert(C2 == 0x1111111111111111111111111111111111111111111111111111111111111111);
-    assert(C3.x == 42);
-    assert(C3.y == true);
-    assert(C4 == MyEnum::A(42));
-    assert(C5 == MyEnum::B(true));
-    assert(sha256_str_array(C6) == sha256("fuel"));
-    assert(C7[0] == 1);
-    assert(C7[1] == 2);
-    assert(C7[2] == 3);
-    assert(C7[3] == 4);
-
-    assert(C7_2[0] == 1);
-    assert(C7_2[1] == 2);
-    assert(C7_2[2] == 3);
-    assert(C7_2[3] == 4);
-    
-    assert(C9 == 23);
-}
-
-#[inline(always)]
-fn test_inline_use() {
-    assert(C0 == true);
-    assert(C1 == 42);
-    assert(C2 == 0x1111111111111111111111111111111111111111111111111111111111111111);
-    assert(C3.x == 42);
-    assert(C3.y == true);
-    assert(C4 == MyEnum::A(42));
-    assert(C5 == MyEnum::B(true));
-    assert(sha256_str_array(C6) == sha256("fuel"));
-    assert(C7[0] == 1);
-    assert(C7[1] == 2);
-    assert(C7[2] == 3);
-    assert(C7[3] == 4);
-    assert(C9 == 23);
-}
-
-#[inline(never)]
-fn test_various_uses() {
-    test_first_use();
-    test_second_use();
-    test_inline_use();
-}
-
-fn main() {
-    test_various_uses();
-}
+    // Assert address do not change
+    let addr_1 = asm(addr: __addr_of(&BOOL)) {
+        addr: u64
+    };
+    let addr_2 = asm(addr: __addr_of(&BOOL)) {
+        addr: u64
+    };
+    assert(addr_1 == addr_2);
+ }

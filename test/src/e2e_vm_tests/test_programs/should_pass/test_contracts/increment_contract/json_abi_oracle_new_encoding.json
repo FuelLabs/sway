@@ -1,0 +1,118 @@
+{
+  "configurables": [],
+  "encoding": "1",
+  "functions": [
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [],
+      "name": "get",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "name": "increment_by",
+          "type": 3,
+          "typeArguments": null
+        }
+      ],
+      "name": "increment",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    },
+    {
+      "attributes": [
+        {
+          "arguments": [
+            "read",
+            "write"
+          ],
+          "name": "storage"
+        }
+      ],
+      "inputs": [
+        {
+          "name": "initial_value",
+          "type": 1,
+          "typeArguments": [
+            {
+              "name": "",
+              "type": 3,
+              "typeArguments": null
+            }
+          ]
+        }
+      ],
+      "name": "increment_or_not",
+      "output": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "None",
+          "type": 0,
+          "typeArguments": null
+        },
+        {
+          "name": "Some",
+          "type": 2,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum std::option::Option",
+      "typeId": 1,
+      "typeParameters": [
+        2
+      ]
+    },
+    {
+      "components": null,
+      "type": "generic T",
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 3,
+      "typeParameters": null
+    }
+  ]
+}

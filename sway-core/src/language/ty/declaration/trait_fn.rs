@@ -7,6 +7,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
+    has_changes,
     language::{ty::*, Purity},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
@@ -100,11 +101,11 @@ impl HashWithEngines for TyTraitFn {
 }
 
 impl SubstTypes for TyTraitFn {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.parameters
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
-        self.return_type.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.parameters.subst(type_mapping, engines);
+            self.return_type.subst(type_mapping, engines);
+        }
     }
 }
 

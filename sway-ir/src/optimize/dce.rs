@@ -8,9 +8,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::{
-    get_symbols, memory_utils, AnalysisResults, Context, EscapedSymbols, Function, InstOp,
-    Instruction, IrError, LocalVar, Module, Pass, PassMutability, ScopedPass, Symbol, Value,
-    ValueDatum, ESCAPED_SYMBOLS_NAME,
+    get_gep_referred_symbols, get_referred_symbols, memory_utils, AnalysisResults, Context,
+    EscapedSymbols, Function, InstOp, Instruction, IrError, LocalVar, Module, Pass, PassMutability,
+    ReferredSymbols, ScopedPass, Symbol, Value, ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -20,20 +20,20 @@ pub const DCE_NAME: &str = "dce";
 pub fn create_dce_pass() -> Pass {
     Pass {
         name: DCE_NAME,
-        descr: "Dead code elimination.",
+        descr: "Dead code elimination",
         runner: ScopedPass::FunctionPass(PassMutability::Transform(dce)),
         deps: vec![ESCAPED_SYMBOLS_NAME],
     }
 }
 
-pub const FUNC_DCE_NAME: &str = "func_dce";
+pub const FN_DCE_NAME: &str = "fn-dce";
 
-pub fn create_func_dce_pass() -> Pass {
+pub fn create_fn_dce_pass() -> Pass {
     Pass {
-        name: FUNC_DCE_NAME,
-        descr: "Dead function elimination.",
+        name: FN_DCE_NAME,
+        descr: "Dead function elimination",
         deps: vec![],
-        runner: ScopedPass::ModulePass(PassMutability::Transform(func_dce)),
+        runner: ScopedPass::ModulePass(PassMutability::Transform(fn_dce)),
     }
 }
 
@@ -58,17 +58,21 @@ fn is_removable_store(
         InstOp::MemCopyBytes { dst_val_ptr, .. }
         | InstOp::MemCopyVal { dst_val_ptr, .. }
         | InstOp::Store { dst_val_ptr, .. } => {
-            let syms = get_symbols(context, dst_val_ptr);
-            syms.iter().all(|sym| {
-                !escaped_symbols.contains(sym)
-                    && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
-            })
+            let syms = get_referred_symbols(context, dst_val_ptr);
+            match syms {
+                ReferredSymbols::Complete(syms) => syms.iter().all(|sym| {
+                    !escaped_symbols.contains(sym)
+                        && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
+                }),
+                // We cannot guarantee that the destination is not used.
+                ReferredSymbols::Incomplete(_) => false,
+            }
         }
         _ => false,
     }
 }
 
-/// Perform dead code (if any) elimination and return true if function modified.
+/// Perform dead code (if any) elimination and return true if function is modified.
 pub fn dce(
     context: &mut Context,
     analyses: &AnalysisResults,
@@ -83,10 +87,10 @@ pub fn dce(
     let mut stores_of_sym: HashMap<Symbol, Vec<Value>> = HashMap::new();
 
     // Every argument is assumed to be loaded from (from the caller),
-    // so stores to it shouldn't be deliminated.
+    // so stores to it shouldn't be eliminated.
     for sym in function
         .args_iter(context)
-        .flat_map(|arg| get_symbols(context, arg.1))
+        .flat_map(|arg| get_gep_referred_symbols(context, arg.1))
     {
         num_symbol_uses
             .entry(sym)
@@ -126,8 +130,7 @@ pub fn dce(
                         .and_modify(|count| *count += 1)
                         .or_insert(1);
                 }
-                ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
-                }
+                ValueDatum::Constant(_) | ValueDatum::Argument(_) => {}
             }
         }
     }
@@ -161,8 +164,7 @@ pub fn dce(
                         worklist.push(v);
                     }
                 }
-                ValueDatum::Configurable(_) | ValueDatum::Constant(_) | ValueDatum::Argument(_) => {
-                }
+                ValueDatum::Constant(_) | ValueDatum::Argument(_) => {}
             }
         }
         for sym in memory_utils::get_loaded_symbols(context, dead) {
@@ -211,41 +213,23 @@ pub fn dce(
 ///
 /// Functions which are `pub` will not be removed and only functions within the passed [`Module`]
 /// are considered for removal.
-pub fn func_dce(
-    context: &mut Context,
-    _: &AnalysisResults,
-    module: Module,
-) -> Result<bool, IrError> {
+pub fn fn_dce(context: &mut Context, _: &AnalysisResults, module: Module) -> Result<bool, IrError> {
+    let mut called_fns: HashSet<Function> = HashSet::new();
+
+    // config decode fns
+    for config in context.modules[module.0].configs.iter() {
+        if let crate::ConfigContent::V1 { decode_fn, .. } = config.1 {
+            grow_called_function_set(context, *decode_fn, &mut called_fns);
+        }
+    }
+
+    // entry fns and fallback
     let entry_fns = module
         .function_iter(context)
         .filter(|func| func.is_entry(context) || func.is_fallback(context))
         .collect::<Vec<_>>();
-    // Recursively find all the functions called by an entry function.
-    fn grow_called_function_set(
-        context: &Context,
-        caller: Function,
-        called_set: &mut HashSet<Function>,
-    ) {
-        if called_set.insert(caller) {
-            // We haven't seen caller before.  Iterate for all that it calls.
-            for func in caller
-                .instruction_iter(context)
-                .filter_map(|(_block, ins_value)| {
-                    ins_value
-                        .get_instruction(context)
-                        .and_then(|ins| match &ins.op {
-                            InstOp::Call(f, _args) => Some(f),
-                            _otherwise => None,
-                        })
-                })
-            {
-                grow_called_function_set(context, *func, called_set);
-            }
-        }
-    }
 
-    // Gather our entry functions together into a set.
-    let mut called_fns: HashSet<Function> = HashSet::new();
+    // expand all called fns
     for entry_fn in entry_fns {
         grow_called_function_set(context, entry_fn, &mut called_fns);
     }
@@ -263,4 +247,28 @@ pub fn func_dce(
     }
 
     Ok(modified)
+}
+
+// Recursively find all the functions called by an entry function.
+fn grow_called_function_set(
+    context: &Context,
+    caller: Function,
+    called_set: &mut HashSet<Function>,
+) {
+    if called_set.insert(caller) {
+        // We haven't seen caller before.  Iterate for all that it calls.
+        for func in caller
+            .instruction_iter(context)
+            .filter_map(|(_block, ins_value)| {
+                ins_value
+                    .get_instruction(context)
+                    .and_then(|ins| match &ins.op {
+                        InstOp::Call(f, _args) => Some(f),
+                        _otherwise => None,
+                    })
+            })
+        {
+            grow_called_function_set(context, *func, called_set);
+        }
+    }
 }

@@ -62,10 +62,6 @@ pub struct DeclRef<I> {
     /// The index into the [DeclEngine].
     id: I,
 
-    /// The type substitution list to apply to the `id` field for type
-    /// monomorphization.
-    subst_list: SubstList,
-
     /// The [Span] of the entire declaration.
     decl_span: Span,
 }
@@ -75,7 +71,6 @@ impl<I> DeclRef<I> {
         DeclRef {
             name,
             id,
-            subst_list: SubstList::new(),
             decl_span,
         }
     }
@@ -86,10 +81,6 @@ impl<I> DeclRef<I> {
 
     pub fn id(&self) -> &I {
         &self.id
-    }
-
-    pub(crate) fn subst_list(&self) -> &SubstList {
-        &self.subst_list
     }
 
     pub fn decl_span(&self) -> &Span {
@@ -112,11 +103,14 @@ where
         &self,
         type_mapping: &TypeSubstMap,
         engines: &Engines,
-    ) -> Self {
+    ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.insert(decl)
+        if decl.subst(type_mapping, engines).has_changes() {
+            Some(decl_engine.insert(decl))
+        } else {
+            None
+        }
     }
 }
 
@@ -145,43 +139,18 @@ where
         &self,
         type_mapping: &TypeSubstMap,
         engines: &Engines,
-    ) -> Self {
+    ) -> Option<Self> {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine
-            .insert(decl)
-            .with_parent(decl_engine, self.id.into())
-    }
-}
-
-impl<T> DeclRef<DeclId<T>>
-where
-    AssociatedItemDeclId: From<DeclId<T>>,
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + ReplaceDecls + std::fmt::Debug + Clone,
-{
-    /// Returns Ok(None), if nothing was replaced.
-    /// Ok(true), if something was replaced.
-    /// and errors when appropriated.
-    pub(crate) fn replace_decls_and_insert_new_with_parent(
-        &self,
-        decl_mapping: &DeclMapping,
-        handler: &Handler,
-        ctx: &mut TypeCheckContext,
-    ) -> Result<Option<Self>, ErrorEmitted> {
-        let decl_engine = ctx.engines().de();
-
-        let original = decl_engine.get(&self.id);
-
-        let mut new = (*original).clone();
-        let changed = new.replace_decls(decl_mapping, handler, ctx)?;
-
-        Ok(changed.then(|| {
-            decl_engine
-                .insert(new)
-                .with_parent(decl_engine, self.id.into())
-        }))
+        if decl.subst(type_mapping, engines).has_changes() {
+            Some(
+                decl_engine
+                    .insert(decl)
+                    .with_parent(decl_engine, self.id.into()),
+            )
+        } else {
+            None
+        }
     }
 }
 
@@ -205,7 +174,6 @@ where
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
             // temporarily omitted
-            subst_list: _,
         } = self;
         let DeclRef {
             name: rn,
@@ -214,7 +182,6 @@ where
             // relevant/a reliable source of obj v. obj distinction
             decl_span: _,
             // temporarily omitted
-            subst_list: _,
         } = other;
         ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
     }
@@ -233,8 +200,6 @@ where
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             decl_span: _,
-            // temporarily omitted
-            subst_list: _,
         } = self;
         name.hash(state);
         decl_engine.get(id).hash(state, engines);
@@ -291,11 +256,15 @@ where
     DeclEngine: DeclEngineIndex<T>,
     T: Named + Spanned + SubstTypes + Clone,
 {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(&self.id)).clone();
-        decl.subst(type_mapping, engines);
-        decl_engine.replace(self.id, decl);
+        if decl.subst(type_mapping, engines).has_changes() {
+            decl_engine.replace(self.id, decl);
+            HasChanges::Yes
+        } else {
+            HasChanges::No
+        }
     }
 }
 

@@ -10,9 +10,9 @@ name = "sections"
 print-ast = true
 print-dca-graph = "dca_graph"
 print-dca-graph-url-format = "print_dca_graph_url_format"
-print-ir = true
-print-finalized-asm = true
-print-intermediate-asm = true
+print-ir = { initial = false, final = true, modified = true, passes = []}
+print-asm = { virtual = true, allocated = true, final = true }
+print-bytecode = true
 terse = true
 time-phases = true
 metrics-outfile = "metrics_outfile"
@@ -23,5 +23,8 @@ reverse-results = true
 optimization-level = 0
 experimental = { new-encoding = true }
 
-[build-profile.custom]
-print-finalized-asm = true
+[build-profile.custom_asm]
+print-asm = { virtual = false, allocated = false, final = true }
+
+[build-profile.custom_ir]
+print-ir = { initial = true, final = false, modified = true, passes = ["dce", "sroa"]}

@@ -9,6 +9,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     decl_engine::{DeclMapping, ReplaceDecls},
     engine_threading::*,
+    has_changes,
     language::{ty::*, CallPath, Visibility},
     semantic_analysis::TypeCheckContext,
     transform,
@@ -20,12 +21,10 @@ pub struct TyConstantDecl {
     pub call_path: CallPath,
     pub value: Option<TyExpression>,
     pub visibility: Visibility,
-    pub is_configurable: bool,
     pub attributes: transform::AttributesMap,
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
     pub span: Span,
-    pub implementing_type: Option<TyDecl>,
 }
 
 impl DebugWithEngines for TyConstantDecl {
@@ -42,14 +41,9 @@ impl PartialEqWithEngines for TyConstantDecl {
             && self.value.eq(&other.value, ctx)
             && self.visibility == other.visibility
             && self.type_ascription.eq(&other.type_ascription, ctx)
-            && self.is_configurable == other.is_configurable
             && type_engine
                 .get(self.return_type)
                 .eq(&type_engine.get(other.return_type), ctx)
-            && match (&self.implementing_type, &other.implementing_type) {
-                (Some(self_), Some(other)) => self_.eq(other, ctx),
-                _ => false,
-            }
     }
 }
 
@@ -62,8 +56,6 @@ impl HashWithEngines for TyConstantDecl {
             visibility,
             return_type,
             type_ascription,
-            is_configurable,
-            implementing_type,
             // these fields are not hashed because they aren't relevant/a
             // reliable source of obj v. obj distinction
             attributes: _,
@@ -74,10 +66,6 @@ impl HashWithEngines for TyConstantDecl {
         visibility.hash(state);
         type_engine.get(*return_type).hash(state, engines);
         type_ascription.hash(state, engines);
-        is_configurable.hash(state);
-        if let Some(implementing_type) = implementing_type {
-            (*implementing_type).hash(state, engines);
-        }
     }
 }
 
@@ -94,11 +82,11 @@ impl Spanned for TyConstantDecl {
 }
 
 impl SubstTypes for TyConstantDecl {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.return_type.subst(type_mapping, engines);
-        self.type_ascription.subst(type_mapping, engines);
-        if let Some(expr) = &mut self.value {
-            expr.subst(type_mapping, engines);
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        has_changes! {
+            self.return_type.subst(type_mapping, engines);
+            self.type_ascription.subst(type_mapping, engines);
+            self.value.subst(type_mapping, engines);
         }
     }
 }

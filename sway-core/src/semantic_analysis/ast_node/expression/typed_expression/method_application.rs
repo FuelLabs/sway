@@ -5,7 +5,7 @@ use crate::{
     },
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyExpression},
+        ty::{self, TyDecl, TyExpression, TyFunctionSig},
         *,
     },
     namespace::TryInsertingTraitImplOnFailure,
@@ -20,7 +20,7 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{constants, integer_bits::IntegerBits, BaseIdent};
+use sway_types::{constants, integer_bits::IntegerBits, BaseIdent, IdentUnique};
 use sway_types::{constants::CONTRACT_CALL_COINS_PARAMETER_NAME, Spanned};
 use sway_types::{Ident, Span};
 
@@ -28,9 +28,9 @@ use sway_types::{Ident, Span};
 pub(crate) fn type_check_method_application(
     handler: &Handler,
     mut ctx: TypeCheckContext,
-    method_name_binding: TypeBinding<MethodName>,
+    mut method_name_binding: TypeBinding<MethodName>,
     contract_call_params: Vec<StructExpressionField>,
-    arguments: Vec<Expression>,
+    arguments: &[Expression],
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
     let type_engine = ctx.engines.te();
@@ -46,19 +46,27 @@ pub(crate) fn type_check_method_application(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+        // Ignore errors in method parameters
+        // On the second pass we will throw the errors if they persist.
+        let arg_handler = Handler::default();
+        let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg).ok();
+        let has_errors = arg_handler.has_errors();
         if index == 0 {
-            args_opt_buf.push_back(ty::TyExpression::type_check(handler, ctx, arg.clone()).ok());
-        } else {
-            // Ignore errors in method parameters
-            // On the second pass we will throw the errors if they persist.
-            let arg_handler = Handler::default();
-            let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg.clone()).ok();
-            if arg_handler.has_errors() {
-                args_opt_buf.push_back(None);
-            } else {
-                args_opt_buf.push_back(arg_opt);
-            }
-        };
+            // We want to emit errors in the self parameter and ignore TraitConstraintNotSatisfied with Placeholder
+            // which may be recoverable on the second pass.
+            arg_handler.retain_err(|e| {
+                if let CompileError::TraitConstraintNotSatisfied { type_id, .. } = e {
+                    !matches!(
+                        *type_engine.get(TypeId::from(*type_id)),
+                        TypeInfo::Placeholder(_)
+                    )
+                } else {
+                    true
+                }
+            });
+            handler.append(arg_handler);
+        }
+        args_opt_buf.push_back((arg_opt, has_errors));
     }
 
     // resolve the method name to a typed function declaration and type_check
@@ -68,19 +76,37 @@ pub(crate) fn type_check_method_application(
         &method_name_binding,
         args_opt_buf
             .iter()
-            .map(|arg| match arg {
+            .map(|(arg, _has_errors)| match arg {
                 Some(arg) => arg.return_type,
                 None => type_engine.insert(engines, TypeInfo::Unknown, None),
             })
             .collect(),
     )?;
 
-    let method = decl_engine.get_function(&original_decl_ref);
+    let mut fn_ref = monomorphize_method(
+        handler,
+        ctx.by_ref(),
+        original_decl_ref.clone(),
+        method_name_binding.type_arguments.to_vec_mut(),
+    )?;
+
+    let mut method = (*decl_engine.get_function(&fn_ref)).clone();
+
+    // unify method return type with current ctx.type_annotation().
+    type_engine.unify_with_generic(
+        handler,
+        engines,
+        method.return_type.type_id,
+        ctx.type_annotation(),
+        &method_name_binding.span(),
+        "Function return type does not match up with local type annotation.",
+        None,
+    );
 
     // type check the function arguments (2nd pass)
     let mut args_buf = VecDeque::new();
     for (arg, index, arg_opt) in izip!(arguments.iter(), 0.., args_opt_buf.iter().cloned()) {
-        if let Some(arg) = arg_opt {
+        if let (Some(arg), false) = arg_opt {
             args_buf.push_back(arg);
         } else {
             let param_index = if method.is_contract_call {
@@ -90,26 +116,21 @@ pub(crate) fn type_check_method_application(
             };
             // This arg_opt is None because it failed in the first pass.
             // We now try to type check it again, this time with the type annotation.
-            let ctx = if param_index > 0 {
-                ctx.by_ref()
-                    .with_help_text(
-                        "Function application argument type must match function parameter type.",
-                    )
-                    .with_type_annotation(
-                        method
-                            .parameters
-                            .get(param_index)
-                            .unwrap()
-                            .type_argument
-                            .type_id,
-                    )
-            } else {
-                ctx.by_ref()
-                    .with_help_text("")
-                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
-            };
+            let ctx = ctx
+                .by_ref()
+                .with_help_text(
+                    "Function application argument type must match function parameter type.",
+                )
+                .with_type_annotation(
+                    method
+                        .parameters
+                        .get(param_index)
+                        .unwrap()
+                        .type_argument
+                        .type_id,
+                );
             args_buf.push_back(
-                ty::TyExpression::type_check(handler, ctx, arg.clone())
+                ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
             );
         }
@@ -185,7 +206,7 @@ pub(crate) fn type_check_method_application(
                         .with_type_annotation(type_annotation);
                     contract_call_params_map.insert(
                         param.name.to_string(),
-                        ty::TyExpression::type_check(handler, ctx, param.value).unwrap_or_else(
+                        ty::TyExpression::type_check(handler, ctx, &param.value).unwrap_or_else(
                             |err| ty::TyExpression::error(err, span.clone(), engines),
                         ),
                     );
@@ -277,7 +298,9 @@ pub(crate) fn type_check_method_application(
                 let is_decl_mutable = match unknown_decl {
                     ty::TyDecl::ConstantDecl { .. } => false,
                     _ => {
-                        let variable_decl = unknown_decl.expect_variable(handler).cloned()?;
+                        let variable_decl = unknown_decl
+                            .expect_variable(handler, ctx.engines())
+                            .cloned()?;
                         variable_decl.mutability.is_mutable()
                     }
                 };
@@ -404,6 +427,10 @@ pub(crate) fn type_check_method_application(
         .zip(args_buf.iter().cloned())
         .collect::<Vec<_>>();
 
+    // unify the types of the arguments with the types of the parameters from the function declaration
+    let arguments =
+        unify_arguments_and_parameters(handler, ctx.by_ref(), &arguments, &method.parameters)?;
+
     if ctx.experimental.new_encoding && method.is_contract_call {
         fn call_contract_call(
             ctx: &mut TypeCheckContext,
@@ -412,7 +439,7 @@ pub(crate) fn type_check_method_application(
             method_name_expr: Expression,
             _caller: Expression,
             arguments: Vec<Expression>,
-            typed_argumens: Vec<TypeId>,
+            typed_arguments: Vec<TypeId>,
             coins_expr: Expression,
             asset_id_expr: Expression,
             gas_expr: Expression,
@@ -420,7 +447,7 @@ pub(crate) fn type_check_method_application(
             let tuple_args_type_id = ctx.engines.te().insert(
                 ctx.engines,
                 TypeInfo::Tuple(
-                    typed_argumens
+                    typed_arguments
                         .iter()
                         .map(|&type_id| TypeArgument {
                             type_id,
@@ -507,19 +534,31 @@ pub(crate) fn type_check_method_application(
                 span: Span::dummy(),
             });
 
+        // We need all impls of return type to be in scope, so that at call place we have access to its
+        // AbiDecode impl.
+        for type_id in method
+            .return_type
+            .type_id
+            .extract_inner_types(engines, IncludeSelf::Yes)
+        {
+            let handler = Handler::default();
+            ctx.impls_import(&handler, engines, type_id);
+        }
+
+        let args = old_arguments.iter().skip(1).cloned().collect();
         let contract_call = call_contract_call(
             &mut ctx,
             span,
             method.return_type.type_id,
             string_slice_literal(&method.name),
             old_arguments.first().cloned().unwrap(),
-            old_arguments.into_iter().skip(1).collect(),
+            args,
             arguments.iter().map(|x| x.1.return_type).collect(),
             coins_expr,
             asset_id_expr,
             gas_expr,
         );
-        let mut expr = TyExpression::type_check(handler, ctx.by_ref(), contract_call)?;
+        let mut expr = TyExpression::type_check(handler, ctx.by_ref(), &contract_call)?;
 
         // We need to "fix" contract_id here because it was created with zero
         // given that we only have it as TyExpression, therefore can only use it after we type_check
@@ -540,10 +579,130 @@ pub(crate) fn type_check_method_application(
         return Ok(expr);
     }
 
-    let mut fn_app = ty::TyExpressionVariant::FunctionApplication {
+    // Unify method type parameters with implementing type type parameters.
+    if let Some(implementing_for_typeid) = method.implementing_for_typeid {
+        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+            let t = &engines.de().get(&t.decl_id).implementing_for;
+            if let TypeInfo::Custom {
+                type_arguments: Some(type_arguments),
+                ..
+            } = &*type_engine.get(t.initial_type_id)
+            {
+                // Method type parameters that have is_from_parent set to true use the base ident as defined in
+                // in the impl trait. The type parameter name may be different in the Struct or Enum.
+                // Thus we use the index in the Struct's or Enum's type parameter the impl trait type parameter
+                // was used on.
+                let mut names_index = HashMap::<Ident, usize>::new();
+                for (index, t_arg) in type_arguments.iter().enumerate() {
+                    if let TypeInfo::Custom {
+                        qualified_call_path,
+                        ..
+                    } = &*type_engine.get(t_arg.initial_type_id)
+                    {
+                        names_index.insert(qualified_call_path.call_path.suffix.clone(), index);
+                    }
+                }
+                let implementing_type_parameters =
+                    implementing_for_typeid.get_type_parameters(engines);
+                if let Some(implementing_type_parameters) = implementing_type_parameters {
+                    for p in method.type_parameters.clone() {
+                        if p.is_from_parent {
+                            if let Some(impl_type_param) =
+                                names_index.get(&p.name_ident).and_then(|type_param_index| {
+                                    implementing_type_parameters.get(*type_param_index)
+                                })
+                            {
+                                handler.scope(|handler| {
+                                    type_engine.unify_with_generic(
+                                        handler,
+                                        engines,
+                                        p.type_id,
+                                        impl_type_param.type_id,
+                                        &call_path.span(),
+                                        "Function type parameter does not match up with implementing type type parameter.",
+                                        None,
+                                    );
+                                    Ok(())
+                                })?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut method_return_type_id = method.return_type.type_id;
+
+    let method_ident: IdentUnique = method.name.clone().into();
+    let method_sig = TyFunctionSig::from_fn_decl(&method);
+
+    if let Some(cached_fn_ref) =
+        ctx.engines()
+            .qe()
+            .get_function(engines, method_ident.clone(), method_sig.clone())
+    {
+        fn_ref = cached_fn_ref;
+    } else {
+        // This handles the case of substituting the generic blanket type by call_path_typeid.
+        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+            let t = &engines.de().get(&t.decl_id).implementing_for;
+            if let TypeInfo::Custom {
+                qualified_call_path,
+                type_arguments: _,
+                root_type_id: _,
+            } = &*type_engine.get(t.initial_type_id)
+            {
+                for p in method.type_parameters.clone() {
+                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
+                        let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
+                            vec![t.initial_type_id],
+                            vec![call_path_typeid],
+                        );
+                        method.subst(&type_subst, engines);
+                    }
+                }
+            }
+        }
+
+        // Handle the trait constraints. This includes checking to see if the trait
+        // constraints are satisfied and replacing old decl ids based on the
+        // constraint with new decl ids based on the new type.
+        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+            handler,
+            ctx.by_ref(),
+            &method.type_parameters,
+            method.name.as_str(),
+            &call_path.span(),
+        )
+        .ok();
+
+        if let Some(decl_mapping) = decl_mapping {
+            if !ctx.defer_monomorphization() {
+                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
+            }
+        }
+
+        let method_sig = TyFunctionSig::from_fn_decl(&method);
+
+        method_return_type_id = method.return_type.type_id;
+        decl_engine.replace(*fn_ref.id(), method.clone());
+
+        if method_sig.is_concrete(engines)
+            && method.is_type_check_finalized
+            && !method.is_trait_method_dummy
+            && !ctx.defer_monomorphization()
+        {
+            ctx.engines()
+                .qe()
+                .insert_function(engines, method_ident, method_sig, fn_ref.clone());
+        }
+    }
+
+    let fn_app = ty::TyExpressionVariant::FunctionApplication {
         call_path: call_path.clone(),
         arguments,
-        fn_ref: original_decl_ref,
+        fn_ref,
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
@@ -552,19 +711,11 @@ pub(crate) fn type_check_method_application(
         contract_caller: None,
     };
 
-    let mut exp = ty::TyExpression {
+    let exp = ty::TyExpression {
         expression: fn_app.clone(),
-        return_type: method.return_type.type_id,
+        return_type: method_return_type_id,
         span,
     };
-
-    monomorphize_method_application(&mut fn_app, handler, ctx)?;
-
-    if let ty::TyExpressionVariant::FunctionApplication { ref fn_ref, .. } = &fn_app {
-        let method = decl_engine.get_function(fn_ref);
-        exp.return_type = method.return_type.type_id;
-        exp.expression = fn_app;
-    }
 
     Ok(exp)
 }
@@ -636,8 +787,11 @@ pub(crate) fn resolve_method_name(
             let type_info_prefix = ctx
                 .namespace()
                 .prepend_module_path(&call_path_binding.inner.prefixes);
-            ctx.namespace()
-                .lookup_submodule_from_absolute_path(handler, &type_info_prefix)?;
+            ctx.namespace().lookup_submodule_from_absolute_path(
+                handler,
+                engines,
+                &type_info_prefix,
+            )?;
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
@@ -721,13 +875,15 @@ pub(crate) fn resolve_method_name(
         } => {
             // type check the call path
             let type_id = ty.type_id;
-            let type_info_prefix = vec![];
+
+            // find the module that the symbol is in
+            let module_path = ctx.namespace().prepend_module_path(vec![]);
 
             // find the method
             let decl_ref = ctx.find_method_for_type(
                 handler,
                 type_id,
-                &type_info_prefix,
+                &module_path,
                 method_name,
                 ctx.type_annotation(),
                 &arguments_types,
@@ -740,150 +896,6 @@ pub(crate) fn resolve_method_name(
     };
 
     Ok((decl_ref, type_id))
-}
-
-pub(crate) fn monomorphize_method_application(
-    expr: &mut ty::TyExpressionVariant,
-    handler: &Handler,
-    mut ctx: TypeCheckContext,
-) -> Result<(), ErrorEmitted> {
-    if let ty::TyExpressionVariant::FunctionApplication {
-        ref mut fn_ref,
-        ref call_path,
-        ref mut arguments,
-        ref mut type_binding,
-        call_path_typeid,
-        ..
-    } = expr
-    {
-        let decl_engine = ctx.engines.de();
-        let type_engine = ctx.engines.te();
-        let engines = ctx.engines();
-
-        *fn_ref = monomorphize_method(
-            handler,
-            ctx.by_ref(),
-            fn_ref.clone(),
-            type_binding.as_mut().unwrap().type_arguments.to_vec_mut(),
-        )?;
-        let mut method = (*decl_engine.get_function(fn_ref)).clone();
-
-        // Unify method type parameters with implementing type type parameters.
-        if let Some(implementing_for_typeid) = method.implementing_for_typeid {
-            if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
-                let t = &engines.de().get(&t.decl_id).implementing_for;
-                if let TypeInfo::Custom {
-                    type_arguments: Some(type_arguments),
-                    ..
-                } = &*type_engine.get(t.initial_type_id)
-                {
-                    // Method type parameters that have is_from_parent set to true use the base ident as defined in
-                    // in the impl trait. The type parameter name may be different in the Struct or Enum.
-                    // Thus we use the index in the Struct's or Enum's type parameter the impl trait type parameter
-                    // was used on.
-                    let mut names_index = HashMap::<Ident, usize>::new();
-                    for (index, t_arg) in type_arguments.iter().enumerate() {
-                        if let TypeInfo::Custom {
-                            qualified_call_path,
-                            ..
-                        } = &*type_engine.get(t_arg.initial_type_id)
-                        {
-                            names_index.insert(qualified_call_path.call_path.suffix.clone(), index);
-                        }
-                    }
-                    let implementing_type_parameters =
-                        implementing_for_typeid.get_type_parameters(type_engine, decl_engine);
-                    if let Some(implementing_type_parameters) = implementing_type_parameters {
-                        for p in method.type_parameters.clone() {
-                            if p.is_from_parent {
-                                if let Some(type_param_index) = names_index.get(&p.name_ident) {
-                                    if let Some(impl_type_param) =
-                                        implementing_type_parameters.get(*type_param_index)
-                                    {
-                                        handler.scope(|handler| {
-                                            type_engine.unify_with_generic(
-                                                handler,
-                                                engines,
-                                                p.type_id,
-                                                impl_type_param.type_id,
-                                                &call_path.span(),
-                                                "Function type parameter does not match up with implementing type type parameter.",
-                                                None,
-                                            );
-                                            Ok(())
-                                        })?;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // unify the types of the arguments with the types of the parameters from the function declaration
-        *arguments =
-            unify_arguments_and_parameters(handler, ctx.by_ref(), arguments, &method.parameters)?;
-
-        // unify method return type with current ctx.type_annotation().
-        handler.scope(|handler| {
-            type_engine.unify_with_generic(
-                handler,
-                engines,
-                method.return_type.type_id,
-                ctx.type_annotation(),
-                &call_path.span(),
-                "Function return type does not match up with local type annotation.",
-                None,
-            );
-            Ok(())
-        })?;
-
-        // This handles the case of substituting the generic blanket type by call_path_typeid.
-        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
-            let t = &engines.de().get(&t.decl_id).implementing_for;
-            if let TypeInfo::Custom {
-                qualified_call_path,
-                type_arguments: _,
-                root_type_id: _,
-            } = &*type_engine.get(t.initial_type_id)
-            {
-                for p in method.type_parameters.clone() {
-                    if p.name_ident.as_str() == qualified_call_path.call_path.suffix.as_str() {
-                        let type_subst = TypeSubstMap::from_type_parameters_and_type_arguments(
-                            vec![t.initial_type_id],
-                            vec![call_path_typeid.unwrap()],
-                        );
-                        method.subst(&type_subst, engines);
-                    }
-                }
-            }
-        }
-
-        // Handle the trait constraints. This includes checking to see if the trait
-        // constraints are satisfied and replacing old decl ids based on the
-        // constraint with new decl ids based on the new type.
-        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-            handler,
-            ctx.by_ref(),
-            &method.type_parameters,
-            method.name.as_str(),
-            &call_path.span(),
-        )?;
-
-        if !ctx.defer_monomorphization() {
-            method.replace_decls(&decl_mapping, handler, &mut ctx)?;
-        }
-
-        decl_engine.replace(*fn_ref.id(), method);
-
-        Ok(())
-    } else {
-        Err(handler.emit_err(CompileError::Internal(
-            "Unexpected expression variant, expecting a function application",
-            Span::dummy(),
-        )))
-    }
 }
 
 pub(crate) fn monomorphize_method(

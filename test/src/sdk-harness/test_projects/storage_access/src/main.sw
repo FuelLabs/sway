@@ -1,6 +1,6 @@
 contract;
 
-use std::{constants::ZERO_B256, hash::*};
+use std::hash::*;
 
 struct M {
     u: b256,
@@ -146,19 +146,21 @@ impl ExperimentalStorageTest for Contract {
         storage.s.c.z.write(s.c.z);
         storage.s.d.write(s.d);
 
-        assert(S {
-            a: storage.s.a.read(),
-            b: storage.s.b.read(),
-            c: T {
-                x: storage.s.c.x.read(),
-                y: storage.s.c.y.read(),
-                z: M {
-                    u: storage.s.c.z.u.read(),
-                    v: storage.s.c.z.v.read(),
+        assert(
+            S {
+                a: storage.s.a.read(),
+                b: storage.s.b.read(),
+                c: T {
+                    x: storage.s.c.x.read(),
+                    y: storage.s.c.y.read(),
+                    z: M {
+                        u: storage.s.c.z.u.read(),
+                        v: storage.s.c.z.v.read(),
+                    },
                 },
-            },
-            d: storage.s.d.read(),
-        } == s);
+                d: storage.s.d.read(),
+            } == s,
+        );
 
         // Semi-granular write, granular read
         storage.s.a.write(s.a);
@@ -166,19 +168,21 @@ impl ExperimentalStorageTest for Contract {
         storage.s.c.write(s.c);
         storage.s.d.write(s.d);
 
-        assert(S {
-            a: storage.s.a.read(),
-            b: storage.s.b.read(),
-            c: T {
-                x: storage.s.c.x.read(),
-                y: storage.s.c.y.read(),
-                z: M {
-                    u: storage.s.c.z.u.read(),
-                    v: storage.s.c.z.v.read(),
+        assert(
+            S {
+                a: storage.s.a.read(),
+                b: storage.s.b.read(),
+                c: T {
+                    x: storage.s.c.x.read(),
+                    y: storage.s.c.y.read(),
+                    z: M {
+                        u: storage.s.c.z.u.read(),
+                        v: storage.s.c.z.v.read(),
+                    },
                 },
-            },
-            d: storage.s.d.read(),
-        } == s);
+                d: storage.s.d.read(),
+            } == s,
+        );
 
         storage.s.read()
     }
@@ -193,12 +197,14 @@ impl ExperimentalStorageTest for Contract {
         storage.s.c.z.write(s.c.z);
         storage.s.d.write(s.d);
 
-        assert(S {
-            a: storage.s.a.read(),
-            b: storage.s.b.read(),
-            c: storage.s.c.read(),
-            d: storage.s.d.read(),
-        } == s);
+        assert(
+            S {
+                a: storage.s.a.read(),
+                b: storage.s.b.read(),
+                c: storage.s.c.read(),
+                d: storage.s.d.read(),
+            } == s,
+        );
 
         // Coarse write and read
         storage.s.write(s);
@@ -218,10 +224,7 @@ impl ExperimentalStorageTest for Contract {
 
     #[storage(read)]
     fn map_in_struct_read(key: (u64, u64)) -> (Option<u64>, Option<u64>) {
-        (
-            storage.s2.map0.get(key.0).try_read(),
-            storage.s2.map1.get(key.1).try_read(),
-        )
+        (storage.s2.map0.get(key.0).try_read(), storage.s2.map1.get(key.1).try_read())
     }
 
     #[storage(read, write)]
@@ -232,7 +235,7 @@ impl ExperimentalStorageTest for Contract {
 
     #[storage(read, write)]
     fn clears_storage_key() -> bool {
-        let key = StorageKey::<u64>::new(ZERO_B256, 0, ZERO_B256);
+        let key = StorageKey::<u64>::zero();
         key.write(42);
 
         assert(key.read() == 42);

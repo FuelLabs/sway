@@ -1,26 +1,11 @@
-//! Base asset and zero address constants.
+//! Definitions for constant values in Sway.
 library;
 
-use ::asset_id::AssetId;
-
-/// The `BASE_ASSET_ID` represents the base asset of a chain.
+/// A b256 of zero value.
 ///
 /// # Additional Information
 ///
-/// On the Fuel network, the base asset is Ether. It is hardcoded as the 0x00..00 ContractId.
-///
-/// # Examples
-///
-/// ```sway
-/// use std::{call_frames::msg_asset_id, constants::BASE_ASSET_ID};
-///
-/// fn foo() {
-///     assert(BASE_ASSET_ID == msg_asset_id());
-/// }
-/// ```
-pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
-
-/// A B256 of zero value.
+/// **WARNING** This constant has been deprecated. `b256::zero()` should be used instead.
 ///
 /// # Examples
 ///
@@ -28,10 +13,29 @@ pub const BASE_ASSET_ID: AssetId = AssetId::from(ZERO_B256);
 /// use std::{call_frames::msg_asset_id, constants::ZERO_B256};
 ///
 /// fn foo() {
-///     assert(ZERO_B256 == msg_asset_id());
+///     assert(ZERO_B256 == msg_asset_id().bits());
 /// }
 /// ```
+#[deprecated(note = "Please use `b256::zero()`")]
 pub const ZERO_B256 = 0x0000000000000000000000000000000000000000000000000000000000000000;
+
+/// A u256 of zero value.
+///
+/// # Additional Information
+///
+/// **WARNING** This constant has been deprecated. `u256::zero()` should be used instead.
+///
+/// # Examples
+///
+/// ```sway
+/// use std::constants::ZERO_U256;
+///
+/// fn foo() {
+///     assert(ZERO_U256 == u256::from(0_u64));
+/// }
+/// ```
+#[deprecated(note = "Please use `u256::zero()`")]
+pub const ZERO_U256 = 0x00u256;
 
 /// The default Sub Id for assets.
 ///
@@ -45,4 +49,4 @@ pub const ZERO_B256 = 0x00000000000000000000000000000000000000000000000000000000
 ///     assert(AssetId::new(contract_id(), DEFAULT_SUB_ID) == msg_asset_id());
 /// }
 /// ```
-pub const DEFAULT_SUB_ID = ZERO_B256;
+pub const DEFAULT_SUB_ID = b256::zero();

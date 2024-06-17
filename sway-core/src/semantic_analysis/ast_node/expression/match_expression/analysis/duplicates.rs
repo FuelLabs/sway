@@ -175,6 +175,7 @@ pub(crate) fn collect_duplicate_match_pattern_variables(
             ty::TyScrutineeVariant::Variable(ident) => add_variable(left_most_branch, ident, false),
             ty::TyScrutineeVariant::Literal(_) => (),
             ty::TyScrutineeVariant::Constant { .. } => (),
+            ty::TyScrutineeVariant::Configurable { .. } => (),
             ty::TyScrutineeVariant::StructScrutinee { fields, .. } => {
                 // If a field does not have a scrutinee, the field itself is a variable.
                 for field in fields {

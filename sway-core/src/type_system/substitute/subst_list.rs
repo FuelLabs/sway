@@ -4,7 +4,13 @@ use std::{
     vec::IntoIter,
 };
 
-use crate::{engine_threading::*, type_system::priv_prelude::*};
+use crate::{
+    engine_threading::{
+        Engines, EqWithEngines, HashWithEngines, OrdWithEngines, OrdWithEnginesContext,
+        PartialEqWithEngines, PartialEqWithEnginesContext,
+    },
+    type_system::priv_prelude::*,
+};
 
 /// A list of types that serve as the list of type params for type substitution.
 /// Any types of the [TypeParam][TypeInfo::TypeParam] variant will point to an
@@ -80,9 +86,7 @@ impl OrdWithEngines for SubstList {
 }
 
 impl SubstTypes for SubstList {
-    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) {
-        self.list
-            .iter_mut()
-            .for_each(|x| x.subst(type_mapping, engines));
+    fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
+        self.list.subst(type_mapping, engines)
     }
 }

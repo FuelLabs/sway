@@ -7,8 +7,6 @@ use fuels::{
     types::{input::Input as SdkInput, Bits256},
 };
 
-use std::str::FromStr;
-
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 
 abigen!(
@@ -39,12 +37,12 @@ async fn get_contracts(
 
     let mut deployment_coins = setup_single_asset_coins(
         deployment_wallet.address(),
-        BASE_ASSET_ID,
+        AssetId::BASE,
         120,
         DEFAULT_COIN_AMOUNT,
     );
 
-    let mut coins = setup_single_asset_coins(wallet.address(), BASE_ASSET_ID, 100, 1000);
+    let mut coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
 
     coins.append(&mut deployment_coins);
 
@@ -93,7 +91,7 @@ async fn generate_predicate_inputs(
         .unwrap()
         .with_provider(provider.clone());
 
-    let predicate_code = predicate.code().clone();
+    let predicate_code = predicate.code().to_vec();
 
     let predicate_root = predicate.address();
 
@@ -160,11 +158,9 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
     let wallet1 = wallets.pop().unwrap();
     let wallet2 = wallets.pop().unwrap();
 
-    let predicate_data = TestOutputPredicateEncoder::encode_data(
-        0,
-        Bits256([0u8; 32]),
-        Bits256(*wallet1.address().hash()),
-    );
+    let predicate_data = TestOutputPredicateEncoder::default()
+        .encode_data(0, Bits256([0u8; 32]), Bits256(*wallet1.address().hash()))
+        .unwrap();
 
     let predicate = Predicate::load_from(
         "test_artifacts/tx_output_predicate/out/release/tx_output_predicate.bin",
@@ -206,19 +202,19 @@ mod tx {
     }
 
     #[tokio::test]
-    async fn can_get_gas_price() {
+    async fn can_get_tip() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
-        let gas_price = 3;
+        let tip = 3;
 
         let result = contract_instance
             .methods()
-            .get_tx_gas_price()
-            .with_tx_policies(TxPolicies::default().with_gas_price(gas_price))
+            .get_tx_tip()
+            .with_tx_policies(TxPolicies::default().with_tip(tip))
             .call()
             .await
             .unwrap();
 
-        assert_eq!(result.value, gas_price);
+        assert_eq!(result.value, tip);
     }
 
     #[tokio::test]
@@ -240,12 +236,12 @@ mod tx {
     #[tokio::test]
     async fn can_get_maturity() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
-        // TODO set this to a non-zero value once SDK supports setting maturity.
         let maturity = 0;
 
         let result = contract_instance
             .methods()
             .get_tx_maturity()
+            .with_tx_policies(TxPolicies::default().with_maturity(maturity))
             .call()
             .await
             .unwrap();
@@ -271,7 +267,7 @@ mod tx {
     async fn can_get_script_data_length() {
         let (contract_instance, _, _, _) = get_contracts(true).await;
         // TODO make this programmatic.
-        let script_data_length = 80;
+        let script_data_length = 121;
 
         let result = contract_instance
             .methods()
@@ -299,7 +295,7 @@ mod tx {
             resource: CoinType::Message(message.clone()),
         });
 
-        wallet.sign_transaction(&mut builder);
+        builder.add_signer(wallet.clone()).unwrap();
 
         let tx = builder.build(provider).await.unwrap();
 
@@ -316,7 +312,10 @@ mod tx {
             .unwrap();
 
         assert_eq!(tx_inputs.len() as u64, 2u64);
-        assert_eq!(receipts[1].val().unwrap(), tx_inputs.len() as u64);
+        assert_eq!(
+            receipts[1].data(),
+            Some((tx_inputs.len() as u64).to_be_bytes().as_slice())
+        );
     }
 
     #[tokio::test]
@@ -363,7 +362,7 @@ mod tx {
             .await
             .unwrap();
 
-        assert_eq!(response.value, 10960);
+        assert_eq!(response.value, 11024);
     }
 
     #[tokio::test]
@@ -398,22 +397,6 @@ mod tx {
             .unwrap();
 
         assert_eq!(receipts[1].data().unwrap(), witnesses[0].as_vec());
-    }
-
-    #[tokio::test]
-    async fn can_get_receipts_root() {
-        let (contract_instance, _, _, _) = get_contracts(true).await;
-        let zero_receipts_root =
-            Bytes32::from_str("4be973feb50f1dabb9b2e451229135add52f9c0973c11e556fe5bce4a19df470")
-                .unwrap();
-
-        let result = contract_instance
-            .methods()
-            .get_tx_receipts_root()
-            .call()
-            .await
-            .unwrap();
-        assert_ne!(Bytes32::from(result.value.0), zero_receipts_root);
     }
 
     #[tokio::test]
@@ -489,7 +472,7 @@ mod tx {
             .call()
             .await
             .unwrap();
-        assert_eq!(result.value, 10360)
+        assert_eq!(result.value, 10392)
     }
 }
 
@@ -599,8 +582,7 @@ mod inputs {
                 .unwrap()
                 .take_receipts_checked(None)
                 .unwrap();
-
-            assert_eq!(receipts[1].val().unwrap(), 1);
+            assert_eq!(receipts[1].data(), Some(&[1u8][..]));
         }
 
         mod message {
@@ -625,7 +607,7 @@ mod inputs {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -662,7 +644,7 @@ mod inputs {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -699,7 +681,7 @@ mod inputs {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -747,7 +729,7 @@ mod inputs {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -760,7 +742,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 3);
+                assert_eq!(receipts[1].data(), Some(&[0, 0, 0, 0, 0, 0, 0, 3][..]));
             }
 
             #[tokio::test]
@@ -781,7 +763,7 @@ mod inputs {
 
                 builder.inputs_mut().push(message);
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -795,7 +777,8 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), predicate_bytecode.len() as u64);
+                let len = predicate_bytecode.len() as u64;
+                assert_eq!(receipts[1].data(), Some(len.to_be_bytes().as_slice()));
             }
 
             #[tokio::test]
@@ -815,7 +798,7 @@ mod inputs {
 
                 builder.inputs_mut().push(message);
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -829,7 +812,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 0);
+                assert_eq!(receipts[1].data(), Some(0u64.to_le_bytes().as_slice()));
             }
 
             #[tokio::test]
@@ -851,7 +834,7 @@ mod inputs {
                     resource: CoinType::Message(message.clone()),
                 });
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -865,7 +848,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 1);
+                assert_eq!(receipts[1].data(), Some(&[1][..]));
             }
 
             #[tokio::test]
@@ -885,7 +868,7 @@ mod inputs {
 
                 builder.inputs_mut().push(message);
 
-                wallet.sign_transaction(&mut builder);
+                builder.add_signer(wallet.clone()).unwrap();
 
                 let tx = builder.build(provider).await.unwrap();
 
@@ -898,7 +881,7 @@ mod inputs {
                     .take_receipts_checked(None)
                     .unwrap();
 
-                assert_eq!(receipts[1].val().unwrap(), 1);
+                assert_eq!(receipts[1].data(), Some(1u8.to_le_bytes().as_slice()));
             }
         }
     }

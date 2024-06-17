@@ -244,7 +244,7 @@ fn depends_on(
         (AstNodeContent::UseStatement(_), AstNodeContent::UseStatement(_)) => false,
         (_, AstNodeContent::UseStatement(_)) => true,
 
-        // Then declarations, ordered using the dependecies list.
+        // Then declarations, ordered using the dependencies list.
         (AstNodeContent::IncludeStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::UseStatement(_), AstNodeContent::Declaration(_)) => false,
         (AstNodeContent::Declaration(dependant), AstNodeContent::Declaration(dependee)) => {
@@ -307,6 +307,10 @@ impl Dependencies {
                 let decl = engines.pe().get_constant(decl_id);
                 self.gather_from_constant_decl(engines, &decl)
             }
+            Declaration::ConfigurableDeclaration(decl_id) => {
+                let decl = engines.pe().get_configurable(decl_id);
+                self.gather_from_configurable_decl(engines, &decl)
+            }
             Declaration::TraitTypeDeclaration(decl_id) => {
                 let decl = engines.pe().get_trait_type(decl_id);
                 self.gather_from_type_decl(engines, &decl)
@@ -337,6 +341,7 @@ impl Dependencies {
                 })
                 .gather_from_type_parameters(type_parameters)
             }
+            Declaration::EnumVariantDeclaration(_decl) => unreachable!(),
             Declaration::TraitDeclaration(decl_id) => {
                 let trait_decl = engines.pe().get_trait(decl_id);
                 self.gather_from_iter(trait_decl.supertraits.iter(), |deps, sup| {
@@ -478,6 +483,24 @@ impl Dependencies {
         const_decl: &ConstantDeclaration,
     ) -> Self {
         let ConstantDeclaration {
+            type_ascription,
+            value,
+            ..
+        } = const_decl;
+        match value {
+            Some(value) => self
+                .gather_from_type_argument(engines, type_ascription)
+                .gather_from_expr(engines, value),
+            None => self,
+        }
+    }
+
+    fn gather_from_configurable_decl(
+        self,
+        engines: &Engines,
+        const_decl: &ConfigurableDeclaration,
+    ) -> Self {
+        let ConfigurableDeclaration {
             type_ascription,
             value,
             ..
@@ -879,6 +902,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_constant(decl_id);
             dep_sym(decl.name.clone())
         }
+        Declaration::ConfigurableDeclaration(decl_id) => {
+            let decl = engines.pe().get_configurable(decl_id);
+            dep_sym(decl.name.clone())
+        }
         Declaration::TraitTypeDeclaration(decl_id) => {
             let decl = engines.pe().get_trait_type(decl_id);
             dep_sym(decl.name.clone())
@@ -891,6 +918,7 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_enum(decl_id);
             dep_sym(decl.name.clone())
         }
+        Declaration::EnumVariantDeclaration(_decl) => None,
         Declaration::TraitDeclaration(decl_id) => {
             let decl = engines.pe().get_trait(decl_id);
             dep_sym(decl.name.clone())

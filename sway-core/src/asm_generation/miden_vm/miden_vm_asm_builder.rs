@@ -6,13 +6,16 @@ pub use miden_op::MidenAsmOp;
 
 use crate::{
     asm_generation::{
-        asm_builder::{AsmBuilder, AsmBuilderResult},
+        asm_builder::AsmBuilder,
         from_ir::StateAccessType,
+        fuel::data_section::DataSection,
+        instruction_set::InstructionSet,
         miden_vm::miden_vm_asm_builder::miden_op::{MidenStackValue, Push},
-        ProgramKind,
+        FinalizedAsm, ProgramKind,
     },
     asm_lang::Label,
     metadata::MetadataManager,
+    BuildConfig,
 };
 
 use sway_error::{
@@ -126,16 +129,35 @@ impl<'ir, 'eng> AsmBuilder for MidenVMAsmBuilder<'ir, 'eng> {
         self.compile_function(handler, function)
     }
 
-    fn finalize(&self) -> AsmBuilderResult {
-        self.finalize_inner()
-    }
-
     fn func_to_labels(&mut self, func: &Function) -> (Label, Label) {
         self.func_label_map.get(func).cloned().unwrap_or_else(|| {
             let labels = (self.get_label(), self.get_label());
             self.func_label_map.insert(*func, labels);
             labels
         })
+    }
+
+    fn compile_configurable(&mut self, _config: &ConfigContent) {
+        todo!()
+    }
+
+    fn finalize(
+        self,
+        _handler: &Handler,
+        _build_config: Option<&BuildConfig>,
+        _fallback_fn: Option<Label>,
+    ) -> Result<FinalizedAsm, ErrorEmitted> {
+        // take each procedure and serialize it with the format described [here](https://wiki.polygon.technology/docs/miden/user_docs/assembly/code_organization/#procedures)
+        let mut program = self.finalize_procedure_map();
+        // main fn is a call into one of the procedure_map fns
+        program.push(DirectOp::begin());
+        for op in &self.buf {
+            program.append(&mut self.render_op(op))
+        }
+        program.push(DirectOp::end());
+
+        let final_program = MidenFinalProgram { ops: program };
+        Ok(final_program.finalize())
     }
 }
 
@@ -154,11 +176,6 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             stack_manager: Default::default(),
             active_procedure: None,
         }
-    }
-
-    #[allow(unreachable_code)]
-    pub fn finalize(&self) -> AsmBuilderResult {
-        AsmBuilderResult::MidenVM(MidenVMAsmBuilderResult { ops: todo!() })
     }
 
     fn generate_constructor(
@@ -195,19 +212,6 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             }
         }
         buf
-    }
-
-    pub fn finalize_inner(&self) -> AsmBuilderResult {
-        // take each procedure and serialize it with the format described [here](https://wiki.polygon.technology/docs/miden/user_docs/assembly/code_organization/#procedures)
-        let mut program = self.finalize_procedure_map();
-        // main fn is a call into one of the procedure_map fns
-        program.push(DirectOp::begin());
-        for op in &self.buf {
-            program.append(&mut self.render_op(op))
-        }
-        program.push(DirectOp::end());
-
-        AsmBuilderResult::MidenVM(MidenVMAsmBuilderResult { ops: program })
     }
 
     fn empty_span() -> Span {
@@ -320,6 +324,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
                     indices,
                 } => todo!(),
                 InstOp::GetLocal(local_var) => todo!(),
+                InstOp::GetConfig(_, name) => todo!(),
                 InstOp::IntToPtr(val, _) => todo!(),
                 InstOp::Load(src_val) => todo!(),
                 InstOp::MemCopyBytes {
@@ -628,12 +633,11 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
                 let rendered = val
                     .get_constant(self.context)
                     .map(|constant| self.render_constant(constant))
-                    .or_else(|| val.get_configurable(self.context).map(|config| todo!()))
                     .or_else(|| todo!());
                 if let Some(rendered) = rendered {
                     rendered
                 } else {
-                    panic!("Not sure what this value is -- is'nt a constant or a configurable. {val:?}")
+                    panic!("Not sure what this value is -- isn't a constant or a configurable. {val:?}")
                 }
             }
         }
@@ -660,6 +664,7 @@ impl<'ir, 'eng> MidenVMAsmBuilder<'ir, 'eng> {
             Array(_) => todo!(),
             Struct(_) => todo!(),
             Reference(_) => todo!(),
+            RawUntypedSlice(_) => todo!(),
         }
     }
 }
@@ -676,5 +681,24 @@ impl ToMidenBytecode for Vec<DirectOp> {
             .map(|x| format!("{x}"))
             .collect::<Vec<_>>()
             .join("\n")
+    }
+}
+
+struct MidenFinalProgram {
+    ops: Vec<crate::asm_generation::DirectOp>,
+}
+
+impl MidenFinalProgram {
+    fn finalize(self) -> FinalizedAsm {
+        FinalizedAsm {
+            data_section: DataSection {
+                ..Default::default()
+            },
+            program_section: InstructionSet::MidenVM { ops: self.ops },
+            // should this be a script? :think:
+            program_kind: ProgramKind::Script,
+            entries: vec![],
+            abi: None, /* TODO? */
+        }
     }
 }

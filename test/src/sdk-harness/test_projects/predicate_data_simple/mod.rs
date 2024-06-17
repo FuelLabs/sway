@@ -3,12 +3,9 @@ use fuel_vm::fuel_tx;
 use fuel_vm::fuel_tx::{Address, AssetId, Output};
 use fuels::{
     accounts::wallet::{Wallet, WalletUnlocked},
-    core::codec::ABIEncoder,
+    core::codec::{ABIEncoder, EncoderConfig},
     prelude::*,
-    types::{
-        input::Input, transaction_builders::ScriptTransactionBuilder,
-        unresolved_bytes::UnresolvedBytes, Token,
-    },
+    types::{input::Input, transaction_builders::ScriptTransactionBuilder, Token},
 };
 use std::str::FromStr;
 
@@ -46,13 +43,11 @@ async fn create_predicate(
     let mut tx = ScriptTransactionBuilder::prepare_transfer(
         wallet_coins,
         vec![output_coin, output_change],
-        TxPolicies::default().with_gas_price(1),
-        provider.network_info().await.unwrap(),
+        Default::default(),
     )
     .with_script(op::ret(RegId::ONE).to_bytes().to_vec());
 
-    wallet.sign_transaction(&mut tx);
-
+    tx.add_signer(wallet.clone()).unwrap();
     let tx = tx.build(provider).await.unwrap();
 
     provider.send_transaction(tx).await.unwrap();
@@ -65,11 +60,11 @@ async fn submit_to_predicate(
     amount_to_predicate: u64,
     asset_id: AssetId,
     receiver_address: Address,
-    predicate_data: UnresolvedBytes,
+    predicate_data: Vec<u8>,
 ) -> Result<()> {
     let filter = ResourceFilter {
         from: predicate_address.into(),
-        asset_id,
+        asset_id: Some(asset_id),
         amount: amount_to_predicate,
         ..Default::default()
     };
@@ -100,9 +95,9 @@ async fn submit_to_predicate(
     let new_tx = ScriptTransactionBuilder::prepare_transfer(
         inputs,
         vec![output_coin, output_change],
-        TxPolicies::default().with_gas_price(1),
-        provider.network_info().await.unwrap(),
+        Default::default(),
     )
+    .with_tx_policies(TxPolicies::default().with_tip(1))
     .build(provider)
     .await
     .unwrap();
@@ -128,10 +123,12 @@ async fn get_balance(wallet: &Wallet, address: Address, asset_id: AssetId) -> u6
 async fn valid_predicate_data_simple() {
     let arg = Token::U32(12345_u32);
     let args: Vec<Token> = vec![arg];
-    let predicate_data = ABIEncoder::encode(&args).unwrap();
+    let predicate_data = ABIEncoder::new(EncoderConfig::default())
+        .encode(&args)
+        .unwrap();
 
     let receiver_address =
-        Address::from_str("0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c")
+        Address::from_str("0xd926978a28a565531a06cbf5fab5402d6ee2021e5a5dce2d2f7c61e5521be109")
             .unwrap();
     let (predicate_code, predicate_address, wallet, amount_to_predicate, asset_id) = setup().await;
 
@@ -166,7 +163,9 @@ async fn valid_predicate_data_simple() {
 async fn invalid_predicate_data_simple() {
     let arg = Token::U32(1001_u32);
     let args: Vec<Token> = vec![arg];
-    let predicate_data = ABIEncoder::encode(&args).unwrap();
+    let predicate_data = ABIEncoder::new(EncoderConfig::default())
+        .encode(&args)
+        .unwrap();
 
     let receiver_address =
         Address::from_str("0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c")

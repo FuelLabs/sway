@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 use crate::SourceId;
@@ -22,9 +24,7 @@ impl<'a> Position<'a> {
     }
 
     pub fn line_col(&self) -> LineCol {
-        if self.pos > self.input.len() {
-            panic!("position out of bounds");
-        }
+        assert!(self.pos <= self.input.len(), "position out of bounds");
 
         // This is performance critical, so we use bytecount instead of a naive implementation.
         let newlines_up_to_pos = bytecount::count(&self.input.as_bytes()[..self.pos], b'\n');
@@ -184,7 +184,7 @@ impl Span {
 
     /// This panics if the spans are not from the same file. This should
     /// only be used on spans that are actually next to each other.
-    pub fn join(s1: Span, s2: Span) -> Span {
+    pub fn join(s1: Span, s2: &Span) -> Span {
         assert!(
             Arc::ptr_eq(&s1.src, &s2.src) && s1.source_id == s2.source_id,
             "Spans from different files cannot be joined.",
@@ -201,13 +201,20 @@ impl Span {
     pub fn join_all(spans: impl IntoIterator<Item = Span>) -> Span {
         spans
             .into_iter()
-            .reduce(Span::join)
+            .reduce(|s1: Span, s2: Span| Span::join(s1, &s2))
             .unwrap_or_else(Span::dummy)
     }
 
     /// Returns the line and column start and end.
-    pub fn line_col(&self) -> (LineCol, LineCol) {
-        (self.start_pos().line_col(), self.end_pos().line_col())
+    pub fn line_col(&self) -> LineColRange {
+        LineColRange {
+            start: self.start_pos().line_col(),
+            end: self.end_pos().line_col(),
+        }
+    }
+
+    pub fn is_dummy(&self) -> bool {
+        self.eq(&DUMMY_SPAN)
     }
 }
 
@@ -236,4 +243,21 @@ pub trait Spanned {
 pub struct LineCol {
     pub line: usize,
     pub col: usize,
+}
+
+pub struct LineColRange {
+    pub start: LineCol,
+    pub end: LineCol,
+}
+
+impl Display for LineColRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("({}, {})", self.start, self.end))
+    }
+}
+
+impl Display for LineCol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("line {}:{}", self.line, self.col))
+    }
 }

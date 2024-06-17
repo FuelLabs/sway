@@ -2,7 +2,7 @@
 # in the Sway repo, where each example is a package member of the workspace.
 [workspace]
 members = [
-  "abi_supertraits",
+  # "abi_supertraits",
   "advanced_storage_variables",
   "arrays",
   "methods_and_associated_functions",
@@ -34,6 +34,8 @@ members = [
   "structs",
   "tuples",
   "type_aliases",
+  "upgradeable_proxy/proxy",
+  "upgradeable_proxy/implementation",
   "vec",
   "wallet_abi",
   "wallet_contract_caller_script",

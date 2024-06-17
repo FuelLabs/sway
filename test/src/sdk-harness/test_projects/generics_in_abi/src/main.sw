@@ -37,7 +37,9 @@ abi MyContract {
     fn struct_delegating_generic(arg1: PassTheGenericOn<str[3]>) -> PassTheGenericOn<str[3]>;
     fn struct_w_generic_in_array(arg1: StructWArrayGeneric<u32>) -> StructWArrayGeneric<u32>;
     fn struct_w_generic_in_tuple(arg1: StructWTupleGeneric<u32>) -> StructWTupleGeneric<u32>;
-    fn struct_w_diff_generic_in_tuple(arg1: StructWDiffTupleGeneric<u32, bool>) -> StructWDiffTupleGeneric<u32, bool>;
+    fn struct_w_diff_generic_in_tuple(
+        arg1: StructWDiffTupleGeneric<u32, bool>,
+    ) -> StructWDiffTupleGeneric<u32, bool>;
 
     fn enum_w_generic(arg1: EnumWGeneric<u64>) -> EnumWGeneric<u64>;
 
@@ -68,7 +70,9 @@ impl MyContract for Contract {
             },
         };
 
-        assert(sha256(expected.one.single_generic_param) == sha256(arg1.one.single_generic_param));
+        assert(
+            sha256(expected.one.single_generic_param) == sha256(arg1.one.single_generic_param),
+        );
 
         expected
     }
@@ -85,7 +89,9 @@ impl MyContract for Contract {
     }
 
     fn struct_w_generic_in_tuple(arg1: StructWTupleGeneric<u32>) -> StructWTupleGeneric<u32> {
-        let expected = StructWTupleGeneric { a: (1u32, 2u32) };
+        let expected = StructWTupleGeneric {
+            a: (1u32, 2u32),
+        };
         assert(expected.a.0 == arg1.a.0);
         assert(expected.a.1 == arg1.a.1);
 
@@ -95,7 +101,9 @@ impl MyContract for Contract {
     fn struct_w_diff_generic_in_tuple(
         arg1: StructWDiffTupleGeneric<u32, bool>,
     ) -> StructWDiffTupleGeneric<u32, bool> {
-        let expected = StructWDiffTupleGeneric { a: (1u32, false) };
+        let expected = StructWDiffTupleGeneric {
+            a: (1u32, false),
+        };
         assert(expected.a.0 == arg1.a.0);
         assert(expected.a.1 == arg1.a.1);
 
@@ -113,5 +121,5 @@ impl MyContract for Contract {
         EnumWGeneric::b(10)
     }
 
-    fn complex_test(arg1: MegaExample<str[2], b256>) {}
+    fn complex_test(_arg1: MegaExample<str[2], b256>) {}
 }

@@ -35,7 +35,7 @@ impl<V> StorageKey<StorageVec<V>> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     assert(five == storage.vec.get(0).unwrap());
+    ///     assert(five == storage.vec.get(0).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -77,7 +77,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     let popped_value = storage.vec.pop().unwrap();
     ///     assert(five == popped_value);
     ///     let none_value = storage.vec.pop();
-    ///     assert(none_value.is_none())
+    ///     assert(none_value.is_none());
     /// }
     /// ```
     #[storage(read, write)]
@@ -124,8 +124,8 @@ impl<V> StorageKey<StorageVec<V>> {
     /// fn foo() {
     ///     let five = 5_u64;
     ///     storage.vec.push(five);
-    ///     assert(five == storage.vec.get(0).unwrap());
-    ///     assert(storage.vec.get(1).is_none())
+    ///     assert(five == storage.vec.get(0).unwrap().read());
+    ///     assert(storage.vec.get(1).is_none());
     /// }
     /// ```
     #[storage(read)]
@@ -253,7 +253,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///     let removed_value = storage.vec.swap_remove(0);
     ///     assert(5 == removed_value);
-    ///     let swapped_value = storage.vec.get(0).unwrap();
+    ///     let swapped_value = storage.vec.get(0).unwrap().read();
     ///     assert(15 == swapped_value);
     /// }
     /// ```
@@ -311,7 +311,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///
     ///     storage.vec.set(0, 20);
-    ///     let set_value = storage.vec.get(0).unwrap();
+    ///     let set_value = storage.vec.get(0).unwrap().read();
     ///     assert(20 == set_value);
     /// }
     /// ```
@@ -363,9 +363,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.insert(1, 10);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(15 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -510,9 +510,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///
     ///     storage.vec.swap(0, 2);
-    ///     assert(15 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(5 == storage.vec.get(2).unwrap());
+    ///     assert(15 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(5 == storage.vec.get(2).unwrap().read());
     /// ```
     #[storage(read, write)]
     pub fn swap(self, element1_index: u64, element2_index: u64) {
@@ -562,7 +562,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.push(5);
     ///
-    ///     assert(5 == storage.vec.first().unwrap());
+    ///     assert(5 == storage.vec.first().unwrap().read());
     /// }
     /// ```
     #[storage(read)]
@@ -598,7 +598,7 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(5);
     ///     storage.vec.push(10);
     ///
-    ///     assert(10 == storage.vec.last().unwrap());
+    ///     assert(10 == storage.vec.last().unwrap().read());
     /// }
     /// ```
     #[storage(read)]
@@ -633,9 +633,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///     storage.vec.reverse();
     ///
-    ///     assert(15 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(5 == storage.vec.get(2).unwrap());
+    ///     assert(15 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(5 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -686,9 +686,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(15);
     ///     storage.vec.fill(20);
     ///
-    ///     assert(20 == storage.vec.get(0).unwrap());
-    ///     assert(20 == storage.vec.get(1).unwrap());
-    ///     assert(20 == storage.vec.get(2).unwrap());
+    ///     assert(20 == storage.vec.get(0).unwrap().read());
+    ///     assert(20 == storage.vec.get(1).unwrap().read());
+    ///     assert(20 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(read, write)]
@@ -734,15 +734,15 @@ impl<V> StorageKey<StorageVec<V>> {
     ///     storage.vec.push(10);
     ///     storage.vec.resize(4, 20);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(20 == storage.vec.get(2).unwrap());
-    ///     assert(20 == storage.vec.get(3).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(20 == storage.vec.get(2).unwrap().read());
+    ///     assert(20 == storage.vec.get(3).unwrap().read());
     ///
     ///     storage.vec.resize(2, 0);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
     ///     assert(None == storage.vec.get(2));
     ///     assert(None == storage.vec.get(3));
     /// }
@@ -802,9 +802,9 @@ impl<V> StorageKey<StorageVec<V>> {
     ///
     ///     storage.vec.store_vec(vec);
     ///
-    ///     assert(5 == storage.vec.get(0).unwrap());
-    ///     assert(10 == storage.vec.get(1).unwrap());
-    ///     assert(15 == storage.vec.get(2).unwrap());
+    ///     assert(5 == storage.vec.get(0).unwrap().read());
+    ///     assert(10 == storage.vec.get(1).unwrap().read());
+    ///     assert(15 == storage.vec.get(2).unwrap().read());
     /// }
     /// ```
     #[storage(write)]

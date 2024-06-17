@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 
 use crate::{
     language::{
-        ty::{self, TyConstantDecl},
+        ty::{self, TyConfigurableDecl, TyConstantDecl},
         CallPath, Literal,
     },
     semantic_analysis::{
@@ -49,7 +49,7 @@ pub(super) enum ReqOrVarDecl {
 /// The tree represents a logical expression that consists of equality comparisons, and
 /// lazy AND and OR operators.
 ///
-/// The leafs of the tree are either equality comparisons or eventual variable declarations
+/// The leaves of the tree are either equality comparisons or eventual variable declarations
 /// or none of those in the case of catch-all `_` pattern or only a single rest `..` in structs.
 pub(super) struct ReqDeclTree {
     root: ReqDeclNode,
@@ -228,6 +228,9 @@ pub(super) fn matcher(
         ty::TyScrutineeVariant::Variable(name) => Ok(match_variable(exp, name)),
         ty::TyScrutineeVariant::Constant(_, _, const_decl) => {
             Ok(match_constant(ctx, exp, const_decl, span))
+        }
+        ty::TyScrutineeVariant::Configurable(_, _, config_decl) => {
+            Ok(match_configurable(ctx, exp, config_decl, span))
         }
         ty::TyScrutineeVariant::StructScrutinee {
             struct_ref: _,
@@ -408,8 +411,33 @@ fn match_constant(
         ty::TyExpression {
             expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
-                const_decl: Box::new(const_decl),
-                call_path: Some(CallPath::from(name).to_fullpath(ctx.namespace())),
+                decl: Box::new(const_decl),
+                call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
+            },
+            return_type,
+            span,
+        },
+    );
+
+    ReqDeclTree::req(req)
+}
+
+fn match_configurable(
+    ctx: TypeCheckContext,
+    exp: &ty::TyExpression,
+    decl: TyConfigurableDecl,
+    span: Span,
+) -> ReqDeclTree {
+    let name = decl.name().clone();
+    let return_type = decl.type_ascription.type_id;
+
+    let req = (
+        exp.to_owned(),
+        ty::TyExpression {
+            expression: ty::TyExpressionVariant::ConfigurableExpression {
+                span: span.clone(),
+                decl: Box::new(decl),
+                call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
             },
             return_type,
             span,

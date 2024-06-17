@@ -35,11 +35,26 @@ pub struct FunctionApplicationExpression {
     pub arguments: Vec<Expression>,
 }
 
+impl EqWithEngines for FunctionApplicationExpression {}
+impl PartialEqWithEngines for FunctionApplicationExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.call_path_binding.eq(&other.call_path_binding, ctx)
+            && self.arguments.eq(&other.arguments, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LazyOperatorExpression {
     pub op: LazyOp,
     pub lhs: Box<Expression>,
     pub rhs: Box<Expression>,
+}
+
+impl EqWithEngines for LazyOperatorExpression {}
+impl PartialEqWithEngines for LazyOperatorExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.op == other.op && self.lhs.eq(&other.lhs, ctx) && self.rhs.eq(&other.rhs, ctx)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -49,16 +64,40 @@ pub struct TupleIndexExpression {
     pub index_span: Span,
 }
 
+impl EqWithEngines for TupleIndexExpression {}
+impl PartialEqWithEngines for TupleIndexExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.prefix.eq(&other.prefix, ctx)
+            && self.index == other.index
+            && self.index_span == other.index_span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ArrayExpression {
     pub contents: Vec<Expression>,
     pub length_span: Option<Span>,
 }
 
+impl EqWithEngines for ArrayExpression {}
+impl PartialEqWithEngines for ArrayExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.contents.eq(&other.contents, ctx) && self.length_span == other.length_span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StructExpression {
     pub call_path_binding: TypeBinding<CallPath>,
     pub fields: Vec<StructExpressionField>,
+}
+
+impl EqWithEngines for StructExpression {}
+impl PartialEqWithEngines for StructExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.call_path_binding.eq(&other.call_path_binding, ctx)
+            && self.fields.eq(&other.fields, ctx)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -68,10 +107,26 @@ pub struct IfExpression {
     pub r#else: Option<Box<Expression>>,
 }
 
+impl EqWithEngines for IfExpression {}
+impl PartialEqWithEngines for IfExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.condition.eq(&other.condition, ctx)
+            && self.then.eq(&other.then, ctx)
+            && self.r#else.eq(&other.r#else, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct MatchExpression {
     pub value: Box<Expression>,
     pub branches: Vec<MatchBranch>,
+}
+
+impl EqWithEngines for MatchExpression {}
+impl PartialEqWithEngines for MatchExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.value.eq(&other.value, ctx) && self.branches.eq(&other.branches, ctx)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -81,10 +136,28 @@ pub struct MethodApplicationExpression {
     pub arguments: Vec<Expression>,
 }
 
+impl EqWithEngines for MethodApplicationExpression {}
+impl PartialEqWithEngines for MethodApplicationExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.method_name_binding.eq(&other.method_name_binding, ctx)
+            && self
+                .contract_call_params
+                .eq(&other.contract_call_params, ctx)
+            && self.arguments.eq(&other.arguments, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SubfieldExpression {
     pub prefix: Box<Expression>,
     pub field_to_access: Ident,
+}
+
+impl EqWithEngines for SubfieldExpression {}
+impl PartialEqWithEngines for SubfieldExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.prefix.eq(&other.prefix, ctx) && self.field_to_access == other.field_to_access
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -101,10 +174,17 @@ pub struct AmbiguousSuffix {
     pub suffix: Ident,
 }
 
+impl EqWithEngines for AmbiguousSuffix {}
+impl PartialEqWithEngines for AmbiguousSuffix {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.before.eq(&other.before, ctx) && self.suffix == other.suffix
+    }
+}
+
 impl Spanned for AmbiguousSuffix {
     fn span(&self) -> Span {
         if let Some(before) = &self.before {
-            Span::join(before.span(), self.suffix.span())
+            Span::join(before.span(), &self.suffix.span())
         } else {
             self.suffix.span()
         }
@@ -196,6 +276,15 @@ pub struct AmbiguousPathExpression {
     pub args: Vec<Expression>,
 }
 
+impl EqWithEngines for AmbiguousPathExpression {}
+impl PartialEqWithEngines for AmbiguousPathExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.qualified_path_root.eq(&other.qualified_path_root, ctx)
+            && PartialEqWithEngines::eq(&self.call_path_binding, &other.call_path_binding, ctx)
+            && self.args.eq(&other.args, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct DelineatedPathExpression {
     pub call_path_binding: TypeBinding<QualifiedCallPath>,
@@ -205,10 +294,25 @@ pub struct DelineatedPathExpression {
     pub args: Option<Vec<Expression>>,
 }
 
+impl EqWithEngines for DelineatedPathExpression {}
+impl PartialEqWithEngines for DelineatedPathExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.call_path_binding.eq(&other.call_path_binding, ctx) && self.args.eq(&other.args, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AbiCastExpression {
     pub abi_name: CallPath,
     pub address: Box<Expression>,
+}
+
+impl EqWithEngines for AbiCastExpression {}
+impl PartialEqWithEngines for AbiCastExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        PartialEqWithEngines::eq(&self.abi_name, &other.abi_name, ctx)
+            && self.address.eq(&other.address, ctx)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -217,10 +321,25 @@ pub struct ArrayIndexExpression {
     pub index: Box<Expression>,
 }
 
+impl EqWithEngines for ArrayIndexExpression {}
+impl PartialEqWithEngines for ArrayIndexExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.prefix.eq(&other.prefix, ctx) && self.index.eq(&other.index, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StorageAccessExpression {
     pub field_names: Vec<Ident>,
     pub storage_keyword_span: Span,
+}
+
+impl EqWithEngines for StorageAccessExpression {}
+impl PartialEqWithEngines for StorageAccessExpression {
+    fn eq(&self, other: &Self, _ctx: &PartialEqWithEnginesContext) -> bool {
+        self.field_names.eq(&other.field_names)
+            && self.storage_keyword_span.eq(&other.storage_keyword_span)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -230,10 +349,26 @@ pub struct IntrinsicFunctionExpression {
     pub arguments: Vec<Expression>,
 }
 
+impl EqWithEngines for IntrinsicFunctionExpression {}
+impl PartialEqWithEngines for IntrinsicFunctionExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name.eq(&other.name)
+            && self.kind_binding.eq(&other.kind_binding, ctx)
+            && self.arguments.eq(&other.arguments, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct WhileLoopExpression {
     pub condition: Box<Expression>,
     pub body: CodeBlock,
+}
+
+impl EqWithEngines for WhileLoopExpression {}
+impl PartialEqWithEngines for WhileLoopExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.condition.eq(&other.condition, ctx) && self.body.eq(&other.body, ctx)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -241,10 +376,24 @@ pub struct ForLoopExpression {
     pub desugared: Box<Expression>,
 }
 
+impl EqWithEngines for ForLoopExpression {}
+impl PartialEqWithEngines for ForLoopExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.desugared.eq(&other.desugared, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ReassignmentExpression {
     pub lhs: ReassignmentTarget,
     pub rhs: Box<Expression>,
+}
+
+impl EqWithEngines for ReassignmentExpression {}
+impl PartialEqWithEngines for ReassignmentExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.lhs.eq(&other.lhs, ctx) && self.rhs.eq(&other.rhs, ctx)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -326,6 +475,80 @@ pub enum ExpressionKind {
     Deref(Box<Expression>),
 }
 
+impl EqWithEngines for Expression {}
+impl PartialEqWithEngines for Expression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.kind.eq(&other.kind, ctx)
+    }
+}
+
+impl EqWithEngines for ExpressionKind {}
+impl PartialEqWithEngines for ExpressionKind {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (ExpressionKind::Error(l_span, _), ExpressionKind::Error(r_span, _)) => {
+                l_span == r_span
+            }
+            (ExpressionKind::Literal(l_literal), ExpressionKind::Literal(r_literal)) => {
+                l_literal == r_literal
+            }
+            (
+                ExpressionKind::AmbiguousPathExpression(lhs),
+                ExpressionKind::AmbiguousPathExpression(rhs),
+            ) => lhs.eq(rhs, ctx),
+            (
+                ExpressionKind::FunctionApplication(lhs),
+                ExpressionKind::FunctionApplication(rhs),
+            ) => lhs.eq(rhs, ctx),
+            (ExpressionKind::LazyOperator(lhs), ExpressionKind::LazyOperator(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (
+                ExpressionKind::AmbiguousVariableExpression(lhs),
+                ExpressionKind::AmbiguousVariableExpression(rhs),
+            ) => lhs == rhs,
+            (ExpressionKind::Variable(lhs), ExpressionKind::Variable(rhs)) => lhs == rhs,
+            (ExpressionKind::Tuple(lhs), ExpressionKind::Tuple(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::TupleIndex(lhs), ExpressionKind::TupleIndex(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Array(lhs), ExpressionKind::Array(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Struct(lhs), ExpressionKind::Struct(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::CodeBlock(lhs), ExpressionKind::CodeBlock(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::If(lhs), ExpressionKind::If(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Match(lhs), ExpressionKind::Match(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Asm(lhs), ExpressionKind::Asm(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::MethodApplication(lhs), ExpressionKind::MethodApplication(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ExpressionKind::Subfield(lhs), ExpressionKind::Subfield(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::DelineatedPath(lhs), ExpressionKind::DelineatedPath(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ExpressionKind::AbiCast(lhs), ExpressionKind::AbiCast(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::ArrayIndex(lhs), ExpressionKind::ArrayIndex(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::StorageAccess(lhs), ExpressionKind::StorageAccess(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ExpressionKind::IntrinsicFunction(lhs), ExpressionKind::IntrinsicFunction(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ExpressionKind::WhileLoop(lhs), ExpressionKind::WhileLoop(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::ForLoop(lhs), ExpressionKind::ForLoop(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Break, ExpressionKind::Break) => true,
+            (ExpressionKind::Continue, ExpressionKind::Continue) => true,
+            (ExpressionKind::Reassignment(lhs), ExpressionKind::Reassignment(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ExpressionKind::ImplicitReturn(lhs), ExpressionKind::ImplicitReturn(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ExpressionKind::Return(lhs), ExpressionKind::Return(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Ref(lhs), ExpressionKind::Ref(rhs)) => lhs.eq(rhs, ctx),
+            (ExpressionKind::Deref(lhs), ExpressionKind::Deref(rhs)) => lhs.eq(rhs, ctx),
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RefExpression {
     /// True if the reference is a reference to a mutable `value`.
@@ -333,15 +556,53 @@ pub struct RefExpression {
     pub value: Box<Expression>,
 }
 
+impl EqWithEngines for RefExpression {}
+impl PartialEqWithEngines for RefExpression {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.to_mutable_value.eq(&other.to_mutable_value) && self.value.eq(&other.value, ctx)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum ReassignmentTarget {
-    VariableExpression(Box<Expression>),
+    /// An [Expression] representing a single variable or a path
+    /// to a part of an aggregate.
+    /// E.g.:
+    ///  - `my_variable`
+    ///  - `array[0].field.x.1`
+    ElementAccess(Box<Expression>),
+    /// An dereferencing [Expression] representing dereferencing
+    /// of an arbitrary reference expression.
+    /// E.g.:
+    ///  - *my_ref
+    ///  - **if x > 0 { &mut &mut a } else { &mut &mut b }
+    Deref(Box<Expression>),
+}
+
+impl EqWithEngines for ReassignmentTarget {}
+impl PartialEqWithEngines for ReassignmentTarget {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        match (self, other) {
+            (ReassignmentTarget::ElementAccess(lhs), ReassignmentTarget::ElementAccess(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ReassignmentTarget::Deref(lhs), ReassignmentTarget::Deref(rhs)) => lhs.eq(rhs, ctx),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct StructExpressionField {
     pub name: Ident,
     pub value: Expression,
+}
+
+impl EqWithEngines for StructExpressionField {}
+impl PartialEqWithEngines for StructExpressionField {
+    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
+        self.name == other.name && self.value.eq(&other.value, ctx)
+    }
 }
 
 impl Spanned for Expression {
