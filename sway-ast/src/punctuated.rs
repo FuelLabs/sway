@@ -1,6 +1,6 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Punctuated<T, P> {
     pub value_separator_pairs: Vec<(T, P)>,
     pub final_value_opt: Option<Box<T>>,

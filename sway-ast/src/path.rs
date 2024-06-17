@@ -1,17 +1,17 @@
 use crate::priv_prelude::*;
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PathExpr {
     pub root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
     pub prefix: PathExprSegment,
     pub suffix: Vec<(DoubleColonToken, PathExprSegment)>,
     // path expression with incomplete suffix are needed to do
     // parser recovery on inputs like foo::
-    #[serde(skip_serializing)]
+    #[serde(skip_deserializing, skip_serializing)]
     pub incomplete_suffix: bool,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PathExprSegment {
     pub name: Ident,
     pub generics_opt: Option<(DoubleColonToken, GenericArgs)>,
@@ -57,7 +57,7 @@ impl Spanned for PathExprSegment {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PathType {
     pub root_opt: Option<(Option<AngleBrackets<QualifiedPathRoot>>, DoubleColonToken)>,
     pub prefix: PathTypeSegment,
@@ -91,7 +91,7 @@ impl Spanned for PathType {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PathTypeSegment {
     pub name: Ident,
     pub generics_opt: Option<(Option<DoubleColonToken>, GenericArgs)>,
@@ -107,7 +107,7 @@ impl Spanned for PathTypeSegment {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct QualifiedPathRoot {
     pub ty: Box<Ty>,
     pub as_trait: Option<(AsToken, Box<PathType>)>,
