@@ -32,6 +32,9 @@ pub struct Command {
     /// Disable the "new encoding" feature
     #[clap(long)]
     pub no_encoding_v1: bool,
+    // Flag to display contract-id in bech32 format
+    #[clap(long)]
+    pub bech32: bool,
 }
 
 pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
