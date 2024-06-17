@@ -45,9 +45,16 @@ impl DebugWithEngines for ResolvedDeclaration {
 
 impl PartialEqWithEngines for ResolvedDeclaration {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        match self {
-            ResolvedDeclaration::Parsed(parsed) => parsed.eq(&other.clone().expect_parsed(), ctx),
-            ResolvedDeclaration::Typed(typed) => typed.eq(&other.clone().expect_typed(), ctx),
+        match (self, other) {
+            (ResolvedDeclaration::Parsed(lhs), ResolvedDeclaration::Parsed(rhs)) => {
+                lhs.eq(rhs, ctx)
+            }
+            (ResolvedDeclaration::Typed(lhs), ResolvedDeclaration::Typed(rhs)) => lhs.eq(rhs, ctx),
+            // TODO: Right now we consider differently represented resolved declarations to not be
+            // equal. This is only used for comparing paths when doing imports, and we will be able
+            // to safely remove it once we introduce normalized paths.
+            (ResolvedDeclaration::Parsed(_lhs), ResolvedDeclaration::Typed(_rhs)) => false,
+            (ResolvedDeclaration::Typed(_lhs), ResolvedDeclaration::Parsed(_rhs)) => false,
         }
     }
 }
