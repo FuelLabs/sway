@@ -2,7 +2,7 @@ use crate::{
     engine_threading::*,
     language::{parsed::*, *},
     transform::{self, AttributeKind},
-    type_system::*,
+    type_system::*, namespace::LexicalScopeId,
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 
@@ -28,6 +28,7 @@ pub struct FunctionDeclaration {
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub kind: FunctionDeclarationKind,
     pub implementing_type: Option<Declaration>,
+    pub lexical_scope: LexicalScopeId,
 }
 
 impl EqWithEngines for FunctionDeclaration {}

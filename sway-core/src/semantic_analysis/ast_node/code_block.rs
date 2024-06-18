@@ -5,6 +5,22 @@ use crate::language::{
 };
 
 impl ty::TyCodeBlock {
+    pub(crate) fn collect(
+        handler: &Handler,
+        engines: &Engines,
+        ctx: &mut SymbolCollectionContext,
+        code_block: &CodeBlock,
+    ) -> Result<(), ErrorEmitted> {
+        let _ = code_block
+            .contents
+            .iter()
+            .map(|node| ty::TyAstNode::collect(handler, engines, ctx, node))
+            .filter_map(|res| res.ok())
+            .collect::<Vec<_>>();
+
+        Ok(())
+    }
+
     pub(crate) fn type_check(
         handler: &Handler,
         ctx: TypeCheckContext,
