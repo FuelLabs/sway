@@ -106,6 +106,8 @@ pub enum ParseErrorKind {
     ExpectedPathType,
     #[error("Expected ':'. Enum variants must be in the form `Variant: ()`, `Variant: <type>`, or `Variant: (<type1>, ..., <typeN>)`. E.g., `Foo: (), or `Bar: (bool, u32)`.")]
     MissingColonInEnumTypeField,
+    #[error("Expected storage key of type U256.")]
+    ExpectedStorageKeyU256,
 }
 
 #[derive(Debug, Error, Clone, PartialEq, Eq, Hash)]
