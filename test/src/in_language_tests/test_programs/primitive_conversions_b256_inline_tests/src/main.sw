@@ -38,16 +38,7 @@ fn b256_try_from_bytes() {
         i += 1;
     }
     let res3 = b256::try_from(third_bytes);
-    let expected3 = 0x0033333333333333333333333333333333333333333333333333333333333333;
-    assert(res3.is_some());
-    assert(res3.unwrap() == expected3);
-
-    let mut fourth_bytes = Bytes::with_capacity(1);
-    fourth_bytes.push(51u8);
-    let res4 = b256::try_from(fourth_bytes);
-    let expected4 = 0x0000000000000000000000000000000000000000000000000000000000000033;
-    assert(res4.is_some());
-    assert(res4.unwrap() == expected4);
+    assert(res3.is_none());
 }
 
 #[test]
