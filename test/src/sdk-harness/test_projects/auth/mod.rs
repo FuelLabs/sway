@@ -124,7 +124,7 @@ async fn can_get_predicate_address() {
 
     // Setup Predciate
     let hex_predicate_address: &str =
-        "0xd8c2b8c7fe441fd952cd530e210a473ea28d5aba1339bf3660cf41d4f1e852dd";
+        "0x413c19386a356dc93c35f384cd34efa65f8779d8da3f1bac783bc18edab08a3c";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -247,7 +247,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup Predciate address
     let hex_predicate_address: &str =
-        "0xd8c2b8c7fe441fd952cd530e210a473ea28d5aba1339bf3660cf41d4f1e852dd";
+        "0x413c19386a356dc93c35f384cd34efa65f8779d8da3f1bac783bc18edab08a3c";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
