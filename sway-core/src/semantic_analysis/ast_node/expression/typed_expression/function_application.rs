@@ -1,11 +1,14 @@
 use crate::{
     decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
-    language::{ty, *},
+    language::{
+        ty::{self, TyFunctionSig},
+        *,
+    },
     semantic_analysis::{ast_node::*, TypeCheckContext},
 };
 use indexmap::IndexMap;
 use sway_error::error::CompileError;
-use sway_types::Spanned;
+use sway_types::{IdentUnique, Spanned};
 
 const UNIFY_ARGS_HELP_TEXT: &str =
     "The argument that has been provided to this function's type does \
@@ -21,7 +24,8 @@ pub(crate) fn instantiate_function_application(
     arguments: Option<&[Expression]>,
     span: Span,
 ) -> Result<ty::TyExpression, ErrorEmitted> {
-    let decl_engine = ctx.engines.de();
+    let engines = ctx.engines();
+    let decl_engine = engines.de();
 
     let mut function_decl = (*decl_engine.get_function(&function_decl_ref)).clone();
 
@@ -62,22 +66,54 @@ pub(crate) fn instantiate_function_application(
         &function_decl.parameters,
     )?;
 
-    // Handle the trait constraints. This includes checking to see if the trait
-    // constraints are satisfied and replacing old decl ids based on the
-    // constraint with new decl ids based on the new type.
-    let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
-        handler,
-        ctx.by_ref(),
-        &function_decl.type_parameters,
-        function_decl.name.as_str(),
-        &call_path_binding.span(),
-    )?;
+    let mut function_return_type_id = function_decl.return_type.type_id;
 
-    function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
-    let return_type = function_decl.return_type.clone();
-    let new_decl_ref = decl_engine
-        .insert(function_decl)
-        .with_parent(decl_engine, (*function_decl_ref.id()).into());
+    let function_ident: IdentUnique = function_decl.name.clone().into();
+    let function_sig = TyFunctionSig::from_fn_decl(&function_decl);
+
+    let new_decl_ref = if let Some(cached_fn_ref) =
+        ctx.engines()
+            .qe()
+            .get_function(engines, function_ident.clone(), function_sig.clone())
+    {
+        cached_fn_ref
+    } else {
+        // Handle the trait constraints. This includes checking to see if the trait
+        // constraints are satisfied and replacing old decl ids based on the
+        // constraint with new decl ids based on the new type.
+        let decl_mapping = TypeParameter::gather_decl_mapping_from_trait_constraints(
+            handler,
+            ctx.by_ref(),
+            &function_decl.type_parameters,
+            function_decl.name.as_str(),
+            &call_path_binding.span(),
+        )?;
+
+        function_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
+
+        let method_sig = TyFunctionSig::from_fn_decl(&function_decl);
+
+        function_return_type_id = function_decl.return_type.type_id;
+        let function_is_type_check_finalized = function_decl.is_type_check_finalized;
+        let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
+        let new_decl_ref = decl_engine
+            .insert(function_decl)
+            .with_parent(decl_engine, (*function_decl_ref.id()).into());
+
+        if method_sig.is_concrete(engines)
+            && function_is_type_check_finalized
+            && !function_is_trait_method_dummy
+        {
+            ctx.engines().qe().insert_function(
+                engines,
+                function_ident,
+                method_sig,
+                new_decl_ref.clone(),
+            );
+        }
+
+        new_decl_ref
+    };
 
     let exp = ty::TyExpression {
         expression: ty::TyExpressionVariant::FunctionApplication {
@@ -91,7 +127,7 @@ pub(crate) fn instantiate_function_application(
             contract_call_params: IndexMap::new(),
             contract_caller: None,
         },
-        return_type: return_type.type_id,
+        return_type: function_return_type_id,
         span,
     };
 

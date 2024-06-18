@@ -1003,36 +1003,50 @@ fn item_storage_to_storage_declaration(
 ) -> Result<ParsedDeclId<StorageDeclaration>, ErrorEmitted> {
     let mut errors = Vec::new();
     let span = item_storage.span();
-    let fields: Vec<StorageField> = item_storage
-        .fields
+    let entries: Vec<StorageEntry> = item_storage
+        .entries
         .into_inner()
         .into_iter()
-        .map(|storage_field| {
-            let attributes = item_attrs_to_map(context, handler, &storage_field.attribute_list)?;
+        .map(|storage_entry| {
+            let attributes = item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
             if !cfg_eval(context, handler, &attributes, context.experimental)? {
                 return Ok(None);
             }
-            Ok(Some(storage_field_to_storage_field(
+            Ok(Some(storage_entry_to_storage_entry(
                 context,
                 handler,
                 engines,
-                storage_field.value,
+                storage_entry.value,
                 attributes,
             )?))
         })
-        .filter_map_ok(|field| field)
+        .filter_map_ok(|entry| entry)
         .collect::<Result<_, _>>()?;
 
-    // Make sure each storage field is declared once
-    let mut names_of_fields = std::collections::HashSet::new();
-    for v in fields.iter() {
-        if !names_of_fields.insert(v.name.clone()) {
-            errors.push(ConvertParseTreeError::DuplicateStorageField {
-                name: v.name.clone(),
-                span: v.name.span(),
-            });
+    fn check_duplicate_names(entries: Vec<StorageEntry>, errors: &mut Vec<ConvertParseTreeError>) {
+        // Make sure each storage field is declared once
+        let mut names_of_fields = std::collections::HashSet::new();
+        for v in entries {
+            if !names_of_fields.insert(v.name().clone()) {
+                errors.push(ConvertParseTreeError::DuplicateStorageField {
+                    name: v.name().clone(),
+                    span: v.name().span(),
+                });
+            }
+            if let StorageEntry::Namespace(namespace) = v {
+                check_duplicate_names(
+                    namespace
+                        .entries
+                        .iter()
+                        .map(|e| (**e).clone())
+                        .collect::<Vec<_>>(),
+                    errors,
+                );
+            }
         }
     }
+
+    check_duplicate_names(entries.clone(), &mut errors);
 
     if let Some(errors) = emit_all(handler, errors) {
         return Err(errors);
@@ -1041,7 +1055,7 @@ fn item_storage_to_storage_declaration(
     let storage_declaration = StorageDeclaration {
         attributes,
         span,
-        fields,
+        entries,
         storage_keyword: item_storage.storage_token.into(),
     };
     let storage_declaration = engines.pe().insert(storage_declaration);
@@ -2166,11 +2180,15 @@ fn expr_to_expression(
                     // Parent is `storage`. We found what we were looking for.
                     Expr::Path(path_expr)
                         if path_expr.root_opt.is_none()
-                            && path_expr.suffix.is_empty()
                             && path_expr.prefix.generics_opt.is_none()
                             && path_expr.prefix.name.as_str() == "storage" =>
                     {
                         break ExpressionKind::StorageAccess(StorageAccessExpression {
+                            namespace_names: path_expr
+                                .suffix
+                                .iter()
+                                .map(|s| s.1.name.clone())
+                                .collect(),
                             field_names: idents.into_iter().rev().cloned().collect(),
                             storage_keyword_span: path_expr.prefix.name.span(),
                         })
@@ -2476,6 +2494,52 @@ fn op_call(
     })
 }
 
+fn storage_entry_to_storage_entry(
+    context: &mut Context,
+    handler: &Handler,
+    engines: &Engines,
+    storage_entry: sway_ast::StorageEntry,
+    attributes: AttributesMap,
+) -> Result<StorageEntry, ErrorEmitted> {
+    if let Some(storage_field) = storage_entry.field {
+        Ok(StorageEntry::Field(storage_field_to_storage_field(
+            context,
+            handler,
+            engines,
+            storage_field,
+            attributes,
+        )?))
+    } else {
+        let mut entries = vec![];
+        let namespace = storage_entry.namespace.unwrap();
+        for entry in namespace
+            .into_inner()
+            .into_iter()
+            .flat_map(|storage_entry| {
+                let attributes =
+                    item_attrs_to_map(context, handler, &storage_entry.attribute_list)?;
+                if !cfg_eval(context, handler, &attributes, context.experimental)? {
+                    return Ok::<Option<StorageEntry>, ErrorEmitted>(None);
+                }
+                Ok(Some(storage_entry_to_storage_entry(
+                    context,
+                    handler,
+                    engines,
+                    *storage_entry.value,
+                    attributes,
+                )?))
+            })
+            .flatten()
+        {
+            entries.push(Box::new(entry));
+        }
+        Ok(StorageEntry::Namespace(StorageNamespace {
+            name: storage_entry.name,
+            entries,
+        }))
+    }
+}
+
 fn storage_field_to_storage_field(
     context: &mut Context,
     handler: &Handler,
@@ -2484,9 +2548,14 @@ fn storage_field_to_storage_field(
     attributes: AttributesMap,
 ) -> Result<StorageField, ErrorEmitted> {
     let span = storage_field.span();
+    let mut key_expr_opt = None;
+    if let Some(key_expr) = storage_field.key_expr {
+        key_expr_opt = Some(expr_to_expression(context, handler, engines, key_expr)?);
+    }
     let storage_field = StorageField {
         attributes,
         name: storage_field.name,
+        key_expression: key_expr_opt,
         type_argument: ty_to_type_argument(context, handler, engines, storage_field.ty)?,
         span,
         initializer: expr_to_expression(context, handler, engines, storage_field.initializer)?,
@@ -4365,6 +4434,7 @@ fn assignable_to_expression(
                         let field_names = field_names.into_iter().rev().cloned().collect();
                         Expression {
                             kind: ExpressionKind::StorageAccess(StorageAccessExpression {
+                                namespace_names: vec![],
                                 field_names,
                                 storage_keyword_span: storage_name.span(),
                             }),
@@ -4608,6 +4678,13 @@ fn item_attrs_to_map(
         let attrs = attr_decl.attribute.get().into_iter();
         for attr in attrs {
             let name = attr.name.as_str();
+            if name == NAMESPACE_ATTRIBUTE_NAME {
+                handler.emit_warn(CompileWarning {
+                    span: attr_decl.span().clone(),
+                    warning_content: Warning::NamespaceAttributeDeprecated,
+                });
+                continue;
+            }
             if !VALID_ATTRIBUTE_NAMES.contains(&name) {
                 handler.emit_warn(CompileWarning {
                     span: attr_decl.span().clone(),
@@ -4650,7 +4727,6 @@ fn item_attrs_to_map(
                 ALLOW_ATTRIBUTE_NAME => Some(AttributeKind::Allow),
                 CFG_ATTRIBUTE_NAME => Some(AttributeKind::Cfg),
                 DEPRECATED_ATTRIBUTE_NAME => Some(AttributeKind::Deprecated),
-                NAMESPACE_ATTRIBUTE_NAME => Some(AttributeKind::Namespace),
                 FALLBACK_ATTRIBUTE_NAME => Some(AttributeKind::Fallback),
                 _ => None,
             } {

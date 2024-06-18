@@ -1619,6 +1619,112 @@ impl TypeInfo {
             x => unimplemented!("abi_encode_size_hint for [{}]", engines.help_out(x)),
         }
     }
+
+    /// Returns a String representing the type.
+    /// When the type is monomorphized the returned String is unique.
+    /// Two monomorphized types that generate the same string can be assumed to be the same.
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        use TypeInfo::*;
+        match self {
+            Unknown => "unknown".into(),
+            Never => "never".into(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            Placeholder(_) => "_".to_string(),
+            TypeParam(n) => format!("typeparam({n})"),
+            StringSlice => "str".into(),
+            StringArray(x) => format!("str[{}]", x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => call_path.call_path.suffix.to_string(),
+            Tuple(fields) => {
+                let field_strs = fields
+                    .iter()
+                    .map(|field| field.type_id.get_type_str(engines))
+                    .collect::<Vec<String>>();
+                format!("({})", field_strs.join(", "))
+            }
+            B256 => "b256".into(),
+            Numeric => "u64".into(), // u64 is the default
+            Contract => "contract".into(),
+            ErrorRecovery(_) => "unknown due to error".into(),
+            Enum(decl_ref) => {
+                let decl = engines.de().get_enum(decl_ref);
+                let type_params = if decl.type_parameters.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "<{}>",
+                        decl.type_parameters
+                            .iter()
+                            .map(|p| p.type_id.get_type_str(engines))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                };
+                format!("enum {}{}", &decl.call_path, type_params)
+            }
+            Struct(decl_ref) => {
+                let decl = engines.de().get_struct(decl_ref);
+                let type_params = if decl.type_parameters.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "<{}>",
+                        decl.type_parameters
+                            .iter()
+                            .map(|p| p.type_id.get_type_str(engines))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                };
+                format!("struct {}{}", &decl.call_path, type_params)
+            }
+            ContractCaller { abi_name, .. } => {
+                format!("contract caller {abi_name}")
+            }
+            Array(elem_ty, length) => {
+                format!(
+                    "[{}; {}]",
+                    elem_ty.type_id.get_type_str(engines),
+                    length.val()
+                )
+            }
+            Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
+            RawUntypedSlice => "raw untyped slice".into(),
+            Ptr(ty) => {
+                format!("__ptr {}", ty.type_id.get_type_str(engines))
+            }
+            Slice(ty) => {
+                format!("__slice {}", ty.type_id.get_type_str(engines))
+            }
+            Alias { ty, .. } => ty.type_id.get_type_str(engines),
+            TraitType {
+                name,
+                trait_type_id: _,
+            } => format!("trait type {}", name),
+            Ref {
+                to_mutable_value,
+                referenced_type,
+            } => {
+                format!(
+                    "__ref {}{}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    referenced_type.type_id.get_type_str(engines)
+                )
+            }
+        }
+    }
 }
 
 #[derive(Debug)]

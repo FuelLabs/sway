@@ -55,6 +55,7 @@ pub struct TyFunctionDecl {
     pub purity: Purity,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub is_trait_method_dummy: bool,
+    pub is_type_check_finalized: bool,
     pub kind: TyFunctionDeclKind,
 }
 
@@ -182,6 +183,7 @@ impl HashWithEngines for TyFunctionDecl {
             implementing_for_typeid: _,
             where_clause: _,
             is_trait_method_dummy: _,
+            is_type_check_finalized: _,
             kind: _,
         } = self;
         name.hash(state);
@@ -341,6 +343,7 @@ impl TyFunctionDecl {
             type_parameters: Default::default(),
             where_clause: where_clause.clone(),
             is_trait_method_dummy: false,
+            is_type_check_finalized: true,
             kind: match kind {
                 FunctionDeclarationKind::Default => TyFunctionDeclKind::Default,
                 FunctionDeclarationKind::Entry => TyFunctionDeclKind::Entry,
@@ -544,6 +547,41 @@ impl TyFunctionParameter {
 pub struct TyFunctionSig {
     pub return_type: TypeId,
     pub parameters: Vec<TypeId>,
+    pub type_parameters: Vec<TypeId>,
+}
+
+impl DisplayWithEngines for TyFunctionSig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        write!(f, "{:?}", engines.help_out(self))
+    }
+}
+
+impl DebugWithEngines for TyFunctionSig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>, engines: &Engines) -> fmt::Result {
+        let tp_str = if self.type_parameters.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "<{}>",
+                self.type_parameters
+                    .iter()
+                    .map(|p| format!("{}", engines.help_out(p)))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
+        write!(
+            f,
+            "fn{}({}) -> {}",
+            tp_str,
+            self.parameters
+                .iter()
+                .map(|p| format!("{}", engines.help_out(p)))
+                .collect::<Vec<_>>()
+                .join(", "),
+            engines.help_out(self.return_type),
+        )
+    }
 }
 
 impl TyFunctionSig {
@@ -555,6 +593,45 @@ impl TyFunctionSig {
                 .iter()
                 .map(|p| p.type_argument.type_id)
                 .collect::<Vec<_>>(),
+            type_parameters: fn_decl
+                .type_parameters
+                .iter()
+                .map(|p| p.type_id)
+                .collect::<Vec<_>>(),
         }
+    }
+
+    pub fn is_concrete(&self, engines: &Engines) -> bool {
+        self.return_type.is_concrete(engines)
+            && self.parameters.iter().all(|p| p.is_concrete(engines))
+            && self.type_parameters.iter().all(|p| p.is_concrete(engines))
+    }
+
+    /// Returns a String representing the function.
+    /// When the function is monomorphized the returned String is unique.
+    /// Two monomorphized functions that generate the same String can be assumed to be the same.
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        let tp_str = if self.type_parameters.is_empty() {
+            "".to_string()
+        } else {
+            format!(
+                "<{}>",
+                self.type_parameters
+                    .iter()
+                    .map(|p| p.get_type_str(engines))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            )
+        };
+        format!(
+            "fn{}({}) -> {}",
+            tp_str,
+            self.parameters
+                .iter()
+                .map(|p| p.get_type_str(engines))
+                .collect::<Vec<_>>()
+                .join(", "),
+            self.return_type.get_type_str(engines),
+        )
     }
 }

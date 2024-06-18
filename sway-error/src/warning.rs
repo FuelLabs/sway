@@ -101,6 +101,7 @@ pub enum Warning {
     UnrecognizedAttribute {
         attrib_name: Ident,
     },
+    NamespaceAttributeDeprecated,
     AttributeExpectedNumberOfArguments {
         attrib_name: Ident,
         received_args: usize,
@@ -120,6 +121,11 @@ pub enum Warning {
     ModulePrivacyDisabled,
     UsingDeprecated {
         message: String,
+    },
+    DuplicatedStorageKey {
+        key: String,
+        field1: String,
+        field2: String,
     },
 }
 
@@ -239,6 +245,13 @@ impl fmt::Display for Warning {
             ),
             MatchExpressionUnreachableArm { .. } => write!(f, "This match arm is unreachable."),
             UnrecognizedAttribute {attrib_name} => write!(f, "Unknown attribute: \"{attrib_name}\"."),
+            NamespaceAttributeDeprecated => write!(f, "Attribute namespace is deprecated.\n\
+            You can use namespaces inside storage:\n\
+            storage {{\n\
+            \tmy_storage_namespace {{\n\
+            \t\tfield: u64 = 1, \n\
+            \t}}\n\
+            }}"),
             AttributeExpectedNumberOfArguments {attrib_name, received_args, expected_min_len, expected_max_len } => write!(
                 f,
                 "Attribute: \"{attrib_name}\" expected {} argument(s) received {received_args}.",
@@ -264,6 +277,7 @@ impl fmt::Display for Warning {
                                             You can enable the new behavior with the --experimental-private-modules flag, which will become the default behavior in a later release.
                                             More details are available in the related RFC: https://github.com/FuelLabs/sway-rfcs/blob/master/rfcs/0008-private-modules.md"),
             UsingDeprecated { message } => write!(f, "{}", message),
+            DuplicatedStorageKey { key, field1, field2 } => write!(f, "Two storage fields are using the same storage key.\nFirst field: {field1}\nSecond field: {field2}\nKey: {key}"),
         }
     }
 }

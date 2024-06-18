@@ -39,8 +39,8 @@ pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
-pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ty::TyDecl, Visibility)>>;
-pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ty::TyDecl, Visibility)>;
+pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
+pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ResolvedDeclaration, Visibility)>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -68,23 +68,17 @@ pub struct Items {
     /// An ordered map from `Ident`s to their associated declarations.
     pub(crate) symbols: SymbolMap,
     pub(crate) implemented_traits: TraitMap,
-    /// Represents the absolute path from which a symbol was imported.
-    ///
-    /// For example, in `use ::foo::bar::Baz;`, we store a mapping from the symbol `Baz` to its
-    /// path `foo::bar::Baz`.
-    ///
-    /// use_glob_synonyms contains symbols imported using star imports (`use foo::*`.).
+    /// Contains symbols imported using star imports (`use foo::*`.).
     ///
     /// When star importing from multiple modules the same name may be imported more than once. This
     /// is not an error, but it is an error to use the name without a module path. To represent
     /// this, use_glob_synonyms maps identifiers to a vector of (module path, type declaration)
     /// tuples.
-    ///
-    /// use_item_synonyms contains symbols imported using item imports (`use foo::bar`).
+    pub(crate) use_glob_synonyms: GlobSynonyms,
+    /// Contains symbols imported using item imports (`use foo::bar`).
     ///
     /// For aliased item imports `use ::foo::bar::Baz as Wiz` the map key is `Wiz`. `Baz` is stored
     /// as the optional source identifier for error reporting purposes.
-    pub(crate) use_glob_synonyms: GlobSynonyms,
     pub(crate) use_item_synonyms: ItemSynonyms,
     /// If there is a storage declaration (which are only valid in contracts), store it here.
     pub(crate) declared_storage: Option<DeclRefStorage>,
@@ -96,11 +90,13 @@ impl Items {
         &self.symbols
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_storage_load(
         &self,
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
+        namespace_names: &[Ident],
         fields: &[Ident],
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
@@ -112,6 +108,7 @@ impl Items {
                     handler,
                     engines,
                     namespace,
+                    namespace_names,
                     fields,
                     storage_fields,
                     storage_keyword_span,
@@ -438,11 +435,11 @@ impl Items {
              item: &ResolvedDeclaration,
              const_shadowing_mode: ConstShadowingMode| {
                 match (decl, item) {
-                    (ResolvedDeclaration::Parsed(_decl), ResolvedDeclaration::Parsed(_item)) => {
-                        // TODO: Do not handle any shadowing errors while handling parsed declarations yet,
-                        // or else we will emit errors in a different order from the source code order.
-                        // Update this once the full AST resolving pass is in.
-                    }
+                    // TODO: Do not handle any shadowing errors while handling parsed declarations yet,
+                    // or else we will emit errors in a different order from the source code order.
+                    // Update this once the full AST resolving pass is in.
+                    (ResolvedDeclaration::Typed(_decl), ResolvedDeclaration::Parsed(_item)) => {}
+                    (ResolvedDeclaration::Parsed(_decl), ResolvedDeclaration::Parsed(_item)) => {}
                     (ResolvedDeclaration::Typed(decl), ResolvedDeclaration::Typed(item)) => {
                         append_shadowing_error_typed(
                             ident,
@@ -471,12 +468,12 @@ impl Items {
         if let Some((ident, (imported_ident, _, decl, _))) =
             self.use_item_synonyms.get_key_value(&name)
         {
-            append_shadowing_error_typed(
+            append_shadowing_error(
                 ident,
                 decl,
                 true,
                 imported_ident.is_some(),
-                item.expect_typed_ref(),
+                &item,
                 const_shadowing_mode,
             );
         }
@@ -497,7 +494,7 @@ impl Items {
         engines: &Engines,
         symbol: Ident,
         src_path: ModulePathBuf,
-        decl: &ty::TyDecl,
+        decl: &ResolvedDeclaration,
 	visibility: Visibility,
     ) {
         if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {

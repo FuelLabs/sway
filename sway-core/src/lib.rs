@@ -535,16 +535,17 @@ pub fn parsed_to_ast(
     // Build the dependency graph for the submodules.
     build_module_dep_graph(handler, &mut parse_program.root)?;
 
+    let namespace = Namespace::init_root(initial_namespace);
     // Collect the program symbols.
     let _collection_ctx =
-        ty::TyProgram::collect(handler, engines, parse_program, initial_namespace.clone())?;
+        ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
-        initial_namespace,
+        namespace,
         package_name,
         build_config,
     );

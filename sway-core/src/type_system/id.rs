@@ -480,6 +480,20 @@ impl TypeId {
         }))
     }
 
+    pub(crate) fn is_concrete(&self, engines: &Engines) -> bool {
+        let nested_types = (*self).extract_nested_types(engines);
+        !nested_types.into_iter().any(|x| {
+            matches!(
+                x,
+                TypeInfo::UnknownGeneric { .. }
+                    | TypeInfo::Custom { .. }
+                    | TypeInfo::Placeholder(..)
+                    | TypeInfo::TraitType { .. }
+                    | TypeInfo::TypeParam(..)
+            )
+        })
+    }
+
     /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
     /// ```ignore
     /// enum MyEnum<T> where T: MyAdd {
@@ -667,5 +681,9 @@ impl TypeId {
             }
         }
         found_error
+    }
+
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        engines.te().get(*self).get_type_str(engines)
     }
 }

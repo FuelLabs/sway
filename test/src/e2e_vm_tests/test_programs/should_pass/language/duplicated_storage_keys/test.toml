@@ -1,0 +1,13 @@
+category = "compile"
+
+# check: $()Two storage fields are using the same storage key.
+# nextln: $()First field: storage.f1
+# nextln: $()Second field: storage.f2
+# nextln: $()Key: 36389D1013642DCB070193FC48B0316E9DFDFEF1860096DC5957E3EB44430B83
+
+# check: $()Two storage fields are using the same storage key.
+# nextln: $()First field: storage::ns1.f3
+# nextln: $()Second field: storage::ns2.f4
+# nextln: $()Key: 5F4C20CE4BD128E5393A4C2B82007DAC795FA0006D01ACF8DB4C42632BC680CA
+
+expected_warnings = 6
