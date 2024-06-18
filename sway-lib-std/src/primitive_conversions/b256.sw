@@ -8,12 +8,12 @@ use ::b512::B512;
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
-        if b.len() > 32 {
+        if b.len() != 32 {
             None
         } else {
             let mut val = 0x0000000000000000000000000000000000000000000000000000000000000000;
             let ptr = __addr_of(val);
-            b.ptr().copy_bytes_to(ptr.add::<u8>(32 - b.len()), b.len());
+            b.ptr().copy_to::<b256>(ptr, 1);
             Some(val)
         }
     }
