@@ -5,7 +5,7 @@ use crate::{
     },
     metadata::MetadataManager,
     semantic_analysis::{
-        namespace::{self, Namespace},
+        namespace::{self},
         TypeCheckContext,
     },
     BuildConfig, Engines,
@@ -27,9 +27,8 @@ impl TyProgram {
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        initial_namespace: namespace::Root,
+        namespace: namespace::Namespace,
     ) -> Result<SymbolCollectionContext, ErrorEmitted> {
-        let namespace = Namespace::init_root(initial_namespace);
         let mut ctx = SymbolCollectionContext::new(namespace);
         let ParseProgram { root, kind: _ } = parsed;
 
@@ -39,13 +38,13 @@ impl TyProgram {
 
     /// Type-check the given parsed program to produce a typed program.
     ///
-    /// The given `initial_namespace` acts as an initial state for each module within this program.
+    /// The given `namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.
     pub fn type_check(
         handler: &Handler,
         engines: &Engines,
         parsed: &ParseProgram,
-        initial_namespace: namespace::Root,
+        mut namespace: namespace::Namespace,
         package_name: &str,
         build_config: Option<&BuildConfig>,
     ) -> Result<Self, ErrorEmitted> {
@@ -56,7 +55,6 @@ impl TyProgram {
                     new_encoding: false,
                 });
 
-        let mut namespace = Namespace::init_root(initial_namespace);
         let mut ctx = TypeCheckContext::from_root(&mut namespace, engines, experimental)
             .with_kind(parsed.kind);
 

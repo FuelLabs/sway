@@ -12,8 +12,8 @@ impl ScriptCallHandler {
 
     /// Generate a new call handler for calling script main function from the json abi.
     ///
-    /// Proviede json abi is used for determining the argument types, this is required as the data
-    /// encoding is requires the type of the data.
+    /// Provide json abi is used for determining the argument types, this is required as the data
+    /// encoding is requiring the type of the data.
     pub(crate) fn from_json_abi_str(json_abi_str: &str) -> anyhow::Result<Self> {
         let full_abi = FullProgramABI::from_json_abi(json_abi_str)?;
         // Note: using .expect() here is safe since a script without a main function is a compile
