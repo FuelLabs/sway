@@ -1645,17 +1645,20 @@ pub fn dependency_namespace(
         if let Some(core_node) = find_core_dep(graph, node) {
             let core_namespace = &lib_namespace_map[&core_node];
             root_module.insert_submodule(CORE.to_string(), core_namespace.clone());
+            core_added = true;
         }
     }
 
     let mut root = namespace::Root::from(root_module);
 
-    let _ = root.star_import_with_reexports(
-        &Handler::default(),
-        engines,
-        &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
-        &[],
-    );
+    if core_added {
+        let _ = root.star_import_with_reexports(
+            &Handler::default(),
+            engines,
+            &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
+            &[],
+        );
+    }
 
     if has_std_dep(graph, node) {
         let _ = root.star_import_with_reexports(
