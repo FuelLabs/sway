@@ -459,20 +459,26 @@ impl Dependencies {
                 })
             }
             Declaration::StorageDeclaration(decl_id) => {
-                let StorageDeclaration { fields, .. } = &*engines.pe().get_storage(decl_id);
-                self.gather_from_iter(
-                    fields.iter(),
-                    |deps,
-                     StorageField {
-                         ref type_argument, ..
-                     }| {
-                        deps.gather_from_type_argument(engines, type_argument)
-                    },
-                )
+                let StorageDeclaration { entries, .. } = &*engines.pe().get_storage(decl_id);
+                self.gather_from_iter(entries.iter(), |deps, entry| {
+                    deps.gather_from_storage_entry(engines, entry)
+                })
             }
             Declaration::TypeAliasDeclaration(decl_id) => {
                 let TypeAliasDeclaration { ty, .. } = &*engines.pe().get_type_alias(decl_id);
                 self.gather_from_type_argument(engines, ty)
+            }
+        }
+    }
+
+    fn gather_from_storage_entry(self, engines: &Engines, entry: &StorageEntry) -> Self {
+        match entry {
+            StorageEntry::Namespace(namespace) => self
+                .gather_from_iter(namespace.entries.iter(), |deps, entry| {
+                    deps.gather_from_storage_entry(engines, entry)
+                }),
+            StorageEntry::Field(field) => {
+                self.gather_from_type_argument(engines, &field.type_argument)
             }
         }
     }

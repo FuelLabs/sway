@@ -199,10 +199,10 @@
   ],
   "loggedTypes": [
     {
-      "logId": "1515152261580153489",
+      "logId": "14454674236531057292",
       "loggedType": {
         "name": "",
-        "type": 9,
+        "type": 10,
         "typeArguments": null
       }
     },
@@ -219,6 +219,14 @@
       "loggedType": {
         "name": "",
         "type": 1,
+        "typeArguments": null
+      }
+    },
+    {
+      "logId": "1515152261580153489",
+      "loggedType": {
+        "name": "",
+        "type": 9,
         "typeArguments": null
       }
     }
@@ -349,6 +357,12 @@
       "components": null,
       "type": "u64",
       "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 10,
       "typeParameters": null
     }
   ]
