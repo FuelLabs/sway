@@ -1,5 +1,7 @@
 library;
 
+mod eq;
+
 #[test]
 fn result_is_ok() {
     use std::bytes::Bytes;

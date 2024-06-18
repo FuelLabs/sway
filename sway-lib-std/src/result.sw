@@ -269,3 +269,17 @@ impl<T, E> Result<T, E> {
     // - `ok(self) -> Option<T>`
     // - `err(self) -> Option<E>`
 }
+
+impl<T, E> Eq for Result<T, E> 
+where
+    T: Eq,
+    E: Eq,
+{
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Self::Ok(a), Self::Ok(b)) => a == b,
+            (Self::Err(a), Self::Err(b)) => a == b,
+            _ => false,
+        }
+    }
+}
