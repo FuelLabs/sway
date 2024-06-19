@@ -332,6 +332,7 @@ impl ty::TyExpression {
                 Self::type_check_array_index(handler, ctx, prefix, index, span)
             }
             ExpressionKind::StorageAccess(StorageAccessExpression {
+                namespace_names,
                 field_names,
                 storage_keyword_span,
             }) => {
@@ -342,6 +343,7 @@ impl ty::TyExpression {
                 Self::type_check_storage_access(
                     handler,
                     ctx,
+                    namespace_names,
                     field_names,
                     storage_keyword_span.clone(),
                     &span,
@@ -1051,6 +1053,7 @@ impl ty::TyExpression {
     fn type_check_storage_access(
         handler: &Handler,
         ctx: TypeCheckContext,
+        namespace_names: &[Ident],
         checkee: &[Ident],
         storage_keyword_span: Span,
         span: &Span,
@@ -1079,6 +1082,7 @@ impl ty::TyExpression {
                     handler,
                     ctx.engines,
                     ctx.namespace(),
+                    namespace_names,
                     checkee,
                     &storage_fields,
                     storage_keyword_span.clone(),

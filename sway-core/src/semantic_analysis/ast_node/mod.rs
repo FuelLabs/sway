@@ -34,7 +34,9 @@ impl ty::TyAstNode {
         node: &AstNode,
     ) -> Result<(), ErrorEmitted> {
         match node.content.clone() {
-            AstNodeContent::UseStatement(_stmt) => {}
+            AstNodeContent::UseStatement(stmt) => {
+                collect_use_statement(handler, engines, ctx, &stmt);
+            }
             AstNodeContent::IncludeStatement(_i) => (),
             AstNodeContent::Declaration(decl) => ty::TyDecl::collect(handler, engines, ctx, decl)?,
             AstNodeContent::Expression(_expr) => (),
@@ -147,6 +149,8 @@ fn handle_item_trait_imports(
     let dst_mod = ctx.namespace.module(engines);
 
     for (_, (_, src, decl)) in dst_mod.current_items().use_item_synonyms.iter() {
+        let decl = decl.expect_typed_ref();
+
         let src_mod = root_mod.lookup_submodule(handler, engines, src)?;
 
         //  if this is an enum or struct or function, import its implementations
@@ -184,6 +188,103 @@ fn handle_item_trait_imports(
     Ok(())
 }
 
+fn collect_use_statement(
+    handler: &Handler,
+    engines: &Engines,
+    ctx: &mut SymbolCollectionContext,
+    stmt: &UseStatement,
+) {
+    let mut is_external = false;
+    if let Some(submodule) = ctx
+        .namespace
+        .module(engines)
+        .submodule(engines, &[stmt.call_path[0].clone()])
+    {
+        is_external |= submodule.read(engines, |m| m.is_external);
+    }
+    // We create an inner module for each module being processed during the collection.
+    // This does not play well with the existing way we use to lookup an external module.
+    // So check again starting from the root to make sure we find the right module.
+    // Clean this up once paths are normalized before collection and we can just rely on
+    // absolute paths.
+    if let Some(submodule) = ctx
+        .namespace
+        .root_module()
+        .submodule(engines, &[stmt.call_path[0].clone()])
+    {
+        is_external |= submodule.read(engines, |m| m.is_external);
+    }
+    let path = if is_external || stmt.is_absolute {
+        stmt.call_path.clone()
+    } else {
+        ctx.namespace.prepend_module_path(&stmt.call_path)
+    };
+    let _ = match stmt.import_type {
+        ImportType::Star => {
+            // try a standard starimport first
+            let star_import_handler = Handler::default();
+            let import = ctx.star_import(&star_import_handler, engines, &path);
+            if import.is_ok() {
+                handler.append(star_import_handler);
+                import
+            } else {
+                // if it doesn't work it could be an enum star import
+                if let Some((enum_name, path)) = path.split_last() {
+                    let variant_import_handler = Handler::default();
+                    let variant_import =
+                        ctx.variant_star_import(&variant_import_handler, engines, path, enum_name);
+                    if variant_import.is_ok() {
+                        handler.append(variant_import_handler);
+                        variant_import
+                    } else {
+                        handler.append(star_import_handler);
+                        import
+                    }
+                } else {
+                    handler.append(star_import_handler);
+                    import
+                }
+            }
+        }
+        ImportType::SelfImport(_) => ctx.self_import(handler, engines, &path, stmt.alias.clone()),
+        ImportType::Item(ref s) => {
+            // try a standard item import first
+            let item_import_handler = Handler::default();
+            let import =
+                ctx.item_import(&item_import_handler, engines, &path, s, stmt.alias.clone());
+
+            if import.is_ok() {
+                handler.append(item_import_handler);
+                import
+            } else {
+                // if it doesn't work it could be an enum variant import
+                if let Some((enum_name, path)) = path.split_last() {
+                    let variant_import_handler = Handler::default();
+                    let variant_import = ctx.variant_import(
+                        &variant_import_handler,
+                        engines,
+                        path,
+                        enum_name,
+                        s,
+                        stmt.alias.clone(),
+                    );
+                    if variant_import.is_ok() {
+                        handler.append(variant_import_handler);
+                        variant_import
+                    } else {
+                        handler.append(item_import_handler);
+                        import
+                    }
+                } else {
+                    handler.append(item_import_handler);
+                    import
+                }
+            }
+        }
+    };
+}
+
+// To be removed once TypeCheckContext is ported to use SymbolCollectionContext.
 fn handle_use_statement(
     ctx: &mut TypeCheckContext<'_>,
     engines: &Engines,

@@ -5,23 +5,24 @@ use basic_storage_abi::*;
 const C1 = 1;
 const S5 = __to_str_array("aaaaa");
 
-#[namespace(my_storage_namespace)]
 storage {
-    c1: u64 = C1,
-    str0: str[0] = __to_str_array(""),
-    str1: str[1] = __to_str_array("a"),
-    str2: str[2] = __to_str_array("aa"),
-    str3: str[3] = __to_str_array("aaa"),
-    str4: str[4] = __to_str_array("aaaa"),
-    str5: str[5] = S5,
-    str6: str[6] = __to_str_array("aaaaaa"),
-    str7: str[7] = __to_str_array("aaaaaaa"),
-    str8: str[8] = __to_str_array("aaaaaaaa"),
-    str9: str[9] = __to_str_array("aaaaaaaaa"),
-    str10: str[10] = __to_str_array("aaaaaaaaaa"),
+    my_storage_namespace {
+        c1: u64 = C1,
+        str0: str[0] = __to_str_array(""),
+        str1: str[1] = __to_str_array("a"),
+        str2: str[2] = __to_str_array("aa"),
+        str3: str[3] = __to_str_array("aaa"),
+        str4: str[4] = __to_str_array("aaaa"),
+        str5: str[5] = S5,
+        str6: str[6] = __to_str_array("aaaaaa"),
+        str7: str[7] = __to_str_array("aaaaaaa"),
+        str8: str[8] = __to_str_array("aaaaaaaa"),
+        str9: str[9] = __to_str_array("aaaaaaaaa"),
+        str10: str[10] = __to_str_array("aaaaaaaaaa"),
 
-    const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
-    const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
+        const_u256: u256 = 0x0000000000000000000000000000000000000000000000000000000001234567u256,
+        const_b256: b256 = 0x0000000000000000000000000000000000000000000000000000000001234567,
+    }
 }
 
 impl BasicStorage for Contract {
@@ -261,30 +262,30 @@ fn test_storage() {
         _ => assert(false),
     }
 
-    assert(storage.str0.try_read().is_none());
+    assert(storage::my_storage_namespace.str0.try_read().is_none());
 
-    assert_streq(storage.str1.read(), "a");
-    assert_streq(storage.str2.read(), "aa");
-    assert_streq(storage.str3.read(), "aaa");
-    assert_streq(storage.str4.read(), "aaaa");
-    assert_streq(storage.str5.read(), "aaaaa");
-    assert_streq(storage.str6.read(), "aaaaaa");
-    assert_streq(storage.str7.read(), "aaaaaaa");
-    assert_streq(storage.str8.read(), "aaaaaaaa");
-    assert_streq(storage.str9.read(), "aaaaaaaaa");
-    assert_streq(storage.str10.read(), "aaaaaaaaaa");
+    assert_streq(storage::my_storage_namespace.str1.read(), "a");
+    assert_streq(storage::my_storage_namespace.str2.read(), "aa");
+    assert_streq(storage::my_storage_namespace.str3.read(), "aaa");
+    assert_streq(storage::my_storage_namespace.str4.read(), "aaaa");
+    assert_streq(storage::my_storage_namespace.str5.read(), "aaaaa");
+    assert_streq(storage::my_storage_namespace.str6.read(), "aaaaaa");
+    assert_streq(storage::my_storage_namespace.str7.read(), "aaaaaaa");
+    assert_streq(storage::my_storage_namespace.str8.read(), "aaaaaaaa");
+    assert_streq(storage::my_storage_namespace.str9.read(), "aaaaaaaaa");
+    assert_streq(storage::my_storage_namespace.str10.read(), "aaaaaaaaaa");
 
-    assert_eq(storage.c1.read(), C1);
-    storage.c1.write(2);
-    assert_eq(storage.c1.read(), 2);
+    assert_eq(storage::my_storage_namespace.c1.read(), C1);
+    storage::my_storage_namespace.c1.write(2);
+    assert_eq(storage::my_storage_namespace.c1.read(), 2);
     
-    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
-    storage.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
-    assert_eq(storage.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);
+    assert_eq(storage::my_storage_namespace.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567u256);
+    storage::my_storage_namespace.const_u256.write(0x0000000000000000000000000000000000000000000000000000000012345678u256);
+    assert_eq(storage::my_storage_namespace.const_u256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678u256);
 
-    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
-    storage.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
-    assert_eq(storage.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(storage::my_storage_namespace.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000001234567);
+    storage::my_storage_namespace.const_b256.write(0x0000000000000000000000000000000000000000000000000000000012345678);
+    assert_eq(storage::my_storage_namespace.const_b256.read(), 0x0000000000000000000000000000000000000000000000000000000012345678);
 }
 
 // If these comparisons are done inline just above then it blows out the register allocator due to

@@ -1,7 +1,7 @@
 use super::{
     convert::*,
     lexical_map::LexicalMap,
-    storage::{add_to_b256, get_storage_key},
+    storage::{add_to_b256, get_storage_field_id, get_storage_key},
     types::*,
     CompiledFunctionCache,
 };
@@ -11,7 +11,10 @@ use crate::{
         compile_constant_expression, compile_constant_expression_to_constant,
     },
     language::{
-        ty::{self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpressionVariant},
+        ty::{
+            self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpressionVariant,
+            TyStorageField,
+        },
         *,
     },
     metadata::MetadataManager,
@@ -28,7 +31,6 @@ use sway_types::{
     ident::Ident,
     integer_bits::IntegerBits,
     span::{Span, Spanned},
-    state::StateIndex,
     u256::U256,
     Named,
 };
@@ -595,9 +597,22 @@ impl<'eng> FnCompiler<'eng> {
                 Ok(TerminatorValue::new(val, context))
             }
             ty::TyExpressionVariant::StorageAccess(access) => {
-                let span_md_idx = md_mgr.span_to_md(context, &access.span());
-                let ns = access.namespace.as_ref().map(|ns| ns.as_str());
-                self.compile_storage_access(context, ns, &access.ix, &access.fields, span_md_idx)
+                let span_md_idx: Option<MetadataIndex> = md_mgr.span_to_md(context, &access.span());
+                let key = TyStorageField::get_key_expression_const(
+                    &access.key_expression.clone().map(|v| *v),
+                    self.engines,
+                    context,
+                    md_mgr,
+                    self.module,
+                )?;
+                self.compile_storage_access(
+                    context,
+                    access.storage_field_names.clone(),
+                    access.struct_field_names.clone(),
+                    key,
+                    &access.fields,
+                    span_md_idx,
+                )
             }
             ty::TyExpressionVariant::IntrinsicFunction(kind) => {
                 self.compile_intrinsic_function(context, md_mgr, kind, ast_expr.span.clone())
@@ -3678,8 +3693,9 @@ impl<'eng> FnCompiler<'eng> {
     fn compile_storage_access(
         &mut self,
         context: &mut Context,
-        ns: Option<&str>,
-        ix: &StateIndex,
+        storage_field_names: Vec<String>,
+        struct_field_names: Vec<String>,
+        key: Option<U256>,
         fields: &[ty::TyStorageAccessDescriptor],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
@@ -3704,7 +3720,15 @@ impl<'eng> FnCompiler<'eng> {
 
         // Do the actual work. This is a recursive function because we want to drill down
         // to load each primitive type in the storage field in its own storage slot.
-        self.compile_storage_read(context, ns, ix, &field_idcs, &base_type, span_md_idx)
+        self.compile_storage_read(
+            context,
+            storage_field_names,
+            struct_field_names,
+            key,
+            &field_idcs,
+            &base_type,
+            span_md_idx,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -3806,11 +3830,13 @@ impl<'eng> FnCompiler<'eng> {
         Ok(TerminatorValue::new(val, context))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn compile_storage_read(
         &mut self,
         context: &mut Context,
-        ns: Option<&str>,
-        ix: &StateIndex,
+        storage_field_names: Vec<String>,
+        struct_field_names: Vec<String>,
+        key: Option<U256>,
         indices: &[u64],
         base_type: &Type,
         span_md_idx: Option<MetadataIndex>,
@@ -3847,7 +3873,10 @@ impl<'eng> FnCompiler<'eng> {
             // plus the offset, in number of slots, computed above. The offset within this
             // particular slot is the remaining offset, in words.
             (
-                add_to_b256(get_storage_key::<u64>(ns, ix, &[]), offset_in_slots),
+                add_to_b256(
+                    get_storage_key(storage_field_names.clone(), key.clone()),
+                    offset_in_slots,
+                ),
                 offset_remaining,
             )
         };
@@ -3902,7 +3931,7 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Store the field identifier as the third field in the `StorageKey` struct
-        let unique_field_id = get_storage_key(ns, ix, indices); // use the indices to get a field id that is unique even for zero-sized values that live in the same slot
+        let unique_field_id = get_storage_field_id(storage_field_names, struct_field_names); // use the struct_field_names to get a field id that is unique even for zero-sized values that live in the same slot
         let field_id = convert_literal_to_value(context, &Literal::B256(unique_field_id.into()))
             .add_metadatum(context, span_md_idx);
         let gep_2_val =

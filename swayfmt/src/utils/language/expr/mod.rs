@@ -977,13 +977,6 @@ fn get_field_width(
 
 // Leaf Spans
 
-// TODO: Find a better way of handling Boxed version
-impl LeafSpans for Box<Expr> {
-    fn leaf_spans(&self) -> Vec<ByteSpan> {
-        expr_leaf_spans(self)
-    }
-}
-
 impl LeafSpans for Expr {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
         expr_leaf_spans(self)

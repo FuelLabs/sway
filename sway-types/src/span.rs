@@ -239,6 +239,12 @@ pub trait Spanned {
     fn span(&self) -> Span;
 }
 
+impl<T: Spanned> Spanned for Box<T> {
+    fn span(&self) -> Span {
+        (**self).span()
+    }
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct LineCol {
     pub line: usize,

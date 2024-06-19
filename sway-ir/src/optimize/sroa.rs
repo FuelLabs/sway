@@ -268,7 +268,7 @@ pub fn sroa(
                 }
                 if let Some(dst_sym) = dst_sym {
                     // The dst symbol is a candidate. So it has been split into scalars.
-                    // Store to each of these from the SSA variable we crated above.
+                    // Store to each of these from the SSA variable we created above.
                     let base_offset = combine_indices(context, dst_val_ptr)
                         .and_then(|indices| {
                             dst_sym
