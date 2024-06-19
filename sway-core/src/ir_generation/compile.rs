@@ -636,23 +636,30 @@ fn compile_abi_method(
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let handler = Handler::default();
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
-    let (errors, _warnings) = handler.consume();
-    let selector = match get_selector_result.ok() {
-        Some(selector) => selector,
-        None => {
-            return if !errors.is_empty() {
-                Err(vec![errors[0].clone()])
-            } else {
-                Err(vec![CompileError::InternalOwned(
-                    format!(
-                        "Cannot generate selector for ABI method: {}",
-                        ast_fn_decl.name.as_str()
-                    ),
-                    ast_fn_decl.name.span(),
-                )])
-            };
-        }
+
+    // method selector is only used for encoding v0
+    let selector = if context.experimental.new_encoding {
+        None
+    } else {
+        let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
+        let (errors, _warnings) = handler.consume();
+        let selector = match get_selector_result.ok() {
+            Some(selector) => selector,
+            None => {
+                return if !errors.is_empty() {
+                    Err(vec![errors[0].clone()])
+                } else {
+                    Err(vec![CompileError::InternalOwned(
+                        format!(
+                            "Cannot generate selector for ABI method: {}",
+                            ast_fn_decl.name.as_str()
+                        ),
+                        ast_fn_decl.name.span(),
+                    )])
+                };
+            }
+        };
+        Some(selector)
     };
 
     compile_fn(
@@ -663,7 +670,7 @@ fn compile_abi_method(
         &ast_fn_decl,
         // ABI are only entries when the "new encoding" is off
         !context.experimental.new_encoding,
-        Some(selector),
+        selector,
         logged_types_map,
         messages_types_map,
         None,

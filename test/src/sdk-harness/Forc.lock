@@ -325,6 +325,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "string_slice_predicate"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
 name = "superabi"
 source = "member"
 dependencies = ["std"]
