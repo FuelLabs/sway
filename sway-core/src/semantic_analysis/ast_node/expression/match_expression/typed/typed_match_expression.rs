@@ -1,25 +1,35 @@
-use std::{collections::BTreeMap, ops::ControlFlow};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::ControlFlow,
+};
 
-use sway_ast::Literal;
+use itertools::Itertools;
+use sway_ast::{literal::LitString, Literal};
 use sway_error::handler::{ErrorEmitted, Handler};
-use sway_types::{Span, Spanned};
+use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
     compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
     language::{
         parsed::*,
-        ty::{self, TyExpression, TyExpressionVariant},
+        ty::{
+            self, TyAsmRegisterDeclaration, TyAstNode, TyCodeBlock, TyExpression,
+            TyExpressionVariant, TyIntrinsicFunctionKind, TyMatchExpression,
+        },
+        AsmOp, AsmRegister,
     },
     semantic_analysis::{
         ast_node::expression::typed_expression::instantiate_if_expression,
         expression::match_expression::typed::instantiate::Instantiate, TypeCheckContext,
     },
-    CompileError, TypeId, TypeInfo,
+    CompileError, TypeArgument, TypeId, TypeInfo,
 };
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 struct TrieNode {
-    next: BTreeMap<char, usize>,
+    output: Option<usize>,
+    previous: Option<usize>,
+    next: BTreeMap<String, usize>,
 }
 
 impl ty::TyMatchExpression {
@@ -99,7 +109,61 @@ impl ty::TyMatchExpression {
         mut ctx: TypeCheckContext<'_>,
         handler: &Handler,
     ) -> Result<TyExpression, ErrorEmitted> {
-        let mut branches = self
+        fn revert(never_type_id: TypeId) -> TyAstNode {
+            TyAstNode {
+                content: ty::TyAstNodeContent::Expression(TyExpression {
+                    expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                        kind: sway_ast::Intrinsic::Revert,
+                        arguments: vec![TyExpression {
+                            expression: TyExpressionVariant::Literal(
+                                crate::language::Literal::U64(17),
+                            ),
+                            return_type: never_type_id,
+                            span: Span::dummy(),
+                        }],
+                        type_arguments: vec![],
+                        span: Span::dummy(),
+                    }),
+                    return_type: never_type_id,
+                    span: Span::dummy(),
+                }),
+                span: Span::dummy(),
+            }
+        }
+
+        let never_type_id = ctx.engines.te().insert(&ctx.engines, TypeInfo::Never, None);
+
+        let branch_return_type_id = self
+            .branches
+            .iter()
+            .map(|x| x.result.return_type)
+            .next()
+            .unwrap();
+
+        let matched_value = self
+            .branches
+            .iter()
+            .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
+                Some(TyExpressionVariant::FunctionApplication { arguments, .. }) => {
+                    Some(&arguments[0].1)
+                }
+                _ => None,
+            })
+            .next()
+            .unwrap();
+
+        let wildcard_ast_node = self
+            .branches
+            .iter()
+            .filter(|x| x.condition.is_none())
+            .map(|x| TyAstNode {
+                content: ty::TyAstNodeContent::Expression(x.result.clone()),
+                span: Span::dummy(),
+            })
+            .next()
+            .unwrap_or_else(|| revert(never_type_id));
+
+        let branches = self
             .branches
             .iter()
             .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
@@ -116,9 +180,10 @@ impl ty::TyMatchExpression {
             .collect::<Vec<_>>();
 
         let mut nodes = vec![TrieNode::default()];
-        for b in branches {
+        for (i, b) in branches.iter().enumerate() {
             let mut current = 0;
             for c in b.chars() {
+                let c = c.to_string();
                 if let Some(next) = nodes[current].next.get(&c) {
                     current = *next;
                     continue;
@@ -129,10 +194,291 @@ impl ty::TyMatchExpression {
                 current = next;
                 nodes.push(TrieNode::default());
             }
-        }
-        dbg!(nodes);
 
-        todo!("desugar_to_radix_tree");
+            nodes[current].output = Some(i);
+        }
+
+        let mut packed_strings = BTreeSet::new();
+
+        // compress trie
+        let mut q = vec![0];
+        while let Some(i) = q.pop() {
+            let mut current = nodes[i].clone();
+            if current.next.len() == 1 {
+                let edge = current.next.pop_first().unwrap();
+                let mut next = nodes[edge.1].clone();
+                if next.next.len() == 1 {
+                    let next_edge = next.next.pop_first().unwrap();
+                    let compressed_key = format!("{}{}", edge.0, next_edge.0);
+
+                    nodes[i].next.clear();
+                    nodes[i].next.insert(compressed_key, next_edge.1);
+                    nodes[i].output = next.output.take();
+
+                    q.push(i);
+                } else {
+                    packed_strings.insert(edge.0.clone());
+
+                    nodes[edge.1].previous = Some(i);
+                    q.push(edge.1);
+                }
+            } else {
+                for (prefix, v) in current.next.iter() {
+                    packed_strings.insert(prefix.clone());
+
+                    nodes[*v].previous = Some(i);
+                    q.push(*v);
+                }
+            }
+        }
+
+        //generate code
+        fn generate_code(
+            s: &TyMatchExpression,
+            matched_value: &TyExpression,
+            packed_strings: &str,
+            addr_of_packed_strings: &TyExpression,
+            nodes: &[TrieNode],
+            slice_pos: usize,
+            current_node_index: usize,
+            never_type_id: TypeId,
+            bool_type_id: TypeId,
+            u64_type_id: TypeId,
+            branch_return_type_id: TypeId,
+            depth: usize,
+            block_when_all_fail: TyAstNode,
+        ) -> TyAstNode {
+            let current = &nodes[current_node_index];
+            let mut contents = vec![];
+
+            if let Some(output) = current.output {
+                assert!(current.next.len() == 0);
+                // println!("{}return {:?}", " ".repeat(depth * 4), output);
+                return TyAstNode {
+                    content: ty::TyAstNodeContent::Expression(s.branches[output].result.clone()),
+                    span: Span::dummy(),
+                };
+            }
+
+            for (prefix, next_node_index) in current.next.iter() {
+                let start = current_node_index;
+                let end = current_node_index + prefix.len();
+                let eq_len: u64 = end as u64 - start as u64;
+                // println!(
+                //     "{}if str[{start}..{end}] == \"{}\" {{ }}",
+                //     " ".repeat(depth * 4),
+                //     prefix,
+                // );
+
+                let inner_node = generate_code(
+                    s,
+                    matched_value,
+                    packed_strings,
+                    addr_of_packed_strings,
+                    nodes,
+                    end,
+                    *next_node_index,
+                    never_type_id,
+                    bool_type_id,
+                    u64_type_id,
+                    branch_return_type_id,
+                    depth + 1,
+                    revert(never_type_id),
+                );
+
+                let prefix_pos = packed_strings
+                    .find(prefix)
+                    .expect("prefix should be inside this string");
+
+                let expression = TyExpressionVariant::AsmExpression {
+                    registers: vec![
+                        TyAsmRegisterDeclaration {
+                            name: Ident::new_no_span("slice".into()),
+                            initializer: Some(matched_value.clone()),
+                        },
+                        TyAsmRegisterDeclaration {
+                            name: Ident::new_no_span("prefix".into()),
+                            initializer: Some(addr_of_packed_strings.clone()),
+                        },
+                        TyAsmRegisterDeclaration {
+                            name: Ident::new_no_span("slice_ptr".into()),
+                            initializer: None,
+                        },
+                        TyAsmRegisterDeclaration {
+                            name: Ident::new_no_span("prefix_ptr".into()),
+                            initializer: None,
+                        },
+                        TyAsmRegisterDeclaration {
+                            name: Ident::new_no_span("len".into()),
+                            initializer: Some(TyExpression {
+                                expression: TyExpressionVariant::Literal(
+                                    crate::language::Literal::U64(eq_len),
+                                ),
+                                return_type: u64_type_id,
+                                span: Span::dummy(),
+                            }),
+                        },
+                        TyAsmRegisterDeclaration {
+                            name: Ident::new_no_span("is_eq".into()),
+                            initializer: None,
+                        },
+                    ],
+                    body: vec![
+                        AsmOp {
+                            op_name: Ident::new_no_span("addi".into()),
+                            op_args: vec![
+                                BaseIdent::new_no_span("slice_ptr".into()),
+                                BaseIdent::new_no_span("slice".into()),
+                            ],
+                            immediate: Some(BaseIdent::new_no_span(format!("i{}", slice_pos))),
+                            span: Span::dummy(),
+                        },
+                        AsmOp {
+                            op_name: Ident::new_no_span("addi".into()),
+                            op_args: vec![
+                                BaseIdent::new_no_span("prefix_ptr".into()),
+                                BaseIdent::new_no_span("prefix".into()),
+                            ],
+                            immediate: Some(BaseIdent::new_no_span(format!("i{}", prefix_pos))),
+                            span: Span::dummy(),
+                        },
+                        AsmOp {
+                            op_name: Ident::new_no_span("meq".into()),
+                            op_args: vec![
+                                BaseIdent::new_no_span("is_eq".into()),
+                                BaseIdent::new_no_span("slice_ptr".into()),
+                                BaseIdent::new_no_span("prefix_ptr".into()),
+                                BaseIdent::new_no_span("len".into()),
+                            ],
+                            immediate: None,
+                            span: Span::dummy(),
+                        },
+                    ],
+                    returns: Some((
+                        AsmRegister {
+                            name: "is_eq".into(),
+                        },
+                        Span::dummy(),
+                    )),
+                    whole_block_span: Span::dummy(),
+                };
+
+                let expr = TyExpression {
+                    expression: TyExpressionVariant::IfExp {
+                        condition: Box::new(TyExpression {
+                            expression,
+                            return_type: bool_type_id,
+                            span: Span::dummy(),
+                        }),
+                        then: Box::new(TyExpression {
+                            expression: TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
+                                contents: vec![inner_node],
+                                whole_block_span: Span::dummy(),
+                            }),
+                            return_type: branch_return_type_id,
+                            span: Span::dummy(),
+                        }),
+                        r#else: None,
+                    },
+                    return_type: branch_return_type_id,
+                    span: Span::dummy(),
+                };
+
+                contents.push(TyAstNode {
+                    content: ty::TyAstNodeContent::Expression(expr),
+                    span: Span::dummy(),
+                });
+            }
+
+            if current.output.is_none() {
+                contents.push(block_when_all_fail);
+            }
+
+            let block = TyExpression {
+                expression: TyExpressionVariant::CodeBlock(TyCodeBlock {
+                    contents,
+                    whole_block_span: Span::dummy(),
+                }),
+                return_type: branch_return_type_id,
+                span: Span::dummy(),
+            };
+            TyAstNode {
+                content: ty::TyAstNodeContent::Expression(block),
+                span: Span::dummy(),
+            }
+        }
+
+        let bool_type_id = ctx
+            .engines
+            .te()
+            .insert(&ctx.engines, TypeInfo::Boolean, None);
+
+        let u64_type_id = ctx.engines.te().insert(
+            &ctx.engines,
+            TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
+            None,
+        );
+
+        let string_slice_type_id =
+            ctx.engines
+                .te()
+                .insert(&ctx.engines, TypeInfo::StringSlice, None);
+
+        let ptr_string_slice_type_id = TypeInfo::Ptr(TypeArgument {
+            type_id: string_slice_type_id,
+            initial_type_id: string_slice_type_id,
+            span: Span::dummy(),
+            call_path_tree: None,
+        });
+        let ptr_string_slice_type_id =
+            ctx.engines
+                .te()
+                .insert(&ctx.engines, ptr_string_slice_type_id, None);
+
+        let packed_strings: String = packed_strings.iter().join("");
+        let packed_strings_expr = TyExpression {
+            expression: TyExpressionVariant::Literal(crate::language::Literal::String(
+                Span::from_string(packed_strings.clone()),
+            )),
+            return_type: string_slice_type_id,
+            span: Span::dummy(),
+        };
+        let addr_of_packed_strings = TyExpression {
+            expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                kind: sway_ast::Intrinsic::AddrOf,
+                arguments: vec![packed_strings_expr],
+                type_arguments: vec![],
+                span: Span::dummy(),
+            }),
+            return_type: ptr_string_slice_type_id,
+            span: Span::dummy(),
+        };
+
+        let expr = generate_code(
+            self,
+            matched_value,
+            &packed_strings,
+            &addr_of_packed_strings,
+            &nodes,
+            0,
+            0,
+            never_type_id,
+            bool_type_id,
+            u64_type_id,
+            branch_return_type_id,
+            0,
+            dbg!(wildcard_ast_node),
+        );
+
+        let block = TyCodeBlock {
+            contents: vec![expr],
+            whole_block_span: Span::dummy(),
+        };
+        Ok(TyExpression {
+            expression: TyExpressionVariant::CodeBlock(block),
+            return_type: self.return_type_id,
+            span: Span::dummy(),
+        })
     }
 
     fn desugar_to_typed_if_expression(
