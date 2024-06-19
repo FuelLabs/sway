@@ -270,7 +270,7 @@ impl<T, E> Result<T, E> {
     // - `err(self) -> Option<E>`
 }
 
-impl<T, E> Eq for Result<T, E> 
+impl<T, E> Eq for Result<T, E>
 where
     T: Eq,
     E: Eq,
