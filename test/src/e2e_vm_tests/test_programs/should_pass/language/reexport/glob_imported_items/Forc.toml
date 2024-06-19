@@ -1,9 +1,0 @@
-[project]
-authors = ["Fuel Labs <contact@fuel.sh>"]
-license = "Apache-2.0"
-name = "glob_imported_items"
-entry = "main.sw"
-implicit-std = false
-
-[dependencies]
-std = { path = "../../../../../../../../sway-lib-std" }
