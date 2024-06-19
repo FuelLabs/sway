@@ -1,8 +1,9 @@
 use crate::{
     engine_threading::*,
     language::{parsed::*, *},
+    namespace::LexicalScopeId,
     transform::{self, AttributeKind},
-    type_system::*, namespace::LexicalScopeId,
+    type_system::*,
 };
 use sway_types::{ident::Ident, span::Span, Named, Spanned};
 

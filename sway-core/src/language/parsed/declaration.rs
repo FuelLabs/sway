@@ -21,7 +21,10 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
-use sway_error::{handler::{Handler, ErrorEmitted}, error::CompileError};
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Span, Spanned};
 pub use type_alias::*;
 pub use variable::*;
