@@ -74,14 +74,20 @@ impl From<raw_slice> for RawBytes {
     /// assert(raw_bytes.capacity == 3);
     /// ```
     fn from(slice: raw_slice) -> Self {
+        let cap = slice.number_of_bytes();
+        let ptr = alloc_bytes(cap);
+        asm(to: ptr, from: slice.ptr(), cap: cap) {
+            mcp to from cap;
+        }
         Self {
-            ptr: slice.ptr(),
-            cap: slice.number_of_bytes(),
+            ptr,
+            cap,
         }
     }
 }
 
 /// A type used to represent raw bytes.
+/// It has ownership over the bytes, stored in a heap-allocated buffer.
 pub struct Bytes {
     /// A barebones struct for the bytes.
     buf: RawBytes,
@@ -915,29 +921,35 @@ impl Clone for Bytes {
 
 impl AbiEncode for Bytes {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        let mut buffer = self.len.abi_encode(buffer);
-
-        let mut i = 0;
-        while i < self.len {
-            let item = self.get(i).unwrap();
-            buffer = item.abi_encode(buffer);
-            i += 1;
-        }
-
-        buffer
+        self.as_raw_slice().abi_encode(buffer)
     }
 }
 
 impl AbiDecode for Bytes {
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
         let len = u64::abi_decode(buffer);
-        let data = buffer.read_bytes(len);
-        Bytes {
-            buf: RawBytes {
-                ptr: data.ptr(),
-                cap: len,
-            },
-            len,
-        }
+        let slice= buffer.read_bytes(len);
+        Bytes::from(slice)
     }
 }
+
+#[test]
+fn ok_bytes_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+
+    // Check Bytes duplicates the original slice
+    let mut bytes = Bytes::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
+
+    // slice = [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
+    let encoded_bytes = Bytes::from(encoded_slice);
+    
+    // Check abi_decode duplicates the encoded slice
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    bytes.set(0, 6);
+    assert(encoded_bytes.get(0) == Some(5));
+}
+

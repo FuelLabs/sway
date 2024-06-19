@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-enum Doc {
+pub(crate) enum Doc {
     Empty,
     Space,
     Comma,
@@ -42,7 +42,7 @@ enum Doc {
 }
 
 impl Doc {
-    fn text<S: Into<String>>(s: S) -> Self {
+    pub(crate) fn text<S: Into<String>>(s: S) -> Self {
         Doc::Text(s.into())
     }
 
@@ -50,7 +50,7 @@ impl Doc {
         Doc::Line(Box::new(doc))
     }
 
-    fn text_line<S: Into<String>>(s: S) -> Self {
+    pub(crate) fn text_line<S: Into<String>>(s: S) -> Self {
         Doc::Line(Box::new(Doc::Text(s.into())))
     }
 
@@ -66,7 +66,7 @@ impl Doc {
         Doc::Parens(Box::new(Doc::list_sep(docs, Doc::Comma)))
     }
 
-    fn append(self, doc: Doc) -> Doc {
+    pub(crate) fn append(self, doc: Doc) -> Doc {
         match (&self, &doc) {
             (Doc::Empty, _) => doc,
             (_, Doc::Empty) => self,
@@ -81,7 +81,7 @@ impl Doc {
         }
     }
 
-    fn build(self) -> String {
+    pub(crate) fn build(self) -> String {
         build_doc(self, 0)
     }
 }
@@ -90,15 +90,30 @@ impl Doc {
 ///
 /// The output from this function must always be suitable for [crate::parser::parse].
 pub fn to_string(context: &Context) -> String {
+    context_print(context, &|_, doc| doc)
+}
+
+pub(crate) fn context_print(context: &Context, map_doc: &impl Fn(&Value, Doc) -> Doc) -> String {
     let mut md_namer = MetadataNamer::default();
     context
         .modules
         .iter()
         .fold(Doc::Empty, |doc, (_, module)| {
-            doc.append(module_to_doc(context, &mut md_namer, module))
+            doc.append(module_to_doc(context, &mut md_namer, module, map_doc))
         })
         .append(md_namer.to_doc(context))
         .build()
+}
+
+pub(crate) fn block_print(
+    context: &Context,
+    function: Function,
+    block: Block,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
+) -> String {
+    let mut md_namer = MetadataNamer::default();
+    let mut namer = Namer::new(function);
+    block_to_doc(context, &mut md_namer, &mut namer, &block, map_doc).build()
 }
 
 pub struct ModulePrinterResult;
@@ -116,7 +131,8 @@ pub fn module_printer_pass(
         module_to_doc(
             context,
             &mut md_namer,
-            context.modules.get(module.0).unwrap()
+            context.modules.get(module.0).unwrap(),
+            &|_, doc| doc
         )
         .append(md_namer.to_doc(context))
         .build()
@@ -132,7 +148,8 @@ pub fn module_print(context: &Context, _analyses: &AnalysisResults, module: Modu
         module_to_doc(
             context,
             &mut md_namer,
-            context.modules.get(module.0).unwrap()
+            context.modules.get(module.0).unwrap(),
+            &|_, doc| doc
         )
         .append(md_namer.to_doc(context))
         .build()
@@ -148,7 +165,8 @@ pub fn function_print(context: &Context, function: Function) {
             context,
             &mut md_namer,
             &mut Namer::new(function),
-            context.functions.get(function.0).unwrap()
+            context.functions.get(function.0).unwrap(),
+            &|_, doc| doc
         )
         .append(md_namer.to_doc(context))
         .build()
@@ -170,6 +188,7 @@ fn module_to_doc<'a>(
     context: &'a Context,
     md_namer: &mut MetadataNamer,
     module: &'a ModuleContent,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> Doc {
     Doc::line(Doc::Text(format!(
         "{} {{",
@@ -207,6 +226,7 @@ fn module_to_doc<'a>(
                         md_namer,
                         &mut Namer::new(*function),
                         &context.functions[function.0],
+                        map_doc,
                     )
                 })
                 .collect(),
@@ -268,6 +288,7 @@ fn function_to_doc<'a>(
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     function: &'a FunctionContent,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> Doc {
     let public = if function.is_public { "pub " } else { "" };
     let entry = if function.is_entry { "entry " } else { "" };
@@ -373,7 +394,7 @@ fn function_to_doc<'a>(
                     function
                         .blocks
                         .iter()
-                        .map(|block| block_to_doc(context, md_namer, namer, block))
+                        .map(|block| block_to_doc(context, md_namer, namer, block, map_doc))
                         .collect(),
                     Doc::line(Doc::Empty),
                 ),
@@ -389,6 +410,7 @@ fn block_to_doc(
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     block: &Block,
+    mut map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> Doc {
     let block_content = &context.blocks[block.0];
     Doc::line(
@@ -410,7 +432,10 @@ fn block_to_doc(
     .append(Doc::List(
         block
             .instruction_iter(context)
-            .map(|ins| instruction_to_doc(context, md_namer, namer, block, &ins))
+            .map(|current_value| {
+                let mut doc = instruction_to_doc(context, md_namer, namer, block, &current_value);
+                (map_doc)(&current_value, doc)
+            })
             .collect(),
     ))
 }
