@@ -2682,6 +2682,7 @@ impl<'eng> FnCompiler<'eng> {
         let cond_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, condition)?
         );
+        let cond_end_block = self.current_block;
 
         // Create the break block.
         let break_block = self
@@ -2724,8 +2725,8 @@ impl<'eng> FnCompiler<'eng> {
         // Add an unconditional jump from the break block to the final block.
         break_block.append(context).branch(final_block, vec![]);
 
-        // Add conditional jumps from the conditional block to the body block or the final block.
-        cond_block.append(context).conditional_branch(
+        // Add conditional jumps from the end of the condition to the body block or the final block.
+        cond_end_block.append(context).conditional_branch(
             cond_value,
             body_block,
             final_block,
