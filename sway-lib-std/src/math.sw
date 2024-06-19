@@ -233,9 +233,49 @@ impl BinaryLogarithm for u256 {
 
 impl Logarithm for u256 {
     fn log(self, base: Self) -> Self {
+        use ::assert::*;
+        use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+        use ::registers::overflow;
+
+        assert(base >= 2);
+        
+        if self < base {
+            return 0x00u256;
+        }
+    
         let self_log2 = self.log2();
         let base_log2 = base.log2();
-        self_log2 / base_log2
+        let mut result = (self_log2 / base_log2);
+        
+        disable_panic_on_overflow();
+
+        let parts = asm(r1: result) {
+            r1: (u64, u64, u64, u64)
+        };
+        let res_u32 = asm(r1: parts.3) {
+            r1: u32
+        };
+
+        let mut pow_res = base.pow(res_u32);
+        let mut of = overflow();
+
+        while (pow_res > self) || (of > 0) {
+            result -= 1;
+
+            let parts = asm(r1: result) {
+                r1: (u64, u64, u64, u64)
+            };   
+            let res_u32 = asm(r1: parts.3) {
+                r1: u32
+            };
+
+            pow_res = base.pow(res_u32);
+            of = overflow();
+        };
+        
+        enable_panic_on_overflow();
+        
+        result
     }
 }
 

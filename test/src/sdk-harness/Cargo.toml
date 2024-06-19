@@ -23,6 +23,7 @@ hex = "0.4.3"
 paste = "1.0.14"
 pretty_assertions = "1.4.0"
 rand = "0.8"
+ruint = "1.12.3"
 sha2 = "0.10"
 sha3 = "0.10.1"
 tai64 = { version = "4.0", features = ["serde"] }
