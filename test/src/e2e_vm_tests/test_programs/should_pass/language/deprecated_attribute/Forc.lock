@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-F66B05B51B812E20"
+
+[[package]]
+name = "deprecated_attribute"
+source = "member"
+dependencies = ["core"]
