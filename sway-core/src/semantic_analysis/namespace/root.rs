@@ -127,21 +127,21 @@ impl Root {
         let mut decls_and_item_imports = vec![];
 
 	// TODO: Make sure the paths are correct.
-//	let get_path = |mod_path: Vec<Ident>| {
-//            let mut is_external = false;
-//            if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
-//		is_external = submodule.is_external
-//            };
-//	    
-//            let mut path = src[..1].to_vec();
-//           if is_external {
-//               path = mod_path;
-//           } else {
-//               path.extend(mod_path);
-//           }
-//	    
-//            path
-//	};
+	let get_path = |mod_path: Vec<Ident>| {
+            let mut is_external = false;
+            if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
+		is_external = submodule.is_external
+            };
+	    
+            let mut path = src[..1].to_vec();
+           if is_external {
+               path = mod_path;
+           } else {
+               path.extend(mod_path);
+           }
+	    
+            path
+	};
 
 	// Collect all items declared in the source module
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
@@ -153,7 +153,7 @@ impl Root {
 	// These live in the same namespace as local declarations, so no shadowing is possible
 	for (symbol, (_, path, decl, src_visibility)) in src_mod.current_items().use_item_synonyms.iter() {
 	    if src_visibility.is_public() {
-		decls_and_item_imports.push((symbol.clone(), decl.clone(), /*get_path(*/path.clone()/*)*/))
+		decls_and_item_imports.push((symbol.clone(), decl.clone(), get_path(path.clone())))
 	    }
 	}
 
@@ -166,7 +166,7 @@ impl Root {
 	    if !decls_and_item_imports.iter().any(|(other_symbol, _, _)| symbol == other_symbol) {
 		for (path, decl, src_visibility) in bindings.iter() {
 		    if src_visibility.is_public() {
-			glob_imports.push((symbol.clone(), decl.clone(), /*get_path(*/path.clone()/*)*/))
+			glob_imports.push((symbol.clone(), decl.clone(), get_path(path.clone())))
 		    }
 		}
 	    }
