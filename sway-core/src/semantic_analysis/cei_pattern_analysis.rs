@@ -30,8 +30,8 @@ enum Effect {
     BalanceTreeRead,      // balance tree read operation
     BalanceTreeReadWrite, // balance tree read and write operation
     OutputMessage,        // operation creates a new `Output::Message`
-    MintAsset,         // mint operation
-    BurnAsset,         // burn operation
+    MintAsset,            // mint operation
+    BurnAsset,            // burn operation
 }
 
 impl fmt::Display for Effect {
@@ -363,7 +363,6 @@ fn analyze_expression(
                 // TODO: improve locations accuracy
                 warn_after_interaction(&asmblock_effs, &expr.span, &expr.span, block_name, warnings)
             }
-	    // TODO (jjcnn): Add warning?
             set_union(init_effs, asmblock_effs)
         }
     }
@@ -660,8 +659,8 @@ fn effects_of_asm_op(op: &AsmOp) -> HashSet<Effect> {
         "bal" => HashSet::from([Effect::BalanceTreeRead]),
         "smo" => HashSet::from([Effect::OutputMessage]),
         "call" => HashSet::from([Effect::Interaction]),
-	"mint" => HashSet::from([Effect::MintAsset]),
-	"burn" => HashSet::from([Effect::BurnAsset]),
+        "mint" => HashSet::from([Effect::MintAsset]),
+        "burn" => HashSet::from([Effect::BurnAsset]),
         // the rest of the assembly instructions are considered to not have effects
         _ => HashSet::new(),
     }
