@@ -376,6 +376,7 @@ impl Root {
         self.check_module_privacy(handler, engines, src)?;
 
         let decl_engine = engines.de();
+        let parsed_decl_engine = engines.pe();
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         match src_mod.current_items().symbols.get(enum_name).cloned() {
@@ -387,73 +388,157 @@ impl Root {
                     });
                 }
 
-                if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl.expect_typed() {
-                    let enum_decl = decl_engine.get_enum(&decl_id);
-                    let enum_ref = DeclRef::new(
-                        enum_decl.call_path.suffix.clone(),
-                        decl_id,
-                        enum_decl.span(),
-                    );
+                match decl {
+                    ResolvedDeclaration::Parsed(decl) => {
+                        if let Declaration::EnumDeclaration(decl_id) = decl {
+                            let enum_decl = parsed_decl_engine.get_enum(&decl_id);
 
-                    if let Some(variant_decl) =
-                        enum_decl.variants.iter().find(|v| v.name == *variant_name)
-                    {
-                        // import it this way.
-                        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-                        let check_name_clash = |name| {
-                            if dst_mod.current_items().use_item_synonyms.contains_key(name) {
-                                handler.emit_err(CompileError::ShadowsOtherSymbol {
-                                    name: name.into(),
-                                });
+                            if let Some(variant_decl) =
+                                enum_decl.variants.iter().find(|v| v.name == *variant_name)
+                            {
+                                // import it this way.
+                                let dst_mod =
+                                    self.module.lookup_submodule_mut(handler, engines, dst)?;
+                                let check_name_clash = |name| {
+                                    if dst_mod.current_items().use_item_synonyms.contains_key(name)
+                                    {
+                                        handler.emit_err(CompileError::ShadowsOtherSymbol {
+                                            name: name.into(),
+                                        });
+                                    }
+                                };
+
+                                match alias {
+                                    Some(alias) => {
+                                        check_name_clash(&alias);
+                                        dst_mod.current_items_mut().use_item_synonyms.insert(
+                                            alias.clone(),
+                                            (
+                                                Some(variant_name.clone()),
+                                                src.to_vec(),
+                                                ResolvedDeclaration::Parsed(
+                                                    Declaration::EnumVariantDeclaration(
+                                                        EnumVariantDeclaration {
+                                                            enum_ref: decl_id,
+                                                            variant_name: variant_name.clone(),
+                                                            variant_decl_span: variant_decl
+                                                                .span
+                                                                .clone(),
+                                                        },
+                                                    ),
+                                                ),
+						visibility,
+                                            ),
+                                        );
+                                    }
+                                    None => {
+                                        check_name_clash(variant_name);
+                                        dst_mod.current_items_mut().use_item_synonyms.insert(
+                                            variant_name.clone(),
+                                            (
+                                                None,
+                                                src.to_vec(),
+                                                ResolvedDeclaration::Parsed(
+                                                    Declaration::EnumVariantDeclaration(
+                                                        EnumVariantDeclaration {
+                                                            enum_ref: decl_id,
+                                                            variant_name: variant_name.clone(),
+                                                            variant_decl_span: variant_decl
+                                                                .span
+                                                                .clone(),
+                                                        },
+                                                    ),
+                                                ),
+						visibility,
+                                            ),
+                                        );
+                                    }
+                                };
+                            } else {
+                                return Err(handler.emit_err(CompileError::SymbolNotFound {
+                                    name: variant_name.clone(),
+                                    span: variant_name.span(),
+                                }));
                             }
-                        };
-                        match alias {
-                            Some(alias) => {
-                                check_name_clash(&alias);
-                                dst_mod.current_items_mut().use_item_synonyms.insert(
-                                    alias.clone(),
-                                    (
-                                        Some(variant_name.clone()),
-                                        src.to_vec(),
-                                        ResolvedDeclaration::Typed(
-					    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-						enum_ref: enum_ref.clone(),
-						variant_name: variant_name.clone(),
-						variant_decl_span: variant_decl.span.clone(),
-                                            })),
-					visibility,
-				    ),
-                                );
-                            }
-                            None => {
-                                check_name_clash(variant_name);
-                                dst_mod.current_items_mut().use_item_synonyms.insert(
-                                    variant_name.clone(),
-                                    (
-                                        None,
-                                        src.to_vec(),
-                                        ResolvedDeclaration::Typed(
-                                            TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-						enum_ref: enum_ref.clone(),
-						variant_name: variant_name.clone(),
-						variant_decl_span: variant_decl.span.clone(),
-                                            })),
-					visibility,
-                                    ),
-                                );
-                            }
-                        };
-                    } else {
-                        return Err(handler.emit_err(CompileError::SymbolNotFound {
-                            name: variant_name.clone(),
-                            span: variant_name.span(),
-                        }));
+                        }
                     }
-                } else {
-                    return Err(handler.emit_err(CompileError::Internal(
-                        "Attempting to import variants of something that isn't an enum",
-                        enum_name.span(),
-                    )));
+                    ResolvedDeclaration::Typed(decl) => {
+                        if let TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) = decl {
+                            let enum_decl = decl_engine.get_enum(&decl_id);
+                            let enum_ref = DeclRef::new(
+                                enum_decl.call_path.suffix.clone(),
+                                decl_id,
+                                enum_decl.span(),
+                            );
+
+                            if let Some(variant_decl) =
+                                enum_decl.variants.iter().find(|v| v.name == *variant_name)
+                            {
+                                // import it this way.
+                                let dst_mod =
+                                    self.module.lookup_submodule_mut(handler, engines, dst)?;
+                                let check_name_clash = |name| {
+                                    if dst_mod.current_items().use_item_synonyms.contains_key(name)
+                                    {
+                                        handler.emit_err(CompileError::ShadowsOtherSymbol {
+                                            name: name.into(),
+                                        });
+                                    }
+                                };
+
+                                match alias {
+                                    Some(alias) => {
+                                        check_name_clash(&alias);
+                                        dst_mod.current_items_mut().use_item_synonyms.insert(
+                                            alias.clone(),
+                                            (
+                                                Some(variant_name.clone()),
+                                                src.to_vec(),
+                                                ResolvedDeclaration::Typed(
+                                                    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                                        enum_ref: enum_ref.clone(),
+                                                        variant_name: variant_name.clone(),
+                                                        variant_decl_span: variant_decl
+                                                            .span
+                                                            .clone(),
+                                                    })),
+						visibility,
+                                            ),
+                                        );
+                                    }
+                                    None => {
+                                        check_name_clash(variant_name);
+                                        dst_mod.current_items_mut().use_item_synonyms.insert(
+                                            variant_name.clone(),
+                                            (
+                                                None,
+                                                src.to_vec(),
+                                                ResolvedDeclaration::Typed(
+                                                    TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                                        enum_ref: enum_ref.clone(),
+                                                        variant_name: variant_name.clone(),
+                                                        variant_decl_span: variant_decl
+                                                            .span
+                                                            .clone(),
+                                                    })),
+						visibility,
+                                            ),
+                                        );
+                                    }
+                                };
+                            } else {
+                                return Err(handler.emit_err(CompileError::SymbolNotFound {
+                                    name: variant_name.clone(),
+                                    span: variant_name.span(),
+                                }));
+                            }
+                        } else {
+                            return Err(handler.emit_err(CompileError::Internal(
+                                "Attempting to import variants of something that isn't an enum",
+                                enum_name.span(),
+                            )));
+                        }
+                    }
                 }
             }
             None => {

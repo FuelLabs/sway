@@ -1,0 +1,16 @@
+[[package]]
+name = "core"
+source = "path+from-root-3FD9E4EB10C615E3"
+
+[[package]]
+name = "std"
+source = "path+from-root-3FD9E4EB10C615E3"
+dependencies = ["core"]
+
+[[package]]
+name = "string_slice_contract"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
