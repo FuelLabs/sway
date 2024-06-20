@@ -123,7 +123,7 @@ async fn cmd_start_tx(state: &mut State, mut args: Vec<String>) -> Result<(), Bo
     }
 
     let tx_json = std::fs::read(path_to_tx_json)?;
-    let tx: Transaction = serde_json::from_slice(&tx_json).unwrap();
+    let tx: Transaction = serde_json::from_slice(&tx_json)?;
     let status = state.client.start_tx(&state.session_id, &tx).await?;
     pretty_print_run_result(&status);
 
