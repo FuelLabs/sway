@@ -128,7 +128,7 @@ async fn can_get_predicate_address() {
 
     // Setup Predciate
     let hex_predicate_address: &str =
-        "0x603856cc6c3d2d5f2d7460b2811fe3a3bf1554a4e7e70c411a9da94ea29ad929";
+        "0xe5d0a6dbd36c76a091d21e5281c98a0994f6c6b0bc04793532daf4d5b3594743";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -143,7 +143,7 @@ async fn can_get_predicate_address() {
 
     // If this test fails, it can be the predicate address
     // Uncomment the next line, get the predicate address and update above.
-    //dbg!(&predicate);
+    // dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -254,7 +254,7 @@ async fn when_incorrect_predicate_address_passed() {
 async fn can_get_predicate_address_in_message() {
     // Setup Predciate address
     let hex_predicate_address: &str =
-        "0x413c19386a356dc93c35f384cd34efa65f8779d8da3f1bac783bc18edab08a3c";
+        "0xe5d0a6dbd36c76a091d21e5281c98a0994f6c6b0bc04793532daf4d5b3594743";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -301,6 +301,10 @@ async fn can_get_predicate_address_in_message() {
             .unwrap()
             .with_provider(wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);
+
+    // If this test fails, it can be the predicate address
+    // Uncomment the next line, get the predicate address and update above.
+    // dbg!(&predicate);
 
     // Check predicate balance.
     let balance = predicate
