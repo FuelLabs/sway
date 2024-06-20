@@ -11,4 +11,4 @@ pub use ::items_1::ITEMS_1_FUNCTION_RES;
 
 pub use ::items_1::items_1_function;
 
-pub use ::items_1::Items1_Trait;
+pub use ::items_1::Items1Trait;

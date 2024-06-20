@@ -22,10 +22,10 @@ category = "fail"
 #check: $()Could not find symbol "items_1_function" in this scope.
 
 #check: $()error
-#check: $()Could not find symbol "Items1_Trait" in this scope.
+#check: $()Could not find symbol "Items1Trait" in this scope.
 
 #check: $()error
-#check: $()Trait "Items1_Trait" cannot be found in the current scope.
+#check: $()Trait "Items1Trait" cannot be found in the current scope.
 
 #check: $()error
 #check: $()Could not find symbol "Items2_Struct" in this scope.
@@ -49,10 +49,10 @@ category = "fail"
 #check: $()Could not find symbol "items_2_function" in this scope.
 
 #check: $()error
-#check: $()Could not find symbol "Items2_Trait" in this scope.
+#check: $()Could not find symbol "Items2Trait" in this scope.
 
 #check: $()error
-#check: $()Trait "Items2_Trait" cannot be found in the current scope.
+#check: $()Trait "Items2Trait" cannot be found in the current scope.
 
 #check: $()error
 #check: $()Could not find symbol "Items1_Struct" in this scope.

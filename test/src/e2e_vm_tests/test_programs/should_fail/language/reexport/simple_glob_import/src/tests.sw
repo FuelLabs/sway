@@ -41,7 +41,7 @@ fn call_items_1_function() -> u64 {
     items_1_function()
 }
 
-impl Items1_Trait<TestStruct2> for TestStruct1 {
+impl Items1Trait<TestStruct2> for TestStruct1 {
     fn items_1_trait_function(self, x: TestStruct2) -> bool {
 	self.Z == 64 && x.W
     }
@@ -72,7 +72,7 @@ fn call_items_2_function() -> u64 {
     items_2_function()
 }
 
-impl Items2_Trait<TestStruct2> for TestStruct1 {
+impl Items2Trait<TestStruct2> for TestStruct1 {
     fn items_2_trait_function(self, x: TestStruct2) -> bool {
 	self.Z == 128 && x.W
     }

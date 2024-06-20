@@ -20,6 +20,6 @@ pub fn items_1_function() -> u64 {
     ITEMS_1_FUNCTION_RES
 }
 
-pub trait Items1_Trait<T> {
+pub trait Items1Trait<T> {
     fn items_1_trait_function(self, x: T) -> bool;
 }
