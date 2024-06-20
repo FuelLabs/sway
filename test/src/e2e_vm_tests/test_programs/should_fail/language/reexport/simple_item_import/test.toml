@@ -1,0 +1,78 @@
+category = "fail"
+
+#check: $()error
+#check: $()Symbol "Items1_Struct" is private.
+
+#check: $()error
+#check: $()Symbol "Items1_Enum" is private.
+
+#check: $()error
+#check: $()Symbol "X" is private.
+
+#check: $()error
+#check: $()Symbol "Y" is private.
+
+#check: $()error
+#check: $()Symbol "ITEMS_1_FUNCTION_RES" is private.
+
+#check: $()error
+#check: $()Symbol "items_1_function" is private.
+
+#check: $()error
+#check: $()Symbol "Items1Trait" is private.
+
+#check: $()error
+#check: $()Symbol "Items2_Struct" is private.
+
+#check: $()error
+#check: $()Symbol "Items2_Enum" is private.
+
+#check: $()error
+#check: $()Symbol "Items2_Variants" is private.
+
+#check: $()error
+#check: $()Symbol "O" is private.
+
+#check: $()error
+#check: $()Symbol "P" is private.
+
+#check: $()error
+#check: $()Symbol "ITEMS_2_FUNCTION_RES" is private.
+
+#check: $()error
+#check: $()Symbol "items_2_function" is private.
+
+#check: $()error
+#check: $()Could not find symbol "Items2Trait" in this scope.
+
+#check: $()error
+#check: $()Module "lib_3::Items3_Variants" could not be found.
+
+#check: $()error
+#check: $()Could not find symbol "Items2Trait" in this scope.
+
+#check: $()error
+#check: $()Trait "Items2Trait" cannot be found in the current scope.
+
+#check: $()error
+#check: $()Could not find symbol "Items3_Variants" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items3_Variants".
+
+#check: $()error
+#check: $()No method named "items_2_trait_function" found for type "TestStruct1".
+
+#check: $()error
+#check: $()Could not find symbol "Items3_Variants" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items3_Variants".
+
+#check: $()error
+#check: $()Could not find symbol "project_items_3_variants" in this scope.
+
+#check: $()error
+#check: $()No method named "eq" found for type "{unknown}".
+
+#check: $()Aborting due to 25 errors.
