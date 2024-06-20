@@ -13,6 +13,12 @@ category = "fail"
 #check: $()Unknown type name "Items1_Enum".
 
 #check: $()error
+#check: $()Could not find symbol "X" in this scope.
+
+#check: $()error
+#check: $()Could not find symbol "Y" in this scope.
+
+#check: $()error
 #check: $()Could not find symbol "items_1_function" in this scope.
 
 #check: $()error
@@ -73,6 +79,9 @@ category = "fail"
 #check: $()No method named "eq" found for type "{unknown}".
 
 #check: $()error
+#check: $()Could not find symbol "X" in this scope.
+
+#check: $()error
 #check: $()Variable "ITEMS_1_FUNCTION_RES" does not exist in this scope.
 
 #check: $()error
@@ -117,4 +126,4 @@ category = "fail"
 #check: $()error
 #check: $()No method named "items_2_trait_function" found for type "TestStruct1".
 
-#check: $()Aborting due to 39 errors.
+#check: $()Aborting due to 42 errors.
