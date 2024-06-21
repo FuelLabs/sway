@@ -1,4 +1,5 @@
 // Add test modules here:
+
 mod abi_impl_methods_callable;
 mod asset_id;
 mod asset_ops;
@@ -48,4 +49,3 @@ mod superabi_supertrait;
 mod tx_fields;
 mod type_aliases;
 mod vec_in_abi;
-mod u256_log;
