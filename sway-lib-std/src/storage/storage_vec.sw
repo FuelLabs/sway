@@ -809,7 +809,32 @@ impl<V> StorageKey<StorageVec<V>> {
     /// ```
     #[storage(write)]
     pub fn store_vec(self, vec: Vec<V>) {
-        let slice = vec.as_raw_slice();
+        let size_V_bytes = __size_of::<V>();
+
+        // Handle cases where elements are less than the size of word as pad to the size of a word
+        let slice = match size_V_bytes < 8 {
+            true => {
+                let vec_slice = vec.as_raw_slice();
+                let number_of_words = 8 * vec.len();
+                let ptr = alloc_bytes(number_of_words);
+                let mut i = 0;
+                while i < vec.len() {
+                    // Insert into raw slice as offsets of 1 word per element
+                    // (size_of_word * element)
+                    vec_slice
+                        .ptr()
+                        .add::<V>(i)
+                        .copy_bytes_to(ptr.add_uint_offset(8 * i), size_V_bytes);
+                    i += 1;
+                }
+
+                raw_slice::from_parts::<V>(ptr, number_of_words)
+            },
+            false => {
+                vec.as_raw_slice()
+            }
+        };
+
         // Get the number of storage slots needed based on the size of bytes.
         let number_of_bytes = slice.number_of_bytes();
         let number_of_slots = (number_of_bytes + 31) >> 5;
@@ -824,7 +849,7 @@ impl<V> StorageKey<StorageVec<V>> {
 
         // Store the length, NOT the bytes. 
         // This differs from the existing `write_slice()` function to be compatible with `StorageVec`.
-        write::<u64>(self.field_id(), 0, number_of_bytes / __size_of::<V>());
+        write::<u64>(self.field_id(), 0, vec.len());
     }
 
     /// Load a `Vec` from the `StorageVec`.
@@ -865,14 +890,49 @@ impl<V> StorageKey<StorageVec<V>> {
             0 => Vec::new(),
             len => {
                 // Get the number of storage slots needed based on the size.
-                let bytes = len * __size_of::<V>();
+                let size_V_bytes = __size_of::<V>();
+                let bytes = match size_V_bytes < 8 {
+                    true => {
+                        // Len * size_of_word
+                        len * 8
+                    },
+                    false => {
+                        len * size_V_bytes
+                    }
+                };
                 let number_of_slots = (bytes + 31) >> 5;
                 let ptr = alloc_bytes(number_of_slots * 32);
                 // Load the stored slice into the pointer.
                 let _ = __state_load_quad(sha256(self.field_id()), ptr, number_of_slots);
-                Vec::from(asm(ptr: (ptr, bytes)) {
-                    ptr: raw_slice
-                })
+
+                match size_V_bytes < 8 {
+                    true => {
+                        let len_bytes = len * size_V_bytes;
+                        let new_vec = alloc_bytes(len_bytes);
+                        let mut i = 0;
+                        while i < len {
+                            // The stored vec is offset with 1 word per element, remove the padding for elements less than the size of a word
+                            // (size_of_word * element)
+                            ptr
+                                .add_uint_offset((8 * i))
+                                .copy_bytes_to(new_vec.add::<V>(i), size_V_bytes);
+                            i += 1;
+                        }
+
+                        Vec::from(
+                            asm(ptr: (new_vec, len_bytes)) {
+                                ptr: raw_slice
+                            },
+                        )
+                    },
+                    false => {
+                        Vec::from(
+                            asm(ptr: (ptr, bytes)) {
+                                ptr: raw_slice
+                            },
+                        )
+                    }
+                }
             }
         }
     }
