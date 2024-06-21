@@ -214,10 +214,10 @@ impl BinaryLogarithm for u8 {
 impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
         use ::assert::*;
-        use ::flags::flags;
+        use ::registers::flags;
 
         // If panic on unsafe math is enabled, only then revert
-        if flags & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
+        if flags() & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
             // Logarithm is undefined for 0
             assert(self != 0);
         }
@@ -250,6 +250,8 @@ impl Logarithm for u256 {
         if flags & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
             // Logarithm is undefined for bases less than 2
             assert(base >= 2);
+            // Logarithm is undefined for 0
+            assert(self != 0);
         }
 
         // Decimals rounded to 0

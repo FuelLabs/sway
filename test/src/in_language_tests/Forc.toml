@@ -40,4 +40,5 @@ members = [
   "test_programs/primitive_conversions_u256_inline_tests",
   "test_programs/vm_evm_evm_address_inline_tests",
   "test_programs/vm_evm_ecr_inline_tests",
+  "test_programs/u256_log"
 ]
