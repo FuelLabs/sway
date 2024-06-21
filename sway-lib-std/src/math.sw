@@ -247,7 +247,7 @@ impl Logarithm for u256 {
         let base_log2 = base.log2();
         let mut result = (self_log2 / base_log2);
 
-        disable_panic_on_overflow();
+        let _ = disable_panic_on_overflow();
 
         let parts = asm(r1: result) {
             r1: (u64, u64, u64, u64)
