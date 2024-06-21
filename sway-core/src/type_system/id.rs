@@ -27,6 +27,11 @@ pub enum IncludeSelf {
     No,
 }
 
+pub enum IncludeNumeric {
+    Yes,
+    No,
+}
+
 /// A identifier to uniquely refer to our type terms
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Ord, PartialOrd, Debug)]
 pub struct TypeId(usize);
@@ -456,17 +461,26 @@ impl TypeId {
         }))
     }
 
-    pub(crate) fn is_concrete(&self, engines: &Engines) -> bool {
+    pub(crate) fn is_concrete(&self, engines: &Engines, include_numeric: IncludeNumeric) -> bool {
         let nested_types = (*self).extract_nested_types(engines);
-        !nested_types.into_iter().any(|x| {
-            matches!(
+        !nested_types.into_iter().any(|x| match include_numeric {
+            IncludeNumeric::Yes => matches!(
                 x,
                 TypeInfo::UnknownGeneric { .. }
                     | TypeInfo::Custom { .. }
                     | TypeInfo::Placeholder(..)
                     | TypeInfo::TraitType { .. }
                     | TypeInfo::TypeParam(..)
-            )
+                    | TypeInfo::Numeric
+            ),
+            IncludeNumeric::No => matches!(
+                x,
+                TypeInfo::UnknownGeneric { .. }
+                    | TypeInfo::Custom { .. }
+                    | TypeInfo::Placeholder(..)
+                    | TypeInfo::TraitType { .. }
+                    | TypeInfo::TypeParam(..)
+            ),
         })
     }
 
