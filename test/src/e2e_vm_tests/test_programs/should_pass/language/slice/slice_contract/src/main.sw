@@ -12,7 +12,7 @@ impl MyContract for Contract {
 
 #[test]
 fn test_success() {
-    let contract_id = 0xb144c1847a6403388cfd65eef01c742b24db355a1f12236be682f13aad4fdb3f;
+    let contract_id = 0xe947c4b04b557d746b2f77988a4cd8528f36a71748c9bf830c0a8aad6e03191b;
     let caller = abi(MyContract, contract_id);
 
     let data = 1u64;
