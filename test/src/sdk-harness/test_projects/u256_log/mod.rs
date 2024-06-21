@@ -1,5 +1,4 @@
 use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::U256 as FU256};
-use ruint::aliases::U256 as RU256;
 
 abigen!(Contract(
     name = "U256LogTestContract",
