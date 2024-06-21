@@ -221,7 +221,7 @@ impl BinaryLogarithm for u256 {
             // Logarithm is undefined for 0
             assert(self != 0);
         }
-        
+
         let (a, b, c, d) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
