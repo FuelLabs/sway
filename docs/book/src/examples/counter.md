@@ -15,7 +15,7 @@ forc template --template-name counter my_counter_project
 The following commands can be used to build and deploy the contract. For a detailed tutorial, refer to [Building and Deploying](https://docs.fuel.network/guides/contract-quickstart/#building-the-contract).
 
 ```bash
-# Builds the contract
+# Build the contract
 forc build
 
 # Deploys the contract
