@@ -10,7 +10,7 @@ forc template --template-name counter my_counter_project
 {{#include ../../../../examples/counter/src/main.sw}}
 ```
 
-### Building and deployment
+### Build and deploy
 
 The following commands can be used to build and deploy the contract. For a detailed tutorial, refer to [Building and Deploying](https://docs.fuel.network/guides/contract-quickstart/#building-the-contract).
 
