@@ -1,0 +1,5 @@
+category = "compile"
+
+# check: $()Asset burned after external contract interaction in function or method "burn". Consider burning assets before calling another contract
+# check: $()Asset minted after external contract interaction in function or method "mint". Consider minting assets before calling another contract
+expected_warnings = 2
