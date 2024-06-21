@@ -888,15 +888,13 @@ impl<V> StorageKey<StorageVec<V>> {
             len => {
                 // Get the number of storage slots needed based on the size.
                 let size_V_bytes = __size_of::<V>();
-                let bytes = match size_V_bytes < 8 {
-                    true => {
-                        // Len * size_of_word
-                        len * 8
-                    },
-                    false => {
-                        len * size_V_bytes
-                    }
+                let bytes = if size_V_bytes < 8 {
+                    // Len * size_of_word
+                    len * 8
+                } else {
+                    len * size_V_bytes
                 };
+
                 let number_of_slots = (bytes + 31) >> 5;
                 let ptr = alloc_bytes(number_of_slots * 32);
                 // Load the stored slice into the pointer.
