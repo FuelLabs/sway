@@ -905,33 +905,30 @@ impl<V> StorageKey<StorageVec<V>> {
                 // Load the stored slice into the pointer.
                 let _ = __state_load_quad(sha256(self.field_id()), ptr, number_of_slots);
 
-                match size_V_bytes < 8 {
-                    true => {
-                        let len_bytes = len * size_V_bytes;
-                        let new_vec = alloc_bytes(len_bytes);
-                        let mut i = 0;
-                        while i < len {
-                            // The stored vec is offset with 1 word per element, remove the padding for elements less than the size of a word
-                            // (size_of_word * element)
-                            ptr
-                                .add_uint_offset((8 * i))
-                                .copy_bytes_to(new_vec.add::<V>(i), size_V_bytes);
-                            i += 1;
-                        }
-
-                        Vec::from(
-                            asm(ptr: (new_vec, len_bytes)) {
-                                ptr: raw_slice
-                            },
-                        )
-                    },
-                    false => {
-                        Vec::from(
-                            asm(ptr: (ptr, bytes)) {
-                                ptr: raw_slice
-                            },
-                        )
+                if size_V_bytes < 8 {
+                    let len_bytes = len * size_V_bytes;
+                    let new_vec = alloc_bytes(len_bytes);
+                    let mut i = 0;
+                    while i < len {
+                        // The stored vec is offset with 1 word per element, remove the padding for elements less than the size of a word
+                        // (size_of_word * element)
+                        ptr
+                            .add_uint_offset((8 * i))
+                            .copy_bytes_to(new_vec.add::<V>(i), size_V_bytes);
+                        i += 1;
                     }
+
+                    Vec::from(
+                        asm(ptr: (new_vec, len_bytes)) {
+                            ptr: raw_slice
+                        },
+                    )
+                } else {
+                    Vec::from(
+                        asm(ptr: (ptr, bytes)) {
+                            ptr: raw_slice
+                        },
+                    )
                 }
             }
         }
