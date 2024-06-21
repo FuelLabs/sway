@@ -18,7 +18,7 @@ The following commands can be used to build and deploy the contract. For a detai
 # Build the contract
 forc build
 
-# Deploys the contract
+# Deploy the contract
 forc deploy --testnet
 ```
 
