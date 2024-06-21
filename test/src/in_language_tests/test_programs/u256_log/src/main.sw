@@ -3,6 +3,7 @@ library;
 #[test]
 fn test_parity() {
     // Failure cases found by comparing parity with ruint implementation of U256
+    // https://docs.rs/ruint/latest/src/ruint/log.rs.html#45-89
     let a = [
         2, 4, 4, 4, 4, 5, 5, 5, 6, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 10, 10, 10,
         10, 10, 10, 11, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 14, 14, 15, 16, 16, 16, 16, 16,
