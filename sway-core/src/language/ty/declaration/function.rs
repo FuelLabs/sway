@@ -565,9 +565,15 @@ impl TyFunctionSig {
     }
 
     pub fn is_concrete(&self, engines: &Engines) -> bool {
-        self.return_type.is_concrete(engines)
-            && self.parameters.iter().all(|p| p.is_concrete(engines))
-            && self.type_parameters.iter().all(|p| p.is_concrete(engines))
+        self.return_type.is_concrete(engines, IncludeNumeric::No)
+            && self
+                .parameters
+                .iter()
+                .all(|p| p.is_concrete(engines, IncludeNumeric::No))
+            && self
+                .type_parameters
+                .iter()
+                .all(|p| p.is_concrete(engines, IncludeNumeric::No))
     }
 
     /// Returns a String representing the function.

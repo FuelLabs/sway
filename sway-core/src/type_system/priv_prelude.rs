@@ -16,6 +16,6 @@ pub use super::{
         type_parameter::TypeParameter,
     },
     engine::TypeEngine,
-    id::{IncludeSelf, TypeId},
+    id::{IncludeNumeric, IncludeSelf, TypeId},
     info::{AbiEncodeSizeHint, AbiName, TypeInfo, TypeSourceInfo},
 };
