@@ -21,5 +21,3 @@ forc build
 # Deploy the contract
 forc deploy --testnet
 ```
-
-It will return you the contract ID.
