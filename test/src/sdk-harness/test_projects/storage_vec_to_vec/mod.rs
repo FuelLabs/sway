@@ -282,13 +282,7 @@ async fn test_conversion_u8() {
         .call()
         .await;
 
-    let returned_vec = instance
-        .methods()
-        .read_vec_u8()
-        .call()
-        .await
-        .unwrap()
-        .value;
+    let returned_vec = instance.methods().read_vec_u8().call().await.unwrap().value;
 
     assert_eq!(returned_vec.len(), 4);
     assert_eq!(returned_vec, test_vec);
@@ -308,13 +302,7 @@ async fn test_push_u8() {
 
     let _ = instance.methods().push_vec_u8(13u8).call().await;
 
-    let returned_vec = instance
-        .methods()
-        .read_vec_u8()
-        .call()
-        .await
-        .unwrap()
-        .value;
+    let returned_vec = instance.methods().read_vec_u8().call().await.unwrap().value;
 
     let mut expected_vec = test_vec;
     expected_vec.push(13u8);
@@ -340,13 +328,7 @@ async fn test_pop_u8() {
         instance.methods().pop_vec_u8().call().await.unwrap().value
     );
 
-    let returned_vec = instance
-        .methods()
-        .read_vec_u8()
-        .call()
-        .await
-        .unwrap()
-        .value;
+    let returned_vec = instance.methods().read_vec_u8().call().await.unwrap().value;
 
     let mut expected_vec = test_vec;
     expected_vec.pop();
