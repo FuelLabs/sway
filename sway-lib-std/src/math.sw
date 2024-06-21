@@ -214,7 +214,14 @@ impl BinaryLogarithm for u8 {
 impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
         use ::assert::*;
-        assert(self != 0);
+        use ::flags::flags;
+
+        // If panic on unsafe math is enabled, only then revert
+        if flags & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
+            // Logarithm is undefined for 0
+            assert(self != 0);
+        }
+        
         let (a, b, c, d) = asm(r1: self) {
             r1: (u64, u64, u64, u64)
         };
@@ -234,11 +241,16 @@ impl BinaryLogarithm for u256 {
 impl Logarithm for u256 {
     fn log(self, base: Self) -> Self {
         use ::assert::*;
-        use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
+        use ::flags::{disable_panic_on_overflow, set_flags};
         use ::registers::overflow;
 
-        // Logarithm is undefined for bases less than 2
-        assert(base >= 2);
+        let flags = disable_panic_on_overflow();
+
+        // If panic on unsafe math is enabled, only then revert
+        if flags & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
+            // Logarithm is undefined for bases less than 2
+            assert(base >= 2);
+        }
 
         // Decimals rounded to 0
         if self < base {
@@ -249,8 +261,6 @@ impl Logarithm for u256 {
         let self_log2 = self.log2();
         let base_log2 = base.log2();
         let mut result = (self_log2 / base_log2);
-
-        let _ = disable_panic_on_overflow();
 
         // Converting u256 to u32, this cannot fail as the result will be atmost ~256
         let parts = asm(r1: result) {
@@ -281,7 +291,7 @@ impl Logarithm for u256 {
             of = overflow();
         };
 
-        enable_panic_on_overflow();
+        set_flags(flags);
 
         result
     }
