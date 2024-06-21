@@ -415,6 +415,11 @@ source = "member"
 dependencies = ["std"]
 
 [[package]]
+name = "u256_log"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
 name = "vec_in_abi"
 source = "member"
 dependencies = ["std"]
