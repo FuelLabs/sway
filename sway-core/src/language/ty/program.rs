@@ -339,18 +339,36 @@ impl TyProgram {
                     (mains[0], mains[0])
                 };
 
-                // A script must not return a `raw_ptr` or any type aggregating a `raw_slice`.
-                // Directly returning a `raw_slice` is allowed, which will be just mapped to a RETD.
-                // TODO: Allow returning nested `raw_slice`s when our spec supports encoding DSTs.
-                let main_fn = decl_engine.get(&main_fn_id);
-                for p in main_fn.parameters() {
+                // On encoding v0, we cannot accept/return ptrs, slices etc...
+                if !experimental.new_encoding {
+                    let main_fn = decl_engine.get(&main_fn_id);
+                    for p in main_fn.parameters() {
+                        if let Some(error) = get_type_not_allowed_error(
+                            engines,
+                            p.type_argument.type_id,
+                            &p.type_argument,
+                            |t| match t {
+                                TypeInfo::StringSlice => {
+                                    Some(TypeNotAllowedReason::StringSliceInMainParameters)
+                                }
+                                TypeInfo::RawUntypedSlice => {
+                                    Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
+                                }
+                                _ => None,
+                            },
+                        ) {
+                            handler.emit_err(error);
+                        }
+                    }
+
+                    // Check main return type is valid
                     if let Some(error) = get_type_not_allowed_error(
                         engines,
-                        p.type_argument.type_id,
-                        &p.type_argument,
+                        main_fn.return_type.type_id,
+                        &main_fn.return_type,
                         |t| match t {
                             TypeInfo::StringSlice => {
-                                Some(TypeNotAllowedReason::StringSliceInMainParameters)
+                                Some(TypeNotAllowedReason::StringSliceInMainReturn)
                             }
                             TypeInfo::RawUntypedSlice => {
                                 Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
@@ -358,31 +376,13 @@ impl TyProgram {
                             _ => None,
                         },
                     ) {
-                        handler.emit_err(error);
-                    }
-                }
-
-                // Check main return type is valid
-                if let Some(error) = get_type_not_allowed_error(
-                    engines,
-                    main_fn.return_type.type_id,
-                    &main_fn.return_type,
-                    |t| match t {
-                        TypeInfo::StringSlice => {
-                            Some(TypeNotAllowedReason::StringSliceInMainReturn)
+                        // Let main return `raw_slice` directly
+                        if !matches!(
+                            &*engines.te().get(main_fn.return_type.type_id),
+                            TypeInfo::RawUntypedSlice
+                        ) {
+                            handler.emit_err(error);
                         }
-                        TypeInfo::RawUntypedSlice => {
-                            Some(TypeNotAllowedReason::NestedSliceReturnNotAllowedInMain)
-                        }
-                        _ => None,
-                    },
-                ) {
-                    // Let main return `raw_slice` directly
-                    if !matches!(
-                        &*engines.te().get(main_fn.return_type.type_id),
-                        TypeInfo::RawUntypedSlice
-                    ) {
-                        handler.emit_err(error);
                     }
                 }
 

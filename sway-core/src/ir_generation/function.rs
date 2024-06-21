@@ -472,7 +472,7 @@ impl<'eng> FnCompiler<'eng> {
                     return Err(CompileError::Internal("Trying to compile a deferred function application with deferred monomorphization", name.span()));
                 }
                 if let Some(metadata) = selector {
-                    self.compile_contract_call(
+                    self.compile_contract_call_encoding_v0(
                         context,
                         md_mgr,
                         metadata,
@@ -2158,7 +2158,7 @@ impl<'eng> FnCompiler<'eng> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn compile_contract_call(
+    fn compile_contract_call_encoding_v0(
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
@@ -2317,7 +2317,8 @@ impl<'eng> FnCompiler<'eng> {
             .add_metadatum(context, span_md_idx);
 
         // Convert selector to U64 and then insert it
-        let sel = call_params.func_selector;
+        assert!(!context.experimental.new_encoding);
+        let sel = call_params.func_selector.as_ref().unwrap();
         let sel_val = convert_literal_to_value(
             context,
             &Literal::U64(
@@ -2682,6 +2683,7 @@ impl<'eng> FnCompiler<'eng> {
         let cond_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, condition)?
         );
+        let cond_end_block = self.current_block;
 
         // Create the break block.
         let break_block = self
@@ -2724,8 +2726,8 @@ impl<'eng> FnCompiler<'eng> {
         // Add an unconditional jump from the break block to the final block.
         break_block.append(context).branch(final_block, vec![]);
 
-        // Add conditional jumps from the conditional block to the body block or the final block.
-        cond_block.append(context).conditional_branch(
+        // Add conditional jumps from the end of the condition to the body block or the final block.
+        cond_end_block.append(context).conditional_branch(
             cond_value,
             body_block,
             final_block,

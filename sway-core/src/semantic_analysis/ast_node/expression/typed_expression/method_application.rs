@@ -396,14 +396,19 @@ pub(crate) fn type_check_method_application(
                 )));
             }
         };
-        let func_selector = method
-            .to_fn_selector_value(handler, engines)
-            .unwrap_or([0; 4]);
-        let contract_caller = contract_caller.unwrap();
+        let func_selector = if ctx.experimental.new_encoding {
+            None
+        } else {
+            Some(
+                method
+                    .to_fn_selector_value(handler, engines)
+                    .unwrap_or([0; 4]),
+            )
+        };
         Some(ty::ContractCallParams {
             func_selector,
             contract_address: contract_address.clone(),
-            contract_caller: Box::new(contract_caller),
+            contract_caller: Box::new(contract_caller.unwrap()),
         })
     } else {
         None

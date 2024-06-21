@@ -1,0 +1,13 @@
+category = "fail"
+
+# check: $()fn main(a: str) -> str
+# nextln: $()`str` or a type containing `str` on `main()` arguments is not allowed
+
+# check: $()fn main(a: str) -> str
+# nextln: $()Returning `str` or a type containing `str` from `main()` is not allowed
+
+category_new_encoding = "run"
+script_data_new_encoding = "0000000000000001 65"
+expected_result_new_encoding = { action = "return_data", value = "0000000000000001 65" }
+
+validate_abi = true
