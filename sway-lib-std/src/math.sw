@@ -237,18 +237,22 @@ impl Logarithm for u256 {
         use ::flags::{disable_panic_on_overflow, enable_panic_on_overflow};
         use ::registers::overflow;
 
+        // Logarithm is undefined for bases less than 2
         assert(base >= 2);
 
+        // Decimals rounded to 0
         if self < base {
             return 0x00u256;
         }
 
+        // Estimating the result using change of base formula. Only an estimate because we are doing uint calculations.
         let self_log2 = self.log2();
         let base_log2 = base.log2();
         let mut result = (self_log2 / base_log2);
 
         let _ = disable_panic_on_overflow();
 
+        // Converting u256 to u32, this cannot fail as the result will be atmost ~256
         let parts = asm(r1: result) {
             r1: (u64, u64, u64, u64)
         };
@@ -256,12 +260,16 @@ impl Logarithm for u256 {
             r1: u32
         };
 
+        // Raising the base to the power of the result
         let mut pow_res = base.pow(res_u32);
         let mut of = overflow();
 
+        // Adjusting the result until the power is less than or equal to self
+        // If pow_res is > than self, then there is an overestimation. If there is an overflow then there is definitely an overestimation.
         while (pow_res > self) || (of > 0) {
             result -= 1;
 
+            // Converting u256 to u32, this cannot fail as the result will be atmost ~256
             let parts = asm(r1: result) {
                 r1: (u64, u64, u64, u64)
             };
