@@ -812,27 +812,24 @@ impl<V> StorageKey<StorageVec<V>> {
         let size_V_bytes = __size_of::<V>();
 
         // Handle cases where elements are less than the size of word as pad to the size of a word
-        let slice = match size_V_bytes < 8 {
-            true => {
-                let vec_slice = vec.as_raw_slice();
-                let number_of_words = 8 * vec.len();
-                let ptr = alloc_bytes(number_of_words);
-                let mut i = 0;
-                while i < vec.len() {
-                    // Insert into raw slice as offsets of 1 word per element
-                    // (size_of_word * element)
-                    vec_slice
-                        .ptr()
-                        .add::<V>(i)
-                        .copy_bytes_to(ptr.add_uint_offset(8 * i), size_V_bytes);
-                    i += 1;
-                }
-
-                raw_slice::from_parts::<V>(ptr, number_of_words)
-            },
-            false => {
-                vec.as_raw_slice()
+        let slice = if size_V_bytes < 8 {
+            let vec_slice = vec.as_raw_slice();
+            let number_of_words = 8 * vec.len();
+            let ptr = alloc_bytes(number_of_words);
+            let mut i = 0;
+            while i < vec.len() {
+                // Insert into raw slice as offsets of 1 word per element
+                // (size_of_word * element)
+                vec_slice
+                    .ptr()
+                    .add::<V>(i)
+                    .copy_bytes_to(ptr.add_uint_offset(8 * i), size_V_bytes);
+                i += 1;
             }
+
+            raw_slice::from_parts::<V>(ptr, number_of_words)
+        } else {
+            vec.as_raw_slice()
         };
 
         // Get the number of storage slots needed based on the size of bytes.
