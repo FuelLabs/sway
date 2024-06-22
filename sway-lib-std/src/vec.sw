@@ -131,7 +131,7 @@ impl<T> RawVec<T> {
 
 impl<T> From<raw_slice> for RawVec<T> {
     fn from(slice: raw_slice) -> Self {
-        let cap = slice.number_of_bytes();
+        let cap = slice.len::<T>();
         let ptr = alloc_bytes(cap);
         asm(to: ptr, from: slice.ptr(), cap: cap) {
             mcp to from cap;
@@ -674,8 +674,17 @@ where
 {
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
         let len = u64::abi_decode(buffer);
-        let slice = buffer.read_bytes(len);
-        Vec::<T>::from(slice)
+        
+        let mut v = Vec::with_capacity(len);
+
+        let mut i = 0;
+        while i < len {
+            let item = T::abi_decode(buffer);
+            v.push(item);
+            i += 1;
+        }
+
+        v
     }
 }
 
