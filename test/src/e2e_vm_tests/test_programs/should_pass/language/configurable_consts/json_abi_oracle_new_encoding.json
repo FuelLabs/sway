@@ -7,7 +7,19 @@
         "typeArguments": null
       },
       "name": "BOOL",
+<<<<<<< HEAD
       "offset": 6888
+=======
+<<<<<<< HEAD
+      "offset": 6912
+=======
+<<<<<<< HEAD
+      "offset": 6848
+=======
+      "offset": 6936
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -16,7 +28,19 @@
         "typeArguments": null
       },
       "name": "U8",
+<<<<<<< HEAD
       "offset": 7024
+=======
+<<<<<<< HEAD
+      "offset": 7048
+=======
+<<<<<<< HEAD
+      "offset": 6984
+=======
+      "offset": 7072
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -25,7 +49,19 @@
         "typeArguments": null
       },
       "name": "ANOTHER_U8",
+<<<<<<< HEAD
       "offset": 6816
+=======
+<<<<<<< HEAD
+      "offset": 6840
+=======
+<<<<<<< HEAD
+      "offset": 6776
+=======
+      "offset": 6864
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -34,7 +70,19 @@
         "typeArguments": null
       },
       "name": "U16",
+<<<<<<< HEAD
       "offset": 6968
+=======
+<<<<<<< HEAD
+      "offset": 6992
+=======
+<<<<<<< HEAD
+      "offset": 6928
+=======
+      "offset": 7016
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -43,7 +91,19 @@
         "typeArguments": null
       },
       "name": "U32",
+<<<<<<< HEAD
       "offset": 7008
+=======
+<<<<<<< HEAD
+      "offset": 7032
+=======
+<<<<<<< HEAD
+      "offset": 6968
+=======
+      "offset": 7056
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -52,7 +112,19 @@
         "typeArguments": null
       },
       "name": "U64",
+<<<<<<< HEAD
       "offset": 7016
+=======
+<<<<<<< HEAD
+      "offset": 7040
+=======
+<<<<<<< HEAD
+      "offset": 6976
+=======
+      "offset": 7064
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -61,7 +133,19 @@
         "typeArguments": null
       },
       "name": "U256",
+<<<<<<< HEAD
       "offset": 6976
+=======
+<<<<<<< HEAD
+      "offset": 7000
+=======
+<<<<<<< HEAD
+      "offset": 6936
+=======
+      "offset": 7024
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -70,7 +154,19 @@
         "typeArguments": null
       },
       "name": "B256",
+<<<<<<< HEAD
       "offset": 6856
+=======
+<<<<<<< HEAD
+      "offset": 6880
+=======
+<<<<<<< HEAD
+      "offset": 6816
+=======
+      "offset": 6904
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -79,7 +175,19 @@
         "typeArguments": []
       },
       "name": "CONFIGURABLE_STRUCT",
+<<<<<<< HEAD
       "offset": 6928
+=======
+<<<<<<< HEAD
+      "offset": 6952
+=======
+<<<<<<< HEAD
+      "offset": 6888
+=======
+      "offset": 6976
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -88,7 +196,19 @@
         "typeArguments": []
       },
       "name": "CONFIGURABLE_ENUM_A",
+<<<<<<< HEAD
       "offset": 6896
+=======
+<<<<<<< HEAD
+      "offset": 6920
+=======
+<<<<<<< HEAD
+      "offset": 6856
+=======
+      "offset": 6944
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -97,7 +217,19 @@
         "typeArguments": []
       },
       "name": "CONFIGURABLE_ENUM_B",
+<<<<<<< HEAD
       "offset": 6912
+=======
+<<<<<<< HEAD
+      "offset": 6936
+=======
+<<<<<<< HEAD
+      "offset": 6872
+=======
+      "offset": 6960
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -106,7 +238,19 @@
         "typeArguments": null
       },
       "name": "ARRAY_BOOL",
+<<<<<<< HEAD
       "offset": 6824
+=======
+<<<<<<< HEAD
+      "offset": 6848
+=======
+<<<<<<< HEAD
+      "offset": 6784
+=======
+      "offset": 6872
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -115,7 +259,19 @@
         "typeArguments": null
       },
       "name": "ARRAY_U64",
+<<<<<<< HEAD
       "offset": 6832
+=======
+<<<<<<< HEAD
+      "offset": 6856
+=======
+<<<<<<< HEAD
+      "offset": 6792
+=======
+      "offset": 6880
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -124,7 +280,19 @@
         "typeArguments": null
       },
       "name": "TUPLE_BOOL_U64",
+<<<<<<< HEAD
       "offset": 6952
+=======
+<<<<<<< HEAD
+      "offset": 6976
+=======
+<<<<<<< HEAD
+      "offset": 6912
+=======
+      "offset": 7000
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     },
     {
       "configurableType": {
@@ -133,7 +301,19 @@
         "typeArguments": null
       },
       "name": "STR_4",
+<<<<<<< HEAD
       "offset": 6944
+=======
+<<<<<<< HEAD
+      "offset": 6968
+=======
+<<<<<<< HEAD
+      "offset": 6904
+=======
+      "offset": 6992
+>>>>>>> ef917df9a (fix Vec buffer ownership)
+>>>>>>> 085e75b03 (fix Vec buffer ownership)
+>>>>>>> f5ef3c59e (fix Vec buffer ownership)
     }
   ],
   "encoding": "1",

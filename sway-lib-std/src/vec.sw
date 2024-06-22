@@ -1,7 +1,7 @@
 //! A vector type for dynamically sized arrays outside of storage.
 library;
 
-use ::alloc::{alloc, alloc_bytes, realloc};
+use ::alloc::{alloc, realloc};
 use ::assert::assert;
 use ::option::Option::{self, *};
 use ::convert::From;
@@ -132,9 +132,13 @@ impl<T> RawVec<T> {
 impl<T> From<raw_slice> for RawVec<T> {
     fn from(slice: raw_slice) -> Self {
         let cap = slice.len::<T>();
-        let ptr = alloc_bytes(cap);
-        asm(to: ptr, from: slice.ptr(), cap: cap) {
-            mcp to from cap;
+        let ptr = alloc::<T>(cap);
+        asm(
+            to: ptr,
+            from: slice.ptr(),
+            qty_bytes: slice.number_of_bytes(),
+        ) {
+            mcp to from qty_bytes;
         }
         Self { ptr, cap }
     }
@@ -674,7 +678,7 @@ where
 {
     fn abi_decode(ref mut buffer: BufferReader) -> Vec<T> {
         let len = u64::abi_decode(buffer);
-        
+
         let mut v = Vec::with_capacity(len);
 
         let mut i = 0;
