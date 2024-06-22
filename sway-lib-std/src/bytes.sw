@@ -928,7 +928,7 @@ impl AbiEncode for Bytes {
 impl AbiDecode for Bytes {
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
         let len = u64::abi_decode(buffer);
-        let slice= buffer.read_bytes(len);
+        let slice = buffer.read_bytes(len);
         Bytes::from(slice)
     }
 }

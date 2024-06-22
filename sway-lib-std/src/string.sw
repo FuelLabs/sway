@@ -352,3 +352,36 @@ impl AbiDecode for String {
         }
     }
 }
+
+#[test]
+fn ok_string_buffer_ownership() {
+    use ::option::Option::Some;
+
+    let mut string_slice = "hi"; 
+    let mut string = String::from_ascii_str(string_slice);
+
+    // change first char to 'H'
+    let mut bytes = string.as_bytes();
+    bytes.set(0, 72);
+
+    // Check the string changed, but not the original slice
+    assert(string.as_bytes().get(0) == Some(72));
+    assert(string_slice == "hi");
+
+    // encoded bytes should be <length> Hi
+    let encoded_bytes = encode(string);
+    let string = abi_decode::<String>(encoded_bytes);
+
+    // change first char to 'P'
+    string.as_bytes().set(0, 80);
+
+    // Check decoded string is "Pi"
+    assert(string.as_bytes().get(0) == Some(80));
+    
+    // Check original string slice has not changed
+    assert(string_slice == "hi");
+
+    // Check encoded bytes has not changed
+    let mut bytes = abi_decode::<Bytes>(encoded_bytes);
+    assert(bytes.get(0) == Some(72));
+}
