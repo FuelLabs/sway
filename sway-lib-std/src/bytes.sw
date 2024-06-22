@@ -79,10 +79,7 @@ impl From<raw_slice> for RawBytes {
         asm(to: ptr, from: slice.ptr(), cap: cap) {
             mcp to from cap;
         }
-        Self {
-            ptr,
-            cap,
-        }
+        Self { ptr, cap }
     }
 }
 
@@ -945,7 +942,7 @@ fn ok_bytes_buffer_ownership() {
 
     // At this point, slice equals [5, 2, 3, 4]
     let encoded_slice = encode(bytes);
-    
+
     // `Bytes` should duplicate the underlying buffer,
     // so when we write to it, it should not change
     // `encoded_slice` 
@@ -956,4 +953,3 @@ fn ok_bytes_buffer_ownership() {
     let mut bytes = abi_decode::<Bytes>(encoded_slice);
     assert(bytes.get(0) == Some(5));
 }
-
