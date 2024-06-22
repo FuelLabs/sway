@@ -357,7 +357,7 @@ impl AbiDecode for String {
 fn ok_string_buffer_ownership() {
     use ::option::Option::Some;
 
-    let mut string_slice = "hi"; 
+    let mut string_slice = "hi";
     let mut string = String::from_ascii_str(string_slice);
 
     // change first char to 'H'
@@ -377,7 +377,7 @@ fn ok_string_buffer_ownership() {
 
     // Check decoded string is "Pi"
     assert(string.as_bytes().get(0) == Some(80));
-    
+
     // Check original string slice has not changed
     assert(string_slice == "hi");
 

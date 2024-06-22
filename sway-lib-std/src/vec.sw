@@ -136,10 +136,7 @@ impl<T> From<raw_slice> for RawVec<T> {
         asm(to: ptr, from: slice.ptr(), cap: cap) {
             mcp to from cap;
         }
-        Self {
-            ptr,
-            cap,
-        }
+        Self { ptr, cap }
     }
 }
 
@@ -699,7 +696,6 @@ impl<T> Iterator for VecIter<T> {
     }
 }
 
-
 #[test]
 fn ok_vec_buffer_ownership() {
     let mut original_array = [1u8, 2u8, 3u8, 4u8];
@@ -712,7 +708,7 @@ fn ok_vec_buffer_ownership() {
 
     // At this point, slice equals [5, 2, 3, 4]
     let encoded_slice = encode(bytes);
-    
+
     // `Vec<u8>` should duplicate the underlying buffer,
     // so when we write to it, it should not change
     // `encoded_slice` 
