@@ -138,9 +138,9 @@ impl String {
     pub fn from_ascii_str(s: str) -> Self {
         let str_size = s.len();
         let str_ptr = s.as_ptr();
-
+        let slice = raw_slice::from_parts::<u8>(str_ptr, str_size); 
         Self {
-            bytes: Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)),
+            bytes: Bytes::from(slice),
         }
     }
 
@@ -234,18 +234,6 @@ impl String {
     }
 }
 
-impl From<Bytes> for String {
-    fn from(b: Bytes) -> Self {
-        Self { bytes: b }
-    }
-}
-
-impl From<String> for Bytes {
-    fn from(s: String) -> Bytes {
-        s.as_bytes()
-    }
-}
-
 impl AsRawSlice for String {
     /// Returns a raw slice to all of the elements in the string.
     fn as_raw_slice(self) -> raw_slice {
@@ -308,13 +296,25 @@ impl From<String> for raw_slice {
     /// }
     /// ```
     fn from(s: String) -> raw_slice {
-        raw_slice::from(s.as_bytes())
+        s.as_raw_slice()
+    }
+}
+
+impl From<Bytes> for String {
+    fn from(b: Bytes) -> Self {
+        b.as_raw_slice().into()
+    }
+}
+
+impl From<String> for Bytes {
+    fn from(s: String) -> Bytes {
+        s.as_raw_slice().into()
     }
 }
 
 impl Eq for String {
     fn eq(self, other: Self) -> bool {
-        self.bytes == other.as_bytes()
+        self.as_raw_slice() == other.as_raw_slice()
     }
 }
 
@@ -326,30 +326,13 @@ impl Hash for String {
 
 impl AbiEncode for String {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        // Encode the length
-        let mut buffer = self.bytes.len().abi_encode(buffer);
-
-        // Encode each byte of the string
-        let mut i = 0;
-        while i < self.bytes.len() {
-            let item = self.bytes.get(i).unwrap();
-            buffer = item.abi_encode(buffer);
-            i += 1;
-        }
-
-        buffer
+        self.as_raw_slice().abi_encode(buffer)
     }
 }
 
 impl AbiDecode for String {
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
-        // Get length and string data
-        let len = u64::abi_decode(buffer);
-        let data = buffer.read_bytes(len);
-        // Create string from the ptr and len as parts of a raw_slice
-        String {
-            bytes: Bytes::from(raw_slice::from_parts::<u8>(data.ptr(), len)),
-        }
+        raw_slice::abi_decode(buffer).into()
     }
 }
 

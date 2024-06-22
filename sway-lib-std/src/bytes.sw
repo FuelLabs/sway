@@ -76,8 +76,8 @@ impl From<raw_slice> for RawBytes {
     fn from(slice: raw_slice) -> Self {
         let cap = slice.number_of_bytes();
         let ptr = alloc_bytes(cap);
-        asm(to: ptr, from: slice.ptr(), cap: cap) {
-            mcp to from cap;
+        if cap > 0 {
+            slice.ptr().copy_to::<u8>(ptr, cap);
         }
         Self { ptr, cap }
     }
