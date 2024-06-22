@@ -4,7 +4,7 @@ use basic_storage_abi::{BasicStorage, Quad};
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0x94db39f409a31b9f2ebcadeea44378e419208c20de90f5d8e1e33dc1523754cb;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0xa638dae2693fab5fc57f3b61af1a4aae594006f2846175b9954769e3fa243a23;
+const CONTRACT_ID = 0xc98486039347d1f5fa68e3c557565aa8da0b9ca1b74207404e64e50afe0766c9;
 
 fn main() -> u64 {
     let addr = abi(BasicStorage, CONTRACT_ID);
