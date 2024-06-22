@@ -410,7 +410,7 @@ fn block_to_doc(
     md_namer: &mut MetadataNamer,
     namer: &mut Namer,
     block: &Block,
-    mut map_doc: &impl Fn(&Value, Doc) -> Doc,
+    map_doc: &impl Fn(&Value, Doc) -> Doc,
 ) -> Doc {
     let block_content = &context.blocks[block.0];
     Doc::line(
@@ -433,7 +433,7 @@ fn block_to_doc(
         block
             .instruction_iter(context)
             .map(|current_value| {
-                let mut doc = instruction_to_doc(context, md_namer, namer, block, &current_value);
+                let doc = instruction_to_doc(context, md_namer, namer, block, &current_value);
                 (map_doc)(&current_value, doc)
             })
             .collect(),

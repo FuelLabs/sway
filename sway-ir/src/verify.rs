@@ -145,10 +145,7 @@ impl<'eng> Context<'eng> {
             let block = if let Some(problematic_value) = error.get_problematic_value() {
                 printer::context_print(self, &|current_value: &Value, doc: Doc| {
                     if *current_value == *problematic_value {
-                        doc.append(Doc::text_line(format!(
-                            "\x1b[0;31m^ {}\x1b[0m",
-                            error.to_string()
-                        )))
+                        doc.append(Doc::text_line(format!("\x1b[0;31m^ {}\x1b[0m", error)))
                     } else {
                         doc
                     }
