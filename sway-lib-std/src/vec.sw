@@ -133,12 +133,8 @@ impl<T> From<raw_slice> for RawVec<T> {
     fn from(slice: raw_slice) -> Self {
         let cap = slice.len::<T>();
         let ptr = alloc::<T>(cap);
-        asm(
-            to: ptr,
-            from: slice.ptr(),
-            qty_bytes: slice.number_of_bytes(),
-        ) {
-            mcp to from qty_bytes;
+        if cap > 0 {
+            slice.ptr().copy_to::<T>(ptr, cap);
         }
         Self { ptr, cap }
     }
