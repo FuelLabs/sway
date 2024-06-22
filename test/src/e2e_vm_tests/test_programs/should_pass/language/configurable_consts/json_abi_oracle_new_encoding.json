@@ -1,10 +1,18 @@
 {
+<<<<<<< HEAD
       "configurables": [
             {
                   "configurableType": {
                         "name": "",
 <<<<<<< HEAD
 =======
+=======
+<<<<<<< HEAD
+  "configurables": [
+    {
+      "configurableType": {
+        "name": "",
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
         "type": 1,
                         "typeArguments": null
@@ -14,12 +22,29 @@
 =======
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
         "type": 5,
+<<<<<<< HEAD
                   "typeArguments": null
             },
             "name": "BOOL",
 <<<<<<< HEAD
       "offset": 6944
 =======
+=======
+        "typeArguments": null
+      },
+      "name": "BOOL",
+=======
+      "configurables": [
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 5,
+                        "typeArguments": null
+                  },
+                  "name": "BOOL",
+<<<<<<< HEAD
+>>>>>>> 05c07233f (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6888
 =======
@@ -32,7 +57,9 @@
       "offset": 6936
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -45,6 +72,30 @@
 <<<<<<< HEAD
       "offset": 7088
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 13,
+                        "typeArguments": null
+                  },
+                  "name": "U8",
+=======
+=======
+      "offset": 6856
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 13,
+                        "typeArguments": null
+                  },
+                  "name": "U8",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 7024
 =======
@@ -57,7 +108,9 @@
       "offset": 7072
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -70,6 +123,30 @@
 <<<<<<< HEAD
       "offset": 6872
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 13,
+                        "typeArguments": null
+                  },
+                  "name": "ANOTHER_U8",
+=======
+=======
+      "offset": 6992
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 13,
+                        "typeArguments": null
+                  },
+                  "name": "ANOTHER_U8",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6816
 =======
@@ -82,7 +159,9 @@
       "offset": 6864
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -95,6 +174,30 @@
 <<<<<<< HEAD
       "offset": 7032
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 9,
+                        "typeArguments": null
+                  },
+                  "name": "U16",
+=======
+=======
+      "offset": 6784
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 9,
+                        "typeArguments": null
+                  },
+                  "name": "U16",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6968
 =======
@@ -107,7 +210,9 @@
       "offset": 7016
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -120,6 +225,30 @@
 <<<<<<< HEAD
       "offset": 7072
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 11,
+                        "typeArguments": null
+                  },
+                  "name": "U32",
+=======
+=======
+      "offset": 6936
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 11,
+                        "typeArguments": null
+                  },
+                  "name": "U32",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 7008
 =======
@@ -132,7 +261,9 @@
       "offset": 7056
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -145,6 +276,30 @@
 <<<<<<< HEAD
       "offset": 7080
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 11,
+                        "typeArguments": null
+                  },
+                  "name": "U64",
+=======
+=======
+      "offset": 6976
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 11,
+                        "typeArguments": null
+                  },
+                  "name": "U64",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 7016
 =======
@@ -157,7 +312,9 @@
       "offset": 7064
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -170,6 +327,30 @@
 <<<<<<< HEAD
       "offset": 7040
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 10,
+                        "typeArguments": null
+                  },
+                  "name": "U256",
+=======
+=======
+      "offset": 6984
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 10,
+                        "typeArguments": null
+                  },
+                  "name": "U256",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6976
 =======
@@ -182,7 +363,9 @@
       "offset": 7024
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -195,6 +378,30 @@
 <<<<<<< HEAD
       "offset": 6912
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 4,
+                        "typeArguments": null
+                  },
+                  "name": "B256",
+=======
+=======
+      "offset": 6944
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 4,
+                        "typeArguments": null
+                  },
+                  "name": "B256",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6856
 =======
@@ -207,7 +414,9 @@
       "offset": 6904
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -220,6 +429,30 @@
 <<<<<<< HEAD
       "offset": 6984
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 8,
+                        "typeArguments": []
+                  },
+                  "name": "CONFIGURABLE_STRUCT",
+=======
+=======
+      "offset": 6824
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 8,
+                        "typeArguments": []
+                  },
+                  "name": "CONFIGURABLE_STRUCT",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6928
 =======
@@ -232,7 +465,9 @@
       "offset": 6976
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -245,6 +480,30 @@
 <<<<<<< HEAD
       "offset": 6952
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 6,
+                        "typeArguments": []
+                  },
+                  "name": "CONFIGURABLE_ENUM_A",
+=======
+=======
+      "offset": 6896
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 6,
+                        "typeArguments": []
+                  },
+                  "name": "CONFIGURABLE_ENUM_A",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6896
 =======
@@ -257,7 +516,9 @@
       "offset": 6944
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -270,6 +531,30 @@
 <<<<<<< HEAD
       "offset": 6968
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 6,
+                        "typeArguments": []
+                  },
+                  "name": "CONFIGURABLE_ENUM_B",
+=======
+=======
+      "offset": 6864
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 6,
+                        "typeArguments": []
+                  },
+                  "name": "CONFIGURABLE_ENUM_B",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6912
 =======
@@ -282,7 +567,9 @@
       "offset": 6960
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -295,6 +582,30 @@
 <<<<<<< HEAD
       "offset": 6880
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 2,
+                        "typeArguments": null
+                  },
+                  "name": "ARRAY_BOOL",
+=======
+=======
+      "offset": 6880
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 2,
+                        "typeArguments": null
+                  },
+                  "name": "ARRAY_BOOL",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6824
 =======
@@ -307,7 +618,9 @@
       "offset": 6872
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -320,6 +633,30 @@
 <<<<<<< HEAD
       "offset": 6888
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 3,
+                        "typeArguments": null
+                  },
+                  "name": "ARRAY_U64",
+=======
+=======
+      "offset": 6792
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 3,
+                        "typeArguments": null
+                  },
+                  "name": "ARRAY_U64",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6832
 =======
@@ -332,7 +669,9 @@
       "offset": 6880
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -345,6 +684,30 @@
 <<<<<<< HEAD
       "offset": 7016
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 1,
+                        "typeArguments": null
+                  },
+                  "name": "TUPLE_BOOL_U64",
+=======
+=======
+      "offset": 6800
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 1,
+                        "typeArguments": null
+                  },
+                  "name": "TUPLE_BOOL_U64",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6952
 =======
@@ -357,7 +720,9 @@
       "offset": 7000
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       },
       {
@@ -379,6 +744,30 @@
             "name": "NOT_USED",
             "offset": 7000
 =======
+=======
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 7,
+                        "typeArguments": null
+                  },
+                  "name": "STR_4",
+=======
+=======
+      "offset": 6920
+>>>>>>> 51fa76df5 (fix rebase issues)
+            },
+            {
+                  "configurableType": {
+                        "name": "",
+                        "type": 7,
+                        "typeArguments": null
+                  },
+                  "name": "STR_4",
+<<<<<<< HEAD
+>>>>>>> 9b4d05870 (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
       "offset": 6944
 =======
@@ -391,10 +780,13 @@
       "offset": 6992
 >>>>>>> ef917df9a (fix Vec buffer ownership)
 >>>>>>> 085e75b03 (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> f5ef3c59e (fix Vec buffer ownership)
+<<<<<<< HEAD
 >>>>>>> 98b09aea5 (fix Vec buffer ownership)
 >>>>>>> 0a293dd07 (fix Vec buffer ownership)
       }
+<<<<<<< HEAD
 ],
 "encoding": "1",
 "functions": [
@@ -543,3 +935,216 @@
       }
 ]
 }
+=======
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 1,
+      "typeParameters": null
+    }
+  ]
+}
+=======
+            }
+      ],
+      "encoding": "1",
+      "functions": [
+            {
+                  "attributes": null,
+                  "inputs": [],
+                  "name": "main",
+                  "output": {
+                        "name": "",
+                        "type": 0,
+                        "typeArguments": null
+                  }
+            }
+      ],
+      "loggedTypes": [],
+      "messagesTypes": [],
+      "types": [
+            {
+                  "components": [],
+                  "type": "()",
+                  "typeId": 0,
+                  "typeParameters": null
+            },
+            {
+                  "components": [
+                        {
+                              "name": "__tuple_element",
+                              "type": 5,
+                              "typeArguments": null
+                        },
+                        {
+                              "name": "__tuple_element",
+                              "type": 12,
+                              "typeArguments": null
+                        }
+=======
+=======
+      "offset": 6912
+>>>>>>> 51fa76df5 (fix rebase issues)
+                  }
+>>>>>>> 9b4d05870 (fix rebase issues)
+            ],
+            "encoding": "1",
+            "functions": [
+                  {
+                        "attributes": null,
+                        "inputs": [],
+                        "name": "main",
+                        "output": {
+                              "name": "",
+                              "type": 0,
+                              "typeArguments": null
+                        }
+                  }
+            ],
+            "loggedTypes": [],
+            "messagesTypes": [],
+            "types": [
+                  {
+                        "components": [],
+                        "type": "()",
+                        "typeId": 0,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": [
+                              {
+                                    "name": "__tuple_element",
+                                    "type": 5,
+                                    "typeArguments": null
+                              },
+                              {
+                                    "name": "__tuple_element",
+                                    "type": 12,
+                                    "typeArguments": null
+                              }
+                        ],
+                        "type": "(_, _)",
+                        "typeId": 1,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": [
+                              {
+                                    "name": "__array_element",
+                                    "type": 5,
+                                    "typeArguments": null
+                              }
+                        ],
+                        "type": "[_; 3]",
+                        "typeId": 2,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": [
+                              {
+                                    "name": "__array_element",
+                                    "type": 12,
+                                    "typeArguments": null
+                              }
+                        ],
+                        "type": "[_; 3]",
+                        "typeId": 3,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "b256",
+                        "typeId": 4,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "bool",
+                        "typeId": 5,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": [
+                              {
+                                    "name": "A",
+                                    "type": 5,
+                                    "typeArguments": null
+                              },
+                              {
+                                    "name": "B",
+                                    "type": 12,
+                                    "typeArguments": null
+                              }
+                        ],
+                        "type": "enum ConfigurableEnum",
+                        "typeId": 6,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "str[4]",
+                        "typeId": 7,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": [
+                              {
+                                    "name": "a",
+                                    "type": 5,
+                                    "typeArguments": null
+                              },
+                              {
+                                    "name": "b",
+                                    "type": 12,
+                                    "typeArguments": null
+                              }
+                        ],
+                        "type": "struct ConfigurableStruct",
+                        "typeId": 8,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "u16",
+                        "typeId": 9,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "u256",
+                        "typeId": 10,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "u32",
+                        "typeId": 11,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "u64",
+                        "typeId": 12,
+                        "typeParameters": null
+                  },
+                  {
+                        "components": null,
+                        "type": "u8",
+                        "typeId": 13,
+                        "typeParameters": null
+                  }
+            ]
+      }
+>>>>>>> 05c07233f (fix rebase issues)
+>>>>>>> 0fec394a3 (fix rebase issues)
