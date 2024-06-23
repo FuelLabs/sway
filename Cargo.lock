@@ -2059,6 +2059,7 @@ dependencies = [
  "escargot",
  "forc-pkg",
  "forc-test",
+ "forc-tracing 0.61.0",
  "fuel-core-client",
  "fuel-types",
  "fuel-vm",

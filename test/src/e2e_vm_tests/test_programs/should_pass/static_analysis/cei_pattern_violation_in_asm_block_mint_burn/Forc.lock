@@ -1,0 +1,8 @@
+[[package]]
+name = "cei_pattern_violation_in_asm_block_mint_burn"
+source = "member"
+dependencies = ["core"]
+
+[[package]]
+name = "core"
+source = "path+from-root-61D50B6E7FD9C109"
