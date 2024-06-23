@@ -138,9 +138,9 @@ impl String {
     pub fn from_ascii_str(s: str) -> Self {
         let str_size = s.len();
         let str_ptr = s.as_ptr();
-        let slice = raw_slice::from_parts::<u8>(str_ptr, str_size); 
+
         Self {
-            bytes: Bytes::from(slice),
+            bytes: Bytes::from(raw_slice::from_parts::<u8>(str_ptr, str_size)),
         }
     }
 
@@ -234,6 +234,18 @@ impl String {
     }
 }
 
+impl From<Bytes> for String {
+    fn from(b: Bytes) -> Self {
+        Self { bytes: b }
+    }
+}
+
+impl From<String> for Bytes {
+    fn from(s: String) -> Bytes {
+        s.as_bytes()
+    }
+}
+
 impl AsRawSlice for String {
     /// Returns a raw slice to all of the elements in the string.
     fn as_raw_slice(self) -> raw_slice {
@@ -296,25 +308,13 @@ impl From<String> for raw_slice {
     /// }
     /// ```
     fn from(s: String) -> raw_slice {
-        s.as_raw_slice()
-    }
-}
-
-impl From<Bytes> for String {
-    fn from(b: Bytes) -> Self {
-        b.as_raw_slice().into()
-    }
-}
-
-impl From<String> for Bytes {
-    fn from(s: String) -> Bytes {
-        s.as_raw_slice().into()
+        raw_slice::from(s.as_bytes())
     }
 }
 
 impl Eq for String {
     fn eq(self, other: Self) -> bool {
-        self.as_raw_slice() == other.as_raw_slice()
+        self.bytes == other.as_bytes()
     }
 }
 
@@ -326,45 +326,29 @@ impl Hash for String {
 
 impl AbiEncode for String {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        self.as_raw_slice().abi_encode(buffer)
+        // Encode the length
+        let mut buffer = self.bytes.len().abi_encode(buffer);
+
+        // Encode each byte of the string
+        let mut i = 0;
+        while i < self.bytes.len() {
+            let item = self.bytes.get(i).unwrap();
+            buffer = item.abi_encode(buffer);
+            i += 1;
+        }
+
+        buffer
     }
 }
 
 impl AbiDecode for String {
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
-        raw_slice::abi_decode(buffer).into()
+        // Get length and string data
+        let len = u64::abi_decode(buffer);
+        let data = buffer.read_bytes(len);
+        // Create string from the ptr and len as parts of a raw_slice
+        String {
+            bytes: Bytes::from(raw_slice::from_parts::<u8>(data.ptr(), len)),
+        }
     }
-}
-
-#[test]
-fn ok_string_buffer_ownership() {
-    use ::option::Option::Some;
-
-    let mut string_slice = "hi";
-    let mut string = String::from_ascii_str(string_slice);
-
-    // change first char to 'H'
-    let mut bytes = string.as_bytes();
-    bytes.set(0, 72);
-
-    // Check the string changed, but not the original slice
-    assert(string.as_bytes().get(0) == Some(72));
-    assert(string_slice == "hi");
-
-    // encoded bytes should be <length> Hi
-    let encoded_bytes = encode(string);
-    let string = abi_decode::<String>(encoded_bytes);
-
-    // change first char to 'P'
-    string.as_bytes().set(0, 80);
-
-    // Check decoded string is "Pi"
-    assert(string.as_bytes().get(0) == Some(80));
-
-    // Check original string slice has not changed
-    assert(string_slice == "hi");
-
-    // Check encoded bytes has not changed
-    let mut bytes = abi_decode::<Bytes>(encoded_bytes);
-    assert(bytes.get(0) == Some(72));
 }

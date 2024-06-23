@@ -33,7 +33,7 @@ pub enum IrError {
     VerifyConditionExprNotABool,
     VerifyContractCallBadTypes(String),
     VerifyGepElementTypeNonPointer,
-    VerifyGepFromNonPointer(String),
+    VerifyGepFromNonPointer(String, Option<Value>),
     VerifyGepInconsistentTypes(String, Option<crate::Value>),
     VerifyGepOnNonAggregate,
     VerifyGetNonExistentPointer,
@@ -71,6 +71,7 @@ pub enum IrError {
 impl IrError {
     pub(crate) fn get_problematic_value(&self) -> Option<&Value> {
         match self {
+            Self::VerifyGepFromNonPointer(_, v) => v.as_ref(),
             Self::VerifyGepInconsistentTypes(_, v) => v.as_ref(),
             _ => None,
         }
@@ -210,7 +211,7 @@ impl fmt::Display for IrError {
                     error
                 )
             }
-            IrError::VerifyGepFromNonPointer(ty) => {
+            IrError::VerifyGepFromNonPointer(ty, _) => {
                 write!(
                     f,
                     "Verification failed: Struct access must be to a pointer value, not a {ty}."

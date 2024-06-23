@@ -770,7 +770,9 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
     ) -> Result<(), IrError> {
         use crate::constant::ConstantValue;
 
-        let base_ty = self.get_ptr_type(base, IrError::VerifyGepFromNonPointer)?;
+        let base_ty = self.get_ptr_type(base, |s| {
+            IrError::VerifyGepFromNonPointer(s, Some(ins.clone()))
+        })?;
         if !base_ty.is_aggregate(self.context) {
             return Err(IrError::VerifyGepOnNonAggregate);
         }
