@@ -74,17 +74,14 @@ impl From<raw_slice> for RawBytes {
     /// assert(raw_bytes.capacity == 3);
     /// ```
     fn from(slice: raw_slice) -> Self {
-        let cap = slice.number_of_bytes();
-        let ptr = alloc_bytes(cap);
-        if cap > 0 {
-            slice.ptr().copy_to::<u8>(ptr, cap);
+        Self {
+            ptr: slice.ptr(),
+            cap: slice.number_of_bytes(),
         }
-        Self { ptr, cap }
     }
 }
 
 /// A type used to represent raw bytes.
-/// It has ownership over the bytes, stored in a heap-allocated buffer.
 pub struct Bytes {
     /// A barebones struct for the bytes.
     buf: RawBytes,
@@ -924,32 +921,18 @@ impl AbiEncode for Bytes {
 
 impl AbiDecode for Bytes {
     fn abi_decode(ref mut buffer: BufferReader) -> Bytes {
-        let len = u64::abi_decode(buffer);
-        let slice = buffer.read_bytes(len);
-        Bytes::from(slice)
+        raw_slice::abi_decode(buffer).into()
     }
 }
 
+
+
 #[test]
-fn ok_bytes_buffer_ownership() {
-    let mut original_array = [1u8, 2u8, 3u8, 4u8];
-    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+fn xxx () {
+    let mut b = Bytes::new();
+    b.push(1);
+    b.push(2);
 
-    // Check Bytes duplicates the original slice
-    let mut bytes = Bytes::from(slice);
-    bytes.set(0, 5);
-    assert(original_array[0] == 1);
-
-    // At this point, slice equals [5, 2, 3, 4]
-    let encoded_slice = encode(bytes);
-
-    // `Bytes` should duplicate the underlying buffer,
-    // so when we write to it, it should not change
-    // `encoded_slice` 
-    let mut bytes = abi_decode::<Bytes>(encoded_slice);
-    bytes.set(0, 6);
-    assert(bytes.get(0) == Some(6));
-
-    let mut bytes = abi_decode::<Bytes>(encoded_slice);
-    assert(bytes.get(0) == Some(5));
+    __log(encode(b));
+    assert(false);
 }
