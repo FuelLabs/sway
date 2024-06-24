@@ -1,12 +1,8 @@
 use std::path::PathBuf;
 
+use itertools::Itertools;
 use sway_ir::{
-    create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass,
-    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
-    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
-    create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes,
-    Context, ExperimentalFlags, PassGroup, PassManager, DCE_NAME, FN_DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME,
+    create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass, create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes, Context, ExperimentalFlags, IrError, PassGroup, PassManager, DCE_NAME, FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME
 };
 use sway_types::SourceEngine;
 
@@ -69,6 +65,77 @@ fn run_tests<F: Fn(&str, &mut Context) -> bool>(sub_dir: &str, opt_fn: F) {
                 panic!("filecheck directive error while checking: {e}");
             }
             _ => (),
+        }
+    }
+}
+
+// Utility for finding test files and running IR verifier tests.
+// Each test file must contain an IR code that is parsable,
+// but does not pass IR verification.
+// Each test file must contain exactly one `// error: ...` line
+// that specifies the expected IR verification error.
+fn run_ir_verifier_tests(sub_dir: &str) {
+    let source_engine = SourceEngine::default();
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let dir: PathBuf = format!("{manifest_dir}/tests/{sub_dir}").into();
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+
+        let input_bytes = std::fs::read(&path).unwrap();
+        let input = String::from_utf8_lossy(&input_bytes);
+
+        let expected_errors = input
+            .lines()
+            .filter(|line| line.starts_with("// error: "))
+            .collect_vec();
+        
+        let expected_error = match expected_errors[..] {
+            [] => {
+                println!("--- IR verifier test does not contain the expected error: {}", path.display());
+                println!("The expected error must be specified by using the `// error: ` comment.");
+                println!("E.g., `// error: This is the expected error`");
+                println!("There must be exactly one error specified in each IR verifier test.");
+                panic!();
+            }
+            [err] => err.replace("// error: ", ""),
+            _ => {
+                println!("--- IR verifier test contains more then one expected error: {}", path.display());
+                println!("There must be exactly one expected error specified in each IR verifier test.");
+                println!("The specified expected errors were:");
+                println!("{}", expected_errors.join("\n"));
+                panic!();
+            }
+        };
+
+        let parse_result = sway_ir::parser::parse(
+            &input,
+            &source_engine,
+            ExperimentalFlags {
+                new_encoding: false,
+            },
+        );
+
+        match parse_result {
+            Ok(_) => {
+                println!("--- Parsing and validating an IR verifier test passed without errors: {}", path.display());
+                println!("The expected IR validation error was: {expected_error}");
+                panic!();
+            },
+            Err(err @ IrError::ParseFailure(_, _)) => {
+                println!("--- Parsing of an IR verifier test failed: {}", path.display());
+                println!("IR verifier test must be parsable and result in an IR verification error.");
+                println!("The parsing error was: {err}");
+                panic!();
+            },
+            Err(err) => {
+                let err = format!("{err}");
+                if !err.contains(&expected_error) {
+                    println!("--- IR verifier test failed: {}", path.display());
+                    println!("The expected error was: {expected_error}");
+                    println!("The actual IR verification error was: {err}");
+                    panic!();
+                }
+            }
         }
     }
 }
@@ -300,6 +367,11 @@ fn fndedup_release() {
         pass_group.append_pass(FN_DCE_NAME);
         pass_mgr.run(ir, &pass_group).unwrap()
     })
+}
+
+#[test]
+fn verify() {
+    run_ir_verifier_tests("verify")
 }
 
 // -------------------------------------------------------------------------------------------------
