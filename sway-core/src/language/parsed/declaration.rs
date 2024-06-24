@@ -122,7 +122,7 @@ impl Declaration {
         }
     }
 
-    pub(crate) fn to_fn_ref(
+    pub(crate) fn to_fn_decl(
         &self,
         handler: &Handler,
         engines: &Engines,
@@ -160,6 +160,34 @@ impl Declaration {
                 })
             }
             decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    pub(crate) fn to_enum_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<EnumDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::EnumDeclaration(decl_id) => Ok(*decl_id),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    pub(crate) fn to_const_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::ConstantDeclaration(decl_id) => Ok(*decl_id),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAConstant {
                 actually: decl.friendly_type_name().to_string(),
                 span: decl.span(engines),
             })),
