@@ -1889,7 +1889,6 @@ impl<'eng> FnCompiler<'eng> {
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
                         let uint64 = Type::get_uint64(context);
                         let u64_u64_type = Type::new_struct(context, vec![uint64, uint64]);
-                        let ptr_u64_u64_type = Type::new_ptr(context, u64_u64_type);
 
                         // convert "item" to { u64, u64 }
                         let item = self.current_block.append(context).asm_block(
