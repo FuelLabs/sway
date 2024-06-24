@@ -1108,7 +1108,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
@@ -1136,7 +1136,7 @@ impl ty::TyExpression {
         let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
         access_type = type_engine.insert(
             engines,
-            TypeInfo::Struct(storage_key_struct_decl_ref.clone()),
+            TypeInfo::Struct(*storage_key_struct_decl_ref.id()),
             storage_key_struct_decl_ref.span().source_id(),
         );
 

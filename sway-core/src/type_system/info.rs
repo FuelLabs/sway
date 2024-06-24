@@ -1,11 +1,11 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineGet, DeclId, DeclRefStruct},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclId},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
         OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
     language::{
-        ty::{self, TyEnumDecl},
+        ty::{self, TyEnumDecl, TyStructDecl},
         CallPath, QualifiedCallPath,
     },
     type_system::priv_prelude::*,
@@ -132,7 +132,7 @@ pub enum TypeInfo {
     StringArray(Length),
     UnsignedInteger(IntegerBits),
     Enum(DeclId<TyEnumDecl>),
-    Struct(DeclRefStruct),
+    Struct(DeclId<TyStructDecl>),
     Boolean,
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
@@ -212,8 +212,8 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Enum(decl_id) => {
                 HashWithEngines::hash(&decl_id, state, engines);
             }
-            TypeInfo::Struct(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Struct(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 abi_name.hash(state);
@@ -1508,9 +1508,9 @@ impl TypeInfo {
         handler: &Handler,
         engines: &Engines,
         debug_span: &Span,
-    ) -> Result<DeclRefStruct, ErrorEmitted> {
+    ) -> Result<DeclId<TyStructDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Struct(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Struct(decl_id) => Ok(*decl_id),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1581,8 +1581,8 @@ impl TypeInfo {
                     })
             }
 
-            TypeInfo::Struct(s) => {
-                let decl = engines.de().get(s.id());
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
                 decl.fields
                     .iter()
                     .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, f| {

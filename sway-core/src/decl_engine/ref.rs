@@ -160,6 +160,7 @@ where
     T: Named + Spanned + PartialEqWithEngines + EqWithEngines,
 {
 }
+
 impl<T> PartialEqWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
@@ -184,19 +185,6 @@ where
             // temporarily omitted
         } = other;
         ln == rn && decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
-    }
-}
-
-impl<T> HashWithEngines for DeclId<T>
-where
-    DeclEngine: DeclEngineIndex<T>,
-    T: Named + Spanned + HashWithEngines,
-{
-    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
-        let decl_engine = engines.de();
-        let decl = decl_engine.get(self);
-        decl.name().hash(state);
-        decl.hash(state, engines);
     }
 }
 

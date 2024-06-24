@@ -327,9 +327,9 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         // Grab the declaration.
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
         // Check to see if this is a struct declaration.
-        let struct_ref = unknown_decl.to_struct_ref(handler, engines)?;
+        let struct_id = unknown_decl.to_struct_id(handler, engines)?;
         // Get a new copy from the declaration engine.
-        let mut new_copy = (*decl_engine.get_struct(struct_ref.id())).clone();
+        let mut new_copy = (*decl_engine.get_struct(&struct_id)).clone();
         // Monomorphize the copy, in place.
         ctx.monomorphize(
             handler,
@@ -342,7 +342,7 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
         let new_struct_ref = ctx.engines.de().insert(new_copy);
         let type_id = type_engine.insert(
             engines,
-            TypeInfo::Struct(new_struct_ref.clone()),
+            TypeInfo::Struct(*new_struct_ref.id()),
             new_struct_ref.span().source_id(),
         );
         Ok((new_struct_ref, Some(type_id), None))

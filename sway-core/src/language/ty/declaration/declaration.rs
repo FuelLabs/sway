@@ -527,20 +527,13 @@ impl TyDecl {
     /// Retrieves the declaration as a `DeclRef<DeclId<TyStructDecl>>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][StructDecl] variant.
-    pub(crate) fn to_struct_ref(
+    pub(crate) fn to_struct_id(
         &self,
         handler: &Handler,
         engines: &Engines,
-    ) -> Result<DeclRefStruct, ErrorEmitted> {
+    ) -> Result<DeclId<TyStructDecl>, ErrorEmitted> {
         match self {
-            TyDecl::StructDecl(StructDecl { decl_id }) => {
-                let struct_decl = engines.de().get_struct(decl_id);
-                Ok(DeclRef::new(
-                    struct_decl.name().clone(),
-                    *decl_id,
-                    struct_decl.span.clone(),
-                ))
-            }
+            TyDecl::StructDecl(StructDecl { decl_id }) => Ok(*decl_id),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
                 let alias_decl = engines.de().get_type_alias(decl_id);
                 let TyTypeAliasDecl { ty, span, .. } = &*alias_decl;
@@ -722,11 +715,7 @@ impl TyDecl {
                 let decl = decl_engine.get_struct(decl_id);
                 type_engine.insert(
                     engines,
-                    TypeInfo::Struct(DeclRef::new(
-                        decl.name().clone(),
-                        *decl_id,
-                        decl.span.clone(),
-                    )),
+                    TypeInfo::Struct(*decl_id),
                     decl.name().span().source_id(),
                 )
             }

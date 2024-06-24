@@ -361,7 +361,7 @@ impl TypeSubstMap {
                     let new_decl_ref = decl_engine.insert(decl);
                     Some(type_engine.insert(
                         engines,
-                        TypeInfo::Struct(new_decl_ref.clone()),
+                        TypeInfo::Struct(*new_decl_ref.id()),
                         new_decl_ref.decl_span().source_id(),
                     ))
                 } else {

@@ -854,14 +854,7 @@ impl Root {
         match decl {
             ResolvedDeclaration::Parsed(_decl) => todo!(),
             ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_ty_decl) => {
-                    let struct_decl = engines.de().get_struct(&struct_ty_decl.decl_id);
-                    TypeInfo::Struct(DeclRef::new(
-                        struct_decl.name().clone(),
-                        struct_ty_decl.decl_id,
-                        struct_decl.span().clone(),
-                    ))
-                }
+                ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
                 ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
                 ty::TyDecl::TraitTypeDecl(type_decl) => {
                     let type_decl = engines.de().get_type(&type_decl.decl_id);

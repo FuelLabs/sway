@@ -406,8 +406,8 @@ where
             return Some((None, None));
         }
 
-        let implementing_for_decl_ref = decl.to_struct_ref(&Handler::default(), engines).unwrap();
-        let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
+        let implementing_for_decl_id = decl.to_struct_id(&Handler::default(), engines).unwrap();
+        let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
         let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
 
@@ -528,8 +528,8 @@ where
 
                 format!("{}{type_parameters}", decl.call_path.suffix.as_str())
             }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = engines.de().get(decl_ref.id());
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
 
                 let type_parameters = decl
                     .type_parameters

@@ -271,8 +271,8 @@ impl TypeId {
                     );
                 }
             }
-            TypeInfo::Struct(struct_ref) => {
-                let struct_decl = decl_engine.get_struct(struct_ref);
+            TypeInfo::Struct(struct_id) => {
+                let struct_decl = decl_engine.get_struct(struct_id);
                 for type_param in &struct_decl.type_parameters {
                     extend(
                         &mut found,

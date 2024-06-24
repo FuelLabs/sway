@@ -933,7 +933,7 @@ impl<'a> TypeCheckContext<'a> {
                 // create the type id from the copy
                 type_engine.insert(
                     self.engines,
-                    TypeInfo::Struct(new_decl_ref.clone()),
+                    TypeInfo::Struct(*new_decl_ref.id()),
                     new_decl_ref.span().source_id(),
                 )
             }
@@ -1400,8 +1400,8 @@ impl<'a> TypeCheckContext<'a> {
                 let decl = engines.de().get(decl_id);
                 decl.call_path.clone()
             }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = engines.de().get(decl_ref.id());
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
                 decl.call_path.clone()
             }
             _ => return,

@@ -224,8 +224,8 @@ fn type_check_struct(
     let unknown_decl =
         ctx.namespace()
             .resolve_symbol_typed(handler, engines, &struct_name, ctx.self_type())?;
-    let struct_ref = unknown_decl.to_struct_ref(handler, ctx.engines())?;
-    let mut struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
+    let struct_id = unknown_decl.to_struct_id(handler, ctx.engines())?;
+    let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
     // monomorphize the struct definition
     ctx.monomorphize(
@@ -418,7 +418,7 @@ fn type_check_struct(
     let typed_scrutinee = ty::TyScrutinee {
         type_id: type_engine.insert(
             ctx.engines(),
-            TypeInfo::Struct(struct_ref.clone()),
+            TypeInfo::Struct(*struct_ref.id()),
             struct_ref.span().source_id(),
         ),
         span,

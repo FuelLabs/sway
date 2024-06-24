@@ -400,8 +400,8 @@ impl ty::TyModule {
                 let decl = &*engines.pe().get_impl_trait(decl_id);
                 let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
                 let implementing_for = match &*implementing_for {
-                    TypeInfo::Struct(decl) => {
-                        Some(ctx.engines().de().get(decl.id()).name().clone())
+                    TypeInfo::Struct(decl_id) => {
+                        Some(ctx.engines().de().get(decl_id).name().clone())
                     }
                     TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl).name().clone()),
                     TypeInfo::Custom {

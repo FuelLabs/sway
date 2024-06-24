@@ -56,10 +56,10 @@ impl<'a> HoverLinkContents<'a> {
                     .iter()
                     .for_each(|type_param| self.add_related_types(&type_param.type_id));
             }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = self.engines.de().get_struct(decl_ref);
+            TypeInfo::Struct(decl_id) => {
+                let decl = self.engines.de().get_struct(decl_id);
                 self.add_related_type(
-                    decl_ref.name().to_string(),
+                    decl.name().to_string(),
                     &decl.span(),
                     decl.call_path.clone(),
                 );
