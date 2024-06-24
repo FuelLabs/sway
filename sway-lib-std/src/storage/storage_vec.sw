@@ -811,7 +811,7 @@ impl<V> StorageKey<StorageVec<V>> {
     pub fn store_vec(self, vec: Vec<V>) {
         let size_V_bytes = __size_of::<V>();
 
-        // Handle cases where elements are less than the size of word as pad to the size of a word
+        // Handle cases where elements are less than the size of word and pad to the size of a word
         let slice = if size_V_bytes < 8 {
             let vec_slice = vec.as_raw_slice();
             let number_of_words = 8 * vec.len();

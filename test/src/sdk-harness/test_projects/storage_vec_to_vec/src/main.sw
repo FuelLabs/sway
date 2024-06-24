@@ -419,13 +419,13 @@ fn test_conversion_u8() {
 #[test]
 fn test_push_u8() {
     let vec_abi = abi(VecToVecStorageTest, CONTRACT_ID);
-    // let mut test_vec = Vec::<u8>::new();
-    // test_vec.push(5u8);
-    // test_vec.push(7u8);
-    // test_vec.push(9u8);
-    // test_vec.push(11u8);
+    let mut test_vec = Vec::<u8>::new();
+    test_vec.push(5u8);
+    test_vec.push(7u8);
+    test_vec.push(9u8);
+    test_vec.push(11u8);
 
-    // vec_abi.store_vec_u8(test_vec);
+    vec_abi.store_vec_u8(test_vec);
 
     vec_abi.push_vec_u8(13u8);
     vec_abi.push_vec_u8(13u8);
@@ -433,16 +433,14 @@ fn test_push_u8() {
 
     let returned_vec = vec_abi.read_vec_u8();
 
-    // assert(returned_vec.len() == 5);
-    // assert(returned_vec.get(0).unwrap() == 5u8);
-    // assert(returned_vec.get(1).unwrap() == 7u8);
-    // assert(returned_vec.get(2).unwrap() == 9u8);
-    // assert(returned_vec.get(3).unwrap() == 11u8);
-    // assert(returned_vec.get(4).unwrap() == 13u8);
-
-    assert(returned_vec.get(0).unwrap() == 13u8);
-    assert(returned_vec.get(1).unwrap() == 13u8);
-    assert(returned_vec.get(2).unwrap() == 13u8);
+    assert(returned_vec.len() == 5);
+    assert(returned_vec.get(0).unwrap() == 5u8);
+    assert(returned_vec.get(1).unwrap() == 7u8);
+    assert(returned_vec.get(2).unwrap() == 9u8);
+    assert(returned_vec.get(3).unwrap() == 11u8);
+    assert(returned_vec.get(4).unwrap() == 13u8);
+    assert(returned_vec.get(5).unwrap() == 13u8);
+    assert(returned_vec.get(6).unwrap() == 13u8);
 }
 
 #[test]
