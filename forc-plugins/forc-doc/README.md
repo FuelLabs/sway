@@ -79,6 +79,7 @@ Great! Let's check everything is working as intended. Try running `forc doc` on 
 
 ```sh
 $ forc doc --path src/tests/data/impl_traits --open
+$ forc doc --manifest-path src/tests/data/impl_traits --open
 ```
 
 If it succeeded, you should be seeing the test docs in your browser.
