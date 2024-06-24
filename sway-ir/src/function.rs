@@ -38,6 +38,9 @@ pub struct FunctionContent {
     pub module: Module,
     pub is_public: bool,
     pub is_entry: bool,
+    // True if the function was an entry, before getting wrapped
+    // by the `__entry` function. E.g, a script `main` function.
+    pub is_original_entry: bool,
     pub is_fallback: bool,
     pub selector: Option<[u8; 4]>,
     pub metadata: Option<MetadataIndex>,
@@ -65,6 +68,7 @@ impl Function {
         selector: Option<[u8; 4]>,
         is_public: bool,
         is_entry: bool,
+        is_original_entry: bool,
         is_fallback: bool,
         metadata: Option<MetadataIndex>,
     ) -> Function {
@@ -78,6 +82,7 @@ impl Function {
             module,
             is_public,
             is_entry,
+            is_original_entry,
             is_fallback,
             selector,
             metadata,
@@ -283,6 +288,12 @@ impl Function {
     /// methods.
     pub fn is_entry(&self, context: &Context) -> bool {
         context.functions[self.0].is_entry
+    }
+
+    /// Whether or not the function was a program entry point, i.e. `main`, `#[test]` fns or abi
+    /// methods, before it got wrapped within the `__entry` function.
+    pub fn is_original_entry(&self, context: &Context) -> bool {
+        context.functions[self.0].is_original_entry
     }
 
     /// Whether or not this function is a contract fallback function

@@ -1,0 +1,37 @@
+// This test proves that the issue given in https://github.com/FuelLabs/sway/issues/6152#issuecomment-2181367848
+// is fixed. The local variable `S` does not get optimized away.
+// The local variable `dummy` is added to introduce a change in the DCE pass to
+// satisfy the testing infrastructure that expect a change after the optimization pass.
+
+script {
+    entry fn main() -> u64 {
+      local u64 S
+      local u64 dummy
+  
+      entry():
+      br block0()
+  
+      block0():
+      c0 = const u64 123
+      p = get_local ptr u64, S
+      store c0 to p
+      p_d = cast_ptr p to ptr u8
+      p_val = ptr_to_int p_d to u64
+      p_val_aug = add p_val, c0
+      p_val_res = sub p_val_aug, c0
+      res = call test(p_val_res)
+      ret u64 res
+    }
+  
+    fn test(arg: u64) -> u64 {
+      entry(arg: u64):
+      br block0(arg)
+  
+      block0(arg: ptr u64):
+      v0 = load arg
+      ret u64 v0
+    }
+}
+
+// check: entry fn main() -> u64 {
+// nextln: local u64 S
