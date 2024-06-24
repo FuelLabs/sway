@@ -98,6 +98,14 @@ pub fn fn_inline(
             });
 
     let inline_heuristic = |ctx: &Context, func: &Function, _call_site: &Value| {
+        // The encoding code in the `__entry` functions contains pointer patterns that mark
+        // escape analysis and referred symbols as incomplete. This effectively forbids optimizations
+        // like SROA nad DCE. If we inline original entries, like e.g., `main`, the code in them will
+        // also not be optimized. Therefore, we forbid inlining of original entries into `__entry`.
+        if func.is_original_entry(ctx) {
+            return false;
+        }
+
         let attributed_inline = metadata_to_inline(ctx, func.get_metadata(ctx));
         match attributed_inline {
             Some(Inline::Always) => {

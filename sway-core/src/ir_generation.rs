@@ -100,7 +100,10 @@ impl CompiledFunctionCache {
                     parameters: decl.parameters.clone(),
                     ..decl.clone()
                 };
+                // Entry functions are already compiled at the top level
+                // when compiling scripts, predicates, contracts, and libraries.
                 let is_entry = false;
+                let is_original_entry = callee_fn_decl.is_main() || callee_fn_decl.is_test();
                 let new_func = compile::compile_function(
                     engines,
                     context,
@@ -110,6 +113,7 @@ impl CompiledFunctionCache {
                     logged_types_map,
                     messages_types_map,
                     is_entry,
+                    is_original_entry,
                     None,
                     self,
                 )
