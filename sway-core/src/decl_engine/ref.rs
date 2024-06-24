@@ -187,6 +187,19 @@ where
     }
 }
 
+impl<T> HashWithEngines for DeclId<T>
+where
+    DeclEngine: DeclEngineIndex<T>,
+    T: Named + Spanned + HashWithEngines,
+{
+    fn hash<H: Hasher>(&self, state: &mut H, engines: &Engines) {
+        let decl_engine = engines.de();
+        let decl = decl_engine.get(self);
+        decl.name().hash(state);
+        decl.hash(state, engines);
+    }
+}
+
 impl<T> HashWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,

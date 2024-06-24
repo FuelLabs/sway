@@ -13,7 +13,7 @@ use sway_core::{
 };
 
 use lsp_types::{Range, Url};
-use sway_types::{Span, Spanned};
+use sway_types::{Named, Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct RelatedType {
@@ -45,10 +45,10 @@ impl<'a> HoverLinkContents<'a> {
     pub fn add_related_types(&mut self, type_id: &TypeId) {
         let type_info = self.engines.te().get(*type_id);
         match &*type_info {
-            TypeInfo::Enum(decl_ref) => {
-                let decl = self.engines.de().get_enum(decl_ref);
+            TypeInfo::Enum(decl_id) => {
+                let decl = self.engines.de().get_enum(decl_id);
                 self.add_related_type(
-                    decl_ref.name().to_string(),
+                    decl.name().to_string(),
                     &decl.span(),
                     decl.call_path.clone(),
                 );

@@ -493,7 +493,7 @@ fn type_check_enum(
                 &enum_callpath,
                 ctx.self_type(),
             )?;
-            let enum_ref = unknown_decl.to_enum_ref(handler, ctx.engines())?;
+            let enum_ref = unknown_decl.to_enum_id(handler, ctx.engines())?;
             (
                 enum_callpath.span(),
                 (*decl_engine.get_enum(&enum_ref)).clone(),
@@ -552,7 +552,7 @@ fn type_check_enum(
         },
         type_id: type_engine.insert(
             engines,
-            TypeInfo::Enum(enum_ref.clone()),
+            TypeInfo::Enum(*enum_ref.id()),
             enum_ref.span().source_id(),
         ),
         span,

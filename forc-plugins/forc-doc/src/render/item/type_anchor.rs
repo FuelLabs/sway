@@ -3,7 +3,7 @@ use crate::{doc::module::ModuleInfo, RenderPlan};
 use anyhow::{anyhow, Result};
 use horrorshow::{box_html, RenderBox};
 use sway_core::{AbiName, TypeInfo};
-use sway_types::Spanned;
+use sway_types::{Named, Spanned};
 
 /// Handles types & nested types that should have links
 /// eg. (`[]` represent types with links).
@@ -50,20 +50,20 @@ pub(crate) fn render_type_anchor(
                 : ")";
             })
         }
-        TypeInfo::Enum(decl_ref) => {
-            let enum_decl = render_plan.engines.de().get_enum(&decl_ref);
+        TypeInfo::Enum(decl_id) => {
+            let enum_decl = render_plan.engines.de().get_enum(&decl_id);
             if !render_plan.document_private_items && enum_decl.visibility.is_private() {
                 Ok(box_html! {
-                    : decl_ref.name().clone().as_str();
+                    : enum_decl.name().clone().as_str();
                 })
             } else {
                 let module_info = ModuleInfo::from_call_path(&enum_decl.call_path);
-                let file_name = format!("enum.{}.html", decl_ref.name().clone().as_str());
+                let file_name = format!("enum.{}.html", enum_decl.name().clone().as_str());
                 let href =
                     module_info.file_path_from_location(&file_name, current_module_info, false)?;
                 Ok(box_html! {
                     a(class="enum", href=href) {
-                        : decl_ref.name().clone().as_str();
+                        : enum_decl.name().clone().as_str();
                     }
                 })
             }

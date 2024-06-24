@@ -1,10 +1,13 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineGet, DeclRefEnum, DeclRefStruct},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclId, DeclRefStruct},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
         OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
-    language::{ty, CallPath, QualifiedCallPath},
+    language::{
+        ty::{self, TyEnumDecl},
+        CallPath, QualifiedCallPath,
+    },
     type_system::priv_prelude::*,
     Ident,
 };
@@ -128,7 +131,7 @@ pub enum TypeInfo {
     StringSlice,
     StringArray(Length),
     UnsignedInteger(IntegerBits),
-    Enum(DeclRefEnum),
+    Enum(DeclId<TyEnumDecl>),
     Struct(DeclRefStruct),
     Boolean,
     Tuple(Vec<TypeArgument>),
@@ -206,8 +209,8 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Tuple(fields) => {
                 fields.hash(state, engines);
             }
-            TypeInfo::Enum(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Enum(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
             TypeInfo::Struct(decl_ref) => {
                 decl_ref.hash(state, engines);
@@ -485,9 +488,9 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
-            (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = decl_engine.get_enum(l_decl_ref);
-                let r_decl = decl_engine.get_enum(r_decl_ref);
+            (Self::Enum(l_decl_id), Self::Enum(r_decl_id)) => {
+                let l_decl = decl_engine.get_enum(l_decl_id);
+                let r_decl = decl_engine.get_enum(r_decl_id);
                 l_decl
                     .call_path
                     .suffix
@@ -1464,9 +1467,9 @@ impl TypeInfo {
         engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> Result<DeclRefEnum, ErrorEmitted> {
+    ) -> Result<DeclId<TyEnumDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Enum(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Enum(decl_ref) => Ok(*decl_ref),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1588,8 +1591,8 @@ impl TypeInfo {
                         old_size_hint + field_size_hint
                     })
             }
-            TypeInfo::Enum(e) => {
-                let decl = engines.de().get(e.id());
+            TypeInfo::Enum(decl_id) => {
+                let decl = engines.de().get(decl_id);
 
                 let min = decl
                     .variants

@@ -1325,7 +1325,7 @@ impl ty::TyExpression {
                     &probe_call_path,
                     ctx.self_type(),
                 )
-                .and_then(|decl| decl.to_enum_ref(&Handler::default(), ctx.engines()))
+                .and_then(|decl| decl.to_enum_id(&Handler::default(), ctx.engines()))
                 .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .and_then(|decl| {
                     decl.expect_variant_from_name(&Handler::default(), &suffix)

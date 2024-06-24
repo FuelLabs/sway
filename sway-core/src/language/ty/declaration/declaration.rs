@@ -488,23 +488,16 @@ impl GetDeclIdent for TyDecl {
 }
 
 impl TyDecl {
-    /// Retrieves the declaration as a `DeclRef<DeclId<TyEnumDecl>>`.
+    /// Retrieves the declaration as a `DeclId<TyEnumDecl>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][EnumDecl] variant.
-    pub(crate) fn to_enum_ref(
+    pub(crate) fn to_enum_id(
         &self,
         handler: &Handler,
         engines: &Engines,
-    ) -> Result<DeclRefEnum, ErrorEmitted> {
+    ) -> Result<DeclId<TyEnumDecl>, ErrorEmitted> {
         match self {
-            TyDecl::EnumDecl(EnumDecl { decl_id }) => {
-                let enum_decl = engines.de().get_enum(decl_id);
-                Ok(DeclRef::new(
-                    enum_decl.name().clone(),
-                    *decl_id,
-                    enum_decl.span.clone(),
-                ))
-            }
+            TyDecl::EnumDecl(EnumDecl { decl_id }) => Ok(*decl_id),
             TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id, .. }) => {
                 let alias_decl = engines.de().get_type_alias(decl_id);
                 let TyTypeAliasDecl { ty, span, .. } = &*alias_decl;
@@ -517,7 +510,7 @@ impl TyDecl {
             TyDecl::GenericTypeForFunctionScope(GenericTypeForFunctionScope {
                 type_id, ..
             }) => match &*engines.te().get(*type_id) {
-                TypeInfo::Enum(r) => Ok(r.clone()),
+                TypeInfo::Enum(r) => Ok(*r),
                 _ => Err(handler.emit_err(CompileError::DeclIsNotAnEnum {
                     actually: self.friendly_type_name().to_string(),
                     span: self.span(engines),
@@ -741,11 +734,7 @@ impl TyDecl {
                 let decl = decl_engine.get_enum(decl_id);
                 type_engine.insert(
                     engines,
-                    TypeInfo::Enum(DeclRef::new(
-                        decl.name().clone(),
-                        *decl_id,
-                        decl.span.clone(),
-                    )),
+                    TypeInfo::Enum(*decl_id),
                     decl.name().span().source_id(),
                 )
             }
