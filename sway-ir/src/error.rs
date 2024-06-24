@@ -21,6 +21,7 @@ pub enum IrError {
     VerifyBinaryOpIncorrectArgType,
     VerifyBitcastBetweenInvalidTypes(String, String),
     VerifyBitcastUnknownSourceType,
+    VerifyEntryBlockHasPredecessors(String, Vec<String>),
     VerifyBlockArgMalformed,
     VerifyBranchParamsMismatch,
     VerifyBranchToMissingBlock(String),
@@ -71,6 +72,8 @@ pub enum IrError {
 impl std::error::Error for IrError {}
 
 use std::fmt;
+
+use itertools::Itertools;
 
 impl fmt::Display for IrError {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -261,6 +264,27 @@ impl fmt::Display for IrError {
                 "Verification failed: \
                 Function {fn_str} return type must match its RET instructions."
             ),
+            IrError::VerifyEntryBlockHasPredecessors(function_name, predecessors) => {
+                let plural_s = if predecessors.len() == 1 { "" } else { "s" };
+                write!(
+                    f,
+                    "Verification failed: Entry block of the function \"{function_name}\" has {}predecessor{}. \
+                     The predecessor{} {} {}.",
+                    if predecessors.len() == 1 {
+                        "a "
+                    } else {
+                        ""
+                    },
+                    plural_s,
+                    plural_s,
+                    if predecessors.len() == 1 {
+                        "is"
+                    } else {
+                        "are"
+                    },
+                    predecessors.iter().map(|block_label| format!("\"{block_label}\"")).collect_vec().join(", ")
+                )
+            }
             IrError::VerifyBlockArgMalformed => {
                 write!(f, "Verification failed: Block argument is malformed")
             }

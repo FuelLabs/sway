@@ -1,0 +1,10 @@
+// This test proves that https://github.com/FuelLabs/sway/issues/6148 is fixed.
+
+// error: Entry block of the function "main" has a predecessor. The predecessor is "entry".
+
+script {
+  fn main() -> bool {
+    entry():
+    br entry()
+  }
+}
