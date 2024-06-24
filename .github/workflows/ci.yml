@@ -234,6 +234,7 @@ jobs:
           cargo install --locked --debug --path ./forc-plugins/forc-doc
       - name: Build sway-lib-std docs
         run: forc doc --path ./sway-lib-std
+        run: forc doc --manifest-path ./sway-lib-std
 
   build-forc-test-project:
     runs-on: ubuntu-latest
