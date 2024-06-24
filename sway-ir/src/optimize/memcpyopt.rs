@@ -8,8 +8,8 @@ use sway_types::{FxIndexMap, FxIndexSet};
 use crate::{
     get_gep_referred_symbols, get_gep_symbol, get_referred_symbol, get_referred_symbols,
     memory_utils, AnalysisResults, Block, Context, EscapedSymbols, Function, InstOp, Instruction,
-    IrError, LocalVar, Pass, PassMutability, ScopedPass, Symbol, Type, Value, ValueDatum,
-    ESCAPED_SYMBOLS_NAME,
+    IrError, LocalVar, Pass, PassMutability, ReferredSymbols, ScopedPass, Symbol, Type, Value,
+    ValueDatum, ESCAPED_SYMBOLS_NAME,
 };
 
 pub const MEMCPYOPT_NAME: &str = "memcpyopt";
@@ -29,14 +29,18 @@ pub fn mem_copy_opt(
     function: Function,
 ) -> Result<bool, IrError> {
     let mut modified = false;
-    modified |= local_copy_prop_prememcpy(context, function)?;
+    modified |= local_copy_prop_prememcpy(context, analyses, function)?;
     modified |= load_store_to_memcopy(context, function)?;
     modified |= local_copy_prop(context, analyses, function)?;
 
     Ok(modified)
 }
 
-fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Result<bool, IrError> {
+fn local_copy_prop_prememcpy(
+    context: &mut Context,
+    analyses: &AnalysisResults,
+    function: Function,
+) -> Result<bool, IrError> {
     struct InstInfo {
         // The block containing the instruction.
         block: Block,
@@ -44,20 +48,19 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
         pos: usize,
     }
 
+    // If the analysis result is incomplete we cannot do any safe optimizations here.
+    // Calculating the candidates below relies on complete result of an escape analysis.
+    let escaped_symbols = match analyses.get_analysis_result(function) {
+        EscapedSymbols::Complete(syms) => syms,
+        EscapedSymbols::Incomplete(_) => return Ok(false),
+    };
+
     // All instructions that load from the `Symbol`.
     let mut loads_map = FxHashMap::<Symbol, Vec<Value>>::default();
     // All instructions that store to the `Symbol`.
     let mut stores_map = FxHashMap::<Symbol, Vec<Value>>::default();
     // All load and store instructions.
     let mut instr_info_map = FxHashMap::<Value, InstInfo>::default();
-    // Symbols that escape.
-    // TODO: The below code does its own logic to calculate escaping symbols.
-    //       It does not cover all escaping cases, though. E.g., contract calls, etc.
-    //       In general, the question is why it does not use `memory_utils::compute_escaped_symbols`.
-    //       My assumption is that it was written before `memory_utils::compute_escaped_symbols`
-    //       got available.
-    //       See: https://github.com/FuelLabs/sway/issues/5924
-    let mut escaping_uses = FxHashSet::<Symbol>::default();
 
     for (pos, (block, inst)) in function.instruction_iter(context).enumerate() {
         let info = || InstInfo { block, pos };
@@ -85,36 +88,6 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                         .and_modify(|stores| stores.push(inst))
                         .or_insert(vec![inst]);
                     instr_info_map.insert(inst, info());
-                }
-            }
-            Instruction {
-                op: InstOp::PtrToInt(value, _),
-                ..
-            } => {
-                if let Some(local) = get_referred_symbol(context, *value) {
-                    escaping_uses.insert(local);
-                }
-            }
-            Instruction {
-                op: InstOp::AsmBlock(_, args),
-                ..
-            } => {
-                for arg in args {
-                    if let Some(arg) = arg.initializer {
-                        if let Some(local) = get_referred_symbol(context, arg) {
-                            escaping_uses.insert(local);
-                        }
-                    }
-                }
-            }
-            Instruction {
-                op: InstOp::Call(_, args),
-                ..
-            } => {
-                for arg in args {
-                    if let Some(local) = get_referred_symbol(context, *arg) {
-                        escaping_uses.insert(local);
-                    }
                 }
             }
             _ => (),
@@ -191,8 +164,8 @@ fn local_copy_prop_prememcpy(context: &mut Context, function: Function) -> Resul
                             let instr_info = instr_info_map.get(load_val).unwrap();
                             instr_info.block == block && instr_info.pos > pos
                         })
-                        // We don't deal with ASM blocks and function calls.
-                        || escaping_uses.contains(&dst_local)
+                        // We don't deal with symbols that escape.
+                        || escaped_symbols.contains(&dst_local)
                         // We don't deal part copies.
                         || dst_local.get_type(context) != src_local.get_type(context)
                         // We don't replace the destination when it's an arg.
@@ -290,7 +263,14 @@ fn local_copy_prop(
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
-    let escaped_symbols: &EscapedSymbols = analyses.get_analysis_result(function);
+    // If the analysis result is incomplete we cannot do any safe optimizations here.
+    // The `gen_new_copy` and `process_load` functions below rely on the fact that the
+    // analyzed symbols do not escape, something we cannot guarantee in case of
+    // an incomplete collection of escaped symbols.
+    let escaped_symbols = match analyses.get_analysis_result(function) {
+        EscapedSymbols::Complete(syms) => syms,
+        EscapedSymbols::Incomplete(_) => return Ok(false),
+    };
 
     // Currently (as we scan a block) available `memcpy`s.
     let mut available_copies: FxHashSet<Value>;
@@ -310,47 +290,57 @@ fn local_copy_prop(
         src_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
         dest_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
     ) {
-        let rs = get_referred_symbols(context, value);
-        for sym in rs.any() {
-            if let Some(copies) = src_to_copies.get_mut(&sym) {
-                for copy in &*copies {
-                    let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
-                    if memory_utils::may_alias(context, value, len, src_ptr, copy_size) {
-                        available_copies.remove(copy);
+        match get_referred_symbols(context, value) {
+            ReferredSymbols::Complete(rs) => {
+                for sym in rs {
+                    if let Some(copies) = src_to_copies.get_mut(&sym) {
+                        for copy in &*copies {
+                            let (_, src_ptr, copy_size) = deconstruct_memcpy(context, *copy);
+                            if memory_utils::may_alias(context, value, len, src_ptr, copy_size) {
+                                available_copies.remove(copy);
+                            }
+                        }
+                        copies.retain(|copy| available_copies.contains(copy));
+                    }
+                    if let Some(copies) = dest_to_copies.get_mut(&sym) {
+                        for copy in &*copies {
+                            let (dest_ptr, copy_size) = match copy.get_instruction(context).unwrap()
+                            {
+                                Instruction {
+                                    op:
+                                        InstOp::MemCopyBytes {
+                                            dst_val_ptr,
+                                            src_val_ptr: _,
+                                            byte_len,
+                                        },
+                                    ..
+                                } => (*dst_val_ptr, *byte_len),
+                                Instruction {
+                                    op:
+                                        InstOp::MemCopyVal {
+                                            dst_val_ptr,
+                                            src_val_ptr: _,
+                                        },
+                                    ..
+                                } => (
+                                    *dst_val_ptr,
+                                    memory_utils::pointee_size(context, *dst_val_ptr),
+                                ),
+                                _ => panic!("Unexpected copy instruction"),
+                            };
+                            if memory_utils::may_alias(context, value, len, dest_ptr, copy_size) {
+                                available_copies.remove(copy);
+                            }
+                        }
+                        copies.retain(|copy| available_copies.contains(copy));
                     }
                 }
-                copies.retain(|copy| available_copies.contains(copy));
             }
-            if let Some(copies) = dest_to_copies.get_mut(&sym) {
-                for copy in &*copies {
-                    let (dest_ptr, copy_size) = match copy.get_instruction(context).unwrap() {
-                        Instruction {
-                            op:
-                                InstOp::MemCopyBytes {
-                                    dst_val_ptr,
-                                    src_val_ptr: _,
-                                    byte_len,
-                                },
-                            ..
-                        } => (*dst_val_ptr, *byte_len),
-                        Instruction {
-                            op:
-                                InstOp::MemCopyVal {
-                                    dst_val_ptr,
-                                    src_val_ptr: _,
-                                },
-                            ..
-                        } => (
-                            *dst_val_ptr,
-                            memory_utils::pointee_size(context, *dst_val_ptr),
-                        ),
-                        _ => panic!("Unexpected copy instruction"),
-                    };
-                    if memory_utils::may_alias(context, value, len, dest_ptr, copy_size) {
-                        available_copies.remove(copy);
-                    }
-                }
-                copies.retain(|copy| available_copies.contains(copy));
+            ReferredSymbols::Incomplete(_) => {
+                // The only safe thing we can do is to clear all information.
+                available_copies.clear();
+                src_to_copies.clear();
+                dest_to_copies.clear();
             }
         }
     }
@@ -358,7 +348,7 @@ fn local_copy_prop(
     #[allow(clippy::too_many_arguments)]
     fn gen_new_copy(
         context: &Context,
-        escaped_symbols: &EscapedSymbols,
+        escaped_symbols: &FxHashSet<Symbol>,
         copy_inst: Value,
         dst_val_ptr: Value,
         src_val_ptr: Value,
@@ -429,7 +419,7 @@ fn local_copy_prop(
 
     fn process_load(
         context: &Context,
-        escaped_symbols: &EscapedSymbols,
+        escaped_symbols: &FxHashSet<Symbol>,
         inst: Value,
         src_val_ptr: Value,
         dest_to_copies: &FxIndexMap<Symbol, FxIndexSet<Value>>,
@@ -499,6 +489,7 @@ fn local_copy_prop(
                 }
             }
         }
+
         false
     }
 
@@ -527,24 +518,35 @@ fn local_copy_prop(
                 dest_to_copies: &mut FxIndexMap<Symbol, FxIndexSet<Value>>,
             ) {
                 for arg in args {
-                    let max_size = get_referred_symbols(context, *arg)
-                        .any()
-                        .iter()
-                        .filter_map(|sym| {
-                            sym.get_type(context)
-                                .get_pointee_type(context)
-                                .map(|pt| pt.size(context).in_bytes())
-                        })
-                        .max()
-                        .unwrap_or(0);
-                    kill_defined_symbol(
-                        context,
-                        *arg,
-                        max_size,
-                        available_copies,
-                        src_to_copies,
-                        dest_to_copies,
-                    );
+                    match get_referred_symbols(context, *arg) {
+                        ReferredSymbols::Complete(rs) => {
+                            let max_size = rs
+                                .iter()
+                                .filter_map(|sym| {
+                                    sym.get_type(context)
+                                        .get_pointee_type(context)
+                                        .map(|pt| pt.size(context).in_bytes())
+                                })
+                                .max()
+                                .unwrap_or(0);
+                            kill_defined_symbol(
+                                context,
+                                *arg,
+                                max_size,
+                                available_copies,
+                                src_to_copies,
+                                dest_to_copies,
+                            );
+                        }
+                        ReferredSymbols::Incomplete(_) => {
+                            // The only safe thing we can do is to clear all information.
+                            available_copies.clear();
+                            src_to_copies.clear();
+                            dest_to_copies.clear();
+
+                            break;
+                        }
+                    }
                 }
             }
 
