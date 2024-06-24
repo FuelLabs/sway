@@ -14,6 +14,7 @@ clap = { version = "4.5.4", features = ["derive", "env"] }
 dap = "0.4.1-alpha1"
 forc-pkg = { version = "0.61.0", path = "../../forc-pkg" }
 forc-test = { version = "0.61.0", path = "../../forc-test" }
+forc-tracing = { version = "0.61.0", path = "../../forc-tracing" }
 fuel-core-client = { workspace = true }
 fuel-types = { workspace = true, features = ["serde"] }
 fuel-vm = { workspace = true, features = ["serde"] }
