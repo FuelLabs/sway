@@ -2,7 +2,12 @@ use std::path::PathBuf;
 
 use itertools::Itertools;
 use sway_ir::{
-    create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass, create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes, Context, ExperimentalFlags, IrError, PassGroup, PassManager, DCE_NAME, FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME
+    create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass,
+    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
+    create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
+    create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes,
+    Context, ExperimentalFlags, IrError, PassGroup, PassManager, DCE_NAME, FN_DCE_NAME,
+    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -88,10 +93,13 @@ fn run_ir_verifier_tests(sub_dir: &str) {
             .lines()
             .filter(|line| line.starts_with("// error: "))
             .collect_vec();
-        
+
         let expected_error = match expected_errors[..] {
             [] => {
-                println!("--- IR verifier test does not contain the expected error: {}", path.display());
+                println!(
+                    "--- IR verifier test does not contain the expected error: {}",
+                    path.display()
+                );
                 println!("The expected error must be specified by using the `// error: ` comment.");
                 println!("E.g., `// error: This is the expected error`");
                 println!("There must be exactly one error specified in each IR verifier test.");
@@ -99,8 +107,13 @@ fn run_ir_verifier_tests(sub_dir: &str) {
             }
             [err] => err.replace("// error: ", ""),
             _ => {
-                println!("--- IR verifier test contains more then one expected error: {}", path.display());
-                println!("There must be exactly one expected error specified in each IR verifier test.");
+                println!(
+                    "--- IR verifier test contains more then one expected error: {}",
+                    path.display()
+                );
+                println!(
+                    "There must be exactly one expected error specified in each IR verifier test."
+                );
                 println!("The specified expected errors were:");
                 println!("{}", expected_errors.join("\n"));
                 panic!();
@@ -117,16 +130,24 @@ fn run_ir_verifier_tests(sub_dir: &str) {
 
         match parse_result {
             Ok(_) => {
-                println!("--- Parsing and validating an IR verifier test passed without errors: {}", path.display());
+                println!(
+                    "--- Parsing and validating an IR verifier test passed without errors: {}",
+                    path.display()
+                );
                 println!("The expected IR validation error was: {expected_error}");
                 panic!();
-            },
+            }
             Err(err @ IrError::ParseFailure(_, _)) => {
-                println!("--- Parsing of an IR verifier test failed: {}", path.display());
-                println!("IR verifier test must be parsable and result in an IR verification error.");
+                println!(
+                    "--- Parsing of an IR verifier test failed: {}",
+                    path.display()
+                );
+                println!(
+                    "IR verifier test must be parsable and result in an IR verification error."
+                );
                 println!("The parsing error was: {err}");
                 panic!();
-            },
+            }
             Err(err) => {
                 let err = format!("{err}");
                 if !err.contains(&expected_error) {

@@ -73,7 +73,10 @@ impl<'eng> Context<'eng> {
         if entry_block.num_predecessors(self) != 0 {
             return Err(IrError::VerifyEntryBlockHasPredecessors(
                 function.get_name(self).to_string(),
-                entry_block.pred_iter(self).map(|block| block.get_label(self)).collect()
+                entry_block
+                    .pred_iter(self)
+                    .map(|block| block.get_label(self))
+                    .collect(),
             ));
         }
 

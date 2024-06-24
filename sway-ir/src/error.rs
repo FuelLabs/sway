@@ -265,11 +265,7 @@ impl fmt::Display for IrError {
                 Function {fn_str} return type must match its RET instructions."
             ),
             IrError::VerifyEntryBlockHasPredecessors(function_name, predecessors) => {
-                let plural_s = if predecessors.len() == 1 {
-                        ""
-                    } else {
-                        "s"
-                    };
+                let plural_s = if predecessors.len() == 1 { "" } else { "s" };
                 write!(
                     f,
                     "Verification failed: Entry block of the function \"{function_name}\" has {}predecessor{}. \
