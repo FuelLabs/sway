@@ -934,6 +934,4 @@ fn ok_bytes_buffer_ownership() {
     let mut bytes = Bytes::from(slice);
     bytes.set(0, 5);
     assert(original_array[0] == 1);
-
 }
-
