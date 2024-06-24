@@ -10,14 +10,16 @@ forc template --template-name counter my_counter_project
 {{#include ../../../../examples/counter/src/main.sw}}
 ```
 
-### Build and deploy
+## Building and deployment
 
-The following commands can be used to build and deploy the contract. For a detailed tutorial, refer to [Building and Deploying](https://docs.fuel.network/guides/contract-quickstart/#building-the-contract).
+the following commands will quickly help you in build and deploy the above contract - for detailed tutorial for this refer to [Building and Deploying](https://docs.fuel.network/guides/contract-quickstart/#building-the-contract). Keep in mind that for deployment you need to have wallet set up already.
 
 ```bash
-# Build the contract
+// Builds the contract
 forc build
 
-# Deploy the contract
+// Deploys the contract
 forc deploy --testnet
 ```
+
+It will return you the contract ID.
