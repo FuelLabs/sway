@@ -74,10 +74,12 @@ impl From<raw_slice> for RawBytes {
     /// assert(raw_bytes.capacity == 3);
     /// ```
     fn from(slice: raw_slice) -> Self {
-        Self {
-            ptr: slice.ptr(),
-            cap: slice.number_of_bytes(),
+        let cap = slice.number_of_bytes();
+        let ptr = alloc_bytes(cap);
+        if cap > 0 {
+            slice.ptr().copy_to::<u8>(ptr, cap);
         }
+        Self { ptr, cap }
     }
 }
 
@@ -826,9 +828,7 @@ impl From<Bytes> for raw_slice {
     /// assert(slice.number_of_bytes() == 3);
     /// ```
     fn from(bytes: Bytes) -> raw_slice {
-        asm(ptr: (bytes.buf.ptr(), bytes.len)) {
-            ptr: raw_slice
-        }
+        bytes.as_raw_slice()
     }
 }
 
@@ -925,14 +925,15 @@ impl AbiDecode for Bytes {
     }
 }
 
-
-
 #[test]
-fn xxx () {
-    let mut b = Bytes::new();
-    b.push(1);
-    b.push(2);
+fn ok_bytes_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
 
-    __log(encode(b));
-    assert(false);
+    // Check Bytes duplicates the original slice
+    let mut bytes = Bytes::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
+
 }
+
