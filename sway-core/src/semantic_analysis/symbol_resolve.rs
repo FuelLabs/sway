@@ -15,7 +15,7 @@ use crate::{
         },
         CallPath, CallPathTree, ResolvedCallPath,
     },
-    TraitConstraint, TypeArgument, TypeBinding, TypeParameter,
+    TraitConstraint, TypeArgs, TypeArgument, TypeBinding, TypeParameter,
 };
 
 use super::symbol_resolve_context::SymbolResolveContext;
@@ -498,14 +498,8 @@ impl ResolveSymbols for StructScrutineeField {
 }
 
 impl ResolveSymbols for Expression {
-    fn resolve_symbols(&mut self, handler: &Handler, ctx: SymbolResolveContext) {
-        self.kind.resolve_symbols(handler, ctx);
-    }
-}
-
-impl ResolveSymbols for ExpressionKind {
     fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
-        match self {
+        match &mut self.kind {
             ExpressionKind::Error(_, _) => {}
             ExpressionKind::Literal(_) => {}
             ExpressionKind::AmbiguousPathExpression(_) => {}
@@ -606,8 +600,28 @@ impl ResolveSymbols for ExpressionKind {
                     .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref()));
             }
             ExpressionKind::Subfield(expr) => expr.prefix.resolve_symbols(handler, ctx),
-            ExpressionKind::DelineatedPath(expr) => {
-                expr.call_path_binding.resolve_symbols(handler, ctx)
+            ExpressionKind::DelineatedPath(ref mut expr) => {
+                expr.call_path_binding
+                    .resolve_symbols(handler, ctx.by_ref());
+
+                let result = expr.call_path_binding.resolve_symbol(
+                    handler,
+                    ctx.by_ref(),
+                    self.span.clone()
+                );
+
+                // if let Ok(result) = result {
+                //     expr.resolved_call_path_binding = Some(TypeBinding::<
+                //         ResolvedCallPath<ParsedDeclId<StructDeclaration>>,
+                //     > {
+                //         inner: ResolvedCallPath {
+                //             decl: result,
+                //             unresolved_call_path: expr.call_path_binding.inner.clone(),
+                //         },
+                //         span: expr.call_path_binding.span.clone(),
+                //         type_arguments: expr.call_path_binding.type_arguments.clone(),
+                //     });
+                // }
             }
             ExpressionKind::AbiCast(expr) => {
                 expr.abi_name.resolve_symbols(handler, ctx.by_ref());
@@ -644,6 +658,19 @@ impl ResolveSymbols for ExpressionKind {
             ExpressionKind::Return(expr) => expr.resolve_symbols(handler, ctx.by_ref()),
             ExpressionKind::Ref(expr) => expr.value.resolve_symbols(handler, ctx.by_ref()),
             ExpressionKind::Deref(expr) => expr.resolve_symbols(handler, ctx.by_ref()),
+        }
+    }
+}
+
+impl<T> ResolveSymbols for TypeBinding<T> {
+    fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext) {
+        match self.type_arguments {
+            TypeArgs::Regular(ref mut args) => args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
+            TypeArgs::Prefix(ref mut args) => args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
         }
     }
 }

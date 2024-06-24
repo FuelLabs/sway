@@ -634,6 +634,7 @@ impl Dependencies {
             ExpressionKind::DelineatedPath(delineated_path_expression) => {
                 let DelineatedPathExpression {
                     call_path_binding,
+                    resolved_call_path_binding: _,
                     args,
                 } = &**delineated_path_expression;
                 // It's either a module path which we can ignore, or an enum variant path, in which
