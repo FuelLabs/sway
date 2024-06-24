@@ -23,6 +23,7 @@ pub struct Command {
     /// Path to the Forc.toml file. By default, forc-doc searches for the Forc.toml
     /// file in the current directory or any parent directory.
     #[clap(long)]
+    pub manifest_path: Option<String>,
     pub path: Option<String>,
     /// Include non-public items in the documentation.
     #[clap(long)]
