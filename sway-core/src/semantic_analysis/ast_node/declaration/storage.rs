@@ -1,9 +1,12 @@
+use std::collections::HashMap;
+
 use crate::{
     fuel_prelude::fuel_tx::StorageSlot,
     ir_generation::{
-        const_eval::compile_constant_expression_to_constant, storage::serialize_to_storage_slots,
+        const_eval::compile_constant_expression_to_constant,
+        storage::{get_storage_key_string, serialize_to_storage_slots},
     },
-    language::ty,
+    language::ty::{self, TyExpression, TyStorageField},
     metadata::MetadataManager,
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
@@ -11,12 +14,14 @@ use crate::{
     },
     Engines,
 };
+use fuel_vm::fuel_tx::Bytes32;
 use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
+    warning::CompileWarning,
 };
-use sway_ir::{Context, Module};
-use sway_types::state::StateIndex;
+use sway_ir::{ConstantValue, Context, Module};
+use sway_types::{u256::U256, Spanned};
 
 impl ty::TyStorageDecl {
     pub(crate) fn get_initialized_storage_slots(
@@ -28,19 +33,46 @@ impl ty::TyStorageDecl {
         module: Module,
     ) -> Result<Vec<StorageSlot>, ErrorEmitted> {
         handler.scope(|handler| {
+            let mut slot_fields = HashMap::<Bytes32, TyStorageField>::new();
             let storage_slots = self
                 .fields
                 .iter()
-                .enumerate()
-                .map(|(i, f)| {
-                    f.get_initialized_storage_slots(
-                        engines,
-                        context,
-                        md_mgr,
-                        module,
-                        self.storage_namespace().as_ref().map(|id| id.as_str()),
-                        &StateIndex::new(i),
-                    )
+                .map(|f| {
+                    let slots = f.get_initialized_storage_slots(engines, context, md_mgr, module);
+
+                    // Check if slot with same key was already used and throw warning.
+                    if let Ok(slots) = slots.clone() {
+                        for s in slots.into_iter() {
+                            if let Some(old_field) = slot_fields.insert(*s.key(), f.clone()) {
+                                handler.emit_warn(CompileWarning {
+                                    span: f.span(),
+                                    warning_content:
+                                        sway_error::warning::Warning::DuplicatedStorageKey {
+                                            key: format!("{:X} ", s.key()),
+                                            field1: get_storage_key_string(
+                                                old_field
+                                                    .namespace_names
+                                                    .iter()
+                                                    .map(|i| i.as_str().to_string())
+                                                    .chain(vec![old_field
+                                                        .name
+                                                        .as_str()
+                                                        .to_string()])
+                                                    .collect::<Vec<_>>(),
+                                            ),
+                                            field2: get_storage_key_string(
+                                                f.namespace_names
+                                                    .iter()
+                                                    .map(|i| i.as_str().to_string())
+                                                    .chain(vec![f.name.as_str().to_string()])
+                                                    .collect::<Vec<_>>(),
+                                            ),
+                                        },
+                                })
+                            }
+                        }
+                    }
+                    slots
                 })
                 .filter_map(|s| s.map_err(|e| handler.emit_err(e)).ok())
                 .flatten()
@@ -58,9 +90,9 @@ impl ty::TyStorageField {
         context: &mut Context,
         md_mgr: &mut MetadataManager,
         module: Module,
-        ns: Option<&str>,
-        ix: &StateIndex,
     ) -> Result<Vec<StorageSlot>, CompileError> {
+        let key =
+            Self::get_key_expression_const(&self.key_expression, engines, context, md_mgr, module)?;
         compile_constant_expression_to_constant(
             engines,
             context,
@@ -70,7 +102,49 @@ impl ty::TyStorageField {
             None,
             &self.initializer,
         )
-        .map(|constant| serialize_to_storage_slots(&constant, context, ix, ns, &constant.ty, &[]))
+        .map(|constant| {
+            serialize_to_storage_slots(
+                &constant,
+                context,
+                self.namespace_names
+                    .iter()
+                    .map(|i| i.as_str().to_string())
+                    .chain(vec![self.name.as_str().to_string()])
+                    .collect(),
+                key,
+                &constant.ty,
+            )
+        })
+    }
+
+    pub(crate) fn get_key_expression_const(
+        key_expression: &Option<TyExpression>,
+        engines: &Engines,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+        module: Module,
+    ) -> Result<Option<U256>, CompileError> {
+        if let Some(key_expression) = key_expression {
+            let const_key = compile_constant_expression_to_constant(
+                engines,
+                context,
+                md_mgr,
+                module,
+                None,
+                None,
+                key_expression,
+            )?;
+            if let ConstantValue::B256(key) = const_key.value {
+                Ok(Some(key))
+            } else {
+                Err(CompileError::Internal(
+                    "Expected B256 key",
+                    key_expression.span.clone(),
+                ))
+            }
+        } else {
+            Ok(None)
+        }
     }
 }
 

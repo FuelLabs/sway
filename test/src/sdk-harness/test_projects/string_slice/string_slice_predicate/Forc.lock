@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-A528390DA52F2C73"
+
+[[package]]
+name = "string_slice_script"
+source = "member"
+dependencies = ["core"]

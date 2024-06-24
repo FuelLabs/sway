@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-EF772967F47251DB"
+
+[[package]]
+name = "slice_script"
+source = "member"
+dependencies = ["core"]

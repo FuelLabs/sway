@@ -37,7 +37,7 @@ pub use crate::{
         item_enum::ItemEnum,
         item_fn::ItemFn,
         item_impl::{ItemImpl, ItemImplItem},
-        item_storage::{ItemStorage, StorageField},
+        item_storage::{ItemStorage, StorageEntry, StorageField},
         item_struct::ItemStruct,
         item_trait::{ItemTrait, ItemTraitItem, Traits},
         item_type_alias::ItemTypeAlias,

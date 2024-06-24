@@ -330,6 +330,7 @@ impl PartialEqWithEngines for ArrayIndexExpression {
 
 #[derive(Debug, Clone)]
 pub struct StorageAccessExpression {
+    pub namespace_names: Vec<Ident>,
     pub field_names: Vec<Ident>,
     pub storage_keyword_span: Span,
 }

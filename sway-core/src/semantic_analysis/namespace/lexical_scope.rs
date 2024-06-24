@@ -89,11 +89,13 @@ impl Items {
         &self.symbols
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn apply_storage_load(
         &self,
         handler: &Handler,
         engines: &Engines,
         namespace: &Namespace,
+        namespace_names: &[Ident],
         fields: &[Ident],
         storage_fields: &[ty::TyStorageField],
         storage_keyword_span: Span,
@@ -105,6 +107,7 @@ impl Items {
                     handler,
                     engines,
                     namespace,
+                    namespace_names,
                     fields,
                     storage_fields,
                     storage_keyword_span,
