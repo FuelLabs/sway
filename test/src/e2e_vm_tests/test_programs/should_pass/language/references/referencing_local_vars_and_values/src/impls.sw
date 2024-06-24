@@ -182,12 +182,6 @@ impl New for raw_slice {
     }
 }
 
-impl Eq for raw_slice {
-    fn eq(self, other: Self) -> bool {
-        self.ptr() == other.ptr() && self.number_of_bytes() == other.number_of_bytes()
-    }
-}
-
 impl New for () {
     fn new() -> Self {
         ()

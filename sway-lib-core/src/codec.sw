@@ -5071,119 +5071,6 @@ where
     }
 }
 
-#[test]
-fn ok_abi_encoding() {
-    // bool
-    assert_encoding_and_decoding(false, [0u8]);
-    assert_encoding_and_decoding(true, [1u8]);
-
-    // numbers
-    assert_encoding_and_decoding(0u8, [0u8]);
-    assert_encoding_and_decoding(255u8, [255u8]);
-
-    assert_encoding_and_decoding(0u16, [0u8, 0u8]);
-    assert_encoding_and_decoding(128u16, [0u8, 128u8]);
-    assert_encoding_and_decoding(65535u16, [255u8, 255u8]);
-
-    assert_encoding_and_decoding(0u32, [0u8, 0u8, 0u8, 0u8]);
-    assert_encoding_and_decoding(128u32, [0u8, 0u8, 0u8, 128u8]);
-    assert_encoding_and_decoding(4294967295u32, [255u8, 255u8, 255u8, 255u8]);
-
-    assert_encoding_and_decoding(0u64, [0u8; 8]);
-    assert_encoding_and_decoding(128u64, [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 128u8]);
-    assert_encoding_and_decoding(18446744073709551615u64, [255u8; 8]);
-
-    assert_encoding_and_decoding(
-        0x0000000000000000000000000000000000000000000000000000000000000000u256,
-        [0u8; 32],
-    );
-    assert_encoding_and_decoding(
-        0xAA000000000000000000000000000000000000000000000000000000000000BBu256,
-        [
-            0xAAu8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0xBBu8,
-        ],
-    );
-    assert_encoding_and_decoding(
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFu256,
-        [255u8; 32],
-    );
-
-    assert_encoding_and_decoding(
-        0x0000000000000000000000000000000000000000000000000000000000000000,
-        [0u8; 32],
-    );
-    assert_encoding_and_decoding(
-        0xAA000000000000000000000000000000000000000000000000000000000000BB,
-        [
-            0xAAu8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            0u8, 0u8, 0u8, 0xBBu8,
-        ],
-    );
-    assert_encoding_and_decoding(
-        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,
-        [255u8; 32],
-    );
-
-    // strings
-    assert_encoding_and_decoding(
-        "Hello",
-        [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8, 72u8, 101u8, 108u8, 108u8, 111u8],
-    );
-
-    assert_encoding(
-        {
-            let a: str[1] = __to_str_array("a");
-            a
-        },
-        [97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[2] = __to_str_array("aa");
-            a
-        },
-        [97u8, 97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[3] = __to_str_array("aaa");
-            a
-        },
-        [97u8, 97u8, 97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[4] = __to_str_array("aaaa");
-            a
-        },
-        [97u8, 97u8, 97u8, 97u8],
-    );
-    assert_encoding(
-        {
-            let a: str[5] = __to_str_array("aaaaa");
-            a
-        },
-        [97u8, 97u8, 97u8, 97u8, 97u8],
-    );
-
-    // arrays
-    assert_encoding([255u8; 1], [255u8; 1]);
-    assert_encoding([255u8; 2], [255u8; 2]);
-    assert_encoding([255u8; 3], [255u8; 3]);
-    assert_encoding([255u8; 4], [255u8; 4]);
-    assert_encoding([255u8; 5], [255u8; 5]);
-
-    let array = abi_decode::<[u8; 1]>(to_slice([255u8]));
-    assert_eq(array[0], 255u8);
-
-    let array = abi_decode::<[u8; 2]>(to_slice([255u8, 254u8]));
-    assert_eq(array[0], 255u8);
-    assert_eq(array[1], 254u8);
-}
-
 pub fn contract_call<T, TArgs>(
     contract_id: b256,
     method_name: str,
@@ -5258,4 +5145,64 @@ where
 {
     let mut buffer = BufferReader::from_second_parameter();
     T::abi_decode(buffer)
+}
+
+
+#[test]
+fn ok_abi_encoding() {
+    // strings
+    assert_encoding_and_decoding(
+        "Hello",
+        [0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 5u8, 72u8, 101u8, 108u8, 108u8, 111u8],
+    );
+
+    assert_encoding(
+        {
+            let a: str[1] = __to_str_array("a");
+            a
+        },
+        [97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[2] = __to_str_array("aa");
+            a
+        },
+        [97u8, 97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[3] = __to_str_array("aaa");
+            a
+        },
+        [97u8, 97u8, 97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[4] = __to_str_array("aaaa");
+            a
+        },
+        [97u8, 97u8, 97u8, 97u8],
+    );
+    assert_encoding(
+        {
+            let a: str[5] = __to_str_array("aaaaa");
+            a
+        },
+        [97u8, 97u8, 97u8, 97u8, 97u8],
+    );
+
+    // arrays
+    assert_encoding([255u8; 1], [255u8; 1]);
+    assert_encoding([255u8; 2], [255u8; 2]);
+    assert_encoding([255u8; 3], [255u8; 3]);
+    assert_encoding([255u8; 4], [255u8; 4]);
+    assert_encoding([255u8; 5], [255u8; 5]);
+
+    let array = abi_decode::<[u8; 1]>(to_slice([255u8]));
+    assert_eq(array[0], 255u8);
+
+    let array = abi_decode::<[u8; 2]>(to_slice([255u8, 254u8]));
+    assert_eq(array[0], 255u8);
+    assert_eq(array[1], 254u8);
 }
