@@ -814,17 +814,12 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_id = engines
+            .te()
+            .insert(engines, type_info, symbol.span().source_id());
 
         self.resolve_associated_type_from_type_id(
-            handler,
-            engines,
-            module,
-            symbol,
-            engines
-                .te()
-                .insert(engines, type_info, symbol.span().source_id()),
-            as_trait,
-            self_type,
+            handler, engines, module, symbol, type_id, as_trait, self_type,
         )
     }
 
@@ -840,17 +835,12 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_id = engines
+            .te()
+            .insert(engines, type_info, symbol.span().source_id());
 
         self.resolve_associated_item_from_type_id(
-            handler,
-            engines,
-            module,
-            symbol,
-            engines
-                .te()
-                .insert(engines, type_info, symbol.span().source_id()),
-            as_trait,
-            self_type,
+            handler, engines, module, symbol, type_id, as_trait, self_type,
         )
     }
 
