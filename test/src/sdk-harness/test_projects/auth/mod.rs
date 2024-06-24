@@ -126,9 +126,9 @@ async fn can_get_predicate_address() {
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
-    // Setup Predciate
+    // Setup predicate.
     let hex_predicate_address: &str =
-        "0xe5d0a6dbd36c76a091d21e5281c98a0994f6c6b0bc04793532daf4d5b3594743";
+        "0x96495296fbfc9bb1f8bfb254354a25138cc7331fc5df620b3f4ac5d90f24ff7f";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -207,7 +207,7 @@ async fn when_incorrect_predicate_address_passed() {
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
-    // Setup Predciate with incorrect address
+    // Setup predicate with incorrect address.
     let hex_predicate_address: &str =
         "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
     let predicate_address =
@@ -252,9 +252,9 @@ async fn when_incorrect_predicate_address_passed() {
 
 #[tokio::test]
 async fn can_get_predicate_address_in_message() {
-    // Setup Predciate address
+    // Setup predicate address.
     let hex_predicate_address: &str =
-        "0xe5d0a6dbd36c76a091d21e5281c98a0994f6c6b0bc04793532daf4d5b3594743";
+        "0x96495296fbfc9bb1f8bfb254354a25138cc7331fc5df620b3f4ac5d90f24ff7f";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -292,7 +292,7 @@ async fn can_get_predicate_address_in_message() {
         .unwrap();
     wallet.set_provider(provider.clone());
 
-    // Setup Predciate
+    // Setup predicate.
     let predicate_data = AuthPredicateEncoder::default()
         .encode_data(predicate_bech32_address)
         .unwrap();
