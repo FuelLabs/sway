@@ -51,6 +51,7 @@ jobs:
 
       - name: Build Sway std library
         run: forc doc --path ./sway-lib-std
+        run: forc doc --manifest-path ./sway-lib-std
 
       - name: Deploy master std
         uses: peaceiris/actions-gh-pages@v3
