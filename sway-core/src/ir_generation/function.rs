@@ -1741,7 +1741,7 @@ impl<'eng> FnCompiler<'eng> {
                             ty: ptr_u8,
                         },
                     );
-                    merge_block.add_arg(context, merge_block_ptr.clone());
+                    merge_block.add_arg(context, merge_block_ptr);
                     let merge_block_cap = Value::new_argument(
                         context,
                         BlockArgument {
@@ -1755,10 +1755,10 @@ impl<'eng> FnCompiler<'eng> {
                     let true_block_begin = s.function.create_block(context, None);
                     let false_block_begin = s.function.create_block(context, None);
 
-                    // if cap + needed_size > cap
+                    // if len + needed_size > cap
                     let needed_cap = s.current_block.append(context).binary_op(
                         BinaryOpKind::Add,
-                        cap,
+                        len,
                         needed_size,
                     );
                     let needs_realloc = s.current_block.append(context).cmp(
@@ -1794,15 +1794,15 @@ impl<'eng> FnCompiler<'eng> {
                         vec![
                             AsmArg {
                                 name: Ident::new_no_span("new_cap".into()),
-                                initializer: Some(new_cap.clone()),
+                                initializer: Some(new_cap),
                             },
                             AsmArg {
                                 name: Ident::new_no_span("old_ptr".into()),
-                                initializer: Some(ptr.clone()),
+                                initializer: Some(ptr),
                             },
                             AsmArg {
                                 name: Ident::new_no_span("len".into()),
-                                initializer: Some(len.clone()),
+                                initializer: Some(len),
                             },
                         ],
                         vec![
@@ -1849,7 +1849,7 @@ impl<'eng> FnCompiler<'eng> {
                 }
 
                 fn to_constant(
-                    s: &mut FnCompiler<'_>,
+                    _s: &mut FnCompiler<'_>,
                     context: &mut Context,
                     needed_size: u64,
                 ) -> Value {
@@ -1888,49 +1888,47 @@ impl<'eng> FnCompiler<'eng> {
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
                         let uint64 = Type::get_uint64(context);
-                        let return_type = Type::new_struct(context, vec![uint64, uint64]);
-                        let return_type = Type::new_ptr(context, return_type);
+                        let u64_u64_type = Type::new_struct(context, vec![uint64, uint64]);
+                        let ptr_u64_u64_type = Type::new_ptr(context, u64_u64_type);
 
-                        let name = self.lexical_map.insert_anon();
-                        let item_local = self
-                            .function
-                            .new_local_var(
-                                context,
-                                name,
-                                item.get_type(context).unwrap(),
-                                None,
-                                false,
-                            )
-                            .map_err(|ir_error| {
-                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                            })?;
-                        let item_local_value =
-                            self.current_block.append(context).get_local(item_local);
-                        self.current_block
-                            .append(context)
-                            .store(item_local_value, item);
-
-                        let item_ptr_len_value = self.current_block.append(context).asm_block(
+                        // convert "item" to { u64, u64 }
+                        let item = self.current_block.append(context).asm_block(
                             vec![AsmArg {
                                 name: Ident::new_no_span("item".into()),
-                                initializer: Some(item_local_value.clone()),
+                                initializer: Some(item),
                             }],
                             vec![],
-                            return_type,
+                            u64_u64_type,
                             Some(Ident::new_no_span("item".into())),
                         );
 
-                        let ptr = self.current_block.append(context).get_elem_ptr_with_idx(
-                            item_ptr_len_value,
-                            uint64,
-                            0,
-                        );
-                        let ptr = self.current_block.append(context).load(ptr);
-                        let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
-                        let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
+                        // save item to local _anon
+                        let name = self.lexical_map.insert_anon();
+                        let item_local = self
+                            .function
+                            .new_local_var(context, name, u64_u64_type, None, false)
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
+                        let ptr_to_local_item =
+                            self.current_block.append(context).get_local(item_local);
+                        self.current_block
+                            .append(context)
+                            .store(ptr_to_local_item, item);
 
+                        // _anon.0 = ptr
+                        // let ptr = self.current_block.append(context).get_elem_ptr_with_idx(
+                        //     item_local_value,
+                        //     uint64,
+                        //     0,
+                        // );
+                        // let ptr = self.current_block.append(context).load(ptr);
+                        // let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
+                        // let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
+
+                        // _anon.1 = len
                         let needed_size = self.current_block.append(context).get_elem_ptr_with_idx(
-                            item_ptr_len_value,
+                            ptr_to_local_item,
                             uint64,
                             1,
                         );

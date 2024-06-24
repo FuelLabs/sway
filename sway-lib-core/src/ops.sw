@@ -614,7 +614,7 @@ impl Eq for raw_slice {
             l: (raw_ptr, u64)
         };
 
-        let (r_ptr, r_len) = asm(l: self) {
+        let (r_ptr, r_len) = asm(r: self) {
             r: (raw_ptr, u64)
         };
 
