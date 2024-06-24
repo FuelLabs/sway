@@ -5147,7 +5147,6 @@ where
     T::abi_decode(buffer)
 }
 
-
 #[test]
 fn ok_abi_encoding() {
     // strings
