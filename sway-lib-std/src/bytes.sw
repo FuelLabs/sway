@@ -906,10 +906,11 @@ impl From<Bytes> for Vec<u8> {
 impl Clone for Bytes {
     fn clone(self) -> Self {
         let len = self.len();
-        let mut c = Self::with_capacity(len);
-        c.len = len;
-        self.ptr().copy_bytes_to(c.ptr(), len);
-        c
+        let buf = RawBytes::with_capacity(len);
+        if len > 0 {
+            self.ptr().copy_bytes_to(buf.ptr(), len);
+        }
+        Bytes { buf, len }
     }
 }
 
