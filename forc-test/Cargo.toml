@@ -16,6 +16,6 @@ fuel-tx = { workspace = true, features = ["test-helpers"] }
 fuel-vm = { workspace = true, features = ["random", "test-helpers"] }
 fuels-core = { workspace = true }
 rand = "0.8"
-rayon = "1.7.0"
+rayon = "1.10.0"
 sway-core = { version = "0.61.0", path = "../sway-core" }
 sway-types = { version = "0.61.0", path = "../sway-types" }

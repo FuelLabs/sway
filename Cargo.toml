@@ -26,11 +26,7 @@ members = [
     "swayfmt",
     "test",
 ]
-exclude = [
-    "examples/*",
-    "swayfmt/test_macros",
-    "forc-test/test_data"
-]
+exclude = ["examples/*", "swayfmt/test_macros", "forc-test/test_data"]
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
@@ -60,4 +56,3 @@ authors = ["Fuel Labs <contact@fuel.sh>"]
 homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
-

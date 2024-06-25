@@ -11,20 +11,20 @@ repository.workspace = true
 [dependencies]
 anyhow = "1"
 forc-tracing = { version = "0.61.0", path = "../forc-tracing" }
-ropey = "1.5"
+ropey = "1.6"
 serde = { version = "1.0", features = ["derive"] }
-serde_ignored = "0.1.9"
+serde_ignored = "0.1.10"
 sway-ast = { version = "0.61.0", path = "../sway-ast" }
 sway-core = { version = "0.61.0", path = "../sway-core" }
 sway-error = { version = "0.61.0", path = "../sway-error" }
 sway-parse = { version = "0.61.0", path = "../sway-parse" }
 sway-types = { version = "0.61.0", path = "../sway-types" }
 sway-utils = { version = "0.61.0", path = "../sway-utils" }
-thiserror = "1.0.30"
-toml = { version = "0.7", features = ["parse"] }
+thiserror = "1.0.61"
+toml = { version = "0.8", features = ["parse"] }
 
 [dev-dependencies]
 difference = "2.0.0"
 paste = "1.0"
-prettydiff = "0.6"
+prettydiff = "0.7"
 test-macros = { path = "test_macros" }

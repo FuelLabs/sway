@@ -1,6 +1,6 @@
-use lsp_types::{Command, Range};
 use serde_json::{json, Value};
 use sway_core::language::parsed::TreeType;
+use tower_lsp::lsp_types::{Command, Range};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RunnableMainFn {

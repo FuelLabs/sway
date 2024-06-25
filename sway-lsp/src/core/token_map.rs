@@ -7,10 +7,10 @@ use dashmap::{
     try_result::TryResult,
     DashMap,
 };
-use lsp_types::{Position, Url};
 use std::{thread, time::Duration};
 use sway_core::{engine_threading::SpannedWithEngines, language::ty, type_system::TypeId, Engines};
 use sway_types::Ident;
+use tower_lsp::lsp_types::{Position, Url};
 
 // Re-export the TokenMapExt trait.
 pub use crate::core::token_map_ext::TokenMapExt;

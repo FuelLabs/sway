@@ -3,12 +3,12 @@ use crate::capabilities::{
     code_actions::{CodeActionContext, CODE_ACTION_QUALIFY_TITLE},
     diagnostic::DiagnosticData,
 };
-use lsp_types::{
+use serde_json::Value;
+use std::collections::HashMap;
+use tower_lsp::lsp_types::{
     CodeAction as LspCodeAction, CodeActionKind, CodeActionOrCommand, Range, TextEdit,
     WorkspaceEdit,
 };
-use serde_json::Value;
-use std::collections::HashMap;
 
 /// Returns a list of [CodeActionOrCommand] suggestions for qualifying an unknown symbol with a path.
 pub(crate) fn qualify_code_action(

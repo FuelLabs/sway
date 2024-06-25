@@ -1,7 +1,6 @@
 pub mod integration;
 
 use crate::integration::{code_actions, lsp};
-use lsp_types::*;
 use std::{fs, path::PathBuf};
 use sway_lsp::{
     handlers::{notification, request},
@@ -13,6 +12,7 @@ use sway_lsp_test_utils::{
     runnables_test_dir, self_impl_reassignment_dir, setup_panic_hook, sway_workspace_dir,
     test_fixtures_dir,
 };
+use tower_lsp::lsp_types::*;
 use tower_lsp::LspService;
 
 /// Holds the information needed to check the response of a goto definition request.

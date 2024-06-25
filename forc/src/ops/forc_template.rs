@@ -81,7 +81,7 @@ fn edit_forc_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Result
     let mut file = File::open(out_dir.join(constants::MANIFEST_FILE_NAME))?;
     let mut toml = String::new();
     file.read_to_string(&mut toml)?;
-    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
+    let mut manifest_toml = toml.parse::<toml_edit::DocumentMut>()?;
 
     let mut authors = Vec::new();
     let forc_toml: toml::Value = toml::de::from_str(&toml)?;
@@ -141,7 +141,7 @@ fn edit_cargo_toml(out_dir: &Path, project_name: &str, real_name: &str) -> Resul
     }
     updated_authors.push(real_name);
 
-    let mut manifest_toml = toml.parse::<toml_edit::Document>()?;
+    let mut manifest_toml = toml.parse::<toml_edit::DocumentMut>()?;
     manifest_toml["package"]["authors"] = toml_edit::value(updated_authors);
     manifest_toml["package"]["name"] = toml_edit::value(project_name);
 

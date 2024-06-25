@@ -4,7 +4,7 @@ use anyhow::{Error, Result};
 use async_trait::async_trait;
 use forc_tracing::println_warning;
 
-use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
+use fuel_crypto::{secp256::PublicKey, secp256::SecretKey, Message, Signature};
 use fuel_tx::{field, Address, Buildable, ContractId, Input, Output, TransactionBuilder, Witness};
 use fuels_accounts::{provider::Provider, wallet::Wallet, ViewOnlyAccount};
 use fuels_core::types::{

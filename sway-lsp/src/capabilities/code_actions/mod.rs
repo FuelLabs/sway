@@ -16,14 +16,14 @@ use crate::core::{
     token_map::TokenMap,
 };
 pub use crate::error::DocumentError;
-use lsp_types::{
-    CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
-    CodeActionResponse, Diagnostic, Position, Range, TextEdit, Url, WorkspaceEdit,
-};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
 use sway_core::{language::ty, Engines, Namespace};
 use sway_types::{LineCol, Spanned};
+use tower_lsp::lsp_types::{
+    CodeAction as LspCodeAction, CodeActionDisabled, CodeActionKind, CodeActionOrCommand,
+    CodeActionResponse, Diagnostic, Position, Range, TextEdit, Url, WorkspaceEdit,
+};
 
 pub(crate) const CODE_ACTION_IMPL_TITLE: &str = "Generate impl for";
 pub(crate) const CODE_ACTION_NEW_TITLE: &str = "Generate `new`";
@@ -70,26 +70,26 @@ pub fn code_actions(
         .map(|typed_token| match typed_token {
             TypedAstToken::TypedDeclaration(decl) => match decl {
                 ty::TyDecl::AbiDecl(ty::AbiDecl { decl_id, .. }) => {
-                    abi_decl::code_actions(decl_id, &ctx)
+                    abi_decl::code_actions(&decl_id, &ctx)
                 }
                 ty::TyDecl::StructDecl(ty::StructDecl { decl_id, .. }) => {
-                    struct_decl::code_actions(decl_id, &ctx)
+                    struct_decl::code_actions(&decl_id, &ctx)
                 }
                 ty::TyDecl::EnumDecl(ty::EnumDecl { decl_id, .. }) => {
-                    enum_decl::code_actions(decl_id, &ctx)
+                    enum_decl::code_actions(&decl_id, &ctx)
                 }
                 _ => Vec::new(),
             },
             TypedAstToken::TypedFunctionDeclaration(decl) => {
-                function_decl::code_actions(decl, &ctx)
+                function_decl::code_actions(&decl, &ctx)
             }
-            TypedAstToken::TypedStorageField(decl) => storage_field::code_actions(decl, &ctx),
+            TypedAstToken::TypedStorageField(decl) => storage_field::code_actions(&decl, &ctx),
             TypedAstToken::TypedConstantDeclaration(decl) => {
-                constant_decl::code_actions(decl, &ctx)
+                constant_decl::code_actions(&decl, &ctx)
             }
-            TypedAstToken::TypedEnumVariant(decl) => enum_variant::code_actions(decl, &ctx),
-            TypedAstToken::TypedStructField(decl) => struct_field::code_actions(decl, &ctx),
-            TypedAstToken::TypedTraitFn(decl) => trait_fn::code_actions(decl, &ctx),
+            TypedAstToken::TypedEnumVariant(decl) => enum_variant::code_actions(&decl, &ctx),
+            TypedAstToken::TypedStructField(decl) => struct_field::code_actions(&decl, &ctx),
+            TypedAstToken::TypedTraitFn(decl) => trait_fn::code_actions(&decl, &ctx),
             _ => Vec::new(),
         })
         .unwrap_or_default();

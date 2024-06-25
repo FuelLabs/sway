@@ -1,12 +1,12 @@
 use crate::core::token::TokenIdent;
-use lsp_types::{
-    CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
-    Range, TextEdit,
-};
 use sway_core::{
     language::ty::{TyAstNodeContent, TyDecl, TyFunctionDecl, TyFunctionParameter},
     namespace::Items,
     Engines, TypeId, TypeInfo,
+};
+use tower_lsp::lsp_types::{
+    CompletionItem, CompletionItemKind, CompletionItemLabelDetails, CompletionTextEdit, Position,
+    Range, TextEdit,
 };
 
 pub(crate) fn to_completion_items(

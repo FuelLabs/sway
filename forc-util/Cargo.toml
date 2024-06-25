@@ -9,20 +9,20 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-annotate-snippets = { version = "0.10.1" }
+annotate-snippets = { version = "0.11.4" }
 ansi_term = "0.12"
 anyhow = "1"
-clap = { version = "4.5.4", features = ["cargo", "derive", "env"] }
-dirs = "3.0.2"
+clap = { version = "4.5.7", features = ["cargo", "derive", "env"] }
+dirs = "5.0.1"
 fd-lock = "4.0"
 forc-tracing = { version = "0.61.0", path = "../forc-tracing" }
 fuel-tx = { workspace = true, features = ["serde"], optional = true }
 hex = "0.4.3"
-paste = "1.0.14"
-regex = "1.10.2"
+paste = "1.0.15"
+regex = "1.10.5"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0.73"
-serial_test = "3.0.0"
+serde_json = "1.0.118"
+serial_test = "3.1.1"
 sway-core = { version = "0.61.0", path = "../sway-core" }
 sway-error = { version = "0.61.0", path = "../sway-error" }
 sway-types = { version = "0.61.0", path = "../sway-types" }
@@ -33,7 +33,7 @@ tracing-subscriber = { version = "0.3", features = [
     "env-filter",
     "json",
 ] }
-unicode-xid = "0.2.2"
+unicode-xid = "0.2.4"
 
 [features]
 default = ["fuel-tx"]

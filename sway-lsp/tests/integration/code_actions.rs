@@ -2,13 +2,13 @@
 //! The methods are used to build and send requests and notifications to the LSP service
 //! and assert the expected responses.
 
-use lsp_types::*;
 use pretty_assertions::assert_eq;
 use serde_json::json;
 use std::collections::HashMap;
 use sway_lsp::{
     capabilities::diagnostic::DiagnosticData, handlers::request, server_state::ServerState,
 };
+use tower_lsp::lsp_types::*;
 
 fn create_code_action(
     uri: Url,

@@ -1,6 +1,6 @@
 use crate::capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_DOC_TITLE};
-use lsp_types::{Range, Url};
 use sway_types::Spanned;
+use tower_lsp::lsp_types::{Range, Url};
 
 use super::generate_doc::GenerateDocCodeAction;
 

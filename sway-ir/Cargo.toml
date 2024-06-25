@@ -10,14 +10,14 @@ repository.workspace = true
 
 [dependencies]
 anyhow = "1.0"
-downcast-rs = "1.2.0"
+downcast-rs = "1.2.1"
 filecheck = "0.5"
-indexmap = { version = "2.0.0", features = ["rayon"] }
-itertools = "0.10.3"
-once_cell = "1.18.0"
-peg = "0.7"
-prettydiff = "0.6.4"
-rustc-hash = "1.1.0"
+indexmap = { version = "2.2.6", features = ["rayon"] }
+itertools = "0.13.0"
+once_cell = "1.19.0"
+peg = "0.8"
+prettydiff = "0.7.0"
+rustc-hash = "2.0.0"
 slotmap = "1.0.7"
 sway-ir-macros = { version = "0.61.0", path = "sway-ir-macros" }
 sway-types = { version = "0.61.0", path = "../sway-types" }

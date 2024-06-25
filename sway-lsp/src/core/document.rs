@@ -5,9 +5,9 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_util::fs_locking::PidFileLocking;
-use lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
 use ropey::Rope;
 use tokio::{fs::File, io::AsyncWriteExt};
+use tower_lsp::lsp_types::{Position, Range, TextDocumentContentChangeEvent, Url};
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {

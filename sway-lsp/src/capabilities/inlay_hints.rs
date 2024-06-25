@@ -5,10 +5,10 @@ use crate::{
         token::{get_range_from_span, TypedAstToken},
     },
 };
-use lsp_types::{self, Range, Url};
 use std::sync::Arc;
 use sway_core::{language::ty::TyDecl, type_system::TypeInfo};
 use sway_types::Spanned;
+use tower_lsp::lsp_types::{self, Range, Url};
 
 // Future PR's will add more kinds
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,7 +28,7 @@ pub fn inlay_hints(
     uri: &Url,
     range: &Range,
     config: &InlayHintsConfig,
-) -> Option<Vec<lsp_types::InlayHint>> {
+) -> Option<Vec<tower_lsp::lsp_types::InlayHint>> {
     // 1. Loop through all our tokens and filter out all tokens that aren't TypedVariableDeclaration tokens
     // 2. Also filter out all tokens that have a span that fall outside of the provided range
     // 3. Filter out all variable tokens that have a type_ascription
@@ -38,7 +38,7 @@ pub fn inlay_hints(
         return None;
     }
 
-    let hints: Vec<lsp_types::InlayHint> = session
+    let hints: Vec<tower_lsp::lsp_types::InlayHint> = session
         .token_map()
         .tokens_for_file(uri)
         .filter_map(|item| {
@@ -84,7 +84,7 @@ fn inlay_hint(render_colons: bool, inlay_hint: InlayHint) -> lsp_types::InlayHin
             // after annotated thing
             InlayKind::TypeHint => inlay_hint.range.end,
         },
-        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
+        label: tower_lsp::lsp_types::InlayHintLabel::String(match inlay_hint.kind {
             InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
             InlayKind::TypeHint => inlay_hint.label,
         }),

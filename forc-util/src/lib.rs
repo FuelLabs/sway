@@ -1,7 +1,7 @@
 //! Utility items shared between forc crates.
 use annotate_snippets::{
     renderer::{AnsiColor, Style},
-    Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
+    Level as AnnotationType, Renderer, Snippet,
 };
 use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
@@ -456,69 +456,58 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
 
     if diagnostic.is_old_style() {
         format_old_style_diagnostic(diagnostic.issue());
+
         return;
     }
 
     let mut label = String::new();
+
     get_title_label(diagnostic, &mut label);
 
-    let snippet_title = Some(Annotation {
-        label: Some(label.as_str()),
-        id: if SHOW_DIAGNOSTIC_CODE {
-            diagnostic.reason().map(|reason| reason.code())
-        } else {
-            None
-        },
-        annotation_type: diagnostic_level_to_annotation_type(diagnostic.level()),
-    });
+    let mut message = diagnostic_level_to_annotation_type(diagnostic.level()).title(label.as_str());
 
-    let mut snippet_slices = Vec::<Slice<'_>>::new();
+    if SHOW_DIAGNOSTIC_CODE {
+        if let Some(id) = diagnostic.reason().map(|reason| reason.code()) {
+            message = message.id(id);
+        };
+    }
 
     // We first display labels from the issue file...
     if diagnostic.issue().is_in_source() {
-        snippet_slices.push(construct_slice(diagnostic.labels_in_issue_source()))
+        let snippet = construct_slice(diagnostic.labels_in_issue_source());
+
+        message = message.snippet(snippet);
     }
 
     // ...and then all the remaining labels from the other files.
     for source_path in diagnostic.related_sources(false) {
-        snippet_slices.push(construct_slice(diagnostic.labels_in_source(source_path)))
+        let snippet = construct_slice(diagnostic.labels_in_source(source_path));
+
+        message = message.snippet(snippet);
     }
 
-    let mut snippet_footer = Vec::<Annotation<'_>>::new();
     for help in diagnostic.help() {
-        snippet_footer.push(Annotation {
-            id: None,
-            label: Some(help),
-            annotation_type: AnnotationType::Help,
-        });
-    }
+        let footer = AnnotationType::Help.title(help);
 
-    let snippet = Snippet {
-        title: snippet_title,
-        slices: snippet_slices,
-        footer: snippet_footer,
-    };
+        message = message.footer(footer);
+    }
 
     let renderer = create_diagnostics_renderer();
+
     match diagnostic.level() {
-        Level::Warning => tracing::warn!("{}\n____\n", renderer.render(snippet)),
-        Level::Error => tracing::error!("{}\n____\n", renderer.render(snippet)),
+        Level::Warning => tracing::warn!("{}\n____\n", renderer.render(message)),
+        Level::Error => tracing::error!("{}\n____\n", renderer.render(message)),
     }
 
     fn format_old_style_diagnostic(issue: &Issue) {
         let annotation_type = label_type_to_annotation_type(issue.label_type());
 
-        let snippet_title = Some(Annotation {
-            label: if issue.is_in_source() {
-                None
-            } else {
-                Some(issue.friendly_text())
-            },
-            id: None,
-            annotation_type,
+        let mut message = annotation_type.title(if issue.is_in_source() {
+            ""
+        } else {
+            issue.friendly_text()
         });
 
-        let mut snippet_slices = vec![];
         if issue.is_in_source() {
             let span = issue.span();
             let input = span.input();
@@ -527,30 +516,22 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
             let LineColRange { mut start, end } = span.line_col();
             let input = construct_window(&mut start, end, &mut start_pos, &mut end_pos, input);
 
-            let slice = Slice {
-                source: input,
-                line_start: start.line,
-                // Safe unwrap because the issue is in source, so the source path surely exists.
-                origin: Some(issue.source_path().unwrap().as_str()),
-                fold: false,
-                annotations: vec![SourceAnnotation {
-                    label: issue.friendly_text(),
-                    annotation_type,
-                    range: (start_pos, end_pos),
-                }],
-            };
+            let snippet = Snippet::source(input)
+                .line_start(start.line)
+                .origin(issue.source_path().unwrap().as_str())
+                .fold(false)
+                .annotation(
+                    annotation_type
+                        .span(start_pos..end_pos)
+                        .label(issue.friendly_text()),
+                );
 
-            snippet_slices.push(slice);
+            message = message.snippet(snippet);
         }
 
-        let snippet = Snippet {
-            title: snippet_title,
-            footer: vec![],
-            slices: snippet_slices,
-        };
-
         let renderer = create_diagnostics_renderer();
-        tracing::error!("{}\n____\n", renderer.render(snippet));
+
+        tracing::error!("{}\n____\n", renderer.render(message));
     }
 
     fn get_title_label(diagnostics: &Diagnostic, label: &mut String) {
@@ -568,7 +549,7 @@ fn format_diagnostic(diagnostic: &Diagnostic) {
     }
 }
 
-fn construct_slice(labels: Vec<&Label>) -> Slice {
+fn construct_slice(labels: Vec<&Label>) -> Snippet {
     debug_assert!(
         !labels.is_empty(),
         "To construct slices, at least one label must be provided."
@@ -592,23 +573,25 @@ fn construct_slice(labels: Vec<&Label>) -> Slice {
 
     let (source, line_start, shift_in_bytes) = construct_code_snippet(&span, source_code);
 
-    let mut annotations = vec![];
+    let mut snippet = Snippet::source(source).line_start(line_start).fold(true);
 
-    for message in labels {
-        annotations.push(SourceAnnotation {
-            label: message.friendly_text(),
-            annotation_type: label_type_to_annotation_type(message.label_type()),
-            range: get_annotation_range(message.span(), source_code, shift_in_bytes),
-        });
+    if let Some(source_file) = source_file {
+        snippet = snippet.origin(source_file);
     }
 
-    return Slice {
-        source,
-        line_start,
-        origin: source_file,
-        fold: true,
-        annotations,
-    };
+    for message in labels {
+        let annotation_type = label_type_to_annotation_type(message.label_type());
+
+        let (start, end) = get_annotation_range(message.span(), source_code, shift_in_bytes);
+
+        let annotation = annotation_type
+            .span(start..end)
+            .label(message.friendly_text());
+
+        snippet = snippet.annotation(annotation);
+    }
+
+    return snippet;
 
     fn get_annotation_range(
         span: &Span,

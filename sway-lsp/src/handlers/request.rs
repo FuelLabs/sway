@@ -5,12 +5,6 @@ use crate::{
     capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
 };
 use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
-use lsp_types::{
-    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
-    InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
-    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
-    SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
-};
 use std::{
     fs::File,
     io::Write,
@@ -19,11 +13,17 @@ use std::{
 use sway_types::{Ident, Spanned};
 use sway_utils::PerformanceData;
 use tower_lsp::jsonrpc::Result;
+use tower_lsp::lsp_types::{
+    CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
+    InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
+    SemanticTokensParams, SemanticTokensRangeParams, SemanticTokensRangeResult,
+    SemanticTokensResult, TextDocumentIdentifier, Url, WorkspaceEdit,
+};
 use tracing::metadata::LevelFilter;
 
 pub fn handle_initialize(
     state: &ServerState,
-    params: &lsp_types::InitializeParams,
+    params: &tower_lsp::lsp_types::InitializeParams,
 ) -> Result<InitializeResult> {
     if let Some(initialization_options) = &params.initialization_options {
         let mut config = state.config.write();
@@ -57,8 +57,8 @@ pub fn handle_initialize(
 
 pub async fn handle_document_symbol(
     state: &ServerState,
-    params: lsp_types::DocumentSymbolParams,
-) -> Result<Option<lsp_types::DocumentSymbolResponse>> {
+    params: tower_lsp::lsp_types::DocumentSymbolParams,
+) -> Result<Option<tower_lsp::lsp_types::DocumentSymbolResponse>> {
     let _ = state.wait_for_parsing().await;
     match state
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -76,8 +76,8 @@ pub async fn handle_document_symbol(
 
 pub async fn handle_goto_definition(
     state: &ServerState,
-    params: lsp_types::GotoDefinitionParams,
-) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+    params: tower_lsp::lsp_types::GotoDefinitionParams,
+) -> Result<Option<tower_lsp::lsp_types::GotoDefinitionResponse>> {
     match state
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
         .await
@@ -95,8 +95,8 @@ pub async fn handle_goto_definition(
 
 pub async fn handle_completion(
     state: &ServerState,
-    params: lsp_types::CompletionParams,
-) -> Result<Option<lsp_types::CompletionResponse>> {
+    params: tower_lsp::lsp_types::CompletionParams,
+) -> Result<Option<tower_lsp::lsp_types::CompletionResponse>> {
     let trigger_char = params
         .context
         .as_ref()
@@ -119,8 +119,8 @@ pub async fn handle_completion(
 
 pub async fn handle_hover(
     state: &ServerState,
-    params: lsp_types::HoverParams,
-) -> Result<Option<lsp_types::Hover>> {
+    params: tower_lsp::lsp_types::HoverParams,
+) -> Result<Option<tower_lsp::lsp_types::Hover>> {
     match state
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
         .await
@@ -143,7 +143,7 @@ pub async fn handle_hover(
 
 pub async fn handle_prepare_rename(
     state: &ServerState,
-    params: lsp_types::TextDocumentPositionParams,
+    params: tower_lsp::lsp_types::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
     match state
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -193,8 +193,8 @@ pub async fn handle_rename(
 
 pub async fn handle_document_highlight(
     state: &ServerState,
-    params: lsp_types::DocumentHighlightParams,
-) -> Result<Option<Vec<lsp_types::DocumentHighlight>>> {
+    params: tower_lsp::lsp_types::DocumentHighlightParams,
+) -> Result<Option<Vec<tower_lsp::lsp_types::DocumentHighlight>>> {
     let _ = state.wait_for_parsing().await;
     match state
         .uri_and_session_from_workspace(&params.text_document_position_params.text_document.uri)
@@ -216,7 +216,7 @@ pub async fn handle_document_highlight(
 pub async fn handle_formatting(
     state: &ServerState,
     params: DocumentFormattingParams,
-) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+) -> Result<Option<Vec<tower_lsp::lsp_types::TextEdit>>> {
     let _ = state.wait_for_parsing().await;
     state
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -232,8 +232,8 @@ pub async fn handle_formatting(
 
 pub async fn handle_code_action(
     state: &ServerState,
-    params: lsp_types::CodeActionParams,
-) -> Result<Option<lsp_types::CodeActionResponse>> {
+    params: tower_lsp::lsp_types::CodeActionParams,
+) -> Result<Option<tower_lsp::lsp_types::CodeActionResponse>> {
     let _ = state.wait_for_parsing().await;
     match state
         .uri_and_session_from_workspace(&params.text_document.uri)
@@ -255,7 +255,7 @@ pub async fn handle_code_action(
 
 pub async fn handle_code_lens(
     state: &ServerState,
-    params: lsp_types::CodeLensParams,
+    params: tower_lsp::lsp_types::CodeLensParams,
 ) -> Result<Option<Vec<CodeLens>>> {
     let _ = state.wait_for_parsing().await;
     match state

@@ -15,8 +15,8 @@ use sway_core::{
     Engines, TypeId,
 };
 
-use lsp_types::{self, Position, Url};
 use sway_types::{Span, Spanned};
+use tower_lsp::lsp_types::{self, Position, Url};
 
 use self::hover_link_contents::HoverLinkContents;
 
@@ -26,7 +26,7 @@ pub fn hover_data(
     keyword_docs: &KeywordDocs,
     url: &Url,
     position: Position,
-) -> Option<lsp_types::Hover> {
+) -> Option<tower_lsp::lsp_types::Hover> {
     let t = session.token_map().token_at_position(url, position)?;
     let (ident, token) = t.pair();
     let range = ident.range;

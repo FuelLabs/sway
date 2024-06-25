@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 use crate::core::token::{Token, TokenIdent};
 use dashmap::mapref::multiple::RefMulti;
-use lsp_types::{Diagnostic, DiagnosticSeverity};
 use sway_core::{
     decl_engine::DeclEngine,
     language::{ty, Literal},
 };
+use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 pub(crate) fn generate_warnings_non_typed_tokens<'s, I>(tokens: I) -> Vec<Diagnostic>
 where

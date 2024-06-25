@@ -7,7 +7,8 @@ use crate::{
     lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
 };
-use lsp_types::{
+use sway_utils::PerformanceData;
+use tower_lsp::lsp_types::{
     CodeActionParams, CodeActionResponse, CodeLens, CodeLensParams, CompletionParams,
     CompletionResponse, DidChangeTextDocumentParams, DidChangeWatchedFilesParams,
     DidCloseTextDocumentParams, DidOpenTextDocumentParams, DidSaveTextDocumentParams,
@@ -18,7 +19,6 @@ use lsp_types::{
     SemanticTokensRangeResult, SemanticTokensResult, TextDocumentIdentifier,
     TextDocumentPositionParams, TextEdit, WorkspaceEdit,
 };
-use sway_utils::PerformanceData;
 use tower_lsp::{jsonrpc::Result, LanguageServer};
 
 #[tower_lsp::async_trait]
