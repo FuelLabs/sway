@@ -113,7 +113,9 @@ impl String {
     /// }
     /// ```
     pub fn from_ascii(bytes: Bytes) -> Self {
-        Self { bytes: bytes.clone() }
+        Self {
+            bytes: bytes.clone(),
+        }
     }
 
     /// Converts a string slice containing ASCII encoded bytes to a `String`
@@ -236,7 +238,9 @@ impl String {
 
 impl From<Bytes> for String {
     fn from(b: Bytes) -> Self {
-        Self { bytes: b.clone() }
+        Self {
+            bytes: b.clone(),
+        }
     }
 }
 
