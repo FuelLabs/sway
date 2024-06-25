@@ -8,7 +8,7 @@ use crate::{
         document::{Documents, TextDocument},
         sync::SyncWorkspace,
         token::{self, TypedAstToken},
-        token_map::{TokenMap, TokenMapExt},
+        token_map::TokenMap,
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
     traverse::{
@@ -17,9 +17,6 @@ use crate::{
 };
 use dashmap::DashMap;
 use forc_pkg as pkg;
-use lsp_types::{
-    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
-};
 use parking_lot::RwLock;
 use pkg::{
     manifest::{GenericManifestFile, ManifestFile},
@@ -42,6 +39,11 @@ use sway_core::{
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{ProgramId, SourceEngine, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
+use tower_lsp::lsp_types::{
+    CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
+};
+
+use super::token_map_ext::TokenMapExt;
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;

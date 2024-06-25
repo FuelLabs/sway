@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-use lsp_types::{CodeLens, Url};
+use tower_lsp::lsp_types::{CodeLens, Url};
 
 use crate::core::session::Session;
 

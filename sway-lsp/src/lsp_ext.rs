@@ -1,7 +1,7 @@
 //! sway-lsp extensions to the LSP.
 
-use lsp_types::{TextDocumentContentChangeEvent, TextDocumentIdentifier, Url};
 use serde::{Deserialize, Serialize};
+use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, TextDocumentIdentifier, Url};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

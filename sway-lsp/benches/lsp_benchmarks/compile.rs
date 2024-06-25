@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, Criterion};
-use lsp_types::Url;
 use std::sync::Arc;
 use sway_core::{Engines, ExperimentalFlags};
 use sway_lsp::core::session;
+use tower_lsp::lsp_types::Url;
 
 const NUM_DID_CHANGE_ITERATIONS: usize = 10;
 

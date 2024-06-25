@@ -3,13 +3,13 @@ use crate::core::{
     token::{SymbolKind, Token, TokenIdent},
 };
 use dashmap::mapref::multiple::RefMulti;
-use lsp_types::{
-    Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
-    SemanticTokensRangeResult, SemanticTokensResult, Url,
-};
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
+};
+use tower_lsp::lsp_types::{
+    Range, SemanticToken, SemanticTokenModifier, SemanticTokenType, SemanticTokens,
+    SemanticTokensRangeResult, SemanticTokensResult, Url,
 };
 
 // https://github.com/microsoft/vscode-extension-samples/blob/5ae1f7787122812dcc84e37427ca90af5ee09f14/semantic-tokens-sample/vscode.proposed.d.ts#L71

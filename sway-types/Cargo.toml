@@ -13,12 +13,12 @@ bytecount = "0.6"
 fuel-asm = { workspace = true }
 fuel-crypto = { workspace = true }
 fuel-tx = { workspace = true }
-indexmap = "2.0.0"
-lazy_static = "1.4"
-num-bigint = "0.4.3"
-num-traits = "0.2.16"
+indexmap = "2.2.6"
+lazy_static = "1.5"
+num-bigint = "0.4.5"
+num-traits = "0.2.19"
 parking_lot = "0.12"
-rustc-hash = "1.1.0"
+rustc-hash = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 sway-utils = { version = "0.61.0", path = "../sway-utils" }
 thiserror = "1"

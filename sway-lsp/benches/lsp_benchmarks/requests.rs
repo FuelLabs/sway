@@ -1,10 +1,10 @@
 use criterion::{black_box, criterion_group, Criterion};
-use lsp_types::{
+use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
+use tokio::runtime::Runtime;
+use tower_lsp::lsp_types::{
     CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
 };
-use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
-use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
     let (uri, session, documents) = Runtime::new()

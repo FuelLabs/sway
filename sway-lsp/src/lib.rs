@@ -14,12 +14,12 @@ pub mod server;
 mod traverse;
 pub mod utils;
 
-use lsp_types::{
+use server_state::ServerState;
+use tower_lsp::lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions, ExecuteCommandOptions,
     HoverProviderCapability, OneOf, RenameOptions, SemanticTokensLegend, SemanticTokensOptions,
     ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, WorkDoneProgressOptions,
 };
-use server_state::ServerState;
 use tower_lsp::{LspService, Server};
 
 pub async fn start() {

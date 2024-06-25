@@ -1,6 +1,5 @@
 use assert_json_diff::assert_json_include;
 use futures::StreamExt;
-use lsp_types::Url;
 use rand::Rng;
 use serde_json::Value;
 use std::{
@@ -9,7 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use tokio::task::JoinHandle;
-use tower_lsp::ClientSocket;
+use tower_lsp::{lsp_types::Url, ClientSocket};
 
 pub fn load_sway_example(src_path: PathBuf) -> (Url, String) {
     let mut file = fs::File::open(&src_path).unwrap();
@@ -17,6 +16,7 @@ pub fn load_sway_example(src_path: PathBuf) -> (Url, String) {
     file.read_to_string(&mut sway_program).unwrap();
 
     let uri = Url::from_file_path(src_path).unwrap();
+
     (uri, sway_program)
 }
 

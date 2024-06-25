@@ -9,16 +9,16 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-anyhow = "1.0.65"
-clap = { version = "4.5.4", features = ["derive"] }
-colored = "2.0.0"
-comrak = "0.16"
+anyhow = "1.0.86"
+clap = { version = "4.5.7", features = ["derive"] }
+colored = "2.1.0"
+comrak = "0.24"
 forc-pkg = { version = "0.61.0", path = "../../forc-pkg" }
 forc-util = { version = "0.61.0", path = "../../forc-util" }
 horrorshow = "0.8.4"
-include_dir = "0.7.3"
+include_dir = "0.7.4"
 minifier = "0.3.0"
-opener = "0.5.0"
+opener = "0.7.1"
 serde = "1.0"
 serde_json = "1.0"
 sway-ast = { version = "0.61.0", path = "../../sway-ast" }
@@ -29,4 +29,4 @@ swayfmt = { version = "0.61.0", path = "../../swayfmt" }
 
 [dev-dependencies]
 dir_indexer = "0.0.2"
-expect-test = "1.4.1"
+expect-test = "1.5.0"

@@ -2,7 +2,7 @@ mod auto_import;
 mod qualify;
 
 use crate::capabilities::{code_actions::CodeActionContext, diagnostic::DiagnosticData};
-use lsp_types::CodeActionOrCommand;
+use tower_lsp::lsp_types::CodeActionOrCommand;
 
 use self::auto_import::import_code_action;
 use self::qualify::qualify_code_action;

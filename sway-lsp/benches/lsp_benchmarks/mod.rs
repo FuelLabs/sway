@@ -2,13 +2,13 @@ pub mod compile;
 pub mod requests;
 pub mod token_map;
 
-use lsp_types::Url;
 use std::{path::PathBuf, sync::Arc};
 use sway_core::ExperimentalFlags;
 use sway_lsp::core::{
     document::Documents,
     session::{self, Session},
 };
+use tower_lsp::lsp_types::Url;
 
 pub async fn compile_test_project() -> (Url, Arc<Session>, Documents) {
     let experimental = ExperimentalFlags {

@@ -1,7 +1,7 @@
 use crate::capabilities::code_actions::{CodeAction, CodeActionContext, CODE_ACTION_DOC_TITLE};
-use lsp_types::{Range, Url};
 use sway_core::{language::ty::FunctionSignature, Engines};
 use sway_types::{Named, Spanned};
+use tower_lsp::lsp_types::{Range, Url};
 
 use super::generate_doc::GenerateDocCodeAction;
 

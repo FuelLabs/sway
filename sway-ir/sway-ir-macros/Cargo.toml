@@ -12,10 +12,10 @@ repository.workspace = true
 proc-macro = true
 
 [dependencies]
-itertools = "0.10.3"
-proc-macro2 = "1.0.43"
-quote = "1.0.21"
-syn = { version = "1.0.99", features = ["derive", "extra-traits"] }
+itertools = "0.13.0"
+proc-macro2 = "1.0.86"
+quote = "1.0.36"
+syn = { version = "2.0.68", features = ["derive", "extra-traits"] }
 
 [lints.clippy]
 iter_over_hash_type = "deny"

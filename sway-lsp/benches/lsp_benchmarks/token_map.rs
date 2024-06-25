@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, Criterion};
-use lsp_types::Position;
 use tokio::runtime::Runtime;
+use tower_lsp::lsp_types::Position;
 
 fn benchmarks(c: &mut Criterion) {
     let (uri, session, _) = Runtime::new()

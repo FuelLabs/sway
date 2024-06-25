@@ -5,10 +5,6 @@ use crate::{
     },
     core::token::{get_range_from_span, AstToken, SymbolKind, TypedAstToken},
 };
-use lsp_types::{
-    CodeAction as LspCodeAction, CodeActionKind, CodeActionOrCommand, Position, Range, TextEdit,
-    WorkspaceEdit,
-};
 use serde_json::Value;
 use std::{
     cmp::Ordering,
@@ -23,6 +19,10 @@ use sway_core::language::{
     CallPath,
 };
 use sway_types::{Ident, Spanned};
+use tower_lsp::lsp_types::{
+    CodeAction as LspCodeAction, CodeActionKind, CodeActionOrCommand, Position, Range, TextEdit,
+    WorkspaceEdit,
+};
 
 /// Returns a list of [CodeActionOrCommand] suggestions for inserting a missing import.
 pub(crate) fn import_code_action(

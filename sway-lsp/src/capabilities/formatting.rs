@@ -2,9 +2,9 @@ use crate::{
     core::document::Documents,
     error::{DocumentError, LanguageServerError},
 };
-use lsp_types::{Position, Range, TextEdit, Url};
 use std::sync::Arc;
 use swayfmt::Formatter;
+use tower_lsp::lsp_types::{Position, Range, TextEdit, Url};
 
 pub fn format_text(documents: &Documents, url: &Url) -> Result<Vec<TextEdit>, LanguageServerError> {
     let document = documents.try_get(url.path()).try_unwrap().ok_or_else(|| {

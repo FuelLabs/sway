@@ -9,14 +9,15 @@ use crate::{
     error::LanguageServerError,
     server_state::{CompilationContext, ServerState, TaskMessage},
 };
-use lsp_types::{
-    DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
-    DidSaveTextDocumentParams, FileChangeType, Url,
-};
 use std::{
     collections::BTreeMap,
     path::PathBuf,
     sync::{atomic::Ordering, Arc},
+};
+use tower_lsp::lsp_types::Url;
+use tower_lsp::lsp_types::{
+    DidChangeTextDocumentParams, DidChangeWatchedFilesParams, DidOpenTextDocumentParams,
+    DidSaveTextDocumentParams, FileChangeType,
 };
 
 pub async fn handle_did_open_text_document(

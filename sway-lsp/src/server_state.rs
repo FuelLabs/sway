@@ -13,7 +13,6 @@ use crossbeam_channel::{Receiver, Sender};
 use dashmap::DashMap;
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
-use lsp_types::{Diagnostic, Url};
 use parking_lot::RwLock;
 use std::{collections::BTreeMap, process::Command};
 use std::{
@@ -26,6 +25,7 @@ use std::{
 };
 use sway_core::LspConfig;
 use tokio::sync::Notify;
+use tower_lsp::lsp_types::{Diagnostic, Url};
 use tower_lsp::{jsonrpc, Client};
 
 /// `ServerState` is the primary mutable state of the language server
