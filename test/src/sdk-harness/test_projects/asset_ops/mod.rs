@@ -285,7 +285,7 @@ async fn can_perform_generic_mint_to_with_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_resources(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1, None)
             .await
             .unwrap()[0]
             .amount(),
@@ -364,7 +364,7 @@ async fn can_perform_generic_transfer_to_address() {
 
     assert_eq!(
         wallet
-            .get_spendable_resources(AssetId::from(asset_id_array), 1)
+            .get_spendable_resources(AssetId::from(asset_id_array), 1, None)
             .await
             .unwrap()[0]
             .amount(),
