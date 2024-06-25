@@ -2450,7 +2450,8 @@ impl ToDiagnostic for CompileError {
                 ),
                 hints: vec![],
                 help: vec![
-                    "Function \"abi_decode_in_place\" is defined in the standard library module \"core::codec\".".into()
+                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"core::codec\".".into(),
+                    "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
                 ],
             },
            _ => Diagnostic {

@@ -34,6 +34,7 @@ impl ty::TyConfigurableDecl {
             value,
             attributes,
             visibility,
+            block_keyword_span,
         } = decl;
 
         type_ascription.type_id = ctx
@@ -114,8 +115,10 @@ impl ty::TyConfigurableDecl {
 
             // Map expected errors to more understandable ones
             handler.map_and_emit_errors_from(abi_decode_in_place_handler, |e| match e {
-                CompileError::SymbolNotFound { span, .. } => {
-                    Some(CompileError::ConfigurableMissingAbiDecodeInPlace { span })
+                CompileError::SymbolNotFound { .. } => {
+                    Some(CompileError::ConfigurableMissingAbiDecodeInPlace {
+                        span: block_keyword_span.clone(),
+                    })
                 }
                 e => Some(e),
             })?;
