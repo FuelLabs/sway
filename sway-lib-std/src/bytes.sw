@@ -934,4 +934,17 @@ fn ok_bytes_buffer_ownership() {
     let mut bytes = Bytes::from(slice);
     bytes.set(0, 5);
     assert(original_array[0] == 1);
+
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
+
+    // `Bytes` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
+
+    let mut bytes = abi_decode::<Bytes>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
 }
