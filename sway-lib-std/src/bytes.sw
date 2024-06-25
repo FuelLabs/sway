@@ -83,7 +83,7 @@ impl From<raw_slice> for RawBytes {
     }
 }
 
-/// A type used to represent raw bytes.
+/// A type used to represent raw bytes. It has ownership over its buffer.
 pub struct Bytes {
     /// A barebones struct for the bytes.
     buf: RawBytes,
@@ -725,11 +725,11 @@ impl Bytes {
 
 impl core::ops::Eq for Bytes {
     fn eq(self, other: Self) -> bool {
-        if self.len != other.len() {
+        if self.len != other.len {
             return false;
         }
 
-        asm(result, r2: self.buf.ptr(), r3: other.ptr(), r4: self.len) {
+        asm(result, r2: self.buf.ptr, r3: other.buf.ptr, r4: self.len) {
             meq result r2 r3 r4;
             result: bool
         }
@@ -739,7 +739,7 @@ impl core::ops::Eq for Bytes {
 impl AsRawSlice for Bytes {
     /// Returns a raw slice of all of the elements in the type.
     fn as_raw_slice(self) -> raw_slice {
-        asm(ptr: (self.buf.ptr(), self.len)) {
+        asm(ptr: (self.buf.ptr, self.len)) {
             ptr: raw_slice
         }
     }
@@ -752,7 +752,7 @@ impl From<b256> for Bytes {
         let mut bytes = Self::with_capacity(32);
         bytes.len = 32;
         // Copy bytes from contract_id into the buffer of the target bytes
-        __addr_of(b).copy_bytes_to(bytes.buf.ptr(), 32);
+        __addr_of(b).copy_bytes_to(bytes.buf.ptr, 32);
 
         bytes
     }
