@@ -1,7 +1,7 @@
 pub(crate) mod hover_link_contents;
 
 use self::hover_link_contents::HoverLinkContents;
-use crate::config::LspClientConfig;
+use crate::config::LspClient;
 use crate::{
     core::{
         session::Session,
@@ -25,7 +25,7 @@ pub fn hover_data(
     keyword_docs: &KeywordDocs,
     url: &Url,
     position: Position,
-    client_config: LspClientConfig,
+    client_config: LspClient,
 ) -> Option<lsp_types::Hover> {
     let t = session.token_map().token_at_position(url, position)?;
     let (ident, token) = t.pair();
@@ -129,7 +129,7 @@ fn hover_format(
     engines: &Engines,
     token: &Token,
     ident_name: &str,
-    client_config: LspClientConfig,
+    client_config: LspClient,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(engines, token);

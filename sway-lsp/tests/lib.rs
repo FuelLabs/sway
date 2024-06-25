@@ -4,7 +4,7 @@ use crate::integration::{code_actions, lsp};
 use lsp_types::*;
 use std::{fs, path::PathBuf};
 use sway_lsp::{
-    config::LspClientConfig,
+    config::LspClient,
     handlers::{notification, request},
     server_state::ServerState,
 };
@@ -1636,9 +1636,10 @@ fn hover_docs_for_consts() {
 }
 
 #[test]
-fn hover_docs_for_functions() {
+fn hover_docs_for_functions_vscode() {
     run_async!({
         let server = ServerState::default();
+        server.config.write().client = LspClient::VsCode;
         let uri = open(
             &server,
             test_fixtures_dir().join("tokens/functions/src/main.sw"),
@@ -1783,7 +1784,7 @@ fn hover_docs_with_code_examples() {
 fn hover_docs_for_self_keywords_vscode() {
     run_async!({
         let server = ServerState::default();
-        server.config.write().client = LspClientConfig::VsCode;
+        server.config.write().client = LspClient::VsCode;
         let uri = open(&server, test_fixtures_dir().join("completion/src/main.sw")).await;
 
         let mut hover = HoverDocumentation {

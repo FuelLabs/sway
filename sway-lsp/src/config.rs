@@ -5,7 +5,7 @@ use tracing::metadata::LevelFilter;
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     #[serde(default)]
-    pub client: LspClientConfig,
+    pub client: LspClient,
     #[serde(default)]
     pub debug: DebugConfig,
     #[serde(default)]
@@ -24,7 +24,7 @@ pub struct Config {
 
 #[derive(Clone, Default, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum LspClientConfig {
+pub enum LspClient {
     VsCode,
     #[serde(other)]
     #[default]

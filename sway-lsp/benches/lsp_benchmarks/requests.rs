@@ -4,7 +4,7 @@ use lsp_types::{
     TextDocumentIdentifier,
 };
 use sway_lsp::{
-    capabilities, config::LspClientConfig, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs,
+    capabilities, config::LspClient, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs,
 };
 use tokio::runtime::Runtime;
 
@@ -45,7 +45,7 @@ fn benchmarks(c: &mut Criterion) {
                 &keyword_docs,
                 &uri,
                 position,
-                LspClientConfig::default(),
+                LspClient::default(),
             )
         })
     });
