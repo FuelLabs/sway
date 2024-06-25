@@ -224,8 +224,8 @@ fn type_check_struct(
     let unknown_decl =
         ctx.namespace()
             .resolve_symbol_typed(handler, engines, &struct_name, ctx.self_type())?;
-    let struct_ref = unknown_decl.to_struct_ref(handler, ctx.engines())?;
-    let mut struct_decl = (*decl_engine.get_struct(&struct_ref)).clone();
+    let struct_id = unknown_decl.to_struct_id(handler, ctx.engines())?;
+    let mut struct_decl = (*decl_engine.get_struct(&struct_id)).clone();
 
     // monomorphize the struct definition
     ctx.monomorphize(
@@ -418,7 +418,7 @@ fn type_check_struct(
     let typed_scrutinee = ty::TyScrutinee {
         type_id: type_engine.insert(
             ctx.engines(),
-            TypeInfo::Struct(struct_ref.clone()),
+            TypeInfo::Struct(*struct_ref.id()),
             struct_ref.span().source_id(),
         ),
         span,
@@ -493,7 +493,7 @@ fn type_check_enum(
                 &enum_callpath,
                 ctx.self_type(),
             )?;
-            let enum_ref = unknown_decl.to_enum_ref(handler, ctx.engines())?;
+            let enum_ref = unknown_decl.to_enum_id(handler, ctx.engines())?;
             (
                 enum_callpath.span(),
                 (*decl_engine.get_enum(&enum_ref)).clone(),
@@ -552,7 +552,7 @@ fn type_check_enum(
         },
         type_id: type_engine.insert(
             engines,
-            TypeInfo::Enum(enum_ref.clone()),
+            TypeInfo::Enum(*enum_ref.id()),
             enum_ref.span().source_id(),
         ),
         span,

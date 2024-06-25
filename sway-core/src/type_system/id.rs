@@ -6,6 +6,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Span};
 
 use crate::{
+    decl_engine::DeclEngineGet,
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, PartialEqWithEngines,
         PartialEqWithEnginesContext, WithEngines,
@@ -137,8 +138,8 @@ impl TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match &*type_engine.get(self) {
-            TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(decl_ref);
+            TypeInfo::Enum(decl_id) => {
+                let decl = decl_engine.get(decl_id);
                 (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             TypeInfo::Struct(decl_ref) => {
@@ -270,8 +271,8 @@ impl TypeId {
                     );
                 }
             }
-            TypeInfo::Struct(struct_ref) => {
-                let struct_decl = decl_engine.get_struct(struct_ref);
+            TypeInfo::Struct(struct_id) => {
+                let struct_decl = decl_engine.get_struct(struct_id);
                 for type_param in &struct_decl.type_parameters {
                     extend(
                         &mut found,
