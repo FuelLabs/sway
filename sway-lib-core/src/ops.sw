@@ -608,27 +608,6 @@ impl Eq for raw_ptr {
     }
 }
 
-impl Eq for raw_slice {
-    fn eq(self, other: Self) -> bool {
-        let (l_ptr, l_len) = asm(l: self) {
-            l: (raw_ptr, u64)
-        };
-
-        let (r_ptr, r_len) = asm(r: self) {
-            r: (raw_ptr, u64)
-        };
-
-        if l_len != r_len {
-            return false;
-        }
-
-        asm(result, r2: l_ptr, r3: r_ptr, r4: l_len) {
-            meq result r2 r3 r4;
-            result: bool
-        }
-    }
-}
-
 /// Trait to evaluate if one value is greater or less than another of the same type.
 pub trait Ord {
     /// Evaluates if one value of the same type is greater than another.
