@@ -1717,7 +1717,6 @@ impl<'eng> FnCompiler<'eng> {
                     Ok(increase_len(&mut s.current_block, context, len, 8 - offset))
                 }
 
-                // Grow the buffer if needed
                 fn grow_if_needed(
                     s: &mut FnCompiler<'_>,
                     context: &mut Context,
@@ -1857,6 +1856,7 @@ impl<'eng> FnCompiler<'eng> {
                     Value::new_constant(context, needed_size)
                 }
 
+                // Grow the buffer if needed
                 let (ptr, cap) = match &*item_type {
                     TypeInfo::Boolean => {
                         let needed_size = to_constant(self, context, 1);
@@ -1883,7 +1883,7 @@ impl<'eng> FnCompiler<'eng> {
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::StringArray(string_len) => {
-                        let needed_size = to_constant(self, context, 8 + string_len.val() as u64);
+                        let needed_size = to_constant(self, context, string_len.val() as u64);
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
                     TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
@@ -1915,16 +1915,6 @@ impl<'eng> FnCompiler<'eng> {
                             .append(context)
                             .store(ptr_to_local_item, item);
 
-                        // _anon.0 = ptr
-                        // let ptr = self.current_block.append(context).get_elem_ptr_with_idx(
-                        //     item_local_value,
-                        //     uint64,
-                        //     0,
-                        // );
-                        // let ptr = self.current_block.append(context).load(ptr);
-                        // let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
-                        // let ptr = self.current_block.append(context).int_to_ptr(ptr, ptr_u8);
-
                         // _anon.1 = len
                         let needed_size = self.current_block.append(context).get_elem_ptr_with_idx(
                             ptr_to_local_item,
@@ -1932,6 +1922,12 @@ impl<'eng> FnCompiler<'eng> {
                             1,
                         );
                         let needed_size = self.current_block.append(context).load(needed_size);
+                        let eight = to_constant(self, context, 8);
+                        let needed_size = self.current_block.append(context).binary_op(
+                            BinaryOpKind::Add,
+                            needed_size,
+                            eight,
+                        );
 
                         grow_if_needed(self, context, ptr, cap, len, needed_size)
                     }
