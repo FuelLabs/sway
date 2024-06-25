@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: Swatinem/rust-cache@v2
       - uses: actions/checkout@v3
-      - uses: boa-dev/criterion-compare-action@v3.2.4
+      - uses: sdankel/criterion-compare-action@main
         with:
           cwd: "./sway-lsp"
           branchName: ${{ github.base_ref }}
