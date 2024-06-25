@@ -1687,6 +1687,44 @@ impl MyContract for Contract {
 }
 
 #[test]
+fn configurable_comments() {
+    check(
+        r#"
+script;
+
+use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+
+configurable { /* multiline */
+    // double slash
+    /// triple slash
+    SIGNER: EvmAddress = EvmAddress {
+        // double slash 
+        // double slash
+        value: ZERO_B256, // end of line
+    },
+}
+
+fn main() {}"#,
+        r#"script;
+
+use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+
+configurable { /* multiline */
+    // double slash
+    /// triple slash
+    SIGNER: EvmAddress = EvmAddress {
+        // double slash 
+        // double slash
+        value: ZERO_B256, // end of line
+    },
+}
+
+fn main() {}
+"#,
+    );
+}
+
+#[test]
 fn empty_fn() {
     check(
         r#"
