@@ -381,6 +381,7 @@ pub(super) fn compile_function(
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
     is_entry: bool,
+    is_original_entry: bool,
     test_decl_ref: Option<DeclRefFunction>,
     cache: &mut CompiledFunctionCache,
 ) -> Result<Option<Function>, Vec<CompileError>> {
@@ -396,6 +397,7 @@ pub(super) fn compile_function(
             module,
             ast_fn_decl,
             is_entry,
+            is_original_entry,
             None,
             logged_types_map,
             messages_types_map,
@@ -419,6 +421,9 @@ pub(super) fn compile_entry_function(
     cache: &mut CompiledFunctionCache,
 ) -> Result<Function, Vec<CompileError>> {
     let is_entry = true;
+    // In the new encoding, the only entry function is the `__entry`,
+    // which is not an original entry.
+    let is_original_entry = !context.experimental.new_encoding;
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
     compile_function(
         engines,
@@ -429,6 +434,7 @@ pub(super) fn compile_entry_function(
         logged_types_map,
         messages_types_map,
         is_entry,
+        is_original_entry,
         test_decl_ref,
         cache,
     )
@@ -472,6 +478,7 @@ fn compile_fn(
     module: Module,
     ast_fn_decl: &ty::TyFunctionDecl,
     is_entry: bool,
+    is_original_entry: bool,
     selector: Option<[u8; 4]>,
     logged_types_map: &HashMap<TypeId, LogId>,
     messages_types_map: &HashMap<TypeId, MessageId>,
@@ -569,6 +576,7 @@ fn compile_fn(
         selector,
         *visibility == Visibility::Public,
         is_entry,
+        is_original_entry,
         ast_fn_decl.is_fallback(),
         metadata,
     );
@@ -636,23 +644,30 @@ fn compile_abi_method(
     // Use the error from .to_fn_selector_value() if possible, else make an CompileError::Internal.
     let handler = Handler::default();
     let ast_fn_decl = engines.de().get_function(ast_fn_decl);
-    let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
-    let (errors, _warnings) = handler.consume();
-    let selector = match get_selector_result.ok() {
-        Some(selector) => selector,
-        None => {
-            return if !errors.is_empty() {
-                Err(vec![errors[0].clone()])
-            } else {
-                Err(vec![CompileError::InternalOwned(
-                    format!(
-                        "Cannot generate selector for ABI method: {}",
-                        ast_fn_decl.name.as_str()
-                    ),
-                    ast_fn_decl.name.span(),
-                )])
-            };
-        }
+
+    // method selector is only used for encoding v0
+    let selector = if context.experimental.new_encoding {
+        None
+    } else {
+        let get_selector_result = ast_fn_decl.to_fn_selector_value(&handler, engines);
+        let (errors, _warnings) = handler.consume();
+        let selector = match get_selector_result.ok() {
+            Some(selector) => selector,
+            None => {
+                return if !errors.is_empty() {
+                    Err(vec![errors[0].clone()])
+                } else {
+                    Err(vec![CompileError::InternalOwned(
+                        format!(
+                            "Cannot generate selector for ABI method: {}",
+                            ast_fn_decl.name.as_str()
+                        ),
+                        ast_fn_decl.name.span(),
+                    )])
+                };
+            }
+        };
+        Some(selector)
     };
 
     compile_fn(
@@ -661,9 +676,11 @@ fn compile_abi_method(
         md_mgr,
         module,
         &ast_fn_decl,
-        // ABI are only entries when the "new encoding" is off
+        // ABI methods are only entries when the "new encoding" is off
         !context.experimental.new_encoding,
-        Some(selector),
+        // ABI methods are always original entries
+        true,
+        selector,
         logged_types_map,
         messages_types_map,
         None,

@@ -8,7 +8,7 @@ use ::b512::B512;
 
 impl TryFrom<Bytes> for b256 {
     fn try_from(b: Bytes) -> Option<Self> {
-        if b.len() > 32 {
+        if b.len() != 32 {
             None
         } else {
             let mut val = 0x0000000000000000000000000000000000000000000000000000000000000000;
