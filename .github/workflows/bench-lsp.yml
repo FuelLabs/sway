@@ -24,3 +24,4 @@ jobs:
           cwd: "./sway-lsp"
           branchName: ${{ github.base_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
+          updateComment: true
