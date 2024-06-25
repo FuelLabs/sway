@@ -7,7 +7,7 @@ use ::convert::*;
 use ::hash::{Hash, Hasher};
 use ::option::Option;
 
-/// A UTF-8 encoded growable string.
+/// A UTF-8 encoded growable string. It has ownership over its buffer.
 ///
 /// # Additional Information
 ///
@@ -40,7 +40,7 @@ impl String {
     /// }
     /// ```
     pub fn as_bytes(self) -> Bytes {
-        self.bytes
+        self.bytes.clone()
     }
 
     /// Gets the amount of memory on the heap allocated to the `String`.
@@ -113,7 +113,7 @@ impl String {
     /// }
     /// ```
     pub fn from_ascii(bytes: Bytes) -> Self {
-        Self { bytes }
+        Self { bytes: bytes.clone() }
     }
 
     /// Converts a string slice containing ASCII encoded bytes to a `String`
@@ -236,7 +236,7 @@ impl String {
 
 impl From<Bytes> for String {
     fn from(b: Bytes) -> Self {
-        Self { bytes: b }
+        Self { bytes: b.clone() }
     }
 }
 
@@ -308,7 +308,7 @@ impl From<String> for raw_slice {
     /// }
     /// ```
     fn from(s: String) -> raw_slice {
-        raw_slice::from(s.as_bytes())
+        s.bytes.as_raw_slice()
     }
 }
 
@@ -326,29 +326,14 @@ impl Hash for String {
 
 impl AbiEncode for String {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
-        // Encode the length
-        let mut buffer = self.bytes.len().abi_encode(buffer);
-
-        // Encode each byte of the string
-        let mut i = 0;
-        while i < self.bytes.len() {
-            let item = self.bytes.get(i).unwrap();
-            buffer = item.abi_encode(buffer);
-            i += 1;
-        }
-
-        buffer
+        self.bytes.abi_encode(buffer)
     }
 }
 
 impl AbiDecode for String {
     fn abi_decode(ref mut buffer: BufferReader) -> Self {
-        // Get length and string data
-        let len = u64::abi_decode(buffer);
-        let data = buffer.read_bytes(len);
-        // Create string from the ptr and len as parts of a raw_slice
         String {
-            bytes: Bytes::from(raw_slice::from_parts::<u8>(data.ptr(), len)),
+            bytes: Bytes::abi_decode(buffer),
         }
     }
 }
