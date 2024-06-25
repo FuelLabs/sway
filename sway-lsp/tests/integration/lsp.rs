@@ -510,6 +510,7 @@ pub(crate) async fn hover_request<'a>(
     }
 }
 
+// Test change
 pub(crate) async fn prepare_rename_request<'a>(
     server: &ServerState,
     rename: &'a Rename<'a>,
