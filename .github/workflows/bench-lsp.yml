@@ -2,11 +2,6 @@ name: Benchmark LSP
 
 on:
   pull_request:
-    paths:
-      - forc-plugins/forc-lsp/**
-      - sway-lsp/**
-      - forc-pkg/**
-      - sway-core/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
