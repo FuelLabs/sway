@@ -1,4 +1,5 @@
 use crate::{
+    comments::rewrite_with_comments,
     config::user_def::FieldAlignment,
     formatter::{
         shape::{ExprKind, LineStyle},
@@ -27,6 +28,9 @@ impl Format for ItemConfigurable {
                 .shape
                 .with_code_line_from(LineStyle::Multiline, ExprKind::default()),
             |formatter| -> Result<(), FormatterError> {
+                // Required for comment formatting
+                let start_len = formatted_code.len();
+
                 // Add configurable token
                 write!(
                     formatted_code,
@@ -116,8 +120,17 @@ impl Format for ItemConfigurable {
                     }
                     FieldAlignment::Off => fields.format(formatted_code, formatter)?,
                 }
+
                 // Handle closing brace
                 Self::close_curly_brace(formatted_code, formatter)?;
+
+                rewrite_with_comments::<ItemConfigurable>(
+                    formatter,
+                    self.span(),
+                    self.leaf_spans(),
+                    formatted_code,
+                    start_len,
+                )?;
 
                 Ok(())
             },

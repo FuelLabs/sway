@@ -1,3 +1,4 @@
+use indoc::indoc;
 use std::sync::Arc;
 use swayfmt::{config::user_def::FieldAlignment, Formatter};
 use test_macros::assert_eq_pretty;
@@ -2372,7 +2373,7 @@ fn test_comment_v2() {
     /// This is documentation for a commented out function
     // fn commented_out_function() {
     //}
-        
+
     fn test_function() -> bool {
         true
     }
@@ -2423,7 +2424,7 @@ fn long_doc_break_new_line() {
 /// and the VM Instruction Set for [Memory Allocation](https://docs.fuel.network/docs/specs/fuel-vm/instruction-set#aloc-allocate-memory).
 ///
 /// # Arguments
-/// 
+///
 /// * `count`: [u64] - The number of `size_of<T>` bytes to allocate onto the heap.
 ///
 /// # Returns
@@ -2434,14 +2435,14 @@ fn long_doc_break_new_line() {
 ///
 /// ```sway
 /// use std::alloc::alloc;
-/// 
+///
 /// fn foo() {
 ///     let ptr = alloc::<u64>(2);
 ///     assert(!ptr.is_null());
 /// }
 /// ```
 /// Reallocates the given area of memory.
-/// 
+///
 /// # Arguments
 ///
 /// * `ptr`: [raw_ptr] - The pointer to the area of memory to reallocate.
@@ -2449,7 +2450,7 @@ fn long_doc_break_new_line() {
 /// * `new_count`: [u64] - The number of new `size_of<T>` bytes to allocate. These are set to 0.
 ///
 /// # Returns
-/// 
+///
 /// * [raw_ptr] - The pointer to the newly reallocated memory.
 ///
 /// # Examples
@@ -2611,7 +2612,7 @@ fn test() {}
 fn asm_block_v2() {
     check(
         r#"library;
-    
+
     pub fn transfer(self, asset_id: AssetId, amount: u64) {
         // maintain a manual index as we only have `while` loops in sway atm:
         let mut index = 0;
@@ -2770,7 +2771,7 @@ fn test() {
 fn use_sorting_items() {
     check(
         r#"library;
-    
+
     use ::option::Option::{*, self, z, foo, bar};
 "#,
         r#"library;
@@ -2784,7 +2785,7 @@ use ::option::Option::{self, bar, foo, z, *};
 fn whitespace_after_doccomment() {
     check(
         r#"library;
-    
+
 /// Trait to evaluate if one value is greater than or equal, or less than or equal to another of the same type.
 trait OrdEq: Ord + Eq {
 } {
@@ -2900,7 +2901,7 @@ trait OrdEq: Ord + Eq {
 fn single_argument_method() {
     check(
         r#"library;
-    
+
     pub fn from_be_bytes(bytes: [u8; 32]) -> Self {
         let a = u64::from_be_bytes(
             [
@@ -2950,5 +2951,45 @@ where
     }
 }
 "#,
+    );
+}
+
+#[test]
+fn configurable_block_comments_preserved() {
+    check(
+        indoc! {"
+            script;
+
+            use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+
+            configurable { /* multiline */
+                // double slash
+                /// triple slash
+                SIGNER: EvmAddress = EvmAddress {
+                    // double slash
+                    // double slash
+                    value: ZERO_B256, // end of line
+                },
+            }
+
+            fn main() {}
+        "},
+        indoc! {"
+            script;
+
+            use std::{constants::ZERO_B256, vm::evm::evm_address::EvmAddress};
+
+            configurable { /* multiline */
+                // double slash
+                /// triple slash
+                SIGNER: EvmAddress = EvmAddress {
+                    // double slash
+                    // double slash
+                    value: ZERO_B256, // end of line
+                },
+            }
+
+            fn main() {}
+        "},
     );
 }
