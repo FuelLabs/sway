@@ -4,8 +4,8 @@
 //! markdown for this purpose.
 //! Modified from rust-analyzer.
 use crate::{
-    capabilities::hover::hover_link_contents::RelatedType, core::token::get_range_from_span,
-    utils::document::get_url_from_span,
+    capabilities::hover::hover_link_contents::RelatedType, config::LspClientConfig,
+    core::token::get_range_from_span, utils::document::get_url_from_span,
 };
 use serde_json::{json, Value};
 use std::fmt::{self};
@@ -56,13 +56,18 @@ impl Markup {
     }
 
     /// Adds go-to links if there are any related types, a link to view implementations if there are any,
-    /// or nothing if there are no related types or implementations.
+    /// or nothing if there are no related types or implementations. Only adds links for VSCode clients.
     pub fn maybe_add_links(
         self,
         source_engine: &SourceEngine,
         related_types: &[RelatedType],
         implementations: &[Span],
+        client_config: LspClientConfig,
     ) -> Self {
+        if client_config != LspClientConfig::VsCode {
+            return self;
+        }
+
         if related_types.is_empty() {
             let locations = implementations
                 .iter()

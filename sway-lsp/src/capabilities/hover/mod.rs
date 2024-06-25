@@ -1,5 +1,7 @@
 pub(crate) mod hover_link_contents;
 
+use self::hover_link_contents::HoverLinkContents;
+use crate::config::LspClientConfig;
 use crate::{
     core::{
         session::Session,
@@ -9,16 +11,13 @@ use crate::{
         attributes::doc_comment_attributes, keyword_docs::KeywordDocs, markdown, markup::Markup,
     },
 };
+use lsp_types::{self, Position, Url};
 use std::sync::Arc;
 use sway_core::{
     language::{ty, Visibility},
     Engines, TypeId,
 };
-
-use lsp_types::{self, Position, Url};
 use sway_types::{Span, Spanned};
-
-use self::hover_link_contents::HoverLinkContents;
 
 /// Extracts the hover information for a token at the current position.
 pub fn hover_data(
@@ -26,6 +25,7 @@ pub fn hover_data(
     keyword_docs: &KeywordDocs,
     url: &Url,
     position: Position,
+    client_config: LspClientConfig,
 ) -> Option<lsp_types::Hover> {
     let t = session.token_map().token_at_position(url, position)?;
     let (ident, token) = t.pair();
@@ -60,11 +60,18 @@ pub fn hover_data(
                 &session.engines.read(),
                 decl_token,
                 &decl_ident.name,
+                client_config.clone(),
             )
         }
         // The `TypeInfo` of the token does not contain an `Ident`. In this case,
         // we use the `Ident` of the token itself.
-        None => hover_format(session.clone(), &session.engines.read(), token, &ident.name),
+        None => hover_format(
+            session.clone(),
+            &session.engines.read(),
+            token,
+            &ident.name,
+            client_config.clone(),
+        ),
     };
 
     Some(lsp_types::Hover {
@@ -122,6 +129,7 @@ fn hover_format(
     engines: &Engines,
     token: &Token,
     ident_name: &str,
+    client_config: LspClientConfig,
 ) -> lsp_types::HoverContents {
     let decl_engine = engines.de();
     let doc_comment = format_doc_attributes(engines, token);
@@ -219,6 +227,7 @@ fn hover_format(
             engines.se(),
             &hover_link_contents.related_types,
             &hover_link_contents.implementations,
+            client_config,
         );
 
     lsp_types::HoverContents::Markup(markup_content(&content))
