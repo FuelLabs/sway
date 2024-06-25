@@ -88,7 +88,7 @@ pub(crate) async fn did_open_notification(
     assert_eq!(response, Ok(None));
 }
 
-pub(crate) async fn did_change_request( // Test changes
+pub(crate) async fn did_change_request( // Test changes vv
     service: &mut LspService<ServerState>,
     uri: &Url,
     version: i32,
