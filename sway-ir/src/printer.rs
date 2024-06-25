@@ -271,6 +271,25 @@ fn function_to_doc<'a>(
 ) -> Doc {
     let public = if function.is_public { "pub " } else { "" };
     let entry = if function.is_entry { "entry " } else { "" };
+    // TODO: Remove outer `if` once old encoding is fully removed.
+    //       This is an intentional "complication" so that we see
+    //       explicit using of `new_encoding` here.
+    //       For the time being, for the old encoding, we don't want
+    //       to show both `entry` and `entry_orig` although both
+    //       values will be true.
+    // TODO: When removing old encoding, remove also the TODO in the
+    //       `rule fn_decl()` definition of the IR parser.
+    let original_entry = if context.experimental.new_encoding {
+        if function.is_original_entry {
+            "entry_orig "
+        } else {
+            ""
+        }
+    } else if !function.is_entry && function.is_original_entry {
+        "entry_orig "
+    } else {
+        ""
+    };
     let fallback = if function.is_fallback {
         "fallback "
     } else {
@@ -278,8 +297,8 @@ fn function_to_doc<'a>(
     };
     Doc::line(
         Doc::text(format!(
-            "{}{}{}fn {}",
-            public, entry, fallback, function.name
+            "{}{}{}{}fn {}",
+            public, entry, original_entry, fallback, function.name
         ))
         .append(
             function

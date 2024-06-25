@@ -12,8 +12,7 @@ impl MyContract for Contract {
 
 #[test]
 fn test_success() {
-    let contract_id = 0xb144c1847a6403388cfd65eef01c742b24db355a1f12236be682f13aad4fdb3f;
-    let caller = abi(MyContract, contract_id);
+    let caller = abi(MyContract, CONTRACT_ID);
 
     let data = 1u64;
     let slice = raw_slice::from_parts::<u64>(__addr_of(&data), 1);

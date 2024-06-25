@@ -67,7 +67,19 @@ impl<'eng> Context<'eng> {
                 format!("Module_Index_{:?}", function.get_module(self).0),
             ));
         }
+
         let entry_block = function.get_entry_block(self);
+
+        if entry_block.num_predecessors(self) != 0 {
+            return Err(IrError::VerifyEntryBlockHasPredecessors(
+                function.get_name(self).to_string(),
+                entry_block
+                    .pred_iter(self)
+                    .map(|block| block.get_label(self))
+                    .collect(),
+            ));
+        }
+
         // Ensure that the entry block arguments are same as function arguments.
         if function.num_args(self) != entry_block.num_args(self) {
             return Err(IrError::VerifyBlockArgMalformed);
