@@ -887,17 +887,12 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_id = engines
+            .te()
+            .insert(engines, type_info, symbol.span().source_id());
 
         self.resolve_associated_type_from_type_id(
-            handler,
-            engines,
-            module,
-            symbol,
-            engines
-                .te()
-                .insert(engines, type_info, symbol.span().source_id()),
-            as_trait,
-            self_type,
+            handler, engines, module, symbol, type_id, as_trait, self_type,
         )
     }
 
@@ -913,17 +908,12 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_id = engines
+            .te()
+            .insert(engines, type_info, symbol.span().source_id());
 
         self.resolve_associated_item_from_type_id(
-            handler,
-            engines,
-            module,
-            symbol,
-            engines
-                .te()
-                .insert(engines, type_info, symbol.span().source_id()),
-            as_trait,
-            self_type,
+            handler, engines, module, symbol, type_id, as_trait, self_type,
         )
     }
 
@@ -937,22 +927,8 @@ impl Root {
         match decl {
             ResolvedDeclaration::Parsed(_decl) => todo!(),
             ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_ty_decl) => {
-                    let struct_decl = engines.de().get_struct(&struct_ty_decl.decl_id);
-                    TypeInfo::Struct(DeclRef::new(
-                        struct_decl.name().clone(),
-                        struct_ty_decl.decl_id,
-                        struct_decl.span().clone(),
-                    ))
-                }
-                ty::TyDecl::EnumDecl(enum_ty_decl) => {
-                    let enum_decl = engines.de().get_enum(&enum_ty_decl.decl_id);
-                    TypeInfo::Enum(DeclRef::new(
-                        enum_decl.name().clone(),
-                        enum_ty_decl.decl_id,
-                        enum_decl.span().clone(),
-                    ))
-                }
+                ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
+                ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
                 ty::TyDecl::TraitTypeDecl(type_decl) => {
                     let type_decl = engines.de().get_type(&type_decl.decl_id);
                     (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()

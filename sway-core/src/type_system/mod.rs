@@ -94,7 +94,7 @@ fn generic_enum_resolution() {
     });
     let ty_1 = engines
         .te()
-        .insert(&engines, TypeInfo::Enum(decl_ref_1), None);
+        .insert(&engines, TypeInfo::Enum(*decl_ref_1.id()), None);
 
     /*
     Result<bool> {
@@ -135,7 +135,7 @@ fn generic_enum_resolution() {
     });
     let ty_2 = engines
         .te()
-        .insert(&engines, TypeInfo::Enum(decl_ref_2), None);
+        .insert(&engines, TypeInfo::Enum(*decl_ref_2.id()), None);
 
     // Unify them together...
     let h = Handler::default();
