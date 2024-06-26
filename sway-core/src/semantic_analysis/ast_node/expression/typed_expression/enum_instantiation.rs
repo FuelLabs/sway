@@ -58,7 +58,7 @@ pub(crate) fn instantiate_enum(
         ([], ty) if ty.is_unit() => Ok(ty::TyExpression {
             return_type: type_engine.insert(
                 engines,
-                TypeInfo::Enum(enum_ref.clone()),
+                TypeInfo::Enum(*enum_ref.id()),
                 enum_ref.span().source_id(),
             ),
             expression: ty::TyExpressionVariant::EnumInstantiation {
@@ -108,7 +108,7 @@ pub(crate) fn instantiate_enum(
             let (is_context_type_used, enum_variant_type_id, help_text) =
                 match &*type_engine.get(context_expected_type_id) {
                     TypeInfo::Enum(e) => {
-                        let context_expected_enum_decl = decl_engine.get_enum(e.id());
+                        let context_expected_enum_decl = decl_engine.get_enum(e);
                         if UnifyCheck::coercion(engines)
                             .check_enums(&context_expected_enum_decl, &enum_decl)
                         {
@@ -151,7 +151,7 @@ pub(crate) fn instantiate_enum(
             // affect the types behind that new enum decl reference.
             let type_id = type_engine.insert(
                 engines,
-                TypeInfo::Enum(enum_ref.clone()),
+                TypeInfo::Enum(*enum_ref.id()),
                 enum_ref.span().source_id(),
             );
 

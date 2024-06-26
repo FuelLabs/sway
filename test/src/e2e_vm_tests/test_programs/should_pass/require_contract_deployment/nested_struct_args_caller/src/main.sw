@@ -3,9 +3,9 @@ script;
 use nested_struct_args_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0x64390eb0cac08d41b6476ad57d711b88846ea35ac800d4fc3c95a551e4039432;
+const CONTRACT_ID = 0xe63d33a1b3a6903808b379f6a41a72fa8a370e8b76626775e7d9d2f9c4c5da40;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x8c7a0b9e22605ebe6190880f6344ac85deccdcfcb998fa877adcf9ae52af0f61;
+const CONTRACT_ID = 0xbefd6660ae89502652b2ab4e536edf3403208e308a329c06af6017dec242cc37;
 
 fn main() -> bool {
     let caller = abi(NestedStructArgs, CONTRACT_ID);
