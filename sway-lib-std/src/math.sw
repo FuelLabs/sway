@@ -1,6 +1,10 @@
 //! Utilities for common math operations.
 library;
 
+use ::assert::*;
+use ::flags::{disable_panic_on_overflow, flags, set_flags};
+use ::registers::overflow;
+
 /// Calculates the square root.
 pub trait Root {
     fn sqrt(self) -> Self;
@@ -213,9 +217,6 @@ impl BinaryLogarithm for u8 {
 
 impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
-        use ::assert::*;
-        use ::registers::flags;
-
         // If panic on unsafe math is enabled, only then revert
         if flags() & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
             // Logarithm is undefined for 0
@@ -240,10 +241,6 @@ impl BinaryLogarithm for u256 {
 
 impl Logarithm for u256 {
     fn log(self, base: Self) -> Self {
-        use ::assert::*;
-        use ::flags::{disable_panic_on_overflow, set_flags};
-        use ::registers::overflow;
-
         let flags = disable_panic_on_overflow();
 
         // If panic on unsafe math is enabled, only then revert
