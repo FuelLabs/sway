@@ -2,8 +2,8 @@
 library;
 
 use ::assert::*;
-use ::flags::{disable_panic_on_overflow, flags, set_flags};
-use ::registers::overflow;
+use ::flags::{disable_panic_on_overflow, set_flags};
+use ::registers::{flags, overflow};
 
 /// Calculates the square root.
 pub trait Root {
