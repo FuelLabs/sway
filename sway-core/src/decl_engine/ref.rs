@@ -160,6 +160,7 @@ where
     T: Named + Spanned + PartialEqWithEngines + EqWithEngines,
 {
 }
+
 impl<T> PartialEqWithEngines for DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T>,
