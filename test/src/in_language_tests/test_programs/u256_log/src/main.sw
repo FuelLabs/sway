@@ -245,15 +245,15 @@ fn test_parity() {
 
 #[test(should_revert)]
 fn test_fail_base_0() {
-    let result = u256::from(2_u64).log(u256::from(0_u64));
+    let _result = u256::from(2_u64).log(u256::from(0_u64));
 }
 
 #[test(should_revert)]
 fn test_fail_base_1() {
-    let result = u256::from(2_u64).log(u256::from(1_u64));
+    let _result = u256::from(2_u64).log(u256::from(1_u64));
 }
 
 #[test(should_revert)]
 fn test_fail_x_0() {
-    let result = u256::from(0_u64).log(u256::from(2_u64));
+    let _result = u256::from(0_u64).log(u256::from(2_u64));
 }
