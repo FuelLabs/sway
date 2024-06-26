@@ -3,7 +3,9 @@ use lsp_types::{
     CompletionResponse, DocumentSymbolResponse, Position, Range, TextDocumentContentChangeEvent,
     TextDocumentIdentifier,
 };
-use sway_lsp::{capabilities, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs};
+use sway_lsp::{
+    capabilities, config::LspClient, lsp_ext::OnEnterParams, utils::keyword_docs::KeywordDocs,
+};
 use tokio::runtime::Runtime;
 
 fn benchmarks(c: &mut Criterion) {
@@ -37,7 +39,15 @@ fn benchmarks(c: &mut Criterion) {
     });
 
     c.bench_function("hover", |b| {
-        b.iter(|| capabilities::hover::hover_data(session.clone(), &keyword_docs, &uri, position))
+        b.iter(|| {
+            capabilities::hover::hover_data(
+                session.clone(),
+                &keyword_docs,
+                &uri,
+                position,
+                LspClient::default(),
+            )
+        })
     });
 
     c.bench_function("highlight", |b| {
