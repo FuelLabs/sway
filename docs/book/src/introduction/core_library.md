@@ -30,61 +30,133 @@ The prelude contains a list of operations essential to all Sway programs. The la
 
 ### Primitives
 
-`max()` The largest value that can be represented by this integer type i.e. `u256::max()`
-`min()` The smallest value that can be represented by this integer type i.e. `u256::min()`
-`bits()` The size of this integer type in bits i.e. `u256::bits()`
-`zero()` the zero value for this integer type i.e. `u256::zero()`
+`max()` The largest value that can be represented by this integer type
+
+- `let val = u256::max()`
+
+`min()` The smallest value that can be represented by this integer type
+
+- `let res = u256::min()`
+
+`bits()` The size of this integer type in bits
+
+- `let res = u256::bits()`
+
+`zero()` the zero value for this integer type i
+
+- `let res = u256::zero()`
 
 ### Primitive Conversions
 
-`as_u256` Converts any unsigned integer smaller than `u256` including `b256` to a `u256` i.e. `val.as_u256()`
-`as_u64`  Converts any unsigned integer smaller than `u64` to a `u64` i.e. `val.as_u64()`
-`as_u32` Converts any unsigned integer smaller than `u32` to a `u32` i.e. `val.as_u32()`
-`as_b256` Converts a `u256` to a `b256` i.e. `val.as_b256()`
+`as_u256` Converts any unsigned integer smaller than `u256` including `b256` to a `u256`
+
+- `let res = val.as_u256()`
+
+`as_u64` Converts any unsigned integer smaller than `u64` to a `u64`
+
+- `let res = val.as_u64()`
+
+`as_u32` Converts any unsigned integer smaller than `u32` to a `u32`
+
+- `let res = val.as_u32()`
+
+`as_b256` Converts a `u256` to a `b256`
+
+- `let res = val.as_b256()`
 
 ### Operations
 
-`add` Add two values of the same type i.e. `let res = val1 + val2`
-`subtract` Subtract two values of the same type i.e. `let res = val1 - val2`
-`multiply` Multiply two values of the same type i.e. `let res = val1 * val2`
-`divide` Divide two values of the same type i.e. `let res = val1 * val2`
-`modulo` Modulo two values of the same type i.e. `let res = val1 % val2`
-`not` Inverts the value of the type i.e. `let res = !val`
-`equal` Evaluates if two values of the same type are equal i.e. `let res = val1 == val2` or `let res = val1 != val2`
-`order` Evaluates if one value of the same type is greater than another i.e. `let res = val1 > val2` or `let res = val1 >= val2`
-`shift` Bit shift left by an amount i.e. `let res = val1 >> 1` or `let res = val1 << 1`
+`add` Add two values of the same type
+
+- `let res = val1 + val2`
+
+`subtract` Subtract two values of the same type
+
+- `let res = val1 - val2`
+
+`multiply` Multiply two values of the same type
+
+- `let res = val1 * val2`
+
+`divide` Divide two values of the same type
+
+- `let res = val1 * val2`
+
+`modulo` Modulo two values of the same type
+
+- `let res = val1 % val2`
+
+`not` Inverts the value of the type
+
+- `let res = !val`
+
+`equal` Evaluates if two values of the same type are equal i.e.
+
+- `let res = val1 == val2`
+- `let res = val1 != val2`
+
+`order` Evaluates if one value of the same type is greater than another
+
+- `let res = val1 > val2`
+- `let res = val1 >= val2`
+
+`shift` Bit shift left by an amount
+
+- `let res = val1 >> 1`
+- `let res = val1 << 1`
 
 ### String
 
-`len` Return the length of the string slice in bytes i.e. `let res = val.len()`
-`as_ptr` Return a `raw_ptr` to the beginning of the string slice on the heap i.e. `let res = val.as_ptr`
-`from_str_array` Convert a string array to string i.e. `let res: str = from_str_array(val)`
+`len` Return the length of the string slice in bytes
+
+- `let res = val.len()`
+
+`as_ptr` Return a `raw_ptr` to the beginning of the string slice on the heap
+
+- `let res = val.as_ptr`
+
+`from_str_array` Convert a string array to string
+
+- `let res: str = from_str_array(val)`
 
 ### Storage
 
-`slot` The assigned location in storage i.e. `let res = val.slot()`
-`offset` The assigned offset based on the data structure `T` i.e. `let res = val.offset()`
-`field_id` A unique identifier i.e. `let res = val.field_id()`
+`slot` The assigned location in storage
+
+- `let res = val.slot()`
+
+`offset` The assigned offset based on the data structure `T`
+
+- `let res = val.offset()`
+  `field_id` A unique identifier
+- `let res = val.field_id()`
 
 ### Raw Slice
 
-`slice` Converts self into a `raw_slice` i.e. `let slice = my_type.as_raw_slice()`
+`slice` Converts self into a `raw_slice`
+
+- `let slice = my_type.as_raw_slice()`
 
 ### Codec
 
-`abi_encode` Encodes a value based on the buffer i.e. `let res = val.abi_encode(buffer)`
-`abi_decode` Decodes a type based on the buffer i.e. `let res = my_type::abi_decode(buffer)`
+`abi_encode` Encodes a value based on the buffer
+
+- `let res = val.abi_encode(buffer)`
+
+`abi_decode` Decodes a type based on the buffer
+
+- `let res = my_type::abi_decode(buffer)`
 
 For the full list of traits and methods available for each primitive type, please refer to the chart below or the [Core Library Book](https://fuellabs.github.io/sway/master/core/index.html).
 
-| Primitive Type     | Description                      |
-|--------------------|----------------------------------|
-| [b256](https://fuellabs.github.io/sway/master/core/primitive.b256.html)           | 256 bits (32 bytes), i.e. a hash |
-| [bool](https://fuellabs.github.io/sway/master/core/primitive.bool.html)           | Boolean true or false            |
-| [str](https://fuellabs.github.io/sway/master/core/primitive.str.html)            | String Slice                     |
-| [str[0-63]](https://fuellabs.github.io/sway/master/core/primitive.str[0].html)      | Fixed-length string              |
-| [u265](https://fuellabs.github.io/sway/master/core/primitive.u256.html)           | 256-bit unsigned integer         |
-| [u64](https://fuellabs.github.io/sway/master/core/primitive.u64.html)            | 64-bit unsigned integer          |
-| [u32](https://fuellabs.github.io/sway/master/core/primitive.u32.html)            | 32-bit unsigned integer          |
-| [u16](https://fuellabs.github.io/sway/master/core/primitive.u16.html)            | 16-bit unsigned integer          |
-| [u8](https://fuellabs.github.io/sway/master/core/primitive.u8.html)             | 8-bit unsigned integer           |
+| Primitive Type                                                                 | Description                      |
+| ------------------------------------------------------------------------------ | -------------------------------- |
+| [b256](https://fuellabs.github.io/sway/master/core/primitive.b256.html)        | 256 bits (32 bytes), i.e. a hash |
+| [bool](https://fuellabs.github.io/sway/master/core/primitive.bool.html)        | Boolean true or false            |
+| [str](https://fuellabs.github.io/sway/master/core/primitive.str.html)          | String Slice                     |
+| [str[0-63]](https://fuellabs.github.io/sway/master/core/primitive.str[0].html) | Fixed-length string              |
+| [u265](https://fuellabs.github.io/sway/master/core/primitive.u256.html)        | 256-bit unsigned integer         |
+| [u64](https://fuellabs.github.io/sway/master/core/primitive.u64.html)          | 64-bit unsigned integer          |
+| [u32](https://fuellabs.github.io/sway/master/core/primitive.u32.html)          | 32-bit unsigned integer          |
+| [u16](https://fuellabs.github.io/sway/master/core/primitive.u16.html)          | 16-bit unsigned integer          |
+| [u8](https://fuellabs.github.io/sway/master/core/primitive.u8.html)            | 8-bit unsigned integer           |
