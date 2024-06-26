@@ -683,7 +683,6 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
                 graph.add_node(ControlFlowGraphNode::StructField {
                     struct_decl_id,
                     struct_field_name: field.name.clone(),
-                    span: field.span.clone(),
                     attributes: field.attributes.clone(),
                 }),
             )
