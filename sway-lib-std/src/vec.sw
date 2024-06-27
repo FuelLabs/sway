@@ -419,7 +419,7 @@ impl<T> Vec<T> {
         // Shift everything down to fill in that spot.
         let mut i = index;
         if self.len > 1 {
-            while i < self.len {
+            while i < self.len - 1 {
                 let ptr = buf_start.add::<T>(i);
                 ptr.add::<T>(1).copy_to::<T>(ptr, 1);
                 i += 1;
