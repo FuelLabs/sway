@@ -12,6 +12,12 @@ use std::fs;
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
 const TX_CONTRACT_BYTECODE_PATH: &str =
     "test_artifacts/tx_contract/out/release/tx_contract.bin";
+const TX_OUTPUT_PREDICATE_BYTECODE_PATH: &str =
+    "test_artifacts/tx_output_predicate/out/release/tx_output_predicate.bin";
+const TX_FIELDS_PREDICATE_BYTECODE_PATH: &str =
+    "test_projects/tx_fields/out/release/tx_fields.bin";
+const TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH: &str =
+    "test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin";
 
 abigen!(
     Contract(
@@ -91,7 +97,7 @@ async fn generate_predicate_inputs(
     wallet: &WalletUnlocked,
 ) -> (Vec<u8>, SdkInput, TxInput) {
     let provider = wallet.provider().unwrap();
-    let predicate = Predicate::load_from("test_projects/tx_fields/out/release/tx_fields.bin")
+    let predicate = Predicate::load_from(TX_FIELDS_PREDICATE_BYTECODE_PATH)
         .unwrap()
         .with_provider(provider.clone());
 
@@ -167,7 +173,7 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
         .unwrap();
 
     let predicate = Predicate::load_from(
-        "test_artifacts/tx_output_predicate/out/release/tx_output_predicate.bin",
+        TX_OUTPUT_PREDICATE_BYTECODE_PATH,
     )
     .unwrap()
     .with_data(predicate_data)
@@ -928,7 +934,7 @@ mod outputs {
             let provider = wallet.try_provider().unwrap();
 
             // Get the predicate
-            let predicate: Predicate = Predicate::load_from("test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin").unwrap()
+            let predicate: Predicate = Predicate::load_from(TX_CONTRACT_CREATION_PREDICATE_BYTECODE_PATH).unwrap()
                     .with_provider(provider.clone());
             let predicate_coin_amount = 100;
             
