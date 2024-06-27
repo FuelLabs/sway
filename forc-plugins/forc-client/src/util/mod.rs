@@ -1,3 +1,4 @@
+pub(crate) mod chunk;
 pub(crate) mod encode;
 pub(crate) mod gas;
 pub(crate) mod node_url;
