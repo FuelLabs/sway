@@ -415,7 +415,7 @@ impl Bytes {
 
         // Shift everything down to fill in that spot.
         let mut i = index;
-        while i < self.len {
+        while i < self.len - 1 {
             let idx_ptr = start.add_uint_offset(i);
             let next = idx_ptr.add_uint_offset(1);
             next.copy_bytes_to(idx_ptr, 1);

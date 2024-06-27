@@ -440,11 +440,11 @@ impl ty::TyModule {
             let auto_impl_encoding_traits = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_struct(decl_id);
-                    all_abiencode_impls.get(&decl.name).is_none()
+                    !all_abiencode_impls.contains_key(&decl.name)
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_enum(decl_id);
-                    all_abiencode_impls.get(&decl.name).is_none()
+                    !all_abiencode_impls.contains_key(&decl.name)
                 }
                 _ => false,
             };
