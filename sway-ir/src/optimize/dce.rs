@@ -199,7 +199,7 @@ pub fn dce(
     // is sufficient to filter those that are not used.
     let mut worklist = function
         .instruction_iter(context)
-        .filter_map(|(_, inst)| num_inst_uses.get(&inst).is_none().then_some(inst))
+        .filter_map(|(_, inst)| (!num_inst_uses.contains_key(&inst)).then_some(inst))
         .collect::<Vec<_>>();
 
     let mut modified = false;

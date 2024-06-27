@@ -43,7 +43,7 @@ impl DapServer {
             .unwrap_or_default()
             .iter()
             .map(|source_bp| {
-                let verified = source_map.get(&source_bp.line).is_some();
+                let verified = source_map.contains_key(&source_bp.line);
 
                 match existing_breakpoints.iter().find(|bp| match bp.line {
                     Some(line) => line == source_bp.line,

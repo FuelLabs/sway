@@ -259,29 +259,6 @@ impl CharExt for char {
     }
 }
 
-struct CharIndicesInner<'a> {
-    src: &'a str,
-    position: usize,
-}
-
-impl<'a> Iterator for CharIndicesInner<'a> {
-    type Item = (usize, char);
-
-    fn next(&mut self) -> Option<(usize, char)> {
-        let mut char_indices = self.src[self.position..].char_indices();
-        let c = match char_indices.next() {
-            Some((_, c)) => c,
-            None => return None,
-        };
-        let ret = (self.position, c);
-        match char_indices.next() {
-            Some((char_width, _)) => self.position += char_width,
-            None => self.position = self.src.len(),
-        };
-        Some(ret)
-    }
-}
-
 impl TokenStream {
     pub fn token_trees(&self) -> &[TokenTree] {
         &self.token_trees

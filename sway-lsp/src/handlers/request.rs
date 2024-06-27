@@ -132,6 +132,7 @@ pub async fn handle_hover(
                 &state.keyword_docs,
                 &uri,
                 position,
+                state.config.read().client.clone(),
             ))
         }
         Err(err) => {
