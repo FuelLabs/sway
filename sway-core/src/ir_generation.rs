@@ -69,11 +69,7 @@ impl CompiledFunctionCache {
         decl.hash(&mut hasher, engines);
         let fn_key = hasher.finish();
 
-        let (fn_key, item) = (
-            Some(fn_key.clone()),
-            self.recreated_fns.get(&fn_key).copied(),
-        );
-
+        let (fn_key, item) = (Some(fn_key), self.recreated_fns.get(&fn_key).copied());
         let new_callee = match item {
             Some(func) => func,
             None => {
