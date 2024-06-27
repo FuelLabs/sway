@@ -1,1146 +1,285 @@
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-      "configurables": [
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 5,
-                        "typeArguments": null
-                  },
-                  "name": "BOOL",
-<<<<<<< HEAD
-<<<<<<< HEAD
-      "offset": 6888
-=======
-<<<<<<< HEAD
+  "configurables": [
+    {
+      "configurableType": {
+        "name": "",
+        "type": 5,
+        "typeArguments": null
+      },
+      "name": "BOOL",
       "offset": 6912
-=======
-<<<<<<< HEAD
-      "offset": 6848
-=======
-      "offset": 6936
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 13,
-                        "typeArguments": null
-                  },
-                  "name": "U8",
-=======
-=======
-      "offset": 6856
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 13,
-                        "typeArguments": null
-                  },
-                  "name": "U8",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 7024
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 13,
+        "typeArguments": null
+      },
+      "name": "U8",
       "offset": 7048
-=======
-<<<<<<< HEAD
-      "offset": 6984
-=======
-      "offset": 7072
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 13,
-                        "typeArguments": null
-                  },
-                  "name": "ANOTHER_U8",
-=======
-=======
-      "offset": 6992
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 13,
-                        "typeArguments": null
-                  },
-                  "name": "ANOTHER_U8",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6816
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 13,
+        "typeArguments": null
+      },
+      "name": "ANOTHER_U8",
       "offset": 6840
-=======
-<<<<<<< HEAD
-      "offset": 6776
-=======
-      "offset": 6864
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 9,
-                        "typeArguments": null
-                  },
-                  "name": "U16",
-=======
-=======
-      "offset": 6784
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 9,
-                        "typeArguments": null
-                  },
-                  "name": "U16",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6968
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 9,
+        "typeArguments": null
+      },
+      "name": "U16",
       "offset": 6992
-=======
-<<<<<<< HEAD
-      "offset": 6928
-=======
-      "offset": 7016
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 11,
-                        "typeArguments": null
-                  },
-                  "name": "U32",
-=======
-=======
-      "offset": 6936
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 11,
-                        "typeArguments": null
-                  },
-                  "name": "U32",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 7008
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 11,
+        "typeArguments": null
+      },
+      "name": "U32",
       "offset": 7032
-=======
-<<<<<<< HEAD
-      "offset": 6968
-=======
-      "offset": 7056
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 11,
-                        "typeArguments": null
-                  },
-                  "name": "U64",
-=======
-=======
-      "offset": 6976
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 11,
-                        "typeArguments": null
-                  },
-                  "name": "U64",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 7016
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 11,
+        "typeArguments": null
+      },
+      "name": "U64",
       "offset": 7040
-=======
-<<<<<<< HEAD
-      "offset": 6976
-=======
-      "offset": 7064
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 10,
-                        "typeArguments": null
-                  },
-                  "name": "U256",
-=======
-=======
-      "offset": 6984
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 10,
-                        "typeArguments": null
-                  },
-                  "name": "U256",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6976
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 10,
+        "typeArguments": null
+      },
+      "name": "U256",
       "offset": 7000
-=======
-<<<<<<< HEAD
-      "offset": 6936
-=======
-      "offset": 7024
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 4,
-                        "typeArguments": null
-                  },
-                  "name": "B256",
-=======
-=======
-      "offset": 6944
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 4,
-                        "typeArguments": null
-                  },
-                  "name": "B256",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6856
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 4,
+        "typeArguments": null
+      },
+      "name": "B256",
       "offset": 6880
-=======
-<<<<<<< HEAD
-      "offset": 6816
-=======
-      "offset": 6904
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 8,
-                        "typeArguments": []
-                  },
-                  "name": "CONFIGURABLE_STRUCT",
-=======
-=======
-      "offset": 6824
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 8,
-                        "typeArguments": []
-                  },
-                  "name": "CONFIGURABLE_STRUCT",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6928
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 8,
+        "typeArguments": []
+      },
+      "name": "CONFIGURABLE_STRUCT",
       "offset": 6952
-=======
-<<<<<<< HEAD
-      "offset": 6888
-=======
-      "offset": 6976
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 6,
-                        "typeArguments": []
-                  },
-                  "name": "CONFIGURABLE_ENUM_A",
-=======
-=======
-      "offset": 6896
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 6,
-                        "typeArguments": []
-                  },
-                  "name": "CONFIGURABLE_ENUM_A",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6896
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": []
+      },
+      "name": "CONFIGURABLE_ENUM_A",
       "offset": 6920
-=======
-<<<<<<< HEAD
-      "offset": 6856
-=======
-      "offset": 6944
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 6,
-                        "typeArguments": []
-                  },
-                  "name": "CONFIGURABLE_ENUM_B",
-=======
-=======
-      "offset": 6864
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 6,
-                        "typeArguments": []
-                  },
-                  "name": "CONFIGURABLE_ENUM_B",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6912
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 6,
+        "typeArguments": []
+      },
+      "name": "CONFIGURABLE_ENUM_B",
       "offset": 6936
-=======
-<<<<<<< HEAD
-      "offset": 6872
-=======
-      "offset": 6960
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 2,
-                        "typeArguments": null
-                  },
-                  "name": "ARRAY_BOOL",
-=======
-=======
-      "offset": 6880
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 2,
-                        "typeArguments": null
-                  },
-                  "name": "ARRAY_BOOL",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6824
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 2,
+        "typeArguments": null
+      },
+      "name": "ARRAY_BOOL",
       "offset": 6848
-=======
-<<<<<<< HEAD
-      "offset": 6784
-=======
-      "offset": 6872
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 3,
-                        "typeArguments": null
-                  },
-                  "name": "ARRAY_U64",
-=======
-=======
-      "offset": 6792
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 3,
-                        "typeArguments": null
-                  },
-                  "name": "ARRAY_U64",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6832
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 3,
+        "typeArguments": null
+      },
+      "name": "ARRAY_U64",
       "offset": 6856
-=======
-<<<<<<< HEAD
-      "offset": 6792
-=======
-      "offset": 6880
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 1,
-                        "typeArguments": null
-                  },
-                  "name": "TUPLE_BOOL_U64",
-=======
-=======
-      "offset": 6800
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 1,
-                        "typeArguments": null
-                  },
-                  "name": "TUPLE_BOOL_U64",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6952
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 1,
+        "typeArguments": null
+      },
+      "name": "TUPLE_BOOL_U64",
       "offset": 6976
-=======
-<<<<<<< HEAD
-      "offset": 6912
-=======
-      "offset": 7000
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 7,
-                        "typeArguments": null
-                  },
-                  "name": "STR_4",
-=======
-=======
-      "offset": 6920
->>>>>>> 51fa76df5 (fix rebase issues)
-            },
-            {
-                  "configurableType": {
-                        "name": "",
-                        "type": 7,
-                        "typeArguments": null
-                  },
-                  "name": "STR_4",
-<<<<<<< HEAD
->>>>>>> 9b4d05870 (fix rebase issues)
-<<<<<<< HEAD
-      "offset": 6944
-=======
-<<<<<<< HEAD
+    },
+    {
+      "configurableType": {
+        "name": "",
+        "type": 7,
+        "typeArguments": null
+      },
+      "name": "STR_4",
       "offset": 6968
-=======
-<<<<<<< HEAD
-      "offset": 6904
-=======
-      "offset": 6992
->>>>>>> ef917df9a (fix Vec buffer ownership)
->>>>>>> 085e75b03 (fix Vec buffer ownership)
-<<<<<<< HEAD
->>>>>>> f5ef3c59e (fix Vec buffer ownership)
-            }
-=======
-=======
->>>>>>> 6ca956f74 (fix rebase issues)
-  "configurables": [
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 5,
-                              "typeArguments": null
-                        },
-                        "name": "BOOL",
-                        "offset": 6912
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 13,
-                              "typeArguments": null
-                        },
-                        "name": "U8",
-                        "offset": 7048
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 13,
-                              "typeArguments": null
-                        },
-                        "name": "ANOTHER_U8",
-                        "offset": 6840
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 9,
-                              "typeArguments": null
-                        },
-                        "name": "U16",
-                        "offset": 6992
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 11,
-                              "typeArguments": null
-                        },
-                        "name": "U32",
-                        "offset": 7032
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 11,
-                              "typeArguments": null
-                        },
-                        "name": "U64",
-                        "offset": 7040
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 10,
-                              "typeArguments": null
-                        },
-                        "name": "U256",
-                        "offset": 7000
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 4,
-                              "typeArguments": null
-                        },
-                        "name": "B256",
-                        "offset": 6880
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 8,
-                              "typeArguments": []
-                        },
-                        "name": "CONFIGURABLE_STRUCT",
-                        "offset": 6952
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 6,
-                              "typeArguments": []
-                        },
-                        "name": "CONFIGURABLE_ENUM_A",
-                        "offset": 6920
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 6,
-                              "typeArguments": []
-                        },
-                        "name": "CONFIGURABLE_ENUM_B",
-                        "offset": 6936
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 2,
-                              "typeArguments": null
-                        },
-                        "name": "ARRAY_BOOL",
-                        "offset": 6848
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 3,
-                              "typeArguments": null
-                        },
-                        "name": "ARRAY_U64",
-                        "offset": 6856
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 1,
-                              "typeArguments": null
-                        },
-                        "name": "TUPLE_BOOL_U64",
-                        "offset": 6976
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 7,
-                              "typeArguments": null
-                        },
-                        "name": "STR_4",
-                        "offset": 6968
-                  }
-            ],
-            "encoding": "1",
-            "functions": [
-                  {
-                        "attributes": null,
-                        "inputs": [],
-                        "name": "main",
-                        "output": {
-                              "name": "",
-                              "type": 0,
-                              "typeArguments": null
-                        }
-                  }
-            ],
-            "loggedTypes": [],
-            "messagesTypes": [],
-            "types": [
-                  {
-                        "components": [],
-                        "type": "()",
-                        "typeId": 0,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": [
-                              {
-                                    "name": "__tuple_element",
-                                    "type": 5,
-                                    "typeArguments": null
-                              },
-                              {
-                                    "name": "__tuple_element",
-                                    "type": 12,
-                                    "typeArguments": null
-                              }
-                        ],
-                        "type": "(_, _)",
-                        "typeId": 1,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": [
-                              {
-                                    "name": "__array_element",
-                                    "type": 5,
-                                    "typeArguments": null
-                              }
-                        ],
-<<<<<<< HEAD
-      "loggedTypes": [],
-                        "messagesTypes": [],
-                        "types": [
-                              {
-                                    "components": [],
-                                    "type": "()",
-                                    "typeId": 0,
-                                    "typeParameters": null
-                              },
-                              {
-                                    "components": [
-                                          {
-                                                "name": "__tuple_element",
-                                                "type": 5,
-                                                "typeArguments": null
-                                          },
-                                          {
-                                                "name": "__tuple_element",
-                                                "type": 12,
-                                                "typeArguments": null
-                                          }
-=======
-=======
-      "offset": 6912
->>>>>>> 51fa76df5 (fix rebase issues)
-                                    }
->>>>>>> 9b4d05870 (fix rebase issues)
-                              ],
-                              "encoding": "1",
-                              "functions": [
-                                    {
-                                          "attributes": null,
-                                          "inputs": [],
-                                          "name": "main",
-                                          "output": {
-                                                "name": "",
-                                                "type": 0,
-                                                "typeArguments": null
-                                          }
-                                    }
-                              ],
-                              "loggedTypes": [],
-                              "messagesTypes": [],
-                              "types": [
-                                    {
-                                          "components": [],
-                                          "type": "()",
-                                          "typeId": 0,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": [
-                                                {
-                                                      "name": "__tuple_element",
-                                                      "type": 5,
-                                                      "typeArguments": null
-                                                },
-                                                {
-                                                      "name": "__tuple_element",
-                                                      "type": 12,
-                                                      "typeArguments": null
-                                                }
-                                          ],
-                                          "type": "(_, _)",
-                                          "typeId": 1,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": [
-                                                {
-                                                      "name": "__array_element",
-                                                      "type": 5,
-                                                      "typeArguments": null
-                                                }
-                                          ],
-                                          "type": "[_; 3]",
-                                          "typeId": 2,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": [
-                                                {
-                                                      "name": "__array_element",
-                                                      "type": 12,
-                                                      "typeArguments": null
-                                                }
-                                          ],
-                                          "type": "[_; 3]",
-                                          "typeId": 3,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "b256",
-                                          "typeId": 4,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "bool",
-                                          "typeId": 5,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": [
-                                                {
-                                                      "name": "A",
-                                                      "type": 5,
-                                                      "typeArguments": null
-                                                },
-                                                {
-                                                      "name": "B",
-                                                      "type": 12,
-                                                      "typeArguments": null
-                                                }
-                                          ],
-                                          "type": "enum ConfigurableEnum",
-                                          "typeId": 6,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "str[4]",
-                                          "typeId": 7,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": [
-                                                {
-                                                      "name": "a",
-                                                      "type": 5,
-                                                      "typeArguments": null
-                                                },
-                                                {
-                                                      "name": "b",
-                                                      "type": 12,
-                                                      "typeArguments": null
-                                                }
-                                          ],
-                                          "type": "struct ConfigurableStruct",
-                                          "typeId": 8,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "u16",
-                                          "typeId": 9,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "u256",
-                                          "typeId": 10,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "u32",
-                                          "typeId": 11,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "u64",
-                                          "typeId": 12,
-                                          "typeParameters": null
-                                    },
-                                    {
-                                          "components": null,
-                                          "type": "u8",
-                                          "typeId": 13,
-                                          "typeParameters": null
-                                    }
-                              ]
-                        }
-=======
+    }
+  ],
+  "encoding": "1",
+  "functions": [
+    {
+      "attributes": null,
+      "inputs": [],
+      "name": "main",
+      "output": {
+        "name": "",
+        "type": 0,
+        "typeArguments": null
+      }
+    }
+  ],
+  "loggedTypes": [],
+  "messagesTypes": [],
+  "types": [
+    {
+      "components": [],
+      "type": "()",
+      "typeId": 0,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__tuple_element",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "__tuple_element",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "(_, _)",
+      "typeId": 1,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 5,
+          "typeArguments": null
+        }
+      ],
       "type": "[_; 3]",
-                        "typeId": 2,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": [
-                              {
-                                    "name": "__array_element",
-                                    "type": 12,
-                                    "typeArguments": null
-                              }
-                        ],
-                        "type": "[_; 3]",
-                        "typeId": 3,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "b256",
-                        "typeId": 4,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "bool",
-                        "typeId": 5,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": [
-                              {
-                                    "name": "A",
-                                    "type": 5,
-                                    "typeArguments": null
-                              },
-                              {
-                                    "name": "B",
-                                    "type": 12,
-                                    "typeArguments": null
-                              }
-                        ],
-                        "type": "enum ConfigurableEnum",
-                        "typeId": 6,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "str[4]",
-                        "typeId": 7,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": [
-                              {
-                                    "name": "a",
-                                    "type": 5,
-                                    "typeArguments": null
-                              },
-                              {
-                                    "name": "b",
-                                    "type": 12,
-                                    "typeArguments": null
-                              }
-                        ],
-                        "type": "struct ConfigurableStruct",
-                        "typeId": 8,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "u16",
-                        "typeId": 9,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "u256",
-                        "typeId": 10,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "u32",
-                        "typeId": 11,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "u64",
-                        "typeId": 12,
-                        "typeParameters": null
-                  },
-                  {
-                        "components": null,
-                        "type": "u8",
-                        "typeId": 13,
-                        "typeParameters": null
-                  }
-            ]
-=======
-  "configurables": [
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 5,
-                              "typeArguments": null
-                        },
-                        "name": "BOOL",
-                        "offset": 6936
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 13,
-                              "typeArguments": null
-                        },
-                        "name": "U8",
-                        "offset": 7072
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 13,
-                              "typeArguments": null
-                        },
-                        "name": "ANOTHER_U8",
-                        "offset": 6864
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 9,
-                              "typeArguments": null
-                        },
-                        "name": "U16",
-                        "offset": 7016
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 11,
-                              "typeArguments": null
-                        },
-                        "name": "U32",
-                        "offset": 7056
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 11,
-                              "typeArguments": null
-                        },
-                        "name": "U64",
-                        "offset": 7064
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 10,
-                              "typeArguments": null
-                        },
-                        "name": "U256",
-                        "offset": 7024
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 4,
-                              "typeArguments": null
-                        },
-                        "name": "B256",
-                        "offset": 6904
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 8,
-                              "typeArguments": []
-                        },
-                        "name": "CONFIGURABLE_STRUCT",
-                        "offset": 6976
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 6,
-                              "typeArguments": []
-                        },
-                        "name": "CONFIGURABLE_ENUM_A",
-                        "offset": 6944
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 6,
-                              "typeArguments": []
-                        },
-                        "name": "CONFIGURABLE_ENUM_B",
-                        "offset": 6960
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 2,
-                              "typeArguments": null
-                        },
-                        "name": "ARRAY_BOOL",
-                        "offset": 6872
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 3,
-                              "typeArguments": null
-                        },
-                        "name": "ARRAY_U64",
-                        "offset": 6880
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 1,
-                              "typeArguments": null
-                        },
-                        "name": "TUPLE_BOOL_U64",
-                        "offset": 7000
-                  },
-                  {
-                        "configurableType": {
-                              "name": "",
-                              "type": 7,
-                              "typeArguments": null
-                        },
-                        "name": "STR_4",
-                        "offset": 6992
-                  }
-            ],
-            "encoding": "1",
-            "functions": [
-                  {
-                        "attributes": null,
-                        "inputs": [],
-                        "name": "main",
-                        "output": {
-                              "name": "",
-                              "type": 0,
-                              "typeArguments": null
->>>>>>> e34729af1 (update contract ids)
-                        }
->>>>>>> 6ca956f74 (fix rebase issues)
+      "typeId": 2,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "__array_element",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "[_; 3]",
+      "typeId": 3,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "b256",
+      "typeId": 4,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "bool",
+      "typeId": 5,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "A",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "B",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "enum ConfigurableEnum",
+      "typeId": 6,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "str[4]",
+      "typeId": 7,
+      "typeParameters": null
+    },
+    {
+      "components": [
+        {
+          "name": "a",
+          "type": 5,
+          "typeArguments": null
+        },
+        {
+          "name": "b",
+          "type": 12,
+          "typeArguments": null
+        }
+      ],
+      "type": "struct ConfigurableStruct",
+      "typeId": 8,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u16",
+      "typeId": 9,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u256",
+      "typeId": 10,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u32",
+      "typeId": 11,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u64",
+      "typeId": 12,
+      "typeParameters": null
+    },
+    {
+      "components": null,
+      "type": "u8",
+      "typeId": 13,
+      "typeParameters": null
+    }
+  ]
+}
