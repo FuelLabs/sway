@@ -683,9 +683,7 @@ pub(crate) fn type_check_method_application(
         .ok();
 
         if let Some(decl_mapping) = decl_mapping {
-            if !ctx.defer_monomorphization() {
-                method.replace_decls(&decl_mapping, handler, &mut ctx)?;
-            }
+            method.replace_decls(&decl_mapping, handler, &mut ctx)?;
         }
 
         let method_sig = TyFunctionSig::from_fn_decl(&method);
@@ -696,7 +694,6 @@ pub(crate) fn type_check_method_application(
         if method_sig.is_concrete(engines)
             && method.is_type_check_finalized
             && !method.is_trait_method_dummy
-            && !ctx.defer_monomorphization()
         {
             ctx.engines()
                 .qe()
@@ -711,7 +708,6 @@ pub(crate) fn type_check_method_application(
         selector,
         type_binding: Some(method_name_binding.strip_inner()),
         call_path_typeid: Some(call_path_typeid),
-        deferred_monomorphization: ctx.defer_monomorphization(),
         contract_call_params: contract_call_params_map,
         contract_caller: None,
     };
