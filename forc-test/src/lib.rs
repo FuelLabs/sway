@@ -23,7 +23,7 @@ use sway_core::BuildTarget;
 use sway_types::Span;
 use tx::consensus_parameters::ConsensusParametersV1;
 use tx::{ConsensusParameters, ContractParameters, ScriptParameters, TxParameters};
-use vm::interpreter::InterpreterParams;
+use vm::interpreter::{InterpreterParams, MemoryInstance};
 use vm::prelude::SecretKey;
 
 /// The result of a `forc test` invocation.
@@ -209,8 +209,12 @@ impl PackageWithDeploymentToTest {
         let params = maxed_consensus_params();
         let storage = vm::storage::MemoryStorage::default();
         let interpreter_params = InterpreterParams::new(gas_price, params.clone());
-        let mut interpreter: vm::prelude::Interpreter<_, _, vm::interpreter::NotSupportedEcal> =
-            vm::interpreter::Interpreter::with_storage(storage, interpreter_params);
+        let mut interpreter: vm::prelude::Interpreter<_, _, _, vm::interpreter::NotSupportedEcal> =
+            vm::interpreter::Interpreter::with_storage(
+                MemoryInstance::new(),
+                storage,
+                interpreter_params,
+            );
 
         // Iterate and create deployment transactions for contract dependencies of the root
         // contract.
