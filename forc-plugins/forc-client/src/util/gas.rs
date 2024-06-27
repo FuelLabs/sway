@@ -8,7 +8,7 @@ use fuel_tx::{
 };
 use fuels_accounts::provider::Provider;
 use fuels_core::{
-    constants::DEFAULT_GAS_ESTIMATION_BLOCK_HORIZON, types::transaction_builders::DryRunner,
+    constants::DEFAULT_GAS_ESTIMATION_BLOCK_HORIZON, types::transaction::ScriptTransaction,
 };
 
 fn no_spendable_input<'a, I: IntoIterator<Item = &'a Input>>(inputs: I) -> bool {
@@ -47,15 +47,13 @@ pub(crate) async fn get_script_gas_used(mut tx: Script, provider: &Provider) -> 
     let max_gas = tx.max_gas(consensus_params.gas_costs(), consensus_params.fee_params()) + 1;
     // Increase `script_gas_limit` to the maximum allowed value.
     tx.set_script_gas_limit(max_gas_per_tx - max_gas);
+    let script_tx = ScriptTransaction::from(tx);
 
-    get_gas_used(Transaction::Script(tx), provider).await
-}
-
-/// Returns gas_used for an arbitrary tx, by doing dry run with the provided `Provider`.
-pub(crate) async fn get_gas_used(tx: Transaction, provider: &Provider) -> Result<u64> {
     let tolerance = 0.1;
-    let gas_used = provider.dry_run_and_get_used_gas(tx, tolerance).await?;
-    Ok(gas_used)
+    let estimated_tx_cost = provider
+        .estimate_transaction_cost(script_tx, Some(tolerance), None)
+        .await?;
+    Ok(estimated_tx_cost.gas_used)
 }
 
 /// Returns an estimation for the max fee of `Create` transactions.
@@ -99,7 +97,7 @@ pub(crate) async fn get_estimated_max_fee(
     let tx = Transaction::from(tx);
 
     let tx_status = client
-        .dry_run_opt(&[tx], Some(false))
+        .dry_run(&[tx])
         .await
         .map(|mut status_vec| status_vec.remove(0))?;
     let total_fee = match tx_status.result {

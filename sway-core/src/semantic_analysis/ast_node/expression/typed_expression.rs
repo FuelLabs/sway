@@ -332,6 +332,7 @@ impl ty::TyExpression {
                 Self::type_check_array_index(handler, ctx, prefix, index, span)
             }
             ExpressionKind::StorageAccess(StorageAccessExpression {
+                namespace_names,
                 field_names,
                 storage_keyword_span,
             }) => {
@@ -342,6 +343,7 @@ impl ty::TyExpression {
                 Self::type_check_storage_access(
                     handler,
                     ctx,
+                    namespace_names,
                     field_names,
                     storage_keyword_span.clone(),
                     &span,
@@ -1051,6 +1053,7 @@ impl ty::TyExpression {
     fn type_check_storage_access(
         handler: &Handler,
         ctx: TypeCheckContext,
+        namespace_names: &[Ident],
         checkee: &[Ident],
         storage_keyword_span: Span,
         span: &Span,
@@ -1079,6 +1082,7 @@ impl ty::TyExpression {
                     handler,
                     ctx.engines,
                     ctx.namespace(),
+                    namespace_names,
                     checkee,
                     &storage_fields,
                     storage_keyword_span.clone(),
@@ -1104,7 +1108,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
@@ -1132,7 +1136,7 @@ impl ty::TyExpression {
         let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
         access_type = type_engine.insert(
             engines,
-            TypeInfo::Struct(storage_key_struct_decl_ref.clone()),
+            TypeInfo::Struct(*storage_key_struct_decl_ref.id()),
             storage_key_struct_decl_ref.span().source_id(),
         );
 
@@ -1321,7 +1325,7 @@ impl ty::TyExpression {
                     &probe_call_path,
                     ctx.self_type(),
                 )
-                .and_then(|decl| decl.to_enum_ref(&Handler::default(), ctx.engines()))
+                .and_then(|decl| decl.to_enum_id(&Handler::default(), ctx.engines()))
                 .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .and_then(|decl| {
                     decl.expect_variant_from_name(&Handler::default(), &suffix)

@@ -27,10 +27,10 @@ use sway_core::{
             IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
             MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
             QualifiedPathType, ReassignmentExpression, ReassignmentTarget, RefExpression,
-            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageField,
-            StructDeclaration, StructExpression, StructExpressionField, StructField,
-            StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration, TraitFn,
-            TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
+            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageEntry, StorageField,
+            StorageNamespace, StructDeclaration, StructExpression, StructExpressionField,
+            StructField, StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration,
+            TraitFn, TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
             UseStatement, VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, HasSubmodules, Literal,
@@ -314,6 +314,7 @@ impl Parse for Expression {
             }
             ExpressionKind::StorageAccess(StorageAccessExpression {
                 field_names,
+                namespace_names,
                 storage_keyword_span,
             }) => {
                 let storage_ident = Ident::new(storage_keyword_span.clone());
@@ -321,6 +322,15 @@ impl Parse for Expression {
                     ctx.ident(&storage_ident),
                     Token::from_parsed(AstToken::Ident(storage_ident), SymbolKind::Unknown),
                 );
+                adaptive_iter(namespace_names, |namespace_name| {
+                    ctx.tokens.insert(
+                        ctx.ident(namespace_name),
+                        Token::from_parsed(
+                            AstToken::Ident(namespace_name.clone()),
+                            SymbolKind::Field,
+                        ),
+                    );
+                });
                 adaptive_iter(field_names, |field_name| {
                     ctx.tokens.insert(
                         ctx.ident(field_name),
@@ -905,8 +915,27 @@ impl Parse for ParsedDeclId<TraitTypeDeclaration> {
 impl Parse for ParsedDeclId<StorageDeclaration> {
     fn parse(&self, ctx: &ParseContext) {
         let storage_decl = ctx.engines.pe().get_storage(self);
-        adaptive_iter(&storage_decl.fields, |field| field.parse(ctx));
+        adaptive_iter(&storage_decl.entries, |entry| entry.parse(ctx));
         storage_decl.attributes.parse(ctx);
+    }
+}
+
+impl Parse for StorageEntry {
+    fn parse(&self, ctx: &ParseContext) {
+        match self {
+            StorageEntry::Namespace(namespace) => namespace.parse(ctx),
+            StorageEntry::Field(field) => field.parse(ctx),
+        }
+    }
+}
+
+impl Parse for StorageNamespace {
+    fn parse(&self, ctx: &ParseContext) {
+        ctx.tokens.insert(
+            ctx.ident(&self.name),
+            Token::from_parsed(AstToken::StorageNamespace(self.clone()), SymbolKind::Field),
+        );
+        self.entries.iter().for_each(|entry| entry.parse(ctx));
     }
 }
 

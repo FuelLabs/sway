@@ -38,7 +38,7 @@ where
         T: Parse,
     {
         // Uncomment this to see what is being generated
-        // println!("{}", input);
+        //println!("{}", input);
 
         let handler = <_>::default();
         let source_id =
@@ -333,7 +333,7 @@ where
         });
 
         // Uncomment this to understand why an entry function was not generated
-        // println!("{:#?}", handler);
+        //println!("{:#?}", handler);
 
         let (decl, namespace) = r.map_err(|_| handler.clone())?;
 
@@ -380,7 +380,7 @@ where
         });
 
         // Uncomment this to understand why auto impl failed for a type.
-        // println!("{:#?}", handler);
+        //println!("{:#?}", handler);
 
         let (decl, namespace) = r.map_err(|_| handler.clone())?;
 
@@ -406,8 +406,8 @@ where
             return Some((None, None));
         }
 
-        let implementing_for_decl_ref = decl.to_struct_ref(&Handler::default(), engines).unwrap();
-        let struct_decl = self.ctx.engines().de().get(implementing_for_decl_ref.id());
+        let implementing_for_decl_id = decl.to_struct_id(&Handler::default(), engines).unwrap();
+        let struct_decl = self.ctx.engines().de().get(&implementing_for_decl_id);
 
         let program_id = struct_decl.span().source_id().map(|sid| sid.program_id());
 
@@ -442,8 +442,8 @@ where
             return Some((None, None));
         }
 
-        let enum_decl_ref = decl.to_enum_ref(&Handler::default(), engines).unwrap();
-        let enum_decl = self.ctx.engines().de().get(enum_decl_ref.id());
+        let enum_decl_id = decl.to_enum_id(&Handler::default(), engines).unwrap();
+        let enum_decl = self.ctx.engines().de().get(&enum_decl_id);
 
         let program_id = enum_decl.span().source_id().map(|sid| sid.program_id());
 
@@ -510,8 +510,8 @@ where
                 format!("({},)", field_strs.join(", "))
             }
             TypeInfo::B256 => "b256".into(),
-            TypeInfo::Enum(decl_ref) => {
-                let decl = engines.de().get(decl_ref.id());
+            TypeInfo::Enum(decl_id) => {
+                let decl = engines.de().get_enum(decl_id);
 
                 let type_parameters = decl
                     .type_parameters
@@ -528,8 +528,8 @@ where
 
                 format!("{}{type_parameters}", decl.call_path.suffix.as_str())
             }
-            TypeInfo::Struct(decl_ref) => {
-                let decl = engines.de().get(decl_ref.id());
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
 
                 let type_parameters = decl
                     .type_parameters
@@ -625,18 +625,29 @@ where
 
             let method_name = decl.name.as_str();
 
+            code.push_str(&format!("if _method_name == \"{method_name}\" {{\n"));
+
             if args_types == "()" {
-                code.push_str(&format!("if _method_name == \"{method_name}\" {{
-                    let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}());
-                    __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
-                }}\n"));
+                code.push_str(&format!(
+                    "let _result = __contract_entry_{method_name}();\n"
+                ));
             } else {
-                code.push_str(&format!("if _method_name == \"{method_name}\" {{
-                    let args: {args_types} = decode_second_param::<{args_types}>();
-                    let result_{method_name}: raw_slice = encode::<{return_type}>(__contract_entry_{method_name}({expanded_args}));
-                    __contract_ret(result_{method_name}.ptr(), result_{method_name}.len::<u8>());
-                }}\n"));
+                code.push_str(&format!(
+                    "let args: {args_types} = _buffer.decode::<{args_types}>();
+                    let _result: {return_type} = __contract_entry_{method_name}({expanded_args});\n"
+                ));
             }
+
+            if return_type == "()" {
+                code.push_str("__contract_ret(asm() { zero: raw_ptr }, 0);");
+            } else {
+                code.push_str(&format!(
+                    "let _result: raw_slice = encode::<{return_type}>(_result);
+                    __contract_ret(_result.ptr(), _result.len::<u8>());"
+                ));
+            }
+
+            code.push_str("\n}\n");
         }
 
         let fallback = if let Some(fallback_fn) = fallback_fn {
@@ -674,6 +685,7 @@ where
 
         let code = format!(
             "{att} pub fn __entry() {{
+            let mut _buffer = BufferReader::from_second_parameter();
             let _method_name = decode_first_param::<str>();
             {code}
             {fallback}

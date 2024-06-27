@@ -6,18 +6,13 @@ use sway_error::{
 use sway_types::{BaseIdent, Span};
 
 use crate::{
-    engine_threading::{
-        DebugWithEngines, DisplayWithEngines, Engines, PartialEqWithEngines,
-        PartialEqWithEnginesContext, WithEngines,
-    },
+    decl_engine::DeclEngineGet,
+    engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
     semantic_analysis::type_check_context::EnforceTypeArguments,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
-    types::{
-        CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata,
-        UnconstrainedTypeParameters,
-    },
+    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
 };
 
 use std::{
@@ -104,25 +99,6 @@ impl SubstTypes for TypeId {
     }
 }
 
-impl UnconstrainedTypeParameters for TypeId {
-    fn type_parameter_is_unconstrained(
-        &self,
-        engines: &Engines,
-        type_parameter: &TypeParameter,
-    ) -> bool {
-        let type_engine = engines.te();
-        let mut all_types: BTreeSet<TypeId> = self.extract_inner_types(engines, IncludeSelf::No);
-        all_types.insert(*self);
-        let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types.iter().any(|type_id| {
-            type_engine.get(*type_id).eq(
-                &type_parameter_info,
-                &PartialEqWithEnginesContext::new(engines),
-            )
-        })
-    }
-}
-
 impl TypeId {
     pub(super) fn new(index: usize) -> TypeId {
         TypeId(index)
@@ -137,8 +113,8 @@ impl TypeId {
         let type_engine = engines.te();
         let decl_engine = engines.de();
         match &*type_engine.get(self) {
-            TypeInfo::Enum(decl_ref) => {
-                let decl = decl_engine.get_enum(decl_ref);
+            TypeInfo::Enum(decl_id) => {
+                let decl = decl_engine.get(decl_id);
                 (!decl.type_parameters.is_empty()).then_some(decl.type_parameters.clone())
             }
             TypeInfo::Struct(decl_ref) => {
@@ -270,8 +246,8 @@ impl TypeId {
                     );
                 }
             }
-            TypeInfo::Struct(struct_ref) => {
-                let struct_decl = decl_engine.get_struct(struct_ref);
+            TypeInfo::Struct(struct_id) => {
+                let struct_decl = decl_engine.get_struct(struct_id);
                 for type_param in &struct_decl.type_parameters {
                     extend(
                         &mut found,
@@ -480,6 +456,20 @@ impl TypeId {
         }))
     }
 
+    pub(crate) fn is_concrete(&self, engines: &Engines) -> bool {
+        let nested_types = (*self).extract_nested_types(engines);
+        !nested_types.into_iter().any(|x| {
+            matches!(
+                x,
+                TypeInfo::UnknownGeneric { .. }
+                    | TypeInfo::Custom { .. }
+                    | TypeInfo::Placeholder(..)
+                    | TypeInfo::TraitType { .. }
+                    | TypeInfo::TypeParam(..)
+            )
+        })
+    }
+
     /// `check_type_parameter_bounds` does two types of checks. Lets use the example below for demonstrating the two checks:
     /// ```ignore
     /// enum MyEnum<T> where T: MyAdd {
@@ -667,5 +657,9 @@ impl TypeId {
             }
         }
         found_error
+    }
+
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        engines.te().get(*self).get_type_str(engines)
     }
 }

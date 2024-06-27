@@ -1,10 +1,13 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineGet, DeclRefEnum, DeclRefStruct},
+    decl_engine::{DeclEngine, DeclEngineGet, DeclId},
     engine_threading::{
         DebugWithEngines, DisplayWithEngines, Engines, EqWithEngines, HashWithEngines,
         OrdWithEngines, OrdWithEnginesContext, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
-    language::{ty, CallPath, QualifiedCallPath},
+    language::{
+        ty::{self, TyEnumDecl, TyStructDecl},
+        CallPath, QualifiedCallPath,
+    },
     type_system::priv_prelude::*,
     Ident,
 };
@@ -128,8 +131,8 @@ pub enum TypeInfo {
     StringSlice,
     StringArray(Length),
     UnsignedInteger(IntegerBits),
-    Enum(DeclRefEnum),
-    Struct(DeclRefStruct),
+    Enum(DeclId<TyEnumDecl>),
+    Struct(DeclId<TyStructDecl>),
     Boolean,
     Tuple(Vec<TypeArgument>),
     /// Represents a type which contains methods to issue a contract call.
@@ -206,11 +209,11 @@ impl HashWithEngines for TypeInfo {
             TypeInfo::Tuple(fields) => {
                 fields.hash(state, engines);
             }
-            TypeInfo::Enum(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Enum(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
-            TypeInfo::Struct(decl_ref) => {
-                decl_ref.hash(state, engines);
+            TypeInfo::Struct(decl_id) => {
+                HashWithEngines::hash(&decl_id, state, engines);
             }
             TypeInfo::ContractCaller { abi_name, address } => {
                 abi_name.hash(state);
@@ -485,9 +488,9 @@ impl OrdWithEngines for TypeInfo {
                 .then_with(|| l_root_type_id.cmp(r_root_type_id)),
             (Self::StringArray(l), Self::StringArray(r)) => l.val().cmp(&r.val()),
             (Self::UnsignedInteger(l), Self::UnsignedInteger(r)) => l.cmp(r),
-            (Self::Enum(l_decl_ref), Self::Enum(r_decl_ref)) => {
-                let l_decl = decl_engine.get_enum(l_decl_ref);
-                let r_decl = decl_engine.get_enum(r_decl_ref);
+            (Self::Enum(l_decl_id), Self::Enum(r_decl_id)) => {
+                let l_decl = decl_engine.get_enum(l_decl_id);
+                let r_decl = decl_engine.get_enum(r_decl_id);
                 l_decl
                     .call_path
                     .suffix
@@ -1464,9 +1467,9 @@ impl TypeInfo {
         engines: &Engines,
         debug_string: impl Into<String>,
         debug_span: &Span,
-    ) -> Result<DeclRefEnum, ErrorEmitted> {
+    ) -> Result<DeclId<TyEnumDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Enum(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Enum(decl_ref) => Ok(*decl_ref),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1505,9 +1508,9 @@ impl TypeInfo {
         handler: &Handler,
         engines: &Engines,
         debug_span: &Span,
-    ) -> Result<DeclRefStruct, ErrorEmitted> {
+    ) -> Result<DeclId<TyStructDecl>, ErrorEmitted> {
         match self {
-            TypeInfo::Struct(decl_ref) => Ok(decl_ref.clone()),
+            TypeInfo::Struct(decl_id) => Ok(*decl_id),
             TypeInfo::Alias {
                 ty: TypeArgument { type_id, .. },
                 ..
@@ -1578,8 +1581,8 @@ impl TypeInfo {
                     })
             }
 
-            TypeInfo::Struct(s) => {
-                let decl = engines.de().get(s.id());
+            TypeInfo::Struct(decl_id) => {
+                let decl = engines.de().get(decl_id);
                 decl.fields
                     .iter()
                     .fold(AbiEncodeSizeHint::Exact(0), |old_size_hint, f| {
@@ -1588,8 +1591,8 @@ impl TypeInfo {
                         old_size_hint + field_size_hint
                     })
             }
-            TypeInfo::Enum(e) => {
-                let decl = engines.de().get(e.id());
+            TypeInfo::Enum(decl_id) => {
+                let decl = engines.de().get(decl_id);
 
                 let min = decl
                     .variants
@@ -1617,6 +1620,112 @@ impl TypeInfo {
             }
 
             x => unimplemented!("abi_encode_size_hint for [{}]", engines.help_out(x)),
+        }
+    }
+
+    /// Returns a String representing the type.
+    /// When the type is monomorphized the returned String is unique.
+    /// Two monomorphized types that generate the same string can be assumed to be the same.
+    pub fn get_type_str(&self, engines: &Engines) -> String {
+        use TypeInfo::*;
+        match self {
+            Unknown => "unknown".into(),
+            Never => "never".into(),
+            UnknownGeneric { name, .. } => name.to_string(),
+            Placeholder(_) => "_".to_string(),
+            TypeParam(n) => format!("typeparam({n})"),
+            StringSlice => "str".into(),
+            StringArray(x) => format!("str[{}]", x.val()),
+            UnsignedInteger(x) => match x {
+                IntegerBits::Eight => "u8",
+                IntegerBits::Sixteen => "u16",
+                IntegerBits::ThirtyTwo => "u32",
+                IntegerBits::SixtyFour => "u64",
+                IntegerBits::V256 => "u256",
+            }
+            .into(),
+            Boolean => "bool".into(),
+            Custom {
+                qualified_call_path: call_path,
+                ..
+            } => call_path.call_path.suffix.to_string(),
+            Tuple(fields) => {
+                let field_strs = fields
+                    .iter()
+                    .map(|field| field.type_id.get_type_str(engines))
+                    .collect::<Vec<String>>();
+                format!("({})", field_strs.join(", "))
+            }
+            B256 => "b256".into(),
+            Numeric => "u64".into(), // u64 is the default
+            Contract => "contract".into(),
+            ErrorRecovery(_) => "unknown due to error".into(),
+            Enum(decl_ref) => {
+                let decl = engines.de().get_enum(decl_ref);
+                let type_params = if decl.type_parameters.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "<{}>",
+                        decl.type_parameters
+                            .iter()
+                            .map(|p| p.type_id.get_type_str(engines))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                };
+                format!("enum {}{}", &decl.call_path, type_params)
+            }
+            Struct(decl_ref) => {
+                let decl = engines.de().get_struct(decl_ref);
+                let type_params = if decl.type_parameters.is_empty() {
+                    "".into()
+                } else {
+                    format!(
+                        "<{}>",
+                        decl.type_parameters
+                            .iter()
+                            .map(|p| p.type_id.get_type_str(engines))
+                            .collect::<Vec<_>>()
+                            .join(",")
+                    )
+                };
+                format!("struct {}{}", &decl.call_path, type_params)
+            }
+            ContractCaller { abi_name, .. } => {
+                format!("contract caller {abi_name}")
+            }
+            Array(elem_ty, length) => {
+                format!(
+                    "[{}; {}]",
+                    elem_ty.type_id.get_type_str(engines),
+                    length.val()
+                )
+            }
+            Storage { .. } => "contract storage".into(),
+            RawUntypedPtr => "raw untyped ptr".into(),
+            RawUntypedSlice => "raw untyped slice".into(),
+            Ptr(ty) => {
+                format!("__ptr {}", ty.type_id.get_type_str(engines))
+            }
+            Slice(ty) => {
+                format!("__slice {}", ty.type_id.get_type_str(engines))
+            }
+            Alias { ty, .. } => ty.type_id.get_type_str(engines),
+            TraitType {
+                name,
+                trait_type_id: _,
+            } => format!("trait type {}", name),
+            Ref {
+                to_mutable_value,
+                referenced_type,
+            } => {
+                format!(
+                    "__ref {}{}",
+                    if *to_mutable_value { "mut " } else { "" },
+                    referenced_type.type_id.get_type_str(engines)
+                )
+            }
         }
     }
 }

@@ -128,6 +128,9 @@ impl Declaration {
             }
             Declaration::StructDeclaration(decl_id) => decl_engine.get_struct(decl_id).visibility,
             Declaration::EnumDeclaration(decl_id) => decl_engine.get_enum(decl_id).visibility,
+            Declaration::EnumVariantDeclaration(decl) => {
+                decl_engine.get_enum(&decl.enum_ref).visibility
+            }
             Declaration::FunctionDeclaration(decl_id) => {
                 decl_engine.get_function(decl_id).visibility
             }
@@ -139,8 +142,7 @@ impl Declaration {
             | Declaration::ImplSelf(_)
             | Declaration::StorageDeclaration(_)
             | Declaration::AbiDeclaration(_)
-            | Declaration::TraitTypeDeclaration(_)
-            | Declaration::EnumVariantDeclaration(_) => Visibility::Public,
+            | Declaration::TraitTypeDeclaration(_) => Visibility::Public,
         }
     }
 }

@@ -160,6 +160,7 @@ impl ty::TyFunctionDecl {
                     purity: *purity,
                     where_clause: where_clause.clone(),
                     is_trait_method_dummy: false,
+                    is_type_check_finalized: false,
                     kind: match kind {
                         FunctionDeclarationKind::Default => ty::TyFunctionDeclKind::Default,
                         FunctionDeclarationKind::Entry => ty::TyFunctionDeclKind::Entry,
@@ -222,6 +223,7 @@ impl ty::TyFunctionDecl {
                     .unwrap_or_else(|_err| ty::TyCodeBlock::default());
 
                 ty_fn_decl.body = body;
+                ty_fn_decl.is_type_check_finalized = true;
 
                 return_type.type_id.check_type_parameter_bounds(
                     handler,
@@ -324,6 +326,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
     };
 
@@ -384,6 +387,7 @@ fn test_function_selector_behavior() {
         is_contract_call: false,
         where_clause: vec![],
         is_trait_method_dummy: false,
+        is_type_check_finalized: true,
         kind: ty::TyFunctionDeclKind::Default,
     };
 

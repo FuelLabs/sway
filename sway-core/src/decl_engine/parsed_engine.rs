@@ -41,14 +41,12 @@ pub trait ParsedDeclEngineInsert<T> {
     fn insert(&self, decl: T) -> ParsedDeclId<T>;
 }
 
-pub trait ParsedDeclEngineInsertArc<T> {
-    fn insert_arc(&self, decl: Arc<T>) -> ParsedDeclId<T>;
-}
-
+#[allow(unused)]
 pub trait ParsedDeclEngineReplace<T> {
     fn replace(&self, index: ParsedDeclId<T>, decl: T);
 }
 
+#[allow(unused)]
 pub trait ParsedDeclEngineIndex<T>:
     ParsedDeclEngineGet<DeclId<T>, T> + ParsedDeclEngineInsert<T> + ParsedDeclEngineReplace<T>
 {
@@ -84,11 +82,6 @@ macro_rules! decl_engine_insert {
         impl ParsedDeclEngineInsert<$decl> for ParsedDeclEngine {
             fn insert(&self, decl: $decl) -> ParsedDeclId<$decl> {
                 ParsedDeclId::new(self.$slab.insert(decl))
-            }
-        }
-        impl ParsedDeclEngineInsertArc<$decl> for ParsedDeclEngine {
-            fn insert_arc(&self, decl: Arc<$decl>) -> ParsedDeclId<$decl> {
-                ParsedDeclId::new(self.$slab.insert_arc(decl))
             }
         }
     };

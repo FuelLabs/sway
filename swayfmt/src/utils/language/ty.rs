@@ -177,9 +177,9 @@ impl Format for TyTupleDescriptor {
     }
 }
 
-impl LeafSpans for Box<Ty> {
+impl<T: LeafSpans + Clone> LeafSpans for Box<T> {
     fn leaf_spans(&self) -> Vec<ByteSpan> {
-        self.as_ref().leaf_spans()
+        (**self).leaf_spans()
     }
 }
 

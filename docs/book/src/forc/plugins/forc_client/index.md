@@ -124,7 +124,7 @@ Another alternative is the `--target` option, which provides useful aliases to a
 forc-deploy --target beta-5
 ```
 
-Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-beta-4.fuel.network/).
+Since deploying and running projects on the testnet cost gas, you will need coins to pay for them. You can get some using the [testnet faucet](https://faucet-testnet.fuel.network/).
 
 ## Deployment Artifacts
 

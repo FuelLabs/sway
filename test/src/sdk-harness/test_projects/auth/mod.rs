@@ -4,7 +4,12 @@ use fuels::{
         wallet::{Wallet, WalletUnlocked},
     },
     prelude::*,
-    types::ContractId,
+    tx::UtxoId,
+    types::{
+        coin::{Coin, CoinStatus},
+        message::{Message, MessageStatus},
+        Bytes32, ContractId,
+    },
 };
 use std::str::FromStr;
 
@@ -121,9 +126,9 @@ async fn can_get_predicate_address() {
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
-    // Setup Predciate
+    // Setup predicate.
     let hex_predicate_address: &str =
-        "0xf868533e744aeda1df2fcd5589d822db7087e61702662356961029622b6b75f2";
+        "0x96495296fbfc9bb1f8bfb254354a25138cc7331fc5df620b3f4ac5d90f24ff7f";
     let predicate_address =
         Address::from_str(hex_predicate_address).expect("failed to create Address from string");
     let predicate_bech32_address = Bech32Address::from(predicate_address);
@@ -135,6 +140,10 @@ async fn can_get_predicate_address() {
             .unwrap()
             .with_provider(first_wallet.try_provider().unwrap().clone())
             .with_data(predicate_data);
+
+    // If this test fails, it can be the predicate address
+    // Uncomment the next line, get the predicate address and update above.
+    // dbg!(&predicate);
 
     // Next, we lock some assets in this predicate using the first wallet:
     // First wallet transfers amount to predicate.
@@ -198,7 +207,7 @@ async fn when_incorrect_predicate_address_passed() {
     let first_wallet = &wallets[0];
     let second_wallet = &wallets[1];
 
-    // Setup Predciate with incorrect address
+    // Setup predicate with incorrect address.
     let hex_predicate_address: &str =
         "0x36bf4bd40f2a3b3db595ef8fd8b21dbe9e6c0dd7b419b4413ff6b584ce7da5d7";
     let predicate_address =
@@ -239,4 +248,90 @@ async fn when_incorrect_predicate_address_passed() {
         )
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn can_get_predicate_address_in_message() {
+    // Setup predicate address.
+    let hex_predicate_address: &str =
+        "0x96495296fbfc9bb1f8bfb254354a25138cc7331fc5df620b3f4ac5d90f24ff7f";
+    let predicate_address =
+        Address::from_str(hex_predicate_address).expect("failed to create Address from string");
+    let predicate_bech32_address = Bech32Address::from(predicate_address);
+
+    // Setup message
+    let message_amount = 1;
+    let message = Message {
+        sender: Bech32Address::default(),
+        recipient: predicate_bech32_address.clone(),
+        nonce: 0.into(),
+        amount: message_amount,
+        data: vec![],
+        da_height: 0,
+        status: MessageStatus::Unspent,
+    };
+    let mut message_vec: Vec<Message> = Vec::new();
+    message_vec.push(message);
+
+    // Setup Coin
+    let coin_amount = 0;
+    let coin = Coin {
+        owner: predicate_bech32_address.clone(),
+        utxo_id: UtxoId::new(Bytes32::zeroed(), 0),
+        amount: coin_amount,
+        asset_id: AssetId::default(),
+        status: CoinStatus::Unspent,
+        block_created: Default::default(),
+    };
+    let mut coin_vec: Vec<Coin> = Vec::new();
+    coin_vec.push(coin);
+
+    let mut wallet = WalletUnlocked::new_random(None);
+    let provider = setup_test_provider(coin_vec, message_vec, None, None)
+        .await
+        .unwrap();
+    wallet.set_provider(provider.clone());
+
+    // Setup predicate.
+    let predicate_data = AuthPredicateEncoder::default()
+        .encode_data(predicate_bech32_address)
+        .unwrap();
+    let predicate: Predicate =
+        Predicate::load_from("test_artifacts/auth_predicate/out/release/auth_predicate.bin")
+            .unwrap()
+            .with_provider(wallet.try_provider().unwrap().clone())
+            .with_data(predicate_data);
+
+    // If this test fails, it can be the predicate address
+    // Uncomment the next line, get the predicate address and update above.
+    // dbg!(&predicate);
+
+    // Check predicate balance.
+    let balance = predicate
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
+    assert_eq!(balance, message_amount);
+
+    // Spend the message
+    predicate
+        .transfer(
+            wallet.address(),
+            message_amount,
+            AssetId::default(),
+            TxPolicies::default(),
+        )
+        .await
+        .unwrap();
+
+    // The predicate has spent the funds
+    let predicate_balance = predicate
+        .get_asset_balance(&AssetId::default())
+        .await
+        .unwrap();
+    assert_eq!(predicate_balance, 0);
+
+    // Funds were transferred
+    let wallet_balance = wallet.get_asset_balance(&AssetId::default()).await.unwrap();
+    assert_eq!(wallet_balance, message_amount);
 }

@@ -1,0 +1,12 @@
+category = "compile"
+
+# check: $()#[namespace(my_namespace)]
+# nextln: $()Attribute namespace is deprecated.
+# nextln: $()You can use namespaces inside storage:
+# nextln: $()storage {
+# nextln: $()my_storage_namespace {
+# nextln: $()field: u64 = 1,
+# nextln: $()}
+# nextln: $()}
+
+expected_warnings = 2
