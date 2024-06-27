@@ -957,12 +957,6 @@ mod outputs {
             assert_eq!(predicate_balance, predicate_coin_amount);
 
             // Get contract ready for deployment
-            let contract = Contract::load_from(
-                TX_CONTRACT_BYTECODE_PATH,
-                LoadConfiguration::default(),
-            )
-            .unwrap();
-        
             let binary = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
             let salt = Salt::new([2u8; 32]);
             let storage_slots = Vec::<StorageSlot>::new();
