@@ -4,10 +4,14 @@ use fuels::types::transaction_builders::TransactionBuilder;
 use fuels::{
     accounts::{predicate::Predicate, wallet::WalletUnlocked, Account},
     prelude::*,
-    types::{input::Input as SdkInput, Bits256},
+    types::{input::Input as SdkInput, Bits256, output::Output as SdkOutput},
+    tx::StorageSlot,
 };
+use std::fs;
 
 const MESSAGE_DATA: [u8; 3] = [1u8, 2u8, 3u8];
+const TX_CONTRACT_BYTECODE_PATH: &str =
+    "test_artifacts/tx_contract/out/release/tx_contract.bin";
 
 abigen!(
     Contract(
@@ -69,7 +73,7 @@ async fn get_contracts(
     deployment_wallet.set_provider(provider);
 
     let contract_id = Contract::load_from(
-        "test_artifacts/tx_contract/out/release/tx_contract.bin",
+        TX_CONTRACT_BYTECODE_PATH,
         LoadConfiguration::default(),
     )
     .unwrap()
@@ -903,6 +907,107 @@ mod outputs {
                 .await
                 .unwrap();
             assert_eq!(result.value, Output::Contract);
+        }
+
+        #[tokio::test]
+        async fn can_get_tx_output_type_for_contract_deployment() {
+            // Setup Wallet
+            let wallet = launch_custom_provider_and_get_wallets(
+                WalletsConfig::new(
+                    Some(1),             /* Single wallet */
+                    Some(1),             /* Single coin (UTXO) */
+                    Some(1_000_000_000), /* Amount per coin */
+                ),
+                None,
+                None,
+            )
+            .await
+            .unwrap()
+            .pop()
+            .unwrap();
+            let provider = wallet.try_provider().unwrap();
+
+            // Get the predicate
+            let predicate: Predicate = Predicate::load_from("test_artifacts/tx_output_contract_creation_predicate/out/release/tx_output_contract_creation_predicate.bin").unwrap()
+                    .with_provider(provider.clone());
+            let predicate_coin_amount = 100;
+            
+            // Predicate has no funds
+            let predicate_balance = predicate.get_asset_balance(&provider.base_asset_id()).await.unwrap();
+            assert_eq!(predicate_balance, 0);
+
+            // Transfer funds to predicate
+            wallet
+                .transfer(
+                    predicate.address(),
+                    predicate_coin_amount,
+                    *provider.base_asset_id(),
+                    TxPolicies::default(),
+                )
+                .await.unwrap();
+
+            // Predicate has funds
+            let predicate_balance = predicate.get_asset_balance(&provider.base_asset_id()).await.unwrap();
+            assert_eq!(predicate_balance, predicate_coin_amount);
+
+            // Get contract ready for deployment
+            let contract = Contract::load_from(
+                TX_CONTRACT_BYTECODE_PATH,
+                LoadConfiguration::default(),
+            )
+            .unwrap();
+        
+            let binary = fs::read(TX_CONTRACT_BYTECODE_PATH).unwrap();
+            let salt = Salt::new([2u8; 32]);
+            let storage_slots = Vec::<StorageSlot>::new();
+            let contract = Contract::new(binary.clone(), salt, storage_slots.clone());
+
+            // Start building the transaction
+            let tb: CreateTransactionBuilder = CreateTransactionBuilder::prepare_contract_deployment(
+                binary,
+                contract.contract_id(),
+                contract.state_root(),
+                salt,
+                storage_slots,
+                TxPolicies::default(),
+            );
+
+            // Inputs
+            let inputs = predicate
+                .get_asset_inputs_for_amount(*provider.base_asset_id(), predicate_coin_amount)
+                .await.unwrap();
+
+            // Outputs
+            let mut outputs = wallet.get_asset_outputs_for_amount(
+                &wallet.address(),
+                *provider.base_asset_id(),
+                predicate_coin_amount,
+            );
+            outputs.push(SdkOutput::contract_created(contract.contract_id(), contract.state_root()));
+
+            let mut tb = tb.with_inputs(inputs).with_outputs(outputs);
+
+            wallet.add_witnesses(&mut tb).unwrap();
+            wallet.adjust_for_fee(&mut tb, 1).await.unwrap();
+
+            // Build transaction
+            let tx = tb.build(provider).await.unwrap();
+
+            // Send trandaction
+            provider
+                .send_transaction_and_await_commit(tx)
+                .await
+                .unwrap()
+                .check(None)
+                .unwrap();
+
+            // Verify contract was deployed
+            let instance = TxContractTest::new(contract.contract_id(), wallet.clone());
+            assert!(instance.methods().get_output_type(0).call().await.is_ok());
+
+            // Verify predicate funds transfered
+            let predicate_balance = predicate.get_asset_balance(&AssetId::default()).await.unwrap();
+            assert_eq!(predicate_balance, 0);
         }
 
         #[tokio::test]
