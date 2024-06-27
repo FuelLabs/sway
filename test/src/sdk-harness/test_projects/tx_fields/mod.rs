@@ -1011,7 +1011,7 @@ mod outputs {
             let instance = TxContractTest::new(contract.contract_id(), wallet.clone());
             assert!(instance.methods().get_output_type(0).call().await.is_ok());
 
-            // Verify predicate funds transfered
+            // Verify predicate funds transferred
             let predicate_balance = predicate.get_asset_balance(&AssetId::default()).await.unwrap();
             assert_eq!(predicate_balance, 0);
         }
