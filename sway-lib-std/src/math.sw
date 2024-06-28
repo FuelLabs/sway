@@ -2,7 +2,7 @@
 library;
 
 use ::assert::*;
-use ::flags::{F_UNSAFEMATH_DISABLE_MASK, disable_panic_on_overflow, set_flags};
+use ::flags::{disable_panic_on_overflow, F_UNSAFEMATH_DISABLE_MASK, set_flags};
 use ::registers::{flags, overflow};
 
 /// Calculates the square root.
