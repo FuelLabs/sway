@@ -2,7 +2,7 @@
 library;
 
 use ::assert::*;
-use ::flags::{disable_panic_on_overflow, set_flags};
+use ::flags::{F_UNSAFEMATH_DISABLE_MASK, disable_panic_on_overflow, set_flags};
 use ::registers::{flags, overflow};
 
 /// Calculates the square root.
@@ -218,7 +218,7 @@ impl BinaryLogarithm for u8 {
 impl BinaryLogarithm for u256 {
     fn log2(self) -> Self {
         // If panic on unsafe math is enabled, only then revert
-        if flags() & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
+        if flags() & F_UNSAFEMATH_DISABLE_MASK == 0 {
             // Logarithm is undefined for 0
             assert(self != 0);
         }
@@ -244,7 +244,7 @@ impl Logarithm for u256 {
         let flags = disable_panic_on_overflow();
 
         // If panic on unsafe math is enabled, only then revert
-        if flags & 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001 == 0 {
+        if flags & F_UNSAFEMATH_DISABLE_MASK == 0 {
             // Logarithm is undefined for bases less than 2
             assert(base >= 2);
             // Logarithm is undefined for 0
