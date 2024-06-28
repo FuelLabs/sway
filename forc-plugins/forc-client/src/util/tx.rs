@@ -146,8 +146,9 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         let wallet = Wallet::from_address(Bech32Address::from(address), Some(provider));
 
         let amount = 1_000_000;
+        let filter = None;
         let inputs: Vec<_> = wallet
-            .get_spendable_resources(asset_id, amount)
+            .get_spendable_resources(asset_id, amount, filter)
             .await?
             .into_iter()
             .map(|coin_type| match coin_type {
