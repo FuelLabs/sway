@@ -231,6 +231,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
+    println!("  {} deployment", "Starting".bold().green());
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
         WalletSelectionMode::Manual
     } else {
@@ -357,7 +358,7 @@ pub async fn deploy_pkg(
             compiled.storage_slots.clone()
         };
     storage_slots.sort();
-    let contract = Contract::from(bytecode.clone());
+    let contract = Contract::from(bytecode.as_slice());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
