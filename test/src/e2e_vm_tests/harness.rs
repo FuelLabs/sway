@@ -203,8 +203,9 @@ pub(crate) fn runs_in_vm(
                 .into_ready(gas_price, params.gas_costs(), params.fee_params())
                 .map_err(|e| anyhow::anyhow!("{e:?}"))?;
 
-            let mut i: Interpreter<_, _, NotSupportedEcal> =
-                Interpreter::with_storage(storage, Default::default());
+            let mem_instance = MemoryInstance::new();
+            let mut i: Interpreter<_, _, _, NotSupportedEcal> =
+                Interpreter::with_storage(mem_instance, storage, Default::default());
             let transition = i.transact(tx).map_err(anyhow::Error::msg)?;
 
             Ok(VMExecutionResult::Fuel(
