@@ -19,10 +19,10 @@ pub(crate) trait MyMath<T> {
 
 impl MyMath<u8> for u8 {
     fn global_max() -> u8 {
-        std::u8::MAX
+        u8::MAX
     }
     fn global_min() -> u8 {
-        std::u8::MIN
+        u8::MIN
     }
 
     fn incr(&self) -> u8 {
@@ -35,10 +35,10 @@ impl MyMath<u8> for u8 {
 
 impl MyMath<u16> for u16 {
     fn global_max() -> u16 {
-        std::u16::MAX
+        u16::MAX
     }
     fn global_min() -> u16 {
-        std::u16::MIN
+        u16::MIN
     }
 
     fn incr(&self) -> u16 {
@@ -51,10 +51,10 @@ impl MyMath<u16> for u16 {
 
 impl MyMath<u32> for u32 {
     fn global_max() -> u32 {
-        std::u32::MAX
+        u32::MAX
     }
     fn global_min() -> u32 {
-        std::u32::MIN
+        u32::MIN
     }
 
     fn incr(&self) -> u32 {
@@ -67,10 +67,10 @@ impl MyMath<u32> for u32 {
 
 impl MyMath<u64> for u64 {
     fn global_max() -> u64 {
-        std::u64::MAX
+        u64::MAX
     }
     fn global_min() -> u64 {
-        std::u64::MIN
+        u64::MIN
     }
 
     fn incr(&self) -> u64 {
@@ -119,8 +119,8 @@ where
 impl Range<u8> {
     pub(crate) fn u8() -> Range<u8> {
         Range {
-            first: std::u8::MIN,
-            last: std::u8::MAX,
+            first: u8::MIN,
+            last: u8::MAX,
         }
     }
 }
@@ -128,8 +128,8 @@ impl Range<u8> {
 impl Range<u16> {
     pub(crate) fn u16() -> Range<u16> {
         Range {
-            first: std::u16::MIN,
-            last: std::u16::MAX,
+            first: u16::MIN,
+            last: u16::MAX,
         }
     }
 }
@@ -137,8 +137,8 @@ impl Range<u16> {
 impl Range<u32> {
     pub(crate) fn u32() -> Range<u32> {
         Range {
-            first: std::u32::MIN,
-            last: std::u32::MAX,
+            first: u32::MIN,
+            last: u32::MAX,
         }
     }
 }
@@ -146,8 +146,8 @@ impl Range<u32> {
 impl Range<u64> {
     pub(crate) fn u64() -> Range<u64> {
         Range {
-            first: std::u64::MIN,
-            last: std::u64::MAX,
+            first: u64::MIN,
+            last: u64::MAX,
         }
     }
 }

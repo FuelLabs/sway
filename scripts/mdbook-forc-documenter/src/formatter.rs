@@ -110,7 +110,7 @@ fn format_option_line(option_line: &str) -> String {
                     a
                 })
                 .trim()
-                .to_owned();
+                .to_string();
             break;
         }
     }
