@@ -110,7 +110,7 @@ async fn generate_predicate_inputs(
         .unwrap();
 
     let predicate_input = predicate
-        .get_asset_inputs_for_amount(AssetId::default(), amount)
+        .get_asset_inputs_for_amount(AssetId::default(), amount, None)
         .await
         .unwrap()
         .first()
