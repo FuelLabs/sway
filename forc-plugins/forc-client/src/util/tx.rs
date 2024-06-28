@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, io::Write, path::Path, str::FromStr};
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
+use colored::Colorize;
 use forc_tracing::println_warning;
 
 use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
@@ -272,6 +273,11 @@ pub(crate) async fn update_proxy_contract_target(
         .set_proxy_target(new_target)
         .call()
         .await?;
+    println!(
+        "  0x{} proxy contract's target to {}",
+        "Updated".green(),
+        new_target
+    );
     Ok(())
 }
 
