@@ -1,18 +1,16 @@
 use crate::{
     cmd,
     util::{
-        gas::get_estimated_max_fee,
         node_url::get_node_url,
         pkg::{build_proxy_contract, built_pkgs, update_proxy_address_in_manifest},
         tx::{
             bech32_from_secret, check_and_create_wallet_at_default_path, first_user_account,
             prompt_forc_wallet_password, select_manual_secret_key, select_secret_key,
-            update_proxy_contract_target, TransactionBuilderExt, WalletSelectionMode,
-            TX_SUBMIT_TIMEOUT_MS,
+            update_proxy_contract_target, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS,
         },
     },
 };
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use colored::Colorize;
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
@@ -22,9 +20,10 @@ use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
-use fuel_tx::{Output, Salt, TransactionBuilder};
+use fuel_tx::Salt;
 use fuel_vm::prelude::*;
-use fuels_accounts::provider::Provider;
+use fuels::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
+use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use fuels_core::types::bech32::Bech32Address;
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildOpts, BuildProfile, BuiltPackage};
@@ -283,6 +282,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
                         // Create a contract instance for the proxy contract using default proxy contract abi and
                         // specified address.
+                        println!("   {} proxy contract", "Updating".bold().green());
                         let provider = Provider::connect(node_url.clone()).await?;
                         // TODO: once https://github.com/FuelLabs/sway/issues/6071 is closed, this will return just a result
                         // and we won't need to handle the manual prompt based signature case.
@@ -357,44 +357,35 @@ pub async fn deploy_pkg(
             compiled.storage_slots.clone()
         };
     storage_slots.sort();
-
     let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
 
     let provider = Provider::connect(node_url.clone()).await?;
+    let tx_policies = TxPolicies::default();
 
-    // We need a tx for estimation without the signature.
-    let mut tb =
-        TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone());
-    tb.maturity(command.maturity.maturity.into())
-        .add_output(Output::contract_created(contract_id, state_root));
-    let tx_for_estimation = tb.finalize_without_signature_inner();
+    let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
+        bytecode.clone(),
+        contract_id,
+        state_root,
+        salt,
+        storage_slots.clone(),
+        tx_policies,
+    );
+    let signing_key = select_secret_key(
+        wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+    )
+    .await?
+    .ok_or_else(|| anyhow!("failed to select a signer for the transaction"))?;
+    let wallet = WalletUnlocked::new_from_private_key(signing_key, Some(provider.clone()));
 
-    // If user specified max_fee use that but if not, we will estimate with %10 safety margin.
-    let max_fee = if let Some(max_fee) = command.gas.max_fee {
-        max_fee
-    } else {
-        let estimation_margin = 10;
-        get_estimated_max_fee(
-            tx_for_estimation.clone(),
-            &provider,
-            &client,
-            estimation_margin,
-        )
-        .await?
-    };
-
-    let tx = tb
-        .max_fee_limit(max_fee)
-        .finalize_signed(
-            provider.clone(),
-            command.default_signer || command.unsigned,
-            command.signing_key,
-            wallet_mode,
-        )
-        .await?;
+    wallet.add_witnesses(&mut tb)?;
+    wallet.adjust_for_fee(&mut tb, 0).await?;
+    let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);
 
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();

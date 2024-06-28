@@ -337,6 +337,7 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         signature_witness_index: u16,
     ) -> Result<&mut Self> {
         let asset_id = *provider.base_asset_id();
+        dbg!(asset_id.clone());
         let wallet = Wallet::from_address(Bech32Address::from(address), Some(provider));
 
         let amount = 1_000_000;
