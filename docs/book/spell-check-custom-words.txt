@@ -211,3 +211,8 @@ unsafety
 prioritizations
 polymorphism
 ContractId
+booleans
+underflows
+Codec
+bool
+str

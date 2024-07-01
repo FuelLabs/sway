@@ -7,6 +7,7 @@
   - [The Fuel Toolchain](./introduction/fuel_toolchain.md)
   - [A Forc Project](./introduction/forc_project.md)
   - [Standard Library](./introduction/standard_library.md)
+  - [Core Library](./introduction/core_library.md)
   - [Sway Language Standards](./introduction/sway_standards.md)
 - [Examples](./examples/index.md)
   - [Counter](./examples/counter.md)
