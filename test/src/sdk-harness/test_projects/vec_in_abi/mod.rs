@@ -211,3 +211,37 @@ async fn test_vec_in_vec() -> Result<()> {
 
     Ok(())
 }
+
+async fn test_echo<T>(
+    f: impl Fn(
+        T,
+    ) -> fuels::programs::contract::ContractCallHandler<
+        fuels::accounts::wallet::WalletUnlocked,
+        T,
+    >,
+    input: T,
+) where
+    T: Eq
+        + Clone
+        + fuels::core::traits::Tokenizable
+        + fuels::core::traits::Parameterize
+        + std::fmt::Debug,
+{
+    let response = (f)(input.clone()).call().await.unwrap();
+    assert_eq!(input, response.value);
+}
+
+#[tokio::test]
+async fn test_echos() {
+    let (instance, _id) = get_vec_in_abi_instance().await;
+    let contract_methods = instance.methods();
+
+    test_echo(|v| contract_methods.echo_u8(v), vec![0u8, 1u8, 2u8]).await;
+    test_echo(|v| contract_methods.echo_u16(v), vec![0u16, 1u16, 2u16]).await;
+    test_echo(|v| contract_methods.echo_u32(v), vec![0u32, 1u32, 2u32]).await;
+    test_echo(
+        |v| contract_methods.echo_u32_vec_in_vec(v),
+        vec![vec![0u32], vec![1u32], vec![2u32]],
+    )
+    .await;
+}
