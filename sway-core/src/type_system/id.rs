@@ -7,18 +7,12 @@ use sway_types::{BaseIdent, Span};
 
 use crate::{
     decl_engine::DeclEngineGet,
-    engine_threading::{
-        DebugWithEngines, DisplayWithEngines, Engines, PartialEqWithEngines,
-        PartialEqWithEnginesContext, WithEngines,
-    },
+    engine_threading::{DebugWithEngines, DisplayWithEngines, Engines, WithEngines},
     language::CallPath,
     semantic_analysis::type_check_context::EnforceTypeArguments,
     semantic_analysis::TypeCheckContext,
     type_system::priv_prelude::*,
-    types::{
-        CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata,
-        UnconstrainedTypeParameters,
-    },
+    types::{CollectTypesMetadata, CollectTypesMetadataContext, TypeMetadata},
 };
 
 use std::{
@@ -102,25 +96,6 @@ impl SubstTypes for TypeId {
         } else {
             HasChanges::No
         }
-    }
-}
-
-impl UnconstrainedTypeParameters for TypeId {
-    fn type_parameter_is_unconstrained(
-        &self,
-        engines: &Engines,
-        type_parameter: &TypeParameter,
-    ) -> bool {
-        let type_engine = engines.te();
-        let mut all_types: BTreeSet<TypeId> = self.extract_inner_types(engines, IncludeSelf::No);
-        all_types.insert(*self);
-        let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types.iter().any(|type_id| {
-            type_engine.get(*type_id).eq(
-                &type_parameter_info,
-                &PartialEqWithEnginesContext::new(engines),
-            )
-        })
     }
 }
 
