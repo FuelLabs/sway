@@ -43,11 +43,11 @@ Contract ID: 0x94b712901f04332682d14c998a5fc5a078ed15321438f46d58d0383200cde43d
 Deployed in block 00114d4d
 ```
 
-As it can be seen from the example, forc-client asks for your password to decrypt the forc-wallet vault, and list your accounts so that you can select the one you want to fund the transaction with.
+As it can be seen from the example, `forc-client` asks for your password to decrypt the `forc-wallet` vault, and list your accounts so that you can select the one you want to fund the transaction with.
 
 ## Option 2: Using default signer
 
-If you are not interacting with a deployed network, such as testnets, your local fuel-core environment can be structured such that it funds an account by default. Using `--default-signer` flag with forc-client binaries (run, deploy) will instruct forc-client to sign transactions with this pre-funded account. Which makes it a useful command while working against a local node.
+If you are not interacting with a deployed network, such as testnets, your local `fuel-core` environment can be structured such that it funds an account by default. Using `--default-signer` flag with `forc-client` binaries (run, deploy) will instruct `forc-client` to sign transactions with this pre-funded account. Which makes it a useful command while working against a local node.
 
 Example:
 
@@ -158,7 +158,7 @@ implicit-std = false
 enabled = true
 ```
 
-If there is no `address` field present under the proxy table, like the example above, forc automatically creates a proxy contract based on [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating the proxy contract, the target is set to the current contract, and owner of the proxy is set to the account that is signing the transaction for deployment.
+If there is no `address` field present under the proxy table, like the example above, `forc` will automatically create a proxy contract based on the [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating and deploying the proxy contract, the target is set to the current contract, and owner of the proxy is set to the account that is signing the transaction for deployment.
 
 This means that if you simply enable proxy in the `Forc.toml`, forc will automatically deploy a proxy contract for you and you do not need to do anything manually aside from signing the deployment transactions for the proxy contract. After deploying the proxy contract, the its address is added into the `address` field of the proxy table.
 
