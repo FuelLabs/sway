@@ -974,7 +974,7 @@ mod outputs {
 
             // Inputs
             let inputs = predicate
-                .get_asset_inputs_for_amount(*provider.base_asset_id(), predicate_coin_amount)
+                .get_asset_inputs_for_amount(*provider.base_asset_id(), predicate_coin_amount, None)
                 .await.unwrap();
 
             // Outputs
