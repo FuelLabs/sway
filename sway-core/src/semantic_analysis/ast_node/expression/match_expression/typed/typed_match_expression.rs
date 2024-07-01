@@ -109,29 +109,30 @@ impl ty::TyMatchExpression {
         mut ctx: TypeCheckContext<'_>,
         handler: &Handler,
     ) -> Result<TyExpression, ErrorEmitted> {
-        fn revert(never_type_id: TypeId) -> TyAstNode {
-            TyAstNode {
-                content: ty::TyAstNodeContent::Expression(TyExpression {
-                    expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
-                        kind: sway_ast::Intrinsic::Revert,
-                        arguments: vec![TyExpression {
-                            expression: TyExpressionVariant::Literal(
-                                crate::language::Literal::U64(17),
-                            ),
-                            return_type: never_type_id,
-                            span: Span::dummy(),
-                        }],
-                        type_arguments: vec![],
+        fn revert(never_type_id: TypeId, u64_type_id: TypeId) -> TyExpression {
+            TyExpression {
+                expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
+                    kind: sway_ast::Intrinsic::Revert,
+                    arguments: vec![TyExpression {
+                        expression: TyExpressionVariant::Literal(crate::language::Literal::U64(17)),
+                        return_type: u64_type_id,
                         span: Span::dummy(),
-                    }),
-                    return_type: never_type_id,
+                    }],
+                    type_arguments: vec![],
                     span: Span::dummy(),
                 }),
+                return_type: never_type_id,
                 span: Span::dummy(),
             }
         }
 
         let never_type_id = ctx.engines.te().insert(&ctx.engines, TypeInfo::Never, None);
+
+        let u64_type_id = ctx.engines.te().insert(
+            &ctx.engines,
+            TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
+            None,
+        );
 
         let branch_return_type_id = self
             .branches
@@ -152,16 +153,13 @@ impl ty::TyMatchExpression {
             .next()
             .unwrap();
 
-        let wildcard_ast_node = self
+        let wildcard_expr = self
             .branches
             .iter()
             .filter(|x| x.condition.is_none())
-            .map(|x| TyAstNode {
-                content: ty::TyAstNodeContent::Expression(x.result.clone()),
-                span: Span::dummy(),
-            })
+            .map(|x| x.result.clone())
             .next()
-            .unwrap_or_else(|| revert(never_type_id));
+            .unwrap_or_else(|| revert(never_type_id, u64_type_id));
 
         let branches = self
             .branches
@@ -237,7 +235,7 @@ impl ty::TyMatchExpression {
             s: &TyMatchExpression,
             matched_value: &TyExpression,
             packed_strings: &str,
-            addr_of_packed_strings: &TyExpression,
+            packed_strings_expr: &TyExpression,
             nodes: &[TrieNode],
             slice_pos: usize,
             current_node_index: usize,
@@ -246,21 +244,20 @@ impl ty::TyMatchExpression {
             u64_type_id: TypeId,
             branch_return_type_id: TypeId,
             depth: usize,
-            block_when_all_fail: TyAstNode,
-        ) -> TyAstNode {
+            block_when_all_fail: TyExpression,
+        ) -> TyExpression {
             let current = &nodes[current_node_index];
-            let mut contents = vec![];
 
             if let Some(output) = current.output {
                 assert!(current.next.len() == 0);
                 // println!("{}return {:?}", " ".repeat(depth * 4), output);
-                return TyAstNode {
-                    content: ty::TyAstNodeContent::Expression(s.branches[output].result.clone()),
-                    span: Span::dummy(),
-                };
+                let branch = &s.branches[output];
+                return branch.result.clone();
             }
 
-            for (prefix, next_node_index) in current.next.iter() {
+            let mut block = block_when_all_fail.clone();
+
+            for (prefix, next_node_index) in current.next.iter().rev() {
                 let start = current_node_index;
                 let end = current_node_index + prefix.len();
                 let eq_len: u64 = end as u64 - start as u64;
@@ -270,11 +267,11 @@ impl ty::TyMatchExpression {
                 //     prefix,
                 // );
 
-                let inner_node = generate_code(
+                let then_node = generate_code(
                     s,
                     matched_value,
                     packed_strings,
-                    addr_of_packed_strings,
+                    packed_strings_expr,
                     nodes,
                     end,
                     *next_node_index,
@@ -283,7 +280,7 @@ impl ty::TyMatchExpression {
                     u64_type_id,
                     branch_return_type_id,
                     depth + 1,
-                    revert(never_type_id),
+                    block_when_all_fail.clone(),
                 );
 
                 let prefix_pos = packed_strings
@@ -298,7 +295,7 @@ impl ty::TyMatchExpression {
                         },
                         TyAsmRegisterDeclaration {
                             name: Ident::new_no_span("prefix".into()),
-                            initializer: Some(addr_of_packed_strings.clone()),
+                            initializer: Some(packed_strings_expr.clone()),
                         },
                         TyAsmRegisterDeclaration {
                             name: Ident::new_no_span("slice_ptr".into()),
@@ -325,19 +322,37 @@ impl ty::TyMatchExpression {
                     ],
                     body: vec![
                         AsmOp {
-                            op_name: Ident::new_no_span("addi".into()),
+                            op_name: Ident::new_no_span("lw".into()),
                             op_args: vec![
                                 BaseIdent::new_no_span("slice_ptr".into()),
                                 BaseIdent::new_no_span("slice".into()),
                             ],
+                            immediate: Some(BaseIdent::new_no_span("i0".into())),
+                            span: Span::dummy(),
+                        },
+                        AsmOp {
+                            op_name: Ident::new_no_span("addi".into()),
+                            op_args: vec![
+                                BaseIdent::new_no_span("slice_ptr".into()),
+                                BaseIdent::new_no_span("slice_ptr".into()),
+                            ],
                             immediate: Some(BaseIdent::new_no_span(format!("i{}", slice_pos))),
+                            span: Span::dummy(),
+                        },
+                        AsmOp {
+                            op_name: Ident::new_no_span("lw".into()),
+                            op_args: vec![
+                                BaseIdent::new_no_span("prefix_ptr".into()),
+                                BaseIdent::new_no_span("prefix".into()),
+                            ],
+                            immediate: Some(BaseIdent::new_no_span("i0".into())),
                             span: Span::dummy(),
                         },
                         AsmOp {
                             op_name: Ident::new_no_span("addi".into()),
                             op_args: vec![
                                 BaseIdent::new_no_span("prefix_ptr".into()),
-                                BaseIdent::new_no_span("prefix".into()),
+                                BaseIdent::new_no_span("prefix_ptr".into()),
                             ],
                             immediate: Some(BaseIdent::new_no_span(format!("i{}", prefix_pos))),
                             span: Span::dummy(),
@@ -363,61 +378,28 @@ impl ty::TyMatchExpression {
                     whole_block_span: Span::dummy(),
                 };
 
-                let expr = TyExpression {
+                block = TyExpression {
                     expression: TyExpressionVariant::IfExp {
                         condition: Box::new(TyExpression {
                             expression,
                             return_type: bool_type_id,
                             span: Span::dummy(),
                         }),
-                        then: Box::new(TyExpression {
-                            expression: TyExpressionVariant::CodeBlock(ty::TyCodeBlock {
-                                contents: vec![inner_node],
-                                whole_block_span: Span::dummy(),
-                            }),
-                            return_type: branch_return_type_id,
-                            span: Span::dummy(),
-                        }),
-                        r#else: None,
+                        then: Box::new(then_node),
+                        r#else: Some(Box::new(block)),
                     },
                     return_type: branch_return_type_id,
                     span: Span::dummy(),
                 };
-
-                contents.push(TyAstNode {
-                    content: ty::TyAstNodeContent::Expression(expr),
-                    span: Span::dummy(),
-                });
             }
 
-            if current.output.is_none() {
-                contents.push(block_when_all_fail);
-            }
-
-            let block = TyExpression {
-                expression: TyExpressionVariant::CodeBlock(TyCodeBlock {
-                    contents,
-                    whole_block_span: Span::dummy(),
-                }),
-                return_type: branch_return_type_id,
-                span: Span::dummy(),
-            };
-            TyAstNode {
-                content: ty::TyAstNodeContent::Expression(block),
-                span: Span::dummy(),
-            }
+            block
         }
 
         let bool_type_id = ctx
             .engines
             .te()
             .insert(&ctx.engines, TypeInfo::Boolean, None);
-
-        let u64_type_id = ctx.engines.te().insert(
-            &ctx.engines,
-            TypeInfo::UnsignedInteger(sway_types::integer_bits::IntegerBits::SixtyFour),
-            None,
-        );
 
         let string_slice_type_id =
             ctx.engines
@@ -443,22 +425,12 @@ impl ty::TyMatchExpression {
             return_type: string_slice_type_id,
             span: Span::dummy(),
         };
-        let addr_of_packed_strings = TyExpression {
-            expression: TyExpressionVariant::IntrinsicFunction(TyIntrinsicFunctionKind {
-                kind: sway_ast::Intrinsic::AddrOf,
-                arguments: vec![packed_strings_expr],
-                type_arguments: vec![],
-                span: Span::dummy(),
-            }),
-            return_type: ptr_string_slice_type_id,
-            span: Span::dummy(),
-        };
 
         let expr = generate_code(
             self,
             matched_value,
             &packed_strings,
-            &addr_of_packed_strings,
+            &packed_strings_expr,
             &nodes,
             0,
             0,
@@ -467,18 +439,10 @@ impl ty::TyMatchExpression {
             u64_type_id,
             branch_return_type_id,
             0,
-            dbg!(wildcard_ast_node),
+            wildcard_expr,
         );
 
-        let block = TyCodeBlock {
-            contents: vec![expr],
-            whole_block_span: Span::dummy(),
-        };
-        Ok(TyExpression {
-            expression: TyExpressionVariant::CodeBlock(block),
-            return_type: self.return_type_id,
-            span: Span::dummy(),
-        })
+        Ok(expr)
     }
 
     fn desugar_to_typed_if_expression(
