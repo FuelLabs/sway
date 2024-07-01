@@ -7,6 +7,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "abi_encoding"
+source = "member"
+dependencies = [
+    "core",
+    "std",
+]
+
+[[package]]
 name = "array"
 source = "member"
 dependencies = [

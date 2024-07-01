@@ -3,6 +3,7 @@
 [workspace]
 members = [
   # "abi_supertraits",
+  "abi_encoding",
   "advanced_storage_variables",
   "arrays",
   "methods_and_associated_functions",
