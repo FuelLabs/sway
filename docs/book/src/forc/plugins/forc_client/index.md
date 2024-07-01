@@ -4,15 +4,15 @@ Forc plugin for interacting with a Fuel node. Since transactions are going to re
 
 We offer multiple ways to sign the transaction:
 
-  1. Sign the transaction via your local wallet using forc-client which integrates with our CLI wallet, forc-wallet.
+  1. Sign the transaction via your local wallet using `forc-client` which integrates with our CLI wallet, `forc-wallet`.
   2. Use the default signer to deploy to a local node
-  3. Use forc-wallet to manually sign transactions, and copy the signed transaction back to forc-client.
+  3. Use `forc-wallet` to manually sign transactions, and copy the signed transaction back to `forc-client`.
 
-The easiest and recommended way to interact with deployed networks such as our testnets is option 1, using forc-client to sign your transactions which reads your default forc-wallet vault. For interacting with local node, we recommend using the second option, which leads forc-client to sign transactions with the a private key that comes pre-funded in local environments.
+The easiest and recommended way to interact with deployed networks such as our testnets is option 1, using `forc-client` to sign your transactions which reads your default `forc-wallet` vault. For interacting with local node, we recommend using the second option, which leads `forc-client` to sign transactions with the a private key that comes pre-funded in local environments.
 
 ## Option 1: Sign transactions via forc-client using your local forc-wallet vault
 
-If you used forc-wallet before, a vault which securely holds your private key is created and written to your file-system in a password encrypted format. forc-client is compatible with forc-wallet such that it can read that vault by asking you your password and use your account to sign transactions.
+If you've used `forc-wallet` before, you'll already have a secure, password-protected vault holding your private key written to your file-system. `forc-client` is compatible with `forc-wallet` such that it can read that vault by asking you your password and use your account to sign transactions.
 
 Example:
 
@@ -160,7 +160,7 @@ enabled = true
 
 If there is no `address` field present under the proxy table, like the example above, forc automatically creates a proxy contract based on [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) implementation from [sway-standards](https://github.com/FuelLabs/sway-standards). After generating the proxy contract, the target is set to the current contract, and owner of the proxy is set to the account that is signing the transaction for deployment.
 
-This means that if you simply enable proxy in the `Forc.toml`, forc will automatically deploy a proxy contract for you and you do not need to make anything manually. After deploying the proxy contract the `address` of it is added into the `address` field of the proxy table.
+This means that if you simply enable proxy in the `Forc.toml`, forc will automatically deploy a proxy contract for you and you do not need to do anything manually aside from signing the deployment transactions for the proxy contract. After deploying the proxy contract, the its address is added into the `address` field of the proxy table.
 
 If you want to update the target of an [SRC-14](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-14-simple-upgradeable-proxies.md) compliant proxy contract rather than deploying a new one, simply add its `address` in the `address` field, like the following example:
 
@@ -177,4 +177,4 @@ enabled = true
 address = "0xd8c4b07a0d1be57b228f4c18ba7bca0c8655eb6e9d695f14080f2cf4fc7cd946" # example proxy contract address
 ```
 
-If an `address` is present, forc calls into that contract to update its target instead of deploying a new contract. Since a new proxy deployment adds its own `address` into the `Forc.toml` automatically, you can simply enable the proxy once and after the initial deployment, forc will keep updating the target accordingly for each new deployment of the same contract.
+If an `address` is present, `forc` calls into that contract to update its `target` instead of deploying a new contract. Since a new proxy deployment adds its own `address` into the `Forc.toml` automatically, you can simply enable the proxy once and after the initial deployment, `forc` will keep updating the target accordingly for each new deployment of the same contract.

@@ -130,7 +130,7 @@ async fn deploy_new_proxy(
     salt: Salt,
     wallet_mode: &WalletSelectionMode,
 ) -> Result<DeployedContract> {
-    println!("  {} proxy contract", "Creating".bold().green());
+    info!("  {} proxy contract", "Creating".bold().green());
     let user_addr = if *owner_account_address != Bech32Address::default() {
         anyhow::Ok(owner_account_address.clone())
     } else {
@@ -158,7 +158,7 @@ async fn deploy_new_proxy(
     let pkg_name = pkg.descriptor.manifest_file.project_name();
     let contract_addr = format!("0x{}", impl_contract.id);
     let proxy_contract = build_proxy_contract(&user_addr, &contract_addr, pkg_name, build_opts)?;
-    println!("   {} proxy contract", "Deploying".bold().green());
+    info!("   {} proxy contract", "Deploying".bold().green());
     let proxy = deploy_pkg(
         command,
         &pkg.descriptor.manifest_file,
@@ -262,8 +262,8 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 }
             };
             let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
-            println!(
-                "   {} contract: {}",
+            info!(
+                " {} contract: {}",
                 "Deploying".bold().green(),
                 &pkg.descriptor.name
             );
@@ -283,7 +283,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
                         // Create a contract instance for the proxy contract using default proxy contract abi and
                         // specified address.
-                        println!("   {} proxy contract", "Updating".bold().green());
+                        info!("   {} proxy contract", "Updating".bold().green());
                         let provider = Provider::connect(node_url.clone()).await?;
                         // TODO: once https://github.com/FuelLabs/sway/issues/6071 is closed, this will return just a result
                         // and we won't need to handle the manual prompt based signature case.
