@@ -33,8 +33,6 @@ pub enum TyExpressionVariant {
         type_binding: Option<TypeBinding<()>>,
         /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
         call_path_typeid: Option<TypeId>,
-        /// This tracks whether monomorphization has been deferred between compiler stages.
-        deferred_monomorphization: bool,
         contract_call_params: IndexMap<String, TyExpression>,
         contract_caller: Option<Box<TyExpression>>,
     },
@@ -447,7 +445,6 @@ impl HashWithEngines for TyExpressionVariant {
                 selector: _,
                 type_binding: _,
                 call_path_typeid: _,
-                deferred_monomorphization: _,
                 ..
             } => {
                 call_path.hash(state);
@@ -1123,15 +1120,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
         handler.scope(|handler| {
             match self {
                 TyExpressionVariant::Literal(_) => {}
-                TyExpressionVariant::FunctionApplication {
-                    arguments,
-                    deferred_monomorphization,
-                    ..
-                } => {
-                    // If the function application was deferred we need to monomorphize it here.
-                    // But at the moment monomorphization is fully resolved before type check finalization.
-                    assert!(!(*deferred_monomorphization));
-
+                TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
                         let _ = arg.type_check_finalize(handler, ctx);
                     }
