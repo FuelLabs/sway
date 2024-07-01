@@ -1,8 +1,3 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ops::ControlFlow,
-};
-
 use crate::{
     compiler_generated::INVALID_DESUGARED_MATCHED_EXPRESSION_SIGNAL,
     language::{
@@ -19,17 +14,22 @@ use crate::{
     },
     CompileError, TypeId, TypeInfo,
 };
-use itertools::Itertools;
+use std::{collections::BTreeMap, ops::ControlFlow};
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
-const RADIX_TREE_DEBUG: bool = false;
+// Enable this to see a pseudo-code printed to understand what is being generated.
+const RADIX_TREE_DEBUG: bool = true;
 
 #[derive(Default, Debug, Clone)]
 struct TrieNode {
     output: Option<usize>,
     previous: Option<usize>,
     next: BTreeMap<String, usize>,
+}
+
+struct Trie {
+    nodes: Vec<TrieNode>,
 }
 
 fn revert(never_type_id: TypeId, u64_type_id: TypeId) -> TyExpression {
@@ -156,6 +156,7 @@ impl ty::TyMatchExpression {
             .next()
             .unwrap();
 
+        // the block for the wildcard arm
         let wildcard_return_expr = self
             .branches
             .iter()
@@ -164,7 +165,8 @@ impl ty::TyMatchExpression {
             .next()
             .unwrap_or_else(|| revert(never_type_id, u64_type_id));
 
-        let branches = self
+        // All the match string slices, ignoring the wildcard
+        let match_arms_string_slices = self
             .branches
             .iter()
             .flat_map(|x| match &x.condition.as_ref().map(|x| &x.expression) {
@@ -180,7 +182,8 @@ impl ty::TyMatchExpression {
             })
             .collect::<Vec<_>>();
 
-        let branches_by_size = branches.iter().enumerate().fold(
+        // group match arms by size of the arm string slice
+        let match_arms_by_size = match_arms_string_slices.iter().enumerate().fold(
             BTreeMap::<usize, Vec<(String, usize)>>::new(),
             |mut map, (i, item)| {
                 map.entry(item.len()).or_default().push((item.clone(), i));
@@ -188,9 +191,36 @@ impl ty::TyMatchExpression {
             },
         );
 
-        let mut block = wildcard_return_expr.clone();
+        // create and compress all tries. One per arm size
+        let tries = match_arms_by_size
+            .values()
+            .map(|branches| self.generate_radix_trie(branches).unwrap())
+            .collect::<Vec<Trie>>();
 
-        for (k, branches) in branches_by_size {
+        // Navigate all valid nodes and collect string pieces.
+        // Then pack them starting from the biggest.
+        let mut string_pieces = tries
+            .iter()
+            .flat_map(|x| x.nodes.iter())
+            .flat_map(|x| x.next.keys().cloned())
+            .collect::<Vec<String>>();
+        string_pieces.sort_by(|l, r| l.len().cmp(&r.len()).reverse());
+        let packed_strings = string_pieces
+            .into_iter()
+            .fold(String::new(), |mut pack, item| {
+                if !pack.contains(&item) {
+                    pack.push_str(&item);
+                }
+                pack
+            });
+
+        if RADIX_TREE_DEBUG {
+            println!("let packed_string = {packed_strings:?}");
+        }
+
+        // Now create the outer expression checking the size of the string slice
+        let mut block = wildcard_return_expr.clone();
+        for ((k, _), trie) in match_arms_by_size.into_iter().zip(tries.into_iter()) {
             if RADIX_TREE_DEBUG {
                 println!("if str.len() == {k}");
             }
@@ -253,11 +283,12 @@ impl ty::TyMatchExpression {
             let then_node = self
                 .generate_radix_tree_checks(
                     ctx.by_ref(),
-                    &branches,
                     matched_value,
                     u64_type_id,
                     branch_return_type_id,
                     wildcard_return_expr.clone(),
+                    trie,
+                    &packed_strings,
                 )
                 .unwrap();
 
@@ -280,15 +311,7 @@ impl ty::TyMatchExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn generate_radix_tree_checks(
-        &self,
-        ctx: TypeCheckContext<'_>,
-        branches: &[(String, usize)],
-        matched_value: &TyExpression,
-        u64_type_id: TypeId,
-        branch_return_type_id: TypeId,
-        wildcard_return_expr: TyExpression,
-    ) -> Result<TyExpression, ErrorEmitted> {
+    fn generate_radix_trie(&self, branches: &[(String, usize)]) -> Result<Trie, ErrorEmitted> {
         let mut nodes = vec![TrieNode::default()];
 
         for (b, i) in branches.iter() {
@@ -309,8 +332,6 @@ impl ty::TyMatchExpression {
             nodes[current].output = Some(*i);
         }
 
-        let mut packed_strings = BTreeSet::new();
-
         // compress trie
         let mut q = vec![0];
         while let Some(i) = q.pop() {
@@ -328,21 +349,31 @@ impl ty::TyMatchExpression {
 
                     q.push(i);
                 } else {
-                    packed_strings.insert(edge.0.clone());
-
                     nodes[edge.1].previous = Some(i);
                     q.push(edge.1);
                 }
             } else {
-                for (prefix, v) in current.next.iter() {
-                    packed_strings.insert(prefix.clone());
-
+                for (_, v) in current.next.iter() {
                     nodes[*v].previous = Some(i);
                     q.push(*v);
                 }
             }
         }
 
+        Ok(Trie { nodes })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn generate_radix_tree_checks(
+        &self,
+        ctx: TypeCheckContext<'_>,
+        matched_value: &TyExpression,
+        u64_type_id: TypeId,
+        branch_return_type_id: TypeId,
+        wildcard_return_expr: TyExpression,
+        trie: Trie,
+        packed_strings: &str,
+    ) -> Result<TyExpression, ErrorEmitted> {
         //generate code
         let bool_type_id = ctx
             .engines
@@ -354,10 +385,9 @@ impl ty::TyMatchExpression {
                 .te()
                 .insert(ctx.engines, TypeInfo::StringSlice, None);
 
-        let packed_strings: String = packed_strings.iter().join("");
         let packed_strings_expr = TyExpression {
             expression: TyExpressionVariant::Literal(crate::language::Literal::String(
-                Span::from_string(packed_strings.clone()),
+                Span::from_string(packed_strings.to_string()),
             )),
             return_type: string_slice_type_id,
             span: Span::dummy(),
@@ -365,9 +395,9 @@ impl ty::TyMatchExpression {
 
         let expr = self.generate_radrix_tree_code(
             matched_value,
-            &packed_strings,
+            packed_strings,
             &packed_strings_expr,
-            &nodes,
+            &trie.nodes,
             0,
             0,
             bool_type_id,
@@ -415,11 +445,14 @@ impl ty::TyMatchExpression {
             let end = current_node_index + prefix.len();
             let eq_len: u64 = end as u64 - start as u64;
 
+            let prefix_pos = packed_strings
+                .find(prefix)
+                .expect("prefix should be inside this string");
+
             if RADIX_TREE_DEBUG {
                 println!(
-                    "{}if str[{start}..{end}] == \"{}\"",
+                    "{}if str[{start}..{end}] == \"{prefix}\" at packed_string[{prefix_pos}]",
                     " ".repeat(depth * 4),
-                    prefix,
                 );
             }
 
