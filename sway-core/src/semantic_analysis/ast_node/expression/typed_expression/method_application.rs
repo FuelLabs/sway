@@ -109,26 +109,24 @@ pub(crate) fn type_check_method_application(
         if let (Some(arg), false) = arg_opt {
             args_buf.push_back(arg);
         } else {
+            // We type check the argument expression again this time throwing out the error.
             let param_index = if method.is_contract_call {
                 index - 1 //contract call methods don't have self parameter.
             } else {
                 index
             };
-            // This arg_opt is None because it failed in the first pass.
-            // We now try to type check it again, this time with the type annotation.
-            let ctx = ctx
-                .by_ref()
-                .with_help_text(
-                    "Function application argument type must match function parameter type.",
-                )
-                .with_type_annotation(
-                    method
-                        .parameters
-                        .get(param_index)
-                        .unwrap()
-                        .type_argument
-                        .type_id,
-                );
+            let ctx = if let Some(param) = method.parameters.get(param_index) {
+                // We now try to type check it again, this time with the type annotation.
+                ctx.by_ref()
+                    .with_help_text(
+                        "Function application argument type must match function parameter type.",
+                    )
+                    .with_type_annotation(param.type_argument.type_id)
+            } else {
+                ctx.by_ref()
+                    .with_help_text("")
+                    .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
+            };
             args_buf.push_back(
                 ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
