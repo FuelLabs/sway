@@ -28,6 +28,7 @@ use forc_wallet::{
     new::{new_wallet_cli, New},
     utils::default_wallet_path,
 };
+use tracing::info;
 
 use crate::util::target::Target;
 
@@ -273,9 +274,9 @@ pub(crate) async fn update_proxy_contract_target(
         .set_proxy_target(new_target)
         .call()
         .await?;
-    println!(
-        "  0x{} proxy contract's target to {}",
-        "Updated".green(),
+    info!(
+        "  {} proxy contract's target to 0x{}",
+        "Updated".bold().green(),
         new_target
     );
     Ok(())

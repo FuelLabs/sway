@@ -231,7 +231,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
-    println!("  {} deployment", "Starting".bold().green());
+    info!("  {} deployment", "Starting".bold().green());
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
         WalletSelectionMode::Manual
     } else {
@@ -263,7 +263,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             };
             let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
             info!(
-                " {} contract: {}",
+                "  {} contract: {}",
                 "Deploying".bold().green(),
                 &pkg.descriptor.name
             );
@@ -283,7 +283,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
                         // Create a contract instance for the proxy contract using default proxy contract abi and
                         // specified address.
-                        info!("   {} proxy contract", "Updating".bold().green());
+                        info!("  {} proxy contract", "Updating".bold().green());
                         let provider = Provider::connect(node_url.clone()).await?;
                         // TODO: once https://github.com/FuelLabs/sway/issues/6071 is closed, this will return just a result
                         // and we won't need to handle the manual prompt based signature case.
@@ -398,11 +398,10 @@ pub async fn deploy_pkg(
             }
             TransactionStatus::Success { block_height, .. } => {
                 let pkg_name = manifest.project_name();
-                info!("\n\nContract {pkg_name} Deployed!");
-
-                info!("\nNetwork: {node_url}");
-                info!("Contract ID: 0x{contract_id}");
-                info!("Deployed in block {}", &block_height);
+                info!("\n\n  {} {pkg_name}!", "Deployed".bold().green());
+                info!("  {}: {node_url}", "Network".bold().green());
+                info!("  {}: 0x{contract_id}", "Contract ID".bold().green());
+                info!("  {}: {}\n", "Block".bold().green(), &block_height);
 
                 // Create a deployment artifact.
                 let deployment_size = bytecode.len();
