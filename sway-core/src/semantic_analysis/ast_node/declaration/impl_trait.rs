@@ -459,11 +459,6 @@ impl TyImplTrait {
                         IsExtendingExistingImpl::No,
                     )?;
 
-                    // Now lets do a partial type check of the body of the functions (while deferring full
-                    // monomorphization of function applications). We will use this tree to perform type check
-                    // analysis (mainly dependency analysis), and re-type check the items ordered by dependency.
-                    let mut defer_ctx = ctx.by_ref().with_defer_monomorphization();
-
                     let new_items = &impl_trait.items;
                     for (item, new_item) in items.clone().into_iter().zip(new_items) {
                         match (item, new_item) {
@@ -473,7 +468,7 @@ impl TyImplTrait {
                                     (*decl_engine.get_function(decl_ref.id())).clone();
                                 let new_ty_fn_decl = match ty::TyFunctionDecl::type_check_body(
                                     handler,
-                                    defer_ctx.by_ref(),
+                                    ctx.by_ref(),
                                     &fn_decl,
                                     &mut ty_fn_decl,
                                 ) {

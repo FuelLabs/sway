@@ -128,7 +128,6 @@ impl ty::TyExpression {
                 selector: None,
                 type_binding: None,
                 call_path_typeid: None,
-                deferred_monomorphization: false,
                 contract_call_params: IndexMap::new(),
                 contract_caller: None,
             },
