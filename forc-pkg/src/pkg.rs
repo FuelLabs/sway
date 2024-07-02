@@ -9,7 +9,7 @@ use crate::{
     BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
-use forc_tracing::println_warning;
+use forc_tracing::{println_action_green, println_warning};
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
@@ -497,7 +497,7 @@ impl BuiltPackage {
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify)?;
 
-        info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
+        debug!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -531,7 +531,7 @@ impl BuiltPackage {
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
-                info!("      Bytecode hash: {}", bytecode_hash);
+                debug!("      Bytecode hash: {}", bytecode_hash);
             }
             _ => (),
         }
@@ -2171,11 +2171,13 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
 
-    let finished = ansi_term::Colour::Green.bold().paint("Finished");
-    info!(
-        "  {finished} {} in {:.2}s",
-        profile_target_string(&build_profile.name, build_target),
-        build_start.elapsed().as_secs_f32()
+    println_action_green(
+        "Finished",
+        &format!(
+            "{} in {:.2}s",
+            profile_target_string(&build_profile.name, build_target),
+            build_start.elapsed().as_secs_f32()
+        ),
     );
     for (node_ix, built_package) in built_packages {
         print_pkg_summary_header(&built_package);

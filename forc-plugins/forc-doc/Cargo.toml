@@ -11,9 +11,9 @@ repository.workspace = true
 [dependencies]
 anyhow = "1.0.65"
 clap = { version = "4.5.4", features = ["derive"] }
-colored = "2.0.0"
 comrak = "0.16"
 forc-pkg = { version = "0.61.0", path = "../../forc-pkg" }
+forc-tracing = { version = "0.61.0", path = "../../forc-tracing" }
 forc-util = { version = "0.61.0", path = "../../forc-util" }
 horrorshow = "0.8.4"
 include_dir = "0.7.3"

@@ -2081,11 +2081,11 @@ version = "0.61.0"
 dependencies = [
  "anyhow",
  "clap 4.5.7",
- "colored",
  "comrak",
  "dir_indexer",
  "expect-test",
  "forc-pkg",
+ "forc-tracing 0.61.0",
  "forc-util",
  "horrorshow",
  "include_dir",
@@ -2198,6 +2198,7 @@ dependencies = [
  "ansi_term",
  "tracing",
  "tracing-subscriber",
+ "tracing-test",
 ]
 
 [[package]]
@@ -7495,6 +7496,27 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
+]
+
+[[package]]
+name = "tracing-test"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "557b891436fe0d5e0e363427fc7f217abf9ccd510d5136549847bdcbcd011d68"
+dependencies = [
+ "tracing-core",
+ "tracing-subscriber",
+ "tracing-test-macro",
+]
+
+[[package]]
+name = "tracing-test-macro"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04659ddb06c87d233c566112c1c9c5b9e98256d9af50ec3bc9c8327f873a7568"
+dependencies = [
+ "quote",
+ "syn 2.0.66",
 ]
 
 [[package]]
