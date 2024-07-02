@@ -123,7 +123,6 @@ pub(crate) fn instantiate_function_application(
             selector: None,
             type_binding: Some(call_path_binding.strip_inner()),
             call_path_typeid: None,
-            deferred_monomorphization: false,
             contract_call_params: IndexMap::new(),
             contract_caller: None,
         },
