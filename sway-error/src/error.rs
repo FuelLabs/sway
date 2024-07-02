@@ -808,7 +808,7 @@ pub enum CompileError {
     #[error("Storage field \"{field_name}\" does not exist.")]
     StorageFieldDoesNotExist {
         field_name: IdentUnique,
-        available_fields: Vec<Ident>,
+        available_fields: Vec<(Vec<Ident>, Ident)>,
         storage_decl_span: Span,
     },
     #[error("No storage has been declared")]
@@ -1944,9 +1944,17 @@ impl ToDiagnostic for CompileError {
                         ("The storage is empty. It doesn't have any fields.".to_string(), false)
                     } else {
                         const NUM_OF_FIELDS_TO_DISPLAY: usize = 4;
-                        match &available_fields[..] {
+                        let display_fields = available_fields.iter().map(|(path, field_name)| {
+                            let path = path.iter().map(ToString::to_string).collect::<Vec<_>>().join("::");
+                            if path.is_empty() {
+                                format!("storage.{field_name}")
+                            } else {
+                                format!("storage::{path}.{field_name}")
+                            }
+                        }).collect::<Vec<_>>();
+                        match &display_fields[..] {
                             [field] => (format!("Only available storage field is \"{field}\"."), false),
-                            _ => (format!("Available storage fields are {}.", sequence_to_str(available_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
+                            _ => (format!("Available storage fields are {}.", sequence_to_str(&display_fields, Enclosing::DoubleQuote, NUM_OF_FIELDS_TO_DISPLAY)),
                                     available_fields.len() > NUM_OF_FIELDS_TO_DISPLAY
                                 ),
                         }
