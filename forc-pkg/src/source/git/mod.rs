@@ -6,6 +6,7 @@ use crate::{
     source,
 };
 use anyhow::{anyhow, bail, Context, Result};
+use forc_tracing::println_action;
 use forc_util::git_checkouts_directory;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
@@ -15,7 +16,6 @@ use std::{
     path::{Path, PathBuf},
     str::FromStr,
 };
-use tracing::info;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 pub struct Url {
@@ -204,11 +204,13 @@ impl source::Fetch for Pinned {
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {
-                info!(
-                    "  {} {} {}",
-                    ansi_term::Color::Green.bold().paint("Fetching"),
-                    ansi_term::Style::new().bold().paint(ctx.name),
-                    self
+                println_action(
+                    "Fetching",
+                    &format!(
+                        "{} {}",
+                        ansi_term::Style::new().bold().paint(ctx.name),
+                        self
+                    ),
                 );
                 fetch(ctx.fetch_id(), ctx.name(), self)?;
             }

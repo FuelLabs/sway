@@ -1,5 +1,6 @@
 use crate::{pkg, source, DepKind, Edge};
 use anyhow::{anyhow, Result};
+use forc_tracing::println_action;
 use petgraph::{visit::EdgeRef, Direction};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -370,10 +371,9 @@ where
                 true => format!(" {}", pkg.source),
                 false => "".to_string(),
             };
-            tracing::info!(
-                "    {} {}{src}",
-                ansi_term::Colour::Green.bold().paint("Adding"),
-                ansi_term::Style::new().bold().paint(&pkg.name)
+            println_action(
+                "Adding",
+                &format!("{}{src}", ansi_term::Style::new().bold().paint(&pkg.name)),
             );
         }
     }

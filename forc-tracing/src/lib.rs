@@ -9,6 +9,18 @@ use tracing_subscriber::{
     fmt::MakeWriter,
 };
 
+const ACTION_COLUMN_WIDTH: usize = 12;
+
+/// Prints an action message with a green-bold prefix like "   Compiling ".
+pub fn println_action(action: &str, txt: &str) {
+    let spacing = if action.len() < ACTION_COLUMN_WIDTH {
+        " ".repeat(ACTION_COLUMN_WIDTH - action.len())
+    } else {
+        "".to_string()
+    };
+    tracing::info!("{}{} {}", spacing, Colour::Green.bold().paint(action), txt);
+}
+
 /// Prints a warning message to stdout with the yellow prefix "warning: ".
 pub fn println_warning(txt: &str) {
     tracing::warn!("{}: {}", Colour::Yellow.paint("warning"), txt);
@@ -146,5 +158,21 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         builder.with_max_level(level_filter).init();
     } else {
         builder.init();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tracing_test::traced_test;
+
+    #[traced_test]
+    #[test]
+    fn test_println_action() {
+        let txt = "main.sw";
+        println_action("Compiling", txt);
+
+        let expected_action = "\x1b[1;32mCompiling\x1b[0m";
+        assert!(logs_contain(&format!("    {} {}", expected_action, txt)));
     }
 }

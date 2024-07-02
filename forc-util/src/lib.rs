@@ -3,9 +3,8 @@ use annotate_snippets::{
     renderer::{AnsiColor, Style},
     Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation,
 };
-use ansi_term::Colour;
 use anyhow::{bail, Context, Result};
-use forc_tracing::{println_error, println_red_err, println_yellow_err};
+use forc_tracing::{println_action, println_error, println_red_err, println_yellow_err};
 use std::{
     collections::{hash_map, HashSet},
     fmt::Display,
@@ -346,10 +345,9 @@ pub fn print_compiling(ty: Option<&TreeType>, name: &str, src: &dyn std::fmt::Di
         Some(ty) => format!("{} ", program_type_str(ty)),
         None => "".to_string(),
     };
-    tracing::debug!(
-        " {} {ty}{} ({src})",
-        Colour::Green.bold().paint("Compiling"),
-        ansi_term::Style::new().bold().paint(name)
+    println_action(
+        "Compiling",
+        &format!("{ty}{} ({src})", ansi_term::Style::new().bold().paint(name)),
     );
 }
 

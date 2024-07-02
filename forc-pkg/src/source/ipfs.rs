@@ -4,6 +4,7 @@ use crate::{
     source,
 };
 use anyhow::Result;
+use forc_tracing::println_action;
 use futures::TryStreamExt;
 use ipfs_api::IpfsApi;
 use ipfs_api_backend_hyper as ipfs_api;
@@ -14,7 +15,6 @@ use std::{
     str::FromStr,
 };
 use tar::Archive;
-use tracing::info;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Cid(cid::Cid);
@@ -67,11 +67,13 @@ impl source::Fetch for Pinned {
         {
             let _guard = lock.write()?;
             if !repo_path.exists() {
-                info!(
-                    "  {} {} {}",
-                    ansi_term::Color::Green.bold().paint("Fetching"),
-                    ansi_term::Style::new().bold().paint(ctx.name),
-                    self
+                println_action(
+                    "Fetching",
+                    &format!(
+                        "{} {}",
+                        ansi_term::Style::new().bold().paint(ctx.name),
+                        self
+                    ),
                 );
                 let cid = &self.0;
                 let ipfs_client = ipfs_client();
@@ -79,17 +81,16 @@ impl source::Fetch for Pinned {
                 futures::executor::block_on(async {
                     match ctx.ipfs_node() {
                         source::IPFSNode::Local => {
-                            info!(
-                                "   {} with local IPFS node",
-                                ansi_term::Color::Green.bold().paint("Fetching")
-                            );
+                            println_action("Fetching", "with local IPFS node");
                             cid.fetch_with_client(&ipfs_client, &dest).await
                         }
                         source::IPFSNode::WithUrl(ipfs_node_gateway_url) => {
-                            info!(
-                                "   {} from {}. Note: This can take several minutes.",
-                                ansi_term::Color::Green.bold().paint("Fetching"),
-                                ipfs_node_gateway_url
+                            println_action(
+                                "Fetching",
+                                &format!(
+                                    "from {}. Note: This can take several minutes.",
+                                    ipfs_node_gateway_url
+                                ),
                             );
                             cid.fetch_with_gateway_url(ipfs_node_gateway_url, &dest)
                                 .await
