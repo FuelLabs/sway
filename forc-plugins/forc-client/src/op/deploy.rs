@@ -38,7 +38,7 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tracing::info;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
 }
@@ -436,7 +436,7 @@ pub async fn deploy_pkg(
         },
         Err(e) => bail!("{e}"),
     });
-
+    println!("here");
     // submit contract deployment with a timeout
     let contract_id = tokio::time::timeout(
         Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
