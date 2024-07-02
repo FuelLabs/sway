@@ -17,6 +17,7 @@ impl Eq for TestStruct {
 storage {
     storage_vec_u64: StorageVec<u64> = StorageVec {},
     storage_vec_struct: StorageVec<TestStruct> = StorageVec {},
+    storage_vec_u8: StorageVec<u8> = StorageVec {},
 }
 
 abi VecToVecStorageTest {
@@ -36,6 +37,14 @@ abi VecToVecStorageTest {
     fn push_vec_struct(val: TestStruct);
     #[storage(read, write)]
     fn pop_vec_struct() -> TestStruct;
+    #[storage(read, write)]
+    fn store_vec_u8(vec: Vec<u8>);
+    #[storage(read)]
+    fn read_vec_u8() -> Vec<u8>;
+    #[storage(read, write)]
+    fn push_vec_u8(val: u8);
+    #[storage(read, write)]
+    fn pop_vec_u8() -> u8;
 }
 
 impl VecToVecStorageTest for Contract {
@@ -81,5 +90,25 @@ impl VecToVecStorageTest for Contract {
             val2: 0,
             val3: 0,
         })
+    }
+
+    #[storage(read, write)]
+    fn store_vec_u8(vec: Vec<u8>) {
+        storage.storage_vec_u8.store_vec(vec);
+    }
+
+    #[storage(read)]
+    fn read_vec_u8() -> Vec<u8> {
+        storage.storage_vec_u8.load_vec()
+    }
+
+    #[storage(read, write)]
+    fn push_vec_u8(val: u8) {
+        storage.storage_vec_u8.push(val);
+    }
+
+    #[storage(read, write)]
+    fn pop_vec_u8() -> u8 {
+        storage.storage_vec_u8.pop().unwrap_or(0)
     }
 }
