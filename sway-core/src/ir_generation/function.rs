@@ -1717,6 +1717,224 @@ impl<'eng> FnCompiler<'eng> {
                     Ok(increase_len(&mut s.current_block, context, len, 8 - offset))
                 }
 
+                fn grow_if_needed(
+                    s: &mut FnCompiler<'_>,
+                    context: &mut Context,
+                    ptr: Value,
+                    cap: Value,
+                    len: Value,
+                    needed_size: Value,
+                ) -> (Value, Value) {
+                    assert!(ptr.get_type(context).unwrap().is_ptr(context));
+                    assert!(cap.get_type(context).unwrap().is_uint64(context));
+
+                    let ptr_u8 = Type::new_ptr(context, Type::get_uint8(context));
+
+                    // merge block has two arguments: ptr, cap
+                    let merge_block = s.function.create_block(context, None);
+                    let merge_block_ptr = Value::new_argument(
+                        context,
+                        BlockArgument {
+                            block: merge_block,
+                            idx: 0,
+                            ty: ptr_u8,
+                        },
+                    );
+                    merge_block.add_arg(context, merge_block_ptr);
+                    let merge_block_cap = Value::new_argument(
+                        context,
+                        BlockArgument {
+                            block: merge_block,
+                            idx: 1,
+                            ty: Type::get_uint64(context),
+                        },
+                    );
+                    merge_block.add_arg(context, merge_block_cap);
+
+                    let true_block_begin = s.function.create_block(context, None);
+                    let false_block_begin = s.function.create_block(context, None);
+
+                    // if len + needed_size > cap
+                    let needed_cap = s.current_block.append(context).binary_op(
+                        BinaryOpKind::Add,
+                        len,
+                        needed_size,
+                    );
+                    let needs_realloc = s.current_block.append(context).cmp(
+                        Predicate::GreaterThan,
+                        needed_cap,
+                        cap,
+                    );
+                    s.current_block.append(context).conditional_branch(
+                        needs_realloc,
+                        true_block_begin,
+                        false_block_begin,
+                        vec![],
+                        vec![],
+                    );
+
+                    // needs realloc block
+                    // new_cap = cap * 2
+                    // aloc new_cap
+                    // mcp hp old_ptr len
+                    // hp: ptr u8
+                    s.current_block = true_block_begin;
+                    let u8 = Type::get_uint8(context);
+                    let ptr_u8 = Type::new_ptr(context, u8);
+
+                    let two = Constant::new_uint(context, 64, 2);
+                    let two = Value::new_constant(context, two);
+                    let new_cap =
+                        s.current_block
+                            .append(context)
+                            .binary_op(BinaryOpKind::Mul, cap, two);
+
+                    let new_ptr = s.current_block.append(context).asm_block(
+                        vec![
+                            AsmArg {
+                                name: Ident::new_no_span("new_cap".into()),
+                                initializer: Some(new_cap),
+                            },
+                            AsmArg {
+                                name: Ident::new_no_span("old_ptr".into()),
+                                initializer: Some(ptr),
+                            },
+                            AsmArg {
+                                name: Ident::new_no_span("len".into()),
+                                initializer: Some(len),
+                            },
+                        ],
+                        vec![
+                            AsmInstruction {
+                                op_name: Ident::new_no_span("aloc".into()),
+                                args: vec![Ident::new_no_span("new_cap".into())],
+                                immediate: None,
+                                metadata: None,
+                            },
+                            AsmInstruction {
+                                op_name: Ident::new_no_span("mcp".into()),
+                                args: vec![
+                                    Ident::new_no_span("hp".into()),
+                                    Ident::new_no_span("old_ptr".into()),
+                                    Ident::new_no_span("len".into()),
+                                ],
+                                immediate: None,
+                                metadata: None,
+                            },
+                        ],
+                        ptr_u8,
+                        Some(Ident::new_no_span("hp".into())),
+                    );
+
+                    s.current_block
+                        .append(context)
+                        .branch(merge_block, vec![new_ptr, new_cap]);
+
+                    // dont need realloc block
+                    s.current_block = false_block_begin;
+                    s.current_block
+                        .append(context)
+                        .branch(merge_block, vec![ptr, cap]);
+
+                    s.current_block = merge_block;
+
+                    assert!(merge_block_ptr.get_type(context).unwrap().is_ptr(context));
+                    assert!(merge_block_cap
+                        .get_type(context)
+                        .unwrap()
+                        .is_uint64(context));
+
+                    (merge_block_ptr, merge_block_cap)
+                }
+
+                fn to_constant(
+                    _s: &mut FnCompiler<'_>,
+                    context: &mut Context,
+                    needed_size: u64,
+                ) -> Value {
+                    let needed_size = Constant::new_uint(context, 64, needed_size);
+                    Value::new_constant(context, needed_size)
+                }
+
+                // Grow the buffer if needed
+                let (ptr, cap) = match &*item_type {
+                    TypeInfo::Boolean => {
+                        let needed_size = to_constant(self, context, 1);
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    TypeInfo::UnsignedInteger(IntegerBits::Eight) => {
+                        let needed_size = to_constant(self, context, 1);
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    TypeInfo::UnsignedInteger(IntegerBits::Sixteen) => {
+                        let needed_size = to_constant(self, context, 2);
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo) => {
+                        let needed_size = to_constant(self, context, 4);
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour) => {
+                        let needed_size = to_constant(self, context, 8);
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    TypeInfo::UnsignedInteger(IntegerBits::V256) | TypeInfo::B256 => {
+                        let needed_size = to_constant(self, context, 32);
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    TypeInfo::StringArray(string_len) => {
+                        let needed_size = to_constant(self, context, string_len.val() as u64);
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    TypeInfo::StringSlice | TypeInfo::RawUntypedSlice => {
+                        let uint64 = Type::get_uint64(context);
+                        let u64_u64_type = Type::new_struct(context, vec![uint64, uint64]);
+
+                        // convert "item" to { u64, u64 }
+                        let item = self.current_block.append(context).asm_block(
+                            vec![AsmArg {
+                                name: Ident::new_no_span("item".into()),
+                                initializer: Some(item),
+                            }],
+                            vec![],
+                            u64_u64_type,
+                            Some(Ident::new_no_span("item".into())),
+                        );
+
+                        // save item to local _anon
+                        let name = self.lexical_map.insert_anon();
+                        let item_local = self
+                            .function
+                            .new_local_var(context, name, u64_u64_type, None, false)
+                            .map_err(|ir_error| {
+                                CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
+                            })?;
+                        let ptr_to_local_item =
+                            self.current_block.append(context).get_local(item_local);
+                        self.current_block
+                            .append(context)
+                            .store(ptr_to_local_item, item);
+
+                        // _anon.1 = len
+                        let needed_size = self.current_block.append(context).get_elem_ptr_with_idx(
+                            ptr_to_local_item,
+                            uint64,
+                            1,
+                        );
+                        let needed_size = self.current_block.append(context).load(needed_size);
+                        let eight = to_constant(self, context, 8);
+                        let needed_size = self.current_block.append(context).binary_op(
+                            BinaryOpKind::Add,
+                            needed_size,
+                            eight,
+                        );
+
+                        grow_if_needed(self, context, ptr, cap, len, needed_size)
+                    }
+                    _ => return Err(CompileError::EncodingUnsupportedType { span: item_span }),
+                };
+
+                // Append the value into the buffer
                 let new_len = match &*item_type {
                     TypeInfo::Boolean => {
                         assert!(item.get_type(context).unwrap().is_bool(context));

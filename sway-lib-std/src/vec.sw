@@ -131,14 +131,16 @@ impl<T> RawVec<T> {
 
 impl<T> From<raw_slice> for RawVec<T> {
     fn from(slice: raw_slice) -> Self {
-        Self {
-            ptr: slice.ptr(),
-            cap: slice.len::<T>(),
+        let cap = slice.len::<T>();
+        let ptr = alloc::<T>(cap);
+        if cap > 0 {
+            slice.ptr().copy_to::<T>(ptr, cap);
         }
+        Self { ptr, cap }
     }
 }
 
-/// A contiguous growable array type, written as `Vec<T>`, short for 'vector'.
+/// A contiguous growable array type, written as `Vec<T>`, short for 'vector'. It has ownership over its buffer.
 pub struct Vec<T> {
     buf: RawVec<T>,
     len: u64,
@@ -701,4 +703,28 @@ impl<T> Iterator for VecIter<T> {
         self.index += 1;
         self.values.get(self.index - 1)
     }
+}
+
+#[test]
+fn ok_vec_buffer_ownership() {
+    let mut original_array = [1u8, 2u8, 3u8, 4u8];
+    let slice = raw_slice::from_parts::<u8>(__addr_of(original_array), 4);
+
+    // Check Vec duplicates the original slice
+    let mut bytes = Vec::<u8>::from(slice);
+    bytes.set(0, 5);
+    assert(original_array[0] == 1);
+
+    // At this point, slice equals [5, 2, 3, 4]
+    let encoded_slice = encode(bytes);
+
+    // `Vec<u8>` should duplicate the underlying buffer,
+    // so when we write to it, it should not change
+    // `encoded_slice` 
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    bytes.set(0, 6);
+    assert(bytes.get(0) == Some(6));
+
+    let mut bytes = abi_decode::<Vec<u8>>(encoded_slice);
+    assert(bytes.get(0) == Some(5));
 }
