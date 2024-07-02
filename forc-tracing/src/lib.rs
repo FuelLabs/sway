@@ -11,24 +11,33 @@ use tracing_subscriber::{
 
 const ACTION_COLUMN_WIDTH: usize = 12;
 
-/// Prints an action message with a green-bold prefix like "   Compiling ".
-pub fn println_action_green(action: &str, txt: &str) {
-    let spacing = if action.len() < ACTION_COLUMN_WIDTH {
+/// Returns the indentation for the action prefix relative to [ACTION_COLUMN_WIDTH].
+fn get_action_indentation(action: &str) -> String {
+    if action.len() < ACTION_COLUMN_WIDTH {
         " ".repeat(ACTION_COLUMN_WIDTH - action.len())
     } else {
         "".to_string()
-    };
-    tracing::info!("{}{} {}", spacing, Colour::Green.bold().paint(action), txt);
+    }
+}
+
+/// Prints an action message with a green-bold prefix like "   Compiling ".
+pub fn println_action_green(action: &str, txt: &str) {
+    tracing::info!(
+        "{}{} {}",
+        get_action_indentation(action),
+        Colour::Green.bold().paint(action),
+        txt
+    );
 }
 
 /// Prints an action message with a red-bold prefix like "   Removing ".
 pub fn println_action_red(action: &str, txt: &str) {
-    let spacing = if action.len() < ACTION_COLUMN_WIDTH {
-        " ".repeat(ACTION_COLUMN_WIDTH - action.len())
-    } else {
-        "".to_string()
-    };
-    tracing::info!("{}{} {}", spacing, Colour::Red.bold().paint(action), txt);
+    tracing::info!(
+        "{}{} {}",
+        get_action_indentation(action),
+        Colour::Red.bold().paint(action),
+        txt
+    );
 }
 
 /// Prints a warning message to stdout with the yellow prefix "warning: ".
@@ -188,11 +197,21 @@ mod tests {
 
     #[traced_test]
     #[test]
+    fn test_println_action_green_long() {
+        let txt = "main.sw";
+        println_action_green("Supercalifragilistic", txt);
+
+        let expected_action = "\x1b[1;32mSupercalifragilistic\x1b[0m";
+        assert!(logs_contain(&format!("{} {}", expected_action, txt)));
+    }
+
+    #[traced_test]
+    #[test]
     fn test_println_action_red() {
         let txt = "main";
         println_action_red("Removing", txt);
 
-        let expected_action = "\x1b[1;32mRemoving\x1b[0m";
+        let expected_action = "\x1b[1;31mRemoving\x1b[0m";
         assert!(logs_contain(&format!("     {} {}", expected_action, txt)));
     }
 }
