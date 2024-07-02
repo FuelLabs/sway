@@ -1,0 +1,129 @@
+category = "fail"
+
+#check: $()error
+#check: $()Could not find symbol "Items1_Struct" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items1_Struct"
+
+#check: $()error
+#check: $()Could not find symbol "Items1_Enum" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items1_Enum".
+
+#check: $()error
+#check: $()Could not find symbol "X" in this scope.
+
+#check: $()error
+#check: $()Could not find symbol "Y" in this scope.
+
+#check: $()error
+#check: $()Could not find symbol "items_1_function" in this scope.
+
+#check: $()error
+#check: $()Could not find symbol "Items1Trait" in this scope.
+
+#check: $()error
+#check: $()Trait "Items1Trait" cannot be found in the current scope.
+
+#check: $()error
+#check: $()Could not find symbol "Items2_Struct" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items2_Struct".
+
+#check: $()error
+#check: $()Could not find symbol "Items2_Enum" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items2_Enum".
+
+#check: $()error
+#check: $()Could not find symbol "Items2_Variants" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items2_Variants".
+
+#check: $()error
+#check: $()Could not find symbol "items_2_function" in this scope.
+
+#check: $()error
+#check: $()Could not find symbol "Items2Trait" in this scope.
+
+#check: $()error
+#check: $()Trait "Items2Trait" cannot be found in the current scope.
+
+#check: $()error
+#check: $()Could not find symbol "Items1_Struct" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items1_Struct".
+
+#check: $()error
+#check: $()Could not find symbol "project_items_1_struct" in this scope.
+
+#check: $()error
+#check: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()Could not find symbol "Items1_Enum" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items1_Enum".
+
+#check: $()error
+#check: $()Could not find symbol "project_items_1_enum" in this scope.
+
+#check: $()error
+#check: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()Could not find symbol "X" in this scope.
+
+#check: $()error
+#check: $()Variable "ITEMS_1_FUNCTION_RES" does not exist in this scope.
+
+#check: $()error
+#check: $()No method named "items_1_trait_function" found for type "TestStruct1".
+
+#check: $()error
+#check: $()Could not find symbol "Items2_Struct" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items2_Struct".
+
+#check: $()error
+#check: $()Could not find symbol "project_items_2_struct" in this scope.
+
+#check: $()error
+#check: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()Could not find symbol "Items2_Enum" in this scope.
+
+#check: $()error
+#check: $()Unknown type name "Items2_Enum".
+
+#check: $()error
+#check: $()Could not find symbol "project_items_2_enum" in this scope.
+
+#check: $()error
+#check: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()Could not find symbol "O" in this scope.
+
+#check: $()error
+#check: $()Could not find symbol "project_items_2_variants" in this scope.
+
+#check: $()error
+#check: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()Variable "ITEMS_2_FUNCTION_RES" does not exist in this scope.
+
+#check: $()error
+#check: $()No method named "items_2_trait_function" found for type "TestStruct1".
+
+#check: $()Aborting due to 42 errors.

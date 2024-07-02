@@ -1,0 +1,76 @@
+[[package]]
+name = "core"
+source = "path+from-root-43D7B7046829C73F"
+
+[[package]]
+name = "ext_1_items"
+source = "member"
+
+[[package]]
+name = "ext_1_lib"
+source = "member"
+dependencies = ["ext_1_items"]
+
+[[package]]
+name = "ext_2_items"
+source = "member"
+
+[[package]]
+name = "ext_2_lib"
+source = "member"
+dependencies = ["ext_2_items"]
+
+[[package]]
+name = "ext_3_items"
+source = "member"
+
+[[package]]
+name = "ext_3_lib"
+source = "member"
+dependencies = ["ext_3_items"]
+
+[[package]]
+name = "ext_4_items"
+source = "member"
+
+[[package]]
+name = "ext_4_lib"
+source = "member"
+dependencies = ["ext_4_items"]
+
+[[package]]
+name = "ext_5_1_lib"
+source = "member"
+dependencies = ["ext_5_items"]
+
+[[package]]
+name = "ext_5_2_lib"
+source = "member"
+dependencies = ["ext_5_items"]
+
+[[package]]
+name = "ext_5_items"
+source = "member"
+
+[[package]]
+name = "program"
+source = "member"
+dependencies = [
+    "ext_1_items",
+    "ext_1_lib",
+    "ext_2_items",
+    "ext_2_lib",
+    "ext_3_items",
+    "ext_3_lib",
+    "ext_4_items",
+    "ext_4_lib",
+    "ext_5_1_lib",
+    "ext_5_2_lib",
+    "ext_5_items",
+    "std",
+]
+
+[[package]]
+name = "std"
+source = "path+from-root-43D7B7046829C73F"
+dependencies = ["core"]

@@ -1,0 +1,4 @@
+category = "disabled"
+expected_warnings = 0
+
+#not: $()error

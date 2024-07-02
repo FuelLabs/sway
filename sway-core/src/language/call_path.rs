@@ -369,7 +369,7 @@ impl CallPath {
             if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
                 if m.current_items().symbols().contains_key(&self.suffix) {
                     None
-                } else if let Some((_, path, _)) = m
+                } else if let Some((_, path, _, _)) = m
                     .current_items()
                     .use_item_synonyms
                     .get(&self.suffix)
