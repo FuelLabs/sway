@@ -1,13 +1,13 @@
 [[package]]
-name = 'configurable_consts'
-source = 'member'
-dependencies = ['std']
+name = "configurable_consts"
+source = "member"
+dependencies = ["std"]
 
 [[package]]
-name = 'core'
-source = 'path+from-root-7F58364AF9C32FE1'
+name = "core"
+source = "path+from-root-7F58364AF9C32FE1"
 
 [[package]]
-name = 'std'
-source = 'path+from-root-7F58364AF9C32FE1'
-dependencies = ['core']
+name = "std"
+source = "path+from-root-7F58364AF9C32FE1"
+dependencies = ["core"]

@@ -180,17 +180,15 @@ impl TyDecl {
             parsed::Declaration::ConfigurableDeclaration(decl_id) => {
                 let decl = engines.pe().get_configurable(&decl_id).as_ref().clone();
                 let span = decl.span.clone();
-                let config_decl =
+                let name = decl.name.clone();
+                let typed_const_decl =
                     match ty::TyConfigurableDecl::type_check(handler, ctx.by_ref(), decl) {
-                        Ok(res) => res,
-                        Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
+                        Ok(config_decl) => {
+                            ty::TyDecl::from(decl_engine.insert(config_decl.clone()))
+                        }
+                        Err(err) => ty::TyDecl::ErrorRecovery(span, err),
                     };
-                let typed_const_decl: ty::TyDecl = decl_engine.insert(config_decl.clone()).into();
-                ctx.insert_symbol(
-                    handler,
-                    config_decl.name().clone(),
-                    typed_const_decl.clone(),
-                )?;
+                ctx.insert_symbol(handler, name, typed_const_decl.clone())?;
                 typed_const_decl
             }
             parsed::Declaration::TraitTypeDeclaration(decl_id) => {

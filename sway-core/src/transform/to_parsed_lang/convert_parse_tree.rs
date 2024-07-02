@@ -1085,6 +1085,7 @@ fn item_configurable_to_configurable_declarations(
         });
     }
 
+    let item_configurable_keyword_span = item_configurable.configurable_token.span();
     let declarations: Vec<ParsedDeclId<ConfigurableDeclaration>> = item_configurable
         .fields
         .into_inner()
@@ -1101,6 +1102,7 @@ fn item_configurable_to_configurable_declarations(
                 engines,
                 configurable_field.value,
                 attributes,
+                item_configurable_keyword_span.clone(),
             )?))
         })
         .filter_map_ok(|decl| decl)
@@ -2571,6 +2573,7 @@ fn configurable_field_to_configurable_declaration(
     engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
+    item_configurable_keyword_span: Span,
 ) -> Result<ParsedDeclId<ConfigurableDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
 
@@ -2606,6 +2609,7 @@ fn configurable_field_to_configurable_declaration(
         visibility: Visibility::Public,
         attributes,
         span: span.clone(),
+        block_keyword_span: item_configurable_keyword_span,
     };
     Ok(engines.pe().insert(config_decl))
 }

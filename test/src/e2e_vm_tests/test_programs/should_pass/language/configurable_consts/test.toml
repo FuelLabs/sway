@@ -4,3 +4,6 @@ expected_result_new_encoding = { action = "return_data", value = "" }
 validate_abi = true
 expected_warnings = 6
 unsupported_profiles = ["debug"]
+
+# check: $()NOT_USED: u8 = 1
+# nextln: $()This declaration is never used
