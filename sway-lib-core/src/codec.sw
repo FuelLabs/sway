@@ -19,7 +19,7 @@ impl Buffer {
             hp: raw_ptr
         };
 
-        Buffer {
+        Self {
             buffer: (ptr, cap, 0),
         }
     }
