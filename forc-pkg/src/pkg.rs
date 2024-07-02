@@ -2304,6 +2304,8 @@ pub fn build(
         let manifest = &plan.manifest_map()[&pkg.id()];
         let program_ty = manifest.program_type().ok();
 
+        // TODO: Only print "Compiling" when the dependency is not already compiled.
+        // https://github.com/FuelLabs/sway/issues/6209
         print_compiling(
             program_ty.as_ref(),
             &pkg.name,
