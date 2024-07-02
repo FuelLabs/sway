@@ -186,6 +186,7 @@ pub struct PackageManifest {
     pub build_target: Option<BTreeMap<String, BuildTarget>>,
     build_profile: Option<BTreeMap<String, BuildProfile>>,
     pub contract_dependencies: Option<BTreeMap<String, ContractDependency>>,
+    pub proxy: Option<Proxy>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -271,6 +272,17 @@ pub struct DependencyDetails {
     pub(crate) package: Option<String>,
     pub(crate) rev: Option<String>,
     pub(crate) ipfs: Option<String>,
+}
+
+/// Describes the details around proxy contract.
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct Proxy {
+    pub enabled: bool,
+    /// Points to the proxy contract to be updated with the new contract id.
+    /// If there is a value for this field, forc will try to update the proxy contract's storage
+    /// field such that it points to current contract's deployed instance.
+    pub address: Option<String>,
 }
 
 impl DependencyDetails {
@@ -648,6 +660,11 @@ impl PackageManifest {
         self.patch
             .as_ref()
             .and_then(|patches| patches.get(patch_name))
+    }
+
+    /// Retrieve the proxy table for the package.
+    pub fn proxy(&self) -> Option<&Proxy> {
+        self.proxy.as_ref()
     }
 
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add

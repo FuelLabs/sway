@@ -57,9 +57,6 @@ pub struct Command {
     pub unsigned: bool,
     /// Set the key to be used for signing.
     pub signing_key: Option<SecretKey>,
-    /// Sign the deployment transaction manually.
-    #[clap(long)]
-    pub manual_signing: bool,
     /// Override storage slot initialization.
     ///
     /// By default, storage slots are initialized with the values defined in the storage block in
