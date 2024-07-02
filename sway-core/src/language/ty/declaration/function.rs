@@ -1,5 +1,4 @@
 use std::{
-    collections::HashSet,
     fmt,
     hash::{Hash, Hasher},
 };
@@ -239,42 +238,6 @@ impl MonomorphizeHelper for TyFunctionDecl {
 
     fn has_self_type_param(&self) -> bool {
         false
-    }
-}
-
-impl UnconstrainedTypeParameters for TyFunctionDecl {
-    fn type_parameter_is_unconstrained(
-        &self,
-        engines: &Engines,
-        type_parameter: &TypeParameter,
-    ) -> bool {
-        let type_engine = engines.te();
-        let mut all_types: HashSet<TypeId> = self
-            .type_parameters
-            .iter()
-            .map(|type_param| type_param.type_id)
-            .collect();
-        all_types.extend(self.parameters.iter().flat_map(|param| {
-            let mut inner = param
-                .type_argument
-                .type_id
-                .extract_inner_types(engines, IncludeSelf::No);
-            inner.insert(param.type_argument.type_id);
-            inner
-        }));
-        all_types.extend(
-            self.return_type
-                .type_id
-                .extract_inner_types(engines, IncludeSelf::No),
-        );
-        all_types.insert(self.return_type.type_id);
-        let type_parameter_info = type_engine.get(type_parameter.type_id);
-        all_types.iter().any(|type_id| {
-            type_engine.get(*type_id).eq(
-                &type_parameter_info,
-                &PartialEqWithEnginesContext::new(engines),
-            )
-        })
     }
 }
 

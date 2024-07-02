@@ -40,20 +40,30 @@ pub fn create_fn_dce_pass() -> Pass {
 fn can_eliminate_instruction(
     context: &Context,
     val: Value,
-    num_symbol_uses: &HashMap<Symbol, u32>,
+    num_symbol_loaded: &NumSymbolLoaded,
     escaped_symbols: &EscapedSymbols,
 ) -> bool {
     let inst = val.get_instruction(context).unwrap();
     (!inst.op.is_terminator() && !inst.op.may_have_side_effect())
-        || is_removable_store(context, val, num_symbol_uses, escaped_symbols)
+        || is_removable_store(context, val, num_symbol_loaded, escaped_symbols)
 }
 
 fn is_removable_store(
     context: &Context,
     val: Value,
-    num_symbol_uses: &HashMap<Symbol, u32>,
+    num_symbol_loaded: &NumSymbolLoaded,
     escaped_symbols: &EscapedSymbols,
 ) -> bool {
+    let escaped_symbols = match escaped_symbols {
+        EscapedSymbols::Complete(syms) => syms,
+        EscapedSymbols::Incomplete(_) => return false,
+    };
+
+    let num_symbol_loaded = match num_symbol_loaded {
+        NumSymbolLoaded::Unknown => return false,
+        NumSymbolLoaded::Known(known_num_symbol_loaded) => known_num_symbol_loaded,
+    };
+
     match val.get_instruction(context).unwrap().op {
         InstOp::MemCopyBytes { dst_val_ptr, .. }
         | InstOp::MemCopyVal { dst_val_ptr, .. }
@@ -62,7 +72,7 @@ fn is_removable_store(
             match syms {
                 ReferredSymbols::Complete(syms) => syms.iter().all(|sym| {
                     !escaped_symbols.contains(sym)
-                        && num_symbol_uses.get(sym).map_or(0, |uses| *uses) == 0
+                        && num_symbol_loaded.get(sym).map_or(0, |uses| *uses) == 0
                 }),
                 // We cannot guarantee that the destination is not used.
                 ReferredSymbols::Incomplete(_) => false,
@@ -72,48 +82,94 @@ fn is_removable_store(
     }
 }
 
-/// Perform dead code (if any) elimination and return true if function is modified.
+/// How many times a [Symbol] gets loaded from, directly or indirectly.
+/// This number is either exactly `Known` for all the symbols loaded from, or is
+/// considered to be `Unknown` for all the symbols.
+enum NumSymbolLoaded {
+    Unknown,
+    Known(HashMap<Symbol, u32>),
+}
+
+/// Instructions that store to a [Symbol], directly or indirectly.
+/// These instructions are either exactly `Known` for all the symbols stored to, or is
+/// considered to be `Unknown` for all the symbols.
+enum StoresOfSymbol {
+    Unknown,
+    Known(HashMap<Symbol, Vec<Value>>),
+}
+
+/// Perform dead code (if any) elimination and return true if the `function` is modified.
 pub fn dce(
     context: &mut Context,
     analyses: &AnalysisResults,
     function: Function,
 ) -> Result<bool, IrError> {
+    // For DCE, we need to proceed with the analysis even if we have
+    // incomplete list of escaped symbols, because we could have
+    // unused instructions in code. Removing unused instructions is
+    // independent of having any escaping symbols.
     let escaped_symbols: &EscapedSymbols = analyses.get_analysis_result(function);
 
-    // Number of uses that an instruction has.
-    let mut num_uses: HashMap<Value, u32> = HashMap::new();
+    // Number of uses that an instruction has. This number is always known.
+    let mut num_inst_uses: HashMap<Value, u32> = HashMap::new();
+    // Number of times a local is accessed via `get_local`. This number is always known.
     let mut num_local_uses: HashMap<LocalVar, u32> = HashMap::new();
-    let mut num_symbol_uses: HashMap<Symbol, u32> = HashMap::new();
-    let mut stores_of_sym: HashMap<Symbol, Vec<Value>> = HashMap::new();
+    // Number of times a symbol, local or a function argument, is loaded, directly or indirectly. This number can be unknown.
+    let mut num_symbol_loaded: NumSymbolLoaded = NumSymbolLoaded::Known(HashMap::new());
+    // Instructions that store to a symbol, directly or indirectly. This information can be unknown.
+    let mut stores_of_sym: StoresOfSymbol = StoresOfSymbol::Known(HashMap::new());
 
+    // TODO-IG: Update this logic once `mut arg: T`s are implemented.
+    //          Currently, only `ref mut arg` arguments can be stored to,
+    //          which means they can be loaded from the caller.
+    //          Once we support `mut arg` in general, this will not be
+    //          the case anymore and we will need to distinguish between
+    //          `mut arg: T`, `arg: &mut T`, etc.
     // Every argument is assumed to be loaded from (from the caller),
     // so stores to it shouldn't be eliminated.
-    for sym in function
-        .args_iter(context)
-        .flat_map(|arg| get_gep_referred_symbols(context, arg.1))
-    {
-        num_symbol_uses
-            .entry(sym)
-            .and_modify(|count| *count += 1)
-            .or_insert(1);
-    }
-
-    // Go through each instruction and update use_count.
-    for (_block, inst) in function.instruction_iter(context) {
-        for sym in memory_utils::get_loaded_symbols(context, inst) {
-            num_symbol_uses
+    if let NumSymbolLoaded::Known(known_num_symbol_loaded) = &mut num_symbol_loaded {
+        for sym in function
+            .args_iter(context)
+            .flat_map(|arg| get_gep_referred_symbols(context, arg.1))
+        {
+            known_num_symbol_loaded
                 .entry(sym)
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
+    }
 
-        for stored_sym in memory_utils::get_stored_symbols(context, inst) {
-            stores_of_sym
-                .entry(stored_sym)
-                .and_modify(|stores| stores.push(inst))
-                .or_insert(vec![inst]);
+    // Go through each instruction and update use counters.
+    for (_block, inst) in function.instruction_iter(context) {
+        if let NumSymbolLoaded::Known(known_num_symbol_loaded) = &mut num_symbol_loaded {
+            match memory_utils::get_loaded_symbols(context, inst) {
+                ReferredSymbols::Complete(loaded_symbols) => {
+                    for sym in loaded_symbols {
+                        known_num_symbol_loaded
+                            .entry(sym)
+                            .and_modify(|count| *count += 1)
+                            .or_insert(1);
+                    }
+                }
+                ReferredSymbols::Incomplete(_) => num_symbol_loaded = NumSymbolLoaded::Unknown,
+            }
         }
 
+        if let StoresOfSymbol::Known(known_stores_of_sym) = &mut stores_of_sym {
+            match memory_utils::get_stored_symbols(context, inst) {
+                ReferredSymbols::Complete(stored_symbols) => {
+                    for stored_sym in stored_symbols {
+                        known_stores_of_sym
+                            .entry(stored_sym)
+                            .and_modify(|stores| stores.push(inst))
+                            .or_insert(vec![inst]);
+                    }
+                }
+                ReferredSymbols::Incomplete(_) => stores_of_sym = StoresOfSymbol::Unknown,
+            }
+        }
+
+        // A local is used if it is accessed via `get_local`.
         let inst = inst.get_instruction(context).unwrap();
         if let InstOp::GetLocal(local) = inst.op {
             num_local_uses
@@ -121,12 +177,14 @@ pub fn dce(
                 .and_modify(|count| *count += 1)
                 .or_insert(1);
         }
+
+        // An instruction is used if it is an operand in another instruction.
         let opds = inst.op.get_operands();
-        for v in opds {
-            match context.values[v.0].value {
+        for opd in opds {
+            match context.values[opd.0].value {
                 ValueDatum::Instruction(_) => {
-                    num_uses
-                        .entry(v)
+                    num_inst_uses
+                        .entry(opd)
                         .and_modify(|count| *count += 1)
                         .or_insert(1);
                 }
@@ -135,47 +193,64 @@ pub fn dce(
         }
     }
 
+    // The list of all unused or `Store` instruction. Note that the `Store` instruction does
+    // not result in a value, and will, thus, always be treated as unused and will not
+    // have an entry in `num_inst_uses`. So, to collect unused or `Store` instructions it
+    // is sufficient to filter those that are not used.
     let mut worklist = function
         .instruction_iter(context)
-        .filter_map(|(_block, inst)| {
-            (num_uses.get(&inst).is_none()
-                || is_removable_store(context, inst, &num_symbol_uses, escaped_symbols))
-            .then_some(inst)
-        })
+        .filter_map(|(_, inst)| (!num_inst_uses.contains_key(&inst)).then_some(inst))
         .collect::<Vec<_>>();
 
     let mut modified = false;
     let mut cemetery = FxHashSet::default();
     while let Some(dead) = worklist.pop() {
-        if !can_eliminate_instruction(context, dead, &num_symbol_uses, escaped_symbols)
+        if !can_eliminate_instruction(context, dead, &num_symbol_loaded, escaped_symbols)
             || cemetery.contains(&dead)
         {
             continue;
         }
         // Process dead's operands.
         let opds = dead.get_instruction(context).unwrap().op.get_operands();
-        for v in opds {
-            // Reduce the use count of v. If it reaches 0, add it to the worklist.
-            match context.values[v.0].value {
+        for opd in opds {
+            // Reduce the use count of the operand used in the dead instruction.
+            // If it reaches 0, add it to the worklist, since it is not used
+            // anywhere else.
+            match context.values[opd.0].value {
                 ValueDatum::Instruction(_) => {
-                    let nu = num_uses.get_mut(&v).unwrap();
+                    let nu = num_inst_uses.get_mut(&opd).unwrap();
                     *nu -= 1;
                     if *nu == 0 {
-                        worklist.push(v);
+                        worklist.push(opd);
                     }
                 }
                 ValueDatum::Constant(_) | ValueDatum::Argument(_) => {}
             }
         }
-        for sym in memory_utils::get_loaded_symbols(context, dead) {
-            let nu = num_symbol_uses.get_mut(&sym).unwrap();
-            *nu -= 1;
-            if *nu == 0 {
-                for store in stores_of_sym.get(&sym).unwrap_or(&vec![]) {
-                    worklist.push(*store);
+
+        // If the `dead` instruction was the only instruction loading from a `sym`bol,
+        // after removing it, there will be no loads anymore, so all the stores to
+        // that `sym`bol can be added to the worklist.
+        if let ReferredSymbols::Complete(loaded_symbols) =
+            memory_utils::get_loaded_symbols(context, dead)
+        {
+            if let (
+                NumSymbolLoaded::Known(known_num_symbol_loaded),
+                StoresOfSymbol::Known(known_stores_of_sym),
+            ) = (&mut num_symbol_loaded, &mut stores_of_sym)
+            {
+                for sym in loaded_symbols {
+                    let nu = known_num_symbol_loaded.get_mut(&sym).unwrap();
+                    *nu -= 1;
+                    if *nu == 0 {
+                        for store in known_stores_of_sym.get(&sym).unwrap_or(&vec![]) {
+                            worklist.push(*store);
+                        }
+                    }
                 }
             }
         }
+
         cemetery.insert(dead);
 
         if let ValueDatum::Instruction(Instruction {
@@ -186,6 +261,7 @@ pub fn dce(
             let count = num_local_uses.get_mut(&local).unwrap();
             *count -= 1;
         }
+
         modified = true;
     }
 

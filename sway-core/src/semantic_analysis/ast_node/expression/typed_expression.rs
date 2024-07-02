@@ -128,7 +128,6 @@ impl ty::TyExpression {
                 selector: None,
                 type_binding: None,
                 call_path_typeid: None,
-                deferred_monomorphization: false,
                 contract_call_params: IndexMap::new(),
                 contract_caller: None,
             },
@@ -1108,7 +1107,7 @@ impl ty::TyExpression {
                 None,
             )?
             .expect_typed();
-        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_ref(handler, engines)?;
+        let storage_key_struct_decl_ref = storage_key_decl_opt.to_struct_id(handler, engines)?;
         let mut storage_key_struct_decl =
             (*decl_engine.get_struct(&storage_key_struct_decl_ref)).clone();
 
@@ -1136,7 +1135,7 @@ impl ty::TyExpression {
         let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
         access_type = type_engine.insert(
             engines,
-            TypeInfo::Struct(storage_key_struct_decl_ref.clone()),
+            TypeInfo::Struct(*storage_key_struct_decl_ref.id()),
             storage_key_struct_decl_ref.span().source_id(),
         );
 
@@ -1325,7 +1324,7 @@ impl ty::TyExpression {
                     &probe_call_path,
                     ctx.self_type(),
                 )
-                .and_then(|decl| decl.to_enum_ref(&Handler::default(), ctx.engines()))
+                .and_then(|decl| decl.to_enum_id(&Handler::default(), ctx.engines()))
                 .map(|decl_ref| decl_engine.get_enum(&decl_ref))
                 .and_then(|decl| {
                     decl.expect_variant_from_name(&Handler::default(), &suffix)

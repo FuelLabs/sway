@@ -683,7 +683,6 @@ fn connect_struct_declaration<'eng: 'cfg, 'cfg>(
                 graph.add_node(ControlFlowGraphNode::StructField {
                     struct_decl_id,
                     struct_field_name: field.name.clone(),
-                    span: field.span.clone(),
                     attributes: field.attributes.clone(),
                 }),
             )
@@ -1580,11 +1579,15 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
             connect_code_block(engines, a, graph, leaves, exit_node, tree_type, options)
         }
         StructExpression {
-            struct_ref, fields, ..
+            struct_id, fields, ..
         } => {
-            let decl = match graph.namespace.find_struct_decl(struct_ref.name().as_str()) {
+            let struct_decl = engines.de().get_struct(struct_id);
+            let decl = match graph
+                .namespace
+                .find_struct_decl(struct_decl.name().as_str())
+            {
                 Some(ix) => *ix,
-                None => graph.add_node(format!("External struct  {}", struct_ref.name()).into()),
+                None => graph.add_node(format!("External struct  {}", struct_decl.name()).into()),
             };
             let entry = graph.add_node("Struct declaration entry".into());
             let exit = graph.add_node("Struct declaration exit".into());
@@ -1597,7 +1600,7 @@ fn connect_expression<'eng: 'cfg, 'cfg>(
 
             // connect the struct fields to the struct if its requested as an option
             if options.force_struct_fields_connection {
-                if let Some(ns) = graph.namespace.get_struct(struct_ref.name()).cloned() {
+                if let Some(ns) = graph.namespace.get_struct(struct_decl.name()).cloned() {
                     for (_, field_ix) in ns.fields.iter() {
                         graph.add_edge(decl, *field_ix, "".into());
                     }

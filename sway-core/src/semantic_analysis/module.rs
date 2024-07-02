@@ -400,10 +400,10 @@ impl ty::TyModule {
                 let decl = &*engines.pe().get_impl_trait(decl_id);
                 let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
                 let implementing_for = match &*implementing_for {
-                    TypeInfo::Struct(decl) => {
-                        Some(ctx.engines().de().get(decl.id()).name().clone())
+                    TypeInfo::Struct(decl_id) => {
+                        Some(ctx.engines().de().get(decl_id).name().clone())
                     }
-                    TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl.id()).name().clone()),
+                    TypeInfo::Enum(decl) => Some(ctx.engines().de().get(decl).name().clone()),
                     TypeInfo::Custom {
                         qualified_call_path,
                         ..
@@ -440,11 +440,11 @@ impl ty::TyModule {
             let auto_impl_encoding_traits = match &node.content {
                 AstNodeContent::Declaration(Declaration::StructDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_struct(decl_id);
-                    all_abiencode_impls.get(&decl.name).is_none()
+                    !all_abiencode_impls.contains_key(&decl.name)
                 }
                 AstNodeContent::Declaration(Declaration::EnumDeclaration(decl_id)) => {
                     let decl = ctx.engines().pe().get_enum(decl_id);
-                    all_abiencode_impls.get(&decl.name).is_none()
+                    !all_abiencode_impls.contains_key(&decl.name)
                 }
                 _ => false,
             };

@@ -1,6 +1,8 @@
 use std::fmt;
 
-use super::{module::Module, namespace::Namespace, Ident, ResolvedTraitImplItem};
+use super::{
+    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
+};
 use crate::{
     decl_engine::DeclRef,
     engine_threading::*,
@@ -60,6 +62,13 @@ impl PartialEqWithEngines for ResolvedDeclaration {
 }
 
 impl ResolvedDeclaration {
+    pub fn is_typed(&self) -> bool {
+	match self {
+            ResolvedDeclaration::Parsed(_) => false,
+            ResolvedDeclaration::Typed(_) => true,
+	}
+    }
+    
     pub fn expect_parsed(self) -> Declaration {
         match self {
             ResolvedDeclaration::Parsed(decl) => decl,
@@ -85,6 +94,35 @@ impl ResolvedDeclaration {
         match self {
             ResolvedDeclaration::Parsed(decl) => decl.visibility(engines.pe()),
             ResolvedDeclaration::Typed(decl) => decl.visibility(engines.de()),
+        }
+    }
+
+    fn span(&self, engines: &Engines) -> sway_types::Span {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl.span(engines),
+            ResolvedDeclaration::Typed(decl) => decl.span(engines),
+        }
+    }
+
+    pub(crate) fn return_type(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<TypeId, ErrorEmitted> {
+        match self {
+            ResolvedDeclaration::Parsed(_decl) => unreachable!(),
+            ResolvedDeclaration::Typed(decl) => decl.return_type(handler, engines),
+        }
+    }
+
+    fn is_trait(&self) -> bool {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => {
+                matches!(decl, Declaration::TraitDeclaration(_))
+            }
+            ResolvedDeclaration::Typed(decl) => {
+                matches!(decl, TyDecl::TraitDecl(_))
+            }
         }
     }
 }
@@ -230,8 +268,9 @@ impl Root {
     ) -> Result<(), ErrorEmitted> {
 	// TODO: Reexport
         self.check_module_privacy(handler, engines, src)?;
+        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+	let src_items = src_mod.current_items();
 
-	let src_items = self.module.lookup_submodule(handler, engines, src)?.current_items();
 	let (decl, path, src_visibility) =
 	    // TODO: This code is very similar to resolve_symbol_helper, and should be refactored.
 	    if let Some(decl) = src_items.symbols.get(item) {
@@ -288,6 +327,37 @@ impl Root {
             });
 	}
 
+        let mut impls_to_insert = TraitMap::default();
+	if decl.is_typed() {
+            // We only handle trait imports when handling typed declarations,
+            // that is, when performing type-checking, and not when collecting.
+            // Update this once the type system is updated to refer to parsed
+            // declarations.
+            //  if this is an enum or struct or function, import its implementations
+            if let Ok(type_id) = decl.return_type(&Handler::default(), engines) {
+                impls_to_insert.extend(
+                    src_mod
+                        .current_items()
+                        .implemented_traits
+                        .filter_by_type_item_import(type_id, engines),
+                    engines,
+                );
+            }
+            // if this is a trait, import its implementations
+            let decl_span = decl.span(engines);
+            if decl.is_trait() {
+                // TODO: we only import local impls from the source namespace
+                // this is okay for now but we'll need to device some mechanism to collect all available trait impls
+                impls_to_insert.extend(
+                    src_mod
+                        .current_items()
+                        .implemented_traits
+                        .filter_by_trait_decl_span(decl_span),
+                    engines,
+                );
+            }
+	}
+
         // no matter what, import it this way though.
         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
         let check_name_clash = |name| {
@@ -311,7 +381,13 @@ impl Root {
                     .insert(item.clone(), (None, path, decl, visibility))
             }
         };
-	
+
+        dst_mod
+	    .current_items_mut()
+	    .implemented_traits
+	    .extend(impls_to_insert, engines);
+
+
 //        match src_mod.current_items().symbols.get(item).cloned() {
 //            Some(decl) => {
 //                if !decl.visibility(engines).is_public() && !is_ancestor(src, dst) {
@@ -956,17 +1032,12 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_id = engines
+            .te()
+            .insert(engines, type_info, symbol.span().source_id());
 
         self.resolve_associated_type_from_type_id(
-            handler,
-            engines,
-            module,
-            symbol,
-            engines
-                .te()
-                .insert(engines, type_info, symbol.span().source_id()),
-            as_trait,
-            self_type,
+            handler, engines, module, symbol, type_id, as_trait, self_type,
         )
     }
 
@@ -982,17 +1053,12 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<ResolvedDeclaration, ErrorEmitted> {
         let type_info = self.decl_to_type_info(handler, engines, symbol, decl)?;
+        let type_id = engines
+            .te()
+            .insert(engines, type_info, symbol.span().source_id());
 
         self.resolve_associated_item_from_type_id(
-            handler,
-            engines,
-            module,
-            symbol,
-            engines
-                .te()
-                .insert(engines, type_info, symbol.span().source_id()),
-            as_trait,
-            self_type,
+            handler, engines, module, symbol, type_id, as_trait, self_type,
         )
     }
 
@@ -1006,22 +1072,8 @@ impl Root {
         match decl {
             ResolvedDeclaration::Parsed(_decl) => todo!(),
             ResolvedDeclaration::Typed(decl) => Ok(match decl.clone() {
-                ty::TyDecl::StructDecl(struct_ty_decl) => {
-                    let struct_decl = engines.de().get_struct(&struct_ty_decl.decl_id);
-                    TypeInfo::Struct(DeclRef::new(
-                        struct_decl.name().clone(),
-                        struct_ty_decl.decl_id,
-                        struct_decl.span().clone(),
-                    ))
-                }
-                ty::TyDecl::EnumDecl(enum_ty_decl) => {
-                    let enum_decl = engines.de().get_enum(&enum_ty_decl.decl_id);
-                    TypeInfo::Enum(DeclRef::new(
-                        enum_decl.name().clone(),
-                        enum_ty_decl.decl_id,
-                        enum_decl.span().clone(),
-                    ))
-                }
+                ty::TyDecl::StructDecl(struct_ty_decl) => TypeInfo::Struct(struct_ty_decl.decl_id),
+                ty::TyDecl::EnumDecl(enum_ty_decl) => TypeInfo::Enum(enum_ty_decl.decl_id),
                 ty::TyDecl::TraitTypeDecl(type_decl) => {
                     let type_decl = engines.de().get_type(&type_decl.decl_id);
                     (*engines.te().get(type_decl.ty.clone().unwrap().type_id)).clone()

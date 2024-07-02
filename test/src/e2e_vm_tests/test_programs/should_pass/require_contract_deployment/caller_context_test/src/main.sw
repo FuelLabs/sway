@@ -4,9 +4,9 @@ use core::codec::*;
 use context_testing_abi::*;
 
 #[cfg(experimental_new_encoding = false)]
-const CONTRACT_ID = 0xc2ec2a4a1b20475700e6793c7f20ad8082294894242b17cf08b5fd7c0d3968ad;
+const CONTRACT_ID = 0x6054c11cda000f5990373a4d61929396165be4dfdd61d5b7bd26da60ab0d8577;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = 0x554f1971d3f43aea4a4802bb0d2d11422a9a1bf33c6e347a6a1d188782a78840;
+const CONTRACT_ID = 0x968479b51e9a6c210df98ba289f586331a502a5be2c2073ef65f82bada5695a9;
 
 fn main() -> bool {
     let gas: u64 = u64::max();

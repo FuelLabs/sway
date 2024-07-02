@@ -33,8 +33,6 @@ pub enum TyExpressionVariant {
         type_binding: Option<TypeBinding<()>>,
         /// In case it is a method should contain a TypeId to either an enum, struct or a type alias.
         call_path_typeid: Option<TypeId>,
-        /// This tracks whether monomorphization has been deferred between compiler stages.
-        deferred_monomorphization: bool,
         contract_call_params: IndexMap<String, TyExpression>,
         contract_caller: Option<Box<TyExpression>>,
     },
@@ -71,7 +69,7 @@ pub enum TyExpressionVariant {
         index: Box<TyExpression>,
     },
     StructExpression {
-        struct_ref: DeclRef<DeclId<TyStructDecl>>,
+        struct_id: DeclId<TyStructDecl>,
         fields: Vec<TyStructExpressionField>,
         instantiation_span: Span,
         call_path_binding: TypeBinding<CallPath>,
@@ -265,19 +263,21 @@ impl PartialEqWithEngines for TyExpressionVariant {
             ) => (**l_prefix).eq(&**r_prefix, ctx) && (**l_index).eq(&**r_index, ctx),
             (
                 Self::StructExpression {
-                    struct_ref: l_struct_ref,
+                    struct_id: l_struct_id,
                     fields: l_fields,
                     instantiation_span: l_span,
                     call_path_binding: _,
                 },
                 Self::StructExpression {
-                    struct_ref: r_struct_ref,
+                    struct_id: r_struct_id,
                     fields: r_fields,
                     instantiation_span: r_span,
                     call_path_binding: _,
                 },
             ) => {
-                l_struct_ref.eq(r_struct_ref, ctx) && l_fields.eq(r_fields, ctx) && l_span == r_span
+                PartialEqWithEngines::eq(&l_struct_id, &r_struct_id, ctx)
+                    && l_fields.eq(r_fields, ctx)
+                    && l_span == r_span
             }
             (Self::CodeBlock(l0), Self::CodeBlock(r0)) => l0.eq(r0, ctx),
             (
@@ -445,7 +445,6 @@ impl HashWithEngines for TyExpressionVariant {
                 selector: _,
                 type_binding: _,
                 call_path_typeid: _,
-                deferred_monomorphization: _,
                 ..
             } => {
                 call_path.hash(state);
@@ -499,14 +498,14 @@ impl HashWithEngines for TyExpressionVariant {
                 index.hash(state, engines);
             }
             Self::StructExpression {
-                struct_ref,
+                struct_id,
                 fields,
                 // these fields are not hashed because they aren't relevant/a
                 // reliable source of obj v. obj distinction
                 instantiation_span: _,
                 call_path_binding: _,
             } => {
-                struct_ref.hash(state, engines);
+                HashWithEngines::hash(&struct_id, state, engines);
                 fields.hash(state, engines);
             }
             Self::CodeBlock(contents) => {
@@ -683,15 +682,15 @@ impl SubstTypes for TyExpressionVariant {
                 index.subst(type_mapping, engines);
             },
             StructExpression {
-                struct_ref,
+                struct_id,
                 fields,
                 instantiation_span: _,
                 call_path_binding: _,
             } => has_changes! {
-                if let Some(new_struct_ref) = struct_ref
+                if let Some(new_struct_ref) = struct_id
                     .clone()
                     .subst_types_and_insert_new(type_mapping, engines) {
-                    struct_ref.replace_id(*new_struct_ref.id());
+                    struct_id.replace_id(*new_struct_ref.id());
                     HasChanges::Yes
                 } else {
                     HasChanges::No
@@ -893,7 +892,7 @@ impl ReplaceDecls for TyExpressionVariant {
                     Ok(has_changes)
                 }
                 StructExpression {
-                    struct_ref: _,
+                    struct_id: _,
                     fields,
                     instantiation_span: _,
                     call_path_binding: _,
@@ -1121,15 +1120,7 @@ impl TypeCheckFinalization for TyExpressionVariant {
         handler.scope(|handler| {
             match self {
                 TyExpressionVariant::Literal(_) => {}
-                TyExpressionVariant::FunctionApplication {
-                    arguments,
-                    deferred_monomorphization,
-                    ..
-                } => {
-                    // If the function application was deferred we need to monomorphize it here.
-                    // But at the moment monomorphization is fully resolved before type check finalization.
-                    assert!(!(*deferred_monomorphization));
-
+                TyExpressionVariant::FunctionApplication { arguments, .. } => {
                     for (_, arg) in arguments.iter_mut() {
                         let _ = arg.type_check_finalize(handler, ctx);
                     }
@@ -1412,8 +1403,9 @@ impl DebugWithEngines for TyExpressionVariant {
             }
             TyExpressionVariant::Array { .. } => "array".into(),
             TyExpressionVariant::ArrayIndex { .. } => "[..]".into(),
-            TyExpressionVariant::StructExpression { struct_ref, .. } => {
-                format!("\"{}\" struct init", struct_ref.name().as_str())
+            TyExpressionVariant::StructExpression { struct_id, .. } => {
+                let decl = engines.de().get(struct_id);
+                format!("\"{}\" struct init", decl.name().as_str())
             }
             TyExpressionVariant::CodeBlock(_) => "code block entry".into(),
             TyExpressionVariant::FunctionParameter => "fn param access".into(),
