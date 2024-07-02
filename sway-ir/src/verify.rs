@@ -13,9 +13,10 @@ use crate::{
     irtype::Type,
     local_var::LocalVar,
     metadata::{MetadataIndex, Metadatum},
+    printer,
     value::{Value, ValueDatum},
     AnalysisResult, AnalysisResultT, AnalysisResults, BinaryOpKind, Block, BlockArgument,
-    BranchToWithArgs, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
+    BranchToWithArgs, Doc, Module, Pass, PassMutability, ScopedPass, TypeOption, UnaryOpKind,
 };
 
 pub struct ModuleVerifierResult;
@@ -131,10 +132,29 @@ impl<'eng> Context<'eng> {
         }
         .verify_instructions();
 
-        if r.is_err() {
-            println!("{}", self);
-            println!("{}", cur_function.get_name(self));
-            println!("{}", cur_block.get_label(self));
+        // Help to understand the verification failure
+        // If the error knows the problematic value, prints everything with the error highlighted,
+        // if not, print only the block to help pinpoint the issue
+        if let Err(error) = &r {
+            println!(
+                "Verification failed at {}::{}",
+                cur_function.get_name(self),
+                cur_block.get_label(self)
+            );
+
+            let block = if let Some(problematic_value) = error.get_problematic_value() {
+                printer::context_print(self, &|current_value: &Value, doc: Doc| {
+                    if *current_value == *problematic_value {
+                        doc.append(Doc::text_line(format!("\x1b[0;31m^ {}\x1b[0m", error)))
+                    } else {
+                        doc
+                    }
+                })
+            } else {
+                printer::block_print(self, cur_function, cur_block, &|_, doc| doc)
+            };
+
+            println!("{}", block);
         }
 
         r?;
@@ -303,7 +323,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                         base,
                         elem_ptr_ty,
                         indices,
-                    } => self.verify_get_elem_ptr(base, elem_ptr_ty, indices)?,
+                    } => self.verify_get_elem_ptr(&ins, base, elem_ptr_ty, indices)?,
                     InstOp::GetLocal(local_var) => self.verify_get_local(local_var)?,
                     InstOp::GetConfig(_, name) => self.verify_get_config(self.cur_module, name)?,
                     InstOp::IntToPtr(value, ty) => self.verify_int_to_ptr(value, ty)?,
@@ -323,7 +343,7 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
                     InstOp::Store {
                         dst_val_ptr,
                         stored_val,
-                    } => self.verify_store(dst_val_ptr, stored_val)?,
+                    } => self.verify_store(&ins, dst_val_ptr, stored_val)?,
                 };
 
                 // Verify the instruction metadata too.
@@ -743,13 +763,15 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
 
     fn verify_get_elem_ptr(
         &self,
+        ins: &Value,
         base: &Value,
         elem_ptr_ty: &Type,
         indices: &[Value],
     ) -> Result<(), IrError> {
         use crate::constant::ConstantValue;
 
-        let base_ty = self.get_ptr_type(base, IrError::VerifyGepFromNonPointer)?;
+        let base_ty =
+            self.get_ptr_type(base, |s| IrError::VerifyGepFromNonPointer(s, Some(*ins)))?;
         if !base_ty.is_aggregate(self.context) {
             return Err(IrError::VerifyGepOnNonAggregate);
         }
@@ -759,7 +781,10 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         };
 
         if indices.is_empty() {
-            return Err(IrError::VerifyGepInconsistentTypes);
+            return Err(IrError::VerifyGepInconsistentTypes(
+                "Empty Indices".into(),
+                Some(*base),
+            ));
         }
 
         // Fetch the field type from the vector of Values.  If the value is a constant int then
@@ -781,7 +806,14 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         });
 
         if self.opt_ty_not_eq(&Some(elem_inner_ty), &index_ty) {
-            return Err(IrError::VerifyGepInconsistentTypes);
+            return Err(IrError::VerifyGepInconsistentTypes(
+                format!(
+                    "Element type \"{}\" versus index type {:?}",
+                    elem_inner_ty.as_string(self.context),
+                    index_ty.map(|x| x.as_string(self.context))
+                ),
+                Some(*ins),
+            ));
         }
 
         Ok(())
@@ -1033,11 +1065,16 @@ impl<'a, 'eng> InstructionVerifier<'a, 'eng> {
         }
     }
 
-    fn verify_store(&self, dst_val: &Value, stored_val: &Value) -> Result<(), IrError> {
+    fn verify_store(
+        &self,
+        ins: &Value,
+        dst_val: &Value,
+        stored_val: &Value,
+    ) -> Result<(), IrError> {
         let dst_ty = self.get_ptr_type(dst_val, IrError::VerifyStoreToNonPointer)?;
         let stored_ty = stored_val.get_type(self.context);
         if self.opt_ty_not_eq(&Some(dst_ty), &stored_ty) {
-            Err(IrError::VerifyStoreMismatchedTypes)
+            Err(IrError::VerifyStoreMismatchedTypes(Some(*ins)))
         } else {
             Ok(())
         }
