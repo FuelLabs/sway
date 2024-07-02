@@ -11,10 +11,11 @@ use forc_client::{
     op::{deploy, DeployedContract},
     NodeTarget,
 };
+use forc_pkg::manifest::Proxy;
 use fuel_tx::{ContractId, Salt};
 use portpicker::Port;
 use tempfile::tempdir;
-use toml_edit::{Document, InlineTable, Item, Value};
+use toml_edit::{value, Document, InlineTable, Item, Table, Value};
 
 fn get_workspace_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -75,24 +76,38 @@ fn copy_dir(source: &Path, dest: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn patch_manifest_file(manifest_dir: &Path) -> anyhow::Result<()> {
+fn patch_manifest_file_with_path_std(manifest_dir: &Path) -> anyhow::Result<()> {
     let toml_path = manifest_dir.join(sway_utils::constants::MANIFEST_FILE_NAME);
-    // Read the existing TOML file
     let toml_content = fs::read_to_string(&toml_path).unwrap();
 
-    // Parse the TOML content
     let mut doc = toml_content.parse::<Document>().unwrap();
-
-    // Calculate the new std path relative to the workspace root
     let new_std_path = get_workspace_root().join("sway-lib-std");
 
-    // Update the std dependency path using InlineTable
     let mut std_dependency = InlineTable::new();
     std_dependency.insert("path", Value::from(new_std_path.display().to_string()));
     doc["dependencies"]["std"] = Item::Value(Value::InlineTable(std_dependency));
 
-    // Write the modified TOML content back to the file
     fs::write(&toml_path, doc.to_string()).unwrap();
+    Ok(())
+}
+
+fn patch_manifest_file_with_proxy_table(manifest_dir: &Path, proxy: Proxy) -> anyhow::Result<()> {
+    let toml_path = manifest_dir.join(sway_utils::constants::MANIFEST_FILE_NAME);
+    let toml_content = fs::read_to_string(&toml_path)?;
+    let mut doc = toml_content.parse::<Document>()?;
+
+    let proxy_table = doc.entry("proxy").or_insert(Item::Table(Table::new()));
+    let proxy_table = proxy_table.as_table_mut().unwrap();
+
+    proxy_table.insert("enabled", value(proxy.enabled));
+
+    if let Some(address) = proxy.address {
+        proxy_table.insert("address", value(address));
+    } else {
+        proxy_table.remove("address");
+    }
+
+    fs::write(&toml_path, doc.to_string())?;
     Ok(())
 }
 
@@ -102,7 +117,7 @@ async fn simple_deploy() {
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_pkg_path();
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
-    patch_manifest_file(tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
 
     let pkg = Pkg {
         path: Some(tmp_dir.path().display().to_string()),
@@ -130,6 +145,58 @@ async fn simple_deploy() {
         )
         .unwrap(),
     }];
+
+    assert_eq!(contract_ids, expected)
+}
+
+#[tokio::test]
+async fn deploy_fresh_proxy() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_pkg_path();
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+    };
+    patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let mut contract_ids = deploy(cmd).await.unwrap();
+    contract_ids.sort();
+    node.kill().unwrap();
+    let impl_contract = DeployedContract {
+        id: ContractId::from_str(
+            "fe084b07f5fd44f837d1fbf043671f0b27caef87503106b799b6a8b1ad5b30bd",
+        )
+        .unwrap(),
+    };
+    let proxy_contract = DeployedContract {
+        id: ContractId::from_str(
+            "428896412bda8530282a7b8fca5d20b2a73f30037612ca3a31750cf3bf0e976a",
+        )
+        .unwrap(),
+    };
+    let mut expected = vec![proxy_contract, impl_contract];
+    expected.sort();
 
     assert_eq!(contract_ids, expected)
 }

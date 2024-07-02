@@ -38,7 +38,7 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tracing::info;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
 }
@@ -322,6 +322,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                         )
                         .await?;
 
+                        deployed_contracts.push(deployed_proxy_contract.clone());
                         // Update manifest file such that the proxy address field points to the new proxy contract.
                         update_proxy_address_in_manifest(
                             &format!("0x{}", deployed_proxy_contract.id),
