@@ -40,6 +40,11 @@ sway-utils = { version = "0.61.1", path = "../../sway-utils" }
 tokio = { version = "1.8", features = ["macros", "rt-multi-thread", "process"] }
 tracing = "0.1"
 
+[dev-dependencies]
+portpicker = "0.1.1"
+tempfile = "3"
+toml_edit = "0.21.1"
+
 [[bin]]
 name = "forc-deploy"
 path = "src/bin/deploy.rs"
