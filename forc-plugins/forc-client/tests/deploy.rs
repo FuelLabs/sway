@@ -133,6 +133,7 @@ async fn simple_deploy() {
             "428896412bda8530282a7b8fca5d20b2a73f30037612ca3a31750cf3bf0e976a",
         )
         .unwrap(),
+        proxy: None,
     }];
 
     assert_eq!(contract_ids, expected)
@@ -169,23 +170,21 @@ async fn deploy_fresh_proxy() {
         default_signer: true,
         ..Default::default()
     };
-    let mut contract_ids = deploy(cmd).await.unwrap();
-    contract_ids.sort();
+    let contract_ids = deploy(cmd).await.unwrap();
     node.kill().unwrap();
     let impl_contract = DeployedContract {
-        id: ContractId::from_str(
-            "fe084b07f5fd44f837d1fbf043671f0b27caef87503106b799b6a8b1ad5b30bd",
-        )
-        .unwrap(),
-    };
-    let proxy_contract = DeployedContract {
         id: ContractId::from_str(
             "428896412bda8530282a7b8fca5d20b2a73f30037612ca3a31750cf3bf0e976a",
         )
         .unwrap(),
+        proxy: Some(
+            ContractId::from_str(
+                "fe084b07f5fd44f837d1fbf043671f0b27caef87503106b799b6a8b1ad5b30bd",
+            )
+            .unwrap(),
+        ),
     };
-    let mut expected = vec![proxy_contract, impl_contract];
-    expected.sort();
+    let expected = vec![impl_contract];
 
     assert_eq!(contract_ids, expected)
 }
@@ -222,10 +221,9 @@ async fn proxy_contract_re_routes_call() {
         ..Default::default()
     };
     let contract_ids = deploy(cmd).await.unwrap();
-    // At this point we deployed a contract with proxy. Proxy address is the
-    // first contract id returned.
-    let proxy_contract = contract_ids[0].id;
-    let impl_contract_id = contract_ids[1].id;
+    // At this point we deployed a contract with proxy.
+    let proxy_contract = contract_ids[0].proxy.unwrap();
+    let impl_contract_id = contract_ids[0].id;
     // Make a contract call into proxy contract, and check if the initial
     // contract returns a true.
     let provider = Provider::connect(node_url).await.unwrap();

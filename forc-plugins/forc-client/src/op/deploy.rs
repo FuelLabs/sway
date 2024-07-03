@@ -42,6 +42,7 @@ use tracing::info;
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
+    pub proxy: Option<fuel_tx::ContractId>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -125,12 +126,12 @@ fn validate_and_parse_salts<'a>(
 async fn deploy_new_proxy(
     pkg: &BuiltPackage,
     owner_account_address: &mut Bech32Address,
-    impl_contract: &DeployedContract,
+    impl_contract: &fuel_tx::ContractId,
     build_opts: &BuildOpts,
     command: &cmd::Deploy,
     salt: Salt,
     wallet_mode: &WalletSelectionMode,
-) -> Result<DeployedContract> {
+) -> Result<fuel_tx::ContractId> {
     info!("  {} proxy contract", "Creating".bold().green());
     let user_addr = if *owner_account_address != Bech32Address::default() {
         anyhow::Ok(owner_account_address.clone())
@@ -157,7 +158,7 @@ async fn deploy_new_proxy(
     let user_addr_hex: fuels_core::types::Address = user_addr.into();
     let user_addr = format!("0x{}", user_addr_hex);
     let pkg_name = pkg.descriptor.manifest_file.project_name();
-    let contract_addr = format!("0x{}", impl_contract.id);
+    let contract_addr = format!("0x{}", impl_contract);
     let proxy_contract = build_proxy_contract(&user_addr, &contract_addr, pkg_name, build_opts)?;
     info!("   {} proxy contract", "Deploying".bold().green());
     let proxy = deploy_pkg(
@@ -268,7 +269,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 "Deploying".bold().green(),
                 &pkg.descriptor.name
             );
-            let deployed_contract = deploy_pkg(
+            let deployed_contract_id = deploy_pkg(
                 &command,
                 &pkg.descriptor.manifest_file,
                 &pkg,
@@ -277,7 +278,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             )
             .await?;
             let proxy = &pkg.descriptor.manifest_file.proxy();
-            if let Some(proxy) = proxy {
+            let proxy_id = if let Some(proxy) = proxy {
                 if proxy.enabled {
                     if let Some(proxy_addr) = &proxy.address {
                         // Make a call into the contract to update impl contract address to 'deployed_contract'.
@@ -307,15 +308,16 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                             provider,
                             signing_key,
                             proxy_contract,
-                            deployed_contract.id,
+                            deployed_contract_id,
                         )
                         .await?;
+                        Some(proxy_contract)
                     } else {
                         // Deploy a new proxy contract.
                         let deployed_proxy_contract = deploy_new_proxy(
                             &pkg,
                             &mut owner_account_address,
-                            &deployed_contract,
+                            &deployed_contract_id,
                             &build_opts,
                             &command,
                             salt,
@@ -323,16 +325,23 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                         )
                         .await?;
 
-                        deployed_contracts.push(deployed_proxy_contract.clone());
                         // Update manifest file such that the proxy address field points to the new proxy contract.
                         update_proxy_address_in_manifest(
-                            &format!("0x{}", deployed_proxy_contract.id),
+                            &format!("0x{}", deployed_proxy_contract),
                             &pkg.descriptor.manifest_file,
                         )?;
+                        Some(deployed_proxy_contract)
                     }
+                } else {
+                    None
                 }
-            }
-
+            } else {
+                None
+            };
+            let deployed_contract = DeployedContract {
+                id: deployed_contract_id,
+                proxy: proxy_id,
+            };
             deployed_contracts.push(deployed_contract);
         }
     }
@@ -346,7 +355,7 @@ pub async fn deploy_pkg(
     compiled: &BuiltPackage,
     salt: Salt,
     wallet_mode: &WalletSelectionMode,
-) -> Result<DeployedContract> {
+) -> Result<fuel_tx::ContractId> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
     let client = FuelClient::new(node_url.clone())?;
     let bytecode = &compiled.bytecode.bytes;
@@ -438,7 +447,6 @@ pub async fn deploy_pkg(
         },
         Err(e) => bail!("{e}"),
     });
-    println!("here");
     // submit contract deployment with a timeout
     let contract_id = tokio::time::timeout(
         Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
@@ -451,7 +459,7 @@ pub async fn deploy_pkg(
             &contract_id
         )
     })??;
-    Ok(DeployedContract { id: contract_id })
+    Ok(contract_id)
 }
 
 fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
