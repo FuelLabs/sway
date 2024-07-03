@@ -32,7 +32,7 @@ use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 use tracing::info;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DeployedContract {
     pub id: fuel_tx::ContractId,
 }
