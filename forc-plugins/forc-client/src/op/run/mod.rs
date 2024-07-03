@@ -1,17 +1,19 @@
 mod encode;
 use crate::{
     cmd,
+    constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
+        tx::{prompt_forc_wallet_password, TransactionBuilderExt, WalletSelectionMode},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
+use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use fuels_accounts::provider::Provider;
@@ -49,6 +51,12 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     };
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs_with_manifest = built_pkgs(&curr_dir, &build_opts)?;
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        WalletSelectionMode::Manual
+    } else {
+        let password = prompt_forc_wallet_password(&default_wallet_path())?;
+        WalletSelectionMode::ForcWallet(password)
+    };
     for built in built_pkgs_with_manifest {
         if built
             .descriptor
@@ -56,7 +64,13 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
             .check_program_type(&[TreeType::Script])
             .is_ok()
         {
-            let pkg_receipts = run_pkg(&command, &built.descriptor.manifest_file, &built).await?;
+            let pkg_receipts = run_pkg(
+                &command,
+                &built.descriptor.manifest_file,
+                &built,
+                &wallet_mode,
+            )
+            .await?;
             receipts.push(pkg_receipts);
         }
     }
@@ -68,6 +82,7 @@ pub async fn run_pkg(
     command: &cmd::Run,
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
+    wallet_mode: &WalletSelectionMode,
 ) -> Result<RanScript> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
 
@@ -101,11 +116,6 @@ pub async fn run_pkg(
                 .map_err(|e| anyhow!("Failed to parse contract id: {}", e))
         })
         .collect::<Result<Vec<ContractId>>>()?;
-    let wallet_mode = if command.manual_signing {
-        WalletSelectionMode::Manual
-    } else {
-        WalletSelectionMode::ForcWallet
-    };
 
     let mut tb = TransactionBuilder::script(compiled.bytecode.bytes.clone(), script_data);
     tb.maturity(command.maturity.maturity.into())

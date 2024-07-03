@@ -12,3 +12,8 @@ pub const DEVNET_FAUCET_URL: &str = "https://faucet-devnet.fuel.network";
 pub const DEVNET_ENDPOINT_URL: &str = "https://devnet.fuel.network";
 pub const TESTNET_FAUCET_URL: &str = "https://faucet-testnet.fuel.network";
 pub const TESTNET_ENDPOINT_URL: &str = "https://testnet.fuel.network";
+/// Default PrivateKey to sign transactions submitted to local node.
+pub const DEFAULT_PRIVATE_KEY: &str =
+    "0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
+/// The maximum time to wait for a transaction to be included in a block by the node
+pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
