@@ -307,6 +307,10 @@ impl ty::TyMatchExpression {
             };
         }
 
+        if RADIX_TREE_DEBUG {
+            println!("return wildcard branch");
+        }
+
         Ok(block)
     }
 
@@ -578,6 +582,10 @@ impl ty::TyMatchExpression {
                 return_type: branch_return_type_id,
                 span: Span::dummy(),
             };
+        }
+
+        if RADIX_TREE_DEBUG {
+            println!("{}return wildcard branch", " ".repeat(depth * 4),);
         }
 
         block
