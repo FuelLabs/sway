@@ -1,4 +1,4 @@
-use std::{io::Write, str::FromStr};
+use std::{collections::BTreeMap, io::Write, path::Path, str::FromStr};
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
@@ -23,18 +23,12 @@ use forc_wallet::{
     utils::default_wallet_path,
 };
 
-use crate::util::target::Target;
-
-/// The maximum time to wait for a transaction to be included in a block by the node
-pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
-
-/// Default PrivateKey to sign transactions submitted to local node.
-pub const DEFAULT_PRIVATE_KEY: &str =
-    "0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
+use crate::{constants::DEFAULT_PRIVATE_KEY, util::target::Target};
 
 #[derive(PartialEq, Eq)]
 pub enum WalletSelectionMode {
-    ForcWallet,
+    /// Holds the password of forc-wallet instance.
+    ForcWallet(String),
     Manual,
 }
 
@@ -66,6 +60,89 @@ fn ask_user_yes_no_question(question: &str) -> Result<bool> {
     let ans = ans.trim();
     Ok(ans == "y" || ans == "Y")
 }
+
+fn collect_user_accounts(
+    wallet_path: &Path,
+    password: &str,
+) -> Result<BTreeMap<usize, Bech32Address>> {
+    let verification = AccountVerification::Yes(password.to_string());
+    let accounts = collect_accounts_with_verification(wallet_path, verification).map_err(|e| {
+        if e.to_string().contains("Mac Mismatch") {
+            anyhow::anyhow!("Failed to access forc-wallet vault. Please check your password")
+        } else {
+            e
+        }
+    })?;
+    Ok(accounts)
+}
+
+pub(crate) fn prompt_forc_wallet_password(wallet_path: &Path) -> Result<String> {
+    let prompt = format!(
+        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}: "
+    );
+    let password = rpassword::prompt_password(prompt)?;
+    Ok(password)
+}
+
+pub(crate) fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Result<()> {
+    if !wallet_path.exists() {
+        let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
+        let accepted = ask_user_yes_no_question(&question)?;
+        let new_options = New {
+            force: false,
+            cache_accounts: None,
+        };
+        if accepted {
+            new_wallet_cli(wallet_path, new_options)?;
+            println!("Wallet created successfully.");
+            // Derive first account for the fresh wallet we created.
+            new_at_index_cli(wallet_path, 0)?;
+            println!("Account derived successfully.");
+        } else {
+            anyhow::bail!("Refused to create a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag.")
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn secret_key_from_forc_wallet(
+    wallet_path: &Path,
+    account_index: usize,
+    password: &str,
+) -> Result<SecretKey> {
+    let secret_key = derive_secret_key(wallet_path, account_index, password).map_err(|e| {
+        if e.to_string().contains("Mac Mismatch") {
+            anyhow::anyhow!("Failed to access forc-wallet vault. Please check your password")
+        } else {
+            e
+        }
+    })?;
+    Ok(secret_key)
+}
+
+pub(crate) fn bech32_from_secret(secret_key: &SecretKey) -> Result<Bech32Address> {
+    let public_key = PublicKey::from(secret_key);
+    let hashed = public_key.hash();
+    let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
+    Ok(bech32)
+}
+
+pub(crate) fn select_manual_secret_key(
+    default_signer: bool,
+    signing_key: Option<SecretKey>,
+) -> Option<SecretKey> {
+    match (default_signer, signing_key) {
+        // Note: unwrap is safe here as we already know that 'DEFAULT_PRIVATE_KEY' is a valid private key.
+        (true, None) => Some(SecretKey::from_str(DEFAULT_PRIVATE_KEY).unwrap()),
+        (true, Some(signing_key)) => {
+            println_warning("Signing key is provided while requesting to sign with a default signer. Using signing key");
+            Some(signing_key)
+        }
+        (false, None) => None,
+        (false, Some(signing_key)) => Some(signing_key),
+    }
+}
+
 /// Collect and return balances of each account in the accounts map.
 async fn collect_account_balances(
     accounts_map: &AccountsMap,
@@ -79,6 +156,78 @@ async fn collect_account_balances(
     futures::future::try_join_all(accounts.iter().map(|acc| acc.get_balances()))
         .await
         .map_err(|e| anyhow::anyhow!("{e}"))
+}
+
+// TODO: Simplify the function signature once https://github.com/FuelLabs/sway/issues/6071 is closed.
+pub(crate) async fn select_secret_key(
+    wallet_mode: &WalletSelectionMode,
+    default_sign: bool,
+    signing_key: Option<SecretKey>,
+    provider: &Provider,
+) -> Result<Option<SecretKey>> {
+    let chain_info = provider.chain_info().await?;
+    let signing_key = match wallet_mode {
+        WalletSelectionMode::ForcWallet(password) => {
+            let wallet_path = default_wallet_path();
+            check_and_create_wallet_at_default_path(&wallet_path)?;
+            // TODO: This is a very simple TUI, we should consider adding a nice TUI
+            // capabilities for selections and answer collection.
+            let accounts = collect_user_accounts(&wallet_path, password)?;
+            let account_balances = collect_account_balances(&accounts, provider).await?;
+
+            let total_balance = account_balances
+                .iter()
+                .flat_map(|account| account.values())
+                .sum::<u64>();
+            if total_balance == 0 {
+                let first_account = accounts
+                    .get(&0)
+                    .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
+                let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+                let faucet_link = format!("{}/?address={first_account}", target.faucet_url());
+                anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
+                                      \n\nIf you are interacting with a testnet consider using the faucet.\
+                                      \n-> {target} network faucet: {faucet_link}\
+                                      \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
+            }
+            print_account_balances(&accounts, &account_balances);
+
+            let mut account_index;
+            loop {
+                print!("\nPlease provide the index of account to use for signing: ");
+                std::io::stdout().flush()?;
+                let mut input_account_index = String::new();
+                std::io::stdin().read_line(&mut input_account_index)?;
+                account_index = input_account_index.trim().parse::<usize>()?;
+                if accounts.contains_key(&account_index) {
+                    break;
+                }
+                let options: Vec<String> = accounts.keys().map(|key| key.to_string()).collect();
+                println_warning(&format!(
+                    "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
+                    account_index,
+                    options.join(","),
+                ));
+            }
+
+            let secret_key = secret_key_from_forc_wallet(&wallet_path, account_index, password)?;
+
+            let bech32 = bech32_from_secret(&secret_key)?;
+            // TODO: Do this via forc-wallet once the functionality is exposed.
+            let question = format!(
+                "Do you agree to sign this transaction with {}? [y/N]: ",
+                bech32
+            );
+            let accepted = ask_user_yes_no_question(&question)?;
+            if !accepted {
+                anyhow::bail!("User refused to sign");
+            }
+
+            Some(secret_key)
+        }
+        WalletSelectionMode::Manual => select_manual_secret_key(default_sign, signing_key),
+    };
+    Ok(signing_key)
 }
 
 #[async_trait]
@@ -95,9 +244,9 @@ pub trait TransactionBuilderExt<Tx> {
     async fn finalize_signed(
         &mut self,
         client: Provider,
-        unsigned: bool,
+        default_signature: bool,
         signing_key: Option<SecretKey>,
-        wallet_mode: WalletSelectionMode,
+        wallet_mode: &WalletSelectionMode,
     ) -> Result<Tx>;
 }
 
@@ -169,131 +318,17 @@ impl<Tx: Buildable + field::Witnesses + Send> TransactionBuilderExt<Tx> for Tran
         provider: Provider,
         default_sign: bool,
         signing_key: Option<SecretKey>,
-        wallet_mode: WalletSelectionMode,
+        wallet_mode: &WalletSelectionMode,
     ) -> Result<Tx> {
         let chain_info = provider.chain_info().await?;
         let params = chain_info.consensus_parameters;
-        let signing_key = match (wallet_mode, signing_key, default_sign) {
-            (WalletSelectionMode::ForcWallet, None, false) => {
-                // TODO: This is a very simple TUI, we should consider adding a nice TUI
-                // capabilities for selections and answer collection.
-                let wallet_path = default_wallet_path();
-                if !wallet_path.exists() {
-                    let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");
-                    let accepted = ask_user_yes_no_question(&question)?;
-                    let new_options = New {
-                        force: false,
-                        cache_accounts: None,
-                    };
-                    if accepted {
-                        new_wallet_cli(&wallet_path, new_options)?;
-                        println!("Wallet created successfully.");
-                        // Derive first account for the fresh wallet we created.
-                        new_at_index_cli(&wallet_path, 0)?;
-                        println!("Account derived successfully.");
-                    } else {
-                        anyhow::bail!("Refused to create a new wallet. If you don't want to use forc-wallet, you can sign this transaction manually with --manual-signing flag.")
-                    }
-                }
-                let prompt = format!(
-                        "\nPlease provide the password of your encrypted wallet vault at {wallet_path:?}: "
-                    );
-                let password = rpassword::prompt_password(prompt)?;
-                let verification = AccountVerification::Yes(password.clone());
-                let accounts = collect_accounts_with_verification(&wallet_path, verification)
-                    .map_err(|e| {
-                        if e.to_string().contains("Mac Mismatch") {
-                            anyhow::anyhow!(
-                                "Failed to access forc-wallet vault. Please check your password"
-                            )
-                        } else {
-                            e
-                        }
-                    })?;
-                let account_balances = collect_account_balances(&accounts, &provider).await?;
-
-                let total_balance = account_balances
-                    .iter()
-                    .flat_map(|account| account.values())
-                    .sum::<u64>();
-                if total_balance == 0 {
-                    let first_account = accounts
-                        .get(&0)
-                        .ok_or_else(|| anyhow::anyhow!("No account derived for this wallet"))?;
-                    let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
-                    let faucet_link = format!("{}/?address={first_account}", target.faucet_url());
-                    anyhow::bail!("Your wallet does not have any funds to pay for the transaction.\
-                                      \n\nIf you are interacting with a testnet consider using the faucet.\
-                                      \n-> {target} network faucet: {faucet_link}\
-                                      \nIf you are interacting with a local node, consider providing a chainConfig which funds your account.")
-                }
-                print_account_balances(&accounts, &account_balances);
-
-                let mut account_index;
-                loop {
-                    print!("\nPlease provide the index of account to use for signing: ");
-                    std::io::stdout().flush()?;
-                    let mut input_account_index = String::new();
-                    std::io::stdin().read_line(&mut input_account_index)?;
-                    account_index = input_account_index.trim().parse::<usize>()?;
-                    if accounts.contains_key(&account_index) {
-                        break;
-                    }
-                    let options: Vec<String> = accounts.keys().map(|key| key.to_string()).collect();
-                    println_warning(&format!(
-                        "\"{}\" is not a valid account.\nPlease choose a valid option from {}",
-                        account_index,
-                        options.join(","),
-                    ));
-                }
-
-                let secret_key = derive_secret_key(&wallet_path, account_index, &password)
-                    .map_err(|e| {
-                        if e.to_string().contains("Mac Mismatch") {
-                            anyhow::anyhow!(
-                                "Failed to access forc-wallet vault. Please check your password"
-                            )
-                        } else {
-                            e
-                        }
-                    })?;
-
-                // TODO: Do this via forc-wallet once the functionality is exposed.
-                let public_key = PublicKey::from(&secret_key);
-                let hashed = public_key.hash();
-                let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
-                let question = format!(
-                    "Do you agree to sign this transaction with {}? [y/N]: ",
-                    bech32
-                );
-                let accepted = ask_user_yes_no_question(&question)?;
-                if !accepted {
-                    anyhow::bail!("User refused to sign");
-                }
-
-                Some(secret_key)
-            }
-            (WalletSelectionMode::ForcWallet, Some(key), _) => {
-                println_warning("Signing key is provided while requesting to sign with forc-wallet or with default signer. Using signing key");
-                Some(key)
-            }
-            (WalletSelectionMode::Manual, None, false) => None,
-            (WalletSelectionMode::Manual, Some(key), false) => Some(key),
-            (_, None, true) => {
-                // Generate a `SecretKey` to sign this transaction from a default private key used
-                // by fuel-core.
-                let secret_key = SecretKey::from_str(DEFAULT_PRIVATE_KEY)?;
-                Some(secret_key)
-            }
-            (WalletSelectionMode::Manual, Some(key), true) => {
-                println_warning("Signing key is provided while requesting to sign with a default signer. Using signing key");
-                Some(key)
-            }
-        };
+        let signing_key =
+            select_secret_key(wallet_mode, default_sign, signing_key, &provider).await?;
         // Get the address
         let address = if let Some(key) = signing_key {
             Address::from(*key.public_key().hash())
         } else {
+            // TODO: Remove this path https://github.com/FuelLabs/sway/issues/6071
             Address::from(prompt_address()?)
         };
 

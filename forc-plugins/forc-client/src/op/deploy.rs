@@ -1,10 +1,10 @@
 use crate::{
     cmd,
+    constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
-        gas::get_estimated_max_fee,
         node_url::get_node_url,
         pkg::built_pkgs,
-        tx::{TransactionBuilderExt, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS},
+        tx::{prompt_forc_wallet_password, select_secret_key, WalletSelectionMode},
     },
 };
 use anyhow::{bail, Context, Result};
@@ -12,12 +12,14 @@ use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::default_output_directory;
+use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
-use fuel_tx::{Output, Salt, TransactionBuilder};
+use fuel_tx::Salt;
 use fuel_vm::prelude::*;
-use fuels_accounts::provider::Provider;
+use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
+use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
@@ -176,6 +178,13 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
+    let wallet_mode = if command.default_signer || command.signing_key.is_some() {
+        WalletSelectionMode::Manual
+    } else {
+        let password = prompt_forc_wallet_password(&default_wallet_path())?;
+        WalletSelectionMode::ForcWallet(password)
+    };
+
     for pkg in built_pkgs {
         if pkg
             .descriptor
@@ -197,8 +206,14 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                     bail!("Both `--salt` and `--default-salt` were specified: must choose one")
                 }
             };
-            let contract_id =
-                deploy_pkg(&command, &pkg.descriptor.manifest_file, &pkg, salt).await?;
+            let contract_id = deploy_pkg(
+                &command,
+                &pkg.descriptor.manifest_file,
+                &pkg,
+                salt,
+                &wallet_mode,
+            )
+            .await?;
             contract_ids.push(contract_id);
         }
     }
@@ -211,6 +226,7 @@ pub async fn deploy_pkg(
     manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
     salt: Salt,
+    wallet_mode: &WalletSelectionMode,
 ) -> Result<DeployedContract> {
     let node_url = get_node_url(&command.node, &manifest.network)?;
     let client = FuelClient::new(node_url.clone())?;
@@ -232,44 +248,30 @@ pub async fn deploy_pkg(
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
 
-    let wallet_mode = if command.manual_signing {
-        WalletSelectionMode::Manual
-    } else {
-        WalletSelectionMode::ForcWallet
-    };
-
     let provider = Provider::connect(node_url.clone()).await?;
+    let tx_policies = TxPolicies::default();
 
-    // We need a tx for estimation without the signature.
-    let mut tb =
-        TransactionBuilder::create(bytecode.as_slice().into(), salt, storage_slots.clone());
-    tb.maturity(command.maturity.maturity.into())
-        .add_output(Output::contract_created(contract_id, state_root));
-    let tx_for_estimation = tb.finalize_without_signature_inner();
+    let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
+        bytecode.clone(),
+        contract_id,
+        state_root,
+        salt,
+        storage_slots.clone(),
+        tx_policies,
+    );
+    let signing_key = select_secret_key(
+        wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
+    let wallet = WalletUnlocked::new_from_private_key(signing_key, Some(provider.clone()));
 
-    // If user specified max_fee use that but if not, we will estimate with %10 safety margin.
-    let max_fee = if let Some(max_fee) = command.gas.max_fee {
-        max_fee
-    } else {
-        let estimation_margin = 10;
-        get_estimated_max_fee(
-            tx_for_estimation.clone(),
-            &provider,
-            &client,
-            estimation_margin,
-        )
-        .await?
-    };
-
-    let tx = tb
-        .max_fee_limit(max_fee)
-        .finalize_signed(
-            provider.clone(),
-            command.default_signer || command.unsigned,
-            command.signing_key,
-            wallet_mode,
-        )
-        .await?;
+    wallet.add_witnesses(&mut tb)?;
+    wallet.adjust_for_fee(&mut tb, 0).await?;
+    let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);
 
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
