@@ -2,8 +2,6 @@
 
 The Sway Core Library, like the name suggests contains core operators and logic for the primitive types of the Sway programming language. These traits and methods are an extension of the [primitive types](https://docs.fuel.network/docs/sway/basics/built_in_types/#primitive-types) `u8`, `u16`, `u32`, `u64`, `u256`, `str[]`, `str`, `bool` and , `b256` and can be used where appropriate.
 
-> Please note that Sway Core Library at the time of writing (v0.61.0) does not support operators for unsigned integers of size 128 (`u128`). Although the necessary OP codes exists for operators `u128` in the [FuelVM instruction set](https://docs.fuel.network/docs/specs/fuel-vm/instruction-set/) the team has limited bandwidth preparing for mainnet launch, so please consider [contributing](https://docs.fuel.network/docs/sway/reference/contributing_to_sway/) if this is of interest to you.
-
 The latest core library documentation can be found in the [Core Library Book](https://fuellabs.github.io/sway/master/core/). If the latest version is not compatible please refer to the appropriate tagged release.
 
 ## Using the Core Library
@@ -25,8 +23,6 @@ Developers don't need to concern themselves with underflows and overflows becaus
 Sway core operations and logic are limited to their respective types. In other words, intuitively, the add `+` operation will be available for all unsigned integers in Sway but not for booleans.
 
 The prelude contains a list of operations essential to all Sway programs. The latest version of the prelude can be found [here](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/prelude.sw).
-
-> In addition to the notice above `Strings` are currently being reworked and do not have essential operations like concatenation etc. Workarounds will be required.
 
 - [`core::primitives::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitives.sw) a module for getting `max`, `min`, `bits` and `zero`th for integers.
 - [`core::primitive_conversions::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitive_conversions.sw) a module for converting between unsigned integers sizes.
