@@ -24,13 +24,13 @@ Sway core operations and logic are limited to their respective types. In other w
 
 The prelude contains a list of operations essential to all Sway programs. The latest version of the prelude can be found [here](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/prelude.sw).
 
-- [`core::primitives::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitives.sw) a module for getting `max`, `min`, `bits` and `zero`th for integers.
+- [`core::primitives::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitives.sw) a module for getting `max`, `min`, `bits` and `zero` for integers.
 - [`core::primitive_conversions::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitive_conversions.sw) a module for converting between unsigned integers sizes.
 - [`core::raw_ptr::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_ptr.sw) a module for dealing with pointers.
 - [`core::raw_slice::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_slice.sw) a module for converting types to raw slice
 - [`core::ops::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/ops.sw) a module for operations like `add` or `subtract` and comparisons `equal` and `order`.
 - [`core::storage::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/storage.sw) a module dealing with storage.
-- [`core::str::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/str.sw) a module dealing with `str` slices like `len` or converstions like `from_str_array`.
+- [`core::str::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/str.sw) a module dealing with `str` slices like `len` or conversions like `from_str_array`.
 - [`core::codec::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/codec.sw) a module to encode and decode data structures.
 
 For the full list of traits and methods available for each primitive type, please refer to the chart below or the [Core Library Book](https://fuellabs.github.io/sway/master/core/index.html).
