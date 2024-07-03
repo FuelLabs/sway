@@ -100,6 +100,7 @@ pub(crate) fn first_user_account(wallet_path: &Path, password: &str) -> Result<B
         .clone();
     Ok(account)
 }
+
 pub(crate) fn check_and_create_wallet_at_default_path(wallet_path: &Path) -> Result<()> {
     if !wallet_path.exists() {
         let question = format!("Could not find a wallet at {wallet_path:?}, would you like to create a new one? [y/N]: ");

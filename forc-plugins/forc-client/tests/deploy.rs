@@ -38,6 +38,7 @@ fn test_data_path() -> PathBuf {
 
 fn run_node() -> (Child, Port) {
     let port = portpicker::pick_unused_port().expect("No ports free");
+
     let child = Command::new("fuel-core")
         .arg("run")
         .arg("--debug")
@@ -187,7 +188,7 @@ async fn deploy_fresh_proxy() {
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "fe084b07f5fd44f837d1fbf043671f0b27caef87503106b799b6a8b1ad5b30bd",
+                "7fbb4bd7f702cb41bfd9cef8b811895533d1ed59f7a31357ec142546207eb979",
             )
             .unwrap(),
         ),

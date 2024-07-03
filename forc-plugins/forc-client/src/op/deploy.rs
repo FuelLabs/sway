@@ -11,7 +11,7 @@ use crate::{
         },
     },
 };
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use colored::Colorize;
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
@@ -392,7 +392,7 @@ pub async fn deploy_pkg(
         &provider,
     )
     .await?
-    .ok_or_else(|| anyhow!("failed to select a signer for the transaction"))?;
+    .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
     let wallet = WalletUnlocked::new_from_private_key(signing_key, Some(provider.clone()));
 
     wallet.add_witnesses(&mut tb)?;
