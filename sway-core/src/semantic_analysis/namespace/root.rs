@@ -157,14 +157,12 @@ impl Root {
         dst: &ModulePath,
 	visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-	// TODO: Reexport
         self.check_module_privacy(handler, engines, src)?;
 
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
         let mut decls_and_item_imports = vec![];
 
-	// TODO: Make sure the paths are correct.
 	let get_path = |mod_path: Vec<Ident>| {
             let mut is_external = false;
             if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
@@ -266,13 +264,11 @@ impl Root {
         alias: Option<Ident>,
 	visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-	// TODO: Reexport
         self.check_module_privacy(handler, engines, src)?;
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 	let src_items = src_mod.current_items();
 
 	let (decl, path, src_visibility) =
-	    // TODO: This code is very similar to resolve_symbol_helper, and should be refactored.
 	    if let Some(decl) = src_items.symbols.get(item) {
 		let visibility =
 		    if is_ancestor(src, dst) {
@@ -733,97 +729,6 @@ impl Root {
 
         Ok(())
     }
-
-//     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
-//     /// `dst` module.
-//     ///
-//     /// This is used when an import path contains an asterisk.
-//     ///
-//     /// Paths are assumed to be absolute.
-//     pub fn star_import_with_reexports(
-//         &mut self,
-//         handler: &Handler,
-//         engines: &Engines,
-//         src: &ModulePath,
-//         dst: &ModulePath,
-//     ) -> Result<(), ErrorEmitted> {
-//         self.check_module_privacy(handler, engines, src)?;
-// 
-//         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
-// 
-//         let implemented_traits = src_mod.current_items().implemented_traits.clone();
-//         let use_item_synonyms = src_mod.current_items().use_item_synonyms.clone();
-//         let use_glob_synonyms = src_mod.current_items().use_glob_synonyms.clone();
-// 
-//         // collect all declared and reexported symbols from the source module
-//         let mut all_symbols_and_decls = vec![];
-//         for (symbol, decls) in src_mod.current_items().use_glob_synonyms.iter() {
-//             decls
-//                 .iter()
-//                 .for_each(|(_, decl, _)| all_symbols_and_decls.push((symbol.clone(), decl.clone())));
-//         }
-//         for (symbol, (_, _, decl, _)) in src_mod.current_items().use_item_synonyms.iter() {
-//             all_symbols_and_decls.push((symbol.clone(), decl.clone()));
-//         }
-//         for (symbol, decl) in src_mod.current_items().symbols.iter() {
-//             if is_ancestor(src, dst) || decl.visibility(engines).is_public() {
-//                 all_symbols_and_decls.push((symbol.clone(), decl.clone().expect_typed()));
-//             }
-//         }
-// 
-//         let mut symbols_paths_and_decls = vec![];
-//         let get_path = |mod_path: Vec<Ident>| {
-//             let mut is_external = false;
-//             if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
-//                 is_external = submodule.is_external
-//             };
-// 
-//             let mut path = src[..1].to_vec();
-//             if is_external {
-//                 path = mod_path;
-//             } else {
-//                 path.extend(mod_path);
-//             }
-// 
-//             path
-//         };
-// 
-//         for (symbol, (_, mod_path, decl, _)) in use_item_synonyms {
-//             symbols_paths_and_decls.push((symbol, get_path(mod_path), decl));
-//         }
-//         for (symbol, decls) in use_glob_synonyms {
-//             decls.iter().for_each(|(mod_path, decl, _)| {
-//                 symbols_paths_and_decls.push((
-//                     symbol.clone(),
-//                     get_path(mod_path.clone()),
-//                     decl.clone(),
-//                 ))
-//             });
-//         }
-// 
-//         let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
-//         dst_mod
-//             .current_items_mut()
-//             .implemented_traits
-//             .extend(implemented_traits, engines);
-// 
-//         let mut try_add = |symbol, path, decl: ty::TyDecl| {
-//             dst_mod
-//                 .current_items_mut()
-//                 .insert_glob_use_symbol(engines, symbol, path, &decl);
-//         };
-// 
-//         for (symbol, decl) in all_symbols_and_decls {
-//             try_add(symbol.clone(), src.to_vec(), decl);
-//         }
-// 
-//         for (symbol, path, decl) in symbols_paths_and_decls {
-//             try_add(symbol.clone(), path, decl);
-//         }
-// 
-//         Ok(())
-//     }
-// 
 
     fn check_module_privacy(
         &self,
