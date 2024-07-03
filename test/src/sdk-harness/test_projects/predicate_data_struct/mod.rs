@@ -32,7 +32,11 @@ async fn create_predicate(
     asset_id: AssetId,
 ) {
     let wallet_coins = wallet
-        .get_asset_inputs_for_amount(asset_id, wallet.get_asset_balance(&asset_id).await.unwrap())
+        .get_asset_inputs_for_amount(
+            asset_id,
+            wallet.get_asset_balance(&asset_id).await.unwrap(),
+            None,
+        )
         .await
         .unwrap();
 

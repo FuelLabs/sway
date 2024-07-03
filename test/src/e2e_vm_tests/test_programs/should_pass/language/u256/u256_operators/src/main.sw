@@ -176,3 +176,9 @@ fn type_inference_numeric_2() -> u256 {
    result = 3.as_u256();
    result
 }
+
+#[test]
+fn incorrect_def_modeling() -> u256 {
+    let c: u256 = 1;
+    c % c  // this emits a WQAM instruction
+}
