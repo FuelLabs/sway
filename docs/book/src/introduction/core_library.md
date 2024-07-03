@@ -8,17 +8,17 @@ The latest core library documentation can be found in the [Core Library Book](ht
 
 ## Using the Core Library
 
-Unlike their standard library counterparts, core library functionalities do not need to be explicitly imported and will work out of the box after creating any new Sway project with `forc new`. The `use` keyword is simply not required.
+Core library functionalities do not need to be explicitly imported and will work out of the box after creating any new Sway project with [`forc new`](../forc/commands/forc_new.md). The `use` keyword is simply not required.
 
-Consider this example of using the modulo function for two like value types in a `struct`:
+Consider this example of using the modulo function for two like value types:
 
 ```sway
-let struct1 = MyStruct { val: 10 };
-let struct2 = MyStruct { val: 2 };
-let result_struct = struct1 % struct2;
+let val_1 = 10;
+let val_2 = 2;
+let result = val_1 % val_2;
 ```
 
-A bonus of developing with Sway is that developers do not have to worry about underflows and overflows, as these are handled by the FuelVM by design.
+Developers don't need to concern themselves with underflows and overflows because the Sway compiler automatically manages these issues during execution.
 
 ## Core Library Prelude
 
@@ -28,124 +28,14 @@ The prelude contains a list of operations essential to all Sway programs. The la
 
 > In addition to the notice above `Strings` are currently being reworked and do not have essential operations like concatenation etc. Workarounds will be required.
 
-### Primitives
-
-`max()` The largest value that can be represented by this integer type
-
-- `let val = u256::max()`
-
-`min()` The smallest value that can be represented by this integer type
-
-- `let res = u256::min()`
-
-`bits()` The size of this integer type in bits
-
-- `let res = u256::bits()`
-
-`zero()` the zero value for this integer type i
-
-- `let res = u256::zero()`
-
-### Primitive Conversions
-
-`as_u256` Converts any unsigned integer smaller than `u256` including `b256` to a `u256`
-
-- `let res = val.as_u256()`
-
-`as_u64` Converts any unsigned integer smaller than `u64` to a `u64`
-
-- `let res = val.as_u64()`
-
-`as_u32` Converts any unsigned integer smaller than `u32` to a `u32`
-
-- `let res = val.as_u32()`
-
-`as_b256` Converts a `u256` to a `b256`
-
-- `let res = val.as_b256()`
-
-### Operations
-
-`add` Add two values of the same type
-
-- `let res = val1 + val2`
-
-`subtract` Subtract two values of the same type
-
-- `let res = val1 - val2`
-
-`multiply` Multiply two values of the same type
-
-- `let res = val1 * val2`
-
-`divide` Divide two values of the same type
-
-- `let res = val1 * val2`
-
-`modulo` Modulo two values of the same type
-
-- `let res = val1 % val2`
-
-`not` Inverts the value of the type
-
-- `let res = !val`
-
-`equal` Evaluates if two values of the same type are equal i.e.
-
-- `let res = val1 == val2`
-- `let res = val1 != val2`
-
-`order` Evaluates if one value of the same type is greater than another
-
-- `let res = val1 > val2`
-- `let res = val1 >= val2`
-
-`shift` Bit shift left by an amount
-
-- `let res = val1 >> 1`
-- `let res = val1 << 1`
-
-### String
-
-`len` Return the length of the string slice in bytes
-
-- `let res = val.len()`
-
-`as_ptr` Return a `raw_ptr` to the beginning of the string slice on the heap
-
-- `let res = val.as_ptr`
-
-`from_str_array` Convert a string array to string
-
-- `let res: str = from_str_array(val)`
-
-### Storage
-
-`slot` The assigned location in storage
-
-- `let res = val.slot()`
-
-`offset` The assigned offset based on the data structure `T`
-
-- `let res = val.offset()`
-  `field_id` A unique identifier
-- `let res = val.field_id()`
-
-### Raw Slice
-
-`slice` Converts self into a `raw_slice`
-
-- `let slice = my_type.as_raw_slice()`
-
-### Codec
-
-`abi_encode` Encodes a value based on the buffer
-
-- `let res = val.abi_encode(buffer)`
-
-`abi_decode` Decodes a type based on the buffer
-
-- `let res = my_type::abi_decode(buffer)`
+- [`core::primitives::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitives.sw) a module for getting `max`, `min`, `bits` and `zero`th for integers.
+- [`core::primitive_conversions::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitive_conversions.sw) a module for converting between unsigned integers sizes.
+- [`core::raw_ptr::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_ptr.sw) a module for dealing with pointers.
+- [`core::raw_slice::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_slice.sw) a module for converting types to raw slice
+- [`core::ops::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/ops.sw) a module for operations like `add` or `subtract` and comparisons `equal` and `order`.
+- [`core::storage::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/storage.sw) a module dealing with storage.
+- [`core::str::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/str.sw) a module dealing with `str` slices like `len` or converstions like `from_str_array`.
+- [`core::codec::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/codec.sw) a module to encode and decode data structures.
 
 For the full list of traits and methods available for each primitive type, please refer to the chart below or the [Core Library Book](https://fuellabs.github.io/sway/master/core/index.html).
 
