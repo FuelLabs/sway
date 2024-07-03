@@ -2012,6 +2012,7 @@ dependencies = [
  "fuels-core",
  "futures",
  "hex",
+ "portpicker",
  "rand",
  "rpassword",
  "serde",
@@ -2019,7 +2020,9 @@ dependencies = [
  "sway-core",
  "sway-types",
  "sway-utils",
+ "tempfile",
  "tokio",
+ "toml_edit 0.21.1",
  "tracing",
 ]
 
