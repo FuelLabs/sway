@@ -1,12 +1,13 @@
 use crate::{
     cmd,
+    constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         node_url::get_node_url,
         pkg::{build_proxy_contract, built_pkgs, update_proxy_address_in_manifest},
         tx::{
             bech32_from_secret, check_and_create_wallet_at_default_path, first_user_account,
             prompt_forc_wallet_password, select_manual_secret_key, select_secret_key,
-            update_proxy_contract_target, WalletSelectionMode, TX_SUBMIT_TIMEOUT_MS,
+            update_proxy_contract_target, WalletSelectionMode,
         },
     },
 };

@@ -12,7 +12,10 @@ use forc_client::{
     NodeTarget,
 };
 use forc_pkg::manifest::Proxy;
+use fuel_crypto::SecretKey;
 use fuel_tx::{ContractId, Salt};
+use fuels::macros::abigen;
+use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
 use portpicker::Port;
 use tempfile::tempdir;
 use toml_edit::{value, Document, InlineTable, Item, Table, Value};
@@ -34,11 +37,10 @@ fn chain_config_path() -> PathBuf {
         .join("local-testnode")
 }
 
-fn test_pkg_path() -> PathBuf {
+fn test_data_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("test")
         .join("data")
-        .join("standalone_contract")
         .canonicalize()
         .unwrap()
 }
@@ -115,7 +117,7 @@ fn patch_manifest_file_with_proxy_table(manifest_dir: &Path, proxy: Proxy) -> an
 async fn simple_deploy() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
-    let project_dir = test_pkg_path();
+    let project_dir = test_data_path().join("standalone_contract");
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
     patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
 
@@ -153,7 +155,7 @@ async fn simple_deploy() {
 async fn deploy_fresh_proxy() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
-    let project_dir = test_pkg_path();
+    let project_dir = test_data_path().join("standalone_contract");
     copy_dir(&project_dir, tmp_dir.path()).unwrap();
     patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
     let proxy = Proxy {
@@ -199,4 +201,63 @@ async fn deploy_fresh_proxy() {
     expected.sort();
 
     assert_eq!(contract_ids, expected)
+}
+
+#[tokio::test]
+async fn proxy_contract_re_routes_call() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+    };
+    patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let contract_ids = deploy(cmd).await.unwrap();
+    // At this point we deployed a contract with proxy. Proxy address is the
+    // first contract id returned.
+    let proxy_contract = contract_ids[0].id;
+    let impl_contract_id = contract_ids[1].id;
+    // Make a contract call into proxy contract, and check if the initial
+    // contract returns a true.
+    let provider = Provider::connect(node_url).await.unwrap();
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
+
+    abigen!(Contract(
+        name = "ImplementationContract",
+        abi = "forc-plugins/forc-client/test/data/standalone_contract/out/debug/standalone_contract-abi.json"
+    ));
+
+    let impl_contract_a = ImplementationContract::new(proxy_contract, wallet_unlocked);
+    let res = impl_contract_a
+        .methods()
+        .test_function()
+        .with_contract_ids(&[impl_contract_id.into()])
+        .call()
+        .await
+        .unwrap();
+    node.kill().unwrap();
+    assert_eq!(res.value, true)
 }

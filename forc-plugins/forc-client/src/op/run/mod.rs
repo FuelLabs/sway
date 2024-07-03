@@ -1,14 +1,12 @@
 mod encode;
 use crate::{
     cmd,
+    constants::TX_SUBMIT_TIMEOUT_MS,
     util::{
         gas::get_script_gas_used,
         node_url::get_node_url,
         pkg::built_pkgs,
-        tx::{
-            prompt_forc_wallet_password, TransactionBuilderExt, WalletSelectionMode,
-            TX_SUBMIT_TIMEOUT_MS,
-        },
+        tx::{prompt_forc_wallet_password, TransactionBuilderExt, WalletSelectionMode},
     },
 };
 use anyhow::{anyhow, bail, Context, Result};

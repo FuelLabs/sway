@@ -1,5 +1,5 @@
 pub mod cmd;
-mod constants;
+pub mod constants;
 pub mod op;
 mod util;
 

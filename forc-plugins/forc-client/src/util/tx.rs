@@ -30,14 +30,7 @@ use forc_wallet::{
 };
 use tracing::info;
 
-use crate::util::target::Target;
-
-/// The maximum time to wait for a transaction to be included in a block by the node
-pub const TX_SUBMIT_TIMEOUT_MS: u64 = 30_000u64;
-
-/// Default PrivateKey to sign transactions submitted to local node.
-pub const DEFAULT_PRIVATE_KEY: &str =
-    "0xde97d8624a438121b86a1956544bd72ed68cd69f2c99555b08b1e8c51ffd511c";
+use crate::{constants::DEFAULT_PRIVATE_KEY, util::target::Target};
 
 #[derive(PartialEq, Eq)]
 pub enum WalletSelectionMode {
