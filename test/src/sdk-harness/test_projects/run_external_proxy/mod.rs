@@ -1,7 +1,4 @@
-use fuels::{
-    prelude::*,
-    types::Bits256,
-};
+use fuels::{prelude::*, types::Bits256};
 
 abigen!(Contract(
     name = "RunExternalProxyContract",

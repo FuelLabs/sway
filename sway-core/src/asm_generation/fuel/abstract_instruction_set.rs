@@ -27,6 +27,7 @@ impl AbstractInstructionSet {
     pub(crate) fn optimize(self, data_section: &DataSection) -> AbstractInstructionSet {
         self.const_indexing_aggregates_function(data_section)
             .dce()
+            .simplify_cfg()
             .remove_sequential_jumps()
             .remove_redundant_moves()
             .remove_unused_ops()

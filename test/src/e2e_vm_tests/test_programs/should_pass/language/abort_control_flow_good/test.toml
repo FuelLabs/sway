@@ -1,4 +1,4 @@
-category = "disabled" # TODO: Enable once https://github.com/FuelLabs/sway/issues/6174 is fixed.
+category = "run"
 expected_result = { action = "revert", value = 42 }
 expected_result_new_encoding = { action = "revert", value = 42 }
 validate_abi = true

@@ -577,7 +577,7 @@ impl VirtualOp {
             WQML(r1, r2, r3, _) => vec![r1, r2, r3],
             WQDV(r1, r2, r3, _) => vec![r1, r2, r3],
             WQCM(_, r2, r3, _) => vec![r2, r3],
-            WQAM(_, r2, r3, r4) => vec![r2, r3, r4],
+            WQAM(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
 
             /* Control Flow Instructions */
             JMP(r1) => vec![r1],
@@ -694,7 +694,7 @@ impl VirtualOp {
             WQML(_, _, _, _) => vec![],
             WQDV(_, _, _, _) => vec![],
             WQCM(r1, _, _, _) => vec![r1],
-            WQAM(r1, _, _, _) => vec![r1],
+            WQAM(_, _, _, _) => vec![],
 
             /* Control Flow Instructions */
             JMP(_r1) => vec![],
