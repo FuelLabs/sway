@@ -52,7 +52,7 @@ fn run_node() -> (Child, Port) {
 
 /// Copy a directory recursively from `source` to `dest`.
 fn copy_dir(source: &Path, dest: &Path) -> anyhow::Result<()> {
-    fs::create_dir_all(&dest)?;
+    fs::create_dir_all(dest)?;
     for e in fs::read_dir(source)? {
         let entry = e?;
         let file_type = entry.file_type()?;
@@ -251,9 +251,9 @@ async fn proxy_contract_re_routes_call() {
         .call()
         .await
         .unwrap();
-    assert_eq!(res.value, true);
+    assert!(res.value);
 
-    update_main_sw(&tmp_dir.path()).unwrap();
+    update_main_sw(tmp_dir.path()).unwrap();
     let target = NodeTarget {
         node_url: Some(node_url.clone()),
         target: None,
@@ -285,6 +285,6 @@ async fn proxy_contract_re_routes_call() {
         .call()
         .await
         .unwrap();
-    assert_eq!(res.value, false);
+    assert!(!res.value);
     node.kill().unwrap();
 }
