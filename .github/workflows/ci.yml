@@ -517,6 +517,25 @@ jobs:
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Run tests
         run: cargo test --locked --release -p forc-debug
+  cargo-test-forc-client:
+    runs-on: ubuntu-latest
+    needs: get-fuel-core-version
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: "x86_64-unknown-linux-gnu, wasm32-unknown-unknown"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install fuel-core for tests
+        run: |
+          curl -sSLf https://github.com/FuelLabs/fuel-core/releases/download/v${{ needs.get-fuel-core-version.outputs.fuel_core_version }}/fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu.tar.gz -L -o fuel-core.tar.gz
+          tar -xvf fuel-core.tar.gz
+          chmod +x fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core
+          mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
+      - name: Run tests
+        run: cargo test --locked --release -p forc-client
   cargo-test-sway-lsp:
     runs-on: ubuntu-latest
     steps:
@@ -538,7 +557,7 @@ jobs:
           toolchain: ${{ env.RUST_VERSION }}
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp
+        run: cargo test --locked --release --workspace --exclude forc-debug --exclude sway-lsp --exlcude forc-client
   cargo-unused-deps-check:
     runs-on: ubuntu-latest
     steps:
