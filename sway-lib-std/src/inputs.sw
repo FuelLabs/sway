@@ -571,7 +571,7 @@ pub fn input_message_data(index: u64, offset: u64) -> Bytes {
     let data = __gtf::<raw_ptr>(index, GTF_INPUT_MESSAGE_DATA);
     let data_with_offset = data.add_uint_offset(offset);
     let length = input_message_data_length(index);
-    let new_ptr = alloc_bytes(length);
+    let new_ptr = alloc_bytes(length - offset);
 
     data_with_offset.copy_bytes_to(new_ptr, length);
     Bytes::from(raw_slice::from_parts::<u8>(new_ptr, length))
