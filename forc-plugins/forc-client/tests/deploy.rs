@@ -61,7 +61,7 @@ fn run_node() -> (Child, Port) {
 
 /// Copy a directory recursively from `source` to `dest`.
 fn copy_dir(source: &Path, dest: &Path) -> anyhow::Result<()> {
-    fs::create_dir_all(&dest)?;
+    fs::create_dir_all(dest)?;
     for e in fs::read_dir(source)? {
         let entry = e?;
         let file_type = entry.file_type()?;
