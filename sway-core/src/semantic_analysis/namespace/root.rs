@@ -195,7 +195,7 @@ impl Root {
 	    }
 	}
 
-	// Collect those glob-imported itesm that the source module reexports. These may be shadowed
+	// Collect those glob-imported items that the source module reexports. These may be shadowed
 	// by local declarations and item imports in the source module, so they are treated
 	// separately.
 	let mut glob_imports = vec![];
