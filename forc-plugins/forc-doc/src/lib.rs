@@ -6,13 +6,13 @@ pub mod tests;
 
 use anyhow::{bail, Result};
 use cli::Command;
-use colored::Colorize;
 use doc::Documentation;
 use forc_pkg as pkg;
 use forc_pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     PackageManifestFile,
 };
+use forc_tracing::println_action_green;
 use forc_util::default_output_directory;
 use render::RenderedDocumentation;
 use std::{
@@ -77,11 +77,13 @@ pub fn compile_html(
     }
     fs::create_dir_all(&doc_path)?;
 
-    println!(
-        "   {} {} ({})",
-        "Compiling".bold().yellow(),
-        pkg_manifest.project_name(),
-        manifest.dir().to_string_lossy()
+    println_action_green(
+        "Compiling",
+        &format!(
+            "{} ({})",
+            pkg_manifest.project_name(),
+            manifest.dir().to_string_lossy()
+        ),
     );
 
     let member_manifests = manifest.member_manifests()?;
@@ -179,11 +181,13 @@ fn build_docs(
         pkg_manifest,
     } = program_info;
 
-    println!(
-        "    {} documentation for {} ({})",
-        "Building".bold().yellow(),
-        pkg_manifest.project_name(),
-        manifest.dir().to_string_lossy()
+    println_action_green(
+        "Building",
+        &format!(
+            "documentation for {} ({})",
+            pkg_manifest.project_name(),
+            manifest.dir().to_string_lossy()
+        ),
     );
 
     let raw_docs = Documentation::from_ty_program(
@@ -210,7 +214,7 @@ fn build_docs(
 
     // write file contents to doc folder
     write_content(rendered_docs, doc_path)?;
-    println!("    {}", "Finished".bold().yellow());
+    println_action_green("Finished", pkg_manifest.project_name());
 
     Ok(raw_docs)
 }
