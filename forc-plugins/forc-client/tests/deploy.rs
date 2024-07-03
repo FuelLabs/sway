@@ -100,6 +100,14 @@ fn patch_manifest_file_with_proxy_table(manifest_dir: &Path, proxy: Proxy) -> an
     Ok(())
 }
 
+fn update_main_sw(tmp_dir: &Path) -> anyhow::Result<()> {
+    let main_sw_path = tmp_dir.join("src").join("main.sw");
+    let content = fs::read_to_string(&main_sw_path)?;
+    let updated_content = content.replace("true", "false");
+    fs::write(main_sw_path, updated_content)?;
+    Ok(())
+}
+
 #[tokio::test]
 async fn simple_deploy() {
     let (mut node, port) = run_node();
@@ -226,7 +234,7 @@ async fn proxy_contract_re_routes_call() {
     let impl_contract_id = contract_ids[0].id;
     // Make a contract call into proxy contract, and check if the initial
     // contract returns a true.
-    let provider = Provider::connect(node_url).await.unwrap();
+    let provider = Provider::connect(&node_url).await.unwrap();
     let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
     let wallet_unlocked = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
 
@@ -235,7 +243,7 @@ async fn proxy_contract_re_routes_call() {
         abi = "forc-plugins/forc-client/test/data/standalone_contract/out/debug/standalone_contract-abi.json"
     ));
 
-    let impl_contract_a = ImplementationContract::new(proxy_contract, wallet_unlocked);
+    let impl_contract_a = ImplementationContract::new(proxy_contract, wallet_unlocked.clone());
     let res = impl_contract_a
         .methods()
         .test_function()
@@ -243,6 +251,40 @@ async fn proxy_contract_re_routes_call() {
         .call()
         .await
         .unwrap();
+    assert_eq!(res.value, true);
+
+    update_main_sw(&tmp_dir.path()).unwrap();
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let contract_ids = deploy(cmd).await.unwrap();
+    // proxy contract id should be the same.
+    let proxy_contract_after_update = contract_ids[0].proxy.unwrap();
+    assert_eq!(proxy_contract, proxy_contract_after_update);
+    let impl_contract_id_after_update = contract_ids[0].id;
+    assert!(impl_contract_id != impl_contract_id_after_update);
+    let impl_contract_a = ImplementationContract::new(proxy_contract_after_update, wallet_unlocked);
+    let res = impl_contract_a
+        .methods()
+        .test_function()
+        .with_contract_ids(&[impl_contract_id_after_update.into()])
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(res.value, false);
     node.kill().unwrap();
-    assert_eq!(res.value, true)
 }
