@@ -9,7 +9,8 @@ use crate::{
     BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
-use forc_tracing::println_warning;
+use byte_unit::{Byte, UnitType};
+use forc_tracing::{println_action_green, println_warning};
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
@@ -497,7 +498,11 @@ impl BuiltPackage {
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify)?;
 
-        info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
+        debug!(
+            "      Bytecode size: {} bytes ({})",
+            self.bytecode.bytes.len(),
+            format_bytecode_size(self.bytecode.bytes.len())
+        );
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -531,7 +536,7 @@ impl BuiltPackage {
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
-                info!("      Bytecode hash: {}", bytecode_hash);
+                debug!("      Bytecode hash: {}", bytecode_hash);
             }
             _ => (),
         }
@@ -713,7 +718,10 @@ impl BuildPlan {
                     cause,
                 );
             }
-            info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+            println_action_green(
+                "Creating",
+                &format!("a new `Forc.lock` file. (Cause: {})", cause),
+            );
             let member_names = manifests
                 .iter()
                 .map(|(_, manifest)| manifest.project.name.to_string())
@@ -723,7 +731,7 @@ impl BuildPlan {
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(lock_path, string)
                 .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-            info!("   Created new lock file at {}", lock_path.display());
+            debug!("   Created new lock file at {}", lock_path.display());
         }
 
         Ok(plan)
@@ -2104,6 +2112,12 @@ fn profile_target_string(profile_name: &str, build_target: &BuildTarget) -> Stri
     };
     format!("{profile_name} [{}] target(s)", targets.join(" + "))
 }
+/// Returns the size of the bytecode in a human-readable format.
+pub fn format_bytecode_size(bytes_len: usize) -> String {
+    let size = Byte::from_u64(bytes_len as u64);
+    let adjusted_byte = size.get_appropriate_unit(UnitType::Decimal);
+    adjusted_byte.to_string()
+}
 
 /// Check if the given node is a contract dependency of any node in the graph.
 fn is_contract_dependency(graph: &Graph, node: NodeIx) -> bool {
@@ -2170,12 +2184,19 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         },
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+    let total_size = built_packages
+        .iter()
+        .map(|(_, pkg)| pkg.bytecode.bytes.len())
+        .sum::<usize>();
 
-    let finished = ansi_term::Colour::Green.bold().paint("Finished");
-    info!(
-        "  {finished} {} in {:.2}s",
-        profile_target_string(&build_profile.name, build_target),
-        build_start.elapsed().as_secs_f32()
+    println_action_green(
+        "Finished",
+        &format!(
+            "{} [{}] in {:.2}s",
+            profile_target_string(&build_profile.name, build_target),
+            format_bytecode_size(total_size),
+            build_start.elapsed().as_secs_f32()
+        ),
     );
     for (node_ix, built_package) in built_packages {
         print_pkg_summary_header(&built_package);
@@ -2289,6 +2310,7 @@ pub fn build(
 
     let mut lib_namespace_map = HashMap::default();
     let mut compiled_contract_deps = HashMap::new();
+
     for &node in plan
         .compilation_order
         .iter()
@@ -2299,6 +2321,8 @@ pub fn build(
         let manifest = &plan.manifest_map()[&pkg.id()];
         let program_ty = manifest.program_type().ok();
 
+        // TODO: Only print "Compiling" when the dependency is not already compiled.
+        // https://github.com/FuelLabs/sway/issues/6209
         print_compiling(
             program_ty.as_ref(),
             &pkg.name,
