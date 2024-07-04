@@ -6,9 +6,9 @@ use sway_ir::{
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
     create_ret_demotion_pass, create_simplify_cfg_pass, metadata_to_inline, optimize as opt,
-    register_known_passes, Context, ExperimentalFlags, Function, InstOp, Instruction, IrError,
-    PassGroup, PassManager, Value, DCE_NAME, FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
-    FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME,
+    register_known_passes, Context, ExperimentalFlags, Function, IrError, PassGroup, PassManager,
+    Value, DCE_NAME, FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME,
+    MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
