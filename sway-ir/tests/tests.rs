@@ -5,9 +5,10 @@ use sway_ir::{
     create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass,
     create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
     create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_postorder_pass,
-    create_ret_demotion_pass, create_simplify_cfg_pass, optimize as opt, register_known_passes,
-    Context, ExperimentalFlags, IrError, PassGroup, PassManager, DCE_NAME, FN_DCE_NAME,
-    FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME,
+    create_ret_demotion_pass, create_simplify_cfg_pass, metadata_to_inline, optimize as opt,
+    register_known_passes, Context, ExperimentalFlags, Function, InstOp, Instruction, IrError,
+    PassGroup, PassManager, Value, DCE_NAME, FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME,
+    FN_DEDUP_RELEASE_PROFILE_NAME, MEM2REG_NAME, SROA_NAME,
 };
 use sway_types::SourceEngine;
 
@@ -201,13 +202,18 @@ fn inline() {
                     );
 
             funcs.into_iter().fold(false, |acc, func| {
-                opt::inline_some_function_calls(
-                    ir,
-                    &func,
-                    opt::is_small_fn(max_blocks, max_instrs, max_stack),
-                )
-                .unwrap()
-                    || acc
+                let predicate = |context: &Context, function: &Function, call_site: &Value| {
+                    let attributed_inline =
+                        metadata_to_inline(context, function.get_metadata(context));
+                    match attributed_inline {
+                        Some(opt::Inline::Never) => false,
+                        Some(opt::Inline::Always) => true,
+                        None => (opt::is_small_fn(max_blocks, max_instrs, max_stack))(
+                            context, function, call_site,
+                        ),
+                    }
+                };
+                opt::inline_some_function_calls(ir, &func, predicate).unwrap() || acc
             })
         }
     })
