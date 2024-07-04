@@ -119,7 +119,7 @@ async fn simple_deploy() {
     node.kill().unwrap();
     let expected = vec![DeployedContract {
         id: ContractId::from_str(
-            "428896412bda8530282a7b8fca5d20b2a73f30037612ca3a31750cf3bf0e976a",
+            "822c8d3672471f64f14f326447793c7377b6e430122db23b622880ccbd8a33ef",
         )
         .unwrap(),
     }];
