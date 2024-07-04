@@ -241,7 +241,7 @@ async fn proxy_contract_re_routes_call() {
 
     abigen!(Contract(
         name = "ImplementationContract",
-        abi = "forc-plugins/forc-client/test/data/standalone_contract/out/debug/standalone_contract-abi.json"
+        abi = "forc-plugins/forc-client/test/data/standalone_contract/standalone_contract-abi.json"
     ));
 
     let impl_contract_a = ImplementationContract::new(proxy_contract, wallet_unlocked.clone());
