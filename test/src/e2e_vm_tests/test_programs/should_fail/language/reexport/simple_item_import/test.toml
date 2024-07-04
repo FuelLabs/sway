@@ -43,25 +43,16 @@ category = "fail"
 #check: $()Symbol "items_2_function" is private.
 
 #check: $()error
-#check: $()Could not find symbol "Items2Trait" in this scope.
+#check: $()Symbol "Items2Trait" is private.
 
 #check: $()error
 #check: $()Module "lib_3::Items3_Variants" could not be found.
-
-#check: $()error
-#check: $()Could not find symbol "Items2Trait" in this scope.
-
-#check: $()error
-#check: $()Trait "Items2Trait" cannot be found in the current scope.
 
 #check: $()error
 #check: $()Could not find symbol "Items3_Variants" in this scope.
 
 #check: $()error
 #check: $()Unknown type name "Items3_Variants".
-
-#check: $()error
-#check: $()No method named "items_2_trait_function" found for type "TestStruct1".
 
 #check: $()error
 #check: $()Could not find symbol "Items3_Variants" in this scope.
@@ -75,4 +66,4 @@ category = "fail"
 #check: $()error
 #check: $()No method named "eq" found for type "{unknown}".
 
-#check: $()Aborting due to 25 errors.
+#check: $()Aborting due to 22 errors.

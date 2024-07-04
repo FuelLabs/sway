@@ -72,11 +72,11 @@ fn call_items_2_function() -> u64 {
     items_2_function()
 }
 
-//impl Items2Trait<TestStruct2> for TestStruct1 {
-//    fn items_2_trait_function(self, x: TestStruct2) -> bool {
-//	self.Z == 128 && x.W
-//    }
-//}
+impl Items2Trait<TestStruct2> for TestStruct1 {
+    fn items_2_trait_function(self, x: TestStruct2) -> bool {
+	self.Z == 128 && x.W
+    }
+}
 
 
 
@@ -117,10 +117,10 @@ pub fn run_all_tests() -> u64 {
     let items_2_function_res = call_items_2_function();
     assert(items_2_function_res == ITEMS_2_FUNCTION_RES);
 
-//    let teststruct_1 = TestStruct1 { Z : 128 };
-//    let teststruct_2 = TestStruct2 { W : false };
-//    let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
-//    assert(items_2_trait_teststruct_1_res);
+    let teststruct_1 = TestStruct1 { Z : 128 };
+    let teststruct_2 = TestStruct2 { W : true };
+    let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
+    assert(items_2_trait_teststruct_1_res);
 
     42
 }

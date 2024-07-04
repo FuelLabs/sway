@@ -118,7 +118,7 @@ pub fn run_all_tests() -> u64 {
     assert(items_2_function_res == ITEMS_2_FUNCTION_RES);
 
     let teststruct_1 = TestStruct1 { Z : 128 };
-    let teststruct_2 = TestStruct2 { W : false };
+    let teststruct_2 = TestStruct2 { W : true };
     let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
     assert(items_2_trait_teststruct_1_res);
 
