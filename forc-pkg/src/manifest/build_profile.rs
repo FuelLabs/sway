@@ -156,7 +156,7 @@ mod tests {
             print_ir: PrintIr::r#final(),
             print_asm: PrintAsm::all(),
             print_bytecode: true,
-            print_bytecode_spans: true,
+            print_bytecode_spans: false,
             terse: true,
             time_phases: true,
             metrics_outfile: Some("metrics_outfile".into()),
