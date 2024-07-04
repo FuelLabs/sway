@@ -112,7 +112,7 @@ impl ty::TyMatchExpression {
         let typed_if_exp =
             handler.scope(
                 |handler| match &*ctx.engines().te().get(self.value_type_id) {
-                    TypeInfo::StringSlice => self.desugar_to_radix_tree(ctx),
+                    TypeInfo::StringSlice => self.desugar_to_radix_trie(ctx),
                     _ => self.desugar_to_typed_if_expression(instantiate, ctx, handler),
                 },
             )?;
@@ -120,7 +120,7 @@ impl ty::TyMatchExpression {
         Ok(typed_if_exp)
     }
 
-    fn desugar_to_radix_tree(
+    fn desugar_to_radix_trie(
         &self,
         mut ctx: TypeCheckContext<'_>,
     ) -> Result<TyExpression, ErrorEmitted> {
@@ -220,6 +220,7 @@ impl ty::TyMatchExpression {
 
         // Now create the outer expression checking the size of the string slice
         let mut block = wildcard_return_expr.clone();
+
         for ((k, _), trie) in match_arms_by_size.into_iter().zip(tries.into_iter()) {
             if RADIX_TREE_DEBUG {
                 println!("if str.len() == {k}");
@@ -277,7 +278,7 @@ impl ty::TyMatchExpression {
                     },
                     Span::dummy(),
                 )),
-                whole_block_span: Span::dummy(),
+                whole_block_span: self.span.clone(),
             };
 
             let then_node = self
@@ -297,13 +298,13 @@ impl ty::TyMatchExpression {
                     condition: Box::new(TyExpression {
                         expression,
                         return_type: bool_type_id,
-                        span: Span::dummy(),
+                        span: self.span.clone(),
                     }),
                     then: Box::new(then_node),
                     r#else: Some(Box::new(block)),
                 },
                 return_type: branch_return_type_id,
-                span: Span::dummy(),
+                span: self.span.clone(),
             };
         }
 
@@ -397,7 +398,7 @@ impl ty::TyMatchExpression {
             span: Span::dummy(),
         };
 
-        let expr = self.generate_radrix_tree_code(
+        let expr = self.generate_radrix_trie_code(
             matched_value,
             packed_strings,
             &packed_strings_expr,
@@ -415,7 +416,7 @@ impl ty::TyMatchExpression {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn generate_radrix_tree_code(
+    fn generate_radrix_trie_code(
         &self,
         matched_value: &TyExpression,
         packed_strings: &str,
@@ -460,7 +461,7 @@ impl ty::TyMatchExpression {
                 );
             }
 
-            let then_node = self.generate_radrix_tree_code(
+            let then_node = self.generate_radrix_trie_code(
                 matched_value,
                 packed_strings,
                 packed_strings_expr,

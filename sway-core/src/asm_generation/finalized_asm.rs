@@ -4,6 +4,7 @@ use super::{
     fuel::{checks, data_section::DataSection},
     ProgramABI, ProgramKind,
 };
+use crate::asm_generation::fuel::data_section::{DataId, Datum, Entry};
 use crate::asm_lang::allocated_ops::{AllocatedOp, AllocatedOpcode};
 use crate::decl_engine::DeclRefFunction;
 use crate::source_map::SourceMap;
@@ -246,8 +247,64 @@ fn to_bytecode_mut(
             }
         }
     }
+
     if build_config.print_bytecode {
-        println!("{}", data_section);
+        println!(".data_section:");
+
+        let offset = bytecode.len();
+
+        fn print_entry(indentation: usize, offset: usize, pair: &Entry) {
+            print!("{}{:#010x} ", " ".repeat(indentation), offset);
+
+            match &pair.value {
+                Datum::Byte(w) => println!(".byte i{w}, as hex {w:02X}"),
+                Datum::Word(w) => {
+                    println!(".word i{w}, as hex be bytes ({:02X?})", w.to_be_bytes())
+                }
+                Datum::ByteArray(bs) => {
+                    print!(".bytes as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
+
+                    for b in bs {
+                        print!(
+                            "{}",
+                            if *b == b' ' || b.is_ascii_graphic() {
+                                *b as char
+                            } else {
+                                '.'
+                            }
+                        );
+                    }
+                    println!("\"");
+                }
+                Datum::Slice(bs) => {
+                    print!(".slice as hex ({bs:02X?}), len i{}, as ascii \"", bs.len());
+
+                    for b in bs {
+                        print!(
+                            "{}",
+                            if *b == b' ' || b.is_ascii_graphic() {
+                                *b as char
+                            } else {
+                                '.'
+                            }
+                        );
+                    }
+                    println!("\"");
+                }
+                Datum::Collection(els) => {
+                    println!(".collection");
+                    for e in els {
+                        print_entry(indentation + 1, offset, e);
+                    }
+                }
+            };
+        }
+
+        for (i, entry) in data_section.value_pairs.iter().enumerate() {
+            let entry_offset = data_section.data_id_to_offset(&DataId(i as u32));
+            print_entry(indentation, offset + entry_offset, entry);
+        }
+
         println!(";; --- END OF TARGET BYTECODE ---\n");
     }
 
