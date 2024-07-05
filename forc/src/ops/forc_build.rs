@@ -26,6 +26,7 @@ fn opts_from_cmd(cmd: BuildCommand) -> pkg::BuildOpts {
             dca_graph_url_format: cmd.build.print.dca_graph_url_format.clone(),
             asm: cmd.build.print.asm(),
             bytecode: cmd.build.print.bytecode,
+            bytecode_spans: false,
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },
