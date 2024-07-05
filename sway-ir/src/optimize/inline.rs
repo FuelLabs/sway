@@ -35,12 +35,12 @@ pub fn create_fn_inline_pass() -> Pass {
 /// This is a copy of sway_core::inline::Inline.
 /// TODO: Reuse: Depend on sway_core? Move it to sway_types?
 #[derive(Debug)]
-enum Inline {
+pub enum Inline {
     Always,
     Never,
 }
 
-fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
+pub fn metadata_to_inline(context: &Context, md_idx: Option<MetadataIndex>) -> Option<Inline> {
     fn for_each_md_idx<T, F: FnMut(MetadataIndex) -> Option<T>>(
         context: &Context,
         md_idx: Option<MetadataIndex>,
@@ -189,6 +189,12 @@ pub fn inline_some_function_calls<F: Fn(&Context, &Function, &Value) -> bool>(
     for call_site in &call_sites {
         let call_site_in = call_data.get(call_site).unwrap();
         let (block, inlined_function) = *call_site_in.borrow();
+
+        if function == &inlined_function {
+            // We can't inline a function into itself.
+            continue;
+        }
+
         inline_function_call(
             context,
             *function,
