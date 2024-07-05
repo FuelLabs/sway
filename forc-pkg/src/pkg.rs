@@ -1660,13 +1660,13 @@ pub fn dependency_namespace(
     let mut root = namespace::Root::from(root_module);
 
     if core_added {
-	let _ = root.star_import(
+        let _ = root.star_import(
             &Handler::default(),
             engines,
             &[CORE, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
-	    Visibility::Private,
-	);
+            Visibility::Private,
+        );
     }
 
     if has_std_dep(graph, node) {
@@ -1675,7 +1675,7 @@ pub fn dependency_namespace(
             engines,
             &[STD, PRELUDE].map(|s| Ident::new_no_span(s.into())),
             &[],
-	    Visibility::Private,
+            Visibility::Private,
         );
     }
 

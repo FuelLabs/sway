@@ -108,7 +108,7 @@ impl SymbolCollectionContext {
         handler: &Handler,
         engines: &Engines,
         src: &ModulePath,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
@@ -123,7 +123,7 @@ impl SymbolCollectionContext {
         engines: &Engines,
         src: &ModulePath,
         enum_name: &Ident,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
@@ -138,7 +138,7 @@ impl SymbolCollectionContext {
         engines: &Engines,
         src: &ModulePath,
         alias: Option<Ident>,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
@@ -154,7 +154,7 @@ impl SymbolCollectionContext {
         src: &ModulePath,
         item: &Ident,
         alias: Option<Ident>,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut()
@@ -172,7 +172,7 @@ impl SymbolCollectionContext {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let mod_path = self.namespace().mod_path.clone();
         self.namespace_mut().root.variant_import(
@@ -183,7 +183,7 @@ impl SymbolCollectionContext {
             variant_name,
             &mod_path,
             alias,
-	    visibility,
+            visibility,
         )
     }
 }

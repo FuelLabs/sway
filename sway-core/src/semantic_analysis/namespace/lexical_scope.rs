@@ -39,8 +39,17 @@ pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
 
 type SourceIdent = Ident;
 
-pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
-pub(super) type ItemSynonyms = im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ResolvedDeclaration, Visibility)>;
+pub(super) type GlobSynonyms =
+    im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
+pub(super) type ItemSynonyms = im::HashMap<
+    Ident,
+    (
+        Option<SourceIdent>,
+        ModulePathBuf,
+        ResolvedDeclaration,
+        Visibility,
+    ),
+>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -495,22 +504,23 @@ impl Items {
         symbol: Ident,
         src_path: ModulePathBuf,
         decl: &ResolvedDeclaration,
-	visibility: Visibility,
+        visibility: Visibility,
     ) {
         if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
             // Name already bound. Check if the decl is already imported
             let ctx = PartialEqWithEnginesContext::new(engines);
-            match cur_decls.iter().position(|(_cur_path, cur_decl, _cur_visibility)| {
-                cur_decl.eq(decl, &ctx)
-	    }) {
+            match cur_decls
+                .iter()
+                .position(|(_cur_path, cur_decl, _cur_visibility)| cur_decl.eq(decl, &ctx))
+            {
                 Some(index) if matches!(visibility, Visibility::Public) => {
                     // The name is already bound to this decl. If the new symbol is more visible
                     // than the old one, then replace the old one.
                     cur_decls[index] = (src_path.to_vec(), decl.clone(), visibility);
-                },
-		Some(_) => {
-		    // Same binding as the existing one. Do nothing.
-		}
+                }
+                Some(_) => {
+                    // Same binding as the existing one. Do nothing.
+                }
                 None => {
                     // New decl for this name. Add it to the end
                     cur_decls.push((src_path.to_vec(), decl.clone(), visibility));

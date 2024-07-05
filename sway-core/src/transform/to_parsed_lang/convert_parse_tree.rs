@@ -272,7 +272,7 @@ fn item_use_to_use_statements(
     use_tree_to_use_statements(
         item_use.tree,
         item_use.root_import.is_some(),
-	pub_token_opt_to_visibility(item_use.visibility),
+        pub_token_opt_to_visibility(item_use.visibility),
         &mut prefix,
         &mut ret,
         item_span,
@@ -304,7 +304,14 @@ fn use_tree_to_use_statements(
     match use_tree {
         UseTree::Group { imports } => {
             for use_tree in imports.into_inner() {
-                use_tree_to_use_statements(use_tree, is_absolute, reexport, path, ret, item_span.clone());
+                use_tree_to_use_statements(
+                    use_tree,
+                    is_absolute,
+                    reexport,
+                    path,
+                    ret,
+                    item_span.clone(),
+                );
             }
         }
         UseTree::Name { name } => {
@@ -318,7 +325,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
-		reexport,
+                reexport,
                 alias: None,
             });
         }
@@ -333,7 +340,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
-		reexport,
+                reexport,
                 alias: Some(alias),
             });
         }
@@ -343,7 +350,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type: ImportType::Star,
                 is_absolute,
-		reexport,
+                reexport,
                 alias: None,
             });
         }

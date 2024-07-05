@@ -1,7 +1,4 @@
-use crate::{
-    parsed::Span,
-    language::Visibility,
-};
+use crate::{language::Visibility, parsed::Span};
 use sway_types::ident::Ident;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

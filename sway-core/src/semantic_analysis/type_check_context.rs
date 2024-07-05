@@ -1331,7 +1331,7 @@ impl<'a> TypeCheckContext<'a> {
         &mut self,
         handler: &Handler,
         src: &ModulePath,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
@@ -1346,7 +1346,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &ModulePath,
         enum_name: &Ident,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
@@ -1361,7 +1361,7 @@ impl<'a> TypeCheckContext<'a> {
         handler: &Handler,
         src: &ModulePath,
         alias: Option<Ident>,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
@@ -1416,7 +1416,7 @@ impl<'a> TypeCheckContext<'a> {
         src: &ModulePath,
         item: &Ident,
         alias: Option<Ident>,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
@@ -1434,7 +1434,7 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         variant_name: &Ident,
         alias: Option<Ident>,
-	visibility: Visibility,
+        visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         let engines = self.engines;
         let mod_path = self.namespace().mod_path.clone();
@@ -1446,7 +1446,7 @@ impl<'a> TypeCheckContext<'a> {
             variant_name,
             &mod_path,
             alias,
-	    visibility,
+            visibility,
         )
     }
 
