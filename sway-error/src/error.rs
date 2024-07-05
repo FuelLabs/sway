@@ -964,6 +964,8 @@ pub enum CompileError {
     CouldNotGenerateEntryMissingImpl { ty: String, span: Span },
     #[error("Only bool, u8, u16, u32, u64, u256, b256, string arrays and string slices can be used here.")]
     EncodingUnsupportedType { span: Span },
+    #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
+    ConfigurableMissingAbiDecodeInPlace { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1175,6 +1177,7 @@ impl Spanned for CompileError {
             CouldNotGenerateEntryMissingImpl { span, .. } => span.clone(),
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
+            ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
         }
     }
 }
@@ -2437,6 +2440,19 @@ impl ToDiagnostic for CompileError {
                                 ..Default::default()
                         },
                 }
+            },
+            ConfigurableMissingAbiDecodeInPlace { span } => Diagnostic {
+                reason: Some(Reason::new(code(1), "Configurables need a function named \"abi_decode_in_place\" to be in scope".to_string())),
+                issue: Issue::error(
+                    source_engine,
+                    span.clone(),
+                    String::new()
+                ),
+                hints: vec![],
+                help: vec![
+                    "The function \"abi_decode_in_place\" is usually defined in the standard library module \"core::codec\".".into(),
+                    "Verify that you are using a version of the \"core\" standard library that contains this function.".into(),
+                ],
             },
            _ => Diagnostic {
                     // TODO: Temporary we use self here to achieve backward compatibility.
