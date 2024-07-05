@@ -14,21 +14,13 @@ use ::lib_3::Items3_Variants::H;
 use ::lib_3::ITEMS_3_FUNCTION_RES;
 use ::lib_3::items_3_function;
 use ::lib_3::Items3Trait;
-
 // Reexported items from items_4_1.sw and items_4_2.sw. All reexports from items_4_1.sw are
 // shadowed by items imported from items_4_2.sw
 use ::lib_4::Items4_Struct;
 use ::lib_4::Items4_Enum;
 use ::lib_4::Items4_Variants;
-
-// This ought to be possible, but Items4_Variants is interpreted as a module rather than as an enum.
-//use ::lib_4::Items4_Variants::K;
-//use ::lib_4::Items4_Variants::L;
-// Using the variant names directly works, but that's not how the test should work.
-// Uncomment the previous two imports and remove these next two when the problem has been resolved.
-use ::lib_4::K;
-use ::lib_4::L;
-
+use ::lib_4::Items4_Variants::K;
+use ::lib_4::Items4_Variants::L;
 use ::lib_4::ITEMS_4_FUNCTION_RES;
 use ::lib_4::items_4_function;
 use ::lib_4::Items4Trait;
@@ -36,8 +28,6 @@ use ::lib_4::Items4Trait;
 use ::items_4_4::Items4_Variants2;
 use ::lib_4::M;
 use ::lib_4::N;
-
-
 
 
 // Helper types

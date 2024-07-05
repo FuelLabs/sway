@@ -8,7 +8,7 @@ use ext_2_lib::*;
 // Reexported items from ext_3_items. All reexports are item imports.
 use ext_3_lib::Items3_Struct;
 use ext_3_lib::Items3_Enum;
-// Items3_Variants is interpreted as a module name, so this part of the test is commented out.
+// ext_3_lib elevates U and V to the same namespace as the type names, so Items3_Variants cannot be found in ext_3_lib.
 //use ext_3_lib::Items3_Variants::U;
 //use ext_3_lib::Items3_Variants::V;
 use ext_3_lib::U;
@@ -20,7 +20,7 @@ use ext_3_items::Items3_Variants;
 // Reexported items from ext_4_items. All reexports are star imports.
 use ext_4_lib::Items4_Struct;
 use ext_4_lib::Items4_Enum;
-// Items4_Variants is interpreted as a module name, so this part of the test is commented out.
+// ext_4_lib elevates S and T to the same namespace as the type names, so Items4_Variants cannot be found in ext_4_lib.
 //use ext_4_lib::Items4_Variants::S;
 //use ext_4_lib::Items4_Variants::T;
 use ext_4_lib::S;

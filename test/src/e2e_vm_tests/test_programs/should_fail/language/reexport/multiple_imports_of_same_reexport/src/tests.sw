@@ -6,23 +6,21 @@ library;
 // same item twice from the same source)
 use ::lib_1_1::Items1_Struct; 
 use ::lib_1_1::Items1_Enum;
-// Item importing variants doesn't work, because Items1_Variants is interpreted as a module name.
-// This part of the test is therefore disabled.
-//use ::lib_1_1::Items1_Variants::X; 
-//use ::lib_1_1::Items1_Variants::Y; 
+use ::lib_1_1::Items1_Variants::X; 
+use ::lib_1_1::Items1_Variants::Y; 
 use ::lib_1_1::ITEMS_1_FUNCTION_RES; 
 use ::lib_1_1::items_1_function; 
 use ::lib_1_1::Items1Trait;
 
 use ::lib_1_2::Items1_Struct;
 use ::lib_1_2::Items1_Enum;
-// Item importing variants doesn't work, because Items1_Variants is interpreted as a module name.
-// This part of the test is therefore disabled.
-//use ::lib_1_2::Items1_Variants::X;
-//use ::lib_1_2::Items1_Variants::Y;
+use ::lib_1_2::Items1_Variants::X;
+use ::lib_1_2::Items1_Variants::Y;
 use ::lib_1_2::ITEMS_1_FUNCTION_RES;
 use ::lib_1_2::items_1_function;
 use ::lib_1_2::Items1Trait;
+
+use ::items_1::Items1_Variants;
 
 // Helper types
 
@@ -47,12 +45,12 @@ fn project_items_1_enum(input: Items1_Enum) -> u64 {
     }
 }
 
-//fn project_items_1_variants(input: Items1_Variants) -> u64 {
-//    match input {
-//	X(val) => val,
-//	Y(val) => val + 1000,
-//    }
-//}
+fn project_items_1_variants(input: Items1_Variants) -> u64 {
+    match input {
+	X(val) => val,
+	Y(val) => val + 1000,
+    }
+}
 
 fn call_items_1_function() -> u64 {
     items_1_function()
@@ -74,9 +72,9 @@ pub fn run_all_tests() -> u64 {
     let items_1_enum_res = project_items_1_enum(items_1_enum);
     assert(items_1_enum_res == 432);
 
-//    let items_1_variants = X(680);
-//    let items_1_variants_res = project_items_1_variants(items_1_variants);
-//    assert(items_1_variants_res == 680);
+    let items_1_variants = X(680);
+    let items_1_variants_res = project_items_1_variants(items_1_variants);
+    assert(items_1_variants_res == 680);
 
     let items_1_function_res = call_items_1_function();
     assert(items_1_function_res == ITEMS_1_FUNCTION_RES);

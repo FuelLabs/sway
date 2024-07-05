@@ -45,12 +45,12 @@ category = "fail"
 #nextln: $()Symbol "Items4_Variants" is private.
 
 #check: $()error
-#check: $()use ::lib_4::K;
-#nextln: $()Symbol "K" is private.
+#check: $()use ::lib_4::Items4_Variants::K;
+#nextln: $()Symbol "Items4_Variants" is private.
 
 #check: $()error
-#check: $()use ::lib_4::L;
-#nextln: $()Symbol "L" is private.
+#check: $()use ::lib_4::Items4_Variants::L;
+#nextln: $()Symbol "Items4_Variants" is private.
 
 #check: $()error
 #check: $()use ::lib_4::ITEMS_4_FUNCTION_RES;
