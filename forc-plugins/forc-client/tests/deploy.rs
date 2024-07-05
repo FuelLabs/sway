@@ -13,10 +13,11 @@ use forc_client::{
 };
 use forc_pkg::manifest::Proxy;
 use fuel_crypto::SecretKey;
-use fuel_tx::{ContractId, Salt};
-use fuels::macros::abigen;
-use fuels_accounts::{provider::Provider, wallet::WalletUnlocked};
+use fuel_tx::{ContractId, Receipt, Salt};
+use fuels::{macros::abigen, types::transaction::TxPolicies};
+use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use portpicker::Port;
+use rand::thread_rng;
 use tempfile::tempdir;
 use toml_edit::{value, Document, InlineTable, Item, Table, Value};
 
@@ -288,4 +289,92 @@ async fn proxy_contract_re_routes_call() {
         .unwrap();
     assert!(!res.value);
     node.kill().unwrap();
+}
+
+#[tokio::test]
+async fn non_owner_fails_to_set_target() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+    let proxy = Proxy {
+        enabled: true,
+        address: None,
+    };
+    patch_manifest_file_with_proxy_table(tmp_dir.path(), proxy).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+    let target = NodeTarget {
+        node_url: Some(node_url.clone()),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        ..Default::default()
+    };
+    let contract_id = deploy(cmd).await.unwrap();
+    // Proxy contract's id.
+    let proxy_id = contract_id.first().and_then(|f| f.proxy).unwrap();
+
+    // create an another account and fund it.
+    let provider = Provider::connect(&node_url).await.unwrap();
+    let secret_key = SecretKey::random(&mut thread_rng());
+    let attacker_wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+
+    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let owner_wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let base_asset_id = provider.base_asset_id();
+
+    // fund attacker wallet so that it can try to make a set proxy target call.
+    owner_wallet
+        .transfer(
+            attacker_wallet.address(),
+            100000,
+            *base_asset_id,
+            TxPolicies::default(),
+        )
+        .await
+        .unwrap();
+
+    let dummy_contract_id_target = ContractId::default();
+    abigen!(Contract(
+        name = "ProxyContract",
+        abi = "forc-plugins/forc-client/src/util/proxy_contract-abi.json"
+    ));
+
+    let proxy_contract = ProxyContract::new(proxy_id, attacker_wallet);
+    // try to change target of the proxy with a random wallet which is not the
+    // owner of the proxy.
+    let res = proxy_contract
+        .methods()
+        .set_proxy_target(dummy_contract_id_target)
+        .call()
+        .await
+        .err()
+        .unwrap();
+
+    node.kill().unwrap();
+    match res {
+        fuels::types::errors::Error::Transaction(
+            fuels::types::errors::transaction::Reason::Reverted { reason, .. },
+        ) => {
+            assert_eq!(
+                reason,
+                "NotOwner".to_string(),
+                "Expected 'NotOwner' error, but got: {}",
+                reason
+            );
+        }
+        _ => panic!("Expected a Reverted transaction error, but got: {:?}", res),
+    }
 }
