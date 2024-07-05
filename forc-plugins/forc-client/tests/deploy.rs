@@ -24,15 +24,6 @@ fn get_workspace_root() -> PathBuf {
         .unwrap()
 }
 
-/// Return the path to the chain config file which is expected to be in
-/// `.github/workflows/local-node` from sway repo root.
-fn chain_config_path() -> PathBuf {
-    get_workspace_root()
-        .join(".github")
-        .join("workflows")
-        .join("local-testnode")
-}
-
 fn test_data_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("test")
@@ -52,8 +43,6 @@ fn run_node() -> (Child, Port) {
         .arg("in-memory")
         .arg("--port")
         .arg(port.to_string())
-        .arg("--snapshot")
-        .arg(format!("{}", chain_config.display()))
         .spawn()
         .expect("Failed to start fuel-core");
     (child, port)
