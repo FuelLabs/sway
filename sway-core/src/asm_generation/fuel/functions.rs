@@ -274,8 +274,8 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             function.get_name(self.context)
         );
 
-        self.cur_bytecode.push(match span {
-            Some(span) => Op::jump_label_comment(start_label, span, comment),
+        self.cur_bytecode.push(match &span {
+            Some(span) => Op::jump_label_comment(start_label, span.clone(), comment),
             None => Op::unowned_jump_label_comment(start_label, comment),
         });
 
@@ -285,7 +285,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             self.cur_bytecode.push(Op {
                 opcode: Either::Right(OrganizationalOp::PushAll(start_label)),
                 comment: "save all regs".to_owned(),
-                owning_span: None,
+                owning_span: span.clone(),
             });
         }
 
