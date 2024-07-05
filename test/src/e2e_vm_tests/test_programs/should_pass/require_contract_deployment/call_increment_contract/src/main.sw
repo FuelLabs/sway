@@ -6,7 +6,7 @@ use dynamic_contract_call::*;
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xd1b4047af7ef111c023ab71069e01dc2abfde487c0a0ce1268e4f447e6c6e4c2;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = [1;32mFinished[0m; // AUTO-CONTRACT-ID ../../test_contracts/increment_contract --release
+const CONTRACT_ID = 0xfef18ef24b6cbfd66238fecc3c2704976fdf3177442712a3402b2ab666f12039; // AUTO-CONTRACT-ID ../../test_contracts/increment_contract --release
 
 fn main() -> bool {
     let the_abi = abi(Incrementor, CONTRACT_ID);

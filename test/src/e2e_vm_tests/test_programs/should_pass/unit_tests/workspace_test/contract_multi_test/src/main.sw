@@ -17,7 +17,7 @@ fn test_foo() {
 
 #[test(should_revert)]
 fn test_fail() {
-    let contract_id = fuel]; // AUTO-CONTRACT-ID .
+    let contract_id = 0xfef18ef24b6cbfd66238fecc3c2704976fdf3177442712a3402b2ab666f12039; // AUTO-CONTRACT-ID .
     let caller = abi(MyContract, contract_id);
     let result = caller.test_function {}();
     assert(result == false)

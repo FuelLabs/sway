@@ -6,7 +6,7 @@ use abi_with_tuples::{MyContract, Location, Person};
 #[cfg(experimental_new_encoding = false)]
 const CONTRACT_ID = 0xfdc14550c8aee742cd556d0ab7f378b7be0d3b1e6e086c097352e94590d4ed02;
 #[cfg(experimental_new_encoding = true)]
-const CONTRACT_ID = fuel]; // AUTO-CONTRACT-ID ../../test_contracts/abi_with_tuples_contract --release
+const CONTRACT_ID = 0xfef18ef24b6cbfd66238fecc3c2704976fdf3177442712a3402b2ab666f12039; // AUTO-CONTRACT-ID ../../test_contracts/abi_with_tuples_contract --release
 
 fn main() -> bool {
     let the_abi = abi(MyContract, CONTRACT_ID);
