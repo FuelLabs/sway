@@ -24,6 +24,8 @@ pub struct BuildProfile {
     #[serde(default)]
     pub print_bytecode: bool,
     #[serde(default)]
+    pub print_bytecode_spans: bool,
+    #[serde(default)]
     pub terse: bool,
     #[serde(default)]
     pub time_phases: bool,
@@ -57,6 +59,7 @@ impl BuildProfile {
             print_ir: PrintIr::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
+            print_bytecode_spans: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
@@ -80,6 +83,7 @@ impl BuildProfile {
             print_ir: PrintIr::default(),
             print_asm: PrintAsm::default(),
             print_bytecode: false,
+            print_bytecode_spans: false,
             terse: false,
             time_phases: false,
             metrics_outfile: None,
@@ -152,6 +156,7 @@ mod tests {
             print_ir: PrintIr::r#final(),
             print_asm: PrintAsm::all(),
             print_bytecode: true,
+            print_bytecode_spans: false,
             terse: true,
             time_phases: true,
             metrics_outfile: Some("metrics_outfile".into()),
