@@ -35,7 +35,6 @@ fn test_data_path() -> PathBuf {
 fn run_node() -> (Child, Port) {
     let port = portpicker::pick_unused_port().expect("No ports free");
 
-    let chain_config = chain_config_path();
     let child = Command::new("fuel-core")
         .arg("run")
         .arg("--debug")
