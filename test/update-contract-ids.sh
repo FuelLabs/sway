@@ -1,10 +1,10 @@
 #! /bin/bash
 
-CHANGES=$(git status --porcelain | wc -l)
-if [ "$CHANGES" != "0" ]; then
-  echo "git state is not clean. commit or restore first."
-  exit
-fi
+# CHANGES=$(git status --porcelain | wc -l)
+# if [ "$CHANGES" != "0" ]; then
+#   echo "git state is not clean. commit or restore first."
+#   exit
+# fi
 
 BOLD_RED='\033[1;31m'
 BOLD_GREEN="\033[1;32m"
@@ -33,8 +33,7 @@ grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
         echo -e "${BOLD_WHITE}$PROJ${NC}"
 
         pushd "$FOLDER/.." >> /dev/null
-        CONTRACT_ID=($(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null))
-        CONTRACT_ID=${CONTRACT_ID[16]} # change here if the output of forc change
+        CONTRACT_ID=$(cargo r -p forc --release -- contract-id --path $CONTRACT_ARGS 2> /dev/null | grep -oP '0x[a-zA-Z0-9]{64}')
 
         if [[ $CONTRACT_ID ]]; then 
             popd >> /dev/null

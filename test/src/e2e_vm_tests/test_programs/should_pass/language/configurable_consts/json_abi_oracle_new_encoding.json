@@ -4,6 +4,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       "configurables": [
             {
                   "configurableType": {
@@ -23,10 +24,13 @@
 =======
 >>>>>>> 6859e165f (rebase fixes)
 >>>>>>> c64169899 (rebase fixes)
+=======
+>>>>>>> 02e1c09c9 (update contract ids)
   "configurables": [
     {
       "configurableType": {
         "name": "",
+<<<<<<< HEAD
 >>>>>>> 0fec394a3 (fix rebase issues)
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -948,6 +952,13 @@
 =======
 =======
 >>>>>>> 6859e165f (rebase fixes)
+=======
+        "type": 1,
+        "typeArguments": null
+      },
+      "name": "BOOL",
+      "offset": 360
+>>>>>>> 02e1c09c9 (update contract ids)
     }
   ],
   "encoding": "1",
@@ -1124,13 +1135,13 @@
       "typeParameters": null
     },
     {
-<<<<<<< HEAD
       "components": null,
       "type": "bool",
       "typeId": 1,
       "typeParameters": null
     }
   ]
+<<<<<<< HEAD
 }
 =======
             }
@@ -1889,3 +1900,6 @@
 }
 >>>>>>> 6859e165f (rebase fixes)
 >>>>>>> c64169899 (rebase fixes)
+=======
+}
+>>>>>>> 02e1c09c9 (update contract ids)
