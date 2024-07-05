@@ -137,7 +137,7 @@ impl Cid {
     /// Using local node, fetches the content described by this cid.
     async fn fetch_with_client(&self, ipfs_client: &IpfsClient, dst: &Path) -> Result<()> {
         let cid_path = format!("/ipfs/{}", self.0);
-        // Since we are fetching packages as a fodler, they are returned as a tar archive.
+        // Since we are fetching packages as a folder, they are returned as a tar archive.
         let bytes = ipfs_client
             .get(&cid_path)
             .map_ok(|chunk| chunk.to_vec())
