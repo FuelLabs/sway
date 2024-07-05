@@ -280,15 +280,15 @@ impl Root {
             let visibility = if is_ancestor(src, dst) {
                 Visibility::Public
             } else {
-                decl.visibility(engines).clone()
+                decl.visibility(engines)
             };
             (decl.clone(), src.to_vec(), visibility)
         } else if let Some((_, path, decl, reexport)) = src_items.use_item_synonyms.get(item) {
-            (decl.clone(), path.clone(), reexport.clone())
+            (decl.clone(), path.clone(), *reexport)
         } else if let Some(decls) = src_items.use_glob_synonyms.get(item) {
             if decls.len() == 1 {
                 let (path, decl, reexport) = &decls[0];
-                (decl.clone(), path.clone(), reexport.clone())
+                (decl.clone(), path.clone(), *reexport)
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
 			"The name {symbol} was bound in a star import, but no corresponding module paths were found",
@@ -420,15 +420,15 @@ impl Root {
             let visibility = if is_ancestor(src, dst) {
                 Visibility::Public
             } else {
-                decl.visibility(engines).clone()
+                decl.visibility(engines)
             };
             (decl.clone(), src.to_vec(), visibility)
         } else if let Some((_, path, decl, reexport)) = src_items.use_item_synonyms.get(enum_name) {
-            (decl.clone(), path.clone(), reexport.clone())
+            (decl.clone(), path.clone(), *reexport)
         } else if let Some(decls) = src_items.use_glob_synonyms.get(enum_name) {
             if decls.len() == 1 {
                 let (path, decl, reexport) = &decls[0];
-                (decl.clone(), path.clone(), reexport.clone())
+                (decl.clone(), path.clone(), *reexport)
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
 			"The name {symbol} was bound in a star import, but no corresponding module paths were found",
@@ -639,15 +639,15 @@ impl Root {
             let visibility = if is_ancestor(src, dst) {
                 Visibility::Public
             } else {
-                decl.visibility(engines).clone()
+                decl.visibility(engines)
             };
             (decl.clone(), src.to_vec(), visibility)
         } else if let Some((_, path, decl, reexport)) = src_items.use_item_synonyms.get(enum_name) {
-            (decl.clone(), path.clone(), reexport.clone())
+            (decl.clone(), path.clone(), *reexport)
         } else if let Some(decls) = src_items.use_glob_synonyms.get(enum_name) {
             if decls.len() == 1 {
                 let (path, decl, reexport) = &decls[0];
-                (decl.clone(), path.clone(), reexport.clone())
+                (decl.clone(), path.clone(), *reexport)
             } else if decls.is_empty() {
                 return Err(handler.emit_err(CompileError::Internal(
 			"The name {symbol} was bound in a star import, but no corresponding module paths were found",
