@@ -10,8 +10,8 @@ abigen!(Contract(
 async fn run_external_can_proxy_call() {
     let wallet = launch_provider_and_get_wallet().await.unwrap();
 
-    let target_id = Contract::load_from(
-        "test_projects/run_external_target/out/release/run_external_target.bin",
+    let target_id1 = Contract::load_from(
+        "test_projects/run_external_target/out/release/part-1.bin",
         LoadConfiguration::default()
             .with_storage_configuration(StorageConfiguration::default().with_autoload(false)),
     )
@@ -20,8 +20,22 @@ async fn run_external_can_proxy_call() {
     .await
     .unwrap();
 
+    let target_id2 = Contract::load_from(
+        "test_projects/run_external_target/out/release/part-2.bin",
+        LoadConfiguration::default()
+            .with_storage_configuration(StorageConfiguration::default().with_autoload(false)),
+    )
+    .unwrap()
+    .deploy(&wallet, TxPolicies::default())
+    .await
+    .unwrap();
+
+    dbg!(&target_id1, &target_id2);
+
     let configurables = RunExternalProxyContractConfigurables::default()
-        .with_TARGET(target_id.clone().into())
+        .with_TARGET_1(target_id1.clone().into())
+        .unwrap()
+        .with_TARGET_2(target_id2.clone().into())
         .unwrap();
     let id = Contract::load_from(
         "test_projects/run_external_proxy/out/release/run_external_proxy.bin",
@@ -41,7 +55,7 @@ async fn run_external_can_proxy_call() {
     let result = instance
         .methods()
         .large_value()
-        .with_contract_ids(&[target_id.clone().into()])
+        .with_contract_ids(&[target_id1.clone().into(), target_id2.clone().into()])
         .call()
         .await
         .unwrap();
@@ -73,7 +87,7 @@ async fn run_external_can_proxy_call() {
     let result = instance
         .methods()
         .double_value(42)
-        .with_contract_ids(&[target_id.clone().into()])
+        .with_contract_ids(&[target_id1.clone().into(), target_id2.clone().into()])
         .call()
         .await
         .unwrap();
@@ -102,7 +116,7 @@ async fn run_external_can_proxy_call() {
     let result = instance
         .methods()
         .does_not_exist_in_the_target(42)
-        .with_contract_ids(&[target_id.into()])
+        .with_contract_ids(&[target_id1.into(), target_id2.into()])
         .call()
         .await
         .unwrap();
