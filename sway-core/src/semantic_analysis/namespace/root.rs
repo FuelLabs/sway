@@ -986,10 +986,6 @@ impl Root {
         if let Some(decl) = module.current_items().symbols.get(symbol) {
             return Ok(decl.clone());
         }
-        // Check locally declared items. Any name clash with imports will have already been reported as an error.
-        if let Some(decl) = module.current_items().symbols.get(symbol) {
-            return Ok(decl.clone());
-        }
         // Check item imports
         if let Some((_, _, decl, _)) = module.current_items().use_item_synonyms.get(symbol) {
             return Ok(decl.clone());
