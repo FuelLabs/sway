@@ -1,6 +1,7 @@
 use crate::{
     engine_threading::*,
     language::{parsed::*, *},
+    namespace::LexicalScopeId,
     transform::{self, AttributeKind},
     type_system::*,
 };
@@ -28,6 +29,7 @@ pub struct FunctionDeclaration {
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub kind: FunctionDeclarationKind,
     pub implementing_type: Option<Declaration>,
+    pub lexical_scope: LexicalScopeId,
 }
 
 impl EqWithEngines for FunctionDeclaration {}

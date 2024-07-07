@@ -598,6 +598,7 @@ pub fn item_fn_to_function_declaration(
             .unwrap_or(vec![]),
         kind,
         implementing_type,
+        lexical_scope: 0,
     };
     let decl_id = engines.pe().insert(fn_decl);
     Ok(decl_id)

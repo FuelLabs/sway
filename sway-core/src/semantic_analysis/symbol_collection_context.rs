@@ -1,5 +1,6 @@
 use crate::{
     language::{parsed::Declaration, Visibility},
+    namespace::LexicalScopeId,
     namespace::ModulePath,
     semantic_analysis::Namespace,
     Engines,
@@ -40,15 +41,16 @@ impl SymbolCollectionContext {
         &mut self,
         engines: &Engines,
         with_scoped_ctx: impl FnOnce(&mut SymbolCollectionContext) -> Result<T, ErrorEmitted>,
-    ) -> Result<T, ErrorEmitted> {
-        self.namespace
+    ) -> (Result<T, ErrorEmitted>, LexicalScopeId) {
+        let lexical_scope_id: LexicalScopeId = self
+            .namespace
             .module_mut(engines)
             .write(engines, |m| m.push_new_lexical_scope());
         let ret = with_scoped_ctx(self);
         self.namespace
             .module_mut(engines)
             .write(engines, |m| m.pop_lexical_scope());
-        ret
+        (ret, lexical_scope_id)
     }
 
     /// Enter the lexical scope and produce a collection context ready for
