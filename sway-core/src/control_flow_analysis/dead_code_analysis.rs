@@ -4,8 +4,8 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{
-            self, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl, TraitDecl, TyAstNode,
-            TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
+            self, ConfigurableDecl, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl,
+            TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
         CallPath, Visibility,
     },
@@ -81,6 +81,11 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 let decl = decl_engine.get_constant(decl_id);
                 decl.visibility.is_public()
             }
+            TyAstNode {
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::ConfigurableDecl(ConfigurableDecl { .. })),
+                ..
+            } => false,
             TyAstNode {
                 content:
                     TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
@@ -567,11 +572,18 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
             let config_decl = decl_engine.get_configurable(decl_id);
             let ty::TyConfigurableDecl {
-                call_path, value, ..
+                call_path,
+                value,
+                type_ascription,
+                ..
             } = &*config_decl;
+
             graph
                 .namespace
                 .insert_configurable(call_path.suffix.clone(), entry_node);
+
+            connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -579,7 +591,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                     graph,
                     &[entry_node],
                     exit_node,
-                    "constant declaration expression",
+                    "configurable declaration expression",
                     tree_type,
                     value.span.clone(),
                     options,
@@ -2306,6 +2318,16 @@ fn construct_dead_code_warning_from_node(
             ..
         } => CompileWarning {
             span: decl_engine.get_constant(decl_id).name().span(),
+            warning_content: Warning::DeadDeclaration,
+        },
+        ty::TyAstNode {
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl {
+                    decl_id,
+                })),
+            ..
+        } => CompileWarning {
+            span: decl_engine.get_configurable(decl_id).name().span(),
             warning_content: Warning::DeadDeclaration,
         },
         ty::TyAstNode {

@@ -840,13 +840,13 @@ impl ty::TyExpression {
         }
 
         // desugar the typed match expression to a typed if expression
-        let typed_if_exp = typed_match_expression.convert_to_typed_if_expression(handler, ctx)?;
+        let desugared = typed_match_expression.desugar(handler, ctx)?;
 
         let match_exp = ty::TyExpression {
-            span: typed_if_exp.span.clone(),
-            return_type: typed_if_exp.return_type,
+            span: desugared.span.clone(),
+            return_type: desugared.return_type,
             expression: ty::TyExpressionVariant::MatchExp {
-                desugared: Box::new(typed_if_exp),
+                desugared: Box::new(desugared),
                 scrutinees: typed_scrutinees,
             },
         };

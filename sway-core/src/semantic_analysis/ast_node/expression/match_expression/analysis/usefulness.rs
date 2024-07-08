@@ -183,7 +183,7 @@ use super::{
 ///
 /// # Details
 ///
-/// This algorithm checks is a match expression is exhaustive and if its match
+/// This algorithm checks if a match expression is exhaustive and if its match
 /// arms are reachable by applying the above definitions of usefulness and
 /// witnesses. This algorithm sequentially creates a [WitnessReport] for every
 /// match arm by calling *U(P, q)*, where *P* is the [Matrix] of patterns seen
