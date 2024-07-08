@@ -14,8 +14,8 @@ use dashmap::DashMap;
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
-use parking_lot::RwLock;
-use std::{collections::BTreeMap, process::Command};
+use parking_lot::{Mutex, RwLock};
+use std::{collections::{BTreeMap, VecDeque}, process::Command};
 use std::{
     mem,
     path::PathBuf,
@@ -369,5 +369,63 @@ impl ServerState {
                 .expect("no session found even though it was just inserted into the map")
         };
         Ok(session)
+    }
+}
+
+/// A Least Recently Used (LRU) cache for storing and managing `Session` objects.
+/// This cache helps limit memory usage by maintaining a fixed number of active sessions.
+struct LruSessionCache {
+    /// Stores the actual `Session` objects, keyed by their file paths.
+    sessions: Arc<DashMap<PathBuf, Arc<Session>>>,
+    /// Keeps track of the order in which sessions were accessed, with most recent at the front.
+    usage_order: Arc<Mutex<VecDeque<PathBuf>>>,
+    /// The maximum number of sessions that can be stored in the cache.
+    capacity: usize,
+}
+
+impl LruSessionCache {
+    /// Creates a new `LruSessionCache` with the specified capacity.
+    fn new(capacity: usize) -> Self {
+        LruSessionCache {
+            sessions: Arc::new(DashMap::new()),
+            usage_order: Arc::new(Mutex::new(VecDeque::with_capacity(capacity))),
+            capacity,
+        }
+    }
+
+    /// Retrieves a session from the cache and updates its position to the front of the usage order.
+    fn get(&self, path: &PathBuf) -> Option<Arc<Session>> {
+        if let Some(session) = self.sessions.get(path) {
+            self.move_to_front(path);
+            Some(session.clone())
+        } else {
+            None
+        }
+    }
+
+    /// Inserts a new session into the cache, evicting the least recently used session if at capacity.
+    fn insert(&self, path: PathBuf, session: Arc<Session>) {
+        if self.sessions.len() >= self.capacity {
+            self.evict_least_used();
+        }
+        self.sessions.insert(path.clone(), session);
+        self.move_to_front(&path);
+    }
+
+    /// Moves the specified path to the front of the usage order, marking it as most recently used.
+    fn move_to_front(&self, path: &PathBuf) {
+        let mut order = self.usage_order.lock();
+        if let Some(index) = order.iter().position(|p| p == path) {
+            order.remove(index);
+        }
+        order.push_front(path.clone());
+    }
+
+    /// Removes the least recently used session from the cache when the capacity is reached.
+    fn evict_least_used(&self) {
+        let mut order = self.usage_order.lock();
+        if let Some(old_path) = order.pop_back() {
+            self.sessions.remove(&old_path);
+        }
     }
 }
