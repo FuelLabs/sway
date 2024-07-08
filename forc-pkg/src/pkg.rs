@@ -9,6 +9,7 @@ use crate::{
     BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
+use byte_unit::{Byte, UnitType};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
@@ -262,6 +263,8 @@ pub struct PrintOpts {
     pub asm: PrintAsm,
     /// Print the bytecode. This is the final output of the compiler.
     pub bytecode: bool,
+    /// Print the original source code together with bytecode.
+    pub bytecode_spans: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
@@ -498,7 +501,11 @@ impl BuiltPackage {
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify)?;
 
-        debug!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
+        debug!(
+            "      Bytecode size: {} bytes ({})",
+            self.bytecode.bytes.len(),
+            format_bytecode_size(self.bytecode.bytes.len())
+        );
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -1553,7 +1560,10 @@ pub fn sway_build_config(
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .with_print_asm(build_profile.print_asm)
-    .with_print_bytecode(build_profile.print_bytecode)
+    .with_print_bytecode(
+        build_profile.print_bytecode,
+        build_profile.print_bytecode_spans,
+    )
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
@@ -2083,6 +2093,7 @@ fn build_profile_from_opts(
     profile.print_ir |= print.ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
+    profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     if profile.metrics_outfile.is_none() {
@@ -2107,6 +2118,12 @@ fn profile_target_string(profile_name: &str, build_target: &BuildTarget) -> Stri
         _ => {}
     };
     format!("{profile_name} [{}] target(s)", targets.join(" + "))
+}
+/// Returns the size of the bytecode in a human-readable format.
+pub fn format_bytecode_size(bytes_len: usize) -> String {
+    let size = Byte::from_u64(bytes_len as u64);
+    let adjusted_byte = size.get_appropriate_unit(UnitType::Decimal);
+    adjusted_byte.to_string()
 }
 
 /// Check if the given node is a contract dependency of any node in the graph.
@@ -2177,12 +2194,17 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         },
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+    let total_size = built_packages
+        .iter()
+        .map(|(_, pkg)| pkg.bytecode.bytes.len())
+        .sum::<usize>();
 
     println_action_green(
         "Finished",
         &format!(
-            "{} in {:.2}s",
+            "{} [{}] in {:.2}s",
             profile_target_string(&build_profile.name, build_target),
+            format_bytecode_size(total_size),
             build_start.elapsed().as_secs_f32()
         ),
     );
@@ -2298,6 +2320,7 @@ pub fn build(
 
     let mut lib_namespace_map = HashMap::default();
     let mut compiled_contract_deps = HashMap::new();
+
     for &node in plan
         .compilation_order
         .iter()
