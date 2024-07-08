@@ -364,7 +364,7 @@ impl ServerState {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = self.sessions.get(&manifest_dir).unwrap_or( {
+        let session = self.sessions.get(&manifest_dir).unwrap_or({
             // If no session can be found, then we need to call init and insert a new session into the map
             self.init_session(uri).await?;
             self.sessions
@@ -434,7 +434,10 @@ impl LruSessionCache {
     fn evict_least_used(&self) {
         let mut order = self.usage_order.lock();
         if let Some(old_path) = order.pop_back() {
-            tracing::trace!("Cache at capacity. Evicting least used session: {:?}", old_path);
+            tracing::trace!(
+                "Cache at capacity. Evicting least used session: {:?}",
+                old_path
+            );
             self.sessions.remove(&old_path);
         }
     }
