@@ -18,7 +18,17 @@ fn inc_i(ref mut i: u64) -> Struct {
     Struct { x: 21, y: 21, z: 1 }
 }
 
-fn main() -> u64 {
+#[inline(never)]
+fn return_match_on_str_slice(param: str) -> u64 {
+    match param {
+        "get_a" => { 1u64 },
+        "get_a_b" => { 2u64 },
+        "get_b" => { 3u64 },
+        _ => { 1000u64 },
+    }
+}
+
+fn main() {
     let x = match 8 {
         7 => { 4 },
         9 => { 5 },
@@ -86,8 +96,22 @@ fn main() -> u64 {
     };
     assert(i == 11);
 
-    match 42 {
+    let r = match 42 {
         0 => { 24 },
         foo => { foo },
-    }
+    };
+    assert(r == 42);
+
+    // string slice
+    assert(return_match_on_str_slice("") == 1000);
+    assert(return_match_on_str_slice("g") == 1000);
+    assert(return_match_on_str_slice("ge") == 1000);
+    assert(return_match_on_str_slice("get") == 1000);
+    assert(return_match_on_str_slice("get_") == 1000);
+    assert(return_match_on_str_slice("get_a") == 1);
+    assert(return_match_on_str_slice("get_a_") == 1000);
+    assert(return_match_on_str_slice("get_a_b") == 2);
+    assert(return_match_on_str_slice("get_b") == 3);
+    assert(return_match_on_str_slice("get_c") == 1000);
 }
+

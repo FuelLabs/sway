@@ -263,6 +263,8 @@ pub struct PrintOpts {
     pub asm: PrintAsm,
     /// Print the bytecode. This is the final output of the compiler.
     pub bytecode: bool,
+    /// Print the original source code together with bytecode.
+    pub bytecode_spans: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
@@ -1557,7 +1559,10 @@ pub fn sway_build_config(
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .with_print_asm(build_profile.print_asm)
-    .with_print_bytecode(build_profile.print_bytecode)
+    .with_print_bytecode(
+        build_profile.print_bytecode,
+        build_profile.print_bytecode_spans,
+    )
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
@@ -2089,6 +2094,7 @@ fn build_profile_from_opts(
     profile.print_ir |= print.ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
+    profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     if profile.metrics_outfile.is_none() {
