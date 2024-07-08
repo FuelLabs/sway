@@ -40,6 +40,8 @@ configurable {
     ARRAY_U64: [u64; 3] = [9, 8, 7],
     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
     STR_4: str[4] = __to_str_array("abcd"),
+
+    NOT_USED: u8 = 1
 }
 
 fn main() {
@@ -47,6 +49,7 @@ fn main() {
     assert(U8 == 1);
     assert(ANOTHER_U8 == 3);
     assert(U16 == 2);
+    assert(U32 == 3);
     assert(U64 == 4);
     assert(U256 == 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256);
     assert(B256 == 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
