@@ -10,12 +10,15 @@ use crate::{
     utils::{debug, keyword_docs::KeywordDocs},
 };
 use crossbeam_channel::{Receiver, Sender};
-use dashmap::DashMap;
+use dashmap::{mapref::multiple::RefMulti, DashMap};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::PackageManifestFile;
 use lsp_types::{Diagnostic, Url};
 use parking_lot::{Mutex, RwLock};
-use std::{collections::{BTreeMap, VecDeque}, process::Command};
+use std::{
+    collections::{BTreeMap, VecDeque},
+    process::Command,
+};
 use std::{
     mem,
     path::PathBuf,
@@ -28,13 +31,17 @@ use sway_core::LspConfig;
 use tokio::sync::Notify;
 use tower_lsp::{jsonrpc, Client};
 
+const DEFAULT_SESSION_CACHE_CAPACITY: usize = 4;
+
 /// `ServerState` is the primary mutable state of the language server
 pub struct ServerState {
     pub(crate) client: Option<Client>,
     pub config: Arc<RwLock<Config>>,
     pub(crate) keyword_docs: Arc<KeywordDocs>,
-    /// A collection of [Session]s, each of which represents a project that has been opened in the users workspace
-    pub(crate) sessions: Arc<DashMap<PathBuf, Arc<Session>>>,
+    /// A Least Recently Used (LRU) cache of [Session]s, each representing a project opened in the user's workspace.
+    /// This cache limits memory usage by maintaining a fixed number of active sessions, automatically
+    /// evicting the least recently used sessions when the capacity is reached.
+    pub(crate) sessions: LruSessionCache,
     pub documents: Documents,
     // Compilation thread related fields
     pub(crate) retrigger_compilation: Arc<AtomicBool>,
@@ -52,7 +59,7 @@ impl Default for ServerState {
             client: None,
             config: Arc::new(RwLock::new(Config::default())),
             keyword_docs: Arc::new(KeywordDocs::new()),
-            sessions: Arc::new(DashMap::new()),
+            sessions: LruSessionCache::new(DEFAULT_SESSION_CACHE_CAPACITY),
             documents: Documents::new(),
             retrigger_compilation: Arc::new(AtomicBool::new(false)),
             is_compiling: Arc::new(AtomicBool::new(false)),
@@ -357,24 +364,20 @@ impl ServerState {
             .ok_or(DirectoryError::ManifestDirNotFound)?
             .to_path_buf();
 
-        let session = if let Some(item) = self.sessions.try_get(&manifest_dir).try_unwrap() {
-            item.value().clone()
-        } else {
+        let session = self.sessions.get(&manifest_dir).unwrap_or( {
             // If no session can be found, then we need to call init and insert a new session into the map
             self.init_session(uri).await?;
             self.sessions
-                .try_get(&manifest_dir)
-                .try_unwrap()
-                .map(|item| item.value().clone())
+                .get(&manifest_dir)
                 .expect("no session found even though it was just inserted into the map")
-        };
+        });
         Ok(session)
     }
 }
 
 /// A Least Recently Used (LRU) cache for storing and managing `Session` objects.
 /// This cache helps limit memory usage by maintaining a fixed number of active sessions.
-struct LruSessionCache {
+pub(crate) struct LruSessionCache {
     /// Stores the actual `Session` objects, keyed by their file paths.
     sessions: Arc<DashMap<PathBuf, Arc<Session>>>,
     /// Keeps track of the order in which sessions were accessed, with most recent at the front.
@@ -385,7 +388,7 @@ struct LruSessionCache {
 
 impl LruSessionCache {
     /// Creates a new `LruSessionCache` with the specified capacity.
-    fn new(capacity: usize) -> Self {
+    pub(crate) fn new(capacity: usize) -> Self {
         LruSessionCache {
             sessions: Arc::new(DashMap::new()),
             usage_order: Arc::new(Mutex::new(VecDeque::with_capacity(capacity))),
@@ -393,9 +396,13 @@ impl LruSessionCache {
         }
     }
 
+    pub(crate) fn iter(&self) -> impl Iterator<Item = RefMulti<'_, PathBuf, Arc<Session>>> {
+        self.sessions.iter()
+    }
+
     /// Retrieves a session from the cache and updates its position to the front of the usage order.
-    fn get(&self, path: &PathBuf) -> Option<Arc<Session>> {
-        if let Some(session) = self.sessions.get(path) {
+    pub(crate) fn get(&self, path: &PathBuf) -> Option<Arc<Session>> {
+        if let Some(session) = self.sessions.try_get(path).try_unwrap() {
             self.move_to_front(path);
             Some(session.clone())
         } else {
@@ -404,7 +411,8 @@ impl LruSessionCache {
     }
 
     /// Inserts a new session into the cache, evicting the least recently used session if at capacity.
-    fn insert(&self, path: PathBuf, session: Arc<Session>) {
+    pub(crate) fn insert(&self, path: PathBuf, session: Arc<Session>) {
+        tracing::trace!("Inserting new session for path: {:?}", path);
         if self.sessions.len() >= self.capacity {
             self.evict_least_used();
         }
@@ -414,6 +422,7 @@ impl LruSessionCache {
 
     /// Moves the specified path to the front of the usage order, marking it as most recently used.
     fn move_to_front(&self, path: &PathBuf) {
+        tracing::trace!("Moving path to front of usage order: {:?}", path);
         let mut order = self.usage_order.lock();
         if let Some(index) = order.iter().position(|p| p == path) {
             order.remove(index);
@@ -425,6 +434,7 @@ impl LruSessionCache {
     fn evict_least_used(&self) {
         let mut order = self.usage_order.lock();
         if let Some(old_path) = order.pop_back() {
+            tracing::trace!("Cache at capacity. Evicting least used session: {:?}", old_path);
             self.sessions.remove(&old_path);
         }
     }
