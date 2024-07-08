@@ -7,7 +7,7 @@ pub fn get_highlights(
     url: &Url,
     position: Position,
 ) -> Option<Vec<DocumentHighlight>> {
-    let _p = tracing::trace_span!("get_highlights").entered();
+    let _p = tracing::debug_span!("get_highlights").entered();
     session.token_ranges(url, position).map(|ranges| {
         ranges
             .into_iter()

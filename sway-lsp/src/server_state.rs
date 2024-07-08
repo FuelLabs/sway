@@ -257,7 +257,7 @@ impl ServerState {
     }
 
     pub fn shutdown_server(&self) -> jsonrpc::Result<()> {
-        let _p = tracing::trace_span!("shutdown_server").entered();
+        let _p = tracing::debug_span!("shutdown_server").entered();
         tracing::info!("Shutting Down the Sway Language Server");
 
         // Drain pending compilation requests

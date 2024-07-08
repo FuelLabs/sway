@@ -4,7 +4,7 @@
 use crate::{
     capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
 };
-use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode};
+use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode, FmtSpan};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
@@ -43,6 +43,7 @@ pub fn handle_initialize(
         let tracing_options = TracingSubscriberOptions {
             log_level: Some(config.logging.level),
             writer_mode: Some(TracingWriterMode::Stderr),
+            format_span: Some(FmtSpan::CLOSE),
             ..Default::default()
         };
         init_tracing_subscriber(tracing_options);

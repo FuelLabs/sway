@@ -28,6 +28,7 @@ impl LanguageServer for ServerState {
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        let _p = tracing::debug_span!("parse_text").entered();
         tracing::info!("Sway Language Server Initialized");
     }
 

@@ -29,7 +29,7 @@ pub fn inlay_hints(
     range: &Range,
     config: &InlayHintsConfig,
 ) -> Option<Vec<lsp_types::InlayHint>> {
-    let _p = tracing::trace_span!("inlay_hints").entered();
+    let _p = tracing::debug_span!("inlay_hints").entered();
     // 1. Loop through all our tokens and filter out all tokens that aren't TypedVariableDeclaration tokens
     // 2. Also filter out all tokens that have a span that fall outside of the provided range
     // 3. Filter out all variable tokens that have a type_ascription

@@ -20,7 +20,7 @@ pub fn rename(
     url: &Url,
     position: Position,
 ) -> Result<WorkspaceEdit, LanguageServerError> {
-    let _p = tracing::trace_span!("rename").entered();
+    let _p = tracing::debug_span!("rename").entered();
     // Make sure the new name is not a keyword or a literal int type
     if sway_parse::RESERVED_KEYWORDS.contains(&new_name)
         || sway_parse::parse_int_suffix(&new_name).is_some()

@@ -122,7 +122,7 @@ impl Session {
 
     /// Clean up memory in the [TypeEngine] and [DeclEngine] for the user's workspace.
     pub fn garbage_collect(&self, engines: &mut Engines) -> Result<(), LanguageServerError> {
-        let _p = tracing::trace_span!("garbage_collect").entered();
+        let _p = tracing::debug_span!("garbage_collect").entered();
         let path = self.sync.temp_dir()?;
         let program_id = { engines.se().get_program_id(&path) };
         if let Some(program_id) = program_id {
@@ -132,7 +132,7 @@ impl Session {
     }
 
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
-        let _p = tracing::trace_span!("token_ranges").entered();
+        let _p = tracing::debug_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = self
             .token_map
             .tokens_for_file(url)
@@ -152,7 +152,7 @@ impl Session {
         uri: &Url,
         position: Position,
     ) -> Option<GotoDefinitionResponse> {
-        let _p = tracing::trace_span!("token_definition_response").entered();
+        let _p = tracing::debug_span!("token_definition_response").entered();
         self.token_map
             .token_at_position(uri, position)
             .and_then(|item| item.value().declared_token_ident(&self.engines.read()))
@@ -174,7 +174,7 @@ impl Session {
         position: Position,
         trigger_char: &str,
     ) -> Option<Vec<CompletionItem>> {
-        let _p = tracing::trace_span!("completion_items").entered();
+        let _p = tracing::debug_span!("completion_items").entered();
         let shifted_position = Position {
             line: position.line,
             character: position.character - trigger_char.len() as u32 - 1,
@@ -209,7 +209,7 @@ impl Session {
     }
 
     pub fn symbol_information(&self, url: &Url) -> Option<Vec<SymbolInformation>> {
-        let _p = tracing::trace_span!("symbol_information").entered();
+        let _p = tracing::debug_span!("symbol_information").entered();
         let tokens = self.token_map.tokens_for_file(url);
         self.sync
             .to_workspace_url(url.clone())
@@ -229,7 +229,7 @@ impl Session {
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
 pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
-    let _p = tracing::trace_span!("build_plan").entered();
+    let _p = tracing::debug_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
         ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
@@ -260,7 +260,7 @@ pub fn compile(
     lsp_mode: Option<LspConfig>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
-    let _p = tracing::trace_span!("compile").entered();
+    let _p = tracing::debug_span!("compile").entered();
     let build_plan = build_plan(uri)?;
     let tests_enabled = true;
     pkg::check(
@@ -283,7 +283,7 @@ pub fn traverse(
     engines_clone: &Engines,
     session: Arc<Session>,
 ) -> Result<Option<CompileResults>, LanguageServerError> {
-    let _p = tracing::trace_span!("traverse").entered();
+    let _p = tracing::debug_span!("traverse").entered();
     session.token_map.clear();
     session.metrics.clear();
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
@@ -381,7 +381,7 @@ pub fn parse_project(
     session: Arc<Session>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
-    let _p = tracing::trace_span!("parse_project").entered();
+    let _p = tracing::debug_span!("parse_project").entered();
     let results = compile(
         uri,
         engines,
@@ -457,7 +457,7 @@ fn create_runnables(
     decl_engine: &DeclEngine,
     source_engine: &SourceEngine,
 ) {
-    let _p = tracing::trace_span!("create_runnables").entered();
+    let _p = tracing::debug_span!("create_runnables").entered();
     // Insert runnable test functions.
     for (decl, _) in typed_program.test_fns(decl_engine) {
         // Get the span of the first attribute if it exists, otherwise use the span of the function name.
