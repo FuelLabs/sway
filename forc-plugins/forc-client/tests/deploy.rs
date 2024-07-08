@@ -13,7 +13,7 @@ use forc_client::{
 };
 use forc_pkg::manifest::Proxy;
 use fuel_crypto::SecretKey;
-use fuel_tx::{ContractId, Receipt, Salt};
+use fuel_tx::{ContractId, Salt};
 use fuels::{macros::abigen, types::transaction::TxPolicies};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use portpicker::Port;
