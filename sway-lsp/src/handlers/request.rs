@@ -4,7 +4,7 @@
 use crate::{
     capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
 };
-use forc_tracing::{init_tracing_subscriber, TracingSubscriberOptions, TracingWriterMode, FmtSpan};
+use forc_tracing::{tracing_subscriber, FmtSpan, StdioTracingWriter, TracingWriterMode};
 use lsp_types::{
     CodeLens, CompletionResponse, DocumentFormattingParams, DocumentSymbolResponse,
     InitializeResult, InlayHint, InlayHintParams, PrepareRenameResponse, RenameParams,
@@ -40,13 +40,14 @@ pub fn handle_initialize(
     // Initializing tracing library based on the user's config
     let config = state.config.read();
     if config.logging.level != LevelFilter::OFF {
-        let tracing_options = TracingSubscriberOptions {
-            log_level: Some(config.logging.level),
-            writer_mode: Some(TracingWriterMode::Stderr),
-            format_span: Some(FmtSpan::CLOSE),
-            ..Default::default()
-        };
-        init_tracing_subscriber(tracing_options);
+        tracing_subscriber::fmt::Subscriber::builder()
+            .with_ansi(false)
+            .with_max_level(config.logging.level)
+            .with_span_events(FmtSpan::CLOSE)
+            .with_writer(StdioTracingWriter {
+                writer_mode: TracingWriterMode::Stderr,
+            })
+            .init();
     }
     tracing::info!("Initializing the Sway Language Server");
     Ok(InitializeResult {

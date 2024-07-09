@@ -5,8 +5,9 @@ use std::str;
 use std::{env, io};
 use tracing::{Level, Metadata};
 pub use tracing_subscriber::{
+    self,
     filter::{EnvFilter, LevelFilter},
-    fmt::{MakeWriter, format::FmtSpan},
+    fmt::{format::FmtSpan, MakeWriter},
 };
 
 const ACTION_COLUMN_WIDTH: usize = 12;
@@ -83,8 +84,8 @@ const LOG_FILTER: &str = "RUST_LOG";
 
 // This allows us to write ERROR and WARN level logs to stderr and everything else to stdout.
 // https://docs.rs/tracing-subscriber/latest/tracing_subscriber/fmt/trait.MakeWriter.html
-struct StdioTracingWriter {
-    writer_mode: TracingWriterMode,
+pub struct StdioTracingWriter {
+    pub writer_mode: TracingWriterMode,
 }
 
 impl<'a> MakeWriter<'a> for StdioTracingWriter {
@@ -132,7 +133,6 @@ pub struct TracingSubscriberOptions {
     pub silent: Option<bool>,
     pub log_level: Option<LevelFilter>,
     pub writer_mode: Option<TracingWriterMode>,
-    pub format_span: Option<FmtSpan>,
 }
 
 /// A subscriber built from default `tracing_subscriber::fmt::SubscriberBuilder` such that it would match directly using `println!` throughout the repo.
@@ -143,7 +143,6 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
         Some(_) => EnvFilter::try_from_default_env().expect("Invalid `RUST_LOG` provided"),
         None => EnvFilter::new("info"),
     };
-    let fmt_span_kind = options.format_span.unwrap_or(FmtSpan::NONE);
     let level_filter = options
         .log_level
         .or_else(|| {
@@ -163,13 +162,11 @@ pub fn init_tracing_subscriber(options: TracingSubscriberOptions) {
 
     let builder = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter(env_filter)
-        // .with_ansi(true)
-        .with_ansi(false)
+        .with_ansi(true)
         .with_level(false)
-        .with_span_events(fmt_span_kind)
         .with_file(false)
         .with_line_number(false)
-        // .without_time()
+        .without_time()
         .with_target(false)
         .with_writer(StdioTracingWriter {
             writer_mode: options.writer_mode.unwrap_or(TracingWriterMode::Stdio),
