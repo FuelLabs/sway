@@ -34,15 +34,15 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.28.0", default-features = false }
-fuel-core-types = { version = "0.28.0", default-features = false }
+fuel-core-client = { path = "../fuel-core/crates/client", default-features = false }
+fuel-core-types = { path = "../fuel-core/crates/types", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.52.0"
-fuel-crypto = "0.52.0"
-fuel-types = "0.52.0"
-fuel-tx = "0.52.0"
-fuel-vm = "0.52.0"
+fuel-asm = { path = "../fuel-vm/fuel-asm" }
+fuel-crypto = { path = "../fuel-vm/fuel-crypto", features = ["random"]}
+fuel-types = { path = "../fuel-vm/fuel-types" }
+fuel-tx = { path = "../fuel-vm/fuel-tx" }
+fuel-vm = { path = "../fuel-vm/fuel-vm" }
 
 # Dependencies from the `fuels-rs` repository:
 fuels-core = "0.64.0"
