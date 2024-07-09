@@ -58,7 +58,7 @@ impl Namespace {
 
     /// Initialise the namespace at its root from the given initial namespace.
     /// If the root module contains submodules these are now considered external.
-    pub fn init_root(root: Root) -> Self {
+    pub fn init_root(root: &mut Root) -> Self {
         assert!(
             !root.module.is_external,
             "The root module must not be external during compilation"
@@ -69,32 +69,20 @@ impl Namespace {
         //
         // Every submodule that has been added before calling init_root is now considered
         // external, which we have to enforce at this point.
-        fn clone_with_submodules_external(module: &Module) -> Module {
-            let mut new_submods =
-                im::HashMap::<ModuleName, Module, BuildHasherDefault<FxHasher>>::default();
-            for (name, submod) in module.submodules.iter() {
-                let new_submod = clone_with_submodules_external(submod);
-                new_submods.insert(name.clone(), new_submod);
-            }
-            Module {
-                submodules: new_submods,
-                lexical_scopes: module.lexical_scopes.clone(),
-                current_lexical_scope_id: module.current_lexical_scope_id,
-                name: module.name.clone(),
-                visibility: module.visibility,
-                span: module.span.clone(),
-                is_external: true,
-                mod_path: module.mod_path.clone(),
+        fn set_submodules_external(module: &mut Module) {
+            for (_, submod) in module.submodules_mut().iter_mut() {
+		submod.is_external = true;
+		set_submodules_external(submod);
             }
         }
 
-        let mut init = clone_with_submodules_external(&root.module);
+        set_submodules_external(&mut root.module);
         // The init module itself is not external
-        init.is_external = false;
+        root.module.is_external = false;
 
         Self {
-            init: init.clone(),
-            root: Root { module: init },
+            init: root.module.clone(),
+            root: root.clone(),
             mod_path,
         }
     }

@@ -92,6 +92,11 @@ impl Module {
         &self.submodules
     }
 
+    /// Mutable access to this module's submodules.
+    pub fn submodules_mut(&mut self) -> &mut im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>> {
+        &mut self.submodules
+    }
+
     /// Insert a submodule into this `Module`.
     pub fn insert_submodule(&mut self, name: String, submodule: Module) {
         self.submodules.insert(name, submodule);
