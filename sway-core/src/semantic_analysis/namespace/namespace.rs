@@ -69,10 +69,10 @@ impl Namespace {
         // external, which we have to enforce at this point.
         fn set_submodules_external(module: &mut Module) {
             for (_, submod) in module.submodules_mut().iter_mut() {
-		if !submod.is_external {
-		    submod.is_external = true;
-		    set_submodules_external(submod);
-		}
+                if !submod.is_external {
+                    submod.is_external = true;
+                    set_submodules_external(submod);
+                }
             }
         }
 

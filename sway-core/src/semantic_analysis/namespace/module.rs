@@ -93,7 +93,9 @@ impl Module {
     }
 
     /// Mutable access to this module's submodules.
-    pub fn submodules_mut(&mut self) -> &mut im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>> {
+    pub fn submodules_mut(
+        &mut self,
+    ) -> &mut im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>> {
         &mut self.submodules
     }
 
