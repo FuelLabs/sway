@@ -37,17 +37,6 @@ function join_by {
   fi
 }
 
-replace () {
-    if [ $# -lt 2 ]
-    then
-        echo "Recursive, interactive text replacement"
-        echo "Usage: replace text replacement"
-        return
-    fi
-
-    vim -u NONE -c ":execute ':argdo %s/$1/$2/gc | update' | :q" $(ag $1 -l)
-}
-
 grep --include \*.sw -Hno "// AUTO-CONTRACT-ID" . -R | while read line ; do
     PARTS=($(echo $line | sed 's/:/ /g'))
     FOLDER=$(dirname ${PARTS[0]})
