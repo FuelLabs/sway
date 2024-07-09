@@ -8,11 +8,9 @@ use super::{
     root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
-    ModuleName, ModulePath, ModulePathBuf,
+    ModulePath, ModulePathBuf,
 };
 
-use rustc_hash::FxHasher;
-use std::hash::BuildHasherDefault;
 use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::span::Span;
 
@@ -71,8 +69,10 @@ impl Namespace {
         // external, which we have to enforce at this point.
         fn set_submodules_external(module: &mut Module) {
             for (_, submod) in module.submodules_mut().iter_mut() {
-		submod.is_external = true;
-		set_submodules_external(submod);
+		if !submod.is_external {
+		    submod.is_external = true;
+		    set_submodules_external(submod);
+		}
             }
         }
 
