@@ -11,7 +11,7 @@
 use crate::{
     decl_engine::*,
     language::{
-        ty::{self, TyFunctionDecl, TyImplTrait},
+        ty::{self, TyFunctionDecl, TyImplSelfOrTrait},
         AsmOp,
     },
     Engines,
@@ -111,7 +111,7 @@ fn contract_entry_points(
             Declaration(ty::TyDecl::FunctionDecl(ty::FunctionDecl { decl_id, .. })) => {
                 decl_id_to_fn_decls(decl_engine, decl_id)
             }
-            Declaration(ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. })) => {
+            Declaration(ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. })) => {
                 impl_trait_methods(decl_engine, decl_id)
             }
             _ => vec![],
@@ -128,9 +128,9 @@ fn decl_id_to_fn_decls(
 
 fn impl_trait_methods(
     decl_engine: &DeclEngine,
-    impl_trait_decl_id: &DeclId<TyImplTrait>,
+    impl_trait_decl_id: &DeclId<TyImplSelfOrTrait>,
 ) -> Vec<Arc<ty::TyFunctionDecl>> {
-    let impl_trait = decl_engine.get_impl_trait(impl_trait_decl_id);
+    let impl_trait = decl_engine.get_impl_self_or_trait(impl_trait_decl_id);
     impl_trait
         .items
         .iter()

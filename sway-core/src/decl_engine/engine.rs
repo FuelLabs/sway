@@ -13,7 +13,7 @@ use crate::{
     engine_threading::*,
     language::ty::{
         self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl,
-        TyImplTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
         TyTypeAliasDecl,
     },
 };
@@ -25,7 +25,7 @@ pub struct DeclEngine {
     trait_slab: ConcurrentSlab<TyTraitDecl>,
     trait_fn_slab: ConcurrentSlab<TyTraitFn>,
     trait_type_slab: ConcurrentSlab<TyTraitType>,
-    impl_trait_slab: ConcurrentSlab<TyImplTrait>,
+    impl_self_or_trait_slab: ConcurrentSlab<TyImplSelfOrTrait>,
     struct_slab: ConcurrentSlab<TyStructDecl>,
     storage_slab: ConcurrentSlab<TyStorageDecl>,
     abi_slab: ConcurrentSlab<TyAbiDecl>,
@@ -44,7 +44,7 @@ impl Clone for DeclEngine {
             trait_slab: self.trait_slab.clone(),
             trait_fn_slab: self.trait_fn_slab.clone(),
             trait_type_slab: self.trait_type_slab.clone(),
-            impl_trait_slab: self.impl_trait_slab.clone(),
+            impl_self_or_trait_slab: self.impl_self_or_trait_slab.clone(),
             struct_slab: self.struct_slab.clone(),
             storage_slab: self.storage_slab.clone(),
             abi_slab: self.abi_slab.clone(),
@@ -105,7 +105,7 @@ decl_engine_get!(function_slab, ty::TyFunctionDecl);
 decl_engine_get!(trait_slab, ty::TyTraitDecl);
 decl_engine_get!(trait_fn_slab, ty::TyTraitFn);
 decl_engine_get!(trait_type_slab, ty::TyTraitType);
-decl_engine_get!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_get!(impl_self_or_trait_slab, ty::TyImplSelfOrTrait);
 decl_engine_get!(struct_slab, ty::TyStructDecl);
 decl_engine_get!(storage_slab, ty::TyStorageDecl);
 decl_engine_get!(abi_slab, ty::TyAbiDecl);
@@ -142,7 +142,7 @@ decl_engine_insert!(function_slab, ty::TyFunctionDecl);
 decl_engine_insert!(trait_slab, ty::TyTraitDecl);
 decl_engine_insert!(trait_fn_slab, ty::TyTraitFn);
 decl_engine_insert!(trait_type_slab, ty::TyTraitType);
-decl_engine_insert!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_insert!(impl_self_or_trait_slab, ty::TyImplSelfOrTrait);
 decl_engine_insert!(struct_slab, ty::TyStructDecl);
 decl_engine_insert!(storage_slab, ty::TyStorageDecl);
 decl_engine_insert!(abi_slab, ty::TyAbiDecl);
@@ -164,7 +164,7 @@ decl_engine_replace!(function_slab, ty::TyFunctionDecl);
 decl_engine_replace!(trait_slab, ty::TyTraitDecl);
 decl_engine_replace!(trait_fn_slab, ty::TyTraitFn);
 decl_engine_replace!(trait_type_slab, ty::TyTraitType);
-decl_engine_replace!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_replace!(impl_self_or_trait_slab, ty::TyImplSelfOrTrait);
 decl_engine_replace!(struct_slab, ty::TyStructDecl);
 decl_engine_replace!(storage_slab, ty::TyStorageDecl);
 decl_engine_replace!(abi_slab, ty::TyAbiDecl);
@@ -182,7 +182,7 @@ decl_engine_index!(function_slab, ty::TyFunctionDecl);
 decl_engine_index!(trait_slab, ty::TyTraitDecl);
 decl_engine_index!(trait_fn_slab, ty::TyTraitFn);
 decl_engine_index!(trait_type_slab, ty::TyTraitType);
-decl_engine_index!(impl_trait_slab, ty::TyImplTrait);
+decl_engine_index!(impl_self_or_trait_slab, ty::TyImplSelfOrTrait);
 decl_engine_index!(struct_slab, ty::TyStructDecl);
 decl_engine_index!(storage_slab, ty::TyStorageDecl);
 decl_engine_index!(abi_slab, ty::TyAbiDecl);
@@ -228,7 +228,7 @@ decl_engine_clear_program!(
     trait_slab, ty::TyTraitDecl;
     trait_fn_slab, ty::TyTraitFn;
     trait_type_slab, ty::TyTraitType;
-    impl_trait_slab, ty::TyImplTrait;
+    impl_self_or_trait_slab, ty::TyImplTrait;
     struct_slab, ty::TyStructDecl;
     storage_slab, ty::TyStorageDecl;
     abi_slab, ty::TyAbiDecl;
@@ -360,9 +360,9 @@ impl DeclEngine {
     ///
     /// Calling [DeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_impl_trait<I>(&self, index: &I) -> Arc<ty::TyImplTrait>
+    pub fn get_impl_self_or_trait<I>(&self, index: &I) -> Arc<ty::TyImplSelfOrTrait>
     where
-        DeclEngine: DeclEngineGet<I, ty::TyImplTrait>,
+        DeclEngine: DeclEngineGet<I, ty::TyImplSelfOrTrait>,
     {
         self.get(index)
     }

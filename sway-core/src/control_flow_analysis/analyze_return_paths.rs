@@ -224,9 +224,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_typed_fn_decl(engines, &fn_decl, graph, entry_node)?;
             Ok(leaves.to_vec())
         }
-        ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
-            let impl_trait = decl_engine.get_impl_trait(decl_id);
-            let ty::TyImplTrait {
+        ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. }) => {
+            let impl_trait = decl_engine.get_impl_self_or_trait(decl_id);
+            let ty::TyImplSelfOrTrait {
                 trait_name, items, ..
             } = &*impl_trait;
             let entry_node = graph.add_node(ControlFlowGraphNode::from_node(node));
