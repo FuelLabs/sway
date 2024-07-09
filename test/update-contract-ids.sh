@@ -1,10 +1,10 @@
 #! /bin/bash
 
-# CHANGES=$(git status --porcelain | wc -l)
-# if [ "$CHANGES" != "0" ]; then
-#   echo "git state is not clean. commit or restore first."
-#   exit
-# fi
+CHANGES=$(git status --porcelain | wc -l)
+if [ "$CHANGES" != "0" ]; then
+  echo "git state is not clean. commit or restore first."
+  exit
+fi
 
 BOLD_RED='\033[1;31m'
 BOLD_GREEN="\033[1;32m"
