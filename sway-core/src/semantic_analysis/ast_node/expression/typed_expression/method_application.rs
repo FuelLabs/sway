@@ -601,7 +601,7 @@ pub(crate) fn type_check_method_application(
 
     // Unify method type parameters with implementing type type parameters.
     if let Some(implementing_for_typeid) = method.implementing_for_typeid {
-        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
@@ -665,7 +665,7 @@ pub(crate) fn type_check_method_application(
         fn_ref = cached_fn_ref;
     } else {
         // This handles the case of substituting the generic blanket type by call_path_typeid.
-        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
