@@ -9,6 +9,8 @@ use fuels::{
         coin::{Coin, CoinStatus},
         message::{Message, MessageStatus},
         Bytes32, ContractId,
+        coin_type::CoinType,
+        input::Input,
     },
 };
 use std::str::FromStr;
@@ -67,6 +69,66 @@ async fn msg_sender_from_contract() {
         .unwrap();
 
     assert!(result.value);
+}
+
+#[tokio::test]
+async fn input_message_msg_sender_from_contract() {
+    // Wallet
+    let mut wallet = WalletUnlocked::new_random(None);
+
+    // Setup coins and messages
+    let coins = setup_single_asset_coins(wallet.address(), AssetId::BASE, 100, 1000);
+    let msg = setup_single_message(
+        &Bech32Address {
+            hrp: "".to_string(),
+            hash: Default::default(),
+        },
+        wallet.address(),
+        DEFAULT_COIN_AMOUNT,
+        10.into(),
+        vec![],
+    );
+
+    let provider = setup_test_provider(coins.clone(), vec![msg.clone()], None, None)
+        .await
+        .unwrap();
+    wallet.set_provider(provider.clone());
+
+    // Setup contract
+    let id = Contract::load_from(
+        "test_artifacts/auth_testing_contract/out/release/auth_testing_contract.bin",
+        LoadConfiguration::default(),
+    )
+    .unwrap()
+    .deploy(&wallet, TxPolicies::default())
+    .await
+    .unwrap();
+    let instance = AuthContract::new(id.clone(), wallet.clone());
+
+    // Start building transactions
+    let call_handler = instance.methods().returns_msg_sender_address(Address::from(*msg.sender.hash()));
+    let mut tb = call_handler.transaction_builder().await.unwrap();
+
+    // Inputs
+    tb.inputs_mut().push(Input::ResourceSigned {
+        resource: CoinType::Message(wallet
+            .get_messages()
+            .await
+            .unwrap()
+            .first()
+            .unwrap()
+            .clone()),
+    });
+
+    // Build transaction
+    tb.add_signer(wallet.clone()).unwrap();
+    let tx = tb.build(provider.clone()).await.unwrap();
+
+    // Send and verify
+    let tx_id = provider.send_transaction(tx).await.unwrap();
+    let tx_status = provider.tx_status(&tx_id).await.unwrap();
+    let response = call_handler.get_response_from(tx_status).unwrap();
+    assert!(response.value);
 }
 
 async fn get_contracts() -> (

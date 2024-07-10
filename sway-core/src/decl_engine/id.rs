@@ -10,7 +10,7 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        TyEnumDecl, TyFunctionDecl, TyImplTrait, TyStructDecl, TyTraitDecl, TyTraitFn,
+        TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait, TyStructDecl, TyTraitDecl, TyTraitFn,
         TyTypeAliasDecl,
     },
     type_system::*,
@@ -167,7 +167,7 @@ impl SubstTypes for DeclId<TyTraitFn> {
         }
     }
 }
-impl SubstTypes for DeclId<TyImplTrait> {
+impl SubstTypes for DeclId<TyImplSelfOrTrait> {
     fn subst_inner(&mut self, type_mapping: &TypeSubstMap, engines: &Engines) -> HasChanges {
         let decl_engine = engines.de();
         let mut decl = (*decl_engine.get(self)).clone();

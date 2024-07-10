@@ -218,8 +218,8 @@ fn find_all_methods_for_decl<'a>(
                             engines.se(),
                         ))
                     }
-                    ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
-                        let impl_trait = engines.de().get_impl_trait(decl_id);
+                    ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. }) => {
+                        let impl_trait = engines.de().get_impl_self_or_trait(decl_id);
                         Some(
                             impl_trait
                                 .items
