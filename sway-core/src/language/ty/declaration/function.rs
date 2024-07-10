@@ -434,7 +434,7 @@ impl TyFunctionDecl {
         };
 
         match &self.implementing_type {
-            Some(TyDecl::ImplTrait(t)) => {
+            Some(TyDecl::ImplSelfOrTrait(t)) => {
                 let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
                 let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id;

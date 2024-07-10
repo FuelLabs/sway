@@ -387,7 +387,7 @@ impl ty::TyModule {
     fn get_all_impls(
         ctx: TypeCheckContext<'_>,
         nodes: &[AstNode],
-        predicate: fn(&ImplTrait) -> bool,
+        predicate: fn(&ImplSelfOrTrait) -> bool,
     ) -> HashMap<BaseIdent, HashSet<CallPath>> {
         let engines = ctx.engines();
         // Check which structs and enums needs to have auto impl for AbiEncode
@@ -396,8 +396,10 @@ impl ty::TyModule {
         let mut impls = HashMap::<BaseIdent, HashSet<CallPath>>::new();
 
         for node in nodes.iter() {
-            if let AstNodeContent::Declaration(Declaration::ImplTrait(decl_id)) = &node.content {
-                let decl = &*engines.pe().get_impl_trait(decl_id);
+            if let AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(decl_id)) =
+                &node.content
+            {
+                let decl = &*engines.pe().get_impl_self_or_trait(decl_id);
                 let implementing_for = ctx.engines.te().get(decl.implementing_for.type_id);
                 let implementing_for = match &*implementing_for {
                     TypeInfo::Struct(decl_id) => {

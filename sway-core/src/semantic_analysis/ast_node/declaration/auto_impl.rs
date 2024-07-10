@@ -368,7 +368,7 @@ where
         .unwrap();
 
         let decl = match nodes[0].content {
-            AstNodeContent::Declaration(Declaration::ImplTrait(f)) => f,
+            AstNodeContent::Declaration(Declaration::ImplSelfOrTrait(f)) => f,
             _ => unreachable!("unexpected item"),
         };
 
@@ -376,7 +376,7 @@ where
 
         let ctx = self.ctx.by_ref();
         let r = ctx.scoped_and_namespace(|ctx| {
-            TyDecl::type_check(&handler, ctx, Declaration::ImplTrait(decl))
+            TyDecl::type_check(&handler, ctx, Declaration::ImplSelfOrTrait(decl))
         });
 
         // Uncomment this to understand why auto impl failed for a type.
