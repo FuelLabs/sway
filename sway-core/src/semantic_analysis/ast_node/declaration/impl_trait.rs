@@ -15,7 +15,7 @@ use crate::{
     engine_threading::*,
     language::{
         parsed::*,
-        ty::{self, TyDecl, TyImplItem, TyImplTrait, TyTraitInterfaceItem, TyTraitItem},
+        ty::{self, TyDecl, TyImplItem, TyImplSelfOrTrait, TyTraitInterfaceItem, TyTraitItem},
         *,
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf, TryInsertingTraitImplOnFailure},
@@ -27,19 +27,20 @@ use crate::{
     type_system::*,
 };
 
-impl TyImplTrait {
+impl TyImplSelfOrTrait {
     pub(crate) fn type_check_impl_trait(
         handler: &Handler,
         mut ctx: TypeCheckContext,
-        impl_trait: ImplTrait,
+        impl_trait: ImplSelfOrTrait,
     ) -> Result<Self, ErrorEmitted> {
-        let ImplTrait {
+        let ImplSelfOrTrait {
             impl_type_parameters,
             trait_name,
             mut trait_type_arguments,
             mut implementing_for,
             items,
             block_span,
+            ..
         } = impl_trait;
 
         let type_engine = ctx.engines.te();
@@ -177,7 +178,7 @@ impl TyImplTrait {
                             &block_span,
                             false,
                         )?;
-                        ty::TyImplTrait {
+                        ty::TyImplSelfOrTrait {
                             impl_type_parameters: new_impl_type_parameters,
                             trait_name: trait_name.clone(),
                             trait_type_arguments,
@@ -254,7 +255,7 @@ impl TyImplTrait {
                             &block_span,
                             true,
                         )?;
-                        ty::TyImplTrait {
+                        ty::TyImplSelfOrTrait {
                             impl_type_parameters: vec![], // this is empty because abi definitions don't support generics
                             trait_name,
                             trait_type_arguments: vec![], // this is empty because abi definitions don't support generics
@@ -282,13 +283,14 @@ impl TyImplTrait {
     pub(crate) fn type_check_impl_self(
         handler: &Handler,
         ctx: TypeCheckContext,
-        impl_self: ImplSelf,
+        impl_self: ImplSelfOrTrait,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let ImplSelf {
+        let ImplSelfOrTrait {
             impl_type_parameters,
             mut implementing_for,
             items,
             block_span,
+            ..
         } = impl_self;
 
         let type_engine = ctx.engines.te();
@@ -434,7 +436,7 @@ impl TyImplTrait {
                         }
                     }
 
-                    let mut impl_trait = ty::TyImplTrait {
+                    let mut impl_trait = ty::TyImplSelfOrTrait {
                         impl_type_parameters: new_impl_type_parameters,
                         trait_name,
                         trait_type_arguments: vec![], // this is empty because impl self's don't support generics on the "Self" trait,
@@ -493,8 +495,8 @@ impl TyImplTrait {
                     // This returns a vector with ordered indexes to the items in the order that they
                     // should be processed.
                     let ordered_node_indices_opt =
-                        if let TyDecl::ImplTrait(impl_trait) = &impl_trait_decl {
-                            ty::TyImplTrait::type_check_analyze_impl_self_items(
+                        if let TyDecl::ImplSelfOrTrait(impl_trait) = &impl_trait_decl {
+                            ty::TyImplSelfOrTrait::type_check_analyze_impl_self_items(
                                 handler,
                                 ctx.by_ref(),
                                 impl_trait,
@@ -565,7 +567,7 @@ impl TyImplTrait {
                         item.replace_implementing_type(engines, impl_trait_decl.clone())
                     });
 
-                    if let TyDecl::ImplTrait(impl_trait_id) = &impl_trait_decl {
+                    if let TyDecl::ImplSelfOrTrait(impl_trait_id) = &impl_trait_decl {
                         decl_engine.replace(impl_trait_id.decl_id, impl_trait);
                     }
 
@@ -577,7 +579,7 @@ impl TyImplTrait {
     pub(crate) fn type_check_analyze_impl_self_items(
         handler: &Handler,
         ctx: TypeCheckContext,
-        impl_self: &ty::ImplTrait,
+        impl_self: &ty::ImplSelfOrTrait,
     ) -> Result<Option<Vec<TyNodeDepGraphNodeId>>, ErrorEmitted> {
         let engines = ctx.engines;
         handler.scope(|handler| {
@@ -1537,14 +1539,14 @@ fn handle_supertraits(
     })
 }
 
-impl TypeCheckAnalysis for ty::ImplTrait {
+impl TypeCheckAnalysis for ty::ImplSelfOrTrait {
     fn type_check_analyze(
         &self,
         handler: &Handler,
         ctx: &mut TypeCheckAnalysisContext,
     ) -> Result<(), ErrorEmitted> {
         let decl_engine = ctx.engines.de();
-        let impl_trait = decl_engine.get_impl_trait(&self.decl_id);
+        let impl_trait = decl_engine.get_impl_self_or_trait(&self.decl_id);
 
         // Lets create a graph node for the impl trait and for every item in the trait.
         ctx.push_nodes_for_impl_trait(self);
@@ -1562,7 +1564,7 @@ impl TypeCheckAnalysis for ty::ImplTrait {
     }
 }
 
-impl TypeCheckFinalization for TyImplTrait {
+impl TypeCheckFinalization for TyImplSelfOrTrait {
     fn type_check_finalize(
         &mut self,
         handler: &Handler,

@@ -1143,10 +1143,10 @@ impl<'a> TypeCheckContext<'a> {
                 let mut impl_self_method = None;
                 for method_ref in maybe_method_decl_refs.clone() {
                     let method = decl_engine.get_function(&method_ref);
-                    if let Some(ty::TyDecl::ImplTrait(impl_trait)) =
+                    if let Some(ty::TyDecl::ImplSelfOrTrait(impl_trait)) =
                         method.implementing_type.clone()
                     {
-                        let trait_decl = decl_engine.get_impl_trait(&impl_trait.decl_id);
+                        let trait_decl = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
                         let mut skip_insert = false;
                         if let Some(as_trait) = as_trait {
                             if let TypeInfo::Custom {

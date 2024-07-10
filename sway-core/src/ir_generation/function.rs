@@ -229,7 +229,7 @@ impl<'eng> FnCompiler<'eng> {
                     decl_type: "type alias",
                     span: ast_node.span.clone(),
                 }),
-                ty::TyDecl::ImplTrait { .. } => {
+                ty::TyDecl::ImplSelfOrTrait { .. } => {
                     // XXX What if we ignore the trait implementation???  Potentially since
                     // we currently inline everything and below we 'recreate' the functions
                     // lazily as they are called, nothing needs to be done here.  BUT!

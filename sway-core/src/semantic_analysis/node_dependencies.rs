@@ -376,39 +376,17 @@ impl Dependencies {
                     },
                 )
             }
-            Declaration::ImplTrait(decl_id) => {
-                let ImplTrait {
+            Declaration::ImplSelfOrTrait(decl_id) => {
+                let ImplSelfOrTrait {
                     impl_type_parameters,
                     trait_name,
                     implementing_for,
                     items,
                     ..
-                } = &*engines.pe().get_impl_trait(decl_id);
+                } = &*engines.pe().get_impl_self_or_trait(decl_id);
                 self.gather_from_call_path(trait_name, false, false)
                     .gather_from_type_argument(engines, implementing_for)
                     .gather_from_type_parameters(impl_type_parameters)
-                    .gather_from_iter(items.iter(), |deps, item| match item {
-                        ImplItem::Fn(fn_decl_id) => {
-                            let fn_decl = engines.pe().get_function(fn_decl_id);
-                            deps.gather_from_fn_decl(engines, &fn_decl)
-                        }
-                        ImplItem::Constant(decl_id) => {
-                            let const_decl = engines.pe().get_constant(decl_id);
-                            deps.gather_from_constant_decl(engines, &const_decl)
-                        }
-                        ImplItem::Type(decl_id) => {
-                            let type_decl = engines.pe().get_trait_type(decl_id);
-                            deps.gather_from_type_decl(engines, &type_decl)
-                        }
-                    })
-            }
-            Declaration::ImplSelf(decl_id) => {
-                let ImplSelf {
-                    implementing_for,
-                    items,
-                    ..
-                } = &*engines.pe().get_impl_self(decl_id);
-                self.gather_from_type_argument(engines, implementing_for)
                     .gather_from_iter(items.iter(), |deps, item| match item {
                         ImplItem::Fn(fn_decl_id) => {
                             let fn_decl = engines.pe().get_function(fn_decl_id);
@@ -937,37 +915,34 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
             let decl = engines.pe().get_type_alias(decl_id);
             dep_sym(decl.name.clone())
         }
-
-        // These have the added complexity of converting CallPath and/or TypeInfo into a name.
-        Declaration::ImplSelf(decl_id) => {
-            let decl = engines.pe().get_impl_self(decl_id);
-            let trait_name = Ident::new_with_override("self".into(), decl.implementing_for.span());
-            impl_sym(
-                trait_name,
-                &type_engine.get(decl.implementing_for.type_id),
-                decl.items
-                    .iter()
-                    .map(|item| match item {
-                        ImplItem::Fn(fn_decl_id) => {
-                            let fn_decl = engines.pe().get_function(fn_decl_id);
-                            fn_decl.name.to_string()
-                        }
-                        ImplItem::Constant(decl_id) => {
-                            let const_decl = engines.pe().get_constant(decl_id);
-                            const_decl.name.to_string()
-                        }
-                        ImplItem::Type(decl_id) => {
-                            let type_decl = engines.pe().get_trait_type(decl_id);
-                            type_decl.name.to_string()
-                        }
-                    })
-                    .collect::<Vec<String>>()
-                    .join(""),
-            )
-        }
-        Declaration::ImplTrait(decl_id) => {
-            let decl = engines.pe().get_impl_trait(decl_id);
-            if decl.trait_name.prefixes.is_empty() {
+        Declaration::ImplSelfOrTrait(decl_id) => {
+            let decl = engines.pe().get_impl_self_or_trait(decl_id);
+            if decl.is_self {
+                let trait_name =
+                    Ident::new_with_override("self".into(), decl.implementing_for.span());
+                impl_sym(
+                    trait_name,
+                    &type_engine.get(decl.implementing_for.type_id),
+                    decl.items
+                        .iter()
+                        .map(|item| match item {
+                            ImplItem::Fn(fn_decl_id) => {
+                                let fn_decl = engines.pe().get_function(fn_decl_id);
+                                fn_decl.name.to_string()
+                            }
+                            ImplItem::Constant(decl_id) => {
+                                let const_decl = engines.pe().get_constant(decl_id);
+                                const_decl.name.to_string()
+                            }
+                            ImplItem::Type(decl_id) => {
+                                let type_decl = engines.pe().get_trait_type(decl_id);
+                                type_decl.name.to_string()
+                            }
+                        })
+                        .collect::<Vec<String>>()
+                        .join(""),
+                )
+            } else if decl.trait_name.prefixes.is_empty() {
                 impl_sym(
                     decl.trait_name.suffix.clone(),
                     &type_engine.get(decl.implementing_for.type_id),

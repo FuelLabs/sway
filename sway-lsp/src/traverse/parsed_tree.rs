@@ -23,15 +23,15 @@ use sway_core::{
             ConstantDeclaration, Declaration, DelineatedPathExpression, EnumDeclaration,
             EnumVariant, Expression, ExpressionKind, ForLoopExpression,
             FunctionApplicationExpression, FunctionDeclaration, FunctionParameter, IfExpression,
-            ImplItem, ImplSelf, ImplTrait, ImportType, IncludeStatement,
-            IntrinsicFunctionExpression, LazyOperatorExpression, MatchExpression,
-            MethodApplicationExpression, MethodName, ParseModule, ParseProgram, ParseSubmodule,
-            QualifiedPathType, ReassignmentExpression, ReassignmentTarget, RefExpression,
-            Scrutinee, StorageAccessExpression, StorageDeclaration, StorageEntry, StorageField,
-            StorageNamespace, StructDeclaration, StructExpression, StructExpressionField,
-            StructField, StructScrutineeField, SubfieldExpression, Supertrait, TraitDeclaration,
-            TraitFn, TraitItem, TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration,
-            UseStatement, VariableDeclaration, WhileLoopExpression,
+            ImplItem, ImplSelfOrTrait, ImportType, IncludeStatement, IntrinsicFunctionExpression,
+            LazyOperatorExpression, MatchExpression, MethodApplicationExpression, MethodName,
+            ParseModule, ParseProgram, ParseSubmodule, QualifiedPathType, ReassignmentExpression,
+            ReassignmentTarget, RefExpression, Scrutinee, StorageAccessExpression,
+            StorageDeclaration, StorageEntry, StorageField, StorageNamespace, StructDeclaration,
+            StructExpression, StructExpressionField, StructField, StructScrutineeField,
+            SubfieldExpression, Supertrait, TraitDeclaration, TraitFn, TraitItem,
+            TraitTypeDeclaration, TupleIndexExpression, TypeAliasDeclaration, UseStatement,
+            VariableDeclaration, WhileLoopExpression,
         },
         CallPathTree, HasSubmodules, Literal,
     },
@@ -126,8 +126,7 @@ impl Parse for Declaration {
             Declaration::StructDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::EnumDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::EnumVariantDeclaration(_decl) => unreachable!(),
-            Declaration::ImplTrait(decl_id) => decl_id.parse(ctx),
-            Declaration::ImplSelf(decl_id) => decl_id.parse(ctx),
+            Declaration::ImplSelfOrTrait(decl_id) => decl_id.parse(ctx),
             Declaration::AbiDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConstantDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::ConfigurableDeclaration(decl_id) => decl_id.parse(ctx),
@@ -779,58 +778,49 @@ impl Parse for ParsedDeclId<EnumDeclaration> {
     }
 }
 
-impl Parse for ParsedDeclId<ImplTrait> {
+impl Parse for ParsedDeclId<ImplSelfOrTrait> {
     fn parse(&self, ctx: &ParseContext) {
-        let impl_trait = ctx.engines.pe().get_impl_trait(self);
-        adaptive_iter(&impl_trait.trait_name.prefixes, |ident| {
+        let impl_self_or_trait = ctx.engines.pe().get_impl_self_or_trait(self);
+        adaptive_iter(&impl_self_or_trait.trait_name.prefixes, |ident| {
             ctx.tokens.insert(
                 ctx.ident(ident),
                 Token::from_parsed(AstToken::Ident(ident.clone()), SymbolKind::Module),
             );
         });
         ctx.tokens.insert(
-            ctx.ident(&impl_trait.trait_name.suffix),
+            ctx.ident(&impl_self_or_trait.trait_name.suffix),
             Token::from_parsed(
-                AstToken::Declaration(Declaration::ImplTrait(*self)),
+                AstToken::Declaration(Declaration::ImplSelfOrTrait(*self)),
                 SymbolKind::Trait,
             ),
         );
-        impl_trait.implementing_for.parse(ctx);
-        adaptive_iter(&impl_trait.impl_type_parameters, |type_param| {
-            type_param.parse(ctx);
-        });
-        adaptive_iter(&impl_trait.items, |item| match item {
-            ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
-            ImplItem::Constant(const_decl) => const_decl.parse(ctx),
-            ImplItem::Type(type_decl) => type_decl.parse(ctx),
-        });
-    }
-}
-
-impl Parse for ParsedDeclId<ImplSelf> {
-    fn parse(&self, ctx: &ParseContext) {
-        let impl_self = ctx.engines.pe().get_impl_self(self);
         if let TypeInfo::Custom {
             qualified_call_path,
             type_arguments,
             root_type_id: _,
-        } = &&*ctx.engines.te().get(impl_self.implementing_for.type_id)
+        } = &&*ctx
+            .engines
+            .te()
+            .get(impl_self_or_trait.implementing_for.type_id)
         {
             ctx.tokens.insert(
                 ctx.ident(&qualified_call_path.call_path.suffix),
                 Token::from_parsed(
-                    AstToken::Declaration(Declaration::ImplSelf(*self)),
+                    AstToken::Declaration(Declaration::ImplSelfOrTrait(*self)),
                     SymbolKind::Struct,
                 ),
             );
             if let Some(type_arguments) = type_arguments {
                 adaptive_iter(type_arguments, |type_arg| type_arg.parse(ctx));
             }
+        } else {
+            impl_self_or_trait.implementing_for.parse(ctx);
         }
-        adaptive_iter(&impl_self.impl_type_parameters, |type_param| {
+
+        adaptive_iter(&impl_self_or_trait.impl_type_parameters, |type_param| {
             type_param.parse(ctx);
         });
-        adaptive_iter(&impl_self.items, |item| match item {
+        adaptive_iter(&impl_self_or_trait.items, |item| match item {
             ImplItem::Fn(fn_decl) => fn_decl.parse(ctx),
             ImplItem::Constant(const_decl) => const_decl.parse(ctx),
             ImplItem::Type(type_decl) => type_decl.parse(ctx),

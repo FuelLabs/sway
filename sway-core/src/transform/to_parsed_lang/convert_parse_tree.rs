@@ -39,6 +39,7 @@ use sway_types::{
         TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
+    BaseIdent,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -772,7 +773,8 @@ pub fn item_impl_to_declaration(
         Some((path_type, _)) => {
             let (trait_name, trait_type_arguments) =
                 path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
-            let impl_trait = ImplTrait {
+            let impl_trait = ImplSelfOrTrait {
+                is_self: false,
                 impl_type_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
@@ -781,20 +783,27 @@ pub fn item_impl_to_declaration(
                 block_span,
             };
             let impl_trait = engines.pe().insert(impl_trait);
-            Ok(Declaration::ImplTrait(impl_trait))
+            Ok(Declaration::ImplSelfOrTrait(impl_trait))
         }
         None => match &*engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
-                let impl_self = ImplSelf {
+                let impl_self = ImplSelfOrTrait {
+                    is_self: true,
+                    trait_name: CallPath {
+                        is_absolute: false,
+                        prefixes: vec![],
+                        suffix: BaseIdent::dummy(),
+                    },
+                    trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
                     items,
                     block_span,
                 };
                 let impl_self = engines.pe().insert(impl_self);
-                Ok(Declaration::ImplSelf(impl_self))
+                Ok(Declaration::ImplSelfOrTrait(impl_self))
             }
         },
     }
