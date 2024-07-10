@@ -1760,7 +1760,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: namespace::Root,
+    namespace: &mut namespace::Root,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
@@ -2377,7 +2377,7 @@ pub fn build(
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let dep_namespace = match dependency_namespace(
+            let mut dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
@@ -2394,7 +2394,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                dep_namespace,
+                &mut dep_namespace,
                 &mut source_map,
             )?;
 
@@ -2441,7 +2441,7 @@ pub fn build(
         };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let dep_namespace = match dependency_namespace(
+        let mut dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
@@ -2467,7 +2467,7 @@ pub fn build(
             &descriptor,
             &profile,
             &engines,
-            dep_namespace,
+            &mut dep_namespace,
             &mut source_map,
         )?;
 
@@ -2676,7 +2676,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let dep_namespace = dependency_namespace(
+        let mut dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
@@ -2707,7 +2707,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            dep_namespace,
+            &mut dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),

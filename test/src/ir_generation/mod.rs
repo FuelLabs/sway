@@ -238,12 +238,12 @@ pub(super) async fn run(
 
                 let sway_str = String::from_utf8_lossy(&sway_str);
                 let handler = Handler::default();
-                let initial_namespace = namespace::Root::from(core_lib.clone());
+                let mut initial_namespace = namespace::Root::from(core_lib.clone());
                 let compile_res = compile_to_ast(
                     &handler,
                     &engines,
                     Arc::from(sway_str),
-                    initial_namespace,
+                    &mut initial_namespace,
                     Some(&bld_cfg),
                     PACKAGE_NAME,
                     None,

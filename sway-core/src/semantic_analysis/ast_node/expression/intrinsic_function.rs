@@ -247,21 +247,25 @@ fn type_check_encode_append(
     };
 
     // only supported types
-    match &*engines.te().get(item_type) {
-        TypeInfo::Boolean
-        | TypeInfo::UnsignedInteger(IntegerBits::Eight)
-        | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
-        | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
-        | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
-        | TypeInfo::UnsignedInteger(IntegerBits::V256)
-        | TypeInfo::B256
-        | TypeInfo::StringArray(_)
-        | TypeInfo::StringSlice
-        | TypeInfo::RawUntypedSlice => {}
-        _ => {
-            return Err(handler.emit_err(CompileError::EncodingUnsupportedType { span: item_span }))
-        }
-    };
+    if item_type.is_concrete(engines, IncludeNumeric::Yes) {
+        match &*engines.te().get(item_type) {
+            TypeInfo::Boolean
+            | TypeInfo::UnsignedInteger(IntegerBits::Eight)
+            | TypeInfo::UnsignedInteger(IntegerBits::Sixteen)
+            | TypeInfo::UnsignedInteger(IntegerBits::ThirtyTwo)
+            | TypeInfo::UnsignedInteger(IntegerBits::SixtyFour)
+            | TypeInfo::UnsignedInteger(IntegerBits::V256)
+            | TypeInfo::B256
+            | TypeInfo::StringArray(_)
+            | TypeInfo::StringSlice
+            | TypeInfo::RawUntypedSlice => {}
+            _ => {
+                return Err(
+                    handler.emit_err(CompileError::EncodingUnsupportedType { span: item_span })
+                )
+            }
+        };
+    }
 
     let kind = ty::TyIntrinsicFunctionKind {
         kind,
