@@ -3,7 +3,7 @@ use crate::{
     decl_engine::*,
     language::parsed::{
         AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration, EnumVariant,
-        FunctionDeclaration, ImplSelf, ImplTrait, StorageDeclaration, StructDeclaration,
+        FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration, StructDeclaration,
         TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration, VariableDeclaration,
     },
 };
@@ -21,8 +21,7 @@ pub struct ParsedDeclEngine {
     trait_slab: ConcurrentSlab<TraitDeclaration>,
     trait_fn_slab: ConcurrentSlab<TraitFn>,
     trait_type_slab: ConcurrentSlab<TraitTypeDeclaration>,
-    impl_trait_slab: ConcurrentSlab<ImplTrait>,
-    impl_self_slab: ConcurrentSlab<ImplSelf>,
+    impl_self_or_trait_slab: ConcurrentSlab<ImplSelfOrTrait>,
     struct_slab: ConcurrentSlab<StructDeclaration>,
     storage_slab: ConcurrentSlab<StorageDeclaration>,
     abi_slab: ConcurrentSlab<AbiDeclaration>,
@@ -66,8 +65,7 @@ decl_engine_get!(function_slab, FunctionDeclaration);
 decl_engine_get!(trait_slab, TraitDeclaration);
 decl_engine_get!(trait_fn_slab, TraitFn);
 decl_engine_get!(trait_type_slab, TraitTypeDeclaration);
-decl_engine_get!(impl_trait_slab, ImplTrait);
-decl_engine_get!(impl_self_slab, ImplSelf);
+decl_engine_get!(impl_self_or_trait_slab, ImplSelfOrTrait);
 decl_engine_get!(struct_slab, StructDeclaration);
 decl_engine_get!(storage_slab, StorageDeclaration);
 decl_engine_get!(abi_slab, AbiDeclaration);
@@ -92,8 +90,7 @@ decl_engine_insert!(function_slab, FunctionDeclaration);
 decl_engine_insert!(trait_slab, TraitDeclaration);
 decl_engine_insert!(trait_fn_slab, TraitFn);
 decl_engine_insert!(trait_type_slab, TraitTypeDeclaration);
-decl_engine_insert!(impl_trait_slab, ImplTrait);
-decl_engine_insert!(impl_self_slab, ImplSelf);
+decl_engine_insert!(impl_self_or_trait_slab, ImplSelfOrTrait);
 decl_engine_insert!(struct_slab, StructDeclaration);
 decl_engine_insert!(storage_slab, StorageDeclaration);
 decl_engine_insert!(abi_slab, AbiDeclaration);
@@ -121,8 +118,7 @@ decl_engine_clear!(
     trait_slab, TraitDeclaration;
     trait_fn_slab, TraitFn;
     trait_type_slab, TraitTypeDeclaration;
-    impl_trait_slab, ImplTrait;
-    impl_self_slab, ImplSelf;
+    impl_self_or_trait_slab, ImplTrait;
     struct_slab, StructDeclaration;
     storage_slab, StorageDeclaration;
     abi_slab, AbiDeclaration;
@@ -158,8 +154,9 @@ decl_engine_clear_program!(
     (trait_type_slab, |item: &TraitTypeDeclaration| item
         .name
         .span()),
-    (impl_trait_slab, |item: &ImplTrait| item.block_span.clone()),
-    (impl_self_slab, |item: &ImplSelf| item.block_span.clone()),
+    (impl_self_or_trait_slab, |item: &ImplSelfOrTrait| item
+        .block_span
+        .clone()),
     (struct_slab, |item: &StructDeclaration| item.name.span()),
     (storage_slab, |item: &StorageDeclaration| item.span.clone()),
     (abi_slab, |item: &AbiDeclaration| item.name.span()),
@@ -212,21 +209,9 @@ impl ParsedDeclEngine {
     ///
     /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
     /// this method adds additional syntax that some users may find helpful.
-    pub fn get_impl_trait<I>(&self, index: &I) -> Arc<ImplTrait>
+    pub fn get_impl_self_or_trait<I>(&self, index: &I) -> Arc<ImplSelfOrTrait>
     where
-        ParsedDeclEngine: ParsedDeclEngineGet<I, ImplTrait>,
-    {
-        self.get(index)
-    }
-
-    /// Friendly helper method for calling the `get` method from the
-    /// implementation of [ParsedDeclEngineGet] for [ParsedDeclEngine]
-    ///
-    /// Calling [ParsedDeclEngine][get] directly is equivalent to this method, but
-    /// this method adds additional syntax that some users may find helpful.
-    pub fn get_impl_self<I>(&self, index: &I) -> Arc<ImplSelf>
-    where
-        ParsedDeclEngine: ParsedDeclEngineGet<I, ImplSelf>,
+        ParsedDeclEngine: ParsedDeclEngineGet<I, ImplSelfOrTrait>,
     {
         self.get(index)
     }

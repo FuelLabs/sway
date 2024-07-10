@@ -46,8 +46,7 @@ pub enum Declaration {
     StructDeclaration(ParsedDeclId<StructDeclaration>),
     EnumDeclaration(ParsedDeclId<EnumDeclaration>),
     EnumVariantDeclaration(EnumVariantDeclaration),
-    ImplTrait(ParsedDeclId<ImplTrait>),
-    ImplSelf(ParsedDeclId<ImplSelf>),
+    ImplSelfOrTrait(ParsedDeclId<ImplSelfOrTrait>),
     AbiDeclaration(ParsedDeclId<AbiDeclaration>),
     ConstantDeclaration(ParsedDeclId<ConstantDeclaration>),
     ConfigurableDeclaration(ParsedDeclId<ConfigurableDeclaration>),
@@ -88,8 +87,7 @@ impl Declaration {
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
             EnumVariantDeclaration(_) => "enum variant",
-            ImplSelf(_) => "impl self",
-            ImplTrait(_) => "impl trait",
+            ImplSelfOrTrait(_) => "impl self/trait",
             AbiDeclaration(_) => "abi",
             StorageDeclaration(_) => "contract storage",
             TypeAliasDeclaration(_) => "type alias",
@@ -106,8 +104,7 @@ impl Declaration {
             StructDeclaration(decl_id) => pe.get_struct(decl_id).span(),
             EnumDeclaration(decl_id) => pe.get_enum(decl_id).span(),
             EnumVariantDeclaration(decl) => decl.variant_decl_span.clone(),
-            ImplTrait(decl_id) => pe.get_impl_trait(decl_id).span(),
-            ImplSelf(decl_id) => pe.get_impl_self(decl_id).span(),
+            ImplSelfOrTrait(decl_id) => pe.get_impl_self_or_trait(decl_id).span(),
             AbiDeclaration(decl_id) => pe.get_abi(decl_id).span(),
             ConstantDeclaration(decl_id) => pe.get_constant(decl_id).span(),
             ConfigurableDeclaration(decl_id) => pe.get_configurable(decl_id).span(),
@@ -138,8 +135,7 @@ impl Declaration {
                 decl_engine.get_type_alias(decl_id).visibility
             }
             Declaration::VariableDeclaration(_decl_id) => Visibility::Private,
-            Declaration::ImplTrait(_)
-            | Declaration::ImplSelf(_)
+            Declaration::ImplSelfOrTrait(_)
             | Declaration::StorageDeclaration(_)
             | Declaration::AbiDeclaration(_)
             | Declaration::TraitTypeDeclaration(_) => Visibility::Public,
@@ -169,7 +165,7 @@ impl DisplayWithEngines for Declaration {
                 Declaration::EnumDeclaration(decl_id) => {
                     engines.pe().get(decl_id).name.as_str().into()
                 }
-                Declaration::ImplTrait(decl_id) => {
+                Declaration::ImplSelfOrTrait(decl_id) => {
                     engines
                         .pe()
                         .get(decl_id)
@@ -213,10 +209,7 @@ impl PartialEqWithEngines for Declaration {
             (Declaration::EnumDeclaration(lid), Declaration::EnumDeclaration(rid)) => {
                 decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
             }
-            (Declaration::ImplTrait(lid), Declaration::ImplTrait(rid)) => {
-                decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
-            }
-            (Declaration::ImplSelf(lid), Declaration::ImplSelf(rid)) => {
+            (Declaration::ImplSelfOrTrait(lid), Declaration::ImplSelfOrTrait(rid)) => {
                 decl_engine.get(lid).eq(&decl_engine.get(rid), ctx)
             }
             (Declaration::AbiDeclaration(lid), Declaration::AbiDeclaration(rid)) => {
