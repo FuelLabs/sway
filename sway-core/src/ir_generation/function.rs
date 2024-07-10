@@ -2168,6 +2168,60 @@ impl<'eng> FnCompiler<'eng> {
 
                 Ok(TerminatorValue::new(buffer, context))
             }
+            Intrinsic::Slice => {
+                assert!(arguments.len() == 3);
+
+                let array = &arguments[0];
+                let item_ir_type = convert_resolved_typeid(
+                    self.engines.te(),
+                    self.engines.de(),
+                    context,
+                    &array.return_type,
+                    &array.span.clone(),
+                )?;
+                let array = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, array)?
+                );
+
+                let start = &arguments[0];
+                let start = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, start)?
+                );
+
+                let end = &arguments[0];
+                let end = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, end)?
+                );
+
+                //asm(array_ptr: array, start: start, end: end, item_len: __size_of::<T>(), slice_ptr, slice_len) {
+                //  lw array_ptr array_ptr i0;
+                //  mul slice_ptr start item_len;
+                //  add slice_ptr slice_ptr array_ptr; // byte offset
+                //  sub slice_len end start;
+                //  mul slice_len slice_len item_len;  // length in bytes
+                //  (slice_ptr, slice_len): __slice[T]
+                //};
+                let return_type = Type::get_typed_slice(context, item_ir_type);
+                let slice = self.current_block.append(context).asm_block(
+                    vec![AsmArg {
+                        name: Ident::new_no_span("array_ptr".into()),
+                        initializer: Some(array),
+                    }],
+                    vec![AsmInstruction {
+                        op_name: Ident::new_no_span("lw".into()),
+                        args: vec![
+                            Ident::new_no_span("array_ptr".into()),
+                            Ident::new_no_span("array_ptr".into()),
+                        ],
+                        immediate: Some(Ident::new_no_span("i0".into())),
+                        metadata: None,
+                    }],
+                    return_type,
+                    Some(Ident::new_no_span("array_ptr".into())),
+                );
+
+                Ok(TerminatorValue::new(slice, context))
+            }
         }
     }
 

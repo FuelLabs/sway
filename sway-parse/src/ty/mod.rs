@@ -30,6 +30,13 @@ impl Parse for Ty {
             return Err(parser
                 .emit_error(ParseErrorKind::ExpectedCommaOrCloseParenInTupleOrParenExpression));
         }
+
+        // square brackets can be slice ([u64]) or arrays ([u64; 1])
+
+        // if let Some(descriptor) = SquareBrackets::try_parse(parser)? {
+        //     return Ok(Ty::Slice(descriptor));
+        // };
+
         if let Some(descriptor) = SquareBrackets::try_parse(parser)? {
             return Ok(Ty::Array(descriptor));
         };

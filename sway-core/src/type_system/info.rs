@@ -1413,7 +1413,6 @@ impl TypeInfo {
             | TypeInfo::RawUntypedPtr
             | TypeInfo::RawUntypedSlice
             | TypeInfo::Ptr(_)
-            | TypeInfo::Slice(_)
             | TypeInfo::ErrorRecovery(_)
             | TypeInfo::TraitType { .. }
             | TypeInfo::Never => false,
@@ -1423,6 +1422,7 @@ impl TypeInfo {
             | TypeInfo::Custom { .. }
             | TypeInfo::Tuple(_)
             | TypeInfo::Array(_, _)
+            | TypeInfo::Slice(_)
             | TypeInfo::Contract
             | TypeInfo::Storage { .. }
             | TypeInfo::Numeric

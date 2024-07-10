@@ -648,6 +648,7 @@ fn effects_of_intrinsic(intr: &sway_ast::Intrinsic) -> HashSet<Effect> {
         | EncodeBufferEmpty
         | EncodeBufferAppend
         | EncodeBufferAsRawSlice => HashSet::new(),
+        Slice => todo!(),
     }
 }
 

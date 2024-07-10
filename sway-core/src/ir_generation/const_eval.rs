@@ -1284,6 +1284,7 @@ fn const_eval_intrinsic(
                 value: ConstantValue::RawUntypedSlice(bytes[0..(len as usize)].to_vec()),
             }))
         }
+        Intrinsic::Slice => todo!(),
     }
 }
 

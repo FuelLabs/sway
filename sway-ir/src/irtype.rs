@@ -39,6 +39,7 @@ pub enum TypeContent {
     Struct(Vec<Type>),
     Slice,
     Pointer(Type),
+    TypedSlice(Type),
 }
 
 impl Type {
@@ -162,6 +163,11 @@ impl Type {
         Self::get_type(context, &TypeContent::Slice).expect("create_basic_types not called")
     }
 
+    /// Get typed slice type
+    pub fn get_typed_slice(context: &mut Context, item_ty: Type) -> Type {
+        Self::get_or_create_unique_type(context, TypeContent::TypedSlice(item_ty))
+    }
+
     /// Return a string representation of type, used for printing.
     pub fn as_string(&self, context: &Context) -> String {
         let sep_types_str = |agg_content: &Vec<Type>, sep: &str| {
@@ -190,6 +196,7 @@ impl Type {
                 format!("{{ {} }}", sep_types_str(agg, ", "))
             }
             TypeContent::Slice => "slice".into(),
+            TypeContent::TypedSlice(ty) => format!("[{}]", ty.as_string(context)),
             TypeContent::Pointer(ty) => format!("ptr {}", ty.as_string(context)),
         }
     }
@@ -542,6 +549,7 @@ impl Type {
             TypeContent::Uint(256) => TypeSize::new(32),
             TypeContent::Uint(_) => unreachable!(),
             TypeContent::Slice => TypeSize::new(16),
+            TypeContent::TypedSlice(..) => TypeSize::new(16),
             TypeContent::B256 => TypeSize::new(32),
             TypeContent::StringSlice => TypeSize::new(16),
             TypeContent::StringArray(n) => {
