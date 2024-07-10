@@ -403,21 +403,35 @@ impl LruSessionCache {
     /// Retrieves a session from the cache and updates its position to the front of the usage order.
     pub(crate) fn get(&self, path: &PathBuf) -> Option<Arc<Session>> {
         if let Some(session) = self.sessions.try_get(path).try_unwrap() {
-            self.move_to_front(path);
+            if self.sessions.len() >= self.capacity {
+                self.move_to_front(path);
+            }
             Some(session.clone())
         } else {
             None
         }
     }
 
-    /// Inserts a new session into the cache, evicting the least recently used session if at capacity.
+    /// Inserts or updates a session in the cache.
+    /// If at capacity and inserting a new session, evicts the least recently used one.
+    /// For existing sessions, updates their position in the usage order if at capacity.
     pub(crate) fn insert(&self, path: PathBuf, session: Arc<Session>) {
-        tracing::trace!("Inserting new session for path: {:?}", path);
-        if self.sessions.len() >= self.capacity {
-            self.evict_least_used();
+        if self.sessions.get(&path).is_some() {
+            tracing::trace!("Updating existing session for path: {:?}", path);
+            // Session already exists, just update its position in the usage order if at capacity
+            if self.sessions.len() >= self.capacity {
+                self.move_to_front(&path);
+            }
+        } else {
+            // New session
+            tracing::trace!("Inserting new session for path: {:?}", path);
+            if self.sessions.len() >= self.capacity {
+                self.evict_least_used();
+            }
+            self.sessions.insert(path.clone(), session);
+            let mut order = self.usage_order.lock();
+            order.push_front(path);
         }
-        self.sessions.insert(path.clone(), session);
-        self.move_to_front(&path);
     }
 
     /// Moves the specified path to the front of the usage order, marking it as most recently used.
