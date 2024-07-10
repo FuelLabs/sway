@@ -13,6 +13,6 @@ impl MyContract for Contract {
     }
 }
 
-fn caller(address: ContractId) -> ContractCaller<_> {
-    abi(MyContract, address.value)
+fn caller(address: b256) -> ContractCaller<_> {
+    abi(MyContract, address)
 }
