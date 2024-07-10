@@ -52,7 +52,7 @@ fuels-accounts = "0.65.1"
 forc-wallet = "0.8.2"
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.5.2"
+fuel-abi-types = "0.6.0"
 
 [workspace.package]
 edition = "2021"
