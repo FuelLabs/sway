@@ -1,6 +1,6 @@
 use crate::{
     decl_engine::{
-        engine::{DeclEngineGet, DeclEngineReplace},
+        engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineReplace},
         DeclEngineInsert, DeclRefFunction, ReplaceDecls, UpdateConstantExpression,
     },
     language::{
@@ -940,7 +940,10 @@ pub(crate) fn monomorphize_method(
     }
 
     let decl_ref = decl_engine
-        .insert(func_decl)
+        .insert(
+            func_decl,
+            decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+        )
         .with_parent(decl_engine, (*decl_ref.id()).into());
 
     Ok(decl_ref)

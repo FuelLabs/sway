@@ -12,11 +12,13 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     has_changes,
-    language::{CallPath, Visibility},
+    language::{parsed::EnumDeclaration, CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
 };
+
+use super::WithParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyEnumDecl {
@@ -26,6 +28,10 @@ pub struct TyEnumDecl {
     pub variants: Vec<TyEnumVariant>,
     pub span: Span,
     pub visibility: Visibility,
+}
+
+impl WithParsedType for TyEnumDecl {
+    type ParsedType = EnumDeclaration;
 }
 
 impl Named for TyEnumDecl {

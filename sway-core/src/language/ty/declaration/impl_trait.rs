@@ -3,11 +3,14 @@ use std::hash::{Hash, Hasher};
 use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclRefMixedInterface, engine_threading::*, has_changes, language::CallPath,
+    decl_engine::DeclRefMixedInterface,
+    engine_threading::*,
+    has_changes,
+    language::{parsed::ImplSelfOrTrait, CallPath},
     type_system::*,
 };
 
-use super::TyTraitItem;
+use super::{TyTraitItem, WithParsedType};
 
 pub type TyImplItem = TyTraitItem;
 
@@ -27,6 +30,10 @@ impl TyImplSelfOrTrait {
     pub fn is_impl_contract(&self, te: &TypeEngine) -> bool {
         matches!(&*te.get(self.implementing_for.type_id), TypeInfo::Contract)
     }
+}
+
+impl WithParsedType for TyImplSelfOrTrait {
+    type ParsedType = ImplSelfOrTrait;
 }
 
 impl Named for TyImplSelfOrTrait {

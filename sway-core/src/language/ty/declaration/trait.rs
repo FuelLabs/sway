@@ -13,7 +13,10 @@ use crate::{
     },
     engine_threading::*,
     has_changes,
-    language::{parsed, CallPath, Visibility},
+    language::{
+        parsed::{self, TraitDeclaration},
+        CallPath, Visibility,
+    },
     semantic_analysis::{
         type_check_context::MonomorphizeHelper, TypeCheckAnalysis, TypeCheckAnalysisContext,
         TypeCheckFinalization, TypeCheckFinalizationContext,
@@ -22,7 +25,7 @@ use crate::{
     type_system::*,
 };
 
-use super::TyDecl;
+use super::{TyDecl, WithParsedType};
 
 #[derive(Clone, Debug)]
 pub struct TyTraitDecl {
@@ -36,6 +39,10 @@ pub struct TyTraitDecl {
     pub attributes: transform::AttributesMap,
     pub call_path: CallPath,
     pub span: Span,
+}
+
+impl WithParsedType for TyTraitDecl {
+    type ParsedType = TraitDeclaration;
 }
 
 #[derive(Clone, Debug)]

@@ -5,7 +5,7 @@ use sway_types::Ident;
 
 use crate::{
     engine_threading::*,
-    language::ty::*,
+    language::{parsed::VariableDeclaration, ty::*},
     semantic_analysis::{
         TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckFinalization,
         TypeCheckFinalizationContext,
@@ -20,6 +20,10 @@ pub struct TyVariableDecl {
     pub mutability: VariableMutability,
     pub return_type: TypeId,
     pub type_ascription: TypeArgument,
+}
+
+impl WithParsedType for TyVariableDecl {
+    type ParsedType = VariableDeclaration;
 }
 
 impl EqWithEngines for TyVariableDecl {}

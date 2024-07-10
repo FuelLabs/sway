@@ -1,9 +1,14 @@
-use crate::{engine_threading::*, language::parsed, transform, type_system::*};
+use crate::{
+    engine_threading::*,
+    language::parsed::{self, AbiDeclaration},
+    transform,
+    type_system::*,
+};
 use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyTraitInterfaceItem, TyTraitItem};
+use super::{TyTraitInterfaceItem, TyTraitItem, WithParsedType};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.
@@ -17,6 +22,10 @@ pub struct TyAbiDecl {
     pub items: Vec<TyTraitItem>,
     pub span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl WithParsedType for TyAbiDecl {
+    type ParsedType = AbiDeclaration;
 }
 
 impl EqWithEngines for TyAbiDecl {}

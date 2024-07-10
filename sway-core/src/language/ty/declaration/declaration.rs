@@ -38,6 +38,10 @@ pub enum TyDecl {
     TypeAliasDecl(TypeAliasDecl),
 }
 
+pub trait WithParsedType {
+    type ParsedType;
+}
+
 #[derive(Clone, Debug)]
 pub struct ConstantDecl {
     pub decl_id: DeclId<TyConstantDecl>,

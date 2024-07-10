@@ -9,12 +9,14 @@ use crate::{
     engine_threading::*,
     error::module_can_be_changed,
     has_changes,
-    language::{CallPath, Visibility},
+    language::{parsed::StructDeclaration, CallPath, Visibility},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
     Namespace,
 };
+
+use super::WithParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyStructDecl {
@@ -24,6 +26,10 @@ pub struct TyStructDecl {
     pub visibility: Visibility,
     pub span: Span,
     pub attributes: transform::AttributesMap,
+}
+
+impl WithParsedType for TyStructDecl {
+    type ParsedType = StructDeclaration;
 }
 
 impl Named for TyStructDecl {

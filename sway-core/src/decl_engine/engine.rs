@@ -9,12 +9,19 @@ use sway_types::{Named, ProgramId, Spanned};
 
 use crate::{
     concurrent_slab::ConcurrentSlab,
-    decl_engine::*,
+    decl_engine::{parsed_id::ParsedDeclId, *},
     engine_threading::*,
-    language::ty::{
-        self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl,
-        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
-        TyTypeAliasDecl,
+    language::{
+        parsed::{
+            AbiDeclaration, ConfigurableDeclaration, ConstantDeclaration, EnumDeclaration,
+            FunctionDeclaration, ImplSelfOrTrait, StorageDeclaration, StructDeclaration,
+            TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration,
+        },
+        ty::{
+            self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl,
+            TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
+            TyTypeAliasDecl, WithParsedType,
+        },
     },
 };
 
@@ -34,6 +41,29 @@ pub struct DeclEngine {
     enum_slab: ConcurrentSlab<TyEnumDecl>,
     type_alias_slab: ConcurrentSlab<TyTypeAliasDecl>,
 
+    function_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyFunctionDecl>, ParsedDeclId<FunctionDeclaration>>>,
+    trait_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyTraitDecl>, ParsedDeclId<TraitDeclaration>>>,
+    trait_fn_slab_parsed_decl_id_map: RwLock<HashMap<DeclId<TyTraitFn>, ParsedDeclId<TraitFn>>>,
+    trait_type_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyTraitType>, ParsedDeclId<TraitTypeDeclaration>>>,
+    impl_self_or_trait_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyImplSelfOrTrait>, ParsedDeclId<ImplSelfOrTrait>>>,
+    struct_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyStructDecl>, ParsedDeclId<StructDeclaration>>>,
+    storage_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyStorageDecl>, ParsedDeclId<StorageDeclaration>>>,
+    abi_slab_parsed_decl_id_map: RwLock<HashMap<DeclId<TyAbiDecl>, ParsedDeclId<AbiDeclaration>>>,
+    constant_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyConstantDecl>, ParsedDeclId<ConstantDeclaration>>>,
+    configurable_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyConfigurableDecl>, ParsedDeclId<ConfigurableDeclaration>>>,
+    enum_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyEnumDecl>, ParsedDeclId<EnumDeclaration>>>,
+    type_alias_slab_parsed_decl_id_map:
+        RwLock<HashMap<DeclId<TyTypeAliasDecl>, ParsedDeclId<TypeAliasDeclaration>>>,
+
     parents: RwLock<HashMap<AssociatedItemDeclId, Vec<AssociatedItemDeclId>>>,
 }
 
@@ -52,6 +82,44 @@ impl Clone for DeclEngine {
             configurable_slab: self.configurable_slab.clone(),
             enum_slab: self.enum_slab.clone(),
             type_alias_slab: self.type_alias_slab.clone(),
+            function_slab_parsed_decl_id_map: RwLock::new(
+                self.function_slab_parsed_decl_id_map.read().clone(),
+            ),
+            trait_slab_parsed_decl_id_map: RwLock::new(
+                self.trait_slab_parsed_decl_id_map.read().clone(),
+            ),
+            trait_fn_slab_parsed_decl_id_map: RwLock::new(
+                self.trait_fn_slab_parsed_decl_id_map.read().clone(),
+            ),
+            trait_type_slab_parsed_decl_id_map: RwLock::new(
+                self.trait_type_slab_parsed_decl_id_map.read().clone(),
+            ),
+            impl_self_or_trait_slab_parsed_decl_id_map: RwLock::new(
+                self.impl_self_or_trait_slab_parsed_decl_id_map
+                    .read()
+                    .clone(),
+            ),
+            struct_slab_parsed_decl_id_map: RwLock::new(
+                self.struct_slab_parsed_decl_id_map.read().clone(),
+            ),
+            storage_slab_parsed_decl_id_map: RwLock::new(
+                self.storage_slab_parsed_decl_id_map.read().clone(),
+            ),
+            abi_slab_parsed_decl_id_map: RwLock::new(
+                self.abi_slab_parsed_decl_id_map.read().clone(),
+            ),
+            constant_slab_parsed_decl_id_map: RwLock::new(
+                self.constant_slab_parsed_decl_id_map.read().clone(),
+            ),
+            configurable_slab_parsed_decl_id_map: RwLock::new(
+                self.configurable_slab_parsed_decl_id_map.read().clone(),
+            ),
+            enum_slab_parsed_decl_id_map: RwLock::new(
+                self.enum_slab_parsed_decl_id_map.read().clone(),
+            ),
+            type_alias_slab_parsed_decl_id_map: RwLock::new(
+                self.type_alias_slab_parsed_decl_id_map.read().clone(),
+            ),
             parents: RwLock::new(self.parents.read().clone()),
         }
     }
@@ -61,26 +129,40 @@ pub trait DeclEngineGet<I, U> {
     fn get(&self, index: &I) -> Arc<U>;
 }
 
+pub trait DeclEngineGetParsedDeclId<T>
+where
+    T: WithParsedType,
+{
+    fn get_parsed_decl_id(&self, decl_id: &DeclId<T>) -> Option<ParsedDeclId<T::ParsedType>>;
+}
+
 pub trait DeclEngineInsert<T>
 where
-    T: Named + Spanned,
+    T: Named + Spanned + WithParsedType,
 {
-    fn insert(&self, decl: T) -> DeclRef<DeclId<T>>;
+    fn insert(
+        &self,
+        decl: T,
+        parsed_decl_id: Option<&ParsedDeclId<T::ParsedType>>,
+    ) -> DeclRef<DeclId<T>>;
 }
 
 pub trait DeclEngineInsertArc<T>
 where
-    T: Named + Spanned,
+    T: Named + Spanned + WithParsedType,
 {
-    fn insert_arc(&self, decl: Arc<T>) -> DeclRef<DeclId<T>>;
+    fn insert_arc(
+        &self,
+        decl: Arc<T>,
+        parsed_decl_id: Option<&ParsedDeclId<T::ParsedType>>,
+    ) -> DeclRef<DeclId<T>>;
 }
 
 pub trait DeclEngineReplace<T> {
     fn replace(&self, index: DeclId<T>, decl: T);
 }
 
-pub trait DeclEngineIndex<T>:
-    DeclEngineGet<DeclId<T>, T> + DeclEngineInsert<T> + DeclEngineReplace<T>
+pub trait DeclEngineIndex<T>: DeclEngineGet<DeclId<T>, T> + DeclEngineReplace<T>
 where
     T: Named + Spanned,
 {
@@ -115,41 +197,125 @@ decl_engine_get!(enum_slab, ty::TyEnumDecl);
 decl_engine_get!(type_alias_slab, ty::TyTypeAliasDecl);
 
 macro_rules! decl_engine_insert {
-    ($slab:ident, $decl:ty) => {
+    ($slab:ident, $parsed_slab:ident, $decl:ty) => {
         impl DeclEngineInsert<$decl> for DeclEngine {
-            fn insert(&self, decl: $decl) -> DeclRef<DeclId<$decl>> {
+            fn insert(
+                &self,
+                decl: $decl,
+                parsed_decl_id: Option<&ParsedDeclId<<$decl as WithParsedType>::ParsedType>>,
+            ) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
-                DeclRef::new(
-                    decl.name().clone(),
-                    DeclId::new(self.$slab.insert(decl)),
-                    span,
-                )
+                let decl_name = decl.name().clone();
+                let decl_id = DeclId::new(self.$slab.insert(decl));
+                if let Some(parsed_decl_id) = parsed_decl_id {
+                    self.$parsed_slab
+                        .write()
+                        .insert(decl_id, parsed_decl_id.clone());
+                }
+                DeclRef::new(decl_name, decl_id, span)
             }
         }
         impl DeclEngineInsertArc<$decl> for DeclEngine {
-            fn insert_arc(&self, decl: Arc<$decl>) -> DeclRef<DeclId<$decl>> {
+            fn insert_arc(
+                &self,
+                decl: Arc<$decl>,
+                parsed_decl_id: Option<&ParsedDeclId<<$decl as WithParsedType>::ParsedType>>,
+            ) -> DeclRef<DeclId<$decl>> {
                 let span = decl.span();
-                DeclRef::new(
-                    decl.name().clone(),
-                    DeclId::new(self.$slab.insert_arc(decl)),
-                    span,
-                )
+                let decl_name = decl.name().clone();
+                let decl_id = DeclId::new(self.$slab.insert_arc(decl));
+                if let Some(parsed_decl_id) = parsed_decl_id {
+                    self.$parsed_slab
+                        .write()
+                        .insert(decl_id, parsed_decl_id.clone());
+                }
+                DeclRef::new(decl_name, decl_id, span)
             }
         }
     };
 }
-decl_engine_insert!(function_slab, ty::TyFunctionDecl);
-decl_engine_insert!(trait_slab, ty::TyTraitDecl);
-decl_engine_insert!(trait_fn_slab, ty::TyTraitFn);
-decl_engine_insert!(trait_type_slab, ty::TyTraitType);
-decl_engine_insert!(impl_self_or_trait_slab, ty::TyImplSelfOrTrait);
-decl_engine_insert!(struct_slab, ty::TyStructDecl);
-decl_engine_insert!(storage_slab, ty::TyStorageDecl);
-decl_engine_insert!(abi_slab, ty::TyAbiDecl);
-decl_engine_insert!(constant_slab, ty::TyConstantDecl);
-decl_engine_insert!(configurable_slab, ty::TyConfigurableDecl);
-decl_engine_insert!(enum_slab, ty::TyEnumDecl);
-decl_engine_insert!(type_alias_slab, ty::TyTypeAliasDecl);
+decl_engine_insert!(
+    function_slab,
+    function_slab_parsed_decl_id_map,
+    ty::TyFunctionDecl
+);
+decl_engine_insert!(trait_slab, trait_slab_parsed_decl_id_map, ty::TyTraitDecl);
+decl_engine_insert!(
+    trait_fn_slab,
+    trait_fn_slab_parsed_decl_id_map,
+    ty::TyTraitFn
+);
+decl_engine_insert!(
+    trait_type_slab,
+    trait_type_slab_parsed_decl_id_map,
+    ty::TyTraitType
+);
+decl_engine_insert!(
+    impl_self_or_trait_slab,
+    impl_self_or_trait_slab_parsed_decl_id_map,
+    ty::TyImplSelfOrTrait
+);
+decl_engine_insert!(
+    struct_slab,
+    struct_slab_parsed_decl_id_map,
+    ty::TyStructDecl
+);
+decl_engine_insert!(
+    storage_slab,
+    storage_slab_parsed_decl_id_map,
+    ty::TyStorageDecl
+);
+decl_engine_insert!(abi_slab, abi_slab_parsed_decl_id_map, ty::TyAbiDecl);
+decl_engine_insert!(
+    constant_slab,
+    constant_slab_parsed_decl_id_map,
+    ty::TyConstantDecl
+);
+decl_engine_insert!(
+    configurable_slab,
+    configurable_slab_parsed_decl_id_map,
+    ty::TyConfigurableDecl
+);
+decl_engine_insert!(enum_slab, enum_slab_parsed_decl_id_map, ty::TyEnumDecl);
+decl_engine_insert!(
+    type_alias_slab,
+    type_alias_slab_parsed_decl_id_map,
+    ty::TyTypeAliasDecl
+);
+
+macro_rules! decl_engine_parsed_decl_id {
+    ($slab:ident, $decl:ty) => {
+        impl DeclEngineGetParsedDeclId<$decl> for DeclEngine {
+            fn get_parsed_decl_id(
+                &self,
+                decl_id: &DeclId<$decl>,
+            ) -> Option<ParsedDeclId<<$decl as WithParsedType>::ParsedType>> {
+                let parsed_decl_id_map = self.$slab.read();
+                if let Some(parsed_decl_id) = parsed_decl_id_map.get(&decl_id) {
+                    return Some(parsed_decl_id.clone());
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+decl_engine_parsed_decl_id!(function_slab_parsed_decl_id_map, ty::TyFunctionDecl);
+decl_engine_parsed_decl_id!(trait_slab_parsed_decl_id_map, ty::TyTraitDecl);
+decl_engine_parsed_decl_id!(trait_fn_slab_parsed_decl_id_map, ty::TyTraitFn);
+decl_engine_parsed_decl_id!(trait_type_slab_parsed_decl_id_map, ty::TyTraitType);
+decl_engine_parsed_decl_id!(
+    impl_self_or_trait_slab_parsed_decl_id_map,
+    ty::TyImplSelfOrTrait
+);
+decl_engine_parsed_decl_id!(struct_slab_parsed_decl_id_map, ty::TyStructDecl);
+decl_engine_parsed_decl_id!(storage_slab_parsed_decl_id_map, ty::TyStorageDecl);
+decl_engine_parsed_decl_id!(abi_slab_parsed_decl_id_map, ty::TyAbiDecl);
+decl_engine_parsed_decl_id!(constant_slab_parsed_decl_id_map, ty::TyConstantDecl);
+decl_engine_parsed_decl_id!(configurable_slab_parsed_decl_id_map, ty::TyConfigurableDecl);
+decl_engine_parsed_decl_id!(enum_slab_parsed_decl_id_map, ty::TyEnumDecl);
+decl_engine_parsed_decl_id!(type_alias_slab_parsed_decl_id_map, ty::TyTypeAliasDecl);
 
 macro_rules! decl_engine_replace {
     ($slab:ident, $decl:ty) => {

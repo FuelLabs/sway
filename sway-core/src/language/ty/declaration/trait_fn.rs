@@ -8,7 +8,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     engine_threading::*,
     has_changes,
-    language::{ty::*, Purity},
+    language::{parsed::TraitFn, ty::*, Purity},
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform,
     type_system::*,
@@ -22,6 +22,10 @@ pub struct TyTraitFn {
     pub parameters: Vec<TyFunctionParameter>,
     pub return_type: TypeArgument,
     pub attributes: transform::AttributesMap,
+}
+
+impl WithParsedType for TyTraitFn {
+    type ParsedType = TraitFn;
 }
 
 impl DebugWithEngines for TyTraitFn {
