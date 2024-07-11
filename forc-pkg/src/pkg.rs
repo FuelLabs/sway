@@ -1839,13 +1839,15 @@ pub fn compile(
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
             let mut types = vec![];
-            ProgramABI::Fuel(time_expr!(
+            let program_abi_res = time_expr!(
                 "generate JSON ABI program",
                 "generate_json_abi",
                 fuel_abi::generate_program_abi(
+                    &handler,
                     &mut AbiContext {
                         program: typed_program,
                         abi_with_callpaths: profile.json_abi_with_callpaths,
+                        type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
                     &mut types,
@@ -1858,7 +1860,12 @@ pub fn compile(
                 ),
                 Some(sway_build_config.clone()),
                 metrics
-            ))
+            );
+            let program_abi = match program_abi_res {
+                Err(_) => return fail(handler),
+                Ok(program_abi) => program_abi,
+            };
+            ProgramABI::Fuel(program_abi)
         }
         BuildTarget::EVM => {
             // Merge the ABI output of ASM gen with ABI gen to handle internal constructors
