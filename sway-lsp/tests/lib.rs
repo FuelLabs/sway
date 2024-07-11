@@ -163,6 +163,22 @@ fn did_change() {
 }
 
 #[test]
+fn did_open_fluid_libraries() {
+    run_async!({
+        let now = std::time::Instant::now();
+        let (mut service, _) = LspService::build(ServerState::new)
+            .custom_method("sway/metrics", ServerState::metrics)
+            .finish();
+        let uri = init_and_open(&mut service, PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries").join("src/interface.sw")).await;
+
+        let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
+        service.inner().wait_for_parsing().await;
+        eprintln!("Elapsed time: {:?}", now.elapsed());
+        shutdown_and_exit(&mut service).await;
+    });
+}
+
+#[test]
 fn did_cache_test() {
     run_async!({
         let (mut service, _) = LspService::build(ServerState::new)

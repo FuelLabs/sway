@@ -17,7 +17,7 @@ use crate::{
         parsed::*,
         ty::{self, TyAstNodeContent, TyDecl},
         CallPath, ModName,
-    }, query_engine::TyModuleCacheEntry, semantic_analysis::*, Engines, TypeInfo
+    }, query_engine::TyModuleCacheEntry, semantic_analysis::*, BuildConfig, Engines, TypeInfo
 };
 
 use super::{
@@ -264,9 +264,12 @@ impl ty::TyModule {
         // Check if the module is already in the cache
         if let Some(source_id) = parsed.span.source_id() {
             let path = engines.se().get_path(&source_id);
-            let entry = engines.qe().get_ty_module_cache_entry(&path).unwrap();
-            // Return the cached module
-            return Ok(entry.module);
+            eprintln!("Checking cache for module {}", path.display());
+            if let Some(entry) = engines.qe().get_ty_module_cache_entry(&path) {
+                eprintln!("Cache hit for module {}", path.display());
+                // Return the cached module
+                return Ok(entry.module);
+            }
         }
 
         let ParseModule {
