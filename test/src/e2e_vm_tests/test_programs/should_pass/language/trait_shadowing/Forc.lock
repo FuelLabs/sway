@@ -1,0 +1,8 @@
+[[package]]
+name = "core"
+source = "path+from-root-05572E031A2C308F"
+
+[[package]]
+name = "trait_shadowing"
+source = "member"
+dependencies = ["core"]
