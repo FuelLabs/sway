@@ -1005,6 +1005,13 @@ pub enum CompileError {
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Collision detected between two different types.\n  Shared hash:{hash}\n  First type:{first_type}\n  Second type:{second_type}")]
+    ABIHashCollision {
+        span: Span,
+        hash: String,
+        first_type: String,
+        second_type: String,
+    },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1220,6 +1227,7 @@ impl Spanned for CompileError {
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
             ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            ABIHashCollision { span, .. } => span.clone(),
         }
     }
 }

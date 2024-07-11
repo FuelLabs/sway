@@ -680,7 +680,7 @@ pub fn decode_log_data(
     let type_lookup = program_abi
         .types
         .iter()
-        .map(|decl| (decl.type_id, decl.clone()))
+        .map(|decl| (decl.type_id.clone(), decl.clone()))
         .collect::<HashMap<_, _>>();
 
     let logged_type_lookup: HashMap<_, _> = program_abi
