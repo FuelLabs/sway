@@ -18,7 +18,7 @@ use crate::{
     fuel_prelude::fuel_asm::{self, op},
 };
 use either::Either;
-use fuel_vm::fuel_asm::{op::ADDI, Imm12};
+use fuel_vm::fuel_asm::{op::ADDI, Imm06, Imm12};
 use std::fmt::{self, Write};
 use sway_types::span::Span;
 
@@ -180,7 +180,12 @@ pub(crate) enum AllocatedOpcode {
     ),
     CROO(AllocatedRegister, AllocatedRegister),
     CSIZ(AllocatedRegister, AllocatedRegister),
-    LDC(AllocatedRegister, AllocatedRegister, AllocatedRegister),
+    LDC(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        VirtualImmediate06,
+    ),
     LOG(
         AllocatedRegister,
         AllocatedRegister,
@@ -330,7 +335,7 @@ impl AllocatedOpcode {
             CCP(_r1, _r2, _r3, _r4) => vec![],
             CROO(_r1, _r2) => vec![],
             CSIZ(r1, _r2) => vec![r1],
-            LDC(_r1, _r2, _r3) => vec![],
+            LDC(_r1, _r2, _r3, _i0) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1, _r2) => vec![],
@@ -454,7 +459,7 @@ impl fmt::Display for AllocatedOpcode {
             CCP(a, b, c, d) => write!(fmtr, "ccp  {a} {b} {c} {d}"),
             CROO(a, b) => write!(fmtr, "croo {a} {b}"),
             CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
-            LDC(a, b, c) => write!(fmtr, "ldc  {a} {b} {c}"),
+            LDC(a, b, c, d) => write!(fmtr, "ldc  {a} {b} {c} {d}"),
             LOG(a, b, c, d) => write!(fmtr, "log  {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
             MINT(a, b) => write!(fmtr, "mint {a} {b}"),
@@ -630,7 +635,9 @@ impl AllocatedOp {
             }
             CROO(a, b) => op::CROO::new(a.to_reg_id(), b.to_reg_id()).into(),
             CSIZ(a, b) => op::CSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
-            LDC(a, b, c) => op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id()).into(),
+            LDC(a, b, c, d) => {
+                op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
             LOG(a, b, c, d) => {
                 op::LOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }

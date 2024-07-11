@@ -62,10 +62,10 @@ license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 
 [patch.crates-io]
-fuels-core = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
-fuels-accounts = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
-fuels-programs = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
-fuels = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
+fuels-core = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
+fuels-accounts = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
+fuels-programs = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
+fuels = { git = "https://github.com/fuelLabs/fuels-rs", rev = "8735c431b036b932a6663ded26494b51b0b298a9" }
 
 fuel-asm = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
 fuel-crypto = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }

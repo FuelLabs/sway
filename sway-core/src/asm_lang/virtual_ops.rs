@@ -137,7 +137,7 @@ pub(crate) enum VirtualOp {
     ),
     CROO(VirtualRegister, VirtualRegister),
     CSIZ(VirtualRegister, VirtualRegister),
-    LDC(VirtualRegister, VirtualRegister, VirtualRegister),
+    LDC(VirtualRegister, VirtualRegister, VirtualRegister, VirtualImmediate06),
     LOG(
         VirtualRegister,
         VirtualRegister,
@@ -283,7 +283,7 @@ impl VirtualOp {
             CCP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             CROO(r1, r2) => vec![r1, r2],
             CSIZ(r1, r2) => vec![r1, r2],
-            LDC(r1, r2, r3) => vec![r1, r2, r3],
+            LDC(r1, r2, r3, _i0) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1, r2) => vec![r1, r2],
@@ -406,7 +406,7 @@ impl VirtualOp {
             | CB(_)
             | CCP(_, _, _, _)
             | CROO(_, _)
-            | LDC(_, _, _)
+            | LDC(_, _, _, _)
             | LOG(_, _, _, _)
             | LOGD(_, _, _, _)
             | MINT(_, _)
@@ -509,7 +509,7 @@ impl VirtualOp {
             | CCP(_, _, _, _)
             | CROO(_, _)
             | CSIZ(_, _)
-            | LDC(_, _, _)
+            | LDC(_, _, _, _)
             | LOG(_, _, _, _)
             | LOGD(_, _, _, _)
             | MINT(_, _)
@@ -613,7 +613,7 @@ impl VirtualOp {
             CCP(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             CROO(r1, r2) => vec![r1, r2],
             CSIZ(_r1, r2) => vec![r2],
-            LDC(r1, r2, r3) => vec![r1, r2, r3],
+            LDC(r1, r2, r3, _i0) => vec![r1, r2, r3],
             LOG(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             LOGD(r1, r2, r3, r4) => vec![r1, r2, r3, r4],
             MINT(r1, r2) => vec![r1, r2],
@@ -730,7 +730,7 @@ impl VirtualOp {
             CCP(_r1, _r2, _r3, _r4) => vec![],
             CROO(_r1, _r2) => vec![],
             CSIZ(r1, _r2) => vec![r1],
-            LDC(_r1, _r2, _r3) => vec![],
+            LDC(_r1, _r2, _r3, _i0) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1, _r2) => vec![],
@@ -1073,10 +1073,11 @@ impl VirtualOp {
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
             ),
-            LDC(r1, r2, r3) => Self::LDC(
+            LDC(r1, r2, r3, i0) => Self::LDC(
                 update_reg(reg_to_reg_map, r1),
                 update_reg(reg_to_reg_map, r2),
                 update_reg(reg_to_reg_map, r3),
+                i0.clone(),
             ),
             LOG(r1, r2, r3, r4) => Self::LOG(
                 update_reg(reg_to_reg_map, r1),
@@ -1533,10 +1534,11 @@ impl VirtualOp {
             CSIZ(reg1, reg2) => {
                 AllocatedOpcode::CSIZ(map_reg(&mapping, reg1), map_reg(&mapping, reg2))
             }
-            LDC(reg1, reg2, reg3) => AllocatedOpcode::LDC(
+            LDC(reg1, reg2, reg3, imm0) => AllocatedOpcode::LDC(
                 map_reg(&mapping, reg1),
                 map_reg(&mapping, reg2),
                 map_reg(&mapping, reg3),
+                imm0.clone(),
             ),
             LOG(reg1, reg2, reg3, reg4) => AllocatedOpcode::LOG(
                 map_reg(&mapping, reg1),
