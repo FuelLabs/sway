@@ -2268,8 +2268,9 @@ dependencies = [
 
 [[package]]
 name = "forc-wallet"
-version = "0.8.1"
-source = "git+https://github.com/FuelLabs/forc-wallet?branch=kayagokalp/sdk-0.65#2ec7bfba4aaabced81bdfdd7c5a8d3ed60dbbb21"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e88edfd8c98861cdf0c27ccea3d81b0033b1e80d3d22367fd0fd4e2b58dc9dd"
 dependencies = [
  "anyhow",
  "clap 4.5.7",
