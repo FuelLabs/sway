@@ -196,7 +196,7 @@ impl Type {
                 format!("{{ {} }}", sep_types_str(agg, ", "))
             }
             TypeContent::Slice => "slice".into(),
-            TypeContent::TypedSlice(ty) => format!("[{}]", ty.as_string(context)),
+            TypeContent::TypedSlice(ty) => format!("__slice[{}]", ty.as_string(context)),
             TypeContent::Pointer(ty) => format!("ptr {}", ty.as_string(context)),
         }
     }
@@ -216,6 +216,9 @@ impl Type {
             (TypeContent::Array(l, llen), TypeContent::Array(r, rlen)) => {
                 llen == rlen && l.eq(context, r)
             }
+
+            (TypeContent::TypedSlice(l), TypeContent::TypedSlice(r)) => l.eq(context, r),
+
             (TypeContent::Struct(l), TypeContent::Struct(r))
             | (TypeContent::Union(l), TypeContent::Union(r)) => {
                 l.len() == r.len() && l.iter().zip(r.iter()).all(|(l, r)| l.eq(context, r))

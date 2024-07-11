@@ -104,6 +104,30 @@ pub(crate) struct FnCompiler<'eng> {
     messages_types_map: HashMap<TypeId, MessageId>,
 }
 
+fn to_constant(_s: &mut FnCompiler<'_>, context: &mut Context, value: u64) -> Value {
+    let needed_size = Constant::new_uint(context, 64, value);
+    Value::new_constant(context, needed_size)
+}
+
+fn save_to_local_return_ptr(
+    s: &mut FnCompiler<'_>,
+    context: &mut Context,
+    value: Value,
+) -> Result<Value, CompileError> {
+    let temp_arg_name = s.lexical_map.insert_anon();
+
+    let value_type = value.get_type(context).unwrap();
+    let local_var = s
+        .function
+        .new_local_var(context, temp_arg_name, value_type, None, false)
+        .map_err(|ir_error| CompileError::InternalOwned(ir_error.to_string(), Span::dummy()))?;
+
+    let local_var_ptr = s.current_block.append(context).get_local(local_var);
+    let _ = s.current_block.append(context).store(local_var_ptr, value);
+
+    Ok(local_var_ptr)
+}
+
 impl<'eng> FnCompiler<'eng> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
@@ -1661,27 +1685,6 @@ impl<'eng> FnCompiler<'eng> {
                         .binary_op(BinaryOpKind::Add, len, step)
                 }
 
-                fn save_to_local_return_ptr(
-                    s: &mut FnCompiler<'_>,
-                    context: &mut Context,
-                    value: Value,
-                ) -> Result<Value, CompileError> {
-                    let temp_arg_name = s.lexical_map.insert_anon();
-
-                    let value_type = value.get_type(context).unwrap();
-                    let local_var = s
-                        .function
-                        .new_local_var(context, temp_arg_name, value_type, None, false)
-                        .map_err(|ir_error| {
-                            CompileError::InternalOwned(ir_error.to_string(), Span::dummy())
-                        })?;
-
-                    let local_var_ptr = s.current_block.append(context).get_local(local_var);
-                    let _ = s.current_block.append(context).store(local_var_ptr, value);
-
-                    Ok(local_var_ptr)
-                }
-
                 fn append_with_memcpy(
                     s: &mut FnCompiler<'_>,
                     context: &mut Context,
@@ -1845,15 +1848,6 @@ impl<'eng> FnCompiler<'eng> {
                         .is_uint64(context));
 
                     (merge_block_ptr, merge_block_cap)
-                }
-
-                fn to_constant(
-                    _s: &mut FnCompiler<'_>,
-                    context: &mut Context,
-                    needed_size: u64,
-                ) -> Value {
-                    let needed_size = Constant::new_uint(context, 64, needed_size);
-                    Value::new_constant(context, needed_size)
                 }
 
                 // Grow the buffer if needed
@@ -2171,24 +2165,34 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Slice => {
                 assert!(arguments.len() == 3);
 
+                let u8_type = Type::get_uint8(context);
+                let uint64 = Type::get_uint64(context);
+                let ptr_u8 = Type::new_ptr(context, u8_type);
+
                 let array = &arguments[0];
                 let item_ir_type = convert_resolved_typeid(
                     self.engines.te(),
                     self.engines.de(),
                     context,
-                    &array.return_type,
+                    &match &*self.engines.te().get(array.return_type) {
+                        TypeInfo::Array(t, _) => t.type_id,
+                        _ => unreachable!(),
+                    },
                     &array.span.clone(),
                 )?;
+                let item_ir_type_size = item_ir_type.size(context);
                 let array = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, array)?
                 );
+                let array = save_to_local_return_ptr(self, context, array)?;
+                let array = self.current_block.append(context).ptr_to_int(array, uint64);
 
-                let start = &arguments[0];
+                let start = &arguments[1];
                 let start = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, start)?
                 );
 
-                let end = &arguments[0];
+                let end = &arguments[2];
                 let end = return_on_termination_or_extract!(
                     self.compile_expression_to_value(context, md_mgr, end)?
                 );
@@ -2201,23 +2205,74 @@ impl<'eng> FnCompiler<'eng> {
                 //  mul slice_len slice_len item_len;  // length in bytes
                 //  (slice_ptr, slice_len): __slice[T]
                 //};
+
+                let array_ptr_arg = AsmArg {
+                    name: Ident::new_no_span("array_ptr".into()),
+                    initializer: Some(array),
+                };
+                let start_arg = AsmArg {
+                    name: Ident::new_no_span("start".into()),
+                    initializer: Some(start),
+                };
+                let end_arg = AsmArg {
+                    name: Ident::new_no_span("end".into()),
+                    initializer: Some(end),
+                };
+                let item_len_arg = AsmArg {
+                    name: Ident::new_no_span("item_len".into()),
+                    initializer: Some(to_constant(self, context, item_ir_type_size.in_bytes())),
+                };
+
+                let slice_ptr_out_arg = AsmArg {
+                    name: Ident::new_no_span("slice_ptr".into()),
+                    initializer: None,
+                };
+                let slice_len_out_arg = AsmArg {
+                    name: Ident::new_no_span("slice_len".into()),
+                    initializer: None,
+                };
+
+                let slice_ptr = self.current_block.append(context).asm_block(
+                    vec![
+                        array_ptr_arg,
+                        start_arg.clone(),
+                        item_len_arg.clone(),
+                        slice_ptr_out_arg,
+                    ],
+                    vec![
+                        AsmInstruction::mul_no_span("slice_ptr", "start", "item_len"),
+                        AsmInstruction::add_no_span("slice_ptr", "slice_ptr", "array_ptr"),
+                    ],
+                    uint64,
+                    Some(Ident::new_no_span("slice_ptr".into())),
+                );
+
+                let slice_len = self.current_block.append(context).asm_block(
+                    vec![start_arg, end_arg, item_len_arg, slice_len_out_arg],
+                    vec![
+                        AsmInstruction::sub_no_span("slice_len", "end", "start"),
+                        AsmInstruction::mul_no_span("slice_len", "slice_len", "item_len"),
+                    ],
+                    uint64,
+                    Some(Ident::new_no_span("slice_len".into())),
+                );
+
+                // compile the slice together
                 let return_type = Type::get_typed_slice(context, item_ir_type);
+                let slice_as_tuple = self.compile_tuple_from_values(
+                    context,
+                    vec![slice_ptr, slice_len],
+                    vec![uint64, uint64],
+                    None,
+                )?;
                 let slice = self.current_block.append(context).asm_block(
                     vec![AsmArg {
-                        name: Ident::new_no_span("array_ptr".into()),
-                        initializer: Some(array),
+                        name: Ident::new_no_span("s".into()),
+                        initializer: Some(slice_as_tuple),
                     }],
-                    vec![AsmInstruction {
-                        op_name: Ident::new_no_span("lw".into()),
-                        args: vec![
-                            Ident::new_no_span("array_ptr".into()),
-                            Ident::new_no_span("array_ptr".into()),
-                        ],
-                        immediate: Some(Ident::new_no_span("i0".into())),
-                        metadata: None,
-                    }],
+                    vec![],
                     return_type,
-                    Some(Ident::new_no_span("array_ptr".into())),
+                    Some(Ident::new_no_span("s".into())),
                 );
 
                 Ok(TerminatorValue::new(slice, context))

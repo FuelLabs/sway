@@ -135,7 +135,6 @@ impl ty::TyIntrinsicFunctionKind {
                 };
 
                 // start argument
-                // check first argument
                 let start_type = type_engine.insert(
                     engines,
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -150,7 +149,6 @@ impl ty::TyIntrinsicFunctionKind {
                 };
 
                 // end argument
-                // check first argument
                 let end_type = type_engine.insert(
                     engines,
                     TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),

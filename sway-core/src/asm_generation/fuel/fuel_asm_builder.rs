@@ -593,7 +593,7 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             let op_span = self
                 .md_mgr
                 .md_to_span(self.context, op.metadata)
-                .unwrap_or_else(Span::dummy);
+                .unwrap_or_else(|| op.op_name.span());
             let opcode = Op::parse_opcode(
                 handler,
                 &op.op_name,
@@ -1930,6 +1930,10 @@ impl<'ir, 'eng> FuelAsmBuilder<'ir, 'eng> {
             .get_type(self.context)
             .map_or(true, |ty| !self.is_copy_type(&ty))
         {
+            dbg!(stored_val
+                .get_type(self.context)
+                .unwrap()
+                .as_string(self.context));
             Err(CompileError::Internal(
                 "Attempt to store a non-copy type.",
                 owning_span.unwrap_or_else(Span::dummy),

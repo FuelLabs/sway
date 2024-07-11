@@ -14,7 +14,7 @@
 //! }
 //! ```
 
-use sway_types::ident::Ident;
+use sway_types::{ident::Ident, BaseIdent};
 
 use crate::{
     context::Context, irtype::Type, metadata::MetadataIndex, pretty::DebugWithContext, value::Value,
@@ -41,6 +41,63 @@ pub struct AsmInstruction {
     pub args: Vec<Ident>,
     pub immediate: Option<Ident>,
     pub metadata: Option<MetadataIndex>,
+}
+
+impl AsmInstruction {
+    pub fn lw_no_span(
+        dst: impl Into<String>,
+        src: impl Into<String>,
+        offset: impl Into<String>,
+    ) -> Self {
+        AsmInstruction {
+            op_name: Ident::new(sway_types::Span::from_string("lw".into())),
+            args: vec![
+                Ident::new_no_span(dst.into()),
+                Ident::new_no_span(src.into()),
+            ],
+            immediate: Some(Ident::new_no_span(offset.into())),
+            metadata: None,
+        }
+    }
+
+    pub fn mul_no_span(dst: impl Into<String>, a: impl Into<String>, b: impl Into<String>) -> Self {
+        AsmInstruction {
+            op_name: Ident::new(sway_types::Span::from_string("mul".into())),
+            args: vec![
+                Ident::new_no_span(dst.into()),
+                Ident::new_no_span(a.into()),
+                Ident::new_no_span(b.into()),
+            ],
+            immediate: None,
+            metadata: None,
+        }
+    }
+
+    pub fn add_no_span(dst: impl Into<String>, a: impl Into<String>, b: impl Into<String>) -> Self {
+        AsmInstruction {
+            op_name: Ident::new(sway_types::Span::from_string("add".into())),
+            args: vec![
+                Ident::new_no_span(dst.into()),
+                Ident::new_no_span(a.into()),
+                Ident::new_no_span(b.into()),
+            ],
+            immediate: None,
+            metadata: None,
+        }
+    }
+
+    pub fn sub_no_span(dst: impl Into<String>, a: impl Into<String>, b: impl Into<String>) -> Self {
+        AsmInstruction {
+            op_name: Ident::new(sway_types::Span::from_string("sub".into())),
+            args: vec![
+                Ident::new_no_span(dst.into()),
+                Ident::new_no_span(a.into()),
+                Ident::new_no_span(b.into()),
+            ],
+            immediate: None,
+            metadata: None,
+        }
+    }
 }
 
 impl AsmBlock {

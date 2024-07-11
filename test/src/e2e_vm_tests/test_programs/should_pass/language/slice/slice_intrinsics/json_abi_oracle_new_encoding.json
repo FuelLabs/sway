@@ -4,13 +4,7 @@
   "functions": [
     {
       "attributes": null,
-      "inputs": [
-        {
-          "name": "a",
-          "type": 0,
-          "typeArguments": null
-        }
-      ],
+      "inputs": [],
       "name": "main",
       "output": {
         "name": "",
@@ -23,8 +17,8 @@
   "messagesTypes": [],
   "types": [
     {
-      "components": null,
-      "type": "raw untyped slice",
+      "components": [],
+      "type": "()",
       "typeId": 0,
       "typeParameters": null
     }
