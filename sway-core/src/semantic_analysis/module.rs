@@ -1,9 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
-    fs,
+    fs, sync::Arc,
 };
 
+use fuel_vm::fuel_crypto::coins_bip32::path;
 use graph_cycles::Cycles;
 use sway_error::{
     error::CompileError,
@@ -12,15 +13,11 @@ use sway_error::{
 use sway_types::{BaseIdent, Named};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclId},
-    engine_threading::DebugWithEngines,
-    language::{
+    decl_engine::{DeclEngineGet, DeclId}, engine_threading::DebugWithEngines, language::{
         parsed::*,
         ty::{self, TyAstNodeContent, TyDecl},
         CallPath, ModName,
-    },
-    semantic_analysis::*,
-    Engines, TypeInfo,
+    }, query_engine::TyModuleCacheEntry, semantic_analysis::*, Engines, TypeInfo
 };
 
 use super::{
@@ -264,6 +261,14 @@ impl ty::TyModule {
         kind: TreeType,
         parsed: &ParseModule,
     ) -> Result<Self, ErrorEmitted> {
+        // Check if the module is already in the cache
+        if let Some(source_id) = parsed.span.source_id() {
+            let path = engines.se().get_path(&source_id);
+            let entry = engines.qe().get_ty_module_cache_entry(&path).unwrap();
+            // Return the cached module
+            return Ok(entry.module);
+        }
+
         let ParseModule {
             submodules,
             tree,
@@ -374,13 +379,24 @@ impl ty::TyModule {
             }
         }
 
-        Ok(Self {
+        let ty_module = Self {
             span: span.clone(),
             submodules,
             namespace: ctx.namespace.clone(),
             all_nodes,
             attributes: attributes.clone(),
-        })
+        };
+
+        // Cache the ty module 
+        if let Some(source_id) = span.source_id() {
+            let path = engines.se().get_path(&source_id);
+            engines.qe().insert_ty_module_cache_entry(TyModuleCacheEntry {
+                path: Arc::new(path),
+                module: ty_module.clone(),
+            });
+        }
+
+        Ok(ty_module)
     }
 
     // Filter and gather impl items

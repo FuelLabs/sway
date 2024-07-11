@@ -5,7 +5,7 @@ use sway_error::warning::CompileWarning;
 use sway_types::IdentUnique;
 
 use crate::decl_engine::{DeclId, DeclRef};
-use crate::language::ty::{TyFunctionDecl, TyFunctionSig};
+use crate::language::ty::{TyFunctionDecl, TyFunctionSig, TyModule};
 use crate::{Engines, Programs};
 
 pub type ModulePath = Arc<PathBuf>;
@@ -47,6 +47,13 @@ pub struct ProgramsCacheEntry {
 pub type ProgramsCacheMap = HashMap<Arc<PathBuf>, ProgramsCacheEntry>;
 
 #[derive(Clone, Debug)]
+pub struct TyModuleCacheEntry {
+    pub path: Arc<PathBuf>,
+    pub module: TyModule,
+}
+pub type TyModuleCacheMap = HashMap<Arc<PathBuf>, TyModuleCacheEntry>;
+
+#[derive(Clone, Debug)]
 pub struct FunctionCacheEntry {
     pub fn_decl: DeclRef<DeclId<TyFunctionDecl>>,
 }
@@ -59,6 +66,8 @@ pub struct QueryEngine {
     parse_module_cache: Arc<RwLock<ModuleCacheMap>>,
     programs_cache: Arc<RwLock<ProgramsCacheMap>>,
     function_cache: Arc<RwLock<FunctionsCacheMap>>,
+
+    ty_module_cache: Arc<RwLock<TyModuleCacheMap>>,
 }
 
 impl QueryEngine {
@@ -82,6 +91,16 @@ impl QueryEngine {
 
     pub fn insert_programs_cache_entry(&self, entry: ProgramsCacheEntry) {
         let mut cache = self.programs_cache.write();
+        cache.insert(entry.path.clone(), entry);
+    }
+
+    pub fn get_ty_module_cache_entry(&self, path: &PathBuf) -> Option<TyModuleCacheEntry> {
+        let cache = self.ty_module_cache.read();
+        cache.get(path).cloned()
+    }
+
+    pub fn insert_ty_module_cache_entry(&self, entry: TyModuleCacheEntry) {
+        let mut cache = self.ty_module_cache.write();
         cache.insert(entry.path.clone(), entry);
     }
 
