@@ -17,20 +17,17 @@ impl TypeId {
         resolved_type_id: TypeId,
     ) -> String {
         let type_engine = engines.te();
+        let self_abi_str = type_engine.get(*self).abi_str(ctx, engines);
         if self.is_generic_parameter(engines, resolved_type_id) {
-            format!("generic {}", type_engine.get(*self).abi_str(ctx, engines))
+            format!("generic {}", self_abi_str)
         } else {
             match (
                 &*type_engine.get(*self),
                 &*type_engine.get(resolved_type_id),
             ) {
-                (TypeInfo::Custom { .. }, TypeInfo::Struct { .. }) => {
-                    type_engine.get(resolved_type_id).abi_str(ctx, engines)
-                }
-                (TypeInfo::Custom { .. }, TypeInfo::Enum { .. }) => {
-                    type_engine.get(resolved_type_id).abi_str(ctx, engines)
-                }
-                (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => {
+                (TypeInfo::Custom { .. }, TypeInfo::Struct { .. })
+                | (TypeInfo::Custom { .. }, TypeInfo::Enum { .. })
+                | (TypeInfo::Custom { .. }, TypeInfo::Alias { .. }) => {
                     type_engine.get(resolved_type_id).abi_str(ctx, engines)
                 }
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
@@ -57,7 +54,7 @@ impl TypeId {
                     format!("[{}; {}]", inner_type, count.val())
                 }
                 (TypeInfo::Custom { .. }, _) => {
-                    format!("generic {}", type_engine.get(*self).abi_str(ctx, engines))
+                    format!("generic {}", self_abi_str)
                 }
                 _ => type_engine.get(resolved_type_id).abi_str(ctx, engines),
             }
@@ -185,19 +182,13 @@ fn call_path_display(ctx: &AbiStrContext, call_path: &CallPath) -> String {
         return call_path.suffix.as_str().to_string();
     }
     let mut buf = String::new();
+    let root_name = ctx.program_name.as_deref();
     for (index, prefix) in call_path.prefixes.iter().enumerate() {
-        let mut skip_prefix = false;
-        if index == 0 {
-            if let Some(root_name) = &ctx.program_name {
-                if prefix.as_str() == root_name.as_str() {
-                    skip_prefix = true;
-                }
-            }
+        if index == 0 && Some(prefix.as_str()) == root_name {
+            continue;
         }
-        if !skip_prefix {
-            buf.push_str(prefix.as_str());
-            buf.push_str("::");
-        }
+        buf.push_str(prefix.as_str());
+        buf.push_str("::");
     }
     buf.push_str(&call_path.suffix.to_string());
 
