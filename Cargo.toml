@@ -66,3 +66,13 @@ fuels-core = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfd
 fuels-accounts = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
 fuels-programs = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
 fuels = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
+
+fuel-asm = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
+fuel-crypto = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
+fuel-types = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
+fuel-tx = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
+fuel-vm = { git = "https://github.com/fuelLabs/fuel-vm", branch = "dento/blob-tx" }
+
+fuel-core-client = { git = "https://github.com/fuelLabs/fuel-core", branch = "dento/blob-tx" }
+fuel-core-types = { git = "https://github.com/fuelLabs/fuel-core", branch = "dento/blob-tx" }
+fuel-core-storage = { git = "https://github.com/fuelLabs/fuel-core", branch = "dento/blob-tx" }

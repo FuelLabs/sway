@@ -2397,8 +2397,7 @@ dependencies = [
 [[package]]
 name = "fuel-asm"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7239ac2ecda5c5cf0bbfb407e7ab59142593cd4625da2d3d7100e7ace8d3e49c"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 dependencies = [
  "bitflags 2.5.0",
  "fuel-types",
@@ -2429,8 +2428,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-client"
 version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "098a08cc6ea21ebfff0183eb6a645ccfe4d104132b065fd1e74c6161df1364fb"
+source = "git+https://github.com/fuelLabs/fuel-core?branch=dento/blob-tx#e7d724e05b354a5a2a0e364bc18801d168f6e83c"
 dependencies = [
  "anyhow",
  "cynic",
@@ -2499,8 +2497,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-storage"
 version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfc2a6d67ad7fe17a7a8485516585b932642f85fda4c4e47ba67aa974bd87a6c"
+source = "git+https://github.com/fuelLabs/fuel-core?branch=dento/blob-tx#e7d724e05b354a5a2a0e364bc18801d168f6e83c"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -2521,8 +2518,7 @@ dependencies = [
 [[package]]
 name = "fuel-core-types"
 version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "546e02dd8d4844ab27bcb559886d187bcba3a01d7025b8b0c92d75c41693f403"
+source = "git+https://github.com/fuelLabs/fuel-core?branch=dento/blob-tx#e7d724e05b354a5a2a0e364bc18801d168f6e83c"
 dependencies = [
  "anyhow",
  "bs58",
@@ -2540,8 +2536,7 @@ dependencies = [
 [[package]]
 name = "fuel-crypto"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55716f388824a64be7a18bd5f2b06549717dbd9fdad8af02546e889c78b07327"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 dependencies = [
  "coins-bip32",
  "coins-bip39",
@@ -2561,8 +2556,7 @@ dependencies = [
 [[package]]
 name = "fuel-derive"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8324301ea89931f544f63cd5907e414bfd1bfb3013f5b99afa9dda00504b194"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2620,8 +2614,7 @@ dependencies = [
 [[package]]
 name = "fuel-merkle"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18f0b623f77576fcfa60a624c56ebf310bf7433da6d8fa6407dfb7e95ebeb8c3"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 dependencies = [
  "derive_more",
  "digest 0.10.7",
@@ -2635,14 +2628,12 @@ dependencies = [
 [[package]]
 name = "fuel-storage"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8be80f1cf059ac87c63fa21b5fa3036472bdb4757c3ba5bae16f0256651e37a1"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 
 [[package]]
 name = "fuel-tx"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6142c7fd2bf2b1686dee63eb06a06fbb41e453ecb74a4a0c9031156669086f5"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 dependencies = [
  "bitflags 2.5.0",
  "derivative",
@@ -2664,8 +2655,7 @@ dependencies = [
 [[package]]
 name = "fuel-types"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38056e7a2b4def574a02e5c9859ffc084e17e565525b5e4a93af6249137d9ca0"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 dependencies = [
  "fuel-derive",
  "hex",
@@ -2676,8 +2666,7 @@ dependencies = [
 [[package]]
 name = "fuel-vm"
 version = "0.54.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f050af48f6028f2edcc5469e9522ce12b5be6d0761c3cfe7175dea9784e9596"
+source = "git+https://github.com/fuelLabs/fuel-vm?branch=dento/blob-tx#0e0e79ca2ddd09f37ebda2735a0d1550f8c781b4"
 dependencies = [
  "anyhow",
  "async-trait",
