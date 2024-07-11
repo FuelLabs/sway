@@ -255,7 +255,7 @@ pub(crate) async fn update_proxy_contract_target(
 ) -> Result<()> {
     abigen!(Contract(
         name = "ProxyContract",
-        abi = "forc-plugins/forc-client/src/util/proxy_contract-abi.json"
+        abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
     ));
 
     let wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider));
