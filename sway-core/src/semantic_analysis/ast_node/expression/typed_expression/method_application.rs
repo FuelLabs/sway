@@ -46,11 +46,25 @@ pub(crate) fn type_check_method_application(
             .by_ref()
             .with_help_text("")
             .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None));
+
         // Ignore errors in method parameters
         // On the second pass we will throw the errors if they persist.
         let arg_handler = Handler::default();
         let arg_opt = ty::TyExpression::type_check(&arg_handler, ctx, arg).ok();
+
+        // Check this type needs a second pass
         let has_errors = arg_handler.has_errors();
+        let is_not_concrete = arg_opt
+            .as_ref()
+            .map(|x| {
+                x.return_type
+                    .extract_inner_types(engines, IncludeSelf::Yes)
+                    .iter()
+                    .any(|x| !x.is_concrete(engines, IncludeNumeric::Yes))
+            })
+            .unwrap_or_default();
+        let needs_second_pass = has_errors || is_not_concrete;
+
         if index == 0 {
             // We want to emit errors in the self parameter and ignore TraitConstraintNotSatisfied with Placeholder
             // which may be recoverable on the second pass.
@@ -66,7 +80,8 @@ pub(crate) fn type_check_method_application(
             });
             handler.append(arg_handler);
         }
-        args_opt_buf.push_back((arg_opt, has_errors));
+
+        args_opt_buf.push_back((arg_opt, needs_second_pass));
     }
 
     // resolve the method name to a typed function declaration and type_check
@@ -115,6 +130,7 @@ pub(crate) fn type_check_method_application(
             } else {
                 index
             };
+
             let ctx = if let Some(param) = method.parameters.get(param_index) {
                 // We now try to type check it again, this time with the type annotation.
                 ctx.by_ref()
@@ -127,6 +143,7 @@ pub(crate) fn type_check_method_application(
                     .with_help_text("")
                     .with_type_annotation(type_engine.insert(engines, TypeInfo::Unknown, None))
             };
+
             args_buf.push_back(
                 ty::TyExpression::type_check(handler, ctx, arg)
                     .unwrap_or_else(|err| ty::TyExpression::error(err, span.clone(), engines)),
@@ -584,7 +601,7 @@ pub(crate) fn type_check_method_application(
 
     // Unify method type parameters with implementing type type parameters.
     if let Some(implementing_for_typeid) = method.implementing_for_typeid {
-        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 type_arguments: Some(type_arguments),
@@ -648,7 +665,7 @@ pub(crate) fn type_check_method_application(
         fn_ref = cached_fn_ref;
     } else {
         // This handles the case of substituting the generic blanket type by call_path_typeid.
-        if let Some(TyDecl::ImplTrait(t)) = method.clone().implementing_type {
+        if let Some(TyDecl::ImplSelfOrTrait(t)) = method.clone().implementing_type {
             let t = &engines.de().get(&t.decl_id).implementing_for;
             if let TypeInfo::Custom {
                 qualified_call_path,
