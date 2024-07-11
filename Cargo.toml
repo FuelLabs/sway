@@ -45,8 +45,8 @@ fuel-tx = "0.55.0"
 fuel-vm = "0.55.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = "0.65.1"
-fuels-accounts = "0.65.1"
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/new-fuel-abi-spec" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/new-fuel-abi-spec" }
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = "0.8.2"
