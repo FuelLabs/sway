@@ -349,7 +349,7 @@ async fn non_owner_fails_to_set_target() {
     let dummy_contract_id_target = ContractId::default();
     abigen!(Contract(
         name = "ProxyContract",
-        abi = "forc-plugins/forc-client/src/util/proxy_contract-abi.json"
+        abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
     ));
 
     let proxy_contract = ProxyContract::new(proxy_id, attacker_wallet);
