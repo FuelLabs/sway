@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyTraitInterfaceItem, TyTraitItem, WithParsedType};
+use super::{TyTraitInterfaceItem, TyTraitItem, TyDeclParsedType};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.
@@ -24,7 +24,7 @@ pub struct TyAbiDecl {
     pub attributes: transform::AttributesMap,
 }
 
-impl WithParsedType for TyAbiDecl {
+impl TyDeclParsedType for TyAbiDecl {
     type ParsedType = AbiDeclaration;
 }
 

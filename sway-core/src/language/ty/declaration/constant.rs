@@ -27,7 +27,7 @@ pub struct TyConstantDecl {
     pub span: Span,
 }
 
-impl WithParsedType for TyConstantDecl {
+impl TyDeclParsedType for TyConstantDecl {
     type ParsedType = ConstantDeclaration;
 }
 

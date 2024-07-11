@@ -22,7 +22,7 @@ pub struct TyStorageDecl {
     pub storage_keyword: Ident,
 }
 
-impl WithParsedType for TyStorageDecl {
+impl TyDeclParsedType for TyStorageDecl {
     type ParsedType = StorageDeclaration;
 }
 

@@ -5,7 +5,7 @@ use std::{fmt, hash::Hash};
 
 use sway_types::{Named, Spanned};
 
-use crate::language::ty::{TyTraitType, WithParsedType};
+use crate::language::ty::{TyTraitType, TyDeclParsedType};
 use crate::{
     decl_engine::*,
     engine_threading::*,
@@ -232,7 +232,7 @@ impl SubstTypes for DeclId<TyTraitType> {
 impl<T> DeclId<T>
 where
     DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
-    T: Named + Spanned + SubstTypes + Clone + WithParsedType,
+    T: Named + Spanned + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,

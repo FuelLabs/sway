@@ -29,7 +29,7 @@ pub struct TyConfigurableDecl {
     pub decode_fn: Option<DeclRef<DeclId<TyFunctionDecl>>>,
 }
 
-impl WithParsedType for TyConfigurableDecl {
+impl TyDeclParsedType for TyConfigurableDecl {
     type ParsedType = ConfigurableDeclaration;
 }
 

@@ -18,7 +18,7 @@ use crate::{
     type_system::*,
 };
 
-use super::WithParsedType;
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyEnumDecl {
@@ -30,7 +30,7 @@ pub struct TyEnumDecl {
     pub visibility: Visibility,
 }
 
-impl WithParsedType for TyEnumDecl {
+impl TyDeclParsedType for TyEnumDecl {
     type ParsedType = EnumDeclaration;
 }
 

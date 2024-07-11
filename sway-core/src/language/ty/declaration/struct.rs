@@ -16,7 +16,7 @@ use crate::{
     Namespace,
 };
 
-use super::WithParsedType;
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyStructDecl {
@@ -28,7 +28,7 @@ pub struct TyStructDecl {
     pub attributes: transform::AttributesMap,
 }
 
-impl WithParsedType for TyStructDecl {
+impl TyDeclParsedType for TyStructDecl {
     type ParsedType = StructDeclaration;
 }
 

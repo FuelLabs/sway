@@ -10,7 +10,7 @@ use crate::{
     type_system::*,
 };
 
-use super::WithParsedType;
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyTraitType {
@@ -21,7 +21,7 @@ pub struct TyTraitType {
     pub span: Span,
 }
 
-impl WithParsedType for TyTraitType {
+impl TyDeclParsedType for TyTraitType {
     type ParsedType = TraitTypeDeclaration;
 }
 

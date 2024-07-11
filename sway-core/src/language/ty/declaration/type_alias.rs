@@ -9,7 +9,7 @@ use crate::{
     type_system::*,
 };
 
-use super::WithParsedType;
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyTypeAliasDecl {
@@ -21,7 +21,7 @@ pub struct TyTypeAliasDecl {
     pub span: Span,
 }
 
-impl WithParsedType for TyTypeAliasDecl {
+impl TyDeclParsedType for TyTypeAliasDecl {
     type ParsedType = TypeAliasDeclaration;
 }
 

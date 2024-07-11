@@ -10,7 +10,7 @@ use crate::{
     type_system::*,
 };
 
-use super::{TyTraitItem, WithParsedType};
+use super::{TyTraitItem, TyDeclParsedType};
 
 pub type TyImplItem = TyTraitItem;
 
@@ -32,7 +32,7 @@ impl TyImplSelfOrTrait {
     }
 }
 
-impl WithParsedType for TyImplSelfOrTrait {
+impl TyDeclParsedType for TyImplSelfOrTrait {
     type ParsedType = ImplSelfOrTrait;
 }
 

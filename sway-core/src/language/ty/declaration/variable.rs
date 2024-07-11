@@ -22,7 +22,7 @@ pub struct TyVariableDecl {
     pub type_ascription: TypeArgument,
 }
 
-impl WithParsedType for TyVariableDecl {
+impl TyDeclParsedType for TyVariableDecl {
     type ParsedType = VariableDeclaration;
 }
 

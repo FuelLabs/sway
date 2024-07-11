@@ -24,7 +24,7 @@ pub struct TyTraitFn {
     pub attributes: transform::AttributesMap,
 }
 
-impl WithParsedType for TyTraitFn {
+impl TyDeclParsedType for TyTraitFn {
     type ParsedType = TraitFn;
 }
 

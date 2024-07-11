@@ -30,7 +30,7 @@ use crate::{
     engine_threading::*,
     language::ty::{
         self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait,
-        TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, WithParsedType,
+        TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyDeclParsedType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
@@ -97,7 +97,7 @@ impl<T> DeclRef<DeclId<T>> {
 impl<T> DeclRef<DeclId<T>>
 where
     DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
-    T: Named + Spanned + SubstTypes + Clone + WithParsedType,
+    T: Named + Spanned + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new(
         &self,
@@ -133,7 +133,7 @@ impl<T> DeclRef<DeclId<T>>
 where
     AssociatedItemDeclId: From<DeclId<T>>,
     DeclEngine: DeclEngineIndex<T> + DeclEngineInsert<T> + DeclEngineGetParsedDeclId<T>,
-    T: Named + Spanned + SubstTypes + Clone + WithParsedType,
+    T: Named + Spanned + SubstTypes + Clone + TyDeclParsedType,
 {
     pub(crate) fn subst_types_and_insert_new_with_parent(
         &self,

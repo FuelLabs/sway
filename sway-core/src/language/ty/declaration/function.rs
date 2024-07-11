@@ -61,7 +61,7 @@ pub struct TyFunctionDecl {
     pub kind: TyFunctionDeclKind,
 }
 
-impl WithParsedType for TyFunctionDecl {
+impl TyDeclParsedType for TyFunctionDecl {
     type ParsedType = FunctionDeclaration;
 }
 
