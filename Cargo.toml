@@ -34,22 +34,22 @@ exclude = [
 
 [workspace.dependencies]
 # Dependencies from the `fuel-core` repository:
-fuel-core-client = { version = "0.28.0", default-features = false }
-fuel-core-types = { version = "0.28.0", default-features = false }
+fuel-core-client = { version = "0.30.0", default-features = false }
+fuel-core-types = { version = "0.30.0", default-features = false }
 
 # Dependencies from the `fuel-vm` repository:
-fuel-asm = "0.52.0"
-fuel-crypto = "0.52.0"
-fuel-types = "0.52.0"
-fuel-tx = "0.52.0"
-fuel-vm = "0.52.0"
+fuel-asm = "0.54.1"
+fuel-crypto = "0.54.1"
+fuel-types = "0.54.1"
+fuel-tx = "0.54.1"
+fuel-vm = "0.54.1"
 
 # Dependencies from the `fuels-rs` repository:
 fuels-core = "0.64.0"
 fuels-accounts = "0.64.0"
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.8.1"
+forc-wallet = { git = "https://github.com/fuelLabs/forc-wallet", branch = "kayagokalp/0.54.1" }
 
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = "0.5.0"
@@ -61,3 +61,8 @@ homepage = "https://fuel.network/"
 license = "Apache-2.0"
 repository = "https://github.com/FuelLabs/sway"
 
+[patch.crates-io]
+fuels-core = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
+fuels-accounts = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
+fuels-programs = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
+fuels = { git = "https://github.com/fuelLabs/fuels-rs", rev = "73b907d93dfda87cfd5a2e5da1b2070da4683684" }
