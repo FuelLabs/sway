@@ -82,7 +82,7 @@ impl Parse for ty::TyDecl {
             ty::TyDecl::StructDecl(decl) => decl.parse(ctx),
             ty::TyDecl::EnumDecl(decl) => collect_enum(ctx, &decl.decl_id, self),
             ty::TyDecl::EnumVariantDecl(decl) => collect_enum(ctx, decl.enum_ref.id(), self),
-            ty::TyDecl::ImplTrait(decl) => decl.parse(ctx),
+            ty::TyDecl::ImplSelfOrTrait(decl) => decl.parse(ctx),
             ty::TyDecl::AbiDecl(decl) => decl.parse(ctx),
             ty::TyDecl::GenericTypeForFunctionScope(decl) => decl.parse(ctx),
             ty::TyDecl::ErrorRecovery(_, _) => {}
@@ -719,10 +719,10 @@ impl Parse for ty::StructDecl {
     }
 }
 
-impl Parse for ty::ImplTrait {
+impl Parse for ty::ImplSelfOrTrait {
     fn parse(&self, ctx: &ParseContext) {
-        let impl_trait_decl = ctx.engines.de().get_impl_trait(&self.decl_id);
-        let ty::TyImplTrait {
+        let impl_trait_decl = ctx.engines.de().get_impl_self_or_trait(&self.decl_id);
+        let ty::TyImplSelfOrTrait {
             impl_type_parameters,
             trait_name,
             trait_type_arguments,
@@ -754,9 +754,9 @@ impl Parse for ty::ImplTrait {
             .tokens
             .try_get_mut_with_retry(&ctx.ident(&trait_name.suffix))
         {
-            token.typed = Some(TypedAstToken::TypedDeclaration(ty::TyDecl::ImplTrait(
-                self.clone(),
-            )));
+            token.typed = Some(TypedAstToken::TypedDeclaration(
+                ty::TyDecl::ImplSelfOrTrait(self.clone()),
+            ));
             token.type_def = if let Some(decl_ref) = &trait_decl_ref {
                 typed_token = Some(TypedAstToken::TypedArgument(implementing_for.clone()));
                 match &decl_ref.id().clone() {

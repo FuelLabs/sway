@@ -61,8 +61,11 @@ impl DebugWithEngines for ImplItem {
     }
 }
 
+/// An impl trait, or impl self of methods without a trait.
+/// like `impl MyType { fn foo { .. } }`
 #[derive(Debug, Clone)]
-pub struct ImplTrait {
+pub struct ImplSelfOrTrait {
+    pub is_self: bool,
     pub impl_type_parameters: Vec<TypeParameter>,
     pub trait_name: CallPath,
     pub trait_type_arguments: Vec<TypeArgument>,
@@ -72,8 +75,8 @@ pub struct ImplTrait {
     pub(crate) block_span: Span,
 }
 
-impl EqWithEngines for ImplTrait {}
-impl PartialEqWithEngines for ImplTrait {
+impl EqWithEngines for ImplSelfOrTrait {}
+impl PartialEqWithEngines for ImplSelfOrTrait {
     fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
         self.impl_type_parameters
             .eq(&other.impl_type_parameters, ctx)
@@ -87,61 +90,31 @@ impl PartialEqWithEngines for ImplTrait {
     }
 }
 
-impl Named for ImplTrait {
+impl Named for ImplSelfOrTrait {
     fn name(&self) -> &sway_types::BaseIdent {
         &self.trait_name.suffix
     }
 }
 
-impl Spanned for ImplTrait {
+impl Spanned for ImplSelfOrTrait {
     fn span(&self) -> sway_types::Span {
         self.block_span.clone()
     }
 }
 
-impl DebugWithEngines for ImplTrait {
+impl DebugWithEngines for ImplSelfOrTrait {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "impl {} for {:?}",
-            self.trait_name,
-            engines.help_out(self.implementing_for.clone())
-        ))
-    }
-}
-
-/// An impl of methods without a trait
-/// like `impl MyType { fn foo { .. } }`
-#[derive(Debug, Clone)]
-pub struct ImplSelf {
-    pub impl_type_parameters: Vec<TypeParameter>,
-    pub implementing_for: TypeArgument,
-    pub items: Vec<ImplItem>,
-    // the span of the whole impl trait and block
-    pub(crate) block_span: Span,
-}
-
-impl EqWithEngines for ImplSelf {}
-impl PartialEqWithEngines for ImplSelf {
-    fn eq(&self, other: &Self, ctx: &PartialEqWithEnginesContext) -> bool {
-        self.impl_type_parameters
-            .eq(&other.impl_type_parameters, ctx)
-            && self.implementing_for.eq(&other.implementing_for, ctx)
-            && self.items.eq(&other.items, ctx)
-            && self.block_span == other.block_span
-    }
-}
-
-impl Spanned for ImplSelf {
-    fn span(&self) -> sway_types::Span {
-        self.block_span.clone()
-    }
-}
-
-impl DebugWithEngines for ImplSelf {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>, engines: &Engines) -> std::fmt::Result {
-        f.write_fmt(format_args!(
-            "impl {}",
-            engines.help_out(self.implementing_for.clone())
-        ))
+        if self.is_self {
+            f.write_fmt(format_args!(
+                "impl {}",
+                engines.help_out(self.implementing_for.clone())
+            ))
+        } else {
+            f.write_fmt(format_args!(
+                "impl {} for {:?}",
+                self.trait_name,
+                engines.help_out(self.implementing_for.clone())
+            ))
+        }
     }
 }

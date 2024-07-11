@@ -1316,7 +1316,7 @@ mod tests {
             },
         );
         let mut md_mgr = MetadataManager::default();
-        let core_lib = namespace::Root::from(namespace::Module {
+        let mut core_lib = namespace::Root::from(namespace::Module {
             name: Some(sway_types::Ident::new_no_span(
                 "assert_is_constant_test".to_string(),
             )),
@@ -1327,7 +1327,7 @@ mod tests {
             &handler,
             &engines,
             std::sync::Arc::from(format!("library; {prefix} fn f() -> u64 {{ {expr}; 0 }}")),
-            core_lib,
+            &mut core_lib,
             None,
             "test",
             None,

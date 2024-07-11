@@ -38,7 +38,7 @@ impl Display for TyNodeDepGraphEdge {
 
 #[derive(Clone, Debug)]
 pub enum TyNodeDepGraphNode {
-    ImplTrait { node: ty::ImplTrait },
+    ImplTrait { node: ty::ImplSelfOrTrait },
     ImplTraitItem { node: ty::TyTraitItem },
     Fn { node: DeclId<TyFunctionDecl> },
 }
@@ -125,7 +125,7 @@ impl TypeCheckAnalysisContext<'_> {
     #[allow(clippy::map_entry)]
     pub(crate) fn push_nodes_for_impl_trait(
         &mut self,
-        impl_trait: &ty::ImplTrait,
+        impl_trait: &ty::ImplSelfOrTrait,
     ) -> TyNodeDepGraphNodeId {
         if self.nodes.contains_key(&impl_trait.decl_id.unique_id()) {
             *self.nodes.get(&impl_trait.decl_id.unique_id()).unwrap()
@@ -136,7 +136,7 @@ impl TypeCheckAnalysisContext<'_> {
             self.nodes.insert(impl_trait.decl_id.unique_id(), node);
 
             let decl_engine = self.engines.de();
-            let impl_trait = decl_engine.get_impl_trait(&impl_trait.decl_id);
+            let impl_trait = decl_engine.get_impl_self_or_trait(&impl_trait.decl_id);
 
             for item in impl_trait.items.iter() {
                 let item_node = self.get_or_create_node_for_impl_item(item);
@@ -372,7 +372,7 @@ impl DebugWithEngines for TyNodeDepGraphNode {
                 format!("{:?}", str)
             }
             TyNodeDepGraphNode::ImplTrait { node } => {
-                let decl = engines.de().get_impl_trait(&node.decl_id);
+                let decl = engines.de().get_impl_self_or_trait(&node.decl_id);
                 format!("{:?}", decl.name().as_str())
             }
             TyNodeDepGraphNode::Fn { node } => {
