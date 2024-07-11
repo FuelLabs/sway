@@ -18,9 +18,9 @@ use crate::{
             TraitDeclaration, TraitFn, TraitTypeDeclaration, TypeAliasDeclaration,
         },
         ty::{
-            self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl,
-            TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
-            TyTypeAliasDecl, TyDeclParsedType,
+            self, TyAbiDecl, TyConfigurableDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl,
+            TyFunctionDecl, TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn,
+            TyTraitType, TyTypeAliasDecl,
         },
     },
 };
@@ -43,8 +43,7 @@ pub struct DeclEngine {
 
     function_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyFunctionDecl>, ParsedDeclId<FunctionDeclaration>>>,
-    trait_parsed_decl_id_map:
-        RwLock<HashMap<DeclId<TyTraitDecl>, ParsedDeclId<TraitDeclaration>>>,
+    trait_parsed_decl_id_map: RwLock<HashMap<DeclId<TyTraitDecl>, ParsedDeclId<TraitDeclaration>>>,
     trait_fn_parsed_decl_id_map: RwLock<HashMap<DeclId<TyTraitFn>, ParsedDeclId<TraitFn>>>,
     trait_type_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyTraitType>, ParsedDeclId<TraitTypeDeclaration>>>,
@@ -59,8 +58,7 @@ pub struct DeclEngine {
         RwLock<HashMap<DeclId<TyConstantDecl>, ParsedDeclId<ConstantDeclaration>>>,
     configurable_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyConfigurableDecl>, ParsedDeclId<ConfigurableDeclaration>>>,
-    enum_parsed_decl_id_map:
-        RwLock<HashMap<DeclId<TyEnumDecl>, ParsedDeclId<EnumDeclaration>>>,
+    enum_parsed_decl_id_map: RwLock<HashMap<DeclId<TyEnumDecl>, ParsedDeclId<EnumDeclaration>>>,
     type_alias_parsed_decl_id_map:
         RwLock<HashMap<DeclId<TyTypeAliasDecl>, ParsedDeclId<TypeAliasDeclaration>>>,
 
@@ -85,9 +83,7 @@ impl Clone for DeclEngine {
             function_parsed_decl_id_map: RwLock::new(
                 self.function_parsed_decl_id_map.read().clone(),
             ),
-            trait_parsed_decl_id_map: RwLock::new(
-                self.trait_parsed_decl_id_map.read().clone(),
-            ),
+            trait_parsed_decl_id_map: RwLock::new(self.trait_parsed_decl_id_map.read().clone()),
             trait_fn_parsed_decl_id_map: RwLock::new(
                 self.trait_fn_parsed_decl_id_map.read().clone(),
             ),
@@ -95,28 +91,18 @@ impl Clone for DeclEngine {
                 self.trait_type_parsed_decl_id_map.read().clone(),
             ),
             impl_self_or_trait_parsed_decl_id_map: RwLock::new(
-                self.impl_self_or_trait_parsed_decl_id_map
-                    .read()
-                    .clone(),
+                self.impl_self_or_trait_parsed_decl_id_map.read().clone(),
             ),
-            struct_parsed_decl_id_map: RwLock::new(
-                self.struct_parsed_decl_id_map.read().clone(),
-            ),
-            storage_parsed_decl_id_map: RwLock::new(
-                self.storage_parsed_decl_id_map.read().clone(),
-            ),
-            abi_parsed_decl_id_map: RwLock::new(
-                self.abi_parsed_decl_id_map.read().clone(),
-            ),
+            struct_parsed_decl_id_map: RwLock::new(self.struct_parsed_decl_id_map.read().clone()),
+            storage_parsed_decl_id_map: RwLock::new(self.storage_parsed_decl_id_map.read().clone()),
+            abi_parsed_decl_id_map: RwLock::new(self.abi_parsed_decl_id_map.read().clone()),
             constant_parsed_decl_id_map: RwLock::new(
                 self.constant_parsed_decl_id_map.read().clone(),
             ),
             configurable_parsed_decl_id_map: RwLock::new(
                 self.configurable_parsed_decl_id_map.read().clone(),
             ),
-            enum_parsed_decl_id_map: RwLock::new(
-                self.enum_parsed_decl_id_map.read().clone(),
-            ),
+            enum_parsed_decl_id_map: RwLock::new(self.enum_parsed_decl_id_map.read().clone()),
             type_alias_parsed_decl_id_map: RwLock::new(
                 self.type_alias_parsed_decl_id_map.read().clone(),
             ),
@@ -240,11 +226,7 @@ decl_engine_insert!(
     ty::TyFunctionDecl
 );
 decl_engine_insert!(trait_slab, trait_parsed_decl_id_map, ty::TyTraitDecl);
-decl_engine_insert!(
-    trait_fn_slab,
-    trait_fn_parsed_decl_id_map,
-    ty::TyTraitFn
-);
+decl_engine_insert!(trait_fn_slab, trait_fn_parsed_decl_id_map, ty::TyTraitFn);
 decl_engine_insert!(
     trait_type_slab,
     trait_type_parsed_decl_id_map,
@@ -255,16 +237,8 @@ decl_engine_insert!(
     impl_self_or_trait_parsed_decl_id_map,
     ty::TyImplSelfOrTrait
 );
-decl_engine_insert!(
-    struct_slab,
-    struct_parsed_decl_id_map,
-    ty::TyStructDecl
-);
-decl_engine_insert!(
-    storage_slab,
-    storage_parsed_decl_id_map,
-    ty::TyStorageDecl
-);
+decl_engine_insert!(struct_slab, struct_parsed_decl_id_map, ty::TyStructDecl);
+decl_engine_insert!(storage_slab, storage_parsed_decl_id_map, ty::TyStorageDecl);
 decl_engine_insert!(abi_slab, abi_parsed_decl_id_map, ty::TyAbiDecl);
 decl_engine_insert!(
     constant_slab,
@@ -305,10 +279,7 @@ decl_engine_parsed_decl_id!(function_parsed_decl_id_map, ty::TyFunctionDecl);
 decl_engine_parsed_decl_id!(trait_parsed_decl_id_map, ty::TyTraitDecl);
 decl_engine_parsed_decl_id!(trait_fn_parsed_decl_id_map, ty::TyTraitFn);
 decl_engine_parsed_decl_id!(trait_type_parsed_decl_id_map, ty::TyTraitType);
-decl_engine_parsed_decl_id!(
-    impl_self_or_trait_parsed_decl_id_map,
-    ty::TyImplSelfOrTrait
-);
+decl_engine_parsed_decl_id!(impl_self_or_trait_parsed_decl_id_map, ty::TyImplSelfOrTrait);
 decl_engine_parsed_decl_id!(struct_parsed_decl_id_map, ty::TyStructDecl);
 decl_engine_parsed_decl_id!(storage_parsed_decl_id_map, ty::TyStorageDecl);
 decl_engine_parsed_decl_id!(abi_parsed_decl_id_map, ty::TyAbiDecl);

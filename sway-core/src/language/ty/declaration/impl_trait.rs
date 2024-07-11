@@ -10,7 +10,7 @@ use crate::{
     type_system::*,
 };
 
-use super::{TyTraitItem, TyDeclParsedType};
+use super::{TyDeclParsedType, TyTraitItem};
 
 pub type TyImplItem = TyTraitItem;
 

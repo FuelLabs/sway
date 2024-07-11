@@ -8,7 +8,7 @@ use std::hash::{Hash, Hasher};
 
 use sway_types::{Ident, Named, Span, Spanned};
 
-use super::{TyTraitInterfaceItem, TyTraitItem, TyDeclParsedType};
+use super::{TyDeclParsedType, TyTraitInterfaceItem, TyTraitItem};
 
 /// A [TyAbiDecl] contains the type-checked version of the parse tree's
 /// `AbiDeclaration`.

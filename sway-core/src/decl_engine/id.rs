@@ -5,7 +5,7 @@ use std::{fmt, hash::Hash};
 
 use sway_types::{Named, Spanned};
 
-use crate::language::ty::{TyTraitType, TyDeclParsedType};
+use crate::language::ty::{TyDeclParsedType, TyTraitType};
 use crate::{
     decl_engine::*,
     engine_threading::*,

@@ -29,8 +29,8 @@ use crate::{
     decl_engine::*,
     engine_threading::*,
     language::ty::{
-        self, TyAbiDecl, TyConstantDecl, TyEnumDecl, TyFunctionDecl, TyImplSelfOrTrait,
-        TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType, TyDeclParsedType,
+        self, TyAbiDecl, TyConstantDecl, TyDeclParsedType, TyEnumDecl, TyFunctionDecl,
+        TyImplSelfOrTrait, TyStorageDecl, TyStructDecl, TyTraitDecl, TyTraitFn, TyTraitType,
     },
     semantic_analysis::TypeCheckContext,
     type_system::*,
