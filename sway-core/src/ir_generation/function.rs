@@ -128,6 +128,26 @@ fn save_to_local_return_ptr(
     Ok(local_var_ptr)
 }
 
+fn calc_addr_as_ptr(
+    current_block: &mut Block,
+    context: &mut Context,
+    ptr: Value,
+    len: Value,
+    ptr_to: Type,
+) -> Value {
+    assert!(ptr.get_type(context).unwrap().is_ptr(context));
+    assert!(len.get_type(context).unwrap().is_uint64(context));
+
+    let uint64 = Type::get_uint64(context);
+    let ptr = current_block.append(context).ptr_to_int(ptr, uint64);
+    let addr = current_block
+        .append(context)
+        .binary_op(BinaryOpKind::Add, ptr, len);
+
+    let ptr_to = Type::new_ptr(context, ptr_to);
+    current_block.append(context).int_to_ptr(addr, ptr_to)
+}
+
 impl<'eng> FnCompiler<'eng> {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
@@ -1603,26 +1623,6 @@ impl<'eng> FnCompiler<'eng> {
                         .binary_op(BinaryOpKind::Add, len, step)
                 }
 
-                fn calc_addr_as_ptr(
-                    current_block: &mut Block,
-                    context: &mut Context,
-                    ptr: Value,
-                    len: Value,
-                    ptr_to: Type,
-                ) -> Value {
-                    assert!(ptr.get_type(context).unwrap().is_ptr(context));
-                    assert!(len.get_type(context).unwrap().is_uint64(context));
-
-                    let uint64 = Type::get_uint64(context);
-                    let ptr = current_block.append(context).ptr_to_int(ptr, uint64);
-                    let addr = current_block
-                        .append(context)
-                        .binary_op(BinaryOpKind::Add, ptr, len);
-
-                    let ptr_to = Type::new_ptr(context, ptr_to);
-                    current_block.append(context).int_to_ptr(addr, ptr_to)
-                }
-
                 fn append_with_store(
                     current_block: &mut Block,
                     context: &mut Context,
@@ -2276,6 +2276,82 @@ impl<'eng> FnCompiler<'eng> {
                 );
 
                 Ok(TerminatorValue::new(slice, context))
+            }
+            Intrinsic::SliceElem => {
+                assert!(arguments.len() == 2);
+
+                let u8_type = Type::get_uint8(context);
+                let uint64 = Type::get_uint64(context);
+                let ptr_u8 = Type::new_ptr(context, u8_type);
+
+                let slice = &arguments[0];
+                let item_ir_type = convert_resolved_typeid(
+                    self.engines.te(),
+                    self.engines.de(),
+                    context,
+                    &match &*self.engines.te().get(slice.return_type) {
+                        TypeInfo::Slice(t) => t.type_id,
+                        _ => unreachable!(),
+                    },
+                    &slice.span.clone(),
+                )?;
+                let item_ir_type_size = item_ir_type.size(context);
+                let slice = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, slice)?
+                );
+                let ptr_to_slice = save_to_local_return_ptr(self, context, slice)?;
+
+                let ptr_to_slice_arg = AsmArg {
+                    name: Ident::new_no_span("ptr_to_slice".into()),
+                    initializer: Some(ptr_to_slice),
+                };
+
+                let item_ir_type_size = to_constant(self, context, item_ir_type_size.in_bytes());
+                let item_len_arg = AsmArg {
+                    name: Ident::new_no_span("item_len".into()),
+                    initializer: Some(item_ir_type_size),
+                };
+
+                let idx = &arguments[1];
+                let idx = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, idx)?
+                );
+                let idx_arg = AsmArg {
+                    name: Ident::new_no_span("idx".into()),
+                    initializer: Some(idx),
+                };
+
+                let offset_out_arg = AsmArg {
+                    name: Ident::new_no_span("offset".into()),
+                    initializer: None,
+                };
+                let ptr_out_arg = AsmArg {
+                    name: Ident::new_no_span("ptr".into()),
+                    initializer: None,
+                };
+
+                let ptr_to_elem_type = Type::new_ptr(context, item_ir_type);
+
+                let ptr = self.current_block.append(context).asm_block(
+                    vec![
+                        ptr_to_slice_arg,
+                        idx_arg,
+                        item_len_arg,
+                        offset_out_arg,
+                        ptr_out_arg,
+                    ],
+                    vec![
+                        AsmInstruction::lw_no_span("ptr", "ptr_to_slice", "i0"),
+                        AsmInstruction::mul_no_span("offset", "idx", "item_len"),
+                        AsmInstruction::add_no_span("ptr", "ptr", "offset"),
+                    ],
+                    ptr_to_elem_type,
+                    Some(Ident::new_no_span("ptr".into())),
+                );
+
+                let elem = self.current_block.append(context).load(ptr);
+
+                Ok(TerminatorValue::new(elem, context))
             }
         }
     }

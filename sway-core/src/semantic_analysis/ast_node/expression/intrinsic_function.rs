@@ -102,6 +102,7 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::EncodeBufferAsRawSlice => {
                 type_check_encode_as_raw_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
+
             Intrinsic::Slice => {
                 if arguments.len() != 3 {
                     return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
@@ -176,6 +177,63 @@ impl ty::TyIntrinsicFunctionKind {
                         span,
                     },
                     slice_type,
+                ))
+            }
+
+            Intrinsic::SliceElem => {
+                if arguments.len() != 2 {
+                    return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+                        name: kind.to_string(),
+                        expected: 2,
+                        span,
+                    }));
+                }
+
+                let type_engine = ctx.engines.te();
+                let engines = ctx.engines();
+
+                let mut ctx = ctx;
+
+                // check first argument
+                let slice_span = arguments[0].span.clone();
+                let slice_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+                let slice_typed_expr = {
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text("")
+                        .with_type_annotation(slice_type);
+                    ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+                };
+                let TypeInfo::Slice(elem_type) = &*type_engine.get(slice_type) else {
+                    return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+                        name: kind.to_string(),
+                        span: slice_span,
+                        hint: "".to_string(),
+                    }));
+                };
+
+                // index argument
+                let index_type = type_engine.insert(
+                    engines,
+                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+                    None,
+                );
+                let index_typed_expr = {
+                    let ctx = ctx
+                        .by_ref()
+                        .with_help_text("")
+                        .with_type_annotation(index_type);
+                    ty::TyExpression::type_check(handler, ctx, &arguments[1])?
+                };
+
+                Ok((
+                    TyIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![slice_typed_expr, index_typed_expr],
+                        type_arguments: vec![],
+                        span,
+                    },
+                    elem_type.type_id,
                 ))
             }
         }

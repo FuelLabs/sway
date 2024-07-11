@@ -1285,6 +1285,7 @@ fn const_eval_intrinsic(
             }))
         }
         Intrinsic::Slice => todo!(),
+        Intrinsic::SliceElem => todo!(),
     }
 }
 
