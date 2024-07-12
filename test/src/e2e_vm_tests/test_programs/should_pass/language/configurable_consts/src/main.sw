@@ -1,5 +1,5 @@
- script;
- 
+script;
+
 use std::hash::*;
 
 struct ConfigurableStruct {
@@ -24,8 +24,8 @@ impl core::ops::Eq for ConfigurableEnum {
 
 type AnotherU8 = u8;
 
- configurable {
-     BOOL: bool = true,
+configurable {
+    BOOL: bool = true,
     U8: u8 = 1,
     ANOTHER_U8: AnotherU8 = 3,
     U16: u16 = 2,
@@ -33,23 +33,23 @@ type AnotherU8 = u8;
     U64: u32 = 4,
     U256: u256 = 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256,
     B256: b256 = 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB,
-    CONFIGURABLE_STRUCT: ConfigurableStruct = ConfigurableStruct { 
-        a: true,
-        b: 5,
-    },
+    CONFIGURABLE_STRUCT: ConfigurableStruct = ConfigurableStruct { a: true, b: 5 },
     CONFIGURABLE_ENUM_A: ConfigurableEnum = ConfigurableEnum::A(true),
     CONFIGURABLE_ENUM_B: ConfigurableEnum = ConfigurableEnum::B(12),
     ARRAY_BOOL: [bool; 3] = [true, false, true],
     ARRAY_U64: [u64; 3] = [9, 8, 7],
     TUPLE_BOOL_U64: (bool, u64) = (true, 11),
     STR_4: str[4] = __to_str_array("abcd"),
- }
- 
- fn main() {
-     assert(BOOL == true);
+
+    NOT_USED: u8 = 1
+}
+
+fn main() {
+    assert(BOOL == true);
     assert(U8 == 1);
     assert(ANOTHER_U8 == 3);
     assert(U16 == 2);
+    assert(U32 == 3);
     assert(U64 == 4);
     assert(U256 == 0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAu256);
     assert(B256 == 0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB);
@@ -75,4 +75,4 @@ type AnotherU8 = u8;
         addr: u64
     };
     assert(addr_1 == addr_2);
- }
+}

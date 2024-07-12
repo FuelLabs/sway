@@ -1261,11 +1261,12 @@ impl TypeInfo {
         engines: &Engines,
         span: &Span,
     ) -> Result<(), ErrorEmitted> {
-        const CURRENTLY_SUPPORTED_TYPES_MESSAGE: [&str; 8] = [
+        const CURRENTLY_SUPPORTED_TYPES_MESSAGE: [&str; 9] = [
             "Sway currently supports pattern matching on these types:",
             "  - b256",
             "  - boolean",
             "  - enums",
+            "  - string slices",
             "  - structs",
             "  - tuples",
             "  - unsigned integers",
@@ -1281,7 +1282,8 @@ impl TypeInfo {
             | TypeInfo::B256
             | TypeInfo::UnknownGeneric { .. }
             | TypeInfo::Numeric
-            | TypeInfo::Never => Ok(()),
+            | TypeInfo::Never
+            | TypeInfo::StringSlice => Ok(()),
             TypeInfo::Alias { ty, .. } => {
                 let ty = engines.te().get(ty.type_id);
                 ty.expect_is_supported_in_match_expressions(handler, engines, span)
@@ -1291,7 +1293,6 @@ impl TypeInfo {
             | TypeInfo::Ptr(..)
             | TypeInfo::Slice(..)
             | TypeInfo::StringArray(_)
-            | TypeInfo::StringSlice
             | TypeInfo::Array(_, _) => Err(handler.emit_err(CompileError::Unimplemented {
                 feature: format!(
                     "Matched value has type \"{}\". Matching on this type",

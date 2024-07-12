@@ -9,7 +9,8 @@ use crate::{
     BuildProfile,
 };
 use anyhow::{anyhow, bail, Context, Error, Result};
-use forc_tracing::println_warning;
+use byte_unit::{Byte, UnitType};
+use forc_tracing::{println_action_green, println_warning};
 use forc_util::{
     default_output_directory, find_file_name, kebab_to_snake_case, print_compiling,
     print_on_failure, print_warnings,
@@ -262,6 +263,8 @@ pub struct PrintOpts {
     pub asm: PrintAsm,
     /// Print the bytecode. This is the final output of the compiler.
     pub bytecode: bool,
+    /// Print the original source code together with bytecode.
+    pub bytecode_spans: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
@@ -497,7 +500,11 @@ impl BuiltPackage {
         let json_abi_path = output_dir.join(program_abi_stem).with_extension("json");
         self.write_json_abi(&json_abi_path, minify)?;
 
-        info!("      Bytecode size: {} bytes", self.bytecode.bytes.len());
+        debug!(
+            "      Bytecode size: {} bytes ({})",
+            self.bytecode.bytes.len(),
+            format_bytecode_size(self.bytecode.bytes.len())
+        );
         // Additional ops required depending on the program type
         match self.tree_type {
             TreeType::Contract => {
@@ -531,7 +538,7 @@ impl BuiltPackage {
                 let hash_file_name = format!("{}{}", &pkg_name, SWAY_BIN_HASH_SUFFIX);
                 let hash_path = output_dir.join(hash_file_name);
                 fs::write(hash_path, &bytecode_hash)?;
-                info!("      Bytecode hash: {}", bytecode_hash);
+                debug!("      Bytecode hash: {}", bytecode_hash);
             }
             _ => (),
         }
@@ -713,7 +720,10 @@ impl BuildPlan {
                     cause,
                 );
             }
-            info!("  Creating a new `Forc.lock` file. (Cause: {})", cause);
+            println_action_green(
+                "Creating",
+                &format!("a new `Forc.lock` file. (Cause: {})", cause),
+            );
             let member_names = manifests
                 .iter()
                 .map(|(_, manifest)| manifest.project.name.to_string())
@@ -723,7 +733,7 @@ impl BuildPlan {
                 .map_err(|e| anyhow!("failed to serialize lock file: {}", e))?;
             fs::write(lock_path, string)
                 .map_err(|e| anyhow!("failed to write lock file: {}", e))?;
-            info!("   Created new lock file at {}", lock_path.display());
+            debug!("   Created new lock file at {}", lock_path.display());
         }
 
         Ok(plan)
@@ -1549,7 +1559,10 @@ pub fn sway_build_config(
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .with_print_asm(build_profile.print_asm)
-    .with_print_bytecode(build_profile.print_bytecode)
+    .with_print_bytecode(
+        build_profile.print_bytecode,
+        build_profile.print_bytecode_spans,
+    )
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
@@ -1746,7 +1759,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: namespace::Root,
+    namespace: &mut namespace::Root,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
@@ -2079,6 +2092,7 @@ fn build_profile_from_opts(
     profile.print_ir |= print.ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
+    profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     if profile.metrics_outfile.is_none() {
@@ -2103,6 +2117,12 @@ fn profile_target_string(profile_name: &str, build_target: &BuildTarget) -> Stri
         _ => {}
     };
     format!("{profile_name} [{}] target(s)", targets.join(" + "))
+}
+/// Returns the size of the bytecode in a human-readable format.
+pub fn format_bytecode_size(bytes_len: usize) -> String {
+    let size = Byte::from_u64(bytes_len as u64);
+    let adjusted_byte = size.get_appropriate_unit(UnitType::Decimal);
+    adjusted_byte.to_string()
 }
 
 /// Check if the given node is a contract dependency of any node in the graph.
@@ -2170,12 +2190,19 @@ pub fn build_with_options(build_options: &BuildOpts) -> Result<Built> {
         },
     )?;
     let output_dir = pkg.output_directory.as_ref().map(PathBuf::from);
+    let total_size = built_packages
+        .iter()
+        .map(|(_, pkg)| pkg.bytecode.bytes.len())
+        .sum::<usize>();
 
-    let finished = ansi_term::Colour::Green.bold().paint("Finished");
-    info!(
-        "  {finished} {} in {:.2}s",
-        profile_target_string(&build_profile.name, build_target),
-        build_start.elapsed().as_secs_f32()
+    println_action_green(
+        "Finished",
+        &format!(
+            "{} [{}] in {:.2}s",
+            profile_target_string(&build_profile.name, build_target),
+            format_bytecode_size(total_size),
+            build_start.elapsed().as_secs_f32()
+        ),
     );
     for (node_ix, built_package) in built_packages {
         print_pkg_summary_header(&built_package);
@@ -2289,6 +2316,7 @@ pub fn build(
 
     let mut lib_namespace_map = HashMap::default();
     let mut compiled_contract_deps = HashMap::new();
+
     for &node in plan
         .compilation_order
         .iter()
@@ -2299,6 +2327,8 @@ pub fn build(
         let manifest = &plan.manifest_map()[&pkg.id()];
         let program_ty = manifest.program_type().ok();
 
+        // TODO: Only print "Compiling" when the dependency is not already compiled.
+        // https://github.com/FuelLabs/sway/issues/6209
         print_compiling(
             program_ty.as_ref(),
             &pkg.name,
@@ -2343,7 +2373,7 @@ pub fn build(
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let dep_namespace = match dependency_namespace(
+            let mut dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
@@ -2360,7 +2390,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                dep_namespace,
+                &mut dep_namespace,
                 &mut source_map,
             )?;
 
@@ -2407,7 +2437,7 @@ pub fn build(
         };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let dep_namespace = match dependency_namespace(
+        let mut dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
@@ -2433,7 +2463,7 @@ pub fn build(
             &descriptor,
             &profile,
             &engines,
-            dep_namespace,
+            &mut dep_namespace,
             &mut source_map,
         )?;
 
@@ -2642,7 +2672,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let dep_namespace = dependency_namespace(
+        let mut dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
@@ -2673,7 +2703,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            dep_namespace,
+            &mut dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),

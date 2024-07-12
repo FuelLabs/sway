@@ -4,8 +4,8 @@ use crate::{
     language::{
         parsed::TreeType,
         ty::{
-            self, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl, TraitDecl, TyAstNode,
-            TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
+            self, ConfigurableDecl, ConstantDecl, FunctionDecl, ProjectionKind, StructDecl,
+            TraitDecl, TyAstNode, TyAstNodeContent, TyDecl, TyImplItem, TypeAliasDecl,
         },
         CallPath, Visibility,
     },
@@ -70,7 +70,7 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 struct_decl.visibility == Visibility::Public
             }
             TyAstNode {
-                content: TyAstNodeContent::Declaration(TyDecl::ImplTrait { .. }),
+                content: TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait { .. }),
                 ..
             } => true,
             TyAstNode {
@@ -81,6 +81,11 @@ fn is_entry_point(node: &TyAstNode, decl_engine: &DeclEngine, tree_type: &TreeTy
                 let decl = decl_engine.get_constant(decl_id);
                 decl.visibility.is_public()
             }
+            TyAstNode {
+                content:
+                    TyAstNodeContent::Declaration(TyDecl::ConfigurableDecl(ConfigurableDecl { .. })),
+                ..
+            } => false,
             TyAstNode {
                 content:
                     TyAstNodeContent::Declaration(TyDecl::TypeAliasDecl(TypeAliasDecl {
@@ -193,7 +198,10 @@ impl<'cfg> ControlFlowGraph<'cfg> {
                 ControlFlowGraphNode::ProgramNode {
                     node:
                         ty::TyAstNode {
-                            content: ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait { .. }),
+                            content:
+                                ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplSelfOrTrait {
+                                    ..
+                                }),
                             ..
                         },
                     ..
@@ -567,11 +575,18 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
         ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl { decl_id, .. }) => {
             let config_decl = decl_engine.get_configurable(decl_id);
             let ty::TyConfigurableDecl {
-                call_path, value, ..
+                call_path,
+                value,
+                type_ascription,
+                ..
             } = &*config_decl;
+
             graph
                 .namespace
                 .insert_configurable(call_path.suffix.clone(), entry_node);
+
+            connect_type_id(engines, type_ascription.type_id, graph, entry_node)?;
+
             if let Some(value) = &value {
                 connect_expression(
                     engines,
@@ -579,7 +594,7 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
                     graph,
                     &[entry_node],
                     exit_node,
-                    "constant declaration expression",
+                    "configurable declaration expression",
                     tree_type,
                     value.span.clone(),
                     options,
@@ -620,9 +635,9 @@ fn connect_declaration<'eng: 'cfg, 'cfg>(
             connect_enum_declaration(&enum_decl, *enum_ref.id(), graph, entry_node);
             Ok(leaves.to_vec())
         }
-        ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
-            let impl_trait_decl = decl_engine.get_impl_trait(decl_id);
-            let ty::TyImplTrait {
+        ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. }) => {
+            let impl_trait_decl = decl_engine.get_impl_self_or_trait(decl_id);
+            let ty::TyImplSelfOrTrait {
                 trait_name,
                 items,
                 trait_decl_ref,
@@ -1156,8 +1171,8 @@ fn get_trait_fn_node_index<'a>(
                     .namespace
                     .find_trait_method(&struct_decl.call_path.suffix.clone().into(), &fn_decl.name))
             }
-            ty::TyDecl::ImplTrait(ty::ImplTrait { decl_id, .. }) => {
-                let impl_trait = decl_engine.get_impl_trait(decl_id);
+            ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait { decl_id, .. }) => {
+                let impl_trait = decl_engine.get_impl_self_or_trait(decl_id);
                 Ok(graph
                     .namespace
                     .find_trait_method(&impl_trait.trait_name, &fn_decl.name))
@@ -2309,6 +2324,16 @@ fn construct_dead_code_warning_from_node(
             warning_content: Warning::DeadDeclaration,
         },
         ty::TyAstNode {
+            content:
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::ConfigurableDecl(ty::ConfigurableDecl {
+                    decl_id,
+                })),
+            ..
+        } => CompileWarning {
+            span: decl_engine.get_configurable(decl_id).name().span(),
+            warning_content: Warning::DeadDeclaration,
+        },
+        ty::TyAstNode {
             content: ty::TyAstNodeContent::Declaration(ty::TyDecl::VariableDecl(decl)),
             span,
         } => {
@@ -2329,12 +2354,13 @@ fn construct_dead_code_warning_from_node(
         }
         ty::TyAstNode {
             content:
-                ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplTrait(ty::ImplTrait {
-                    decl_id, ..
+                ty::TyAstNodeContent::Declaration(ty::TyDecl::ImplSelfOrTrait(ty::ImplSelfOrTrait {
+                    decl_id,
+                    ..
                 })),
             span,
         } => {
-            let ty::TyImplTrait { .. } = &*decl_engine.get_impl_trait(decl_id);
+            let ty::TyImplSelfOrTrait { .. } = &*decl_engine.get_impl_self_or_trait(decl_id);
             CompileWarning {
                 span: span.clone(),
                 warning_content: Warning::DeadDeclaration,
@@ -2532,7 +2558,7 @@ fn allow_dead_code_ast_node(decl_engine: &DeclEngine, node: &ty::TyAstNode) -> b
             ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl { decl_id, .. }) => {
                 allow_dead_code(decl_engine.get_type_alias(decl_id).attributes.clone())
             }
-            ty::TyDecl::ImplTrait { .. } => false,
+            ty::TyDecl::ImplSelfOrTrait { .. } => false,
             ty::TyDecl::AbiDecl { .. } => false,
             ty::TyDecl::GenericTypeForFunctionScope { .. } => false,
             ty::TyDecl::ErrorRecovery(..) => false,

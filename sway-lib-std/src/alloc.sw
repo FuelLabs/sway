@@ -112,10 +112,9 @@ pub fn realloc<T>(ptr: raw_ptr, count: u64, new_count: u64) -> raw_ptr {
 /// }
 /// ```
 pub fn alloc_bytes(count: u64) -> raw_ptr {
-    asm(size: count, ptr) {
+    asm(size: count) {
         aloc size;
-        move ptr hp;
-        ptr: raw_ptr
+        hp: raw_ptr
     }
 }
 

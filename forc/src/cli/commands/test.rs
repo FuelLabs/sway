@@ -3,6 +3,7 @@ use ansi_term::Colour;
 use clap::Parser;
 use forc_pkg as pkg;
 use forc_test::{decode_log_data, TestFilter, TestRunnerCount, TestedPackage};
+use forc_tracing::println_action_green;
 use forc_util::{tx_utils::format_log_receipts, ForcError, ForcResult};
 use pkg::manifest::build_profile::ExperimentalFlags;
 use sway_core::fuel_prelude::fuel_tx::Receipt;
@@ -90,12 +91,15 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
     let test_count = built_tests.test_count(test_filter.as_ref());
     let num_tests_running = test_count.total - test_count.ignored;
     let num_tests_ignored = test_count.ignored;
-    info!(
-        "   Running {} {}, filtered {} {}",
-        num_tests_running,
-        formatted_test_count_string(&num_tests_running),
-        num_tests_ignored,
-        formatted_test_count_string(&num_tests_ignored)
+    println_action_green(
+        "Running",
+        &format!(
+            "{} {}, filtered {} {}",
+            num_tests_running,
+            formatted_test_count_string(&num_tests_running),
+            num_tests_ignored,
+            formatted_test_count_string(&num_tests_ignored)
+        ),
     );
     let tested = built_tests.run(test_runner_count, test_filter)?;
     let duration = start.elapsed();
@@ -105,10 +109,11 @@ pub(crate) fn exec(cmd: Command) -> ForcResult<()> {
         forc_test::Tested::Workspace(pkgs) => {
             for pkg in &pkgs {
                 let built = &pkg.built.descriptor.name;
-                info!("\n   tested -- {built}\n");
+                info!("\ntested -- {built}\n");
                 print_tested_pkg(pkg, &test_print_opts)?;
             }
-            info!("\n   Finished in {:?}", duration);
+            info!("");
+            println_action_green("Finished", &format!("in {:?}", duration));
             pkgs.iter().all(|pkg| pkg.tests_passed())
         }
         forc_test::Tested::Package(pkg) => {
@@ -210,7 +215,7 @@ fn print_tested_pkg(pkg: &TestedPackage, test_print_opts: &TestPrintOpts) -> For
         .map(|test_result| test_result.duration)
         .sum();
     info!(
-        "   Result: {}. {} passed. {} failed. Finished in {:?}.",
+        "\ntest result: {}. {} passed; {} failed; finished in {:?}",
         color.paint(state),
         succeeded,
         failed,
@@ -237,6 +242,7 @@ fn opts_from_cmd(cmd: Command) -> forc_test::TestOpts {
             dca_graph_url_format: cmd.build.print.dca_graph_url_format.clone(),
             asm: cmd.build.print.asm(),
             bytecode: cmd.build.print.bytecode,
+            bytecode_spans: false,
             ir: cmd.build.print.ir(),
             reverse_order: cmd.build.print.reverse_order,
         },

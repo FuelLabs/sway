@@ -39,6 +39,7 @@ use sway_types::{
         TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
+    BaseIdent,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -767,7 +768,8 @@ pub fn item_impl_to_declaration(
         Some((path_type, _)) => {
             let (trait_name, trait_type_arguments) =
                 path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
-            let impl_trait = ImplTrait {
+            let impl_trait = ImplSelfOrTrait {
+                is_self: false,
                 impl_type_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
@@ -776,20 +778,27 @@ pub fn item_impl_to_declaration(
                 block_span,
             };
             let impl_trait = engines.pe().insert(impl_trait);
-            Ok(Declaration::ImplTrait(impl_trait))
+            Ok(Declaration::ImplSelfOrTrait(impl_trait))
         }
         None => match &*engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
-                let impl_self = ImplSelf {
+                let impl_self = ImplSelfOrTrait {
+                    is_self: true,
+                    trait_name: CallPath {
+                        is_absolute: false,
+                        prefixes: vec![],
+                        suffix: BaseIdent::dummy(),
+                    },
+                    trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
                     items,
                     block_span,
                 };
                 let impl_self = engines.pe().insert(impl_self);
-                Ok(Declaration::ImplSelf(impl_self))
+                Ok(Declaration::ImplSelfOrTrait(impl_self))
             }
         },
     }
@@ -1085,6 +1094,7 @@ fn item_configurable_to_configurable_declarations(
         });
     }
 
+    let item_configurable_keyword_span = item_configurable.configurable_token.span();
     let declarations: Vec<ParsedDeclId<ConfigurableDeclaration>> = item_configurable
         .fields
         .into_inner()
@@ -1101,6 +1111,7 @@ fn item_configurable_to_configurable_declarations(
                 engines,
                 configurable_field.value,
                 attributes,
+                item_configurable_keyword_span.clone(),
             )?))
         })
         .filter_map_ok(|decl| decl)
@@ -2571,6 +2582,7 @@ fn configurable_field_to_configurable_declaration(
     engines: &Engines,
     configurable_field: sway_ast::ConfigurableField,
     attributes: AttributesMap,
+    item_configurable_keyword_span: Span,
 ) -> Result<ParsedDeclId<ConfigurableDeclaration>, ErrorEmitted> {
     let span = configurable_field.name.span();
 
@@ -2606,6 +2618,7 @@ fn configurable_field_to_configurable_declaration(
         visibility: Visibility::Public,
         attributes,
         span: span.clone(),
+        block_keyword_span: item_configurable_keyword_span,
     };
     Ok(engines.pe().insert(config_decl))
 }

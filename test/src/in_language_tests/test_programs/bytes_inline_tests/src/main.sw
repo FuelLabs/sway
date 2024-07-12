@@ -888,7 +888,7 @@ fn bytes_from_raw_slice() {
     };
 
     let mut bytes = Bytes::from(slice);
-    assert(bytes.ptr() == slice.ptr());
+    assert(bytes.ptr() != slice.ptr()); // Bytes should own its buffer
     assert(bytes.len() == slice.number_of_bytes());
 }
 
@@ -921,7 +921,7 @@ fn bytes_raw_slice_into() {
 
     let bytes: Bytes = slice.into();
 
-    assert(bytes.ptr() == slice.ptr());
+    assert(bytes.ptr() != slice.ptr()); // Bytes should own its buffer
     assert(bytes.len() == slice.number_of_bytes());
 }
 

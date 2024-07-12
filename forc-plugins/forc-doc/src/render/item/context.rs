@@ -16,7 +16,7 @@ use anyhow::Result;
 use horrorshow::{box_html, Raw, RenderBox, Template};
 use std::{collections::BTreeMap, fmt::Write};
 use sway_core::language::ty::{
-    TyEnumVariant, TyImplTrait, TyStorageField, TyStructField, TyTraitFn, TyTraitItem,
+    TyEnumVariant, TyImplSelfOrTrait, TyStorageField, TyStructField, TyTraitFn, TyTraitItem,
 };
 
 /// The actual context of the item displayed by [ItemContext].
@@ -268,7 +268,7 @@ impl Renderable for Context {
 #[derive(Debug, Clone)]
 pub struct DocImplTrait {
     pub impl_for_module: ModuleInfo,
-    pub impl_trait: TyImplTrait,
+    pub impl_trait: TyImplSelfOrTrait,
     pub module_info_override: Option<Vec<String>>,
 }
 
@@ -495,7 +495,7 @@ impl Renderable for ItemContext {
 }
 impl Renderable for DocImplTrait {
     fn render(self, render_plan: RenderPlan) -> Result<Box<dyn RenderBox>> {
-        let TyImplTrait {
+        let TyImplSelfOrTrait {
             trait_name,
             items,
             implementing_for,
