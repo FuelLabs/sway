@@ -14,4 +14,9 @@ fn main()  {
     assert(__slice_elem(slice, 1), 2);
     assert(__slice_elem(slice, 2), 3);
     assert(__slice_elem(slice, 3), 4);
+
+    let slice_of_slice: __slice[u64] = __slice(slice, 1, 2);
+
+    assert(__slice_elem(slice_of_slice, 0), 2);
+    assert(__slice_elem(slice_of_slice, 1), 3);
 }

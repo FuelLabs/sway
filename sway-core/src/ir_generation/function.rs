@@ -124,7 +124,6 @@ fn save_to_local_return_ptr(
 
     let local_var_ptr = s.current_block.append(context).get_local(local_var);
     let _ = s.current_block.append(context).store(local_var_ptr, value);
-
     Ok(local_var_ptr)
 }
 
@@ -2168,24 +2167,41 @@ impl<'eng> FnCompiler<'eng> {
                 let u8_type = Type::get_uint8(context);
                 let uint64 = Type::get_uint64(context);
                 let ptr_u8 = Type::new_ptr(context, u8_type);
+                let ptr_u64 = Type::new_ptr(context, uint64);
 
-                let array = &arguments[0];
-                let item_ir_type = convert_resolved_typeid(
+                let first_argument = &arguments[0];
+                let elem_type_id = &match &*self.engines.te().get(first_argument.return_type) {
+                    TypeInfo::Array(t, _) => t.type_id,
+                    TypeInfo::Slice(t) => t.type_id,
+                    _ => unreachable!(),
+                };
+                let elem_ir_type = convert_resolved_typeid(
                     self.engines.te(),
                     self.engines.de(),
                     context,
-                    &match &*self.engines.te().get(array.return_type) {
-                        TypeInfo::Array(t, _) => t.type_id,
-                        _ => unreachable!(),
-                    },
-                    &array.span.clone(),
+                    elem_type_id,
+                    &first_argument.span.clone(),
                 )?;
-                let item_ir_type_size = item_ir_type.size(context);
-                let array = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, array)?
+                let item_ir_type_size = elem_ir_type.size(context);
+                let first_argument_value = return_on_termination_or_extract!(
+                    self.compile_expression_to_value(context, md_mgr, first_argument)?
                 );
-                let array = save_to_local_return_ptr(self, context, array)?;
-                let array = self.current_block.append(context).ptr_to_int(array, uint64);
+                let ptr_to_first_argument =
+                    save_to_local_return_ptr(self, context, first_argument_value)?;
+                let ptr_to_elements = match &*self.engines.te().get(first_argument.return_type) {
+                    TypeInfo::Array(t, _) => self
+                        .current_block
+                        .append(context)
+                        .ptr_to_int(ptr_to_first_argument, uint64),
+                    TypeInfo::Slice(t) => {
+                        let slice_ptr = self
+                            .current_block
+                            .append(context)
+                            .cast_ptr(ptr_to_first_argument, ptr_u64);
+                        self.current_block.append(context).load(slice_ptr)
+                    }
+                    _ => unreachable!(),
+                };
 
                 let start = &arguments[1];
                 let start = return_on_termination_or_extract!(
@@ -2208,7 +2224,7 @@ impl<'eng> FnCompiler<'eng> {
 
                 let array_ptr_arg = AsmArg {
                     name: Ident::new_no_span("array_ptr".into()),
-                    initializer: Some(array),
+                    initializer: Some(ptr_to_elements),
                 };
                 let start_arg = AsmArg {
                     name: Ident::new_no_span("start".into()),
@@ -2258,7 +2274,7 @@ impl<'eng> FnCompiler<'eng> {
                 );
 
                 // compile the slice together
-                let return_type = Type::get_typed_slice(context, item_ir_type);
+                let return_type = Type::get_typed_slice(context, elem_ir_type);
                 let slice_as_tuple = self.compile_tuple_from_values(
                     context,
                     vec![slice_ptr, slice_len],
