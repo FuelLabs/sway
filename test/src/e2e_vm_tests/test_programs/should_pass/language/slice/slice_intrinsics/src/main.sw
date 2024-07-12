@@ -19,4 +19,15 @@ fn main()  {
 
     assert(__slice_elem(slice_of_slice, 0), 2);
     assert(__slice_elem(slice_of_slice, 1), 3);
+
+    // we cannot check index for slices
+    let slice_of_slice: __slice[u64] = __slice(slice, 100, 200);
+    // but we can check if start is lower than end
+    let slice_of_slice: __slice[u64] = __slice(slice, 200, 100);
+
+    // array errors
+    let array: [u64; 4] = [1, 2, 3, 4];
+    let slice: __slice[u64] = __slice(array, 0, 5);
+    let slice: __slice[u64] = __slice(array, 6, 7);
+    let slice: __slice[u64] = __slice(array, 2, 1);
 }

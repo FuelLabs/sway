@@ -223,11 +223,53 @@ fn type_check_slice(
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
+    // statically check start and end, if possible
+    let start_literal = match &start_ty_expr.expression {
+        ty::TyExpressionVariant::Literal(v) => v.cast_value_to_u64(),
+        _ => None,
+    };
+
+    let end_literal = match &end_ty_expr.expression {
+        ty::TyExpressionVariant::Literal(v) => v.cast_value_to_u64(),
+        _ => None,
+    };
+
+    if let (Some(start), Some(end)) = (start_literal, end_literal) {
+        if start >= end {
+            return Err(
+                handler.emit_err(CompileError::InvalidRangeEndGreaterThanStart {
+                    start,
+                    end,
+                    span,
+                }),
+            );
+        }
+    }
+
     // We can slice arrays or other slices
     match &*type_engine.get(array_type) {
-        TypeInfo::Array(elem_type_arg, _) => {
-            //TODO check start is literal inside of range
-            //TODO check end is literal inside of range
+        TypeInfo::Array(elem_type_arg, array_len) => {
+            let array_len = array_len.val() as u64;
+
+            if let Some(v) = start_literal {
+                if v >= array_len {
+                    return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                        index: v,
+                        count: array_len,
+                        span,
+                    }));
+                }
+            }
+
+            if let Some(v) = end_literal {
+                if v >= array_len {
+                    return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
+                        index: v,
+                        count: array_len,
+                        span,
+                    }));
+                }
+            }
 
             let slice_type =
                 type_engine.insert(engines, TypeInfo::Slice(elem_type_arg.clone()), None);

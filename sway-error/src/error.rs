@@ -655,8 +655,12 @@ pub enum CompileError {
     ContractStorageFromExternalContext { span: Span },
     #[error("The {opcode} opcode cannot be used in a predicate.")]
     InvalidOpcodeFromPredicate { opcode: String, span: Span },
-    #[error("Array index out of bounds; the length is {count} but the index is {index}.")]
+    #[error("Index out of bounds; the length is {count} but the index is {index}.")]
     ArrayOutOfBounds { index: u64, count: u64, span: Span },
+    #[error(
+        "Invalid range; the range end at index {end} is smaller than its start at index {start}"
+    )]
+    InvalidRangeEndGreaterThanStart { start: u64, end: u64, span: Span },
     #[error("Tuple index {index} is out of bounds. The tuple has {count} element{}.", plural_s(*count))]
     TupleIndexOutOfBounds {
         index: usize,
@@ -1220,6 +1224,7 @@ impl Spanned for CompileError {
             CannotBeEvaluatedToConfigurableSizeUnknown { span } => span.clone(),
             EncodingUnsupportedType { span } => span.clone(),
             ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
+            InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
         }
     }
 }
