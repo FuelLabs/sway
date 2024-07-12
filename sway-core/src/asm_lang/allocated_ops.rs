@@ -18,7 +18,7 @@ use crate::{
     fuel_prelude::fuel_asm::{self, op},
 };
 use either::Either;
-use fuel_vm::fuel_asm::{op::ADDI, Imm06, Imm12};
+use fuel_vm::fuel_asm::{op::ADDI, Imm12};
 use std::fmt::{self, Write};
 use sway_types::span::Span;
 
@@ -180,11 +180,18 @@ pub(crate) enum AllocatedOpcode {
     ),
     CROO(AllocatedRegister, AllocatedRegister),
     CSIZ(AllocatedRegister, AllocatedRegister),
+    BSIZ(AllocatedRegister, AllocatedRegister),
     LDC(
         AllocatedRegister,
         AllocatedRegister,
         AllocatedRegister,
         VirtualImmediate06,
+    ),
+    BLDD(
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
+        AllocatedRegister,
     ),
     LOG(
         AllocatedRegister,
@@ -335,7 +342,9 @@ impl AllocatedOpcode {
             CCP(_r1, _r2, _r3, _r4) => vec![],
             CROO(_r1, _r2) => vec![],
             CSIZ(r1, _r2) => vec![r1],
+            BSIZ(r1, _r2) => vec![r1],
             LDC(_r1, _r2, _r3, _i0) => vec![],
+            BLDD(_r1, _r2, _r3, _r4) => vec![],
             LOG(_r1, _r2, _r3, _r4) => vec![],
             LOGD(_r1, _r2, _r3, _r4) => vec![],
             MINT(_r1, _r2) => vec![],
@@ -459,7 +468,9 @@ impl fmt::Display for AllocatedOpcode {
             CCP(a, b, c, d) => write!(fmtr, "ccp  {a} {b} {c} {d}"),
             CROO(a, b) => write!(fmtr, "croo {a} {b}"),
             CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
+            BSIZ(a, b) => write!(fmtr, "bsiz {a} {b}"),
             LDC(a, b, c, d) => write!(fmtr, "ldc  {a} {b} {c} {d}"),
+            BLDD(a, b, c, d) => write!(fmtr, "bldd {a} {b} {c} {d}"),
             LOG(a, b, c, d) => write!(fmtr, "log  {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
             MINT(a, b) => write!(fmtr, "mint {a} {b}"),
@@ -635,8 +646,12 @@ impl AllocatedOp {
             }
             CROO(a, b) => op::CROO::new(a.to_reg_id(), b.to_reg_id()).into(),
             CSIZ(a, b) => op::CSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
+            BSIZ(a, b) => op::BSIZ::new(a.to_reg_id(), b.to_reg_id()).into(),
             LDC(a, b, c, d) => {
                 op::LDC::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.value.into()).into()
+            }
+            BLDD(a, b, c, d) => {
+                op::BLDD::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
             }
             LOG(a, b, c, d) => {
                 op::LOG::new(a.to_reg_id(), b.to_reg_id(), c.to_reg_id(), d.to_reg_id()).into()
