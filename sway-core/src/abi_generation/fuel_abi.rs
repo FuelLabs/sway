@@ -100,7 +100,7 @@ pub fn generate_program_abi(
                 .iter()
                 .map(|x| {
                     let fn_decl = decl_engine.get_function(x);
-                    Ok(fn_decl.generate_abi_function(handler, ctx, engines, types)?)
+                    fn_decl.generate_abi_function(handler, ctx, engines, types)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let logged_types = generate_logged_types(handler, ctx, engines, types)?;
@@ -259,7 +259,7 @@ fn generate_logged_types(
         })
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
-        .filter_map(|o| o)
+        .flatten()
         .collect())
 }
 
@@ -405,7 +405,7 @@ impl TypeId {
                 .get_type_parameters(engines)
                 .map(|v| {
                     v.iter()
-                        .map(|v| Ok(v.get_abi_type_parameter(handler, ctx, engines, types)?))
+                        .map(|v| v.get_abi_type_parameter(handler, ctx, engines, types))
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .map_or(Ok(None), |v| v.map(Some)),
