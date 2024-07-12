@@ -6,7 +6,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::DeclEngineInsert,
+    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert},
     language::{
         parsed::*,
         ty::{self, StructAccessInfo, TyDecl, TyScrutinee, TyStructDecl, TyStructField},
@@ -414,7 +414,10 @@ fn type_check_struct(
         Ok(())
     })?;
 
-    let struct_ref = decl_engine.insert(struct_decl);
+    let struct_ref = decl_engine.insert(
+        struct_decl,
+        decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
+    );
     let typed_scrutinee = ty::TyScrutinee {
         type_id: type_engine.insert(
             ctx.engines(),
@@ -479,7 +482,7 @@ fn type_check_enum(
     let engines = ctx.engines();
 
     let mut prefixes = call_path.prefixes.clone();
-    let (callsite_span, mut enum_decl, call_path_decl) = match prefixes.pop() {
+    let (callsite_span, enum_id, call_path_decl) = match prefixes.pop() {
         Some(enum_name) => {
             let enum_callpath = CallPath {
                 suffix: enum_name,
@@ -493,12 +496,8 @@ fn type_check_enum(
                 &enum_callpath,
                 ctx.self_type(),
             )?;
-            let enum_ref = unknown_decl.to_enum_id(handler, ctx.engines())?;
-            (
-                enum_callpath.span(),
-                (*decl_engine.get_enum(&enum_ref)).clone(),
-                unknown_decl,
-            )
+            let enum_id = unknown_decl.to_enum_id(handler, ctx.engines())?;
+            (enum_callpath.span(), enum_id, unknown_decl)
         }
         None => {
             // we may have an imported variant
@@ -509,11 +508,7 @@ fn type_check_enum(
                 ctx.self_type(),
             )?;
             if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) = decl.clone() {
-                (
-                    call_path.suffix.span(),
-                    (*decl_engine.get_enum(enum_ref.id())).clone(),
-                    decl,
-                )
+                (call_path.suffix.span(), *enum_ref.id(), decl)
             } else {
                 return Err(handler.emit_err(CompileError::EnumNotFound {
                     name: call_path.suffix.clone(),
@@ -522,6 +517,7 @@ fn type_check_enum(
             }
         }
     };
+    let mut enum_decl = (*decl_engine.get_enum(&enum_id)).clone();
     let variant_name = call_path.suffix.clone();
 
     // monomorphize the enum definition
@@ -541,7 +537,7 @@ fn type_check_enum(
     // type check the nested scrutinee
     let typed_value = ty::TyScrutinee::type_check(handler, ctx, value)?;
 
-    let enum_ref = decl_engine.insert(enum_decl);
+    let enum_ref = decl_engine.insert(enum_decl, decl_engine.get_parsed_decl_id(&enum_id).as_ref());
     let typed_scrutinee = ty::TyScrutinee {
         variant: ty::TyScrutineeVariant::EnumScrutinee {
             enum_ref: enum_ref.clone(),

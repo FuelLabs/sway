@@ -4,10 +4,12 @@ use sway_types::{Ident, Named, Span, Spanned};
 
 use crate::{
     engine_threading::*,
-    language::{CallPath, Visibility},
+    language::{parsed::TypeAliasDeclaration, CallPath, Visibility},
     transform,
     type_system::*,
 };
+
+use super::TyDeclParsedType;
 
 #[derive(Clone, Debug)]
 pub struct TyTypeAliasDecl {
@@ -17,6 +19,10 @@ pub struct TyTypeAliasDecl {
     pub ty: TypeArgument,
     pub visibility: Visibility,
     pub span: Span,
+}
+
+impl TyDeclParsedType for TyTypeAliasDecl {
+    type ParsedType = TypeAliasDeclaration;
 }
 
 impl Named for TyTypeAliasDecl {

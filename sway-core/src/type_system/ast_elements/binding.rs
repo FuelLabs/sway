@@ -3,7 +3,7 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclId, DeclRef},
+    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef},
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
     language::{ty, CallPath, QualifiedCallPath},
     semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
@@ -299,10 +299,11 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             }
         }
         // Insert the new copy into the declaration engine.
-        let new_fn_ref = ctx
-            .engines
-            .de()
-            .insert(new_copy)
+        let new_fn_ref = decl_engine
+            .insert(
+                new_copy,
+                decl_engine.get_parsed_decl_id(fn_ref.id()).as_ref(),
+            )
             .with_parent(ctx.engines.de(), fn_ref.id().into());
         Ok((new_fn_ref, None, None))
     }
@@ -339,7 +340,10 @@ impl TypeCheckTypeBinding<ty::TyStructDecl> for TypeBinding<CallPath> {
             &self.span,
         )?;
         // Insert the new copy into the declaration engine.
-        let new_struct_ref = ctx.engines.de().insert(new_copy);
+        let new_struct_ref = decl_engine.insert(
+            new_copy,
+            decl_engine.get_parsed_decl_id(&struct_id).as_ref(),
+        );
         let type_id = type_engine.insert(
             engines,
             TypeInfo::Struct(*new_struct_ref.id()),
@@ -369,17 +373,16 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
         let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
 
         // Get a new copy from the declaration engine.
-        let mut new_copy = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-            enum_ref,
-            ..
-        }) = &unknown_decl
+        let enum_id = if let ty::TyDecl::EnumVariantDecl(ty::EnumVariantDecl { enum_ref, .. }) =
+            &unknown_decl
         {
-            (*decl_engine.get_enum(enum_ref.id())).clone()
+            *enum_ref.id()
         } else {
             // Check to see if this is a enum declaration.
-            let enum_id = unknown_decl.to_enum_id(handler, engines)?;
-            (*decl_engine.get_enum(&enum_id)).clone()
+            unknown_decl.to_enum_id(handler, engines)?
         };
+
+        let mut new_copy = (*decl_engine.get_enum(&enum_id)).clone();
 
         // Monomorphize the copy, in place.
         ctx.monomorphize(
@@ -390,7 +393,8 @@ impl TypeCheckTypeBinding<ty::TyEnumDecl> for TypeBinding<CallPath> {
             &self.span,
         )?;
         // Insert the new copy into the declaration engine.
-        let new_enum_ref = ctx.engines.de().insert(new_copy);
+        let new_enum_ref =
+            decl_engine.insert(new_copy, decl_engine.get_parsed_decl_id(&enum_id).as_ref());
         let type_id = type_engine.insert(
             engines,
             TypeInfo::Enum(*new_enum_ref.id()),

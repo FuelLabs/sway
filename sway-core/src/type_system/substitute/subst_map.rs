@@ -1,5 +1,5 @@
 use crate::{
-    decl_engine::{DeclEngine, DeclEngineInsert},
+    decl_engine::{DeclEngine, DeclEngineGetParsedDeclId, DeclEngineInsert},
     engine_threading::{
         DebugWithEngines, Engines, PartialEqWithEngines, PartialEqWithEnginesContext,
     },
@@ -342,8 +342,8 @@ impl TypeSubstMap {
             TypeInfo::UnknownGeneric { .. } => iter_for_match(engines, self, &type_info),
             TypeInfo::Placeholder(_) => iter_for_match(engines, self, &type_info),
             TypeInfo::TypeParam(_) => None,
-            TypeInfo::Struct(decl_ref) => {
-                let mut decl = (*decl_engine.get_struct(&decl_ref)).clone();
+            TypeInfo::Struct(decl_id) => {
+                let mut decl = (*decl_engine.get_struct(&decl_id)).clone();
                 let mut need_to_create_new = false;
                 for field in &mut decl.fields {
                     if let Some(type_id) = self.find_match(field.type_argument.type_id, engines) {
@@ -358,7 +358,8 @@ impl TypeSubstMap {
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref = decl_engine.insert(decl);
+                    let new_decl_ref =
+                        decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&decl_id).as_ref());
                     Some(type_engine.insert(
                         engines,
                         TypeInfo::Struct(*new_decl_ref.id()),
@@ -368,8 +369,8 @@ impl TypeSubstMap {
                     None
                 }
             }
-            TypeInfo::Enum(decl_ref) => {
-                let mut decl = (*decl_engine.get_enum(&decl_ref)).clone();
+            TypeInfo::Enum(decl_id) => {
+                let mut decl = (*decl_engine.get_enum(&decl_id)).clone();
                 let mut need_to_create_new = false;
 
                 for variant in &mut decl.variants {
@@ -386,7 +387,8 @@ impl TypeSubstMap {
                     }
                 }
                 if need_to_create_new {
-                    let new_decl_ref = decl_engine.insert(decl);
+                    let new_decl_ref =
+                        decl_engine.insert(decl, decl_engine.get_parsed_decl_id(&decl_id).as_ref());
                     Some(type_engine.insert(
                         engines,
                         TypeInfo::Enum(*new_decl_ref.id()),

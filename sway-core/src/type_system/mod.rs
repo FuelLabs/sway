@@ -84,14 +84,17 @@ fn generic_enum_resolution() {
 
     let mut call_path: CallPath<BaseIdent> = result_name.clone().into();
     call_path.is_absolute = true;
-    let decl_ref_1 = engines.de().insert(TyEnumDecl {
-        call_path,
-        type_parameters: vec![placeholder_type_param],
-        variants: variant_types,
-        span: sp.clone(),
-        visibility: crate::language::Visibility::Public,
-        attributes: AttributesMap::default(),
-    });
+    let decl_ref_1 = engines.de().insert(
+        TyEnumDecl {
+            call_path,
+            type_parameters: vec![placeholder_type_param],
+            variants: variant_types,
+            span: sp.clone(),
+            visibility: crate::language::Visibility::Public,
+            attributes: AttributesMap::default(),
+        },
+        None,
+    );
     let ty_1 = engines
         .te()
         .insert(&engines, TypeInfo::Enum(*decl_ref_1.id()), None);
@@ -125,14 +128,17 @@ fn generic_enum_resolution() {
 
     let mut call_path: CallPath<BaseIdent> = result_name.into();
     call_path.is_absolute = true;
-    let decl_ref_2 = engines.de().insert(TyEnumDecl {
-        call_path,
-        type_parameters: vec![type_param],
-        variants: variant_types.clone(),
-        span: sp.clone(),
-        visibility: crate::language::Visibility::Public,
-        attributes: AttributesMap::default(),
-    });
+    let decl_ref_2 = engines.de().insert(
+        TyEnumDecl {
+            call_path,
+            type_parameters: vec![type_param],
+            variants: variant_types.clone(),
+            span: sp.clone(),
+            visibility: crate::language::Visibility::Public,
+            attributes: AttributesMap::default(),
+        },
+        None,
+    );
     let ty_2 = engines
         .te()
         .insert(&engines, TypeInfo::Enum(*decl_ref_2.id()), None);
