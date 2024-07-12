@@ -254,63 +254,62 @@ impl Root {
     }
 
     fn item_lookup(
-	&self,
-	handler: &Handler,
-	engines: &Engines,
-	item: &Ident,
-	src: &ModulePath,
-	dst: &ModulePath,
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+        item: &Ident,
+        src: &ModulePath,
+        dst: &ModulePath,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
         let src_items = src_mod.current_items();
 
-	let (decl, path, src_visibility) = 
-            if let Some(decl) = src_items.symbols.get(item) {
-		let visibility = if is_ancestor(src, dst) {
-                    Visibility::Public
-		} else {
-                    decl.visibility(engines)
-		};
-		(decl.clone(), src.to_vec(), visibility)
-            } else if let Some((_, path, decl, reexport)) = src_items.use_item_synonyms.get(item) {
-		(decl.clone(), path.clone(), *reexport)
-            } else if let Some(decls) = src_items.use_glob_synonyms.get(item) {
-		if decls.len() == 1 {
-                    let (path, decl, reexport) = &decls[0];
-                    (decl.clone(), path.clone(), *reexport)
-		} else if decls.is_empty() {
-                    return Err(handler.emit_err(CompileError::Internal(
+        let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
+            let visibility = if is_ancestor(src, dst) {
+                Visibility::Public
+            } else {
+                decl.visibility(engines)
+            };
+            (decl.clone(), src.to_vec(), visibility)
+        } else if let Some((_, path, decl, reexport)) = src_items.use_item_synonyms.get(item) {
+            (decl.clone(), path.clone(), *reexport)
+        } else if let Some(decls) = src_items.use_glob_synonyms.get(item) {
+            if decls.len() == 1 {
+                let (path, decl, reexport) = &decls[0];
+                (decl.clone(), path.clone(), *reexport)
+            } else if decls.is_empty() {
+                return Err(handler.emit_err(CompileError::Internal(
 			"The name {symbol} was bound in a star import, but no corresponding module paths were found",
 			item.span(),
                     )));
-		} else {
-                    return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
-			name: item.clone(),
-			paths: decls
-                            .iter()
-                            .map(|(path, decl, _)| {
-				let mut path_strs = path.iter().map(|x| x.as_str()).collect::<Vec<_>>();
-				// Add the enum name to the path if the decl is an enum variant.
-				if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
-                                    enum_ref, ..
-				}) = decl.expect_typed_ref()
-				{
-                                    path_strs.push(enum_ref.name().as_str())
-				};
-				path_strs.join("::")
-                            })
-                            .collect(),
-			span: item.span(),
-                    }));
-		}
             } else {
-		// Symbol not found
-		return Err(handler.emit_err(CompileError::SymbolNotFound {
+                return Err(handler.emit_err(CompileError::SymbolWithMultipleBindings {
                     name: item.clone(),
+                    paths: decls
+                        .iter()
+                        .map(|(path, decl, _)| {
+                            let mut path_strs = path.iter().map(|x| x.as_str()).collect::<Vec<_>>();
+                            // Add the enum name to the path if the decl is an enum variant.
+                            if let TyDecl::EnumVariantDecl(ty::EnumVariantDecl {
+                                enum_ref, ..
+                            }) = decl.expect_typed_ref()
+                            {
+                                path_strs.push(enum_ref.name().as_str())
+                            };
+                            path_strs.join("::")
+                        })
+                        .collect(),
                     span: item.span(),
-		}));
-            };
-	
+                }));
+            }
+        } else {
+            // Symbol not found
+            return Err(handler.emit_err(CompileError::SymbolNotFound {
+                name: item.clone(),
+                span: item.span(),
+            }));
+        };
+
         if !src_visibility.is_public() {
             handler.emit_err(CompileError::ImportPrivateSymbol {
                 name: item.clone(),
@@ -318,9 +317,9 @@ impl Root {
             });
         }
 
-	Ok((decl, path))
+        Ok((decl, path))
     }
-    
+
     /// Pull a single `item` from the given `src` module and import it into the `dst` module.
     ///
     /// Paths are assumed to be absolute.
@@ -338,8 +337,8 @@ impl Root {
         self.check_module_privacy(handler, engines, src)?;
         let src_mod = self.module.lookup_submodule(handler, engines, src)?;
 
-	let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
-	
+        let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
+
         let mut impls_to_insert = TraitMap::default();
         if decl.is_typed() {
             // We only handle trait imports when handling typed declarations,
@@ -423,7 +422,7 @@ impl Root {
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
 
-	let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+        let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
 
         match decl {
             ResolvedDeclaration::Parsed(decl) => {
@@ -588,7 +587,7 @@ impl Root {
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
 
-	let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
+        let (decl, path) = self.item_lookup(handler, engines, enum_name, src, dst)?;
 
         match decl {
             ResolvedDeclaration::Parsed(Declaration::EnumDeclaration(decl_id)) => {
