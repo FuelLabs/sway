@@ -43,9 +43,22 @@ impl TypeId {
         handler: &Handler,
         ctx: &mut AbiContext,
         engines: &Engines,
+        resolved_type_id: TypeId,
     ) -> Result<String, ErrorEmitted> {
-        let type_str =
-            self.get_abi_type_str(&ctx.to_str_context(engines, true), engines, self.clone());
+        let type_str = self.get_abi_type_str(
+            &AbiStrContext {
+                program_name: ctx
+                    .program
+                    .root
+                    .namespace
+                    .program_id(engines)
+                    .read(engines, |m| m.name.clone().map(|v| v.as_str().to_string())),
+                abi_with_callpaths: true,
+                abi_with_fully_specified_types: true,
+            },
+            engines,
+            resolved_type_id,
+        );
         let mut hasher = Sha256::new();
         hasher.update(type_str.clone());
         let result = hasher.finalize();
@@ -204,7 +217,7 @@ fn generate_logged_types(
         .iter()
         .map(|(_, type_id)| {
             Ok(program_abi::TypeDeclaration {
-                type_id: type_id.get_abi_type_id(handler, ctx, engines)?,
+                type_id: type_id.get_abi_type_id(handler, ctx, engines, *type_id)?,
                 type_field: type_id.get_abi_type_str(
                     &ctx.to_str_context(engines, false),
                     engines,
@@ -237,7 +250,7 @@ fn generate_logged_types(
                     log_id: log_id.to_string(),
                     application: program_abi::TypeApplication {
                         name: "".to_string(),
-                        type_id: type_id.get_abi_type_id(handler, ctx, engines)?,
+                        type_id: type_id.get_abi_type_id(handler, ctx, engines, *type_id)?,
                         type_arguments: type_id
                             .get_abi_type_arguments(handler, ctx, engines, types, *type_id)?,
                     },
@@ -263,7 +276,7 @@ fn generate_messages_types(
         .iter()
         .map(|(_, type_id)| {
             Ok(program_abi::TypeDeclaration {
-                type_id: type_id.get_abi_type_id(handler, ctx, engines)?,
+                type_id: type_id.get_abi_type_id(handler, ctx, engines, *type_id)?,
                 type_field: type_id.get_abi_type_str(
                     &ctx.to_str_context(engines, false),
                     engines,
@@ -289,7 +302,7 @@ fn generate_messages_types(
                 message_id: **message_id as u64,
                 application: program_abi::TypeApplication {
                     name: "".to_string(),
-                    type_id: type_id.get_abi_type_id(handler, ctx, engines)?,
+                    type_id: type_id.get_abi_type_id(handler, ctx, engines, *type_id)?,
                     type_arguments: type_id
                         .get_abi_type_arguments(handler, ctx, engines, types, *type_id)?,
                 },
@@ -311,10 +324,12 @@ fn generate_configurables(
         .iter()
         .map(|decl| {
             Ok(program_abi::TypeDeclaration {
-                type_id: decl
-                    .type_ascription
-                    .type_id
-                    .get_abi_type_id(handler, ctx, engines)?,
+                type_id: decl.type_ascription.type_id.get_abi_type_id(
+                    handler,
+                    ctx,
+                    engines,
+                    decl.type_ascription.type_id,
+                )?,
                 type_field: decl.type_ascription.type_id.get_abi_type_str(
                     &ctx.to_str_context(engines, false),
                     engines,
@@ -350,10 +365,12 @@ fn generate_configurables(
                 name: decl.call_path.suffix.to_string(),
                 application: program_abi::TypeApplication {
                     name: "".to_string(),
-                    type_id: decl
-                        .type_ascription
-                        .type_id
-                        .get_abi_type_id(handler, ctx, engines)?,
+                    type_id: decl.type_ascription.type_id.get_abi_type_id(
+                        handler,
+                        ctx,
+                        engines,
+                        decl.type_ascription.type_id,
+                    )?,
                     type_arguments: decl.type_ascription.type_id.get_abi_type_arguments(
                         handler,
                         ctx,
@@ -417,10 +434,12 @@ impl TypeId {
                     .iter()
                     .map(|x| {
                         Ok(program_abi::TypeDeclaration {
-                            type_id: x
-                                .type_argument
-                                .initial_type_id
-                                .get_abi_type_id(handler, ctx, engines)?,
+                            type_id: x.type_argument.initial_type_id.get_abi_type_id(
+                                handler,
+                                ctx,
+                                engines,
+                                x.type_argument.type_id,
+                            )?,
                             type_field: x.type_argument.initial_type_id.get_abi_type_str(
                                 &ctx.to_str_context(engines, false),
                                 engines,
@@ -456,10 +475,12 @@ impl TypeId {
                         .map(|x| {
                             Ok(program_abi::TypeApplication {
                                 name: x.name.to_string(),
-                                type_id: x
-                                    .type_argument
-                                    .initial_type_id
-                                    .get_abi_type_id(handler, ctx, engines)?,
+                                type_id: x.type_argument.initial_type_id.get_abi_type_id(
+                                    handler,
+                                    ctx,
+                                    engines,
+                                    x.type_argument.type_id,
+                                )?,
                                 type_arguments: x
                                     .type_argument
                                     .initial_type_id
@@ -484,10 +505,12 @@ impl TypeId {
                     .iter()
                     .map(|x| {
                         Ok(program_abi::TypeDeclaration {
-                            type_id: x
-                                .type_argument
-                                .initial_type_id
-                                .get_abi_type_id(handler, ctx, engines)?,
+                            type_id: x.type_argument.initial_type_id.get_abi_type_id(
+                                handler,
+                                ctx,
+                                engines,
+                                x.type_argument.type_id,
+                            )?,
                             type_field: x.type_argument.initial_type_id.get_abi_type_str(
                                 &ctx.to_str_context(engines, false),
                                 engines,
@@ -523,10 +546,12 @@ impl TypeId {
                         .map(|x| {
                             Ok(program_abi::TypeApplication {
                                 name: x.name.to_string(),
-                                type_id: x
-                                    .type_argument
-                                    .initial_type_id
-                                    .get_abi_type_id(handler, ctx, engines)?,
+                                type_id: x.type_argument.initial_type_id.get_abi_type_id(
+                                    handler,
+                                    ctx,
+                                    engines,
+                                    x.type_argument.type_id,
+                                )?,
                                 type_arguments: x
                                     .type_argument
                                     .initial_type_id
@@ -546,9 +571,12 @@ impl TypeId {
                 if let TypeInfo::Array(elem_ty, _) = &*type_engine.get(resolved_type_id) {
                     // The `program_abi::TypeDeclaration`s needed for the array element type
                     let elem_abi_ty = program_abi::TypeDeclaration {
-                        type_id: elem_ty
-                            .initial_type_id
-                            .get_abi_type_id(handler, ctx, engines)?,
+                        type_id: elem_ty.initial_type_id.get_abi_type_id(
+                            handler,
+                            ctx,
+                            engines,
+                            elem_ty.type_id,
+                        )?,
                         type_field: elem_ty.initial_type_id.get_abi_type_str(
                             &ctx.to_str_context(engines, false),
                             engines,
@@ -575,9 +603,12 @@ impl TypeId {
                     // `program_abi::TypeApplication` for the array element type
                     Some(vec![program_abi::TypeApplication {
                         name: "__array_element".to_string(),
-                        type_id: elem_ty
-                            .initial_type_id
-                            .get_abi_type_id(handler, ctx, engines)?,
+                        type_id: elem_ty.initial_type_id.get_abi_type_id(
+                            handler,
+                            ctx,
+                            engines,
+                            elem_ty.type_id,
+                        )?,
                         type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
                             handler,
                             ctx,
@@ -599,7 +630,7 @@ impl TypeId {
                             Ok(program_abi::TypeDeclaration {
                                 type_id: x
                                     .initial_type_id
-                                    .get_abi_type_id(handler, ctx, engines)?,
+                                    .get_abi_type_id(handler, ctx, engines, x.type_id)?,
                                 type_field: x.initial_type_id.get_abi_type_str(
                                     &ctx.to_str_context(engines, false),
                                     engines,
@@ -627,7 +658,7 @@ impl TypeId {
                                     name: "__tuple_element".to_string(),
                                     type_id: x
                                         .initial_type_id
-                                        .get_abi_type_id(handler, ctx, engines)?,
+                                        .get_abi_type_id(handler, ctx, engines, x.type_id)?,
                                     type_arguments: x.initial_type_id.get_abi_type_arguments(
                                         handler, ctx, engines, types, x.type_id,
                                     )?,
@@ -656,7 +687,7 @@ impl TypeId {
                             Ok(program_abi::TypeDeclaration {
                                 type_id: v
                                     .initial_type_id
-                                    .get_abi_type_id(handler, ctx, engines)?,
+                                    .get_abi_type_id(handler, ctx, engines, p.type_id)?,
                                 type_field: v.initial_type_id.get_abi_type_str(
                                     &ctx.to_str_context(engines, false),
                                     engines,
@@ -736,7 +767,9 @@ impl TypeId {
                     .zip(resolved_params.iter())
                     .map(|(v, p)| {
                         Ok(program_abi::TypeDeclaration {
-                            type_id: v.initial_type_id.get_abi_type_id(handler, ctx, engines)?,
+                            type_id: v
+                                .initial_type_id
+                                .get_abi_type_id(handler, ctx, engines, p.type_id)?,
                             type_field: v.initial_type_id.get_abi_type_str(
                                 &ctx.to_str_context(engines, false),
                                 engines,
@@ -758,7 +791,12 @@ impl TypeId {
                     .map(|arg| {
                         Ok(program_abi::TypeApplication {
                             name: "".to_string(),
-                            type_id: arg.initial_type_id.get_abi_type_id(handler, ctx, engines)?,
+                            type_id: arg.initial_type_id.get_abi_type_id(
+                                handler,
+                                ctx,
+                                engines,
+                                arg.type_id,
+                            )?,
                             type_arguments: arg.initial_type_id.get_abi_type_arguments(
                                 handler,
                                 ctx,
@@ -778,7 +816,9 @@ impl TypeId {
                     .iter()
                     .map(|v| {
                         Ok(program_abi::TypeDeclaration {
-                            type_id: v.type_id.get_abi_type_id(handler, ctx, engines)?,
+                            type_id: v
+                                .type_id
+                                .get_abi_type_id(handler, ctx, engines, v.type_id)?,
                             type_field: v.type_id.get_abi_type_str(
                                 &ctx.to_str_context(engines, false),
                                 engines,
@@ -801,7 +841,12 @@ impl TypeId {
                         .map(|arg| {
                             Ok(program_abi::TypeApplication {
                                 name: "".to_string(),
-                                type_id: arg.type_id.get_abi_type_id(handler, ctx, engines)?,
+                                type_id: arg.type_id.get_abi_type_id(
+                                    handler,
+                                    ctx,
+                                    engines,
+                                    arg.type_id,
+                                )?,
                                 type_arguments: arg.type_id.get_abi_type_arguments(
                                     handler,
                                     ctx,
@@ -823,7 +868,9 @@ impl TypeId {
                     .iter()
                     .map(|v| {
                         Ok(program_abi::TypeDeclaration {
-                            type_id: v.type_id.get_abi_type_id(handler, ctx, engines)?,
+                            type_id: v
+                                .type_id
+                                .get_abi_type_id(handler, ctx, engines, v.type_id)?,
                             type_field: v.type_id.get_abi_type_str(
                                 &ctx.to_str_context(engines, false),
                                 engines,
@@ -846,7 +893,12 @@ impl TypeId {
                         .map(|arg| {
                             Ok(program_abi::TypeApplication {
                                 name: "".to_string(),
-                                type_id: arg.type_id.get_abi_type_id(handler, ctx, engines)?,
+                                type_id: arg.type_id.get_abi_type_id(
+                                    handler,
+                                    ctx,
+                                    engines,
+                                    arg.type_id,
+                                )?,
                                 type_arguments: arg.type_id.get_abi_type_arguments(
                                     handler,
                                     ctx,
@@ -878,10 +930,12 @@ impl TyFunctionDecl {
             .iter()
             .map(|x| {
                 Ok(program_abi::TypeDeclaration {
-                    type_id: x
-                        .type_argument
-                        .initial_type_id
-                        .get_abi_type_id(handler, ctx, engines)?,
+                    type_id: x.type_argument.initial_type_id.get_abi_type_id(
+                        handler,
+                        ctx,
+                        engines,
+                        x.type_argument.type_id,
+                    )?,
                     type_field: x.type_argument.initial_type_id.get_abi_type_str(
                         &ctx.to_str_context(engines, false),
                         engines,
@@ -907,10 +961,12 @@ impl TyFunctionDecl {
 
         // The single `program_abi::TypeDeclaration` needed for the output
         let output_type = program_abi::TypeDeclaration {
-            type_id: self
-                .return_type
-                .initial_type_id
-                .get_abi_type_id(handler, ctx, engines)?,
+            type_id: self.return_type.initial_type_id.get_abi_type_id(
+                handler,
+                ctx,
+                engines,
+                self.return_type.type_id,
+            )?,
             type_field: self.return_type.initial_type_id.get_abi_type_str(
                 &ctx.to_str_context(engines, false),
                 engines,
@@ -945,10 +1001,12 @@ impl TyFunctionDecl {
                 .map(|x| {
                     Ok(program_abi::TypeApplication {
                         name: x.name.to_string(),
-                        type_id: x
-                            .type_argument
-                            .initial_type_id
-                            .get_abi_type_id(handler, ctx, engines)?,
+                        type_id: x.type_argument.initial_type_id.get_abi_type_id(
+                            handler,
+                            ctx,
+                            engines,
+                            x.type_argument.type_id,
+                        )?,
                         type_arguments: x.type_argument.initial_type_id.get_abi_type_arguments(
                             handler,
                             ctx,
@@ -961,10 +1019,12 @@ impl TyFunctionDecl {
                 .collect::<Result<Vec<_>, _>>()?,
             output: program_abi::TypeApplication {
                 name: "".to_string(),
-                type_id: self
-                    .return_type
-                    .initial_type_id
-                    .get_abi_type_id(handler, ctx, engines)?,
+                type_id: self.return_type.initial_type_id.get_abi_type_id(
+                    handler,
+                    ctx,
+                    engines,
+                    self.return_type.type_id,
+                )?,
                 type_arguments: self.return_type.initial_type_id.get_abi_type_arguments(
                     handler,
                     ctx,
@@ -1008,7 +1068,7 @@ impl TypeParameter {
     ) -> Result<String, ErrorEmitted> {
         let type_id = self
             .initial_type_id
-            .get_abi_type_id(handler, ctx, engines)?;
+            .get_abi_type_id(handler, ctx, engines, self.type_id)?;
         let type_parameter = program_abi::TypeDeclaration {
             type_id: type_id.clone(),
             type_field: self.initial_type_id.get_abi_type_str(
