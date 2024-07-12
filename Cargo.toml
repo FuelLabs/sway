@@ -49,7 +49,7 @@ fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/new
 fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/new-fuel-abi-spec" }
 
 # Dependencies from the `forc-wallet` repository:
-forc-wallet = "0.8.2"
+forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "esdrubal/abi_changes" }
 
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = "0.6.0"
