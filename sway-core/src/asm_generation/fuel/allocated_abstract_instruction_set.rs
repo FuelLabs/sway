@@ -121,14 +121,14 @@ impl AllocatedAbstractInstructionSet {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::PSHL(mask_l)),
                             comment: "Save registers 16..40".into(),
-                            owning_span: None,
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_h.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::PSHH(mask_h)),
                             comment: "Save registers 40..64".into(),
-                            owning_span: None,
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                 }
@@ -147,14 +147,14 @@ impl AllocatedAbstractInstructionSet {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::POPH(mask_h)),
                             comment: "Restore registers 40..64".into(),
-                            owning_span: None,
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                     if mask_l.value != 0 {
                         new_ops.push(AllocatedAbstractOp {
                             opcode: Either::Left(AllocatedOpcode::POPL(mask_l)),
                             comment: "Restore registers 16..40".into(),
-                            owning_span: None,
+                            owning_span: op.owning_span.clone(),
                         });
                     }
                 }

@@ -119,7 +119,7 @@ impl DocBlock for TyDecl {
             TyDecl::TraitDecl(_) => "trait",
             TyDecl::AbiDecl(_) => "abi",
             TyDecl::StorageDecl(_) => "contract_storage",
-            TyDecl::ImplTrait(_) => "impl_trait",
+            TyDecl::ImplSelfOrTrait(_) => "impl_trait",
             TyDecl::FunctionDecl(_) => "fn",
             TyDecl::ConstantDecl(_) => "constant",
             TyDecl::TypeAliasDecl(_) => "type_alias",

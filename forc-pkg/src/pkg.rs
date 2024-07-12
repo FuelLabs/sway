@@ -263,6 +263,8 @@ pub struct PrintOpts {
     pub asm: PrintAsm,
     /// Print the bytecode. This is the final output of the compiler.
     pub bytecode: bool,
+    /// Print the original source code together with bytecode.
+    pub bytecode_spans: bool,
     /// Print the generated Sway IR (Intermediate Representation).
     pub ir: PrintIr,
     /// Output build errors and warnings in reverse order.
@@ -1557,7 +1559,10 @@ pub fn sway_build_config(
     .with_print_dca_graph(build_profile.print_dca_graph.clone())
     .with_print_dca_graph_url_format(build_profile.print_dca_graph_url_format.clone())
     .with_print_asm(build_profile.print_asm)
-    .with_print_bytecode(build_profile.print_bytecode)
+    .with_print_bytecode(
+        build_profile.print_bytecode,
+        build_profile.print_bytecode_spans,
+    )
     .with_print_ir(build_profile.print_ir.clone())
     .with_include_tests(build_profile.include_tests)
     .with_time_phases(build_profile.time_phases)
@@ -1754,7 +1759,7 @@ pub fn compile(
     pkg: &PackageDescriptor,
     profile: &BuildProfile,
     engines: &Engines,
-    namespace: namespace::Root,
+    namespace: &mut namespace::Root,
     source_map: &mut SourceMap,
 ) -> Result<CompiledPackage> {
     let mut metrics = PerformanceData::default();
@@ -2087,6 +2092,7 @@ fn build_profile_from_opts(
     profile.print_ir |= print.ir.clone();
     profile.print_asm |= print.asm;
     profile.print_bytecode |= print.bytecode;
+    profile.print_bytecode_spans |= print.bytecode_spans;
     profile.terse |= pkg.terse;
     profile.time_phases |= time_phases;
     if profile.metrics_outfile.is_none() {
@@ -2367,7 +2373,7 @@ pub fn build(
 
             // `ContractIdConst` is a None here since we do not yet have a
             // contract ID value at this point.
-            let dep_namespace = match dependency_namespace(
+            let mut dep_namespace = match dependency_namespace(
                 &lib_namespace_map,
                 &compiled_contract_deps,
                 plan.graph(),
@@ -2384,7 +2390,7 @@ pub fn build(
                 &descriptor,
                 &profile,
                 &engines,
-                dep_namespace,
+                &mut dep_namespace,
                 &mut source_map,
             )?;
 
@@ -2431,7 +2437,7 @@ pub fn build(
         };
 
         // Note that the contract ID value here is only Some if tests are enabled.
-        let dep_namespace = match dependency_namespace(
+        let mut dep_namespace = match dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             plan.graph(),
@@ -2457,7 +2463,7 @@ pub fn build(
             &descriptor,
             &profile,
             &engines,
-            dep_namespace,
+            &mut dep_namespace,
             &mut source_map,
         )?;
 
@@ -2666,7 +2672,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
-        let dep_namespace = dependency_namespace(
+        let mut dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
             &plan.graph,
@@ -2697,7 +2703,7 @@ pub fn check(
             &handler,
             engines,
             input,
-            dep_namespace,
+            &mut dep_namespace,
             Some(&build_config),
             &pkg.name,
             retrigger_compilation.clone(),

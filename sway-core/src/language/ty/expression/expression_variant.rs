@@ -1348,8 +1348,8 @@ fn find_const_decl_from_impl(
     const_decl: &TyConstantDecl,
 ) -> Option<TyConstantDecl> {
     match implementing_type {
-        TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {
-            let impl_trait = decl_engine.get_impl_trait(&decl_id.clone());
+        TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id, .. }) => {
+            let impl_trait = decl_engine.get_impl_self_or_trait(&decl_id.clone());
             impl_trait
                 .items
                 .iter()

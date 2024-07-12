@@ -404,7 +404,9 @@ impl TyExpression {
             TyExpressionVariant::FunctionApplication {
                 call_path, fn_ref, ..
             } => {
-                if let Some(TyDecl::ImplTrait(t)) = &engines.de().get(fn_ref).implementing_type {
+                if let Some(TyDecl::ImplSelfOrTrait(t)) =
+                    &engines.de().get(fn_ref).implementing_type
+                {
                     let t = &engines.de().get(&t.decl_id).implementing_for;
                     if let TypeInfo::Struct(struct_id) = &*engines.te().get(t.type_id) {
                         let s = engines.de().get(struct_id);

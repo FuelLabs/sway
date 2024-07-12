@@ -28,7 +28,7 @@ pub enum TyDecl {
     StructDecl(StructDecl),
     EnumDecl(EnumDecl),
     EnumVariantDecl(EnumVariantDecl),
-    ImplTrait(ImplTrait),
+    ImplSelfOrTrait(ImplSelfOrTrait),
     AbiDecl(AbiDecl),
     // If type parameters are defined for a function, they are put in the namespace just for
     // the body of that function.
@@ -81,8 +81,8 @@ pub struct EnumVariantDecl {
 }
 
 #[derive(Clone, Debug)]
-pub struct ImplTrait {
-    pub decl_id: DeclId<TyImplTrait>,
+pub struct ImplSelfOrTrait {
+    pub decl_id: DeclId<TyImplSelfOrTrait>,
 }
 
 #[derive(Clone, Debug)]
@@ -151,8 +151,8 @@ impl PartialEqWithEngines for TyDecl {
                         .eq(&decl_engine.get_enum(r_enum), ctx)
             }
             (
-                TyDecl::ImplTrait(ImplTrait { decl_id: lid, .. }),
-                TyDecl::ImplTrait(ImplTrait { decl_id: rid, .. }),
+                TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id: lid, .. }),
+                TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id: rid, .. }),
             ) => decl_engine.get(lid).eq(&decl_engine.get(rid), ctx),
             (
                 TyDecl::AbiDecl(AbiDecl { decl_id: lid, .. }),
@@ -220,7 +220,7 @@ impl HashWithEngines for TyDecl {
                 enum_ref.hash(state, engines);
                 variant_name.hash(state);
             }
-            TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {
+            TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id, .. }) => {
                 decl_engine.get(decl_id).hash(state, engines);
             }
             TyDecl::AbiDecl(AbiDecl { decl_id, .. }) => {
@@ -260,7 +260,7 @@ impl SubstTypes for TyDecl {
             TyDecl::EnumVariantDecl(EnumVariantDecl {
                 ref mut enum_ref, ..
             }) => enum_ref.subst(type_mapping, engines),
-            TyDecl::ImplTrait(ImplTrait {
+            TyDecl::ImplSelfOrTrait(ImplSelfOrTrait {
                 ref mut decl_id, ..
             }) => decl_id.subst(type_mapping, engines),
             TyDecl::TypeAliasDecl(TypeAliasDecl {
@@ -304,8 +304,8 @@ impl SpannedWithEngines for TyDecl {
                 engines.de().get_struct(decl_id).span.clone()
             }
             TyDecl::EnumDecl(EnumDecl { decl_id }) => engines.de().get_enum(decl_id).span.clone(),
-            TyDecl::ImplTrait(ImplTrait { decl_id }) => {
-                engines.de().get_impl_trait(decl_id).span.clone()
+            TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id }) => {
+                engines.de().get_impl_self_or_trait(decl_id).span.clone()
             }
             TyDecl::AbiDecl(AbiDecl { decl_id }) => engines.de().get_abi(decl_id).span.clone(),
             TyDecl::VariableDecl(decl) => decl.name.span(),
@@ -369,7 +369,7 @@ impl DisplayWithEngines for TyDecl {
                 TyDecl::EnumDecl(EnumDecl { decl_id }) => {
                     engines.de().get(decl_id).name().as_str().into()
                 }
-                TyDecl::ImplTrait(ImplTrait { decl_id }) => {
+                TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id }) => {
                     engines.de().get(decl_id).name().as_str().into()
                 }
                 TyDecl::TypeAliasDecl(TypeAliasDecl { decl_id }) =>
@@ -433,7 +433,7 @@ impl CollectTypesMetadata for TyDecl {
             | TyDecl::StructDecl(_)
             | TyDecl::EnumDecl(_)
             | TyDecl::EnumVariantDecl(_)
-            | TyDecl::ImplTrait(_)
+            | TyDecl::ImplSelfOrTrait(_)
             | TyDecl::AbiDecl(_)
             | TyDecl::TypeAliasDecl(_)
             | TyDecl::TraitTypeDecl(_)
@@ -467,7 +467,7 @@ impl GetDeclIdent for TyDecl {
             TyDecl::EnumDecl(EnumDecl { decl_id }) => {
                 Some(engines.de().get(decl_id).name().clone())
             }
-            TyDecl::ImplTrait(ImplTrait { decl_id }) => {
+            TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id }) => {
                 Some(engines.de().get(decl_id).name().clone())
             }
             TyDecl::AbiDecl(AbiDecl { decl_id }) => Some(engines.de().get(decl_id).name().clone()),
@@ -645,8 +645,8 @@ impl TyDecl {
         let decl_engine = engines.de();
         let type_engine = engines.te();
         match self {
-            TyDecl::ImplTrait(ImplTrait { decl_id, .. }) => {
-                let decl = decl_engine.get_impl_trait(decl_id);
+            TyDecl::ImplSelfOrTrait(ImplSelfOrTrait { decl_id, .. }) => {
+                let decl = decl_engine.get_impl_self_or_trait(decl_id);
                 let implementing_for_type_id_arc = type_engine.get(decl.implementing_for.type_id);
                 let implementing_for_type_id = &*implementing_for_type_id_arc;
                 format!(
@@ -682,7 +682,7 @@ impl TyDecl {
             StructDecl(_) => "struct",
             EnumDecl(_) => "enum",
             EnumVariantDecl(_) => "enum variant",
-            ImplTrait(_) => "impl trait",
+            ImplSelfOrTrait(_) => "impl trait",
             AbiDecl(_) => "abi",
             GenericTypeForFunctionScope(_) => "generic type parameter",
             ErrorRecovery(_, _) => "error",
@@ -780,7 +780,7 @@ impl TyDecl {
                 decl_engine.get_type_alias(decl_id).visibility
             }
             TyDecl::GenericTypeForFunctionScope(_)
-            | TyDecl::ImplTrait(_)
+            | TyDecl::ImplSelfOrTrait(_)
             | TyDecl::StorageDecl(_)
             | TyDecl::AbiDecl(_)
             | TyDecl::TraitTypeDecl(_)
@@ -838,9 +838,9 @@ impl From<DeclRef<DeclId<TyTraitDecl>>> for TyDecl {
     }
 }
 
-impl From<DeclRef<DeclId<TyImplTrait>>> for TyDecl {
-    fn from(decl_ref: DeclRef<DeclId<TyImplTrait>>) -> Self {
-        TyDecl::ImplTrait(ImplTrait {
+impl From<DeclRef<DeclId<TyImplSelfOrTrait>>> for TyDecl {
+    fn from(decl_ref: DeclRef<DeclId<TyImplSelfOrTrait>>) -> Self {
+        TyDecl::ImplSelfOrTrait(ImplSelfOrTrait {
             decl_id: *decl_ref.id(),
         })
     }

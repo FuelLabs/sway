@@ -236,7 +236,7 @@ impl TyAstNode {
                     }
                     allow_deprecated.exit(token);
                 }
-                TyDecl::ImplTrait(decl) => {
+                TyDecl::ImplSelfOrTrait(decl) => {
                     let decl = engines.de().get(&decl.decl_id);
                     for item in decl.items.iter() {
                         match item {
@@ -293,7 +293,7 @@ impl TyAstNode {
                         let _ = fn_decl_id.type_check_analyze(handler, &mut ctx);
                         let _ = ctx.check_recursive_calls(handler);
                     }
-                    TyDecl::ImplTrait(decl) => {
+                    TyDecl::ImplSelfOrTrait(decl) => {
                         let decl = engines.de().get(&decl.decl_id);
                         for item in decl.items.iter() {
                             let mut ctx = TypeCheckAnalysisContext::new(engines);
@@ -321,7 +321,7 @@ impl TyAstNode {
     pub fn contract_fns(&self, engines: &Engines) -> Vec<DeclRefFunction> {
         let mut fns = vec![];
 
-        if let TyAstNodeContent::Declaration(TyDecl::ImplTrait(decl)) = &self.content {
+        if let TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(decl)) = &self.content {
             let decl = engines.de().get(&decl.decl_id);
             if decl.is_impl_contract(engines.te()) {
                 for item in &decl.items {

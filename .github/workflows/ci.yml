@@ -341,7 +341,7 @@ jobs:
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
-          fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
+          fuel-core run --db-type in-memory --debug & 
           sleep 5 &&
           cargo run --locked --release --bin test -- --locked
 
@@ -364,7 +364,7 @@ jobs:
           mv fuel-core-${{ needs.get-fuel-core-version.outputs.fuel_core_version }}-x86_64-unknown-linux-gnu/fuel-core /usr/local/bin/fuel-core
       - name: Cargo Run E2E Tests (Fuel VM)
         run: |
-          fuel-core run --db-type in-memory --debug --snapshot ./.github/workflows/local-testnode & 
+          fuel-core run --db-type in-memory --debug & 
           sleep 5 &&
           cargo run --locked --release --bin test -- --locked --release
 
