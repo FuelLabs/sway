@@ -2,7 +2,7 @@
 
 The Sway Core Library, like the name suggests contains core operators and logic for the primitive types of the Sway programming language. These traits and methods are an extension of the [primitive types](https://docs.fuel.network/docs/sway/basics/built_in_types/#primitive-types) `u8`, `u16`, `u32`, `u64`, `u256`, `str[]`, `str`, `bool` and , `b256` and can be used where appropriate.
 
-The latest core library documentation can be found in the [Core Library Book](https://fuellabs.github.io/sway/master/core/). If the latest version is not compatible please refer to the appropriate tagged release.
+The latest core library documentation can be found [here](https://fuellabs.github.io/sway/master/core/). If the latest version is not compatible please refer to the appropriate tagged release.
 
 ## Using the Core Library
 
@@ -16,11 +16,7 @@ let val_2 = 2;
 let result = val_1 % val_2;
 ```
 
-Developers don't need to concern themselves with underflows and overflows because the Sway compiler automatically manages these issues during execution.
-
 ## Core Library Prelude
-
-Sway core operations and logic are limited to their respective types. In other words, intuitively, the add `+` operation will be available for all unsigned integers in Sway but not for booleans.
 
 The prelude contains a list of operations essential to all Sway programs. The latest version of the prelude can be found [here](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/prelude.sw).
 
@@ -33,7 +29,7 @@ The prelude contains a list of operations essential to all Sway programs. The la
 - [`core::str::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/str.sw) a module dealing with `str` slices like `len` or conversions like `from_str_array`.
 - [`core::codec::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/codec.sw) a module to encode and decode data structures.
 
-For the full list of traits and methods available for each primitive type, please refer to the chart below or the [Core Library Book](https://fuellabs.github.io/sway/master/core/index.html).
+For the full list of traits and methods available for each primitive type, please refer to the chart below or the core library documentation [here](https://fuellabs.github.io/sway/master/core/index.html).
 
 | Primitive Type                                                                 | Description                      |
 | ------------------------------------------------------------------------------ | -------------------------------- |
