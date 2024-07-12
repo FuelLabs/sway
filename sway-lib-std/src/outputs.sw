@@ -38,6 +38,8 @@ pub enum Output {
     Change: (),
     /// A variable output.
     Variable: (),
+    /// A contract deployment.
+    ContractCreated: (),
 }
 
 /// Get the type of an output at `index`.
@@ -66,6 +68,7 @@ pub enum Output {
 ///         Output::Contract => { log("The output is a contract") },
 ///         Output::Change => { log("The output is change") },
 ///         Output::Variable => { log("The output is a variable") },
+///         Output::ContractCreated => { log("The output is a contract creation") },
 ///     };
 /// }
 /// ```
@@ -75,6 +78,7 @@ pub fn output_type(index: u64) -> Output {
         1u8 => Output::Contract,
         2u8 => Output::Change,
         3u8 => Output::Variable,
+        4u8 => Output::ContractCreated,
         _ => revert(0),
     }
 }
@@ -193,6 +197,7 @@ pub fn output_amount(index: u64) -> u64 {
                 r1: u64
             }
         },
+        Output::ContractCreated => revert(0),
     }
 }
 
@@ -255,5 +260,18 @@ pub fn output_asset_to(index: u64) -> Option<Address> {
     match output_type(index) {
         Output::Coin => Some(__gtf::<Address>(index, GTF_OUTPUT_COIN_TO)),
         _ => None,
+    }
+}
+
+impl core::ops::Eq for Output {
+    fn eq(self, other: Self) -> bool {
+        match (self, other) {
+            (Output::Coin, Output::Coin) => true,
+            (Output::Contract, Output::Contract) => true,
+            (Output::Change, Output::Change) => true,
+            (Output::Variable, Output::Variable) => true,
+            (Output::ContractCreated, Output::ContractCreated) => true,
+            _ => false,
+        }
     }
 }
