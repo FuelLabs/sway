@@ -259,7 +259,9 @@ define_op_codes!(
     ),
     (Croo, CrooOpcode, "croo", (addr: reg, contract: reg)),
     (Csiz, CsizOpcode, "csiz", (ret: reg, contract: reg)),
-    (Ldc, LdcOpcode, "ldc", (contract: reg, addr: reg, size: reg)),
+    (Bsiz, BsizOpcode, "bsiz", (ret: reg, contract: reg)),
+    (Ldc, LdcOpcode, "ldc", (contract: reg, addr: reg, size: reg, mode: imm)),
+    (Bldd, BlddOpcode, "bldd", (dst_ptr: reg, addr: reg, offset: reg, len: reg)),
     (
         Log,
         LogOpcode,

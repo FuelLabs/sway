@@ -485,7 +485,10 @@ impl Op {
                 let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
                 VirtualOp::CSIZ(r1, r2)
             }
-
+            "bsiz" => {
+                let (r1, r2) = two_regs(handler, args, immediate, whole_op_span)?;
+                VirtualOp::BSIZ(r1, r2)
+            }
             "ldc" => {
                 let (r1, r2, r3, i0) = three_regs_imm_06(handler, args, immediate, whole_op_span)?;
                 VirtualOp::LDC(r1, r2, r3, i0)
@@ -986,7 +989,15 @@ fn three_regs_imm_06(
     args: &[VirtualRegister],
     immediate: &Option<Ident>,
     whole_op_span: Span,
-) -> Result<(VirtualRegister, VirtualRegister, VirtualRegister, VirtualImmediate06), ErrorEmitted> {
+) -> Result<
+    (
+        VirtualRegister,
+        VirtualRegister,
+        VirtualRegister,
+        VirtualImmediate06,
+    ),
+    ErrorEmitted,
+> {
     if args.len() > 3 {
         handler.emit_err(CompileError::IncorrectNumberOfAsmRegisters {
             span: whole_op_span.clone(),
@@ -1124,7 +1135,9 @@ impl fmt::Display for VirtualOp {
             CCP(a, b, c, d) => write!(fmtr, "ccp {a} {b} {c} {d}"),
             CROO(a, b) => write!(fmtr, "croo {a} {b}"),
             CSIZ(a, b) => write!(fmtr, "csiz {a} {b}"),
+            BSIZ(a, b) => write!(fmtr, "bsiz {a} {b}"),
             LDC(a, b, c, d) => write!(fmtr, "ldc {a} {b} {c} {d}"),
+            BLDD(a, b, c, d) => write!(fmtr, "bldd {a} {b} {c} {d}"),
             LOG(a, b, c, d) => write!(fmtr, "log {a} {b} {c} {d}"),
             LOGD(a, b, c, d) => write!(fmtr, "logd {a} {b} {c} {d}"),
             MINT(a, b) => write!(fmtr, "mint {a} {b}"),
