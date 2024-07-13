@@ -795,123 +795,400 @@ impl VirtualOp {
         reg_to_reg_map: &IndexMap<&VirtualRegister, &VirtualRegister>,
     ) -> Self {
         use VirtualOp::*;
-        let update = |reg: &VirtualRegister| update_reg(reg_to_reg_map, reg);
-    
-        macro_rules! update_op {
-            ($op:ident, $($reg:expr),*) => {
-                Self::$op($(update($reg)),*)
-            };
-            ($op:ident, $($reg:expr),*, $imm:expr) => {
-                Self::$op($(update($reg)),*, $imm.clone())
-            };
-        }
-    
         match self {
             /* Arithmetic/Logic (ALU) Instructions */
-            ADD(r1, r2, r3) => update_op!(ADD, r1, r2, r3),
-            ADDI(r1, r2, i) => update_op!(ADDI, r1, r2, i),
-            AND(r1, r2, r3) => update_op!(AND, r1, r2, r3),
-            ANDI(r1, r2, i) => update_op!(ANDI, r1, r2, i),
-            DIV(r1, r2, r3) => update_op!(DIV, r1, r2, r3),
-            DIVI(r1, r2, i) => update_op!(DIVI, r1, r2, i),
-            EQ(r1, r2, r3) => update_op!(EQ, r1, r2, r3),
-            EXP(r1, r2, r3) => update_op!(EXP, r1, r2, r3),
-            EXPI(r1, r2, i) => update_op!(EXPI, r1, r2, i),
-            GT(r1, r2, r3) => update_op!(GT, r1, r2, r3),
-            LT(r1, r2, r3) => update_op!(LT, r1, r2, r3),
-            MLOG(r1, r2, r3) => update_op!(MLOG, r1, r2, r3),
-            MOD(r1, r2, r3) => update_op!(MOD, r1, r2, r3),
-            MODI(r1, r2, i) => update_op!(MODI, r1, r2, i),
-            MOVE(r1, r2) => update_op!(MOVE, r1, r2),
-            MOVI(r1, i) => update_op!(MOVI, r1, i),
-            MROO(r1, r2, r3) => update_op!(MROO, r1, r2, r3),
-            MUL(r1, r2, r3) => update_op!(MUL, r1, r2, r3),
-            MULI(r1, r2, i) => update_op!(MULI, r1, r2, i),
+            ADD(r1, r2, r3) => Self::ADD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ADDI(r1, r2, i) => Self::ADDI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            AND(r1, r2, r3) => Self::AND(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ANDI(r1, r2, i) => Self::ANDI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            DIV(r1, r2, r3) => Self::DIV(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            DIVI(r1, r2, i) => Self::DIVI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            EQ(r1, r2, r3) => Self::EQ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            EXP(r1, r2, r3) => Self::EXP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            EXPI(r1, r2, i) => Self::EXPI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            GT(r1, r2, r3) => Self::GT(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            LT(r1, r2, r3) => Self::LT(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            MLOG(r1, r2, r3) => Self::MLOG(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            MOD(r1, r2, r3) => Self::MOD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            MODI(r1, r2, i) => Self::MODI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            MOVE(r1, r2) => Self::MOVE(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            MOVI(r1, i) => Self::MOVI(update_reg(reg_to_reg_map, r1), i.clone()),
+            MROO(r1, r2, r3) => Self::MROO(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            MUL(r1, r2, r3) => Self::MUL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            MULI(r1, r2, i) => Self::MULI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
             NOOP => Self::NOOP,
-            NOT(r1, r2) => update_op!(NOT, r1, r2),
-            OR(r1, r2, r3) => update_op!(OR, r1, r2, r3),
-            ORI(r1, r2, i) => update_op!(ORI, r1, r2, i),
-            SLL(r1, r2, r3) => update_op!(SLL, r1, r2, r3),
-            SLLI(r1, r2, i) => update_op!(SLLI, r1, r2, i),
-            SRL(r1, r2, r3) => update_op!(SRL, r1, r2, r3),
-            SRLI(r1, r2, i) => update_op!(SRLI, r1, r2, i),
-            SUB(r1, r2, r3) => update_op!(SUB, r1, r2, r3),
-            SUBI(r1, r2, i) => update_op!(SUBI, r1, r2, i),
-            XOR(r1, r2, r3) => update_op!(XOR, r1, r2, r3),
-            XORI(r1, r2, i) => update_op!(XORI, r1, r2, i),
-            WQOP(r1, r2, r3, i) => update_op!(WQOP, r1, r2, r3, i),
-            WQML(r1, r2, r3, i) => update_op!(WQML, r1, r2, r3, i),
-            WQDV(r1, r2, r3, i) => update_op!(WQDV, r1, r2, r3, i),
-            WQCM(r1, r2, r3, i) => update_op!(WQCM, r1, r2, r3, i),
-            WQAM(r1, r2, r3, r4) => update_op!(WQAM, r1, r2, r3, r4),
-    
+            NOT(r1, r2) => Self::NOT(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            OR(r1, r2, r3) => Self::OR(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ORI(r1, r2, i) => Self::ORI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            SLL(r1, r2, r3) => Self::SLL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SLLI(r1, r2, i) => Self::SLLI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            SRL(r1, r2, r3) => Self::SRL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SRLI(r1, r2, i) => Self::SRLI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            SUB(r1, r2, r3) => Self::SUB(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SUBI(r1, r2, i) => Self::SUBI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            XOR(r1, r2, r3) => Self::XOR(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            XORI(r1, r2, i) => Self::XORI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            WQOP(r1, r2, r3, i) => Self::WQOP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQML(r1, r2, r3, i) => Self::WQML(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQDV(r1, r2, r3, i) => Self::WQDV(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQCM(r1, r2, r3, i) => Self::WQCM(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                i.clone(),
+            ),
+            WQAM(r1, r2, r3, r4) => Self::WQAM(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+
             /* Control Flow Instructions */
-            JMP(r1) => update_op!(JMP, r1),
+            JMP(r1) => Self::JMP(update_reg(reg_to_reg_map, r1)),
             JI(_) => self.clone(),
-            JNE(r1, r2, r3) => update_op!(JNE, r1, r2, r3),
-            JNEI(r1, r2, i) => update_op!(JNEI, r1, r2, i),
-            JNZI(r1, i) => update_op!(JNZI, r1, i),
-            RET(r1) => update_op!(RET, r1),
-    
+            JNE(r1, r2, r3) => Self::JNE(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            JNEI(r1, r2, i) => Self::JNEI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            JNZI(r1, i) => Self::JNZI(update_reg(reg_to_reg_map, r1), i.clone()),
+            RET(r1) => Self::RET(update_reg(reg_to_reg_map, r1)),
+
             /* Memory Instructions */
-            ALOC(r1) => update_op!(ALOC, r1),
-            CFEI(i) => update_op!(CFEI, i),
-            CFSI(i) => update_op!(CFSI, i),
-            CFE(r1) => update_op!(CFE, r1),
-            CFS(r1) => update_op!(CFS, r1),
-            LB(r1, r2, i) => update_op!(LB, r1, r2, i),
-            LW(r1, r2, i) => update_op!(LW, r1, r2, i),
-            MCL(r1, r2) => update_op!(MCL, r1, r2),
-            MCLI(r1, i) => update_op!(MCLI, r1, i),
-            MCP(r1, r2, r3) => update_op!(MCP, r1, r2, r3),
-            MEQ(r1, r2, r3, r4) => update_op!(MEQ, r1, r2, r3, r4),
-            MCPI(r1, r2, i) => update_op!(MCPI, r1, r2, i),
-            SB(r1, r2, i) => update_op!(SB, r1, r2, i),
-            SW(r1, r2, i) => update_op!(SW, r1, r2, i),
-    
+            ALOC(r1) => Self::ALOC(update_reg(reg_to_reg_map, r1)),
+            CFEI(i) => Self::CFEI(i.clone()),
+            CFSI(i) => Self::CFSI(i.clone()),
+            CFE(r1) => Self::CFE(update_reg(reg_to_reg_map, r1)),
+            CFS(r1) => Self::CFS(update_reg(reg_to_reg_map, r1)),
+            LB(r1, r2, i) => Self::LB(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            LW(r1, r2, i) => Self::LW(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            MCL(r1, r2) => Self::MCL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            MCLI(r1, i) => Self::MCLI(update_reg(reg_to_reg_map, r1), i.clone()),
+            MCP(r1, r2, r3) => Self::MCP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            MEQ(r1, r2, r3, r4) => Self::MEQ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            MCPI(r1, r2, i) => Self::MCPI(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            SB(r1, r2, i) => Self::SB(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+            SW(r1, r2, i) => Self::SW(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+
             /* Contract Instructions */
-            BAL(r1, r2, r3) => update_op!(BAL, r1, r2, r3),
-            BHEI(r1) => update_op!(BHEI, r1),
-            BHSH(r1, r2) => update_op!(BHSH, r1, r2),
-            BURN(r1, r2) => update_op!(BURN, r1, r2),
-            CALL(r1, r2, r3, r4) => update_op!(CALL, r1, r2, r3, r4),
-            CB(r1) => update_op!(CB, r1),
-            CCP(r1, r2, r3, r4) => update_op!(CCP, r1, r2, r3, r4),
-            CROO(r1, r2) => update_op!(CROO, r1, r2),
-            CSIZ(r1, r2) => update_op!(CSIZ, r1, r2),
-            LDC(r1, r2, r3) => update_op!(LDC, r1, r2, r3),
-            LOG(r1, r2, r3, r4) => update_op!(LOG, r1, r2, r3, r4),
-            LOGD(r1, r2, r3, r4) => update_op!(LOGD, r1, r2, r3, r4),
-            MINT(r1, r2) => update_op!(MINT, r1, r2),
-            RETD(r1, r2) => update_op!(RETD, r1, r2),
-            RVRT(r1) => update_op!(RVRT, r1),
-            SMO(r1, r2, r3, r4) => update_op!(SMO, r1, r2, r3, r4),
-            SCWQ(r1, r2, r3) => update_op!(SCWQ, r1, r2, r3),
-            SRW(r1, r2, r3) => update_op!(SRW, r1, r2, r3),
-            SRWQ(r1, r2, r3, r4) => update_op!(SRWQ, r1, r2, r3, r4),
-            SWW(r1, r2, r3) => update_op!(SWW, r1, r2, r3),
-            SWWQ(r1, r2, r3, r4) => update_op!(SWWQ, r1, r2, r3, r4),
-            TIME(r1, r2) => update_op!(TIME, r1, r2),
-            TR(r1, r2, r3) => update_op!(TR, r1, r2, r3),
-            TRO(r1, r2, r3, r4) => update_op!(TRO, r1, r2, r3, r4),
-    
+            BAL(r1, r2, r3) => Self::BAL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            BHEI(r1) => Self::BHEI(update_reg(reg_to_reg_map, r1)),
+            BHSH(r1, r2) => Self::BHSH(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            BURN(r1, r2) => Self::BURN(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            CALL(r1, r2, r3, r4) => Self::CALL(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            CB(r1) => Self::CB(update_reg(reg_to_reg_map, r1)),
+            CCP(r1, r2, r3, r4) => Self::CCP(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            CROO(r1, r2) => Self::CROO(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            CSIZ(r1, r2) => Self::CSIZ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            LDC(r1, r2, r3) => Self::LDC(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            LOG(r1, r2, r3, r4) => Self::LOG(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            LOGD(r1, r2, r3, r4) => Self::LOGD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            MINT(r1, r2) => Self::MINT(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            RETD(r1, r2) => Self::RETD(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            RVRT(reg1) => Self::RVRT(update_reg(reg_to_reg_map, reg1)),
+            SMO(r1, r2, r3, r4) => Self::SMO(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            SCWQ(r1, r2, r3) => Self::SCWQ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SRW(r1, r2, r3) => Self::SRW(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SRWQ(r1, r2, r3, r4) => Self::SRWQ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            SWW(r1, r2, r3) => Self::SWW(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            SWWQ(r1, r2, r3, r4) => Self::SWWQ(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+            TIME(r1, r2) => Self::TIME(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+            ),
+            TR(r1, r2, r3) => Self::TR(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            TRO(r1, r2, r3, r4) => Self::TRO(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+                update_reg(reg_to_reg_map, r4),
+            ),
+
             /* Cryptographic Instructions */
-            ECK1(r1, r2, r3) => update_op!(ECK1, r1, r2, r3),
-            ECR1(r1, r2, r3) => update_op!(ECR1, r1, r2, r3),
-            ED19(r1, r2, r3) => update_op!(ED19, r1, r2, r3),
-            K256(r1, r2, r3) => update_op!(K256, r1, r2, r3),
-            S256(r1, r2, r3) => update_op!(S256, r1, r2, r3),
-    
+            ECK1(r1, r2, r3) => Self::ECK1(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ECR1(r1, r2, r3) => Self::ECR1(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            ED19(r1, r2, r3) => Self::ED19(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            K256(r1, r2, r3) => Self::K256(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+            S256(r1, r2, r3) => Self::S256(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                update_reg(reg_to_reg_map, r3),
+            ),
+
             /* Other Instructions */
-            FLAG(r1) => update_op!(FLAG, r1),
-            GM(r1, i) => update_op!(GM, r1, i),
-            GTF(r1, r2, i) => update_op!(GTF, r1, r2, i),
-    
+            FLAG(r1) => Self::FLAG(update_reg(reg_to_reg_map, r1)),
+            GM(r1, i) => Self::GM(update_reg(reg_to_reg_map, r1), i.clone()),
+            GTF(r1, r2, i) => Self::GTF(
+                update_reg(reg_to_reg_map, r1),
+                update_reg(reg_to_reg_map, r2),
+                i.clone(),
+            ),
+
             /* Non-VM Instructions */
-            BLOB(i) => update_op!(BLOB, i),
+            BLOB(i) => Self::BLOB(i.clone()),
             DataSectionOffsetPlaceholder => Self::DataSectionOffsetPlaceholder,
-            LoadDataId(r1, i) => update_op!(LoadDataId, r1, i),
-            AddrDataId(r1, i) => update_op!(AddrDataId, r1, i),
+            LoadDataId(r1, i) => Self::LoadDataId(update_reg(reg_to_reg_map, r1), i.clone()),
+            AddrDataId(r1, i) => Self::AddrDataId(update_reg(reg_to_reg_map, r1), i.clone()),
             Undefined => Self::Undefined,
         }
     }
