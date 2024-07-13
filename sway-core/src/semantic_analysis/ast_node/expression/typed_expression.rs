@@ -1132,7 +1132,12 @@ impl ty::TyExpression {
 
         // Update `access_type` to be the type of the monomorphized struct after inserting it
         // into the type engine
-        let storage_key_struct_decl_ref = ctx.engines().de().insert(storage_key_struct_decl);
+        let storage_key_struct_decl_ref = decl_engine.insert(
+            storage_key_struct_decl,
+            decl_engine
+                .get_parsed_decl_id(&storage_key_struct_decl_ref)
+                .as_ref(),
+        );
         access_type = type_engine.insert(
             engines,
             TypeInfo::Struct(*storage_key_struct_decl_ref.id()),
@@ -1722,20 +1727,32 @@ impl ty::TyExpression {
                     let method = decl_engine.get_trait_fn(decl_ref);
                     abi_items.push(TyImplItem::Fn(
                         decl_engine
-                            .insert(method.to_dummy_func(
-                                AbiMode::ImplAbiFn(abi_name.suffix.clone(), Some(*abi_ref.id())),
-                                Some(return_type),
-                            ))
+                            .insert(
+                                method.to_dummy_func(
+                                    AbiMode::ImplAbiFn(
+                                        abi_name.suffix.clone(),
+                                        Some(*abi_ref.id()),
+                                    ),
+                                    Some(return_type),
+                                ),
+                                None,
+                            )
                             .with_parent(decl_engine, (*decl_ref.id()).into()),
                     ));
                 }
                 ty::TyTraitInterfaceItem::Constant(decl_ref) => {
                     let const_decl = decl_engine.get_constant(decl_ref);
-                    abi_items.push(TyImplItem::Constant(decl_engine.insert_arc(const_decl)));
+                    abi_items.push(TyImplItem::Constant(decl_engine.insert_arc(
+                        const_decl,
+                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                    )));
                 }
                 ty::TyTraitInterfaceItem::Type(decl_ref) => {
                     let type_decl = decl_engine.get_type(decl_ref);
-                    abi_items.push(TyImplItem::Type(decl_engine.insert_arc(type_decl)));
+                    abi_items.push(TyImplItem::Type(decl_engine.insert_arc(
+                        type_decl,
+                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                    )));
                 }
             }
         }

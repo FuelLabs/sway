@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use crate::{
     build_config::ExperimentalFlags,
-    decl_engine::{DeclEngineGet, DeclEngineInsert, DeclRefFunction},
+    decl_engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction},
     engine_threading::*,
     language::{
         parsed::TreeType,
@@ -904,7 +904,10 @@ impl<'a> TypeCheckContext<'a> {
                 )?;
 
                 // insert the new copy in the decl engine
-                let new_decl_ref = decl_engine.insert(new_copy);
+                let new_decl_ref = decl_engine.insert(
+                    new_copy,
+                    decl_engine.get_parsed_decl_id(&original_id).as_ref(),
+                );
 
                 // create the type id from the copy
                 type_engine.insert(
@@ -931,7 +934,10 @@ impl<'a> TypeCheckContext<'a> {
                 )?;
 
                 // insert the new copy in the decl engine
-                let new_decl_ref = decl_engine.insert(new_copy);
+                let new_decl_ref = decl_engine.insert(
+                    new_copy,
+                    decl_engine.get_parsed_decl_id(&original_id).as_ref(),
+                );
 
                 // create the type id from the copy
                 type_engine.insert(

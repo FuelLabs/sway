@@ -38,6 +38,14 @@ pub enum TyDecl {
     TypeAliasDecl(TypeAliasDecl),
 }
 
+/// This trait is used to associate a typed declaration node with its
+/// corresponding parsed declaration node by way of an associated type.
+/// This is used by the generic code in [`DeclEngine`] related to handling
+/// typed to parsed node maps.
+pub trait TyDeclParsedType {
+    type ParsedType;
+}
+
 #[derive(Clone, Debug)]
 pub struct ConstantDecl {
     pub decl_id: DeclId<TyConstantDecl>,
