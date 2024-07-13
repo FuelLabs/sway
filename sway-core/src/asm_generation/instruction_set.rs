@@ -17,27 +17,15 @@ pub enum InstructionSet {
 
 impl fmt::Display for InstructionSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            ".program:\n{}",
-            match self {
-                InstructionSet::Fuel { ops } => ops
-                    .iter()
-                    .map(|x| format!("{x}"))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-                InstructionSet::Evm { ops } => ops
-                    .iter()
-                    .map(|x| format!("{x}"))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-                InstructionSet::MidenVM { ops } => {
-                    ops.iter()
-                        .map(|x| format!("{x}"))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                }
-            }
-        )
+        let ops_str = match self {
+            InstructionSet::Fuel { ops } 
+            | InstructionSet::Evm { ops } 
+            | InstructionSet::MidenVM { ops } => ops
+                .iter()
+                .map(|x| format!("{x}"))
+                .collect::<Vec<_>>()
+                .join("\n"),
+        };
+        write!(f, ".program:\n{}", ops_str)
     }
 }
