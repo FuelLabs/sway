@@ -20,25 +20,11 @@ let result = val_1 % val_2;
 
 The prelude contains a list of operations essential to all Sway programs. The latest version of the prelude can be found [here](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/prelude.sw).
 
-- [`core::primitives::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitives.sw) a module for getting `max`, `min`, `bits` and `zero` for integers.
-- [`core::primitive_conversions::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitive_conversions.sw) a module for converting between unsigned integers sizes.
-- [`core::raw_ptr::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_ptr.sw) a module for dealing with pointers.
-- [`core::raw_slice::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_slice.sw) a module for converting types to raw slice
-- [`core::ops::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/ops.sw) a module for operations like `add` or `subtract` and comparisons `equal` and `order`.
-- [`core::storage::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/storage.sw) a module dealing with storage.
-- [`core::str::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/str.sw) a module dealing with `str` slices like `len` or conversions like `from_str_array`.
-- [`core::codec::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/codec.sw) a module to encode and decode data structures.
-
-For the full list of traits and methods available for each primitive type, please refer to the chart below or the core library documentation [here](https://fuellabs.github.io/sway/master/core/index.html).
-
-| Primitive Type                                                                 | Description                      |
-| ------------------------------------------------------------------------------ | -------------------------------- |
-| [b256](https://fuellabs.github.io/sway/master/core/primitive.b256.html)        | 256 bits (32 bytes), i.e. a hash |
-| [bool](https://fuellabs.github.io/sway/master/core/primitive.bool.html)        | Boolean true or false            |
-| [str](https://fuellabs.github.io/sway/master/core/primitive.str.html)          | String Slice                     |
-| [str[0-63]](https://fuellabs.github.io/sway/master/core/primitive.str[0].html) | Fixed-length string              |
-| [u265](https://fuellabs.github.io/sway/master/core/primitive.u256.html)        | 256-bit unsigned integer         |
-| [u64](https://fuellabs.github.io/sway/master/core/primitive.u64.html)          | 64-bit unsigned integer          |
-| [u32](https://fuellabs.github.io/sway/master/core/primitive.u32.html)          | 32-bit unsigned integer          |
-| [u16](https://fuellabs.github.io/sway/master/core/primitive.u16.html)          | 16-bit unsigned integer          |
-| [u8](https://fuellabs.github.io/sway/master/core/primitive.u8.html)            | 8-bit unsigned integer           |
+- [`core::primitives::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitives.sw)
+- [`core::primitive_conversions::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/primitive_conversions.sw)
+- [`core::raw_ptr::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_ptr.sw)
+- [`core::raw_slice::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/raw_slice.sw)
+- [`core::ops::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/ops.sw)
+- [`core::storage::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/storage.sw)
+- [`core::str::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/str.sw)
+- [`core::codec::*`](https://github.com/FuelLabs/sway/blob/master/sway-lib-core/src/codec.sw)
