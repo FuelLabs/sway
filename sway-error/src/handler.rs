@@ -138,7 +138,7 @@ pub struct ErrorEmitted {
 /// Stdlib dedup in Rust assumes sorted data for efficiency, but we don't want that.
 /// A hash set would also mess up the order, so this is just a brute force way of doing it
 /// with a vector.
-fn dedup_unsorted<T: PartialEq + std::hash::Hash + Clone>(mut data: Vec<T>) -> Vec<T> {
+fn dedup_unsorted<T: PartialEq + std::hash::Hash + Clone + Eq>(mut data: Vec<T>) -> Vec<T> {
     use std::collections::HashSet;
 
     let mut seen = HashSet::new();
