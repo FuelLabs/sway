@@ -1,5 +1,4 @@
 use crate::{error::CompileError, warning::CompileWarning};
-use std::collections::HashMap;
 
 use core::cell::RefCell;
 
