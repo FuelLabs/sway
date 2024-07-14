@@ -16,6 +16,7 @@ members = [
   "test_programs/identity_inline_tests",
   "test_programs/math_inline_tests",
   "test_programs/option_inline_tests",
+  "test_programs/output_inline_tests",
   "test_programs/result_inline_tests",
   "test_programs/revert_inline_tests",
   "test_programs/string_inline_tests",
