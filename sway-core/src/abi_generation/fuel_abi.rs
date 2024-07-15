@@ -788,22 +788,16 @@ impl TypeId {
 
                 type_arguments
                     .iter()
-                    .map(|arg| {
+                    .zip(resolved_params.iter())
+                    .map(|(arg, p)| {
                         Ok(program_abi::TypeApplication {
                             name: "".to_string(),
-                            type_id: arg.initial_type_id.get_abi_type_id(
-                                handler,
-                                ctx,
-                                engines,
-                                arg.type_id,
-                            )?,
-                            type_arguments: arg.initial_type_id.get_abi_type_arguments(
-                                handler,
-                                ctx,
-                                engines,
-                                types,
-                                arg.type_id,
-                            )?,
+                            type_id: arg
+                                .initial_type_id
+                                .get_abi_type_id(handler, ctx, engines, p.type_id)?,
+                            type_arguments: arg
+                                .initial_type_id
+                                .get_abi_type_arguments(handler, ctx, engines, types, p.type_id)?,
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?

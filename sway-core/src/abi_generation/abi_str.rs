@@ -32,7 +32,7 @@ impl TypeId {
                 }
                 (TypeInfo::Tuple(fields), TypeInfo::Tuple(resolved_fields)) => {
                     assert_eq!(fields.len(), resolved_fields.len());
-                    let field_strs = fields
+                    let field_strs = resolved_fields
                         .iter()
                         .map(|f| {
                             if ctx.abi_with_fully_specified_types {
@@ -44,7 +44,7 @@ impl TypeId {
                         .collect::<Vec<String>>();
                     format!("({})", field_strs.join(", "))
                 }
-                (TypeInfo::Array(type_arg, count), TypeInfo::Array(_, resolved_count)) => {
+                (TypeInfo::Array(_, count), TypeInfo::Array(type_arg, resolved_count)) => {
                     assert_eq!(count.val(), resolved_count.val());
                     let inner_type = if ctx.abi_with_fully_specified_types {
                         type_engine.get(type_arg.type_id).abi_str(ctx, engines)
