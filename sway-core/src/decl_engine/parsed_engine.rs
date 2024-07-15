@@ -9,7 +9,7 @@ use crate::{
 };
 
 use std::sync::Arc;
-use sway_types::{ProgramId, Spanned};
+use sway_types::{ProgramId, SourceId, Spanned};
 
 use super::parsed_id::ParsedDeclId;
 
@@ -147,6 +147,47 @@ macro_rules! decl_engine_clear_program {
 }
 
 decl_engine_clear_program!(
+    (variable_slab, |item: &VariableDeclaration| item.name.span()),
+    (function_slab, |item: &FunctionDeclaration| item.name.span()),
+    (trait_slab, |item: &TraitDeclaration| item.name.span()),
+    (trait_fn_slab, |item: &TraitFn| item.name.span()),
+    (trait_type_slab, |item: &TraitTypeDeclaration| item
+        .name
+        .span()),
+    (impl_self_or_trait_slab, |item: &ImplSelfOrTrait| item
+        .block_span
+        .clone()),
+    (struct_slab, |item: &StructDeclaration| item.name.span()),
+    (storage_slab, |item: &StorageDeclaration| item.span.clone()),
+    (abi_slab, |item: &AbiDeclaration| item.name.span()),
+    (constant_slab, |item: &ConstantDeclaration| item.name.span()),
+    (enum_slab, |item: &EnumDeclaration| item.name.span()),
+    (type_alias_slab, |item: &TypeAliasDeclaration| item
+        .name
+        .span()),
+);
+
+
+macro_rules! decl_engine_clear_module {
+    ($(($slab:ident, $getter:expr)),* $(,)?) => {
+        impl ParsedDeclEngine {
+            pub fn clear_module(&mut self, program_id: &SourceId) {
+                $(
+                    self.$slab.retain(|_k, item| {
+                        #[allow(clippy::redundant_closure_call)]
+                        let span = $getter(item);
+                        match span.source_id() {
+                            Some(src_id) => src_id != program_id,
+                            None => true,
+                        }
+                    });
+                )*
+            }
+        }
+    };
+}
+
+decl_engine_clear_module!(
     (variable_slab, |item: &VariableDeclaration| item.name.span()),
     (function_slab, |item: &FunctionDeclaration| item.name.span()),
     (trait_slab, |item: &TraitDeclaration| item.name.span()),

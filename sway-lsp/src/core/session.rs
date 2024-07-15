@@ -134,6 +134,14 @@ impl Session {
         Ok(())
     }
 
+    pub fn garbage_collect_module(&self, engines: &mut Engines, uri: &Url) -> Result<(), LanguageServerError> {
+        let path = uri.to_file_path().unwrap();
+        eprintln!("🗑️ Garbage collecting module {:?}", path);
+        let source_id = { engines.se().get_source_id(&path) };
+        engines.clear_module(&source_id);
+        Ok(())
+    }
+
     pub fn token_ranges(&self, url: &Url, position: Position) -> Option<Vec<Range>> {
         let _p = tracing::trace_span!("token_ranges").entered();
         let mut token_ranges: Vec<_> = self

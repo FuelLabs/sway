@@ -67,16 +67,22 @@ impl TypeEngine {
         }
     }
 
+    fn clear_items<F>(&mut self, keep: F)
+    where
+        F: Fn(&SourceId) -> bool,
+    {
+        self.slab.retain(|_, tsi| tsi.source_id.as_ref().map_or(true, &keep));
+        self.id_map.write().retain(|tsi, _| tsi.source_id.as_ref().map_or(true, &keep));
+    }
+
     /// Removes all data associated with `program_id` from the type engine.
     pub fn clear_program(&mut self, program_id: &ProgramId) {
-        self.slab.retain(|_, tsi| match tsi.source_id {
-            Some(source_id) => &source_id.program_id() != program_id,
-            None => true,
-        });
-        self.id_map.write().retain(|tsi, _| match tsi.source_id {
-            Some(source_id) => &source_id.program_id() != program_id,
-            None => true,
-        });
+        self.clear_items(|id| id.program_id() != *program_id);
+    }
+
+    /// Removes all data associated with `source_id` from the type engine.
+    pub fn clear_module(&mut self, source_id: &SourceId) {
+        self.clear_items(|id| id != source_id);
     }
 
     pub fn replace(&self, id: TypeId, new_value: TypeSourceInfo) {
