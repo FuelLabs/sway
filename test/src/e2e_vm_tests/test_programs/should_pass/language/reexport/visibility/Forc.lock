@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-3D27300F0A8AC1DF"
+
+[[package]]
+name = "std"
+source = "path+from-root-3D27300F0A8AC1DF"
+dependencies = ["core"]
+
+[[package]]
+name = "visibility"
+source = "member"
+dependencies = ["std"]

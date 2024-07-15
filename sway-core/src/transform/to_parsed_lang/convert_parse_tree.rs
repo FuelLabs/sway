@@ -266,13 +266,6 @@ fn item_use_to_use_statements(
     handler: &Handler,
     item_use: ItemUse,
 ) -> Result<Vec<UseStatement>, ErrorEmitted> {
-    if let Some(pub_token) = item_use.visibility {
-        let error = ConvertParseTreeError::PubUseNotSupported {
-            span: pub_token.span(),
-        };
-        return Err(handler.emit_err(error.into()));
-    }
-
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
     let item_span = item_use.span();
@@ -280,6 +273,7 @@ fn item_use_to_use_statements(
     use_tree_to_use_statements(
         item_use.tree,
         item_use.root_import.is_some(),
+        pub_token_opt_to_visibility(item_use.visibility),
         &mut prefix,
         &mut ret,
         item_span,
@@ -303,6 +297,7 @@ fn item_use_to_use_statements(
 fn use_tree_to_use_statements(
     use_tree: UseTree,
     is_absolute: bool,
+    reexport: Visibility,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
     item_span: Span,
@@ -310,7 +305,14 @@ fn use_tree_to_use_statements(
     match use_tree {
         UseTree::Group { imports } => {
             for use_tree in imports.into_inner() {
-                use_tree_to_use_statements(use_tree, is_absolute, path, ret, item_span.clone());
+                use_tree_to_use_statements(
+                    use_tree,
+                    is_absolute,
+                    reexport,
+                    path,
+                    ret,
+                    item_span.clone(),
+                );
             }
         }
         UseTree::Name { name } => {
@@ -324,6 +326,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
+                reexport,
                 alias: None,
             });
         }
@@ -338,6 +341,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
+                reexport,
                 alias: Some(alias),
             });
         }
@@ -347,12 +351,13 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type: ImportType::Star,
                 is_absolute,
+                reexport,
                 alias: None,
             });
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, path, ret, item_span);
+            use_tree_to_use_statements(*suffix, is_absolute, reexport, path, ret, item_span);
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {

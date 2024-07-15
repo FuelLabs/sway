@@ -1,5 +1,7 @@
 use crate::{
-    decl_engine::{DeclEngineInsert, DeclRefFunction, ReplaceDecls},
+    decl_engine::{
+        engine::DeclEngineGetParsedDeclId, DeclEngineInsert, DeclRefFunction, ReplaceDecls,
+    },
     language::{
         ty::{self, TyFunctionSig},
         *,
@@ -97,7 +99,12 @@ pub(crate) fn instantiate_function_application(
         let function_is_type_check_finalized = function_decl.is_type_check_finalized;
         let function_is_trait_method_dummy = function_decl.is_trait_method_dummy;
         let new_decl_ref = decl_engine
-            .insert(function_decl)
+            .insert(
+                function_decl,
+                decl_engine
+                    .get_parsed_decl_id(function_decl_ref.id())
+                    .as_ref(),
+            )
             .with_parent(decl_engine, (*function_decl_ref.id()).into());
 
         if method_sig.is_concrete(engines)
