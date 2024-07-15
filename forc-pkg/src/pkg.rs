@@ -1600,15 +1600,14 @@ pub fn dependency_namespace(
 ) -> Result<namespace::Root, vec1::Vec1<CompileError>> {
     // TODO: Clean this up when config-time constants v1 are removed.
     let node_idx = &graph[node];
-    let name = Some(Ident::new_no_span(node_idx.name.clone()));
+    let name = Ident::new_no_span(node_idx.name.clone());
     let mut root_module = if let Some(contract_id_value) = contract_id_value {
         namespace::default_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
     } else {
-        namespace::Module::default()
+        namespace::Module::new(name)
     };
 
     root_module.write(engines, |root_module| {
-        root_module.name.clone_from(&name);
         root_module.visibility = Visibility::Public;
     });
 
@@ -1633,14 +1632,13 @@ pub fn dependency_namespace(
                 // Construct namespace with contract id
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
-                let name = Some(Ident::new_no_span(node_idx.name.clone()));
+                let name = Ident::new_no_span(node_idx.name.clone());
                 let mut module = namespace::default_with_contract_id(
                     engines,
                     name.clone(),
                     contract_id_value,
                     experimental,
                 )?;
-                module.name = name;
                 module.visibility = Visibility::Public;
                 module
             }
@@ -2477,9 +2475,9 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            compiled.root_module.write(&engines, |root_module| {
-                root_module.name = Some(Ident::new_no_span(pkg.name.clone()));
-            });
+            //            compiled.root_module.write(&engines, |root_module| {
+            //                root_module.name = Ident::new_no_span(pkg.name.clone());
+            //            });
             lib_namespace_map.insert(node, compiled.root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
@@ -2733,7 +2731,7 @@ pub fn check(
                     .namespace
                     .program_id(engines)
                     .read(engines, |m| m.clone());
-                module.name = Some(Ident::new_no_span(pkg.name.clone()));
+                //                module.name = Some(Ident::new_no_span(pkg.name.clone()));
                 module.span = Some(
                     Span::new(
                         manifest.entry_string()?,

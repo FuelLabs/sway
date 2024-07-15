@@ -36,7 +36,7 @@ pub struct Module {
     pub current_lexical_scope_id: LexicalScopeId,
     /// Name of the module, package name for root module, module name for other modules.
     /// Module name used is the same as declared in `mod name;`.
-    pub name: Option<Ident>,
+    name: Ident,
     /// Whether or not this is a `pub` module
     pub visibility: Visibility,
     /// Empty span at the beginning of the file implementing the module
@@ -51,22 +51,37 @@ pub struct Module {
     pub(crate) mod_path: ModulePathBuf,
 }
 
-impl Default for Module {
-    fn default() -> Self {
+impl Module {
+    pub fn new(name: Ident) -> Self {
         Self {
             visibility: Visibility::Private,
             submodules: Default::default(),
             lexical_scopes: vec![LexicalScope::default()],
             current_lexical_scope_id: 0,
-            name: Default::default(),
+            name,
             span: Default::default(),
             is_external: Default::default(),
             mod_path: Default::default(),
         }
     }
-}
 
-impl Module {
+    pub fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    pub(super) fn clone_with_new_name(&self, name: Ident, mod_path: ModulePathBuf) -> Self {
+        Self {
+            visibility: self.visibility,
+            submodules: self.submodules.clone(),
+            lexical_scopes: self.lexical_scopes.clone(),
+            current_lexical_scope_id: self.current_lexical_scope_id,
+            name,
+            span: self.span.clone(),
+            is_external: self.is_external,
+            mod_path,
+        }
+    }
+
     pub fn read<R>(&self, _engines: &crate::Engines, mut f: impl FnMut(&Module) -> R) -> R {
         f(self)
     }

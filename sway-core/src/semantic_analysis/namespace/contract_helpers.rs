@@ -26,7 +26,7 @@ use super::{lexical_scope::SymbolMap, root::ResolvedDeclaration, Module, Root};
 /// `CONTRACT_ID`-containing modules: https://github.com/FuelLabs/sway/issues/3077
 pub fn default_with_contract_id(
     engines: &Engines,
-    name: Option<Ident>,
+    name: Ident,
     contract_id_value: String,
     experimental: crate::ExperimentalFlags,
 ) -> Result<Module, vec1::Vec1<CompileError>> {
@@ -44,7 +44,7 @@ pub fn default_with_contract_id(
 fn default_with_contract_id_inner(
     handler: &Handler,
     engines: &Engines,
-    ns_name: Option<Ident>,
+    ns_name: Ident,
     contract_id_value: String,
     experimental: crate::ExperimentalFlags,
 ) -> Result<Module, ErrorEmitted> {
@@ -95,10 +95,9 @@ fn default_with_contract_id_inner(
         content: AstNodeContent::Declaration(Declaration::ConstantDeclaration(const_decl_id)),
         span: const_item_span.clone(),
     };
-    let mut root = Root::from(Module::default());
+    let mut root = Root::from(Module::new(ns_name.clone()));
     let mut ns = Namespace::init_root(&mut root);
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    ns.root.module.name = ns_name;
     ns.root.module.visibility = Visibility::Public;
     let type_check_ctx = TypeCheckContext::from_namespace(&mut ns, engines, experimental);
     let typed_node = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
@@ -118,7 +117,7 @@ fn default_with_contract_id_inner(
     };
     compiled_constants.insert(name, ResolvedDeclaration::Typed(typed_decl));
 
-    let mut ret = Module::default();
+    let mut ret = Module::new(ns_name);
     ret.current_lexical_scope_mut().items.symbols = compiled_constants;
     Ok(ret)
 }
