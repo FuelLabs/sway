@@ -408,6 +408,7 @@ fn parse_module_tree(
         .ok()
         .and_then(|m| m.modified().ok());
     let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
+    eprintln!("🐔 path {:?} | dependencies {:?}", path, dependencies);
     let version = lsp_mode
         .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
@@ -440,39 +441,45 @@ fn parse_module_tree(
 }
 
 pub(crate) fn is_ty_module_cache_up_to_date(
+    engines: &Engines,
     path: &Arc<PathBuf>,
     build_config: Option<&BuildConfig>,
-    entry: &TyModuleCacheEntry,
+    //entry: &TyModuleCacheEntry,
 ) -> bool {
-    let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
-    let relevant_path = path
-        .iter()
-        .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
-        .collect::<PathBuf>();
-
-    let cache_up_to_date = build_config
-        .as_ref()
-        .and_then(|x| x.lsp_mode.as_ref())
-        .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
-        .map_or_else(
-            || false,
-            |version| !version.map_or(false, |v| v > entry.version.unwrap_or(0)),
-        );
-
-    let res = if cache_up_to_date {
-        entry
-            .dependencies
-            .iter()
-            .all(|path| is_ty_module_cache_up_to_date(path, build_config, entry))
-    } else {
-        false
-    };
-
-    eprintln!(
-        "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
-        relevant_path, res
-    );
-    res
+    let query_engine = engines.qe();
+    let entry = query_engine.get_ty_module_cache_entry(&path);
+    match entry {
+        Some(entry) => {
+            // return false;
+            let cache_up_to_date = build_config
+                .as_ref()
+                .and_then(|x| x.lsp_mode.as_ref())
+                .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
+                .map_or_else(
+                    || false,
+                    |version| !version.map_or(false, |v| v > entry.version.unwrap_or(0)),
+                );
+            // Only putting this here to confirm we don't get a stack overflow if we return early.
+            // return cache_up_to_date;
+            if cache_up_to_date {
+                // This is causing a stack overflow, why?
+                eprintln!("num dependencies for path {:?}: {}", path, entry.dependencies.len());
+                entry
+                    .dependencies
+                    .iter()
+                    .all(|path| {
+                        eprint!("checking dep path {:?} ", path);
+                        is_ty_module_cache_up_to_date(engines, path, build_config) 
+                })
+            } else {
+                false
+            }
+        }
+        None => {
+            false
+        }
+    }
+    
 }
 
 pub(crate) fn is_parse_module_cache_up_to_date(
@@ -525,7 +532,10 @@ pub(crate) fn is_parse_module_cache_up_to_date(
             // Look at the dependencies recursively to make sure they have not been
             // modified either.
             if cache_up_to_date {
+                //eprintln!("num dependencies for path {:?}: {}", path, entry.dependencies.len());
+
                 entry.dependencies.iter().all(|path| {
+//                    eprint!("checking dep path {:?} ", path);
                     is_parse_module_cache_up_to_date(engines, path, include_tests, build_config)
                 })
             } else {

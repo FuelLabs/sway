@@ -22,7 +22,7 @@ use crate::{
         ty::{self, TyAstNodeContent, TyDecl},
         CallPath, ModName,
     },
-    query_engine::TyModuleCacheEntry,
+    query_engine::{ModuleCacheKey, TyModuleCacheEntry},
     semantic_analysis::*,
     BuildConfig, Engines, TypeInfo,
 };
@@ -272,8 +272,8 @@ impl ty::TyModule {
                 .iter()
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
                 .collect::<PathBuf>();
-
             eprintln!("🥸 Checking cache for TY module {:?}", relevant_path);
+            
             if let Some(entry) = engines.qe().get_ty_module_cache_entry(&path) {
                 // We now need to check if the module is up to date, if not, we need to recompute it so
                 // we will return None, otherwise we will return the cached module.
@@ -283,11 +283,22 @@ impl ty::TyModule {
 
                 // Let's check if we can re-use the dependency information
                 // we got from the cache.
-                if is_ty_module_cache_up_to_date(&path.into(), build_config, &entry) {
+                
+                if is_ty_module_cache_up_to_date(engines, &path.into(), build_config) {
+                    eprintln!(
+                        "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
+                        relevant_path, true
+                    );
+
                     eprintln!("✅ Cache hit for module {:?}", relevant_path);
                     // Return the cached module
                     return Some(entry.module);
                 } else {
+                    eprintln!(
+                        "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
+                        relevant_path, false
+                    );
+
                     eprintln!("🔄 Cache unable to be used for module {:?}", relevant_path);
                 }
             }
@@ -314,6 +325,7 @@ impl ty::TyModule {
             module_eval_order,
             ..
         } = parsed;
+
 
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
@@ -438,15 +450,15 @@ impl ty::TyModule {
             }
         }
 
-        let dependencies = submodules
-            .iter()
-            .filter_map(|(ident, _)| {
-                ident
-                    .span()
-                    .source_id()
-                    .map(|path| Arc::new(engines.se().get_path(path)))
-            })
-            .collect::<Vec<_>>();
+        // let dependencies = submodules
+        //     .iter()
+        //     .filter_map(|(ident, _)| {
+        //         ident
+        //             .span()
+        //             .source_id()
+        //             .map(|src_id| Arc::new(engines.se().get_path(src_id)))
+        //     })
+        //     .collect::<Vec<_>>();
 
         let ty_module = Self {
             span: span.clone(),
@@ -458,12 +470,33 @@ impl ty::TyModule {
 
         // Cache the ty module
         if let Some(source_id) = span.source_id() {
+
             let path = engines.se().get_path(&source_id);
             let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
             let relevant_path = path
                 .iter()
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
                 .collect::<PathBuf>();
+
+            // let module_eval_order = module_eval_order.iter().map(|ident| {
+            //     let path = engines.se().get_path(ident.span().source_id().unwrap());
+            // }).collect::<Vec<_>>();
+
+            // let module_eval_order = module_eval_order.iter()
+            //     .filter_map(|ident| {
+            //         ident.span().source_id()
+            //             .map(|source_id| engines.se().get_path(source_id))
+            //     })
+            //     .collect::<Vec<_>>();
+
+            let dependencies = engines.qe().get_parse_module_cache_entry(&ModuleCacheKey {
+                path: path.clone().into(),
+                include_tests: true, // TODO: pass this in
+            }).unwrap().dependencies;
+
+            //eprintln!("🐤 🐤 🐤 🐤 🐤 🐤 🐤 🐤 path {:?} | module_eval_order {:?}", relevant_path, module_eval_order);
+            eprintln!("🐤 path {:?} | dependencies {:?}", relevant_path, dependencies);
+
             eprintln!("💾 Inserting cache entry for TY module {:?}", relevant_path);
 
             let version = build_config
