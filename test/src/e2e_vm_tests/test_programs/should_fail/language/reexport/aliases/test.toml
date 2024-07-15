@@ -1,0 +1,188 @@
+category = "fail"
+
+#check: $()error
+#check: $()use ::lib_1::Items1_Struct;
+#nextln: $()Could not find symbol "Items1_Struct" in this scope.
+
+#check: $()error
+#check: $()use ::lib_1::Items1_Enum;
+#nextln: $()Could not find symbol "Items1_Enum" in this scope.
+
+#check: $()error
+#check: $()use ::lib_1::Items1_X;
+#nextln: $()Could not find symbol "Items1_X" in this scope.
+
+#check: $()error
+#check: $()use ::lib_1::Items1_Y;
+#nextln: $()Could not find symbol "Items1_Y" in this scope.
+
+#check: $()error
+#check: $()use ::lib_1::ITEMS_1_FUNCTION_RES;
+#nextln: $()Could not find symbol "ITEMS_1_FUNCTION_RES" in this scope.
+
+#check: $()error
+#check: $()use ::lib_1::items_1_function;
+#nextln: $()Could not find symbol "items_1_function" in this scope.
+
+#check: $()error
+#check: $()use ::lib_1::Items1Trait;
+#nextln: $()Could not find symbol "Items1Trait" in this scope.
+
+#check: $()error
+#check: $()use ::lib_4_2::Alias4_Struct;
+#nextln: $()Could not find symbol "Alias4_Struct" in this scope.
+
+#check: $()error
+#check: $()use ::lib_4_2::Alias4_Enum;
+#nextln: $()Could not find symbol "Alias4_Enum" in this scope.
+
+#check: $()error
+#check: $()use ::lib_4_2::Alias4_S;
+#nextln: $()Could not find symbol "Alias4_S" in this scope.
+
+#check: $()error
+#check: $()use ::lib_4_2::Alias4_T;
+#nextln: $()Could not find symbol "Alias4_T" in this scope.
+
+#check: $()error
+#check: $()use ::lib_4_2::ALIAS_4_FUNCTION_RES;
+#nextln: $()Could not find symbol "ALIAS_4_FUNCTION_RES" in this scope.
+
+#check: $()error
+#check: $()use ::lib_4_2::alias_4_function;
+#nextln: $()Could not find symbol "alias_4_function" in this scope.
+
+#check: $()error
+#check: $()use ::lib_4_2::Alias4Trait;
+#nextln: $()Could not find symbol "Alias4Trait" in this scope.
+
+#check: $()error
+#check: $()fn project_items_2_struct(input: Items2_Struct) -> u64 {
+#nextln: $()Could not find symbol "Items2_Struct" in this scope.
+
+#check: $()error
+#check: $()fn project_items_2_struct(input: Items2_Struct) -> u64 {
+#nextln: $()Unknown type name "Items2_Struct".
+
+#check: $()error
+#check: $()fn project_items_2_enum(input: Items2_Enum) -> u64 {
+#nextln: $()Could not find symbol "Items2_Enum" in this scope.
+
+#check: $()error
+#check: $()fn project_items_2_enum(input: Items2_Enum) -> u64 {
+#nextln: $()Unknown type name "Items2_Enum".
+
+#check: $()error
+#check: $()Items2_X(val) => val,
+#nextln: $()Could not find symbol "Items2_X" in this scope.
+
+#check: $()error
+#check: $()Items2_Y(val) => val + 1000,
+#nextln: $()Could not find symbol "Items2_Y" in this scope.
+
+#check: $()error
+#check: $()fn call_items_2_function() -> u64 {
+#nextln: $()items_2_function()
+#nextln: $()Could not find symbol "items_2_function" in this scope.
+
+#check: $()error
+#check: $()impl Items2Trait<TestStruct2> for TestStruct1 {
+#nextln: $()Could not find symbol "Items2Trait" in this scope.
+
+#check: $()error
+#check: $()impl Items2Trait<TestStruct2> for TestStruct1 {
+#nextln: $()Trait "Items2Trait" cannot be found in the current scope.
+
+#check: $()error
+#check: $()let items_2_struct = Items2_Struct { b: 123 };
+#nextln: $()Could not find symbol "Items2_Struct" in this scope.
+
+#check: $()error
+#check: $()let items_2_struct = Items2_Struct { b: 123 };
+#nextln: $()Unknown type name "Items2_Struct".
+
+#check: $()error
+#check: $()let items_2_struct_res = project_items_2_struct(items_2_struct);
+#nextln: $()Could not find symbol "project_items_2_struct" in this scope.
+
+#check: $()error
+#check: $()assert(items_2_struct_res == 123);
+#nextln: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()let items_2_enum = Items2_Enum::C(432);
+#nextln: $()Could not find symbol "Items2_Enum" in this scope.
+
+#check: $()error
+#check: $()let items_2_enum = Items2_Enum::C(432);
+#nextln: $()Unknown type name "Items2_Enum".
+
+#check: $()error
+#check: $()let items_2_enum_res = project_items_2_enum(items_2_enum);
+#nextln: $()Could not find symbol "project_items_2_enum" in this scope.
+
+#check: $()error
+#check: $()assert(items_2_enum_res == 432);
+#nextln: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()let items_2_variants = Z(680);
+#nextln: $()Could not find symbol "Z" in this scope.
+
+#check: $()error
+#check: $()assert(items_2_function_res == ITEMS_2_FUNCTION_RES);
+#nextln: $()Variable "ITEMS_2_FUNCTION_RES" does not exist in this scope.
+
+#check: $()error
+#check: $()let items_2_trait_teststruct_1_res = teststruct_1.items_2_trait_function(teststruct_2);
+#nextln: $()No method named "items_2_trait_function" found for type "TestStruct1".
+
+#check: $()error
+#check: $()let items_3_struct = Items3_Struct { c: 123 };
+#nextln: $()Could not find symbol "Items3_Struct" in this scope.
+
+#check: $()error
+#check: $()let items_3_struct = Items3_Struct { c: 123 };
+#nextln: $()Unknown type name "Items3_Struct".
+
+#check: $()error
+#check: $()let items_3_struct_res = project_items_3_struct(items_3_struct);
+#nextln: $()Could not find symbol "project_items_3_struct" in this scope.
+
+#check: $()error
+#check: $()assert(items_3_struct_res == 123);
+#nextln: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()let items_3_enum = Items3_Enum::E(432);
+#nextln: $()Could not find symbol "Items3_Enum" in this scope.
+
+#check: $()error
+#check: $()let items_3_enum = Items3_Enum::E(432);
+#nextln: $()Unknown type name "Items3_Enum".
+
+#check: $()error
+#check: $()let items_3_enum_res = project_items_3_enum(items_3_enum);
+#nextln: $()Could not find symbol "project_items_3_enum" in this scope.
+
+#check: $()error
+#check: $()assert(items_3_enum_res == 432);
+#nextln: $()No method named "eq" found for type "{unknown}".
+
+#check: $()error
+#check: $()let items_3_variants = U(680);
+#nextln: $()Could not find symbol "U" in this scope.
+
+#check: $()error
+#check: $()assert(items_3_function_res == ITEMS_3_FUNCTION_RES);
+#nextln: $()Variable "ITEMS_3_FUNCTION_RES" does not exist in this scope.
+
+#check: $()error
+#check: $()let items_3_trait_teststruct_1_res = teststruct_1.items_3_trait_function(teststruct_2);
+#nextln: $()No method named "items_3_trait_function" found for type "TestStruct1".
+
+#check: $()error
+#check: $()let items_5_trait_teststruct_1_res = teststruct_1.items_5_trait_function(teststruct_2);
+#nextln: $()Multiple applicable items in scope.
+
+#check: $()Aborting due to 55 errors.
