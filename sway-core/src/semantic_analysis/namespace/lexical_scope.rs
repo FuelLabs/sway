@@ -4,7 +4,7 @@ use crate::{
     language::{
         parsed::{Declaration, FunctionDeclaration},
         ty::{self, StructAccessInfo, TyDecl, TyStorageDecl},
-        CallPath,
+        CallPath, Visibility,
     },
     namespace::*,
     semantic_analysis::{ast_node::ConstShadowingMode, GenericShadowingMode},
@@ -36,10 +36,20 @@ impl ResolvedFunctionDecl {
 }
 
 pub(super) type SymbolMap = im::OrdMap<Ident, ResolvedDeclaration>;
+
 type SourceIdent = Ident;
-pub(super) type GlobSynonyms = im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration)>>;
-pub(super) type ItemSynonyms =
-    im::HashMap<Ident, (Option<SourceIdent>, ModulePathBuf, ResolvedDeclaration)>;
+
+pub(super) type GlobSynonyms =
+    im::HashMap<Ident, Vec<(ModulePathBuf, ResolvedDeclaration, Visibility)>>;
+pub(super) type ItemSynonyms = im::HashMap<
+    Ident,
+    (
+        Option<SourceIdent>,
+        ModulePathBuf,
+        ResolvedDeclaration,
+        Visibility,
+    ),
+>;
 
 /// Represents a lexical scope integer-based identifier, which can be used to reference
 /// specific a lexical scope.
@@ -464,7 +474,7 @@ impl Items {
             );
         }
 
-        if let Some((ident, (imported_ident, _, decl))) =
+        if let Some((ident, (imported_ident, _, decl, _))) =
             self.use_item_synonyms.get_key_value(&name)
         {
             append_shadowing_error(
@@ -494,43 +504,30 @@ impl Items {
         symbol: Ident,
         src_path: ModulePathBuf,
         decl: &ResolvedDeclaration,
+        visibility: Visibility,
     ) {
         if let Some(cur_decls) = self.use_glob_synonyms.get_mut(&symbol) {
             // Name already bound. Check if the decl is already imported
             let ctx = PartialEqWithEnginesContext::new(engines);
-            match cur_decls.iter().position(|(cur_path, cur_decl)| {
-                cur_decl.eq(decl, &ctx)
-        // For some reason the equality check is not sufficient. In some cases items that
-        // are actually identical fail the eq check, so we have to add heuristics for these
-        // cases.
-        //
-            // These edge occur because core and std preludes are not reexported correctly. Once
-        // reexports are implemented we can handle the preludes correctly, and then these
-        // edge cases should go away.
-        // See https://github.com/FuelLabs/sway/issues/3113
-        //
-        // As a heuristic we replace any bindings from std and core if the new binding is
-        // also from std or core.  This does not work if the user has declared an item with
-        // the same name as an item in one of the preludes, but this is an edge case that we
-        // will have to live with for now.
-                    || ((cur_path[0].as_str() == "core" || cur_path[0].as_str() == "std")
-                        && (src_path[0].as_str() == "core" || src_path[0].as_str() == "std"))
-            }) {
-                Some(index) => {
-                    // The name is already bound to this decl, but
-                    // we need to replace the binding to make the paths work out.
-                    // This appears to be an issue with the core prelude, and will probably no
-                    // longer be necessary once reexports are implemented:
-                    // https://github.com/FuelLabs/sway/issues/3113
-                    cur_decls[index] = (src_path.to_vec(), decl.clone());
+            match cur_decls
+                .iter()
+                .position(|(_cur_path, cur_decl, _cur_visibility)| cur_decl.eq(decl, &ctx))
+            {
+                Some(index) if matches!(visibility, Visibility::Public) => {
+                    // The name is already bound to this decl. If the new symbol is more visible
+                    // than the old one, then replace the old one.
+                    cur_decls[index] = (src_path.to_vec(), decl.clone(), visibility);
+                }
+                Some(_) => {
+                    // Same binding as the existing one. Do nothing.
                 }
                 None => {
                     // New decl for this name. Add it to the end
-                    cur_decls.push((src_path.to_vec(), decl.clone()));
+                    cur_decls.push((src_path.to_vec(), decl.clone(), visibility));
                 }
             }
         } else {
-            let new_vec = vec![(src_path.to_vec(), decl.clone())];
+            let new_vec = vec![(src_path.to_vec(), decl.clone(), visibility)];
             self.use_glob_synonyms.insert(symbol, new_vec);
         }
     }
