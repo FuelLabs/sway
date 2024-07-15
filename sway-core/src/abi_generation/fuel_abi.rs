@@ -19,11 +19,7 @@ pub struct AbiContext<'a> {
 }
 
 impl<'a> AbiContext<'a> {
-    fn to_str_context(
-        &self,
-        engines: &Engines,
-        abi_with_fully_specified_types: bool,
-    ) -> AbiStrContext {
+    fn to_str_context(&self, engines: &Engines, abi_full: bool) -> AbiStrContext {
         AbiStrContext {
             program_name: self
                 .program
@@ -32,7 +28,8 @@ impl<'a> AbiContext<'a> {
                 .program_id(engines)
                 .read(engines, |m| m.name().to_string()),
             abi_with_callpaths: self.abi_with_callpaths,
-            abi_with_fully_specified_types,
+            abi_with_fully_specified_types: abi_full,
+            abi_root_type_without_generic_type_parameters: !abi_full,
         }
     }
 }
@@ -55,6 +52,7 @@ impl TypeId {
                     .read(engines, |m| m.name.clone().map(|v| v.as_str().to_string())),
                 abi_with_callpaths: true,
                 abi_with_fully_specified_types: true,
+                abi_root_type_without_generic_type_parameters: true,
             },
             engines,
             resolved_type_id,
