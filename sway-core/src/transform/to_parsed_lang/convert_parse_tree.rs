@@ -39,6 +39,7 @@ use sway_types::{
         TEST_ATTRIBUTE_NAME, VALID_ATTRIBUTE_NAMES,
     },
     integer_bits::IntegerBits,
+    BaseIdent,
 };
 use sway_types::{Ident, Span, Spanned};
 
@@ -265,13 +266,6 @@ fn item_use_to_use_statements(
     handler: &Handler,
     item_use: ItemUse,
 ) -> Result<Vec<UseStatement>, ErrorEmitted> {
-    if let Some(pub_token) = item_use.visibility {
-        let error = ConvertParseTreeError::PubUseNotSupported {
-            span: pub_token.span(),
-        };
-        return Err(handler.emit_err(error.into()));
-    }
-
     let mut ret = Vec::new();
     let mut prefix = Vec::new();
     let item_span = item_use.span();
@@ -279,6 +273,7 @@ fn item_use_to_use_statements(
     use_tree_to_use_statements(
         item_use.tree,
         item_use.root_import.is_some(),
+        pub_token_opt_to_visibility(item_use.visibility),
         &mut prefix,
         &mut ret,
         item_span,
@@ -302,6 +297,7 @@ fn item_use_to_use_statements(
 fn use_tree_to_use_statements(
     use_tree: UseTree,
     is_absolute: bool,
+    reexport: Visibility,
     path: &mut Vec<Ident>,
     ret: &mut Vec<UseStatement>,
     item_span: Span,
@@ -309,7 +305,14 @@ fn use_tree_to_use_statements(
     match use_tree {
         UseTree::Group { imports } => {
             for use_tree in imports.into_inner() {
-                use_tree_to_use_statements(use_tree, is_absolute, path, ret, item_span.clone());
+                use_tree_to_use_statements(
+                    use_tree,
+                    is_absolute,
+                    reexport,
+                    path,
+                    ret,
+                    item_span.clone(),
+                );
             }
         }
         UseTree::Name { name } => {
@@ -323,6 +326,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
+                reexport,
                 alias: None,
             });
         }
@@ -337,6 +341,7 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type,
                 is_absolute,
+                reexport,
                 alias: Some(alias),
             });
         }
@@ -346,12 +351,13 @@ fn use_tree_to_use_statements(
                 span: item_span,
                 import_type: ImportType::Star,
                 is_absolute,
+                reexport,
                 alias: None,
             });
         }
         UseTree::Path { prefix, suffix, .. } => {
             path.push(prefix);
-            use_tree_to_use_statements(*suffix, is_absolute, path, ret, item_span);
+            use_tree_to_use_statements(*suffix, is_absolute, reexport, path, ret, item_span);
             path.pop().unwrap();
         }
         UseTree::Error { .. } => {
@@ -767,7 +773,8 @@ pub fn item_impl_to_declaration(
         Some((path_type, _)) => {
             let (trait_name, trait_type_arguments) =
                 path_type_to_call_path_and_type_arguments(context, handler, engines, path_type)?;
-            let impl_trait = ImplTrait {
+            let impl_trait = ImplSelfOrTrait {
+                is_self: false,
                 impl_type_parameters,
                 trait_name: trait_name.to_call_path(handler)?,
                 trait_type_arguments,
@@ -776,20 +783,27 @@ pub fn item_impl_to_declaration(
                 block_span,
             };
             let impl_trait = engines.pe().insert(impl_trait);
-            Ok(Declaration::ImplTrait(impl_trait))
+            Ok(Declaration::ImplSelfOrTrait(impl_trait))
         }
         None => match &*engines.te().get(implementing_for.type_id) {
             TypeInfo::Contract => Err(handler
                 .emit_err(ConvertParseTreeError::SelfImplForContract { span: block_span }.into())),
             _ => {
-                let impl_self = ImplSelf {
+                let impl_self = ImplSelfOrTrait {
+                    is_self: true,
+                    trait_name: CallPath {
+                        is_absolute: false,
+                        prefixes: vec![],
+                        suffix: BaseIdent::dummy(),
+                    },
+                    trait_type_arguments: vec![],
                     implementing_for,
                     impl_type_parameters,
                     items,
                     block_span,
                 };
                 let impl_self = engines.pe().insert(impl_self);
-                Ok(Declaration::ImplSelf(impl_self))
+                Ok(Declaration::ImplSelfOrTrait(impl_self))
             }
         },
     }

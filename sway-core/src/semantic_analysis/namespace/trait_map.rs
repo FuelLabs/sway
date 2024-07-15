@@ -14,7 +14,7 @@ use sway_error::{
 use sway_types::{BaseIdent, Ident, Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGet, DeclEngineInsert},
+    decl_engine::{DeclEngineGet, DeclEngineGetParsedDeclId, DeclEngineInsert},
     engine_threading::*,
     language::{
         parsed::ImplItem,
@@ -816,7 +816,12 @@ impl TraitMap {
                                     } else {
                                         decl.subst(&type_mapping, engines);
                                         let new_ref = decl_engine
-                                            .insert(decl)
+                                            .insert(
+                                                decl,
+                                                decl_engine
+                                                    .get_parsed_decl_id(decl_ref.id())
+                                                    .as_ref(),
+                                            )
                                             .with_parent(decl_engine, decl_ref.id().into());
                                         Some((
                                             name,
@@ -827,7 +832,10 @@ impl TraitMap {
                                 ty::TyTraitItem::Constant(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                                     decl.subst(&type_mapping, engines);
-                                    let new_ref = decl_engine.insert(decl);
+                                    let new_ref = decl_engine.insert(
+                                        decl,
+                                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                                    );
                                     Some((
                                         name,
                                         ResolvedTraitImplItem::Typed(TyImplItem::Constant(new_ref)),
@@ -836,7 +844,10 @@ impl TraitMap {
                                 ty::TyTraitItem::Type(decl_ref) => {
                                     let mut decl = (*decl_engine.get(decl_ref.id())).clone();
                                     decl.subst(&type_mapping, engines);
-                                    let new_ref = decl_engine.insert(decl);
+                                    let new_ref = decl_engine.insert(
+                                        decl,
+                                        decl_engine.get_parsed_decl_id(decl_ref.id()).as_ref(),
+                                    );
                                     Some((
                                         name,
                                         ResolvedTraitImplItem::Typed(TyImplItem::Type(new_ref)),

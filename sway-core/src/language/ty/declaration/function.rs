@@ -8,7 +8,10 @@ use sway_error::handler::{ErrorEmitted, Handler};
 
 use crate::{
     has_changes,
-    language::{parsed::FunctionDeclarationKind, CallPath},
+    language::{
+        parsed::{FunctionDeclaration, FunctionDeclarationKind},
+        CallPath,
+    },
     semantic_analysis::type_check_context::MonomorphizeHelper,
     transform::AttributeKind,
 };
@@ -56,6 +59,10 @@ pub struct TyFunctionDecl {
     pub is_trait_method_dummy: bool,
     pub is_type_check_finalized: bool,
     pub kind: TyFunctionDeclKind,
+}
+
+impl TyDeclParsedType for TyFunctionDecl {
+    type ParsedType = FunctionDeclaration;
 }
 
 impl DebugWithEngines for TyFunctionDecl {
@@ -434,7 +441,7 @@ impl TyFunctionDecl {
         };
 
         match &self.implementing_type {
-            Some(TyDecl::ImplTrait(t)) => {
+            Some(TyDecl::ImplSelfOrTrait(t)) => {
                 let unify_check = UnifyCheck::non_dynamic_equality(engines);
 
                 let implementing_for = engines.de().get(&t.decl_id).implementing_for.type_id;

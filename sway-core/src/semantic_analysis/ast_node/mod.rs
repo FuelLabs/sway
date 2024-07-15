@@ -167,7 +167,7 @@ fn collect_use_statement(
         ImportType::Star => {
             // try a standard starimport first
             let star_import_handler = Handler::default();
-            let import = ctx.star_import(&star_import_handler, engines, &path);
+            let import = ctx.star_import(&star_import_handler, engines, &path, stmt.reexport);
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
@@ -175,8 +175,13 @@ fn collect_use_statement(
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
-                    let variant_import =
-                        ctx.variant_star_import(&variant_import_handler, engines, path, enum_name);
+                    let variant_import = ctx.variant_star_import(
+                        &variant_import_handler,
+                        engines,
+                        path,
+                        enum_name,
+                        stmt.reexport,
+                    );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -190,12 +195,20 @@ fn collect_use_statement(
                 }
             }
         }
-        ImportType::SelfImport(_) => ctx.self_import(handler, engines, &path, stmt.alias.clone()),
+        ImportType::SelfImport(_) => {
+            ctx.self_import(handler, engines, &path, stmt.alias.clone(), stmt.reexport)
+        }
         ImportType::Item(ref s) => {
             // try a standard item import first
             let item_import_handler = Handler::default();
-            let import =
-                ctx.item_import(&item_import_handler, engines, &path, s, stmt.alias.clone());
+            let import = ctx.item_import(
+                &item_import_handler,
+                engines,
+                &path,
+                s,
+                stmt.alias.clone(),
+                stmt.reexport,
+            );
 
             if import.is_ok() {
                 handler.append(item_import_handler);
@@ -211,6 +224,7 @@ fn collect_use_statement(
                         enum_name,
                         s,
                         stmt.alias.clone(),
+                        stmt.reexport,
                     );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
@@ -252,7 +266,7 @@ fn handle_use_statement(
         ImportType::Star => {
             // try a standard starimport first
             let star_import_handler = Handler::default();
-            let import = ctx.star_import(&star_import_handler, &path);
+            let import = ctx.star_import(&star_import_handler, &path, stmt.reexport);
             if import.is_ok() {
                 handler.append(star_import_handler);
                 import
@@ -260,8 +274,12 @@ fn handle_use_statement(
                 // if it doesn't work it could be an enum star import
                 if let Some((enum_name, path)) = path.split_last() {
                     let variant_import_handler = Handler::default();
-                    let variant_import =
-                        ctx.variant_star_import(&variant_import_handler, path, enum_name);
+                    let variant_import = ctx.variant_star_import(
+                        &variant_import_handler,
+                        path,
+                        enum_name,
+                        stmt.reexport,
+                    );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);
                         variant_import
@@ -275,11 +293,19 @@ fn handle_use_statement(
                 }
             }
         }
-        ImportType::SelfImport(_) => ctx.self_import(handler, &path, stmt.alias.clone()),
+        ImportType::SelfImport(_) => {
+            ctx.self_import(handler, &path, stmt.alias.clone(), stmt.reexport)
+        }
         ImportType::Item(ref s) => {
             // try a standard item import first
             let item_import_handler = Handler::default();
-            let import = ctx.item_import(&item_import_handler, &path, s, stmt.alias.clone());
+            let import = ctx.item_import(
+                &item_import_handler,
+                &path,
+                s,
+                stmt.alias.clone(),
+                stmt.reexport,
+            );
 
             if import.is_ok() {
                 handler.append(item_import_handler);
@@ -294,6 +320,7 @@ fn handle_use_statement(
                         enum_name,
                         s,
                         stmt.alias.clone(),
+                        stmt.reexport,
                     );
                     if variant_import.is_ok() {
                         handler.append(variant_import_handler);

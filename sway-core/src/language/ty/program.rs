@@ -131,9 +131,12 @@ impl TyProgram {
                 // ABI entries are all functions declared in impl_traits on the contract type
                 // itself, except for ABI supertraits, which do not expose their methods to
                 // the user
-                TyAstNodeContent::Declaration(TyDecl::ImplTrait(ImplTrait { decl_id, .. })) => {
-                    let impl_trait_decl = decl_engine.get_impl_trait(decl_id);
-                    let TyImplTrait {
+                TyAstNodeContent::Declaration(TyDecl::ImplSelfOrTrait(ImplSelfOrTrait {
+                    decl_id,
+                    ..
+                })) => {
+                    let impl_trait_decl = decl_engine.get_impl_self_or_trait(decl_id);
+                    let TyImplSelfOrTrait {
                         items,
                         implementing_for,
                         trait_decl_ref,

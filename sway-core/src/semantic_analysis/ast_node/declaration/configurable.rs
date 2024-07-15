@@ -8,7 +8,7 @@ use sway_error::{
 use sway_types::{style::is_screaming_snake_case, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineInsert, ReplaceDecls},
+    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, ReplaceDecls},
     language::{
         parsed::*,
         ty::{self, TyConfigurableDecl},
@@ -124,7 +124,8 @@ impl ty::TyConfigurableDecl {
             })?;
             let (decode_fn_ref, _, _): (crate::decl_engine::DeclRefFunction, _, _) = r?;
 
-            let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_ref)).clone();
+            let decode_fn_id = *decode_fn_ref.id();
+            let mut decode_fn_decl = (*engines.de().get_function(&decode_fn_id)).clone();
             let decl_mapping = crate::TypeParameter::gather_decl_mapping_from_trait_constraints(
                 handler,
                 ctx.by_ref(),
@@ -135,8 +136,11 @@ impl ty::TyConfigurableDecl {
             decode_fn_decl.replace_decls(&decl_mapping, handler, &mut ctx)?;
             let decode_fn_ref = engines
                 .de()
-                .insert(decode_fn_decl)
-                .with_parent(engines.de(), (*decode_fn_ref.id()).into());
+                .insert(
+                    decode_fn_decl,
+                    engines.de().get_parsed_decl_id(&decode_fn_id).as_ref(),
+                )
+                .with_parent(engines.de(), decode_fn_id.into());
 
             (value, Some(decode_fn_ref))
         } else {
