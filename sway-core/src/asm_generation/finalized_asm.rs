@@ -537,6 +537,8 @@ fn print_instruction(op: &Instruction) {
         Instruction::WDMM(x) => f("WDMM", x.unpack()),
         Instruction::WQMM(x) => f("WQMM", x.unpack()),
         Instruction::ECAL(x) => f("ECAL", x.unpack()),
+        Instruction::BSIZ(x) => f("BSIZ", x.unpack()),
+        Instruction::BLDD(x) => f("BLDD", x.unpack()),
     }
 }
 
