@@ -450,16 +450,6 @@ impl ty::TyModule {
             }
         }
 
-        // let dependencies = submodules
-        //     .iter()
-        //     .filter_map(|(ident, _)| {
-        //         ident
-        //             .span()
-        //             .source_id()
-        //             .map(|src_id| Arc::new(engines.se().get_path(src_id)))
-        //     })
-        //     .collect::<Vec<_>>();
-
         let ty_module = Self {
             span: span.clone(),
             submodules,
@@ -470,7 +460,6 @@ impl ty::TyModule {
 
         // Cache the ty module
         if let Some(source_id) = span.source_id() {
-
             let path = engines.se().get_path(&source_id);
             let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
             let relevant_path = path
@@ -478,17 +467,7 @@ impl ty::TyModule {
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
                 .collect::<PathBuf>();
 
-            // let module_eval_order = module_eval_order.iter().map(|ident| {
-            //     let path = engines.se().get_path(ident.span().source_id().unwrap());
-            // }).collect::<Vec<_>>();
-
-            // let module_eval_order = module_eval_order.iter()
-            //     .filter_map(|ident| {
-            //         ident.span().source_id()
-            //             .map(|source_id| engines.se().get_path(source_id))
-            //     })
-            //     .collect::<Vec<_>>();
-
+            // how about instead of saving this here we just check in the is_ty_module_cache_up_to_date function
             let dependencies = engines.qe().get_parse_module_cache_entry(&ModuleCacheKey {
                 path: path.clone().into(),
                 include_tests: true, // TODO: pass this in

@@ -444,13 +444,11 @@ pub(crate) fn is_ty_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
     build_config: Option<&BuildConfig>,
-    //entry: &TyModuleCacheEntry,
 ) -> bool {
     let query_engine = engines.qe();
     let entry = query_engine.get_ty_module_cache_entry(&path);
     match entry {
         Some(entry) => {
-            // return false;
             let cache_up_to_date = build_config
                 .as_ref()
                 .and_then(|x| x.lsp_mode.as_ref())
@@ -459,11 +457,7 @@ pub(crate) fn is_ty_module_cache_up_to_date(
                     || false,
                     |version| !version.map_or(false, |v| v > entry.version.unwrap_or(0)),
                 );
-            // Only putting this here to confirm we don't get a stack overflow if we return early.
-            // return cache_up_to_date;
             if cache_up_to_date {
-                // This is causing a stack overflow, why?
-                eprintln!("num dependencies for path {:?}: {}", path, entry.dependencies.len());
                 entry
                     .dependencies
                     .iter()
