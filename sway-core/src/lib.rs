@@ -33,7 +33,7 @@ use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
-use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
+use query_engine::{ModuleCacheKey, ProgramsCacheEntry, TyModuleCacheEntry};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -236,7 +236,7 @@ fn parse_in_memory(
 
 pub struct Submodule {
     name: Ident,
-    path: ModulePath,
+    path: Arc<PathBuf>,
     lexed: lexed::LexedSubmodule,
     parsed: parsed::ParseSubmodule,
 }
@@ -412,13 +412,24 @@ fn parse_module_tree(
         .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
     let cache_entry = ModuleCacheEntry {
-        path,
+        path: path.clone(),
         modified_time,
         hash,
         dependencies,
         include_tests,
         version,
     };
+
+    let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+    let relevant_path = path
+        .iter()
+        .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
+        .collect::<PathBuf>();
+    eprintln!(
+        "🀄 🗂️ Inserted cache entry for parse module {:?}",
+        relevant_path
+    );
+
     query_engine.insert_parse_module_cache_entry(cache_entry);
 
     Ok(ParsedModuleTree {
@@ -428,16 +439,58 @@ fn parse_module_tree(
     })
 }
 
-fn is_parse_module_cache_up_to_date(
+pub(crate) fn is_ty_module_cache_up_to_date(
+    path: &Arc<PathBuf>,
+    build_config: Option<&BuildConfig>,
+    entry: &TyModuleCacheEntry,
+) -> bool {
+    let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+    let relevant_path = path
+        .iter()
+        .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
+        .collect::<PathBuf>();
+
+    let cache_up_to_date = build_config
+        .as_ref()
+        .and_then(|x| x.lsp_mode.as_ref())
+        .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
+        .map_or_else(
+            || false,
+            |version| !version.map_or(false, |v| v > entry.version.unwrap_or(0)),
+        );
+
+    let res = if cache_up_to_date {
+        entry
+            .dependencies
+            .iter()
+            .all(|path| is_ty_module_cache_up_to_date(path, build_config, entry))
+    } else {
+        false
+    };
+
+    eprintln!(
+        "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
+        relevant_path, res
+    );
+    res
+}
+
+pub(crate) fn is_parse_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
     include_tests: bool,
     build_config: Option<&BuildConfig>,
 ) -> bool {
+    let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+    let relevant_path = path
+        .iter()
+        .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
+        .collect::<PathBuf>();
+
     let query_engine = engines.qe();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
     let entry = query_engine.get_parse_module_cache_entry(&key);
-    match entry {
+    let res = match entry {
         Some(entry) => {
             // Let's check if we can re-use the dependency information
             // we got from the cache.
@@ -480,7 +533,14 @@ fn is_parse_module_cache_up_to_date(
             }
         }
         None => false,
-    }
+    };
+
+    eprintln!(
+        "🀄 👓 Checking cache for parse module {:?} | is up to date? {}",
+        relevant_path, res
+    );
+
+    res
 }
 
 fn module_path(
@@ -696,6 +756,7 @@ pub fn compile_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
+    eprintln!("👨‍💻 compile_to_ast 👨‍💻");
     check_should_abort(handler, retrigger_compilation.clone())?;
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
@@ -739,6 +800,7 @@ pub fn compile_to_ast(
         parsed_program.exclude_tests(engines);
     }
 
+    eprintln!("👩‍💻 parsed to typed AST 👩‍💻");
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
         "parse the concrete syntax tree (CST) to a typed AST",

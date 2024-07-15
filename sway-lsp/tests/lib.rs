@@ -169,8 +169,14 @@ fn did_open_fluid_libraries() {
         let (mut service, _) = LspService::build(ServerState::new)
             .custom_method("sway/metrics", ServerState::metrics)
             .finish();
-        let uri = init_and_open(&mut service, PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries").join("src/interface.sw")).await;
+        let uri = init_and_open(
+            &mut service,
+            PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
+                .join("src/interface.sw"),
+        )
+        .await;
 
+        eprintln!("\n 🪆🪆🪆🪆 Initial compilation complete, starting recompilation 🪆🪆🪆🪆 \n");
         let _ = lsp::did_change_request(&mut service, &uri, 1, None).await;
         service.inner().wait_for_parsing().await;
         eprintln!("Elapsed time: {:?}", now.elapsed());

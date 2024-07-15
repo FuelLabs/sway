@@ -8,8 +8,6 @@ use crate::decl_engine::{DeclId, DeclRef};
 use crate::language::ty::{TyFunctionDecl, TyFunctionSig, TyModule};
 use crate::{Engines, Programs};
 
-pub type ModulePath = Arc<PathBuf>;
-
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct ModuleCacheKey {
     pub path: Arc<PathBuf>,
@@ -27,12 +25,12 @@ impl ModuleCacheKey {
 
 #[derive(Clone, Debug)]
 pub struct ModuleCacheEntry {
-    pub path: ModulePath,
-    pub modified_time: Option<SystemTime>,
+    pub path: Arc<PathBuf>,
     pub hash: u64,
-    pub dependencies: Vec<ModulePath>,
     pub include_tests: bool,
+    pub dependencies: Vec<Arc<PathBuf>>,
     pub version: Option<u64>,
+    pub modified_time: Option<SystemTime>,
 }
 
 pub type ModuleCacheMap = HashMap<ModuleCacheKey, ModuleCacheEntry>;
@@ -50,7 +48,10 @@ pub type ProgramsCacheMap = HashMap<Arc<PathBuf>, ProgramsCacheEntry>;
 pub struct TyModuleCacheEntry {
     pub path: Arc<PathBuf>,
     pub module: TyModule,
+    pub dependencies: Vec<Arc<PathBuf>>,
+    pub version: Option<u64>,
 }
+
 pub type TyModuleCacheMap = HashMap<Arc<PathBuf>, TyModuleCacheEntry>;
 
 #[derive(Clone, Debug)]
