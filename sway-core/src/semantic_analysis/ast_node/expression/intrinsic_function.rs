@@ -306,13 +306,11 @@ fn type_check_slice(
                 slice_type,
             ))
         }
-        _ => {
-            return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-                name: kind.to_string(),
-                span: array_span,
-                hint: "".to_string(),
-            }));
-        }
+        _ => Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: array_span,
+            hint: "".to_string(),
+        })),
     }
 }
 

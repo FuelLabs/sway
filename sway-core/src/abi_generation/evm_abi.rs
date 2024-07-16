@@ -49,9 +49,7 @@ fn get_type_str(type_id: &TypeId, engines: &Engines, resolved_type_id: TypeId) -
                 assert_eq!(count.val(), resolved_count.val());
                 format!("[_; {}]", count.val())
             }
-            (TypeInfo::Slice(_), TypeInfo::Slice(_)) => {
-                format!("__slice[_]")
-            }
+            (TypeInfo::Slice(_), TypeInfo::Slice(_)) => "__slice[_]".into(),
             (TypeInfo::Custom { .. }, _) => {
                 format!("generic {}", abi_str(&type_engine.get(*type_id), engines))
             }

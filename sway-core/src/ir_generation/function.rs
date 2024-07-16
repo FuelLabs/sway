@@ -2164,9 +2164,7 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::Slice => {
                 assert!(arguments.len() == 3);
 
-                let u8_type = Type::get_uint8(context);
                 let uint64 = Type::get_uint64(context);
-                let ptr_u8 = Type::new_ptr(context, u8_type);
                 let ptr_u64 = Type::new_ptr(context, uint64);
 
                 let first_argument = &arguments[0];
@@ -2189,11 +2187,11 @@ impl<'eng> FnCompiler<'eng> {
                 let ptr_to_first_argument =
                     save_to_local_return_ptr(self, context, first_argument_value)?;
                 let ptr_to_elements = match &*self.engines.te().get(first_argument.return_type) {
-                    TypeInfo::Array(t, _) => self
+                    TypeInfo::Array(_, _) => self
                         .current_block
                         .append(context)
                         .ptr_to_int(ptr_to_first_argument, uint64),
-                    TypeInfo::Slice(t) => {
+                    TypeInfo::Slice(_) => {
                         let slice_ptr = self
                             .current_block
                             .append(context)
@@ -2295,10 +2293,6 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::SliceElem => {
                 assert!(arguments.len() == 2);
-
-                let u8_type = Type::get_uint8(context);
-                let uint64 = Type::get_uint64(context);
-                let ptr_u8 = Type::new_ptr(context, u8_type);
 
                 let slice = &arguments[0];
                 let item_ir_type = convert_resolved_typeid(

@@ -14,7 +14,7 @@
 //! }
 //! ```
 
-use sway_types::{ident::Ident, BaseIdent};
+use sway_types::ident::Ident;
 
 use crate::{
     context::Context, irtype::Type, metadata::MetadataIndex, pretty::DebugWithContext, value::Value,
