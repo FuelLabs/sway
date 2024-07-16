@@ -2680,7 +2680,8 @@ mod tests {
         type_annotation: TypeId,
         experimental: ExperimentalFlags,
     ) -> Result<ty::TyExpression, ErrorEmitted> {
-        let mut root_module = namespace::Root::from(namespace::Module::default());
+	let root_module_name = sway_types::Ident::new_no_span("do_type_check_test".to_string());
+        let mut root_module = namespace::Root::from(namespace::Module::new(root_module_name, Visibility::Private, None));
         let mut namespace = Namespace::init_root(&mut root_module);
         let ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental)
             .with_type_annotation(type_annotation);
