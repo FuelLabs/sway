@@ -8,8 +8,8 @@ use std::{
 use anyhow::Result;
 use colored::Colorize;
 use sway_core::{
-    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program, namespace,
-    BuildTarget, Engines,
+    compile_ir_context_to_finalized_asm, compile_to_ast, ir_generation::compile_program,
+    language::Visibility, namespace, BuildTarget, Engines,
 };
 use sway_error::handler::Handler;
 
@@ -564,7 +564,11 @@ fn compile_core(
                 .submodules()
                 .into_iter()
                 .fold(
-                    namespace::Module::new(sway_types::Ident::new_no_span("core".to_string())),
+                    namespace::Module::new(
+                        sway_types::Ident::new_no_span("core".to_string()),
+                        Visibility::Private,
+                        None,
+                    ),
                     |mut core_mod, (name, sub_mod)| {
                         core_mod.insert_submodule(name.clone(), sub_mod.clone());
                         core_mod
@@ -572,7 +576,7 @@ fn compile_core(
                 );
 
             // Create a module for std and insert the core module.
-            let mut std_module = namespace::Module::new(lib_name);
+            let mut std_module = namespace::Module::new(lib_name, Visibility::Private, None);
             std_module.insert_submodule("core".to_owned(), core_module);
             std_module
         }

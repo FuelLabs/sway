@@ -295,13 +295,14 @@ impl Namespace {
         self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
-            .or_insert(init.clone_with_new_name(mod_name, submod_path.clone()));
+            .or_insert(init.new_submodule_from_init(
+                mod_name,
+                visibility,
+                Some(module_span),
+                is_external,
+                submod_path.clone(),
+            ));
         let parent_mod_path = std::mem::replace(&mut self.mod_path, submod_path.clone());
-        // self.module() now refers to a different module, so refetch
-        let new_module = self.module_mut(engines);
-        new_module.span = Some(module_span);
-        new_module.visibility = visibility;
-        new_module.is_external = is_external;
         SubmoduleNamespace {
             namespace: self,
             parent_mod_path,
@@ -316,14 +317,10 @@ impl Namespace {
         visibility: Visibility,
         module_span: Span,
     ) {
-        let mut module = Module::new(mod_name.clone());
-        module.visibility = visibility;
-        module.span = Some(module_span);
-
         self.module_mut(engines)
             .submodules
             .entry(mod_name.to_string())
-            .or_insert(module);
+            .or_insert(Module::new(mod_name.clone(), visibility, Some(module_span)));
         self.mod_path.push(mod_name);
     }
 

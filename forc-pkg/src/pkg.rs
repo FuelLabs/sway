@@ -1602,14 +1602,16 @@ pub fn dependency_namespace(
     let node_idx = &graph[node];
     let name = Ident::new_no_span(node_idx.name.clone());
     let mut root_module = if let Some(contract_id_value) = contract_id_value {
-        namespace::default_with_contract_id(engines, name.clone(), contract_id_value, experimental)?
+        namespace::default_with_contract_id(
+            engines,
+            name.clone(),
+            Visibility::Public,
+            contract_id_value,
+            experimental,
+        )?
     } else {
-        namespace::Module::new(name)
+        namespace::Module::new(name, Visibility::Public, None)
     };
-
-    root_module.write(engines, |root_module| {
-        root_module.visibility = Visibility::Public;
-    });
 
     // Add direct dependencies.
     let mut core_added = false;
@@ -1633,14 +1635,13 @@ pub fn dependency_namespace(
                 let contract_id_value = format!("0x{dep_contract_id}");
                 let node_idx = &graph[dep_node];
                 let name = Ident::new_no_span(node_idx.name.clone());
-                let mut module = namespace::default_with_contract_id(
+                namespace::default_with_contract_id(
                     engines,
                     name.clone(),
+                    Visibility::Private,
                     contract_id_value,
                     experimental,
-                )?;
-                module.visibility = Visibility::Public;
-                module
+                )?
             }
         };
         dep_namespace.is_external = true;
@@ -2732,7 +2733,8 @@ pub fn check(
                     .program_id(engines)
                     .read(engines, |m| m.clone());
                 //                module.name = Some(Ident::new_no_span(pkg.name.clone()));
-                module.span = Some(
+                //                module.span = Some(
+                module.set_span(
                     Span::new(
                         manifest.entry_string()?,
                         0,
