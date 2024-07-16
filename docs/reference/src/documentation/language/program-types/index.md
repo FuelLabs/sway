@@ -9,7 +9,7 @@ A Sway program can be one of four types:
 - [library](libraries/index.md)
   - Reusable code for handling common operations
 - [script](script.md)
-  - Used for complex, multi-step, on-chain interactions that won't persist, such as using a decentralized exchange to create a leveraged position (borrow, swap, re-collateralize, borrow)
+  - Used for complex, multi-step, on-chain interactions that won't persist, such as using a decentralized exchange to create a leveraged position (borrow, swap, re-collateralize)
 - [predicate](predicate.md)
   - A set of preconditions to the construction of a transaction, the result of which must be a Boolean value of `true` in order for the transaction to be considered valid
 
