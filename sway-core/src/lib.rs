@@ -828,10 +828,13 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
-    // The IR pipeline relies on type information being fully resolved.
-    // If type information is found to still be generic or unresolved inside of
-    // IR, this is considered an internal compiler error. To resolve this situation,
-    // we need to explicitly ensure all types are resolved before going into IR.
+    // IR generaterion requires type information to be fully resolved.
+    //
+    // If type information is found to still be generic inside of
+    // IR, this is considered an internal compiler error.
+    //
+    // But, there are genuine cases for types be unknown here, like `let a = []`. These should
+    // have friendly errors.
     //
     // We _could_ introduce a new type here that uses TypeInfo instead of TypeId and throw away
     // the engine, since we don't need inference for IR. That'd be a _lot_ of copy-pasted code,

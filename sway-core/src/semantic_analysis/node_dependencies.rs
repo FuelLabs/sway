@@ -794,6 +794,7 @@ impl Dependencies {
                 deps.gather_from_type_argument(engines, elem)
             }),
             TypeInfo::Array(elem_type, _) => self.gather_from_type_argument(engines, elem_type),
+            TypeInfo::Slice(elem_type) => self.gather_from_type_argument(engines, elem_type),
             TypeInfo::Struct(decl_ref) => self.gather_from_iter(
                 decl_engine.get_struct(decl_ref).fields.iter(),
                 |deps, field| deps.gather_from_type_argument(engines, &field.type_argument),

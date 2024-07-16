@@ -41,8 +41,8 @@ pub enum Intrinsic {
     EncodeBufferEmpty,      // let buffer: (raw_ptr, u64, u64) = __encode_buffer_empty()
     EncodeBufferAppend, // let buffer: (raw_ptr, u64, u64) = __encode_buffer_append(buffer, primitive data type)
     EncodeBufferAsRawSlice, // let slice: raw_slice = __encode_buffer_as_raw_slice(buffer)
-    Slice,
-    SliceElem,
+    Slice,     // let ref_to_slice = __slice(array, inclusive_start_index, exclusive_end_index)
+    SliceElem, // let ref_to_item = __slice_elem(ref to slice, index)
 }
 
 impl fmt::Display for Intrinsic {

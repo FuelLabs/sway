@@ -59,17 +59,11 @@ pub(super) fn convert_resolved_typeid(
     ast_type: &TypeId,
     span: &Span,
 ) -> Result<Type, CompileError> {
-    // There's probably a better way to convert TypeError to String, but... we'll use something
-    // other than String eventually?  IrError?
-    convert_resolved_type(
-        type_engine,
-        decl_engine,
-        context,
-        &type_engine
-            .to_typeinfo(*ast_type, span)
-            .map_err(|ty_err| CompileError::InternalOwned(format!("{ty_err:?}"), span.clone()))?,
-        span,
-    )
+    let t = &type_engine
+        .to_typeinfo(*ast_type, span)
+        .map_err(|ty_err| CompileError::TypeMustBeKnownAtThisPoint { span: span.clone() })?;
+
+    convert_resolved_type(type_engine, decl_engine, context, t, span)
 }
 
 pub(super) fn convert_resolved_typeid_no_span(
@@ -139,6 +133,16 @@ fn convert_resolved_type(
                 span,
             )?;
             Type::new_array(context, elem_type, length.val() as u64)
+        }
+        TypeInfo::Slice(elem_type) => {
+            let elem_type = convert_resolved_typeid(
+                type_engine,
+                decl_engine,
+                context,
+                &elem_type.type_id,
+                span,
+            )?;
+            Type::get_typed_slice(context, elem_type)
         }
         TypeInfo::Tuple(fields) => {
             if fields.is_empty() {

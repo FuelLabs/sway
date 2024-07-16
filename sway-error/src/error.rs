@@ -1009,6 +1009,8 @@ pub enum CompileError {
     EncodingUnsupportedType { span: Span },
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
+    #[error("Type must be known at this point")]
+    TypeMustBeKnownAtThisPoint { span: Span },
 }
 
 impl std::convert::From<TypeError> for CompileError {
@@ -1225,6 +1227,7 @@ impl Spanned for CompileError {
             EncodingUnsupportedType { span } => span.clone(),
             ConfigurableMissingAbiDecodeInPlace { span } => span.clone(),
             InvalidRangeEndGreaterThanStart { span, .. } => span.clone(),
+            TypeMustBeKnownAtThisPoint { span, .. } => span.clone(),
         }
     }
 }

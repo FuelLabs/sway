@@ -105,64 +105,72 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Slice => {
                 type_check_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::SliceElem => {
-                if arguments.len() != 2 {
-                    return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
-                        name: kind.to_string(),
-                        expected: 2,
-                        span,
-                    }));
-                }
-
-                let type_engine = ctx.engines.te();
-                let engines = ctx.engines();
-
-                let mut ctx = ctx;
-
-                // check first argument
-                let slice_span = arguments[0].span.clone();
-                let slice_type = type_engine.insert(engines, TypeInfo::Unknown, None);
-                let slice_typed_expr = {
-                    let ctx = ctx
-                        .by_ref()
-                        .with_help_text("")
-                        .with_type_annotation(slice_type);
-                    ty::TyExpression::type_check(handler, ctx, &arguments[0])?
-                };
-                let TypeInfo::Slice(elem_type) = &*type_engine.get(slice_type) else {
-                    return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-                        name: kind.to_string(),
-                        span: slice_span,
-                        hint: "".to_string(),
-                    }));
-                };
-
-                // index argument
-                let index_type = type_engine.insert(
-                    engines,
-                    TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
-                    None,
-                );
-                let index_typed_expr = {
-                    let ctx = ctx
-                        .by_ref()
-                        .with_help_text("")
-                        .with_type_annotation(index_type);
-                    ty::TyExpression::type_check(handler, ctx, &arguments[1])?
-                };
-
-                Ok((
-                    TyIntrinsicFunctionKind {
-                        kind,
-                        arguments: vec![slice_typed_expr, index_typed_expr],
-                        type_arguments: vec![],
-                        span,
-                    },
-                    elem_type.type_id,
-                ))
-            }
+            Intrinsic::SliceElem => type_check_slice_elem(arguments, handler, kind, span, ctx),
         }
     }
+}
+
+fn type_check_slice_elem(
+    arguments: &[Expression],
+    handler: &Handler,
+    kind: Intrinsic,
+    span: Span,
+    ctx: TypeCheckContext,
+) -> Result<(TyIntrinsicFunctionKind, TypeId), ErrorEmitted> {
+    if arguments.len() != 2 {
+        return Err(handler.emit_err(CompileError::IntrinsicIncorrectNumArgs {
+            name: kind.to_string(),
+            expected: 2,
+            span,
+        }));
+    }
+
+    let type_engine = ctx.engines.te();
+    let engines = ctx.engines();
+
+    let mut ctx = ctx;
+
+    // check first argument
+    let slice_span = arguments[0].span.clone();
+    let slice_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+    let slice_typed_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(slice_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[0])?
+    };
+    let TypeInfo::Slice(elem_type) = &*type_engine.get(slice_type) else {
+        return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
+            name: kind.to_string(),
+            span: slice_span,
+            hint: "".to_string(),
+        }));
+    };
+
+    // index argument
+    let index_type = type_engine.insert(
+        engines,
+        TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
+        None,
+    );
+    let index_typed_expr = {
+        let ctx = ctx
+            .by_ref()
+            .with_help_text("")
+            .with_type_annotation(index_type);
+        ty::TyExpression::type_check(handler, ctx, &arguments[1])?
+    };
+
+    Ok((
+        TyIntrinsicFunctionKind {
+            kind,
+            arguments: vec![slice_typed_expr, index_typed_expr],
+            type_arguments: vec![],
+            span,
+        },
+        elem_type.type_id,
+    ))
 }
 
 fn type_check_slice(
@@ -224,18 +232,18 @@ fn type_check_slice(
     };
 
     // statically check start and end, if possible
-    let start_literal = match &start_ty_expr.expression {
-        ty::TyExpressionVariant::Literal(v) => v.cast_value_to_u64(),
-        _ => None,
-    };
+    let start_literal = start_ty_expr
+        .expression
+        .as_literal()
+        .and_then(|x| x.cast_value_to_u64());
 
-    let end_literal = match &end_ty_expr.expression {
-        ty::TyExpressionVariant::Literal(v) => v.cast_value_to_u64(),
-        _ => None,
-    };
+    let end_literal = end_ty_expr
+        .expression
+        .as_literal()
+        .and_then(|x| x.cast_value_to_u64());
 
     if let (Some(start), Some(end)) = (start_literal, end_literal) {
-        if start >= end {
+        if start > end {
             return Err(
                 handler.emit_err(CompileError::InvalidRangeEndGreaterThanStart {
                     start,
@@ -252,7 +260,7 @@ fn type_check_slice(
             let array_len = array_len.val() as u64;
 
             if let Some(v) = start_literal {
-                if v >= array_len {
+                if v > array_len {
                     return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
                         index: v,
                         count: array_len,
@@ -262,7 +270,7 @@ fn type_check_slice(
             }
 
             if let Some(v) = end_literal {
-                if v >= array_len {
+                if v > array_len {
                     return Err(handler.emit_err(CompileError::ArrayOutOfBounds {
                         index: v,
                         count: array_len,

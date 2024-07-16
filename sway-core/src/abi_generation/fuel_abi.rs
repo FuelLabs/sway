@@ -406,6 +406,47 @@ impl TypeId {
                     unreachable!();
                 }
             }
+            TypeInfo::Slice(..) => {
+                if let TypeInfo::Array(elem_ty, _) = &*type_engine.get(resolved_type_id) {
+                    // The `program_abi::TypeDeclaration`s needed for the array element type
+                    let elem_abi_ty = program_abi::TypeDeclaration {
+                        type_id: elem_ty.initial_type_id.index(),
+                        type_field: elem_ty.initial_type_id.get_abi_type_str(
+                            &ctx.to_str_context(engines, false),
+                            engines,
+                            elem_ty.type_id,
+                        ),
+                        components: elem_ty.initial_type_id.get_abi_type_components(
+                            ctx,
+                            engines,
+                            types,
+                            elem_ty.type_id,
+                        ),
+                        type_parameters: elem_ty.initial_type_id.get_abi_type_parameters(
+                            ctx,
+                            engines,
+                            types,
+                            elem_ty.type_id,
+                        ),
+                    };
+                    types.push(elem_abi_ty);
+
+                    // Generate the JSON data for the array. This is basically a single
+                    // `program_abi::TypeApplication` for the array element type
+                    Some(vec![program_abi::TypeApplication {
+                        name: "__slice_element".to_string(),
+                        type_id: elem_ty.initial_type_id.index(),
+                        type_arguments: elem_ty.initial_type_id.get_abi_type_arguments(
+                            ctx,
+                            engines,
+                            types,
+                            elem_ty.type_id,
+                        ),
+                    }])
+                } else {
+                    unreachable!();
+                }
+            }
             TypeInfo::Tuple(_) => {
                 if let TypeInfo::Tuple(fields) = &*type_engine.get(resolved_type_id) {
                     // A list of all `program_abi::TypeDeclaration`s needed for the tuple fields

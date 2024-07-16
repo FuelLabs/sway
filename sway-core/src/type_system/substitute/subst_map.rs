@@ -233,6 +233,14 @@ impl TypeSubstMap {
                     vec![type_argument.type_id],
                 )
             }
+            (TypeInfo::Slice(type_parameter), TypeInfo::Slice(type_argument)) => {
+                TypeSubstMap::from_superset_and_subset_helper(
+                    type_engine,
+                    decl_engine,
+                    vec![type_parameter.type_id],
+                    vec![type_argument.type_id],
+                )
+            }
             (
                 TypeInfo::Storage {
                     fields: type_parameters,
@@ -404,6 +412,16 @@ impl TypeSubstMap {
                     type_engine.insert(
                         engines,
                         TypeInfo::Array(elem_ty.clone(), count.clone()),
+                        elem_ty.span.source_id(),
+                    )
+                })
+            }
+            TypeInfo::Slice(mut elem_ty) => {
+                self.find_match(elem_ty.type_id, engines).map(|type_id| {
+                    elem_ty.type_id = type_id;
+                    type_engine.insert(
+                        engines,
+                        TypeInfo::Slice(elem_ty.clone()),
                         elem_ty.span.source_id(),
                     )
                 })

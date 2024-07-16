@@ -120,7 +120,6 @@ impl TyDecl {
                         "Variable declaration's type annotation does not match up \
                         with the assigned expression's type.",
                     );
-
                 let result = ty::TyExpression::type_check(handler, ctx.by_ref(), &var_decl.body);
                 let body = result.unwrap_or_else(|err| {
                     ty::TyExpression::error(err, var_decl.name.span(), engines)
