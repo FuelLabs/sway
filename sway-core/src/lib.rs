@@ -31,9 +31,10 @@ pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
+use fuel_vm::fuel_merkle::common;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
-use query_engine::{ModuleCacheKey, ProgramsCacheEntry, TyModuleCacheEntry};
+use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -412,14 +413,26 @@ fn parse_module_tree(
     let version = lsp_mode
         .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
-    let cache_entry = ModuleCacheEntry {
+    // let cache_entry = ModuleCacheEntry {
+    //     path: path.clone(),
+    //     modified_time,
+    //     hash,
+    //     dependencies,
+    //     include_tests,
+    //     version,
+    // };
+
+    let common_info = ModuleCommonInfo {
         path: path.clone(),
-        modified_time,
-        hash,
-        dependencies,
         include_tests,
+        dependencies,
+        hash,
+    };
+    let parsed_info = ParsedModuleInfo {
+        modified_time,
         version,
     };
+    let cache_entry = ModuleCacheEntry::new(common_info, parsed_info);
 
     let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
     let relevant_path = path
@@ -431,7 +444,7 @@ fn parse_module_tree(
         relevant_path
     );
 
-    query_engine.insert_parse_module_cache_entry(cache_entry);
+    query_engine.update_or_insert_parsed_module_cache_entry(cache_entry);
 
     Ok(ParsedModuleTree {
         tree_type: kind,
@@ -440,40 +453,40 @@ fn parse_module_tree(
     })
 }
 
+// TODO: This function can probably be written better and more concisely.
 pub(crate) fn is_ty_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
+    include_tests: bool,
     build_config: Option<&BuildConfig>,
 ) -> bool {
     let query_engine = engines.qe();
-    let entry = query_engine.get_ty_module_cache_entry(&path);
+    let key = ModuleCacheKey::new(path.clone(), include_tests);
+    let entry = query_engine.get_module_cache_entry(&key);
     match entry {
-        Some(entry) => {
-            let cache_up_to_date = build_config
-                .as_ref()
-                .and_then(|x| x.lsp_mode.as_ref())
-                .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
-                .map_or_else(
-                    || false,
-                    |version| !version.map_or(false, |v| v > entry.version.unwrap_or(0)),
-                );
-            if cache_up_to_date {
-                entry
-                    .dependencies
-                    .iter()
-                    .all(|path| {
+        Some(entry) => match entry.typed {
+            Some(typed) => {
+                let cache_up_to_date = build_config
+                    .as_ref()
+                    .and_then(|x| x.lsp_mode.as_ref())
+                    .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
+                    .map_or_else(
+                        || false,
+                        |version| !version.map_or(false, |v| v > typed.version.unwrap_or(0)),
+                    );
+                if cache_up_to_date {
+                    entry.common.dependencies.iter().all(|path| {
                         eprint!("checking dep path {:?} ", path);
-                        is_ty_module_cache_up_to_date(engines, path, build_config) 
-                })
-            } else {
-                false
+                        is_ty_module_cache_up_to_date(engines, path, include_tests, build_config)
+                    })
+                } else {
+                    false
+                }
             }
-        }
-        None => {
-            false
-        }
+            None => false,
+        },
+        None => false,
     }
-    
 }
 
 pub(crate) fn is_parse_module_cache_up_to_date(
@@ -490,7 +503,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
 
     let query_engine = engines.qe();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    let entry = query_engine.get_parse_module_cache_entry(&key);
+    let entry = query_engine.get_module_cache_entry(&key);
     let res = match entry {
         Some(entry) => {
             // Let's check if we can re-use the dependency information
@@ -509,17 +522,17 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                         let modified_time = std::fs::metadata(path.as_path())
                             .ok()
                             .and_then(|m| m.modified().ok());
-                        entry.modified_time == modified_time || {
+                        entry.parsed.modified_time == modified_time || {
                             let src = std::fs::read_to_string(path.as_path()).unwrap();
                             let mut hasher = DefaultHasher::new();
                             src.hash(&mut hasher);
                             let hash = hasher.finish();
-                            hash == entry.hash
+                            hash == entry.common.hash
                         }
                     },
                     |version| {
                         // The cache is invalid if the lsp version is greater than the last compilation
-                        !version.map_or(false, |v| v > entry.version.unwrap_or(0))
+                        !version.map_or(false, |v| v > entry.parsed.version.unwrap_or(0))
                     },
                 );
 
@@ -528,8 +541,8 @@ pub(crate) fn is_parse_module_cache_up_to_date(
             if cache_up_to_date {
                 //eprintln!("num dependencies for path {:?}: {}", path, entry.dependencies.len());
 
-                entry.dependencies.iter().all(|path| {
-//                    eprint!("checking dep path {:?} ", path);
+                entry.common.dependencies.iter().all(|path| {
+                    //                    eprint!("checking dep path {:?} ", path);
                     is_parse_module_cache_up_to_date(engines, path, include_tests, build_config)
                 })
             } else {

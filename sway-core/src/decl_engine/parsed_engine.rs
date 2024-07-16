@@ -167,7 +167,6 @@ decl_engine_clear_program!(
         .span()),
 );
 
-
 macro_rules! decl_engine_clear_module {
     ($(($slab:ident, $getter:expr)),* $(,)?) => {
         impl ParsedDeclEngine {

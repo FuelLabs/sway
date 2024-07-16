@@ -22,7 +22,7 @@ use crate::{
         ty::{self, TyAstNodeContent, TyDecl},
         CallPath, ModName,
     },
-    query_engine::{ModuleCacheKey, TyModuleCacheEntry},
+    query_engine::{ModuleCacheKey, TypedModuleInfo},
     semantic_analysis::*,
     BuildConfig, Engines, TypeInfo,
 };
@@ -266,6 +266,7 @@ impl ty::TyModule {
         // Check if the module is already in the cache
         if let Some(source_id) = source_id {
             let path = engines.se().get_path(&source_id);
+            let include_tests = build_config.map_or(false, |x| x.include_tests);
 
             let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
             let relevant_path = path
@@ -273,8 +274,9 @@ impl ty::TyModule {
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
                 .collect::<PathBuf>();
             eprintln!("🥸 Checking cache for TY module {:?}", relevant_path);
-            
-            if let Some(entry) = engines.qe().get_ty_module_cache_entry(&path) {
+
+            let key: ModuleCacheKey = ModuleCacheKey::new(path.clone().into(), include_tests);
+            if let Some(entry) = engines.qe().get_module_cache_entry(&key) {
                 // We now need to check if the module is up to date, if not, we need to recompute it so
                 // we will return None, otherwise we will return the cached module.
 
@@ -283,23 +285,29 @@ impl ty::TyModule {
 
                 // Let's check if we can re-use the dependency information
                 // we got from the cache.
-                
-                if is_ty_module_cache_up_to_date(engines, &path.into(), build_config) {
-                    eprintln!(
-                        "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
-                        relevant_path, true
-                    );
+                if let Some(typed) = entry.typed {
+                    if is_ty_module_cache_up_to_date(
+                        engines,
+                        &path.into(),
+                        include_tests,
+                        build_config,
+                    ) {
+                        eprintln!(
+                            "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
+                            relevant_path, true
+                        );
 
-                    eprintln!("✅ Cache hit for module {:?}", relevant_path);
-                    // Return the cached module
-                    return Some(entry.module);
-                } else {
-                    eprintln!(
-                        "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
-                        relevant_path, false
-                    );
+                        eprintln!("✅ Cache hit for module {:?}", relevant_path);
+                        // Return the cached module
+                        return Some(typed.module);
+                    } else {
+                        eprintln!(
+                            "📟 👓 Checking cache for TY module {:?} | is up to date? {}",
+                            relevant_path, false
+                        );
 
-                    eprintln!("🔄 Cache unable to be used for module {:?}", relevant_path);
+                        eprintln!("🔄 Cache unable to be used for module {:?}", relevant_path);
+                    }
                 }
             }
         }
@@ -325,7 +333,6 @@ impl ty::TyModule {
             module_eval_order,
             ..
         } = parsed;
-
 
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
@@ -467,30 +474,25 @@ impl ty::TyModule {
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
                 .collect::<PathBuf>();
 
-            // how about instead of saving this here we just check in the is_ty_module_cache_up_to_date function
-            let dependencies = engines.qe().get_parse_module_cache_entry(&ModuleCacheKey {
-                path: path.clone().into(),
-                include_tests: true, // TODO: pass this in
-            }).unwrap().dependencies;
-
-            //eprintln!("🐤 🐤 🐤 🐤 🐤 🐤 🐤 🐤 path {:?} | module_eval_order {:?}", relevant_path, module_eval_order);
-            eprintln!("🐤 path {:?} | dependencies {:?}", relevant_path, dependencies);
-
-            eprintln!("💾 Inserting cache entry for TY module {:?}", relevant_path);
-
+            let modified_time = std::fs::metadata(path.as_path())
+                .ok()
+                .and_then(|m| m.modified().ok());
             let version = build_config
                 .and_then(|config| config.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(&path).copied())
                 .flatten();
 
-            engines
-                .qe()
-                .insert_ty_module_cache_entry(TyModuleCacheEntry {
-                    path: Arc::new(path),
+            eprintln!("💾 Inserting cache entry for TY module {:?}", relevant_path);
+            let include_tests = build_config.map_or(false, |x| x.include_tests);
+            let key = ModuleCacheKey::new(path.clone().into(), include_tests);
+            engines.qe().update_typed_module_cache_entry(
+                &key,
+                TypedModuleInfo {
                     module: ty_module.clone(),
-                    dependencies,
+                    modified_time,
                     version,
-                });
+                },
+            );
         }
 
         Ok(ty_module)

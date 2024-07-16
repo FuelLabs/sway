@@ -71,8 +71,11 @@ impl TypeEngine {
     where
         F: Fn(&SourceId) -> bool,
     {
-        self.slab.retain(|_, tsi| tsi.source_id.as_ref().map_or(true, &keep));
-        self.id_map.write().retain(|tsi, _| tsi.source_id.as_ref().map_or(true, &keep));
+        self.slab
+            .retain(|_, tsi| tsi.source_id.as_ref().map_or(true, &keep));
+        self.id_map
+            .write()
+            .retain(|tsi, _| tsi.source_id.as_ref().map_or(true, &keep));
     }
 
     /// Removes all data associated with `program_id` from the type engine.
