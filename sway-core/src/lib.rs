@@ -413,14 +413,6 @@ fn parse_module_tree(
     let version = lsp_mode
         .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
-    // let cache_entry = ModuleCacheEntry {
-    //     path: path.clone(),
-    //     modified_time,
-    //     hash,
-    //     dependencies,
-    //     include_tests,
-    //     version,
-    // };
 
     let common_info = ModuleCommonInfo {
         path: path.clone(),
