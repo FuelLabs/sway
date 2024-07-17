@@ -8,7 +8,7 @@ The FuelVM has built-in support for working with multiple assets.
 
 ### ERC-20 vs Native Asset
 
-On the EVM, Ether is the native asset. As such, sending ETH to an address or contract is an operation built into the EVM, meaning it doesn't rely on the existence of a smart contract to update balances to track ownership as with ERC-20 tokens.
+On the EVM, Ethereum is the native asset. As such, sending ETH to an address or contract is an operation built into the EVM, meaning it doesn't rely on the existence of a smart contract to update balances to track ownership as with ERC-20 tokens.
 
 On the FuelVM, _all_ assets are native and the process for sending _any_ native asset is the same.
 
