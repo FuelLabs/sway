@@ -1,0 +1,13 @@
+[[package]]
+name = "core"
+source = "path+from-root-5E33A7D67412F1BB"
+
+[[package]]
+name = "multiple_imports_of_same_reexport"
+source = "member"
+dependencies = ["std"]
+
+[[package]]
+name = "std"
+source = "path+from-root-5E33A7D67412F1BB"
+dependencies = ["core"]

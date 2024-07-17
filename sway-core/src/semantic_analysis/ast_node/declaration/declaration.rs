@@ -168,7 +168,9 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
-                let typed_const_decl: ty::TyDecl = decl_engine.insert(const_decl.clone()).into();
+                let typed_const_decl: ty::TyDecl = decl_engine
+                    .insert(const_decl.clone(), Some(&decl_id))
+                    .into();
                 ctx.insert_symbol(handler, const_decl.name().clone(), typed_const_decl.clone())?;
                 typed_const_decl
             }
@@ -178,9 +180,9 @@ impl TyDecl {
                 let name = decl.name.clone();
                 let typed_const_decl =
                     match ty::TyConfigurableDecl::type_check(handler, ctx.by_ref(), decl) {
-                        Ok(config_decl) => {
-                            ty::TyDecl::from(decl_engine.insert(config_decl.clone()))
-                        }
+                        Ok(config_decl) => ty::TyDecl::from(
+                            decl_engine.insert(config_decl.clone(), Some(&decl_id)),
+                        ),
                         Err(err) => ty::TyDecl::ErrorRecovery(span, err),
                     };
                 ctx.insert_symbol(handler, name, typed_const_decl.clone())?;
@@ -193,7 +195,8 @@ impl TyDecl {
                     Ok(res) => res,
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
-                let typed_type_decl: ty::TyDecl = decl_engine.insert(type_decl.clone()).into();
+                let typed_type_decl: ty::TyDecl =
+                    decl_engine.insert(type_decl.clone(), Some(&decl_id)).into();
                 ctx.insert_symbol(handler, type_decl.name().clone(), typed_type_decl.clone())?;
                 typed_type_decl
             }
@@ -205,7 +208,7 @@ impl TyDecl {
                     Err(err) => return Ok(ty::TyDecl::ErrorRecovery(span, err)),
                 };
                 let call_path = enum_decl.call_path.clone();
-                let decl: ty::TyDecl = decl_engine.insert(enum_decl).into();
+                let decl: ty::TyDecl = decl_engine.insert(enum_decl, Some(&decl_id)).into();
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
 
                 decl
@@ -233,7 +236,7 @@ impl TyDecl {
                 };
 
                 let name = fn_decl.name.clone();
-                let decl: ty::TyDecl = decl_engine.insert(fn_decl).into();
+                let decl: ty::TyDecl = decl_engine.insert(fn_decl, Some(&decl_id)).into();
                 let _ = ctx.insert_symbol(handler, name, decl.clone());
                 decl
             }
@@ -271,7 +274,9 @@ impl TyDecl {
                         });
                 }
 
-                let decl: ty::TyDecl = decl_engine.insert(trait_decl.clone()).into();
+                let decl: ty::TyDecl = decl_engine
+                    .insert(trait_decl.clone(), Some(&decl_id))
+                    .into();
 
                 trait_decl
                     .items
@@ -291,6 +296,7 @@ impl TyDecl {
                     let impl_trait_decl = match ty::TyImplSelfOrTrait::type_check_impl_self(
                         handler,
                         ctx.by_ref(),
+                        &decl_id,
                         impl_self_or_trait,
                     ) {
                         Ok(val) => val,
@@ -386,7 +392,9 @@ impl TyDecl {
                     IsImplSelf::No,
                     IsExtendingExistingImpl::No,
                 )?;
-                let impl_trait_decl: ty::TyDecl = decl_engine.insert(impl_trait.clone()).into();
+                let impl_trait_decl: ty::TyDecl = decl_engine
+                    .insert(impl_trait.clone(), Some(&decl_id))
+                    .into();
                 impl_trait.items.iter_mut().for_each(|item| {
                     item.replace_implementing_type(engines, impl_trait_decl.clone());
                 });
@@ -403,7 +411,7 @@ impl TyDecl {
                         }
                     };
                 let call_path = decl.call_path.clone();
-                let decl: ty::TyDecl = decl_engine.insert(decl).into();
+                let decl: ty::TyDecl = decl_engine.insert(decl, Some(&decl_id)).into();
 
                 // insert the struct decl into namespace
                 ctx.insert_symbol(handler, call_path.suffix, decl.clone())?;
@@ -446,7 +454,7 @@ impl TyDecl {
                         });
                 }
 
-                let decl: ty::TyDecl = decl_engine.insert(abi_decl.clone()).into();
+                let decl: ty::TyDecl = decl_engine.insert(abi_decl.clone(), Some(&decl_id)).into();
                 abi_decl
                     .items
                     .iter_mut()
@@ -554,7 +562,7 @@ impl TyDecl {
                     attributes,
                     storage_keyword,
                 };
-                let decl_ref = decl_engine.insert(decl);
+                let decl_ref = decl_engine.insert(decl, Some(&decl_id));
                 // insert the storage declaration into the symbols
                 // if there already was one, return an error that duplicate storage
 
@@ -595,7 +603,7 @@ impl TyDecl {
                     span,
                 };
 
-                let decl: ty::TyDecl = decl_engine.insert(decl).into();
+                let decl: ty::TyDecl = decl_engine.insert(decl, Some(&decl_id)).into();
 
                 // insert the type alias name and decl into namespace
                 ctx.insert_symbol(handler, name, decl.clone())?;

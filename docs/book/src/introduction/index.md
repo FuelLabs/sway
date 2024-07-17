@@ -6,4 +6,5 @@ To get started with Forc and Sway smart contract development, install the Fuel t
 - [The Fuel Toolchain](./fuel_toolchain.md)
 - [A Forc Project](./forc_project.md)
 - [Standard Library](./standard_library.md)
+- [Core Library](./core_library.md)
 - [Sway Language Standards](./sway_standards.md)
