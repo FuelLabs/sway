@@ -13,7 +13,6 @@ use anyhow::{anyhow, bail, Context, Result};
 use forc_pkg::{self as pkg, fuel_core_not_running, PackageManifestFile};
 use forc_tracing::println_warning;
 use forc_util::tx_utils::format_log_receipts;
-use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::FuelClient;
 use fuel_tx::{ContractId, Transaction, TransactionBuilder};
 use fuels_accounts::provider::Provider;
@@ -54,7 +53,7 @@ pub async fn run(command: cmd::Run) -> Result<Vec<RanScript>> {
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
         WalletSelectionMode::Manual
     } else {
-        let password = prompt_forc_wallet_password(&default_wallet_path())?;
+        let password = prompt_forc_wallet_password()?;
         WalletSelectionMode::ForcWallet(password)
     };
     for built in built_pkgs_with_manifest {

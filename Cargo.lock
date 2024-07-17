@@ -945,6 +945,7 @@ dependencies = [
  "encode_unicode 0.3.6",
  "lazy_static",
  "libc",
+ "unicode-width",
  "windows-sys 0.52.0",
 ]
 
@@ -1467,6 +1468,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "dialoguer"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "658bce805d770f407bc62102fca7c2c64ceef2fbcb2b8bd19d2765ce093980de"
+dependencies = [
+ "console",
+ "shell-words",
+ "tempfile",
+ "thiserror",
+ "zeroize",
 ]
 
 [[package]]
@@ -2070,6 +2084,7 @@ dependencies = [
  "chrono",
  "clap 4.5.7",
  "devault",
+ "dialoguer",
  "forc",
  "forc-pkg",
  "forc-tracing 0.61.2",
@@ -2088,7 +2103,6 @@ dependencies = [
  "hex",
  "portpicker",
  "rand",
- "rpassword",
  "serde",
  "serde_json",
  "sway-core",
