@@ -33,9 +33,11 @@ pub struct Command {
 }
 
 fn get_file_name(path: &Path) -> String {
-    path.file_name()
-        .and_then(|name| name.to_str())
-        .map_or_else(|| path.display().to_string(), |name| name.to_owned())
+    if let Some(path_str) = path.file_name().and_then(|path_str| path_str.to_str()) {
+        path_str.to_owned()
+    } else {
+        path.display().to_string()
+    }
 }
 
 pub(crate) fn exec(command: PluginsCommand) -> ForcResult<()> {
