@@ -2476,9 +2476,6 @@ pub fn build(
         }
 
         if let TreeType::Library = compiled.tree_type {
-            //            compiled.root_module.write(&engines, |root_module| {
-            //                root_module.name = Ident::new_no_span(pkg.name.clone());
-            //            });
             lib_namespace_map.insert(node, compiled.root_module);
         }
         source_map.insert_dependency(descriptor.manifest_file.dir());
@@ -2732,8 +2729,6 @@ pub fn check(
                     .namespace
                     .program_id(engines)
                     .read(engines, |m| m.clone());
-                //                module.name = Some(Ident::new_no_span(pkg.name.clone()));
-                //                module.span = Some(
                 module.set_span(
                     Span::new(
                         manifest.entry_string()?,
