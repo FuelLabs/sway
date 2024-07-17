@@ -185,7 +185,7 @@ We currently have the following standards for Native Assets:
 
 Additional Libraries have been developed to allow you to quickly create an deploy dApps that follow the [Sway Standards](https://github.com/FuelLabs/sway-standards).
 
-- [Asset Library](https://fuellabs.github.io/sway-libs/book/asset/index.html) provides functionality to implement the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md), [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md), and [SRC-7; Arbitrary Asset Metadata Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-7-asset-metadata.md) standards.
+- [Asset Library](https://fuellabs.github.io/sway-libs/book/asset/index.html) provides functionality to implement the [SRC-20; Native Asset Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-20-native-asset.md), [SRC-3; Mint and Burn Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-3-minting-and-burning.md), [SRC-7; Arbitrary Asset Metadata Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-7-asset-metadata.md), and [SRC-6; Vault Standard](https://github.com/FuelLabs/sway-standards/blob/master/docs/src/src-6-vault.md) standards.
 
 <!-- native_assets:example:end -->
 
