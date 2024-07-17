@@ -43,7 +43,9 @@ async fn ec_recover_and_match_predicate_test() -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    let provider = setup_test_provider(all_coins, vec![], None, None)
+    let mut node_config = NodeConfig::default();
+    node_config.static_gas_price = 0;
+    let provider = setup_test_provider(all_coins, vec![], Some(node_config), None)
         .await
         .unwrap();
 
