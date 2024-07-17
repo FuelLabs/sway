@@ -303,9 +303,6 @@ pub async fn deploy_pkg(
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-
-    // let provider = Provider::connect(node_url.clone()).await?;
-
     let tx_policies = TxPolicies::default();
 
     let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
@@ -316,14 +313,6 @@ pub async fn deploy_pkg(
         storage_slots.clone(),
         tx_policies,
     );
-    // let signing_key = select_secret_key(
-    //     wallet_mode,
-    //     command.default_signer || command.unsigned,
-    //     command.signing_key,
-    //     &provider,
-    // )
-    // .await?
-    // .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
     let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
 
     wallet.add_witnesses(&mut tb)?;
@@ -341,7 +330,7 @@ pub async fn deploy_pkg(
                 }
                 TransactionStatus::Success { block_height, .. } => {
                     let pkg_name = manifest.project_name();
-                    println_action_green("Finished", &format!("deploying {pkg_name} https://app.fuel.network/contract/0x{contract_id}")); // todo: time
+                    println_action_green("Finished", &format!("deploying {pkg_name} https://app.fuel.network/contract/0x{contract_id}"));
                     let block_height_formatted =
                         match u32::from_str_radix(&block_height.to_string(), 16) {
                             Ok(decimal) => format!("https://app.fuel.network/block/{decimal}"),
