@@ -45,14 +45,14 @@ fuel-tx = "0.55.0"
 fuel-vm = "0.55.0"
 
 # Dependencies from the `fuels-rs` repository:
-fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/new-fuel-abi-spec" }
-fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "hal3e/new-fuel-abi-spec" }
+fuels-core = { git = "https://github.com/FuelLabs/fuels-rs", branch = "esdrubal/abi_changes2" }
+fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "esdrubal/abi_changes2" }
 
 # Dependencies from the `forc-wallet` repository:
 forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "esdrubal/abi_changes" }
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = "0.6.0"
+fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
 
 [workspace.package]
 edition = "2021"
