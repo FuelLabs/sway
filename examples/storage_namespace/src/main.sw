@@ -6,7 +6,7 @@ use std::storage::storage_api::{read, write};
 storage {
     example_namespace {
         foo: u64 = 0,
-    }
+    },
     // ANCHOR_END: storage_namespace
 }
 
