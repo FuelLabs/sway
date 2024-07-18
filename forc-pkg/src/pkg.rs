@@ -1832,13 +1832,12 @@ pub fn compile(
         metrics
     );
 
+    const OLD_ENCODING_VERSION: &str = "0";
     const NEW_ENCODING_VERSION: &str = "1";
     const SPEC_VERSION: &str = "1";
-    const ABI_VERSION: &str = "1";
 
     let mut program_abi = match pkg.target {
         BuildTarget::Fuel => {
-            let mut types = vec![];
             let program_abi_res = time_expr!(
                 "generate JSON ABI program",
                 "generate_json_abi",
@@ -1850,13 +1849,12 @@ pub fn compile(
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
-                    &mut types,
                     profile
                         .experimental
                         .new_encoding
-                        .then(|| NEW_ENCODING_VERSION.into()),
+                        .then(|| NEW_ENCODING_VERSION.into())
+                        .unwrap_or(OLD_ENCODING_VERSION.into()),
                     SPEC_VERSION.into(),
-                    ABI_VERSION.into()
                 ),
                 Some(sway_build_config.clone()),
                 metrics
