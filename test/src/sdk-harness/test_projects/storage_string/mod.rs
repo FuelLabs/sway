@@ -7,7 +7,16 @@ abigen!(Contract(
 ));
 
 async fn setup() -> TestStorageStringContract<WalletUnlocked> {
-    let wallet = launch_provider_and_get_wallet().await.unwrap();
+    let mut node_config = NodeConfig::default();
+    node_config.static_gas_price = 0;
+    let mut wallets = launch_custom_provider_and_get_wallets(
+        WalletsConfig::new(Some(1), None, None),
+        Some(node_config),
+        None,
+    )
+    .await
+    .unwrap();
+    let wallet = wallets.pop().unwrap();
     let id = Contract::load_from(
         "test_projects/storage_string/out/release/storage_string.bin",
         LoadConfiguration::default(),

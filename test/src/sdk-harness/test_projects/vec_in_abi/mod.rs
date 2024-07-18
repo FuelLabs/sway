@@ -1,4 +1,6 @@
-use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::Bits256};
+use fuels::{
+    accounts::wallet::WalletUnlocked, prelude::*, programs::calls::ContractCall, types::Bits256,
+};
 use std::str::FromStr;
 
 abigen!(Contract(
@@ -213,12 +215,7 @@ async fn test_vec_in_vec() -> Result<()> {
 }
 
 async fn test_echo<T>(
-    f: impl Fn(
-        T,
-    ) -> fuels::programs::contract::ContractCallHandler<
-        fuels::accounts::wallet::WalletUnlocked,
-        T,
-    >,
+    f: impl Fn(T) -> CallHandler<fuels::accounts::wallet::WalletUnlocked, ContractCall, T>,
     input: T,
 ) where
     T: Eq
