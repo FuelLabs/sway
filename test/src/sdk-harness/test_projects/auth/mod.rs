@@ -7,10 +7,10 @@ use fuels::{
     tx::UtxoId,
     types::{
         coin::{Coin, CoinStatus},
-        message::{Message, MessageStatus},
-        Bytes32, ContractId,
         coin_type::CoinType,
         input::Input,
+        message::{Message, MessageStatus},
+        Bytes32, ContractId,
     },
 };
 use std::str::FromStr;
@@ -106,18 +106,22 @@ async fn input_message_msg_sender_from_contract() {
     let instance = AuthContract::new(id.clone(), wallet.clone());
 
     // Start building transactions
-    let call_handler = instance.methods().returns_msg_sender_address(Address::from(*msg.sender.hash()));
+    let call_handler = instance
+        .methods()
+        .returns_msg_sender_address(Address::from(*msg.sender.hash()));
     let mut tb = call_handler.transaction_builder().await.unwrap();
 
     // Inputs
     tb.inputs_mut().push(Input::ResourceSigned {
-        resource: CoinType::Message(wallet
-            .get_messages()
-            .await
-            .unwrap()
-            .first()
-            .unwrap()
-            .clone()),
+        resource: CoinType::Message(
+            wallet
+                .get_messages()
+                .await
+                .unwrap()
+                .first()
+                .unwrap()
+                .clone(),
+        ),
     });
 
     // Build transaction
@@ -182,7 +186,9 @@ async fn can_get_predicate_address() {
             coin_amount: 1_000,
         }],
     );
-    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, None, None)
+    let mut node_config = NodeConfig::default();
+    node_config.static_gas_price = 0;
+    let wallets = &launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
         .await
         .unwrap();
     let first_wallet = &wallets[0];
@@ -349,7 +355,9 @@ async fn can_get_predicate_address_in_message() {
     coin_vec.push(coin);
 
     let mut wallet = WalletUnlocked::new_random(None);
-    let provider = setup_test_provider(coin_vec, message_vec, None, None)
+    let mut node_config = NodeConfig::default();
+    node_config.static_gas_price = 0;
+    let provider = setup_test_provider(coin_vec, message_vec, Some(node_config), None)
         .await
         .unwrap();
     wallet.set_provider(provider.clone());
