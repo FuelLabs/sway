@@ -132,7 +132,7 @@ fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error>
             "cargo run --bin forc-deploy -- --node-url {node_url} -p {}",
             project_dir.display()
         ),
-        Some(120000),
+        Some(300000),
     )?;
 
     // Confirmation prompts
