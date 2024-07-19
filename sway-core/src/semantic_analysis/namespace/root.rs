@@ -668,7 +668,7 @@ impl Root {
             // we don't check the first prefix because direct children are always accessible
             for prefix in iter_prefixes(src).skip(1) {
                 let module = self.module.lookup_submodule(handler, engines, prefix)?;
-                if module.visibility.is_private() {
+                if module.visibility().is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
                         span: prefix_last.span(),

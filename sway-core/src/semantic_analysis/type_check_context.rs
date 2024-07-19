@@ -774,7 +774,7 @@ impl<'a> TypeCheckContext<'a> {
             let module = self
                 .namespace()
                 .lookup_submodule_from_absolute_path(handler, engines, prefix)?;
-            if module.visibility.is_private() {
+            if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
                     span: prefix_last.span(),
