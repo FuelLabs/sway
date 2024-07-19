@@ -42,7 +42,7 @@ pub(crate) fn order_ast_nodes_by_dependency(
         Ok(())
     })?;
 
-    // Reorder the parsed AstNodes based on dependency.  Includes first, then uses, then
+    // Reorder the parsed AstNodes based on dependency. Includes first, then uses, then
     // reordered declarations, then anything else.  To keep the list stable and simple we can
     // use a basic insertion sort.
     Ok(nodes

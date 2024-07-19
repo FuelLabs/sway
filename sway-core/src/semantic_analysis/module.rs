@@ -334,6 +334,14 @@ impl ty::TyModule {
             ..
         } = parsed;
 
+        // Check if the root module cache is up to date
+        eprintln!("Root Module: {:?}", parsed.span.source_id().map(|x| engines.se().get_path(x)));
+        if let Some(module) =
+            ty::TyModule::check_cache(parsed.span.source_id(), engines, build_config)
+        {
+            return Ok(module);
+        }
+
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
         let submodules_res = module_eval_order
             .iter()
@@ -371,12 +379,7 @@ impl ty::TyModule {
             })
             .collect::<Result<Vec<_>, _>>();
 
-        // // Check if the root module cache is up to date
-        // if let Some(module) =
-        //     ty::TyModule::check_cache(parsed.span.source_id(), engines, build_config)
-        // {
-        //     return Ok(module);
-        // }
+        
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
