@@ -1,26 +1,23 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903",
+      "type": "bool"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "returns_gm_one",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "b760f44fa5965c2474a3b471467a22c43185152129295af588b022ae50b50903"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
-    {
-      "components": null,
-      "type": "bool",
-      "typeId": 0,
-      "typeParameters": null
-    }
-  ]
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": []
 }

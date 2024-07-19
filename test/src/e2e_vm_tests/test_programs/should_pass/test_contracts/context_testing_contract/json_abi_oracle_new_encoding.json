@@ -1,133 +1,108 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
+      "metadataTypeId": 1,
+      "type": "struct std::asset_id::AssetId"
+    },
+    {
+      "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
+      "metadataTypeId": 2,
+      "type": "struct std::contract_id::ContractId"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "get_amount",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     },
     {
       "attributes": null,
       "inputs": [],
       "name": "get_asset_id",
-      "output": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
+      "output": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974"
     },
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "asset_id",
-          "type": 1,
-          "typeArguments": null
+          "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
+          "name": "asset_id"
         },
         {
-          "name": "cid",
-          "type": 2,
-          "typeArguments": null
+          "concreteTypeId": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54",
+          "name": "cid"
         }
       ],
       "name": "get_balance_of_contract",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     },
     {
       "attributes": null,
       "inputs": [],
       "name": "get_gas",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     },
     {
       "attributes": null,
       "inputs": [],
       "name": "get_global_gas",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     },
     {
       "attributes": null,
       "inputs": [],
       "name": "get_id",
-      "output": {
-        "name": "",
-        "type": 2,
-        "typeArguments": null
-      }
+      "output": "29c10735d33b5159f0c71ee1dbd17b36a3e69e41f00fab0d42e1bd9f428d8a54"
     },
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "asset_id",
-          "type": 1,
-          "typeArguments": null
+          "concreteTypeId": "c0710b6731b1dd59799cf6bef33eee3b3b04a2e40e80a0724090215bbf2ca974",
+          "name": "asset_id"
         }
       ],
       "name": "get_this_balance",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": [
     {
-      "components": null,
-      "type": "b256",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "b256"
     },
     {
       "components": [
         {
           "name": "bits",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         }
       ],
-      "type": "struct std::asset_id::AssetId",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 1,
+      "type": "struct std::asset_id::AssetId"
     },
     {
       "components": [
         {
           "name": "bits",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         }
       ],
-      "type": "struct std::contract_id::ContractId",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 3,
-      "typeParameters": null
+      "metadataTypeId": 2,
+      "type": "struct std::contract_id::ContractId"
     }
   ]
 }

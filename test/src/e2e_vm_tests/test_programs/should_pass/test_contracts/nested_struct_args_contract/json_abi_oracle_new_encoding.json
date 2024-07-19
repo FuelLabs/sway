@@ -1,73 +1,73 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "42ec906f917884c527853724049ec3e303d2de2916baa4aee461cb71433d0b22",
+      "metadataTypeId": 1,
+      "type": "struct nested_struct_args_abi::StructOne"
+    },
+    {
+      "concreteTypeId": "13f26ca88e0921e7c728fb5763d18dfb2cdad4d55629991628dd5d9f986d6242",
+      "metadataTypeId": 2,
+      "type": "struct nested_struct_args_abi::StructTwo"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "input1",
-          "type": 1,
-          "typeArguments": null
+          "concreteTypeId": "42ec906f917884c527853724049ec3e303d2de2916baa4aee461cb71433d0b22",
+          "name": "input1"
         },
         {
-          "name": "input2",
-          "type": 2,
-          "typeArguments": null
+          "concreteTypeId": "13f26ca88e0921e7c728fb5763d18dfb2cdad4d55629991628dd5d9f986d6242",
+          "name": "input2"
         }
       ],
       "name": "foo",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": [
     {
       "components": [
         {
           "name": "foo",
-          "type": 3,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "type": "struct nested_struct_args_abi::Inner",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "struct nested_struct_args_abi::Inner"
     },
     {
       "components": [
         {
           "name": "inn",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         }
       ],
-      "type": "struct nested_struct_args_abi::StructOne",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 1,
+      "type": "struct nested_struct_args_abi::StructOne"
     },
     {
       "components": [
         {
           "name": "foo",
-          "type": 3,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "type": "struct nested_struct_args_abi::StructTwo",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 3,
-      "typeParameters": null
+      "metadataTypeId": 2,
+      "type": "struct nested_struct_args_abi::StructTwo"
     }
   ]
 }

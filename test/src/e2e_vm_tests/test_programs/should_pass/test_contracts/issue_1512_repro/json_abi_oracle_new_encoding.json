@@ -1,54 +1,52 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "41bd1a98f0a59642d8f824c805b798a5f268d1f7d05808eb05c4189c493f1be0",
+      "metadataTypeId": 0,
+      "type": "(u64, u64)"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "a",
-          "type": 1,
-          "typeArguments": null
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+          "name": "a"
         },
         {
-          "name": "b",
-          "type": 1,
-          "typeArguments": null
+          "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+          "name": "b"
         }
       ],
       "name": "multiply_u64",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "41bd1a98f0a59642d8f824c805b798a5f268d1f7d05808eb05c4189c493f1be0"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": [
     {
       "components": [
         {
           "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "type": "(_, _)",
-      "typeId": 0,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "(_, _)"
     }
   ]
 }

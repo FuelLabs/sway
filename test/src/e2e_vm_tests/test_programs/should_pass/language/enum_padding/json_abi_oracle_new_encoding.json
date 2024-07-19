@@ -1,100 +1,89 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "93720e77cde7ac793c849579230ed2eb10cd51d3634075b9932b66153e0abafd",
+      "metadataTypeId": 3,
+      "type": "enum TopLevelEnum"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "main",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "93720e77cde7ac793c849579230ed2eb10cd51d3634075b9932b66153e0abafd"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "script",
+  "specVersion": "1",
+  "typesMetadata": [
     {
       "components": [
         {
           "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
+          "typeId": 1
         },
         {
           "name": "__tuple_element",
-          "type": 1,
-          "typeArguments": null
+          "typeId": 1
         }
       ],
-      "type": "(_, _)",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "(_, _)"
     },
     {
-      "components": null,
-      "type": "b256",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 1,
+      "type": "b256"
     },
     {
       "components": [
         {
           "name": "first",
-          "type": 1,
-          "typeArguments": null
+          "typeId": 1
         },
         {
           "name": "second",
-          "type": 5,
-          "typeArguments": null
+          "typeId": 5
         }
       ],
-      "type": "enum LowerLevelEnum",
-      "typeId": 2,
-      "typeParameters": null
+      "metadataTypeId": 2,
+      "type": "enum LowerLevelEnum"
     },
     {
       "components": [
         {
           "name": "first",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         },
         {
           "name": "second",
-          "type": 4,
-          "typeArguments": null
+          "typeId": 4
         }
       ],
-      "type": "enum TopLevelEnum",
-      "typeId": 3,
-      "typeParameters": null
+      "metadataTypeId": 3,
+      "type": "enum TopLevelEnum"
     },
     {
       "components": [
         {
           "name": "first",
-          "type": 5,
-          "typeArguments": null
+          "typeId": 5
         },
         {
           "name": "second",
-          "type": 2,
-          "typeArguments": null
+          "typeId": 2
         }
       ],
-      "type": "struct ThenAStruct",
-      "typeId": 4,
-      "typeParameters": null
+      "metadataTypeId": 4,
+      "type": "struct ThenAStruct"
     },
     {
-      "components": null,
-      "type": "u32",
-      "typeId": 5,
-      "typeParameters": null
+      "metadataTypeId": 5,
+      "type": "u32"
     }
   ]
 }

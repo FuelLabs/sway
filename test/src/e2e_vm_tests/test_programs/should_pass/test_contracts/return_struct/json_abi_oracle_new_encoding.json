@@ -1,6 +1,20 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "37c06f042972ba5bedfdee34c16f38ace7789cdc2a879df80724d91fb6268d03",
+      "metadataTypeId": 1,
+      "type": "enum std::option::Option<struct data_structures::MyStruct>",
+      "typeArguments": [
+        "37837f87e64f16ec63ac8568b452352098ff2a330df38aa21a9d794dfe33e7cc"
+      ]
+    },
+    {
+      "concreteTypeId": "37837f87e64f16ec63ac8568b452352098ff2a330df38aa21a9d794dfe33e7cc",
+      "type": "struct data_structures::MyStruct"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": [
@@ -13,58 +27,38 @@
       ],
       "inputs": [],
       "name": "test_function",
-      "output": {
-        "name": "",
-        "type": 1,
-        "typeArguments": [
-          {
-            "name": "",
-            "type": 3,
-            "typeArguments": null
-          }
-        ]
-      }
+      "output": "37c06f042972ba5bedfdee34c16f38ace7789cdc2a879df80724d91fb6268d03"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": [
     {
-      "components": [],
-      "type": "()",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "()"
     },
     {
       "components": [
         {
           "name": "None",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         },
         {
           "name": "Some",
-          "type": 2,
-          "typeArguments": null
+          "typeId": 2
         }
       ],
+      "metadataTypeId": 1,
       "type": "enum std::option::Option",
-      "typeId": 1,
       "typeParameters": [
         2
       ]
     },
     {
-      "components": null,
-      "type": "generic T",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": [],
-      "type": "struct data_structures::MyStruct",
-      "typeId": 3,
-      "typeParameters": null
+      "metadataTypeId": 2,
+      "type": "generic T"
     }
   ]
 }

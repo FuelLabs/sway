@@ -1,49 +1,48 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "f662bc0a8cc3280d0e276822675f38d76d489e5b30f23542d6724ffb81d17030",
+      "metadataTypeId": 0,
+      "type": "struct TestStruct"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "baba",
-          "type": 0,
-          "typeArguments": null
+          "concreteTypeId": "f662bc0a8cc3280d0e276822675f38d76d489e5b30f23542d6724ffb81d17030",
+          "name": "baba"
         },
         {
-          "name": "keke",
-          "type": 0,
-          "typeArguments": null
+          "concreteTypeId": "f662bc0a8cc3280d0e276822675f38d76d489e5b30f23542d6724ffb81d17030",
+          "name": "keke"
         }
       ],
       "name": "main",
-      "output": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "script",
+  "specVersion": "1",
+  "typesMetadata": [
     {
       "components": [
         {
           "name": "val",
-          "type": 1,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "type": "struct TestStruct",
-      "typeId": 0,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "struct TestStruct"
     }
   ]
 }

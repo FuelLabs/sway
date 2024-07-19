@@ -1,48 +1,47 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219",
+      "metadataTypeId": 1,
+      "type": "enum E"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "main",
-      "output": {
-        "name": "",
-        "type": 1,
-        "typeArguments": null
-      }
+      "output": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "script",
+  "specVersion": "1",
+  "typesMetadata": [
     {
-      "components": [],
-      "type": "()",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "()"
     },
     {
       "components": [
         {
           "name": "A",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         },
         {
           "name": "B",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         },
         {
           "name": "C",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         }
       ],
-      "type": "enum E",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 1,
+      "type": "enum E"
     }
   ]
 }

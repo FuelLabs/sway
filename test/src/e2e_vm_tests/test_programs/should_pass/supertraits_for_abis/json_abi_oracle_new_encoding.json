@@ -1,36 +1,29 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "bar",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
     },
     {
       "attributes": null,
       "inputs": [],
       "name": "baz",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
-    {
-      "components": [],
-      "type": "()",
-      "typeId": 0,
-      "typeParameters": null
-    }
-  ]
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": []
 }
