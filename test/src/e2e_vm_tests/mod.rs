@@ -147,7 +147,7 @@ fn print_receipts(output: &mut String, receipts: &[Receipt]) {
                             let data = data.as_deref().unwrap();
                             let s = u64::from_be_bytes(data.try_into().unwrap());
 
-                            text_log.push_str(&format!("[{}]", s));
+                            text_log.push_str(&format!("{}", s));
                         }
                         2 => {
                             text_log.push('\n');

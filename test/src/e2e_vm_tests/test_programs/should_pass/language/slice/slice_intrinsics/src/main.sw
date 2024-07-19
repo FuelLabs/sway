@@ -1,108 +1,31 @@
 script;
 
-trait Log {
-    fn log(self);
-}
+use utils::*;
 
-impl Log for str {
-    fn log(self) {
-        let encoded = encode(self);
-        asm(ra: u64::max(), ptr: encoded.ptr(), len: encoded.len::<u8>()) {
-            logd ra zero ptr len;
-        }
+fn alloc_slice<T>(len: u64) -> &__slice[T] {
+    let size_in_bytes = len * __size_of::<T>();
+    let ptr = asm(size_in_bytes: size_in_bytes) {
+        aloc size_in_bytes;
+        hp: raw_ptr
+    };
+    asm(buf: (ptr,  len)) {
+        buf: &__slice[T]
     }
 }
 
+fn realloc_slice<T>(old: &__slice[T], len: u64) -> &__slice[T] {
+    let old_ptr = old.ptr();
+    let old_len_in_bytes = old.len() * __size_of::<T>();
 
-impl Log for u64 {
-    fn log(self) {
-        let encoded = encode(self);
-        asm(ra: u64::max(), ptr: encoded.ptr(), len: encoded.len::<u8>()) {
-           logd ra one ptr len;
-        }
-    }
-}
+    let new_len_in_bytes = len * __size_of::<T>();
+    let new_ptr = asm(new_len_in_bytes: new_len_in_bytes, old_ptr: old_ptr, old_len_in_bytes: old_len_in_bytes) {
+        aloc new_len_in_bytes;
+        mcp hp old_ptr old_len_in_bytes;
+        hp: raw_ptr
+    };
 
-struct NewLine {}
-
-fn new_line() -> NewLine {
-    NewLine { }
-}
-
-impl Log for NewLine {
-    fn log(self) {
-        asm(ra: u64::max(), rb: 2) {
-            logd ra rb zero zero;
-        }
-    }
-}
-
-impl<A, B> Log for (A, B)
-where
-    A: Log,
-    B: Log,
-{
-    fn log(self) {
-        self.0.log();
-        self.1.log();
-    }
-}
-
-impl<A, B, C> Log for (A, B, C)
-where
-    A: Log,
-    B: Log,
-    C: Log,
-{
-    #[allow(dead_code)]
-    fn log(self) {
-        self.0.log();
-        self.1.log();
-        self.2.log();
-    }
-}
-
-impl<A, B, C, D> Log for (A, B, C, D)
-where
-    A: Log,
-    B: Log,
-    C: Log,
-    D: Log
-{
-    fn log(self) {
-        self.0.log();
-        self.1.log();
-        self.2.log();
-        self.3.log();
-    }
-}
-
-
-impl<A, B, C, D, E> Log for (A, B, C, D, E)
-where
-    A: Log,
-    B: Log,
-    C: Log,
-    D: Log,
-    E: Log,
-{
-    fn log(self) {
-        self.0.log();
-        self.1.log();
-        self.2.log();
-        self.3.log();
-        self.4.log();
-    }
-}
-
-impl<T> Log for Vec<T> {
-    fn log(self) {
-        (
-            "Vec",
-            asm(v: self.buf.ptr()) { v: u64 },
-            self.buf.len(),
-            self.len,
-        ).log();
+    asm(buf: (new_ptr,  len)) {
+        buf: &__slice[T]
     }
 }
 
@@ -111,22 +34,32 @@ pub struct Vec<T> {
     len: u64,
 }
 
+impl<T> Dbg for Vec<T> {
+    fn dbg(self) {
+        (
+            "Vec { buf: (ptr: ",
+            asm(v: self.buf.ptr()) { v: u64 },
+            ", len: ",
+            self.buf.len(),
+            "), len: ",
+            self.len,
+            ")"
+        ).dbg();
+    }
+}
+
+
 impl<T> Vec<T> {
     pub fn new() -> Self {
-        let ptr = asm() {
-            hp: raw_ptr
-        };
         Self {
-            buf: asm(buf: (ptr,  0)) {
-                buf: &__slice[T]
-            },
+            buf: alloc_slice::<T>(0),
             len: 0
         }
     }
 
     pub fn push(ref mut self, item: T) {
-        ("Vec::push", new_line()).log();
-        (self, new_line()).log();
+        "Vec::push(...)".dbgln();
+        ("    ", self).dbgln();
 
         let new_item_idx = self.len;
         let current_cap = self.buf.len();
@@ -136,35 +69,32 @@ impl<T> Vec<T> {
             } else {
                 current_cap * 2
             };
-            let new_cap_in_bytes = new_cap * __size_of::<T>();
-
-            let old_buf_ptr = self.buf.ptr();
-            let old_cap_in_bytes = current_cap * __size_of::<T>();
-
-            let ptr = asm(new_cap_in_bytes: new_cap_in_bytes, old_buf_ptr: old_buf_ptr, old_cap_in_bytes: old_cap_in_bytes) {
-                aloc new_cap_in_bytes;
-                mcp hp old_buf_ptr old_cap_in_bytes;
-                hp: raw_ptr
-            };
-
-            self.buf = asm(buf: (ptr, new_cap)) {
-                buf: &__slice[T]
-            };
+            self.buf = realloc_slice(self.buf, new_cap);
+            ("    After realloc: ", self).dbgln();
         }
 
-        (self, new_line()).log();
-
         let v: &mut T = __slice_elem(self.buf, new_item_idx);
-        ("elem", new_item_idx, " at ", asm(v: v) { v: u64 }, NewLine{}).log();
+
+        let buffer_addr = asm(v: self.buf.ptr()) { v: u64 };
+        let elem_addr = asm(v: v) { v: u64 };
+        ("    elem ", new_item_idx, " at ", elem_addr, " buffer offset (in bytes): ", elem_addr - buffer_addr).dbgln();
         *v = item;
 
         self.len += 1;
+
+        ("    ", self).dbgln();
     }
 
     pub fn get(self, index: u64) -> T {
-        ("Vec::get ", index).log();
+        ("Vec::get(", index, ")").dbgln();
+        ("    ", self).dbgln();
+
         let item: &mut T = __slice_elem(self.buf, index);
-        (asm(v: item) { v: u64 }, NewLine{}).log();
+
+        let buffer_addr = asm(v: self.buf.ptr()) { v: u64 };
+        let elem_addr = asm(v: item) { v: u64 };
+        ("    element ", index, " at ", elem_addr, " buffer offset (in bytes): ", elem_addr - buffer_addr).dbgln();
+
         *item
     }
 }
