@@ -156,21 +156,18 @@ pub fn format_base_asset_account_balances(
     account_balances: &AccountBalances,
     base_asset_id: &AssetId,
 ) -> Vec<String> {
-    let mut list = Vec::new();
-    for (ix, balance) in accounts_map.keys().zip(account_balances) {
-        let balance: BTreeMap<_, _> = balance
-            .iter()
-            .map(|(id, &val)| (id.clone(), u128::from(val)))
-            .collect();
-
-        let base_asset_amount = balance
-            .get(&base_asset_id.to_string())
-            .copied()
-            .unwrap_or(0);
-        let eth_amount = base_asset_amount as f64 / 1_000_000_000.0;
-        list.push(format!("[{ix}] {} - {eth_amount} ETH", accounts_map[ix]));
-    }
-    list
+    accounts_map
+        .iter()
+        .zip(account_balances)
+        .map(|((ix, address), balance)| {
+            let base_asset_amount = balance
+                .get(&base_asset_id.to_string())
+                .copied()
+                .unwrap_or(0);
+            let eth_amount = base_asset_amount as f64 / 1_000_000_000.0;
+            format!("[{ix}] {address} - {eth_amount} ETH")
+        })
+        .collect()
 }
 
 // TODO: Simplify the function signature once https://github.com/FuelLabs/sway/issues/6071 is closed.
@@ -394,5 +391,50 @@ impl<T: field::Witnesses> TransactionExt for T {
     fn replace_witness(&mut self, index: u16, witness: Witness) -> &mut Self {
         self.witnesses_mut()[index as usize] = witness;
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_format_base_asset_account_balances() {
+        let mut accounts_map: AccountsMap = BTreeMap::new();
+
+        let address1 = Bech32Address::from_str(
+            "fuel1dved7k25uxadatl7l5kql309jnw07dcn4t3a6x9hm9nxyjcpqqns50p7n2",
+        )
+        .expect("address1");
+        let address2 = Bech32Address::from_str(
+            "fuel1x9f3ysyk7fmey5ac23s2p4rwg4gjye2kke3nu3pvrs5p4qc4m4qqwx56k3",
+        )
+        .expect("address2");
+
+        let base_asset_id = AssetId::zeroed();
+
+        accounts_map.insert(0, address1.clone());
+        accounts_map.insert(1, address2.clone());
+
+        let mut account_balances: AccountBalances = Vec::new();
+        let mut balance1 = HashMap::new();
+        balance1.insert(base_asset_id.to_string(), 1_500_000_000);
+        balance1.insert("other_asset".to_string(), 2_000_000_000);
+        account_balances.push(balance1);
+
+        let mut balance2 = HashMap::new();
+        balance2.insert("other_asset".to_string(), 3_000_000_000);
+        account_balances.push(balance2);
+
+        let expected = vec![
+            format!("[0] {address1} - 1.5 ETH"),
+            format!("[1] {address2} - 0 ETH"),
+        ];
+
+        let result =
+            format_base_asset_account_balances(&accounts_map, &account_balances, &base_asset_id);
+        assert_eq!(result, expected);
     }
 }
