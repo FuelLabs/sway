@@ -20,7 +20,7 @@ use forc_pkg as pkg;
 use lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
 };
-use parking_lot::RwLock;
+use parking_lot::{Mutex, RwLock};
 use pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     BuildPlan,
@@ -29,6 +29,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
+    time::SystemTime,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -53,6 +54,51 @@ pub struct CompiledProgram {
     pub typed: Option<ty::TyProgram>,
 }
 
+#[derive(Debug, Clone)]
+pub struct BuildPlanCache {
+    cache: Arc<Mutex<Option<(BuildPlan, SystemTime)>>>,
+}
+
+impl BuildPlanCache {
+    pub fn new() -> Self {
+        Self {
+            cache: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    pub fn get_or_update<F>(
+        &self,
+        manifest_path: &Option<PathBuf>,
+        update_fn: F,
+    ) -> Result<BuildPlan, LanguageServerError>
+    where
+        F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
+    {
+        let mut cache = self.cache.lock();
+        let should_update = match *cache {
+            Some((_, last_update)) => {
+                if let Some(manifest_path) = manifest_path {
+                    let modified_time = std::fs::metadata(manifest_path)
+                        .ok()
+                        .and_then(|m| m.modified().ok());
+                    modified_time.map_or(true, |t| t > last_update)
+                } else {
+                    false
+                }
+            }
+            None => true,
+        };
+
+        if should_update {
+            let new_plan = update_fn()?;
+            *cache = Some((new_plan.clone(), SystemTime::now()));
+            Ok(new_plan)
+        } else {
+            Ok(cache.as_ref().unwrap().0.clone())
+        }
+    }
+}
+
 /// A `Session` is used to store information about a single member in a workspace.
 /// It stores the parsed and typed Tokens, as well as the [TypeEngine] associated with the project.
 ///
@@ -61,7 +107,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub runnables: RunnableMap,
-    pub build_plan: RwLock<Option<BuildPlan>>,
+    pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -81,7 +127,7 @@ impl Session {
         Session {
             token_map: TokenMap::new(),
             runnables: DashMap::new(),
-            build_plan: RwLock::new(None),
+            build_plan_cache: BuildPlanCache::new(),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
@@ -233,34 +279,26 @@ impl Session {
 pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
-    let manifest = ManifestFile::from_dir(manifest_dir).map_err(|_| {
-        DocumentError::ManifestFileNotFound {
+    let manifest =
+        ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
-        }
-    })?;
+        })?;
     let member_manifests =
         manifest
             .member_manifests()
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
-    let lock_path =
-        manifest
-            .lock_path()
-            .map_err(|_| DocumentError::ManifestsLockPathFailed {
-                dir: uri.path().into(),
-            })?;
+    let lock_path = manifest
+        .lock_path()
+        .map_err(|_| DocumentError::ManifestsLockPathFailed {
+            dir: uri.path().into(),
+        })?;
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
-    pkg::BuildPlan::from_lock_and_manifests(
-        &lock_path,
-        &member_manifests,
-        false,
-        false,
-        &ipfs_node,
-    )
-    .map_err(LanguageServerError::BuildPlanFailed)
+    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
+        .map_err(LanguageServerError::BuildPlanFailed)
 }
 
 pub fn compile(
@@ -393,21 +431,9 @@ pub fn parse_project(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
-
-    // Safely retrieve or create build plan, minimizing lock contention
-    let build_plan = {
-        let existing_build_plan = session.build_plan.read().as_ref().cloned();
-        match existing_build_plan {
-            Some(plan) => plan,
-            None => {
-                // Generate a new build plan and cache it for future use
-                let new_build_plan = build_plan(uri)?;
-                session.build_plan.write().replace(new_build_plan.clone());
-                new_build_plan
-            }
-        }
-    };
-
+    let build_plan = session
+        .build_plan_cache
+        .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
     let results = compile(
         &build_plan,
         engines,
