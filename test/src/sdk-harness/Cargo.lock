@@ -1508,9 +1508,8 @@ checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
 
 [[package]]
 name = "fuel-abi-types"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0e7e87f94417ff1a5d60e496906033c58bfe5367546621f131fe8cdabaa2671"
+version = "0.6.0"
+source = "git+https://github.com/FuelLabs/fuel-abi-types?branch=esdrubal/abi_changes2#25010513ad66c01b03a22474ae6ff1bd3ee04614"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",
@@ -2006,8 +2005,7 @@ dependencies = [
 [[package]]
 name = "fuels"
 version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "601ed66a0485065471cd9c8bab2db7cfa58bc7ed5d2e68bd26fc573ac2575827"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#b48f5adbfb03348fb02bbd20bbd939fcedf8f646"
 dependencies = [
  "fuel-core",
  "fuel-core-client",
@@ -2023,8 +2021,7 @@ dependencies = [
 [[package]]
 name = "fuels-accounts"
 version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fed97e653906fe0bc60b5d7a7421f3c5fe766f516b762def8f4ccac707ac4bc3"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#b48f5adbfb03348fb02bbd20bbd939fcedf8f646"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2048,8 +2045,7 @@ dependencies = [
 [[package]]
 name = "fuels-code-gen"
 version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1edef30656b740ca9c279a7bcfe9e366557c271a2751e36316f780f18dc99c85"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#b48f5adbfb03348fb02bbd20bbd939fcedf8f646"
 dependencies = [
  "Inflector",
  "fuel-abi-types",
@@ -2064,8 +2060,7 @@ dependencies = [
 [[package]]
 name = "fuels-core"
 version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff741c9f1ba2c701b50c76a98a5655d8bc0f275f7ae2dd0e724f8fc36eeb8a9f"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#b48f5adbfb03348fb02bbd20bbd939fcedf8f646"
 dependencies = [
  "async-trait",
  "bech32",
@@ -2092,8 +2087,7 @@ dependencies = [
 [[package]]
 name = "fuels-macros"
 version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bba1c2fd149a310879249144f2589336708ae860563a45b792907ae34ae6b959"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#b48f5adbfb03348fb02bbd20bbd939fcedf8f646"
 dependencies = [
  "fuels-code-gen",
  "itertools 0.12.1",
@@ -2105,8 +2099,7 @@ dependencies = [
 [[package]]
 name = "fuels-programs"
 version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a45652fa07c48d5fba2ee50ddd279eead2c55b251b3d426d2189394b475330e9"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#b48f5adbfb03348fb02bbd20bbd939fcedf8f646"
 dependencies = [
  "async-trait",
  "fuel-abi-types",
@@ -2124,8 +2117,7 @@ dependencies = [
 [[package]]
 name = "fuels-test-helpers"
 version = "0.65.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "967a140a51095d071c84970365c37f856f4f098b835cb609b934dff4b8296cce"
+source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#b48f5adbfb03348fb02bbd20bbd939fcedf8f646"
 dependencies = [
  "fuel-core",
  "fuel-core-chain-config",
