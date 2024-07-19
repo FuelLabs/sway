@@ -54,38 +54,6 @@ pub struct CompiledProgram {
     pub typed: Option<ty::TyProgram>,
 }
 
-#[derive(Debug, Clone)]
-pub struct BuildPlanCache {
-    cache: Arc<Mutex<Option<(BuildPlan, SystemTime)>>>,
-}
-
-impl BuildPlanCache {
-    pub fn new() -> Self {
-        Self {
-            cache: Arc::new(Mutex::new(None)),
-        }
-    }
-
-    pub fn get_or_update<F>(&self, manifest_path: &Option<PathBuf>, update_fn: F) -> Result<BuildPlan, LanguageServerError>
-    where
-        F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
-    {
-        let mut cache = self.cache.lock();
-        let should_update = manifest_path
-            .as_ref()
-            .and_then(|path| path.metadata().ok()?.modified().ok())
-            .map_or(cache.is_none(), |time| cache.as_ref().map_or(true, |&(_, last)| time > last));
-
-        if should_update {
-            let new_plan = update_fn()?;
-            *cache = Some((new_plan.clone(), SystemTime::now()));
-            Ok(new_plan)
-        } else {
-            Ok(cache.as_ref().unwrap().0.clone())
-        }
-    }
-}
-
 /// A `Session` is used to store information about a single member in a workspace.
 /// It stores the parsed and typed Tokens, as well as the [TypeEngine] associated with the project.
 ///
@@ -114,7 +82,7 @@ impl Session {
         Session {
             token_map: TokenMap::new(),
             runnables: DashMap::new(),
-            build_plan_cache: BuildPlanCache::new(),
+            build_plan_cache: BuildPlanCache::default(),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
@@ -289,7 +257,6 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 }
 
 pub fn compile(
-    // uri: &Url,
     build_plan: &BuildPlan,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -297,10 +264,9 @@ pub fn compile(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
-    // let build_plan = build_plan(uri)?;
     let tests_enabled = true;
     pkg::check(
-        &build_plan,
+        build_plan,
         BuildTarget::default(),
         true,
         lsp_mode,
@@ -545,6 +511,49 @@ pub(crate) fn program_id_from_path(
             path: path.to_string_lossy().to_string(),
         })?;
     Ok(program_id)
+}
+
+/// A cache for storing and retrieving BuildPlan objects.
+#[derive(Debug, Clone)]
+pub struct BuildPlanCache {
+    /// The cached BuildPlan and its last update time
+    cache: Arc<Mutex<Option<(BuildPlan, SystemTime)>>>,
+}
+
+impl Default for BuildPlanCache {
+    fn default() -> Self {
+        Self {
+            cache: Arc::new(Mutex::new(None)),
+        }
+    }
+}
+
+impl BuildPlanCache {
+    /// Retrieves a BuildPlan from the cache or updates it if necessary.
+    pub fn get_or_update<F>(
+        &self,
+        manifest_path: &Option<PathBuf>,
+        update_fn: F,
+    ) -> Result<BuildPlan, LanguageServerError>
+    where
+        F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
+    {
+        let mut cache = self.cache.lock();
+        let should_update = manifest_path
+            .as_ref()
+            .and_then(|path| path.metadata().ok()?.modified().ok())
+            .map_or(cache.is_none(), |time| {
+                cache.as_ref().map_or(true, |&(_, last)| time > last)
+            });
+
+        if should_update {
+            let new_plan = update_fn()?;
+            *cache = Some((new_plan.clone(), SystemTime::now()));
+            Ok(new_plan)
+        } else {
+            Ok(cache.as_ref().unwrap().0.clone())
+        }
+    }
 }
 
 #[cfg(test)]
