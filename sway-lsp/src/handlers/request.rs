@@ -2,7 +2,7 @@
 //! Protocol. This module specifically handles requests.
 
 use crate::{
-    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug,
+    capabilities, core::session::build_plan, lsp_ext, server_state::ServerState, utils::debug
 };
 use forc_tracing::{tracing_subscriber, FmtSpan, StdioTracingWriter, TracingWriterMode};
 use lsp_types::{

@@ -61,6 +61,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub runnables: RunnableMap,
+    pub build_plan: RwLock<Option<BuildPlan>>,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -80,6 +81,7 @@ impl Session {
         Session {
             token_map: TokenMap::new(),
             runnables: DashMap::new(),
+            build_plan: RwLock::new(None),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
@@ -231,37 +233,46 @@ impl Session {
 pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
-    let manifest =
-        ManifestFile::from_dir(manifest_dir).map_err(|_| DocumentError::ManifestFileNotFound {
+    let manifest = ManifestFile::from_dir(manifest_dir).map_err(|_| {
+        DocumentError::ManifestFileNotFound {
             dir: uri.path().into(),
-        })?;
+        }
+    })?;
     let member_manifests =
         manifest
             .member_manifests()
             .map_err(|_| DocumentError::MemberManifestsFailed {
                 dir: uri.path().into(),
             })?;
-    let lock_path = manifest
-        .lock_path()
-        .map_err(|_| DocumentError::ManifestsLockPathFailed {
-            dir: uri.path().into(),
-        })?;
+    let lock_path =
+        manifest
+            .lock_path()
+            .map_err(|_| DocumentError::ManifestsLockPathFailed {
+                dir: uri.path().into(),
+            })?;
     // TODO: Either we want LSP to deploy a local node in the background or we want this to
     // point to Fuel operated IPFS node.
     let ipfs_node = pkg::source::IPFSNode::Local;
-    pkg::BuildPlan::from_lock_and_manifests(&lock_path, &member_manifests, false, false, &ipfs_node)
-        .map_err(LanguageServerError::BuildPlanFailed)
+    pkg::BuildPlan::from_lock_and_manifests(
+        &lock_path,
+        &member_manifests,
+        false,
+        false,
+        &ipfs_node,
+    )
+    .map_err(LanguageServerError::BuildPlanFailed)
 }
 
 pub fn compile(
-    uri: &Url,
+    // uri: &Url,
+    build_plan: &BuildPlan,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
-    let build_plan = build_plan(uri)?;
+    // let build_plan = build_plan(uri)?;
     let tests_enabled = true;
     pkg::check(
         &build_plan,
@@ -382,8 +393,23 @@ pub fn parse_project(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
+
+    // Safely retrieve or create build plan, minimizing lock contention
+    let build_plan = {
+        let existing_build_plan = session.build_plan.read().as_ref().cloned();
+        match existing_build_plan {
+            Some(plan) => plan,
+            None => {
+                // Generate a new build plan and cache it for future use
+                let new_build_plan = build_plan(uri)?;
+                session.build_plan.write().replace(new_build_plan.clone());
+                new_build_plan
+            }
+        }
+    };
+
     let results = compile(
-        uri,
+        &build_plan,
         engines,
         retrigger_compilation,
         lsp_mode.clone(),
