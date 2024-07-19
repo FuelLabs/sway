@@ -541,7 +541,7 @@ impl<'eng> FnCompiler<'eng> {
             ty::TyExpressionVariant::Array {
                 elem_type,
                 contents,
-            } => self.compile_array_expr(context, md_mgr, elem_type, contents, span_md_idx),
+            } => self.compile_array_expr(context, md_mgr, *elem_type, contents, span_md_idx),
             ty::TyExpressionVariant::ArrayIndex { prefix, index } => {
                 self.compile_array_index(context, md_mgr, prefix, index, span_md_idx)
             }
@@ -904,11 +904,11 @@ impl<'eng> FnCompiler<'eng> {
             Intrinsic::SizeOfVal => {
                 let exp = &arguments[0];
                 // Compile the expression in case of side-effects but ignore its value.
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &exp.return_type,
+                    exp.return_type,
                     &exp.span,
                 )?;
                 self.compile_expression_to_value(context, md_mgr, exp)?;
@@ -917,11 +917,11 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::SizeOfType => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &targ.type_id,
+                    targ.type_id,
                     &targ.span,
                 )?;
                 let val = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
@@ -929,11 +929,11 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::SizeOfStr => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &targ.type_id,
+                    targ.type_id,
                     &targ.span,
                 )?;
                 let val = Constant::get_uint(
@@ -960,11 +960,11 @@ impl<'eng> FnCompiler<'eng> {
             }
             Intrinsic::AssertIsStrArray => {
                 let targ = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &targ.type_id,
+                    targ.type_id,
                     &targ.span,
                 )?;
                 match ir_type.get_content(context) {
@@ -1037,11 +1037,11 @@ impl<'eng> FnCompiler<'eng> {
 
                 // Get the target type from the type argument provided
                 let target_type = &type_arguments[0];
-                let target_ir_type = convert_resolved_typeid(
+                let target_ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &target_type.type_id,
+                    target_type.type_id,
                     &target_type.span,
                 )?;
 
@@ -1322,11 +1322,11 @@ impl<'eng> FnCompiler<'eng> {
                 };
 
                 let len = type_arguments[0].clone();
-                let ir_type = convert_resolved_typeid(
+                let ir_type = convert_resolved_type_id(
                     engines.te(),
                     engines.de(),
                     context,
-                    &len.type_id,
+                    len.type_id,
                     &len.span,
                 )?;
                 let len_value = Constant::get_uint(context, 64, ir_type.size(context).in_bytes());
@@ -2161,209 +2161,227 @@ impl<'eng> FnCompiler<'eng> {
 
                 Ok(TerminatorValue::new(buffer, context))
             }
-            Intrinsic::Slice => {
-                assert!(arguments.len() == 3);
-
-                let uint64 = Type::get_uint64(context);
-                let ptr_u64 = Type::new_ptr(context, uint64);
-
-                let first_argument = &arguments[0];
-                let elem_type_id = &match &*self.engines.te().get(first_argument.return_type) {
-                    TypeInfo::Array(t, _) => t.type_id,
-                    TypeInfo::Slice(t) => t.type_id,
-                    _ => unreachable!(),
-                };
-                let elem_ir_type = convert_resolved_typeid(
-                    self.engines.te(),
-                    self.engines.de(),
-                    context,
-                    elem_type_id,
-                    &first_argument.span.clone(),
-                )?;
-                let item_ir_type_size = elem_ir_type.size(context);
-                let first_argument_value = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, first_argument)?
-                );
-                let ptr_to_first_argument =
-                    save_to_local_return_ptr(self, context, first_argument_value)?;
-                let ptr_to_elements = match &*self.engines.te().get(first_argument.return_type) {
-                    TypeInfo::Array(_, _) => self
-                        .current_block
-                        .append(context)
-                        .ptr_to_int(ptr_to_first_argument, uint64),
-                    TypeInfo::Slice(_) => {
-                        let slice_ptr = self
-                            .current_block
-                            .append(context)
-                            .cast_ptr(ptr_to_first_argument, ptr_u64);
-                        self.current_block.append(context).load(slice_ptr)
-                    }
-                    _ => unreachable!(),
-                };
-
-                let start = &arguments[1];
-                let start = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, start)?
-                );
-
-                let end = &arguments[2];
-                let end = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, end)?
-                );
-
-                //asm(array_ptr: array, start: start, end: end, item_len: __size_of::<T>(), slice_ptr, slice_len) {
-                //  lw array_ptr array_ptr i0;
-                //  mul slice_ptr start item_len;
-                //  add slice_ptr slice_ptr array_ptr; // byte offset
-                //  sub slice_len end start;
-                //  mul slice_len slice_len item_len;  // length in bytes
-                //  (slice_ptr, slice_len): __slice[T]
-                //};
-
-                let array_ptr_arg = AsmArg {
-                    name: Ident::new_no_span("array_ptr".into()),
-                    initializer: Some(ptr_to_elements),
-                };
-                let start_arg = AsmArg {
-                    name: Ident::new_no_span("start".into()),
-                    initializer: Some(start),
-                };
-                let end_arg = AsmArg {
-                    name: Ident::new_no_span("end".into()),
-                    initializer: Some(end),
-                };
-                let item_len_arg = AsmArg {
-                    name: Ident::new_no_span("item_len".into()),
-                    initializer: Some(to_constant(self, context, item_ir_type_size.in_bytes())),
-                };
-
-                let slice_ptr_out_arg = AsmArg {
-                    name: Ident::new_no_span("slice_ptr".into()),
-                    initializer: None,
-                };
-                let slice_len_out_arg = AsmArg {
-                    name: Ident::new_no_span("slice_len".into()),
-                    initializer: None,
-                };
-
-                let slice_ptr = self.current_block.append(context).asm_block(
-                    vec![
-                        array_ptr_arg,
-                        start_arg.clone(),
-                        item_len_arg.clone(),
-                        slice_ptr_out_arg,
-                    ],
-                    vec![
-                        AsmInstruction::mul_no_span("slice_ptr", "start", "item_len"),
-                        AsmInstruction::add_no_span("slice_ptr", "slice_ptr", "array_ptr"),
-                    ],
-                    uint64,
-                    Some(Ident::new_no_span("slice_ptr".into())),
-                );
-
-                let slice_len = self.current_block.append(context).asm_block(
-                    vec![start_arg, end_arg, item_len_arg, slice_len_out_arg],
-                    vec![
-                        AsmInstruction::sub_no_span("slice_len", "end", "start"),
-                        AsmInstruction::mul_no_span("slice_len", "slice_len", "item_len"),
-                    ],
-                    uint64,
-                    Some(Ident::new_no_span("slice_len".into())),
-                );
-
-                // compile the slice together
-                let return_type = Type::get_typed_slice(context, elem_ir_type);
-                let slice_as_tuple = self.compile_tuple_from_values(
-                    context,
-                    vec![slice_ptr, slice_len],
-                    vec![uint64, uint64],
-                    None,
-                )?;
-                let slice = self.current_block.append(context).asm_block(
-                    vec![AsmArg {
-                        name: Ident::new_no_span("s".into()),
-                        initializer: Some(slice_as_tuple),
-                    }],
-                    vec![],
-                    return_type,
-                    Some(Ident::new_no_span("s".into())),
-                );
-
-                Ok(TerminatorValue::new(slice, context))
-            }
-            Intrinsic::SliceElem => {
-                assert!(arguments.len() == 2);
-
-                let slice = &arguments[0];
-                let item_ir_type = convert_resolved_typeid(
-                    self.engines.te(),
-                    self.engines.de(),
-                    context,
-                    &match &*self.engines.te().get(slice.return_type) {
-                        TypeInfo::Slice(t) => t.type_id,
-                        _ => unreachable!(),
-                    },
-                    &slice.span.clone(),
-                )?;
-                let item_ir_type_size = item_ir_type.size(context);
-                let slice = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, slice)?
-                );
-                let ptr_to_slice = save_to_local_return_ptr(self, context, slice)?;
-
-                let ptr_to_slice_arg = AsmArg {
-                    name: Ident::new_no_span("ptr_to_slice".into()),
-                    initializer: Some(ptr_to_slice),
-                };
-
-                let item_ir_type_size = to_constant(self, context, item_ir_type_size.in_bytes());
-                let item_len_arg = AsmArg {
-                    name: Ident::new_no_span("item_len".into()),
-                    initializer: Some(item_ir_type_size),
-                };
-
-                let idx = &arguments[1];
-                let idx = return_on_termination_or_extract!(
-                    self.compile_expression_to_value(context, md_mgr, idx)?
-                );
-                let idx_arg = AsmArg {
-                    name: Ident::new_no_span("idx".into()),
-                    initializer: Some(idx),
-                };
-
-                let offset_out_arg = AsmArg {
-                    name: Ident::new_no_span("offset".into()),
-                    initializer: None,
-                };
-                let ptr_out_arg = AsmArg {
-                    name: Ident::new_no_span("ptr".into()),
-                    initializer: None,
-                };
-
-                let ptr_to_elem_type = Type::new_ptr(context, item_ir_type);
-
-                let ptr = self.current_block.append(context).asm_block(
-                    vec![
-                        ptr_to_slice_arg,
-                        idx_arg,
-                        item_len_arg,
-                        offset_out_arg,
-                        ptr_out_arg,
-                    ],
-                    vec![
-                        AsmInstruction::lw_no_span("ptr", "ptr_to_slice", "i0"),
-                        AsmInstruction::mul_no_span("offset", "idx", "item_len"),
-                        AsmInstruction::add_no_span("ptr", "ptr", "offset"),
-                    ],
-                    ptr_to_elem_type,
-                    Some(Ident::new_no_span("ptr".into())),
-                );
-
-                let elem = self.current_block.append(context).load(ptr);
-
-                Ok(TerminatorValue::new(elem, context))
-            }
+            Intrinsic::Slice => self.compile_intrinsic_slice(arguments, context, md_mgr),
+            Intrinsic::SliceElem => self.compile_intrinsic_slice_elem(arguments, context, md_mgr),
         }
+    }
+
+    fn compile_intrinsic_slice_elem(
+        &mut self,
+        arguments: &Vec<ty::TyExpression>,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 2);
+
+        let te = self.engines.te();
+
+        let ref_to_slice_expr = &arguments[0];
+        let slice_type_id = te
+            .get(ref_to_slice_expr.return_type)
+            .as_reference()
+            .unwrap()
+            .1
+            .type_id;
+        let elem_type_id = te.get(slice_type_id).as_slice().unwrap().type_id;
+        let elem_ir_type = convert_resolved_type_id(
+            self.engines.te(),
+            self.engines.de(),
+            context,
+            elem_type_id,
+            &ref_to_slice_expr.span.clone(),
+        )?;
+        let elem_ir_type_size = elem_ir_type.size(context);
+        let ref_to_slice_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, ref_to_slice_expr)?
+        );
+        let ptr_to_ref_to_slice = save_to_local_return_ptr(self, context, ref_to_slice_value)?;
+
+        let ptr_to_slice_arg = AsmArg {
+            name: Ident::new_no_span("ptr_to_slice".into()),
+            initializer: Some(ptr_to_ref_to_slice),
+        };
+
+        let elem_ir_type_size = to_constant(self, context, elem_ir_type_size.in_bytes());
+        let elem_len_arg = AsmArg {
+            name: Ident::new_no_span("item_len".into()),
+            initializer: Some(elem_ir_type_size),
+        };
+
+        let idx = &arguments[1];
+        let idx = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, idx)?
+        );
+        let idx_arg = AsmArg {
+            name: Ident::new_no_span("idx".into()),
+            initializer: Some(idx),
+        };
+
+        let offset_out_arg = AsmArg {
+            name: Ident::new_no_span("offset".into()),
+            initializer: None,
+        };
+        let ptr_out_arg = AsmArg {
+            name: Ident::new_no_span("ptr".into()),
+            initializer: None,
+        };
+
+        let ptr_to_elem_type = Type::get_uint64(context);
+
+        let ptr = self.current_block.append(context).asm_block(
+            vec![
+                ptr_to_slice_arg,
+                idx_arg,
+                elem_len_arg,
+                offset_out_arg,
+                ptr_out_arg,
+            ],
+            vec![
+                AsmInstruction::lw_no_span("ptr", "ptr_to_slice", "i0"),
+                AsmInstruction::mul_no_span("offset", "idx", "item_len"),
+                AsmInstruction::add_no_span("ptr", "ptr", "offset"),
+                AsmInstruction::log_no_span("ptr", "offset", "idx", "item_len"),
+            ],
+            ptr_to_elem_type,
+            Some(Ident::new_no_span("ptr".into())),
+        );
+
+        Ok(TerminatorValue::new(ptr, context))
+    }
+
+    fn compile_intrinsic_slice(
+        &mut self,
+        arguments: &Vec<ty::TyExpression>,
+        context: &mut Context,
+        md_mgr: &mut MetadataManager,
+    ) -> Result<TerminatorValue, CompileError> {
+        assert!(arguments.len() == 3);
+
+        let uint64 = Type::get_uint64(context);
+        let ptr_u64 = Type::new_ptr(context, uint64);
+
+        let first_argument = &arguments[0];
+        let elem_type_id = match &*self.engines.te().get(first_argument.return_type) {
+            TypeInfo::Array(t, _) => t.type_id,
+            TypeInfo::Slice(t) => t.type_id,
+            _ => unreachable!(),
+        };
+        let elem_ir_type = convert_resolved_type_id(
+            self.engines.te(),
+            self.engines.de(),
+            context,
+            elem_type_id,
+            &first_argument.span.clone(),
+        )?;
+        let item_ir_type_size = elem_ir_type.size(context);
+        let first_argument_value = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, first_argument)?
+        );
+        let ptr_to_first_argument = save_to_local_return_ptr(self, context, first_argument_value)?;
+        let ptr_to_elements = match &*self.engines.te().get(first_argument.return_type) {
+            TypeInfo::Array(_, _) => self
+                .current_block
+                .append(context)
+                .ptr_to_int(ptr_to_first_argument, uint64),
+            TypeInfo::Slice(_) => {
+                let slice_ptr = self
+                    .current_block
+                    .append(context)
+                    .cast_ptr(ptr_to_first_argument, ptr_u64);
+                self.current_block.append(context).load(slice_ptr)
+            }
+            _ => unreachable!(),
+        };
+
+        let start = &arguments[1];
+        let start = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, start)?
+        );
+
+        let end = &arguments[2];
+        let end = return_on_termination_or_extract!(
+            self.compile_expression_to_value(context, md_mgr, end)?
+        );
+
+        //asm(array_ptr: array, start: start, end: end, item_len: __size_of::<T>(), slice_ptr, slice_len) {
+        //  lw array_ptr array_ptr i0;
+        //  mul slice_ptr start item_len;
+        //  add slice_ptr slice_ptr array_ptr; // byte offset
+        //  sub slice_len end start;
+        //  mul slice_len slice_len item_len;  // length in bytes
+        //  (slice_ptr, slice_len): __slice[T]
+        //};
+
+        let array_ptr_arg = AsmArg {
+            name: Ident::new_no_span("array_ptr".into()),
+            initializer: Some(ptr_to_elements),
+        };
+        let start_arg = AsmArg {
+            name: Ident::new_no_span("start".into()),
+            initializer: Some(start),
+        };
+        let end_arg = AsmArg {
+            name: Ident::new_no_span("end".into()),
+            initializer: Some(end),
+        };
+        let item_len_arg = AsmArg {
+            name: Ident::new_no_span("item_len".into()),
+            initializer: Some(to_constant(self, context, item_ir_type_size.in_bytes())),
+        };
+
+        let slice_ptr_out_arg = AsmArg {
+            name: Ident::new_no_span("slice_ptr".into()),
+            initializer: None,
+        };
+        let slice_len_out_arg = AsmArg {
+            name: Ident::new_no_span("slice_len".into()),
+            initializer: None,
+        };
+
+        let slice_ptr = self.current_block.append(context).asm_block(
+            vec![
+                array_ptr_arg,
+                start_arg.clone(),
+                item_len_arg.clone(),
+                slice_ptr_out_arg,
+            ],
+            vec![
+                AsmInstruction::mul_no_span("slice_ptr", "start", "item_len"),
+                AsmInstruction::add_no_span("slice_ptr", "slice_ptr", "array_ptr"),
+            ],
+            uint64,
+            Some(Ident::new_no_span("slice_ptr".into())),
+        );
+
+        let slice_len = self.current_block.append(context).asm_block(
+            vec![start_arg, end_arg, item_len_arg, slice_len_out_arg],
+            vec![
+                AsmInstruction::sub_no_span("slice_len", "end", "start"),
+                AsmInstruction::mul_no_span("slice_len", "slice_len", "item_len"),
+            ],
+            uint64,
+            Some(Ident::new_no_span("slice_len".into())),
+        );
+
+        // compile the slice together
+        let return_type = Type::get_typed_slice(context, elem_ir_type);
+        let slice_as_tuple = self.compile_tuple_from_values(
+            context,
+            vec![slice_ptr, slice_len],
+            vec![uint64, uint64],
+            None,
+        )?;
+        let slice = self.current_block.append(context).asm_block(
+            vec![AsmArg {
+                name: Ident::new_no_span("s".into()),
+                initializer: Some(slice_as_tuple),
+            }],
+            vec![],
+            return_type,
+            Some(Ident::new_no_span("s".into())),
+        );
+
+        Ok(TerminatorValue::new(slice, context))
     }
 
     fn compile_return(
@@ -2494,11 +2512,11 @@ impl<'eng> FnCompiler<'eng> {
             )),
         }?;
 
-        let referenced_ir_type = convert_resolved_typeid(
+        let referenced_ir_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &referenced_ast_type,
+            referenced_ast_type,
             &ast_expr.span.clone(),
         )?;
 
@@ -2824,7 +2842,7 @@ impl<'eng> FnCompiler<'eng> {
             self.engines.te(),
             self.engines.de(),
             context,
-            &ast_return_type,
+            ast_return_type,
         )?;
         let ret_is_copy_type = self
             .engines
@@ -2973,7 +2991,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.engines.te(),
                 self.engines.de(),
                 context,
-                &return_type,
+                return_type,
             )
             .unwrap_or_else(|_| Type::get_unit(context));
             let merge_val_arg_idx = merge_block.new_arg(context, return_type);
@@ -3001,11 +3019,11 @@ impl<'eng> FnCompiler<'eng> {
         variant: &ty::TyEnumVariant,
     ) -> Result<TerminatorValue, CompileError> {
         // Retrieve the type info for the enum.
-        let enum_type = match convert_resolved_typeid(
+        let enum_type = match convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &exp.return_type,
+            exp.return_type,
             &exp.span,
         )? {
             ty if ty.is_struct(context) => ty,
@@ -3282,11 +3300,11 @@ impl<'eng> FnCompiler<'eng> {
         // accessed and isn't present in the environment.
         let init_val = self.compile_expression_to_value(context, md_mgr, body);
 
-        let return_type = convert_resolved_typeid(
+        let return_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &body.return_type,
+            body.return_type,
             &body.span,
         )?;
 
@@ -3361,11 +3379,11 @@ impl<'eng> FnCompiler<'eng> {
                     .lexical_map
                     .insert(call_path.suffix.as_str().to_owned());
 
-                let return_type = convert_resolved_typeid(
+                let return_type = convert_resolved_type_id(
                     self.engines.te(),
                     self.engines.de(),
                     context,
-                    &value.return_type,
+                    value.return_type,
                     &value.span,
                 )?;
 
@@ -3566,7 +3584,7 @@ impl<'eng> FnCompiler<'eng> {
         &mut self,
         context: &mut Context,
         md_mgr: &mut MetadataManager,
-        elem_type: &TypeId,
+        elem_type: TypeId,
         contents: &[ty::TyExpression],
         span_md_idx: Option<MetadataIndex>,
     ) -> Result<TerminatorValue, CompileError> {
@@ -3812,7 +3830,7 @@ impl<'eng> FnCompiler<'eng> {
                 self.engines.te(),
                 self.engines.de(),
                 context,
-                &struct_field.value.return_type,
+                struct_field.value.return_type,
             )?;
             field_types.push(field_type);
         }
@@ -3891,11 +3909,11 @@ impl<'eng> FnCompiler<'eng> {
                 )
             })?;
 
-        let field_type = convert_resolved_typeid(
+        let field_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &field_type_id,
+            field_type_id,
             &ast_field.span,
         )?;
 
@@ -4050,7 +4068,7 @@ impl<'eng> FnCompiler<'eng> {
                     self.engines.te(),
                     self.engines.de(),
                     context,
-                    &field_expr.return_type,
+                    field_expr.return_type,
                 )?;
                 init_values.push(init_value);
                 init_types.push(init_type);
@@ -4074,11 +4092,11 @@ impl<'eng> FnCompiler<'eng> {
         let tuple_value = return_on_termination_or_extract!(
             self.compile_expression_to_ptr(context, md_mgr, tuple)?
         );
-        let tuple_type = convert_resolved_typeid(
+        let tuple_type = convert_resolved_type_id(
             self.engines.te(),
             self.engines.de(),
             context,
-            &tuple_type,
+            tuple_type,
             &span,
         )?;
 
@@ -4125,7 +4143,7 @@ impl<'eng> FnCompiler<'eng> {
             self.engines.te(),
             self.engines.de(),
             context,
-            &base_type,
+            base_type,
         )?;
 
         // Do the actual work. This is a recursive function because we want to drill down
@@ -4230,7 +4248,7 @@ impl<'eng> FnCompiler<'eng> {
             self.engines.te(),
             self.engines.de(),
             context,
-            &return_type,
+            return_type,
         )?;
         let val = self
             .current_block

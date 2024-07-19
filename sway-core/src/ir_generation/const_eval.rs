@@ -12,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    convert::{convert_literal_to_constant, convert_resolved_typeid},
+    convert::{convert_literal_to_constant, convert_resolved_type_id},
     function::FnCompiler,
     types::*,
 };
@@ -1036,11 +1036,11 @@ fn const_eval_intrinsic(
         }
         Intrinsic::SizeOfType => {
             let targ = &intrinsic.type_arguments[0];
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &targ.type_id,
+                targ.type_id,
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
@@ -1052,11 +1052,11 @@ fn const_eval_intrinsic(
         Intrinsic::SizeOfVal => {
             let val = &intrinsic.arguments[0];
             let type_id = val.return_type;
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &type_id,
+                type_id,
                 &val.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
@@ -1067,11 +1067,11 @@ fn const_eval_intrinsic(
         }
         Intrinsic::SizeOfStr => {
             let targ = &intrinsic.type_arguments[0];
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &targ.type_id,
+                targ.type_id,
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;
@@ -1084,11 +1084,11 @@ fn const_eval_intrinsic(
         }
         Intrinsic::AssertIsStrArray => {
             let targ = &intrinsic.type_arguments[0];
-            let ir_type = convert_resolved_typeid(
+            let ir_type = convert_resolved_type_id(
                 lookup.engines.te(),
                 lookup.engines.de(),
                 lookup.context,
-                &targ.type_id,
+                targ.type_id,
                 &targ.span,
             )
             .map_err(|_| ConstEvalError::CompileError)?;

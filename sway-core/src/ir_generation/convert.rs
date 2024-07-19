@@ -52,32 +52,29 @@ pub(super) fn convert_literal_to_constant(
     }
 }
 
-pub(super) fn convert_resolved_typeid(
+pub(super) fn convert_resolved_type_id(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,
-    ast_type: &TypeId,
+    ast_type: TypeId,
     span: &Span,
 ) -> Result<Type, CompileError> {
-    let t = &type_engine
-        .to_typeinfo(*ast_type, span)
-        .map_err(|_| CompileError::TypeMustBeKnownAtThisPoint { span: span.clone() })?;
-
-    convert_resolved_type(type_engine, decl_engine, context, t, span)
+    let t = type_engine.get(ast_type);
+    convert_resolved_type_info(type_engine, decl_engine, context, &*t, span)
 }
 
 pub(super) fn convert_resolved_typeid_no_span(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,
-    ast_type: &TypeId,
+    ast_type: TypeId,
 ) -> Result<Type, CompileError> {
     let msg = "unknown source location";
     let span = crate::span::Span::from_string(msg.to_string());
-    convert_resolved_typeid(type_engine, decl_engine, context, ast_type, &span)
+    convert_resolved_type_id(type_engine, decl_engine, context, ast_type, &span)
 }
 
-fn convert_resolved_type(
+fn convert_resolved_type_info(
     type_engine: &TypeEngine,
     decl_engine: &DeclEngine,
     context: &mut Context,
@@ -87,10 +84,10 @@ fn convert_resolved_type(
     // A handy macro for rejecting unsupported types.
     macro_rules! reject_type {
         ($name_str:literal) => {{
-            return Err(CompileError::Internal(
-                concat!($name_str, " type cannot be resolved in IR."),
-                span.clone(),
-            ));
+            return Err(CompileError::TypeMustBeKnownAtThisPoint {
+                span: span.clone(),
+                internal: $name_str.into(),
+            });
         }};
     }
 
@@ -125,25 +122,16 @@ fn convert_resolved_type(
             &decl_engine.get_enum(decl_ref).variants,
         )?,
         TypeInfo::Array(elem_type, length) => {
-            let elem_type = convert_resolved_typeid(
+            let elem_type = convert_resolved_type_id(
                 type_engine,
                 decl_engine,
                 context,
-                &elem_type.type_id,
+                elem_type.type_id,
                 span,
             )?;
             Type::new_array(context, elem_type, length.val() as u64)
         }
-        TypeInfo::Slice(elem_type) => {
-            let elem_type = convert_resolved_typeid(
-                type_engine,
-                decl_engine,
-                context,
-                &elem_type.type_id,
-                span,
-            )?;
-            Type::get_typed_slice(context, elem_type)
-        }
+
         TypeInfo::Tuple(fields) => {
             if fields.is_empty() {
                 // XXX We've removed Unit from the core compiler, replaced with an empty Tuple.
@@ -159,10 +147,30 @@ fn convert_resolved_type(
         TypeInfo::RawUntypedSlice => Type::get_slice(context),
         TypeInfo::Ptr(_) => Type::get_uint64(context),
         TypeInfo::Alias { ty, .. } => {
-            convert_resolved_typeid(type_engine, decl_engine, context, &ty.type_id, span)?
+            convert_resolved_type_id(type_engine, decl_engine, context, ty.type_id, span)?
         }
-        TypeInfo::Ref { .. } => Type::get_uint64(context),
+        // refs to slice are actually fat pointers,
+        // all others refs are thin pointers.
+        TypeInfo::Ref {
+            referenced_type, ..
+        } => {
+            if let Some(slice_elem) = type_engine.get(referenced_type.type_id).as_slice() {
+                let elem_ir_type = convert_resolved_type_id(
+                    type_engine,
+                    decl_engine,
+                    context,
+                    slice_elem.type_id,
+                    span,
+                )?;
+                Type::get_typed_slice(context, elem_ir_type)
+            } else {
+                Type::get_uint64(context)
+            }
+        }
         TypeInfo::Never => Type::get_never(context),
+
+        // Unsized types
+        TypeInfo::Slice(_) => reject_type!("unsized"),
 
         // Unsupported types which shouldn't exist in the AST after type checking and
         // monomorphisation.

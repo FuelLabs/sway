@@ -1010,7 +1010,7 @@ pub enum CompileError {
     #[error("Configurables need a function named \"abi_decode_in_place\" to be in scope.")]
     ConfigurableMissingAbiDecodeInPlace { span: Span },
     #[error("Type must be known at this point")]
-    TypeMustBeKnownAtThisPoint { span: Span },
+    TypeMustBeKnownAtThisPoint { span: Span, internal: String },
 }
 
 impl std::convert::From<TypeError> for CompileError {

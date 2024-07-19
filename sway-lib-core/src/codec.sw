@@ -697,6 +697,17 @@ impl AbiEncode for raw_slice {
     }
 }
 
+impl<T> AbiEncode for &__slice[T]
+where
+    T: AbiEncode
+{
+    fn abi_encode(self, buffer: Buffer) -> Buffer {
+        Buffer {
+            buffer: __encode_buffer_append(buffer.buffer, self),
+        }
+    }
+}
+
 impl<T> AbiEncode for [T; 0]
 where
     T: AbiEncode,
@@ -2533,7 +2544,7 @@ where
     }
 }
 
-// Decode 
+// Decode
 
 pub trait AbiDecode {
     fn abi_decode(ref mut buffer: BufferReader) -> Self;

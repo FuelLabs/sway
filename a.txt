@@ -1,0 +1,784 @@
+Testing should_pass/language/slice/slice_intrinsics ... failed
+     Failed to compile slice_intrinsics
+          Compiling should_pass/language/slice/slice_intrinsics ...
+             [1;32mCompiling[0m library [1mcore[0m (/home/xunilrj/github/sway/sway-lib-core)
+             [1;32mCompiling[0m script [1mslice_intrinsics[0m (/home/xunilrj/github/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/slice/slice_intrinsics)
+          Backtrace [
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_intrinsic_function" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression_to_value" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block::{{closure}}" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block_to_value" },
+              { fn: "sway_core::ir_generation::compile::compile_fn" },
+              { fn: "sway_core::ir_generation::CompiledFunctionCache::ty_function_decl_to_unique_function" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_fn_call" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression_to_value" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block::{{closure}}" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block_to_value" },
+              { fn: "sway_core::ir_generation::compile::compile_fn" },
+              { fn: "sway_core::ir_generation::CompiledFunctionCache::ty_function_decl_to_unique_function" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_fn_call" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block::{{closure}}" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block_to_value" },
+              { fn: "sway_core::ir_generation::compile::compile_fn" },
+              { fn: "sway_core::ir_generation::compile::compile_entry_function" },
+              { fn: "sway_core::ir_generation::compile::compile_script" },
+              { fn: "sway_core::ir_generation::compile_program" },
+              { fn: "sway_core::ast_to_asm" },
+              { fn: "forc_pkg::pkg::compile" },
+              { fn: "forc_pkg::pkg::build" },
+              { fn: "forc_pkg::pkg::build_with_options" },
+              { fn: "test::e2e_vm_tests::harness::compile_to_bytes::{{closure}}" },
+              { fn: "test::e2e_vm_tests::TestContext::run::{{closure}}" },
+              { fn: "test::e2e_vm_tests::run::{{closure}}" },
+              { fn: "<tracing::instrument::Instrumented<T> as core::future::future::Future>::poll" },
+              { fn: "test::main::{{closure}}" },
+              { fn: "tokio::runtime::context::runtime::enter_runtime" },
+              { fn: "tokio::runtime::runtime::Runtime::block_on" },
+              { fn: "test::main" },
+              { fn: "std::sys_common::backtrace::__rust_begin_short_backtrace" },
+              { fn: "std::rt::lang_start::{{closure}}" },
+              { fn: "std::rt::lang_start_internal" },
+              { fn: "main" },
+              { fn: "__libc_start_main" },
+              { fn: "_start" },
+          ]
+          Backtrace [
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_intrinsic_function" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_deref_up_to_ptr" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression_to_value" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block::{{closure}}" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block_to_value" },
+              { fn: "sway_core::ir_generation::compile::compile_fn" },
+              { fn: "sway_core::ir_generation::CompiledFunctionCache::ty_function_decl_to_unique_function" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_fn_call" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_fn_call" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression_to_value" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block::{{closure}}" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block_to_value" },
+              { fn: "sway_core::ir_generation::compile::compile_fn" },
+              { fn: "sway_core::ir_generation::CompiledFunctionCache::ty_function_decl_to_unique_function" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_fn_call" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_expression" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block::{{closure}}" },
+              { fn: "sway_core::ir_generation::function::FnCompiler::compile_code_block_to_value" },
+              { fn: "sway_core::ir_generation::compile::compile_fn" },
+              { fn: "sway_core::ir_generation::compile::compile_entry_function" },
+              { fn: "sway_core::ir_generation::compile::compile_script" },
+              { fn: "sway_core::ir_generation::compile_program" },
+              { fn: "sway_core::ast_to_asm" },
+              { fn: "forc_pkg::pkg::compile" },
+              { fn: "forc_pkg::pkg::build" },
+              { fn: "forc_pkg::pkg::build_with_options" },
+              { fn: "test::e2e_vm_tests::harness::compile_to_bytes::{{closure}}" },
+              { fn: "test::e2e_vm_tests::TestContext::run::{{closure}}" },
+              { fn: "test::e2e_vm_tests::run::{{closure}}" },
+              { fn: "<tracing::instrument::Instrumented<T> as core::future::future::Future>::poll" },
+              { fn: "test::main::{{closure}}" },
+              { fn: "tokio::runtime::context::runtime::enter_runtime" },
+              { fn: "tokio::runtime::runtime::Runtime::block_on" },
+              { fn: "test::main" },
+              { fn: "std::sys_common::backtrace::__rust_begin_short_backtrace" },
+              { fn: "std::rt::lang_start::{{closure}}" },
+              { fn: "std::rt::lang_start_internal" },
+              { fn: "main" },
+              { fn: "__libc_start_main" },
+              { fn: "_start" },
+          ]
+          Verification failed at push_2::entry
+          script {
+              pub entry fn __entry() -> slice, !1 {
+                  local () result
+
+                  entry():
+                  v0 = call main_0(), !2
+                  v1 = get_local ptr (), result, !3
+                  store v0 to v1, !3
+                  v2 = get_local ptr (), result, !4
+                  v3 = load v2
+                  v4 = call encode_17(v3), !5
+                  ret slice v4
+              }
+
+              entry_orig fn main_0() -> (), !7 {
+                  local mut { __slice[u64], u64 } v
+
+                  entry():
+                  v0 = call new_1(), !8
+                  v1 = get_local ptr { __slice[u64], u64 }, v, !9
+                  store v0 to v1, !9
+                  v2 = get_local ptr { __slice[u64], u64 }, v, !10
+                  v3 = const u64 1, !11
+                  v4 = call push_2(v2, v3), !12
+                  v5 = const u64 99, !13
+                  v6 = call encode_9(v5), !14
+                  v7 = const u64 1515152261580153489
+                  log slice v6, v7, !14
+                  v8 = get_local ptr { __slice[u64], u64 }, v, !15
+                  v9 = load v8
+                  v10 = const u64 0, !16
+                  v11 = call get_16(v9, v10), !17
+                  v12 = const u64 1, !18
+                  v13 = call assert_13(v11, v12), !19
+                  v14 = const unit ()
+                  ret () v14
+              }
+
+              pub fn new_1() -> { __slice[u64], u64 }, !20 {
+                  local { u64, u64 } __anon_0
+                  local { __slice[u64], u64 } __anon_1
+                  local u64 ptr
+
+                  entry():
+                  v0 = asm() -> u64 hp, !21 {
+                  }
+                  v1 = get_local ptr u64, ptr, !22
+                  store v0 to v1, !22
+                  v2 = get_local ptr u64, ptr, !23
+                  v3 = load v2
+                  v4 = get_local ptr { u64, u64 }, __anon_0, !24
+                  v5 = const u64 0
+                  v6 = get_elem_ptr v4, ptr u64, v5, !24
+                  store v3 to v6, !24
+                  v7 = const u64 1
+                  v8 = get_elem_ptr v4, ptr u64, v7, !24
+                  v9 = const u64 0, !25
+                  store v9 to v8, !24
+                  v10 = asm(buf: v4) -> __slice[u64] buf, !26 {
+                  }
+                  v11 = get_local ptr { __slice[u64], u64 }, __anon_1, !27
+                  v12 = const u64 0
+                  v13 = get_elem_ptr v11, ptr __slice[u64], v12
+                  store v10 to v13, !27
+                  v14 = const u64 1
+                  v15 = get_elem_ptr v11, ptr u64, v14
+                  v16 = const u64 0, !28
+                  store v16 to v15, !27
+                  v17 = load v11
+                  ret { __slice[u64], u64 } v17
+              }
+
+              pub fn push_2(self !29: ptr { __slice[u64], u64 }, _item !30: u64) -> (), !31 {
+                  local { u64, u64 } __anon_0
+                  local __slice[u64] __anon_1
+                  local u64 current_cap
+                  local u64 new_cap
+                  local u64 new_cap_in_bytes
+                  local u64 new_item_idx
+                  local u64 old_buf_ptr
+                  local u64 old_cap_in_bytes
+                  local u64 ptr
+
+                  entry(self: ptr { __slice[u64], u64 }, _item: u64):
+                  v0 = const u64 1
+                  v1 = get_elem_ptr self, ptr u64, v0, !32
+                  v2 = get_local ptr u64, new_item_idx, !33
+                  store v1 to v2, !33
+                  [0;31m^ Verification failed: Store value and pointer type mismatch.[0m
+                  v3 = const u64 0
+                  v4 = get_elem_ptr self, ptr __slice[u64], v3, !34
+                  v5 = load v4
+                  v6 = call len_3(v5), !35
+                  v7 = get_local ptr u64, current_cap, !36
+                  store v6 to v7, !36
+                  v8 = get_local ptr u64, new_item_idx, !37
+                  v9 = load v8
+                  v10 = get_local ptr u64, current_cap, !38
+                  v11 = load v10
+                  v12 = call ge_4(v9, v11), !39
+                  cbr v12, block0(), block4(), !39
+
+                  block0():
+                  v13 = get_local ptr u64, current_cap, !40
+                  v14 = load v13
+                  v15 = const u64 0, !41
+                  v16 = call eq_6(v14, v15), !42
+                  cbr v16, block1(), block2(), !42
+
+                  block1():
+                  v17 = const u64 1, !43
+                  br block3(v17)
+
+                  block2():
+                  v18 = get_local ptr u64, current_cap, !44
+                  v19 = load v18
+                  v20 = const u64 2, !45
+                  v21 = call multiply_7(v19, v20), !46
+                  br block3(v21)
+
+                  block3(v22: u64):
+                  v23 = get_local ptr u64, new_cap, !47
+                  store v22 to v23, !47
+                  v24 = get_local ptr u64, new_cap, !48
+                  v25 = load v24
+                  v26 = const u64 8
+                  v27 = call multiply_7(v25, v26), !49
+                  v28 = get_local ptr u64, new_cap_in_bytes, !50
+                  store v27 to v28, !50
+                  v29 = const u64 0
+                  v30 = get_elem_ptr self, ptr __slice[u64], v29, !34
+                  v31 = load v30
+                  v32 = call ptr_8(v31), !51
+                  v33 = get_local ptr u64, old_buf_ptr, !52
+                  store v32 to v33, !52
+                  v34 = get_local ptr u64, current_cap, !53
+                  v35 = load v34
+                  v36 = const u64 8
+                  v37 = call multiply_7(v35, v36), !54
+                  v38 = get_local ptr u64, old_cap_in_bytes, !55
+                  store v37 to v38, !55
+                  v39 = get_local ptr u64, new_cap_in_bytes, !56
+                  v40 = load v39
+                  v41 = get_local ptr u64, old_buf_ptr, !57
+                  v42 = load v41
+                  v43 = get_local ptr u64, old_cap_in_bytes, !58
+                  v44 = load v43
+                  v45 = asm(new_cap_in_bytes: v40, old_buf_ptr: v42, old_cap_in_bytes: v44) -> u64 hp, !59 {
+                      log    hp hp hp hp, !60
+                      aloc   new_cap_in_bytes, !61
+                      log    hp hp hp hp, !62
+                      mcp    hp old_buf_ptr old_cap_in_bytes, !63
+                  }
+                  v46 = get_local ptr u64, ptr, !64
+                  store v45 to v46, !64
+                  v47 = get_local ptr u64, ptr, !65
+                  v48 = load v47
+                  v49 = get_local ptr u64, new_cap, !66
+                  v50 = load v49
+                  v51 = get_local ptr { u64, u64 }, __anon_0, !67
+                  v52 = const u64 0
+                  v53 = get_elem_ptr v51, ptr u64, v52, !67
+                  store v48 to v53, !67
+                  v54 = const u64 1
+                  v55 = get_elem_ptr v51, ptr u64, v54, !67
+                  store v50 to v55, !67
+                  v56 = asm(buf: v51) -> __slice[u64] buf, !68 {
+                  }
+                  v57 = const u64 0
+                  v58 = get_elem_ptr self, ptr __slice[u64], v57, !69
+                  store v56 to v58, !69
+                  v59 = const unit ()
+                  br block5(v59)
+
+                  block4():
+                  v60 = const unit ()
+                  br block5(v60)
+
+                  block5(v61: ()):
+                  v62 = const u64 5, !70
+                  v63 = call encode_9(v62), !71
+                  v64 = const u64 1515152261580153489
+                  log slice v63, v64, !71
+                  v65 = const u64 0
+                  v66 = get_elem_ptr self, ptr __slice[u64], v65, !34
+                  v67 = load v66
+                  v68 = get_local ptr __slice[u64], __anon_1
+                  store v67 to v68
+                  v69 = get_local ptr u64, new_item_idx, !72
+                  v70 = load v69
+                  v71 = const u64 8
+                  v72 = asm(ptr_to_slice: v68, idx: v70, item_len: v71, offset, ptr) -> ptr u64 ptr {
+                      lw     ptr ptr_to_slice i0
+                      mul    offset idx item_len
+                      add    ptr ptr offset
+                      log    ptr ptr ptr ptr
+                  }
+                  v73 = load v72
+                  v74 = const unit ()
+                  ret () v74
+              }
+
+              pub fn len_3(self !74: __slice[u64]) -> u64, !75 {
+                  local u64 _
+                  local { u64, u64 } __tuple_2
+                  local { u64, u64 } __tuple_2_
+                  local u64 len
+
+                  entry(self: __slice[u64]):
+                  v0 = asm(s: self) -> { u64, u64 } s, !76 {
+                  }
+                  v1 = get_local ptr { u64, u64 }, __tuple_2, !77
+                  store v0 to v1, !77
+                  v2 = get_local ptr { u64, u64 }, __tuple_2, !77
+                  v3 = get_local ptr { u64, u64 }, __tuple_2_, !77
+                  store v2 to v3, !77
+                  v4 = get_local ptr { u64, u64 }, __tuple_2_, !77
+                  v5 = const u64 0
+                  v6 = get_elem_ptr v4, ptr u64, v5, !77
+                  v7 = get_local ptr u64, _, !77
+                  store v6 to v7, !77
+                  v8 = get_local ptr { u64, u64 }, __tuple_2_, !77
+                  v9 = const u64 1
+                  v10 = get_elem_ptr v8, ptr u64, v9, !77
+                  v11 = get_local ptr u64, len, !77
+                  store v10 to v11, !77
+                  v12 = get_local ptr u64, len, !78
+                  v13 = load v12
+                  ret u64 v13
+              }
+
+              pub fn ge_4(self !80: u64, other !81: u64) -> bool, !82 {
+                  entry(self: u64, other: u64):
+                  v0 = call gt_5(self, other), !83
+                  cbr v0, block1(v0), block0(), !84
+
+                  block0():
+                  v1 = call eq_6(self, other), !85
+                  br block1(v1), !84
+
+                  block1(v2: bool):
+                  ret bool v2
+              }
+
+              pub fn gt_5(self !86: u64, other !87: u64) -> bool, !88 {
+                  entry(self: u64, other: u64):
+                  v0 = cmp gt self other
+                  ret bool v0
+              }
+
+              pub fn eq_6(self !89: u64, other !90: u64) -> bool, !91 {
+                  entry(self: u64, other: u64):
+                  v0 = cmp eq self other
+                  ret bool v0
+              }
+
+              pub fn multiply_7(self !92: u64, other !93: u64) -> u64, !94 {
+                  entry(self: u64, other: u64):
+                  v0 = mul self, other
+                  ret u64 v0
+              }
+
+              pub fn ptr_8(self !95: __slice[u64]) -> u64, !96 {
+                  local u64 _
+                  local { u64, u64 } __tuple_1
+                  local { u64, u64 } __tuple_1_
+                  local u64 ptr
+
+                  entry(self: __slice[u64]):
+                  v0 = asm(s: self) -> { u64, u64 } s, !97 {
+                  }
+                  v1 = get_local ptr { u64, u64 }, __tuple_1, !98
+                  store v0 to v1, !98
+                  v2 = get_local ptr { u64, u64 }, __tuple_1, !98
+                  v3 = get_local ptr { u64, u64 }, __tuple_1_, !98
+                  store v2 to v3, !98
+                  v4 = get_local ptr { u64, u64 }, __tuple_1_, !98
+                  v5 = const u64 0
+                  v6 = get_elem_ptr v4, ptr u64, v5, !98
+                  v7 = get_local ptr u64, ptr, !98
+                  store v6 to v7, !98
+                  v8 = get_local ptr { u64, u64 }, __tuple_1_, !98
+                  v9 = const u64 1
+                  v10 = get_elem_ptr v8, ptr u64, v9, !98
+                  v11 = get_local ptr u64, _, !98
+                  store v10 to v11, !98
+                  v12 = get_local ptr u64, ptr, !99
+                  v13 = load v12
+                  ret u64 v13
+              }
+
+              pub fn encode_9(item !101: u64) -> slice, !102 {
+                  local { { u64, u64, u64 } } buffer
+
+                  entry(item: u64):
+                  v0 = call new_11(), !103
+                  v1 = call abi_encode_10(item, v0), !104
+                  v2 = get_local ptr { { u64, u64, u64 } }, buffer, !105
+                  store v1 to v2, !105
+                  v3 = get_local ptr { { u64, u64, u64 } }, buffer, !106
+                  v4 = load v3
+                  v5 = call as_raw_slice_12(v4), !107
+                  ret slice v5
+              }
+
+              pub fn abi_encode_10(self !108: u64, buffer !109: { { u64, u64, u64 } }) -> { { u64, u64, u64 } }, !110 {
+                  local { u64, u64, u64 } __anon_0
+                  local { u64, u64, u64 } __anon_1
+                  local { { u64, u64, u64 } } __anon_2
+
+                  entry(self: u64, buffer: { { u64, u64, u64 } }):
+                  v0 = ptr_to_int buffer to u64
+                  v1 = int_to_ptr v0 to ptr { { u64, u64, u64 } }
+                  v2 = const u64 0
+                  v3 = get_elem_ptr v1, ptr { u64, u64, u64 }, v2, !111
+                  v4 = load v3
+                  v5 = asm(buffer: v4) -> { u64, u64, u64 } buffer {
+                  }
+                  v6 = get_local ptr { u64, u64, u64 }, __anon_0
+                  store v5 to v6
+                  v7 = const u64 0
+                  v8 = get_elem_ptr v6, ptr u64, v7
+                  v9 = load v8
+                  v10 = int_to_ptr v9 to ptr u8
+                  v11 = const u64 1
+                  v12 = get_elem_ptr v6, ptr u64, v11
+                  v13 = load v12
+                  v14 = const u64 2
+                  v15 = get_elem_ptr v6, ptr u64, v14
+                  v16 = load v15
+                  v17 = const u64 8
+                  v18 = add v16, v17
+                  v19 = cmp gt v18 v13
+                  cbr v19, block1(), block2()
+
+                  block0(v20: ptr u8, v21: u64):
+                  v22 = ptr_to_int v20 to u64
+                  v23 = add v22, v16
+                  v24 = int_to_ptr v23 to ptr u64
+                  store self to v24
+                  v25 = const u64 8
+                  v26 = add v16, v25
+                  v27 = ptr_to_int v20 to u64
+                  v28 = get_local ptr { u64, u64, u64 }, __anon_1
+                  v29 = const u64 0
+                  v30 = get_elem_ptr v28, ptr u64, v29
+                  store v27 to v30
+                  v31 = const u64 1
+                  v32 = get_elem_ptr v28, ptr u64, v31
+                  store v21 to v32
+                  v33 = const u64 2
+                  v34 = get_elem_ptr v28, ptr u64, v33
+                  store v26 to v34
+                  v35 = asm(buffer: v28) -> { u64, u64, u64 } buffer {
+                  }
+                  v36 = get_local ptr { { u64, u64, u64 } }, __anon_2, !112
+                  v37 = const u64 0
+                  v38 = get_elem_ptr v36, ptr { u64, u64, u64 }, v37
+                  store v35 to v38, !112
+                  v39 = load v36
+                  ret { { u64, u64, u64 } } v39
+
+                  block1():
+                  v40 = const u64 2
+                  v41 = mul v13, v40
+                  v42 = asm(new_cap: v41, old_ptr: v10, len: v16) -> ptr u8 hp {
+                      aloc   new_cap
+                      mcp    hp old_ptr len
+                  }
+                  br block0(v42, v41)
+
+                  block2():
+                  br block0(v10, v13)
+              }
+
+              pub fn new_11() -> { { u64, u64, u64 } }, !113 {
+                  local { u64, u64, u64 } __anon_0
+                  local { { u64, u64, u64 } } __anon_1
+
+                  entry():
+                  v0 = const u64 1024
+                  v1 = asm(cap: v0) -> u64 hp {
+                      aloc   cap
+                  }
+                  v2 = int_to_ptr v1 to ptr u8
+                  v3 = ptr_to_int v2 to u64
+                  v4 = get_local ptr { u64, u64, u64 }, __anon_0
+                  v5 = const u64 0
+                  v6 = get_elem_ptr v4, ptr u64, v5
+                  store v3 to v6
+                  v7 = const u64 1
+                  v8 = get_elem_ptr v4, ptr u64, v7
+                  store v0 to v8
+                  v9 = const u64 2
+                  v10 = get_elem_ptr v4, ptr u64, v9
+                  v11 = const u64 0
+                  store v11 to v10
+                  v12 = asm(buffer: v4) -> { u64, u64, u64 } buffer {
+                  }
+                  v13 = get_local ptr { { u64, u64, u64 } }, __anon_1, !114
+                  v14 = const u64 0
+                  v15 = get_elem_ptr v13, ptr { u64, u64, u64 }, v14
+                  store v12 to v15, !114
+                  v16 = load v13
+                  ret { { u64, u64, u64 } } v16
+              }
+
+              pub fn as_raw_slice_12(self !115: { { u64, u64, u64 } }) -> slice, !116 {
+                  local { u64, u64, u64 } __anon_0
+                  local { u64, u64 } __anon_1
+
+                  entry(self: { { u64, u64, u64 } }):
+                  v0 = ptr_to_int self to u64
+                  v1 = int_to_ptr v0 to ptr { { u64, u64, u64 } }
+                  v2 = const u64 0
+                  v3 = get_elem_ptr v1, ptr { u64, u64, u64 }, v2, !111
+                  v4 = load v3
+                  v5 = asm(buffer: v4) -> { u64, u64, u64 } buffer {
+                  }
+                  v6 = get_local ptr { u64, u64, u64 }, __anon_0
+                  store v5 to v6
+                  v7 = const u64 0
+                  v8 = get_elem_ptr v6, ptr u64, v7
+                  v9 = load v8
+                  v10 = int_to_ptr v9 to ptr u8
+                  v11 = const u64 1
+                  v12 = get_elem_ptr v6, ptr u64, v11
+                  v13 = load v12
+                  v14 = const u64 2
+                  v15 = get_elem_ptr v6, ptr u64, v14
+                  v16 = load v15
+                  v17 = ptr_to_int v10 to u64
+                  v18 = get_local ptr { u64, u64 }, __anon_1
+                  v19 = const u64 0
+                  v20 = get_elem_ptr v18, ptr u64, v19
+                  store v17 to v20
+                  v21 = const u64 1
+                  v22 = get_elem_ptr v18, ptr u64, v21
+                  store v16 to v22
+                  v23 = asm(s: v18) -> slice s {
+                  }
+                  ret slice v23
+              }
+
+              fn assert_13(l !117: u64, r !118: u64) -> (), !119 {
+                  entry(l: u64, r: u64):
+                  v0 = call neq_14(l, r), !120
+                  cbr v0, block0(), block1(), !120
+
+                  block0():
+                  v1 = call encode_9(l), !121
+                  v2 = const u64 1515152261580153489
+                  log slice v1, v2, !121
+                  v3 = call encode_9(r), !122
+                  v4 = const u64 1515152261580153489
+                  log slice v3, v4, !122
+                  v5 = const u64 1, !123
+                  revert v5, !124
+
+                  block1():
+                  v6 = const unit ()
+                  br block2(v6)
+
+                  block2(v7: ()):
+                  v8 = const unit ()
+                  ret () v8
+              }
+
+              pub fn neq_14(self !125: u64, other !126: u64) -> bool, !127 {
+                  entry(self: u64, other: u64):
+                  v0 = call eq_6(self, other), !128
+                  v1 = call not_15(v0), !129
+                  ret bool v1
+              }
+
+              pub fn not_15(self !130: bool) -> bool, !131 {
+                  entry(self: bool):
+                  v0 = const bool false, !132
+                  v1 = cmp eq self v0
+                  ret bool v1
+              }
+
+              pub fn get_16(self !133: { __slice[u64], u64 }, index !134: u64) -> u64, !135 {
+                  local __slice[u64] __anon_0
+
+                  entry(self: { __slice[u64], u64 }, index: u64):
+                  v0 = ptr_to_int self to u64
+                  v1 = int_to_ptr v0 to ptr { __slice[u64], u64 }
+                  v2 = const u64 0
+                  v3 = get_elem_ptr v1, ptr __slice[u64], v2, !34
+                  v4 = load v3
+                  v5 = get_local ptr __slice[u64], __anon_0
+                  store v4 to v5
+                  v6 = const u64 8
+                  v7 = asm(ptr_to_slice: v5, idx: index, item_len: v6, offset, ptr) -> ptr u64 ptr {
+                      lw     ptr ptr_to_slice i0
+                      mul    offset idx item_len
+                      add    ptr ptr offset
+                      log    ptr ptr ptr ptr
+                  }
+                  v8 = load v7
+                  v9 = int_to_ptr v8 to ptr u64, !136
+                  v10 = load v9
+                  ret u64 v10
+              }
+
+              pub fn encode_17(item !101: ()) -> slice, !102 {
+                  local { { u64, u64, u64 } } buffer
+
+                  entry(item: ()):
+                  v0 = call new_11(), !103
+                  v1 = call abi_encode_18(item, v0), !104
+                  v2 = get_local ptr { { u64, u64, u64 } }, buffer, !105
+                  store v1 to v2, !105
+                  v3 = get_local ptr { { u64, u64, u64 } }, buffer, !106
+                  v4 = load v3
+                  v5 = call as_raw_slice_12(v4), !107
+                  ret slice v5
+              }
+
+              pub fn abi_encode_18(self !137: (), buffer !138: { { u64, u64, u64 } }) -> { { u64, u64, u64 } }, !139 {
+                  entry(self: (), buffer: { { u64, u64, u64 } }):
+                  ret { { u64, u64, u64 } } buffer
+              }
+          }
+
+          !0 = "<autogenerated>"
+          !1 = span !0 0 123
+          !2 = span !0 65 71
+          !3 = span !0 48 72
+          !4 = span !0 102 108
+          !5 = span !0 89 109
+          !6 = "/home/xunilrj/github/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/slice/slice_intrinsics/src/main.sw"
+          !7 = span !6 1517 1624
+          !8 = span !6 1556 1566
+          !9 = span !6 1534 1567
+          !10 = span !6 1572 1573
+          !11 = span !6 1579 1580
+          !12 = span !6 1572 1581
+          !13 = span !6 1593 1595
+          !14 = span !6 1587 1596
+          !15 = span !6 1609 1610
+          !16 = span !6 1615 1616
+          !17 = span !6 1609 1617
+          !18 = span !6 1619 1620
+          !19 = span !6 1602 1621
+          !20 = span !6 89 309
+          !21 = span !6 130 171
+          !22 = span !6 120 172
+          !23 = span !6 215 218
+          !24 = span !6 214 223
+          !25 = span !6 221 222
+          !26 = span !6 205 273
+          !27 = span !6 181 303
+          !28 = span !6 292 293
+          !29 = span !6 335 339
+          !30 = span !6 341 346
+          !31 = span !6 315 1291
+          !32 = span !6 55 63
+          !33 = span !6 361 389
+          !34 = span !6 33 49
+          !35 = span !6 416 430
+          !36 = span !6 398 431
+          !37 = span !6 443 455
+          !38 = span !6 459 470
+          !39 = span !6 443 470
+          !40 = span !6 502 513
+          !41 = span !6 517 518
+          !42 = span !6 502 518
+          !43 = span !6 537 538
+          !44 = span !6 576 587
+          !45 = span !6 590 591
+          !46 = span !6 576 591
+          !47 = span !6 485 606
+          !48 = span !6 642 649
+          !49 = span !6 642 668
+          !50 = span !6 619 669
+          !51 = span !6 701 715
+          !52 = span !6 683 716
+          !53 = span !6 752 763
+          !54 = span !6 752 782
+          !55 = span !6 729 783
+          !56 = span !6 829 845
+          !57 = span !6 860 871
+          !58 = span !6 891 907
+          !59 = span !6 807 1110
+          !60 = span !6 927 942
+          !61 = span !6 960 981
+          !62 = span !6 999 1014
+          !63 = span !6 1032 1067
+          !64 = span !6 797 1111
+          !65 = span !6 1146 1149
+          !66 = span !6 1151 1158
+          !67 = span !6 1145 1159
+          !68 = span !6 1136 1209
+          !69 = span !6 1125 1209
+          !70 = span !6 1236 1237
+          !71 = span !6 1230 1238
+          !72 = span !6 1271 1283
+          !73 = "/home/xunilrj/github/sway/sway-lib-core/src/slice.sw"
+          !74 = span !73 197 201
+          !75 = span !73 186 308
+          !76 = span !73 235 289
+          !77 = span !73 220 290
+          !78 = span !73 299 302
+          !79 = "/home/xunilrj/github/sway/sway-lib-core/src/ops.sw"
+          !80 = span !79 21821 21825
+          !81 = span !79 21827 21832
+          !82 = span !79 21815 21896
+          !83 = span !79 21858 21872
+          !84 = span !79 21858 21890
+          !85 = span !79 21876 21890
+          !86 = span !79 15138 15142
+          !87 = span !79 15144 15149
+          !88 = span !79 15132 15198
+          !89 = span !79 12661 12665
+          !90 = span !79 12667 12672
+          !91 = span !79 12655 12721
+          !92 = span !79 4997 5001
+          !93 = span !79 5003 5008
+          !94 = span !79 4985 5058
+          !95 = span !73 66 70
+          !96 = span !73 55 180
+          !97 = span !73 108 161
+          !98 = span !73 93 162
+          !99 = span !73 171 174
+          !100 = "/home/xunilrj/github/sway/sway-lib-core/src/codec.sw"
+          !101 = span !100 64661 64665
+          !102 = span !100 64644 64785
+          !103 = span !100 64742 64755
+          !104 = span !100 64726 64756
+          !105 = span !100 64713 64757
+          !106 = span !100 64762 64768
+          !107 = span !100 64762 64783
+          !108 = span !100 4642 4646
+          !109 = span !100 4648 4654
+          !110 = span !100 4628 4773
+          !111 = span !100 55 82
+          !112 = span !100 4684 4767
+          !113 = span !100 128 228
+          !114 = span !100 159 222
+          !115 = span !100 483 487
+          !116 = span !100 467 559
+          !117 = span !6 1394 1395
+          !118 = span !6 1400 1401
+          !119 = span !6 1381 1515
+          !120 = span !6 1443 1449
+          !121 = span !6 1460 1468
+          !122 = span !6 1478 1486
+          !123 = span !6 1505 1506
+          !124 = span !6 1496 1507
+          !125 = span !79 12285 12289
+          !126 = span !79 12291 12296
+          !127 = span !79 12278 12350
+          !128 = span !79 12323 12337
+          !129 = span !79 12322 12344
+          !130 = span !79 9972 9976
+          !131 = span !79 9965 10019
+          !132 = span !79 10007 10012
+          !133 = span !6 1308 1312
+          !134 = span !6 1314 1319
+          !135 = span !6 1297 1377
+          !136 = span !6 1341 1371
+          !137 = span !100 36453 36457
+          !138 = span !100 36459 36465
+          !139 = span !100 36439 36507
+
+
+          Failed to compile slice_intrinsics
+          [1m[93mwarning[0m
+            [1m[94m-->[0m /home/xunilrj/github/sway/test/src/e2e_vm_tests/test_programs/should_pass/language/slice/slice_intrinsics/src/main.sw:49:9
+          [1m[94m   |[0m
+          [1m[94m47 |[0m 
+          [1m[94m48 |[0m         __log(5);
+          [1m[94m49 |[0m         __slice_elem(self.buf, new_item_idx);
+          [1m[94m   |[0m[1m[93m         ------------------------------------[0m [1m[93mThis returns a value of type &mut T, which is not assigned to anything and is ignored.[0m
+          [1m[94m50 |[0m     }
+          [1m[94m   |[0m
+          ____
+
+          [1m[91merror[0m: [1mInternal compiler error: Verification failed: Store value and pointer type mismatch.
+          Please file an issue on the repository and include the code that triggered this error.[0m
+          ____
+
+          [31m  Aborting due to 1 error.[0m
+
+_________________________________
+Sway tests result: failed. 828 total, 0 passed; 1 failed; 7 disabled [test duration: 00:00:410]
+Failing tests:
+    should_pass/language/slice/slice_intrinsics ... failed

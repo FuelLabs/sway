@@ -131,19 +131,24 @@ fn type_check_slice_elem(
     let mut ctx = ctx;
 
     // check first argument
-    let slice_span = arguments[0].span.clone();
-    let slice_type = type_engine.insert(engines, TypeInfo::Unknown, None);
-    let slice_typed_expr = {
+    let first_argument_span = arguments[0].span.clone();
+    let first_argument_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+    let first_argument_typed_expr = {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(slice_type);
+            .with_type_annotation(first_argument_type);
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
-    let TypeInfo::Slice(elem_type) = &*type_engine.get(slice_type) else {
+
+    let first_argument_ref_to_type = type_engine
+        .get(first_argument_type)
+        .as_reference()
+        .map(|(_, t)| type_engine.get(t.type_id));
+    let Some(TypeInfo::Slice(elem_type)) = first_argument_ref_to_type.as_deref() else {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
-            span: slice_span,
+            span: first_argument_span,
             hint: "".to_string(),
         }));
     };
@@ -162,14 +167,28 @@ fn type_check_slice_elem(
         ty::TyExpression::type_check(handler, ctx, &arguments[1])?
     };
 
+    let return_type = type_engine.insert(
+        engines,
+        TypeInfo::Ref {
+            to_mutable_value: true,
+            referenced_type: TypeArgument {
+                type_id: elem_type.type_id,
+                initial_type_id: elem_type.type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+        },
+        None,
+    );
+
     Ok((
         TyIntrinsicFunctionKind {
             kind,
-            arguments: vec![slice_typed_expr, index_typed_expr],
+            arguments: vec![first_argument_typed_expr, index_typed_expr],
             type_arguments: vec![],
             span,
         },
-        elem_type.type_id,
+        return_type,
     ))
 }
 
@@ -192,7 +211,7 @@ fn type_check_slice(
     let type_engine = ctx.engines.te();
     let engines = ctx.engines();
 
-    // start argument
+    // start index argument
     let start_type = type_engine.insert(
         engines,
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -206,7 +225,7 @@ fn type_check_slice(
         ty::TyExpression::type_check(handler, ctx, &arguments[1])?
     };
 
-    // end argument
+    // end index argument
     let end_type = type_engine.insert(
         engines,
         TypeInfo::UnsignedInteger(IntegerBits::SixtyFour),
@@ -254,6 +273,22 @@ fn type_check_slice(
         }
     }
 
+    fn create_ref_to_slice(engines: &Engines, elem_type_arg: TypeArgument) -> TypeId {
+        let type_engine = engines.te();
+        let slice_type_id =
+            type_engine.insert(engines, TypeInfo::Slice(elem_type_arg.clone()), None);
+        let ref_to_slice_type = TypeInfo::Ref {
+            to_mutable_value: false,
+            referenced_type: TypeArgument {
+                type_id: slice_type_id,
+                initial_type_id: slice_type_id,
+                span: Span::dummy(),
+                call_path_tree: None,
+            },
+        };
+        type_engine.insert(engines, ref_to_slice_type, None)
+    }
+
     // We can slice arrays or other slices
     match &*type_engine.get(array_type) {
         TypeInfo::Array(elem_type_arg, array_len) => {
@@ -279,9 +314,6 @@ fn type_check_slice(
                 }
             }
 
-            let slice_type =
-                type_engine.insert(engines, TypeInfo::Slice(elem_type_arg.clone()), None);
-
             Ok((
                 TyIntrinsicFunctionKind {
                     kind,
@@ -289,23 +321,18 @@ fn type_check_slice(
                     type_arguments: vec![],
                     span,
                 },
-                slice_type,
+                create_ref_to_slice(engines, elem_type_arg.clone()),
             ))
         }
-        TypeInfo::Slice(elem_type_arg) => {
-            let slice_type =
-                type_engine.insert(engines, TypeInfo::Slice(elem_type_arg.clone()), None);
-
-            Ok((
-                TyIntrinsicFunctionKind {
-                    kind,
-                    arguments: vec![array_ty_expr, start_ty_expr, end_ty_expr],
-                    type_arguments: vec![],
-                    span,
-                },
-                slice_type,
-            ))
-        }
+        TypeInfo::Slice(elem_type_arg) => Ok((
+            TyIntrinsicFunctionKind {
+                kind,
+                arguments: vec![array_ty_expr, start_ty_expr, end_ty_expr],
+                type_arguments: vec![],
+                span,
+            },
+            create_ref_to_slice(engines, elem_type_arg.clone()),
+        )),
         _ => Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: array_span,

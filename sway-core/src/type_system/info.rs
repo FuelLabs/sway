@@ -1175,6 +1175,16 @@ impl TypeInfo {
         matches!(self, TypeInfo::Ref { .. })
     }
 
+    pub fn as_reference(&self) -> Option<(&bool, &TypeArgument)> {
+        match self {
+            TypeInfo::Ref {
+                to_mutable_value,
+                referenced_type,
+            } => Some((to_mutable_value, referenced_type)),
+            _ => None,
+        }
+    }
+
     pub fn is_array(&self) -> bool {
         matches!(self, TypeInfo::Array(_, _))
     }
@@ -1189,6 +1199,18 @@ impl TypeInfo {
 
     pub fn is_tuple(&self) -> bool {
         matches!(self, TypeInfo::Tuple(_))
+    }
+
+    pub fn is_slice(&self) -> bool {
+        matches!(self, TypeInfo::Slice(_))
+    }
+
+    pub fn as_slice(&self) -> Option<&TypeArgument> {
+        if let TypeInfo::Slice(t) = self {
+            Some(t)
+        } else {
+            None
+        }
     }
 
     pub(crate) fn apply_type_arguments(

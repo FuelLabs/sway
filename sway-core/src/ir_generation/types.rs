@@ -26,7 +26,7 @@ pub(super) fn create_tagged_union_type(
                 type_engine,
                 decl_engine,
                 context,
-                &tev.type_argument.type_id,
+                tev.type_argument.type_id,
             )
         })
         .collect::<Result<Vec<_>, CompileError>>()?;
@@ -51,7 +51,7 @@ pub(super) fn create_tuple_aggregate(
 ) -> Result<Type, CompileError> {
     let field_types = fields
         .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, ty_id))
+        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, *ty_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
 
     Ok(Type::new_struct(context, field_types))
@@ -65,7 +65,7 @@ pub(super) fn create_array_aggregate(
     count: u64,
 ) -> Result<Type, CompileError> {
     let element_type =
-        convert_resolved_typeid_no_span(type_engine, decl_engine, context, &element_type_id)?;
+        convert_resolved_typeid_no_span(type_engine, decl_engine, context, element_type_id)?;
     Ok(Type::new_array(context, element_type, count))
 }
 
@@ -77,7 +77,7 @@ pub(super) fn get_struct_for_types(
 ) -> Result<Type, CompileError> {
     let types = type_ids
         .iter()
-        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, ty_id))
+        .map(|ty_id| convert_resolved_typeid_no_span(type_engine, decl_engine, context, *ty_id))
         .collect::<Result<Vec<_>, CompileError>>()?;
     Ok(Type::new_struct(context, types))
 }

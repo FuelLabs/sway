@@ -44,6 +44,25 @@ pub struct AsmInstruction {
 }
 
 impl AsmInstruction {
+    pub fn log_no_span(
+        ra: impl Into<String>,
+        rb: impl Into<String>,
+        rc: impl Into<String>,
+        rd: impl Into<String>,
+    ) -> Self {
+        AsmInstruction {
+            op_name: Ident::new(sway_types::Span::from_string("log".into())),
+            args: vec![
+                Ident::new_no_span(ra.into()),
+                Ident::new_no_span(rb.into()),
+                Ident::new_no_span(rc.into()),
+                Ident::new_no_span(rd.into()),
+            ],
+            immediate: None,
+            metadata: None,
+        }
+    }
+
     pub fn lw_no_span(
         dst: impl Into<String>,
         src: impl Into<String>,

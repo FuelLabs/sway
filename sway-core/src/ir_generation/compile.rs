@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     const_eval::{compile_const_decl, LookupEnv},
-    convert::convert_resolved_typeid,
+    convert::convert_resolved_type_id,
     function::FnCompiler,
     CompiledFunctionCache,
 };
@@ -298,11 +298,11 @@ pub(crate) fn compile_configurables(
         {
             let decl = engines.de().get(decl_id);
 
-            let ty = convert_resolved_typeid(
+            let ty = convert_resolved_type_id(
                 engines.te(),
                 engines.de(),
                 context,
-                &decl.type_ascription.type_id,
+                decl.type_ascription.type_id,
                 &decl.type_ascription.span,
             )
             .unwrap();
@@ -520,11 +520,11 @@ fn compile_fn(
         .iter()
         .map(|param| {
             // Convert to an IR type.
-            convert_resolved_typeid(
+            convert_resolved_type_id(
                 type_engine,
                 decl_engine,
                 context,
-                &param.type_argument.type_id,
+                param.type_argument.type_id,
                 &param.type_argument.span,
             )
             .map(|ty| {
@@ -544,11 +544,11 @@ fn compile_fn(
         .collect::<Result<Vec<_>, CompileError>>()
         .map_err(|err| vec![err])?;
 
-    let ret_type = convert_resolved_typeid(
+    let ret_type = convert_resolved_type_id(
         type_engine,
         decl_engine,
         context,
-        &return_type.type_id,
+        return_type.type_id,
         &return_type.span,
     )
     .map_err(|err| vec![err])?;

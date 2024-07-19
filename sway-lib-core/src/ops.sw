@@ -1260,29 +1260,30 @@ pub fn ok_str_eq() {
     assert("a" != "b");
 }
 
-
-
-impl<T> Eq for __slice[T] where T: Eq {
-    fn eq(self, other: Self) -> bool {
-        let self_qty = self.len();
-        let other_qty = other.len();
-
-        if self_qty != other_qty {
-            return false
-        }
-
-        let mut i = 0u64;
-        while i < self_qty {
-            let self_elem = __slice_elem(self, i);
-            let other_elem = __slice_elem(other, i);
-
-            if self_elem != other_elem {
-                return false;
-            }
-
-            i += 1;
-        }
-
-        true
-    }
-}
+//impl<T> Eq for __slice[T]
+//where
+//    T: Eq
+//{
+//    fn eq(self, other: Self) -> bool {
+//        let self_qty = self.len();
+//        let other_qty = other.len();
+//
+//        if self_qty != other_qty {
+//            return false
+//        }
+//
+//        let mut i = 0u64;
+//        while i < self_qty {
+//            let self_elem = __slice_elem(self, i);
+//            let other_elem = __slice_elem(other, i);
+//
+//            if self_elem != other_elem {
+//                return false;
+//            }
+//
+//            i += 1;
+//        }
+//
+//        true
+//    }
+//}
