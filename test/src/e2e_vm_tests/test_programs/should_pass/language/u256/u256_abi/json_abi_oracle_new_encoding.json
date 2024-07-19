@@ -1,45 +1,34 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "type": "u256"
+    }
+  ],
   "configurables": [
     {
-      "configurableType": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      },
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
       "name": "SOME_U256",
       "offset": 704
     }
   ],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "main",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e"
     }
   ],
   "loggedTypes": [
     {
-      "logId": "1970142151624111756",
-      "loggedType": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "concreteTypeId": "1b5759d94094368cfd443019e7ca5ec4074300e544e5ea993a979f5da627261e",
+      "logId": "1970142151624111756"
     }
   ],
   "messagesTypes": [],
-  "types": [
-    {
-      "components": null,
-      "type": "u256",
-      "typeId": 0,
-      "typeParameters": null
-    }
-  ]
+  "programType": "script",
+  "specVersion": "1",
+  "typesMetadata": []
 }

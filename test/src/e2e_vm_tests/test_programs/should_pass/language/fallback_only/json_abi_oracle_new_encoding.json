@@ -1,8 +1,11 @@
 {
+  "concreteTypes": [],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": []
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": []
 }

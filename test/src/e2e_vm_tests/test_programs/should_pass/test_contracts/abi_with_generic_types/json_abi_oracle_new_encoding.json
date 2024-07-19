@@ -1,451 +1,386 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d",
+      "type": "()"
+    },
+    {
+      "concreteTypeId": "a1e229302ed2f092752a6bc4fbe66bb9305e0802b1b01ecc5e1d59356702e956",
+      "metadataTypeId": 0,
+      "type": "(str[5], bool)"
+    },
+    {
+      "concreteTypeId": "81342782c917fcfd178741cb2b3a12ea1ebeaa57253fc4ee6700b4d7d6ab32d3",
+      "metadataTypeId": 3,
+      "type": "[b256; 3]"
+    },
+    {
+      "concreteTypeId": "2d25d8a7618f6e2d5d830cf75baedc6b5081b435d08644cc9dc1ff8ceba6e97b",
+      "metadataTypeId": 5,
+      "type": "[struct MyStruct<u64,bool>; 4]"
+    },
+    {
+      "concreteTypeId": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21",
+      "type": "str[6]"
+    },
+    {
+      "concreteTypeId": "c03a3a8c7676b8c228bb24c90bf19a6d8ef92aad1dea3c1939fac4181700eb09",
+      "metadataTypeId": 18,
+      "type": "struct MyArrayStruct<u8,u16>",
+      "typeArguments": [
+        "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+        "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef"
+      ]
+    },
+    {
+      "concreteTypeId": "885e4c283947ed1ad5ef39b71f7b60135e268e96c6f8101eec48528e61b361ae",
+      "metadataTypeId": 19,
+      "type": "struct MyOtherStruct"
+    },
+    {
+      "concreteTypeId": "86969aac37f36f85cea48bd525e5ff2b0e82867977905bc0121d886fa09a09c3",
+      "metadataTypeId": 20,
+      "type": "struct MyStruct<[b256; 3],u8>",
+      "typeArguments": [
+        "81342782c917fcfd178741cb2b3a12ea1ebeaa57253fc4ee6700b4d7d6ab32d3",
+        "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b"
+      ]
+    },
+    {
+      "concreteTypeId": "034b31a2288dc1bcad6f11d7617f613c1d1ab12b157957279b559b67cccb8136",
+      "metadataTypeId": 21,
+      "type": "struct MyStructWithTuple<struct SomeGenericStruct<u64>,u16,u32>",
+      "typeArguments": [
+        "c241e75899be40c59f0124bdf35f69f22b5e1aa4d79ed70f78689caa5e861c63",
+        "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+        "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc"
+      ]
+    },
+    {
+      "concreteTypeId": "c241e75899be40c59f0124bdf35f69f22b5e1aa4d79ed70f78689caa5e861c63",
+      "metadataTypeId": 22,
+      "type": "struct SomeGenericStruct<u64>",
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "concreteTypeId": "29881aad8730c5ab11d275376323d8e4ff4179aae8ccb6c13fe4902137e162ef",
+      "type": "u16"
+    },
+    {
+      "concreteTypeId": "d7649d428b9ff33d188ecbf38a7e4d8fd167fa01b2e10fe9a8f9308e52f1d7cc",
+      "type": "u32"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    },
+    {
+      "concreteTypeId": "c89951a24c6ca28c13fd1cfdc646b2b656d69e61a92b91023be7eb58eb914b6b",
+      "type": "u8"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "_arg1",
-          "type": 22,
-          "typeArguments": [
-            {
-              "name": "",
-              "type": 4,
-              "typeArguments": null
-            },
-            {
-              "name": "",
-              "type": 28,
-              "typeArguments": null
-            }
-          ]
+          "concreteTypeId": "86969aac37f36f85cea48bd525e5ff2b0e82867977905bc0121d886fa09a09c3",
+          "name": "_arg1"
         },
         {
-          "name": "_arg2",
-          "type": 6,
-          "typeArguments": null
+          "concreteTypeId": "2d25d8a7618f6e2d5d830cf75baedc6b5081b435d08644cc9dc1ff8ceba6e97b",
+          "name": "_arg2"
         },
         {
-          "name": "_arg3",
-          "type": 1,
-          "typeArguments": null
+          "concreteTypeId": "a1e229302ed2f092752a6bc4fbe66bb9305e0802b1b01ecc5e1d59356702e956",
+          "name": "_arg3"
         },
         {
-          "name": "_arg4",
-          "type": 21,
-          "typeArguments": null
+          "concreteTypeId": "885e4c283947ed1ad5ef39b71f7b60135e268e96c6f8101eec48528e61b361ae",
+          "name": "_arg4"
         }
       ],
       "name": "complex_function",
-      "output": {
-        "name": "",
-        "type": 19,
-        "typeArguments": null
-      }
+      "output": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21"
     },
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "_arg",
-          "type": 20,
-          "typeArguments": [
-            {
-              "name": "",
-              "type": 28,
-              "typeArguments": null
-            },
-            {
-              "name": "",
-              "type": 25,
-              "typeArguments": null
-            }
-          ]
+          "concreteTypeId": "c03a3a8c7676b8c228bb24c90bf19a6d8ef92aad1dea3c1939fac4181700eb09",
+          "name": "_arg"
         }
       ],
       "name": "take_generic_array",
-      "output": {
-        "name": "",
-        "type": 27,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     },
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "_arg",
-          "type": 23,
-          "typeArguments": [
-            {
-              "name": "",
-              "type": 24,
-              "typeArguments": [
-                {
-                  "name": "",
-                  "type": 27,
-                  "typeArguments": null
-                }
-              ]
-            },
-            {
-              "name": "",
-              "type": 25,
-              "typeArguments": null
-            },
-            {
-              "name": "",
-              "type": 26,
-              "typeArguments": null
-            }
-          ]
+          "concreteTypeId": "034b31a2288dc1bcad6f11d7617f613c1d1ab12b157957279b559b67cccb8136",
+          "name": "_arg"
         }
       ],
       "name": "take_generic_struct_containing_tuple",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "2e38e77b22c314a449e91fafed92a43826ac6aa403ae6a8acb6cf58239fbaf5d"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": [
     {
-      "components": [],
-      "type": "()",
-      "typeId": 0,
-      "typeParameters": null
+      "components": [
+        {
+          "name": "__tuple_element",
+          "typeId": 17
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 8
+        }
+      ],
+      "metadataTypeId": 0,
+      "type": "(_, _)"
     },
     {
       "components": [
         {
           "name": "__tuple_element",
-          "type": 18,
-          "typeArguments": null
+          "typeId": 16
         },
         {
           "name": "__tuple_element",
-          "type": 9,
-          "typeArguments": null
+          "typeId": 14
         }
       ],
-      "type": "(_, _)",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 1,
+      "type": "(_, _)"
     },
     {
       "components": [
         {
           "name": "__tuple_element",
-          "type": 17,
-          "typeArguments": null
+          "typeId": 14
         },
         {
           "name": "__tuple_element",
-          "type": 15,
-          "typeArguments": null
+          "typeId": 15
+        },
+        {
+          "name": "__tuple_element",
+          "typeId": 16
         }
       ],
-      "type": "(_, _)",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": [
-        {
-          "name": "__tuple_element",
-          "type": 15,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 16,
-          "typeArguments": null
-        },
-        {
-          "name": "__tuple_element",
-          "type": 17,
-          "typeArguments": null
-        }
-      ],
-      "type": "(_, _, _)",
-      "typeId": 3,
-      "typeParameters": null
+      "metadataTypeId": 2,
+      "type": "(_, _, _)"
     },
     {
       "components": [
         {
           "name": "__array_element",
-          "type": 8,
-          "typeArguments": null
+          "typeId": 7
         }
       ],
-      "type": "[_; 3]",
-      "typeId": 4,
-      "typeParameters": null
+      "metadataTypeId": 3,
+      "type": "[_; 3]"
     },
     {
       "components": [
         {
           "name": "__array_element",
-          "type": 13,
-          "typeArguments": null
+          "typeId": 12
         }
       ],
-      "type": "[_; 3]",
-      "typeId": 5,
-      "typeParameters": null
+      "metadataTypeId": 4,
+      "type": "[_; 3]"
     },
     {
       "components": [
         {
           "name": "__array_element",
-          "type": 22,
           "typeArguments": [
             {
               "name": "",
-              "type": 27,
-              "typeArguments": null
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             },
             {
               "name": "",
-              "type": 9,
-              "typeArguments": null
+              "typeId": 8
             }
-          ]
+          ],
+          "typeId": 20
         }
       ],
-      "type": "[_; 4]",
-      "typeId": 6,
-      "typeParameters": null
+      "metadataTypeId": 5,
+      "type": "[_; 4]"
     },
     {
       "components": [
         {
           "name": "__array_element",
-          "type": 22,
           "typeArguments": [
             {
               "name": "",
-              "type": 13,
-              "typeArguments": null
+              "typeId": 12
             },
             {
               "name": "",
-              "type": 14,
-              "typeArguments": null
+              "typeId": 13
             }
-          ]
+          ],
+          "typeId": 20
         }
       ],
-      "type": "[_; 5]",
-      "typeId": 7,
-      "typeParameters": null
+      "metadataTypeId": 6,
+      "type": "[_; 5]"
     },
     {
-      "components": null,
-      "type": "b256",
-      "typeId": 8,
-      "typeParameters": null
+      "metadataTypeId": 7,
+      "type": "b256"
     },
     {
-      "components": null,
-      "type": "bool",
-      "typeId": 9,
-      "typeParameters": null
+      "metadataTypeId": 8,
+      "type": "bool"
     },
     {
       "components": [
         {
           "name": "Foo",
-          "type": 27,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "Bar",
-          "type": 9,
-          "typeArguments": null
+          "typeId": 8
         }
       ],
+      "metadataTypeId": 9,
       "type": "enum MyEnum",
-      "typeId": 10,
       "typeParameters": [
-        13
+        12
       ]
     },
     {
-      "components": null,
-      "type": "generic T",
-      "typeId": 11,
-      "typeParameters": null
+      "metadataTypeId": 10,
+      "type": "generic T"
     },
     {
-      "components": null,
-      "type": "generic U",
-      "typeId": 12,
-      "typeParameters": null
+      "metadataTypeId": 11,
+      "type": "generic U"
     },
     {
-      "components": null,
-      "type": "generic V",
-      "typeId": 13,
-      "typeParameters": null
+      "metadataTypeId": 12,
+      "type": "generic V"
     },
     {
-      "components": null,
-      "type": "generic W",
-      "typeId": 14,
-      "typeParameters": null
+      "metadataTypeId": 13,
+      "type": "generic W"
     },
     {
-      "components": null,
-      "type": "generic X",
-      "typeId": 15,
-      "typeParameters": null
+      "metadataTypeId": 14,
+      "type": "generic X"
     },
     {
-      "components": null,
-      "type": "generic Y",
-      "typeId": 16,
-      "typeParameters": null
+      "metadataTypeId": 15,
+      "type": "generic Y"
     },
     {
-      "components": null,
-      "type": "generic Z",
-      "typeId": 17,
-      "typeParameters": null
+      "metadataTypeId": 16,
+      "type": "generic Z"
     },
     {
-      "components": null,
-      "type": "str[5]",
-      "typeId": 18,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "str[6]",
-      "typeId": 19,
-      "typeParameters": null
+      "metadataTypeId": 17,
+      "type": "str[5]"
     },
     {
       "components": [
         {
           "name": "tim",
-          "type": 5,
-          "typeArguments": null
+          "typeId": 4
         },
         {
           "name": "tam",
-          "type": 7,
-          "typeArguments": null
+          "typeId": 6
         }
       ],
+      "metadataTypeId": 18,
       "type": "struct MyArrayStruct",
-      "typeId": 20,
       "typeParameters": [
-        13,
-        14
+        12,
+        13
       ]
     },
     {
       "components": [
         {
           "name": "bom",
-          "type": 27,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "type": "struct MyOtherStruct",
-      "typeId": 21,
-      "typeParameters": null
+      "metadataTypeId": 19,
+      "type": "struct MyOtherStruct"
     },
     {
       "components": [
         {
           "name": "bim",
-          "type": 11,
-          "typeArguments": null
+          "typeId": 10
         },
         {
           "name": "bam",
-          "type": 10,
           "typeArguments": [
             {
               "name": "",
-              "type": 27,
-              "typeArguments": null
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             }
-          ]
+          ],
+          "typeId": 9
         }
       ],
+      "metadataTypeId": 20,
       "type": "struct MyStruct",
-      "typeId": 22,
       "typeParameters": [
-        11,
-        12
+        10,
+        11
       ]
     },
     {
       "components": [
         {
           "name": "tuple1",
-          "type": 3,
-          "typeArguments": null
+          "typeId": 2
         },
         {
           "name": "tuple2",
-          "type": 2,
-          "typeArguments": null
+          "typeId": 1
         }
       ],
+      "metadataTypeId": 21,
       "type": "struct MyStructWithTuple",
-      "typeId": 23,
       "typeParameters": [
+        14,
         15,
-        16,
-        17
+        16
       ]
     },
     {
       "components": [
         {
           "name": "b",
-          "type": 17,
-          "typeArguments": null
+          "typeId": 16
         }
       ],
+      "metadataTypeId": 22,
       "type": "struct SomeGenericStruct",
-      "typeId": 24,
       "typeParameters": [
-        17
+        16
       ]
-    },
-    {
-      "components": null,
-      "type": "u16",
-      "typeId": 25,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u32",
-      "typeId": 26,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 27,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u8",
-      "typeId": 28,
-      "typeParameters": null
     }
   ]
 }

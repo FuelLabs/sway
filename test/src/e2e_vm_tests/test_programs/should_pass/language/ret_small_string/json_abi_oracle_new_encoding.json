@@ -1,26 +1,23 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "0a92c8e0f509a2d3a66f68dd50408ce45a1a2596803b0bc983a69b34bd40dad2",
+      "type": "str[3]"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "main",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "0a92c8e0f509a2d3a66f68dd50408ce45a1a2596803b0bc983a69b34bd40dad2"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
-    {
-      "components": null,
-      "type": "str[3]",
-      "typeId": 0,
-      "typeParameters": null
-    }
-  ]
+  "programType": "script",
+  "specVersion": "1",
+  "typesMetadata": []
 }

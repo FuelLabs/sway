@@ -1,38 +1,39 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "1327785bbe4ca72fe0dc2e24483357df172feed9833c4048f05d9bb741d6c813",
+      "metadataTypeId": 0,
+      "type": "[u32; 1]"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "main",
-      "output": {
-        "name": "",
-        "type": 0,
-        "typeArguments": null
-      }
+      "output": "1327785bbe4ca72fe0dc2e24483357df172feed9833c4048f05d9bb741d6c813"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "script",
+  "specVersion": "1",
+  "typesMetadata": [
     {
       "components": [
         {
           "name": "__array_element",
-          "type": 1,
-          "typeArguments": null
+          "typeId": 1
         }
       ],
-      "type": "[_; 1]",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "[_; 1]"
     },
     {
-      "components": null,
-      "type": "u32",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 1,
+      "type": "u32"
     }
   ]
 }

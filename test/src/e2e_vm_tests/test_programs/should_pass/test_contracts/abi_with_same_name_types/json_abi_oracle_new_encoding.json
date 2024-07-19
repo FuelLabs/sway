@@ -1,133 +1,124 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
+      "metadataTypeId": 1,
+      "type": "enum std::option::Option<u64>",
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "concreteTypeId": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21",
+      "type": "str[6]"
+    },
+    {
+      "concreteTypeId": "a45846b92d83fc9bce3ae9107300f47b4adc654abc3a42c7bd6395f4ab30a519",
+      "metadataTypeId": 3,
+      "type": "struct dep_1::MyStruct1"
+    },
+    {
+      "concreteTypeId": "871f7c31e4209def536096b47765433990004089691aa2814a497f27040bee45",
+      "metadataTypeId": 5,
+      "type": "struct dep_2::MyStruct2"
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [
         {
-          "name": "_arg1",
-          "type": 4,
-          "typeArguments": null
+          "concreteTypeId": "a45846b92d83fc9bce3ae9107300f47b4adc654abc3a42c7bd6395f4ab30a519",
+          "name": "_arg1"
         },
         {
-          "name": "_arg2",
-          "type": 6,
-          "typeArguments": null
+          "concreteTypeId": "871f7c31e4209def536096b47765433990004089691aa2814a497f27040bee45",
+          "name": "_arg2"
         },
         {
-          "name": "_arg3",
-          "type": 1,
-          "typeArguments": [
-            {
-              "name": "",
-              "type": 8,
-              "typeArguments": null
-            }
-          ]
+          "concreteTypeId": "d852149004cc9ec0bbe7dc4e37bffea1d41469b759512b6136f2e865a4c06e7d",
+          "name": "_arg3"
         }
       ],
       "name": "function",
-      "output": {
-        "name": "",
-        "type": 3,
-        "typeArguments": null
-      }
+      "output": "ed705f920eb2c423c81df912430030def10f03218f0a064bfab81b68de71ae21"
     }
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "types": [
+  "programType": "contract",
+  "specVersion": "1",
+  "typesMetadata": [
     {
-      "components": [],
-      "type": "()",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "()"
     },
     {
       "components": [
         {
           "name": "None",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         },
         {
           "name": "Some",
-          "type": 2,
-          "typeArguments": null
+          "typeId": 2
         }
       ],
+      "metadataTypeId": 1,
       "type": "enum std::option::Option",
-      "typeId": 1,
       "typeParameters": [
         2
       ]
     },
     {
-      "components": null,
-      "type": "generic T",
-      "typeId": 2,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "str[6]",
-      "typeId": 3,
-      "typeParameters": null
+      "metadataTypeId": 2,
+      "type": "generic T"
     },
     {
       "components": [
         {
           "name": "bam",
-          "type": 5,
-          "typeArguments": null
+          "typeId": 4
         }
       ],
-      "type": "struct dep_1::MyStruct1",
-      "typeId": 4,
-      "typeParameters": null
+      "metadataTypeId": 3,
+      "type": "struct dep_1::MyStruct1"
     },
     {
       "components": [
         {
           "name": "bam",
-          "type": 8,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "type": "struct dep_1::MyStructDuplicated",
-      "typeId": 5,
-      "typeParameters": null
+      "metadataTypeId": 4,
+      "type": "struct dep_1::MyStructDuplicated"
     },
     {
       "components": [
         {
           "name": "bam",
-          "type": 7,
-          "typeArguments": null
+          "typeId": 6
         }
       ],
-      "type": "struct dep_2::MyStruct2",
-      "typeId": 6,
-      "typeParameters": null
+      "metadataTypeId": 5,
+      "type": "struct dep_2::MyStruct2"
     },
     {
       "components": [
         {
           "name": "bam",
-          "type": 8,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
-      "type": "struct dep_2::MyStructDuplicated",
-      "typeId": 7,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u64",
-      "typeId": 8,
-      "typeParameters": null
+      "metadataTypeId": 6,
+      "type": "struct dep_2::MyStructDuplicated"
     }
   ]
 }

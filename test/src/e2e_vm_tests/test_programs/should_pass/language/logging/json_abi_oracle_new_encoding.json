@@ -1,171 +1,149 @@
 {
+  "concreteTypes": [
+    {
+      "concreteTypeId": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219",
+      "metadataTypeId": 1,
+      "type": "enum E"
+    },
+    {
+      "concreteTypeId": "4d1a8e2800ffb1d7af9edbf4e885657c6b930a0fe4596dec7297f2d0f064ebb5",
+      "type": "struct CustomAbiEncode"
+    },
+    {
+      "concreteTypeId": "3f8dc98862e8f3a9b179125e425353ebec6c0f5fc639afce8ed40456c21d3c62",
+      "metadataTypeId": 5,
+      "type": "struct S"
+    },
+    {
+      "concreteTypeId": "e5e8538f6cad3ebdae70cc8ba333e874c75e6478b85ac050988823aaf5fd81e2",
+      "metadataTypeId": 6,
+      "type": "struct SS<u64>",
+      "typeArguments": [
+        "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
+      ]
+    },
+    {
+      "concreteTypeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0",
+      "type": "u64"
+    }
+  ],
   "configurables": [],
-  "encoding": "1",
+  "encodingVersion": "1",
   "functions": [
     {
       "attributes": null,
       "inputs": [],
       "name": "main",
-      "output": {
-        "name": "",
-        "type": 13,
-        "typeArguments": null
-      }
+      "output": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
     }
   ],
   "loggedTypes": [
     {
-      "logId": "4579537983717831593",
-      "loggedType": {
-        "name": "",
-        "type": 6,
-        "typeArguments": []
-      }
+      "concreteTypeId": "3f8dc98862e8f3a9b179125e425353ebec6c0f5fc639afce8ed40456c21d3c62",
+      "logId": "4579537983717831593"
     },
     {
-      "logId": "16566583104751091389",
-      "loggedType": {
-        "name": "",
-        "type": 7,
-        "typeArguments": [
-          {
-            "name": "",
-            "type": 13,
-            "typeArguments": null
-          }
-        ]
-      }
+      "concreteTypeId": "e5e8538f6cad3ebdae70cc8ba333e874c75e6478b85ac050988823aaf5fd81e2",
+      "logId": "16566583104751091389"
     },
     {
-      "logId": "5087777005172090899",
-      "loggedType": {
-        "name": "",
-        "type": 1,
-        "typeArguments": []
-      }
+      "concreteTypeId": "469b6a3ae1aee813b2c73788d36a1e8dd84089a16afa4d87d726f87eea55a219",
+      "logId": "5087777005172090899"
     },
     {
-      "logId": "5555909392781521367",
-      "loggedType": {
-        "name": "",
-        "type": 5,
-        "typeArguments": []
-      }
+      "concreteTypeId": "4d1a8e2800ffb1d7af9edbf4e885657c6b930a0fe4596dec7297f2d0f064ebb5",
+      "logId": "5555909392781521367"
     }
   ],
   "messagesTypes": [],
-  "types": [
+  "programType": "script",
+  "specVersion": "1",
+  "typesMetadata": [
     {
-      "components": [],
-      "type": "()",
-      "typeId": 0,
-      "typeParameters": null
+      "metadataTypeId": 0,
+      "type": "()"
     },
     {
       "components": [
         {
           "name": "A",
-          "type": 7,
           "typeArguments": [
             {
               "name": "",
-              "type": 13,
-              "typeArguments": null
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             }
-          ]
+          ],
+          "typeId": 6
         },
         {
           "name": "B",
-          "type": 0,
-          "typeArguments": null
+          "typeId": 0
         }
       ],
-      "type": "enum E",
-      "typeId": 1,
-      "typeParameters": null
+      "metadataTypeId": 1,
+      "type": "enum E"
     },
     {
-      "components": null,
-      "type": "generic T",
-      "typeId": 2,
-      "typeParameters": null
+      "metadataTypeId": 2,
+      "type": "generic T"
     },
     {
-      "components": null,
-      "type": "raw untyped ptr",
-      "typeId": 3,
-      "typeParameters": null
+      "metadataTypeId": 3,
+      "type": "raw untyped ptr"
     },
     {
-      "components": null,
-      "type": "str",
-      "typeId": 4,
-      "typeParameters": null
-    },
-    {
-      "components": [],
-      "type": "struct CustomAbiEncode",
-      "typeId": 5,
-      "typeParameters": null
+      "metadataTypeId": 4,
+      "type": "str"
     },
     {
       "components": [
         {
           "name": "a",
-          "type": 13,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         },
         {
           "name": "b",
-          "type": 12,
-          "typeArguments": null
+          "typeId": 11
         },
         {
           "name": "c",
-          "type": 10,
-          "typeArguments": null
+          "typeId": 9
         },
         {
           "name": "d",
-          "type": 14,
-          "typeArguments": null
+          "typeId": 12
         },
         {
           "name": "e",
-          "type": 9,
           "typeArguments": [
             {
               "name": "",
-              "type": 13,
-              "typeArguments": null
+              "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
             }
-          ]
+          ],
+          "typeId": 8
         },
         {
           "name": "f",
-          "type": 4,
-          "typeArguments": null
+          "typeId": 4
         },
         {
           "name": "g",
-          "type": 11,
-          "typeArguments": null
+          "typeId": 10
         }
       ],
-      "type": "struct S",
-      "typeId": 6,
-      "typeParameters": null
+      "metadataTypeId": 5,
+      "type": "struct S"
     },
     {
       "components": [
         {
           "name": "ss",
-          "type": 2,
-          "typeArguments": null
+          "typeId": 2
         }
       ],
+      "metadataTypeId": 6,
       "type": "struct SS",
-      "typeId": 7,
       "typeParameters": [
         2
       ]
@@ -174,17 +152,15 @@
       "components": [
         {
           "name": "ptr",
-          "type": 3,
-          "typeArguments": null
+          "typeId": 3
         },
         {
           "name": "cap",
-          "type": 13,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
+      "metadataTypeId": 7,
       "type": "struct std::vec::RawVec",
-      "typeId": 8,
       "typeParameters": [
         2
       ]
@@ -193,56 +169,40 @@
       "components": [
         {
           "name": "buf",
-          "type": 8,
           "typeArguments": [
             {
               "name": "",
-              "type": 2,
-              "typeArguments": null
+              "typeId": 2
             }
-          ]
+          ],
+          "typeId": 7
         },
         {
           "name": "len",
-          "type": 13,
-          "typeArguments": null
+          "typeId": "1506e6f44c1d6291cdf46395a8e573276a4fa79e8ace3fc891e092ef32d1b0a0"
         }
       ],
+      "metadataTypeId": 8,
       "type": "struct std::vec::Vec",
-      "typeId": 9,
       "typeParameters": [
         2
       ]
     },
     {
-      "components": null,
-      "type": "u16",
-      "typeId": 10,
-      "typeParameters": null
+      "metadataTypeId": 9,
+      "type": "u16"
     },
     {
-      "components": null,
-      "type": "u256",
-      "typeId": 11,
-      "typeParameters": null
+      "metadataTypeId": 10,
+      "type": "u256"
     },
     {
-      "components": null,
-      "type": "u32",
-      "typeId": 12,
-      "typeParameters": null
+      "metadataTypeId": 11,
+      "type": "u32"
     },
     {
-      "components": null,
-      "type": "u64",
-      "typeId": 13,
-      "typeParameters": null
-    },
-    {
-      "components": null,
-      "type": "u8",
-      "typeId": 14,
-      "typeParameters": null
+      "metadataTypeId": 12,
+      "type": "u8"
     }
   ]
 }
