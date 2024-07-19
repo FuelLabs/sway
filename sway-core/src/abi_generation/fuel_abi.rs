@@ -54,7 +54,7 @@ impl TypeId {
                     .read(engines, |m| m.name.clone().map(|v| v.as_str().to_string())),
                 abi_with_callpaths: true,
                 abi_with_fully_specified_types: true,
-                abi_root_type_without_generic_type_parameters: true,
+                abi_root_type_without_generic_type_parameters: false,
             },
             engines,
             resolved_type_id,
@@ -631,7 +631,7 @@ impl TypeId {
         types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         resolved_type_id: TypeId,
-        mut types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<Option<Vec<program_abi::TypeApplication>>, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -903,7 +903,7 @@ impl TypeId {
         types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         resolved_type_id: TypeId,
-        mut types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<Option<Vec<program_abi::TypeApplication>>, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -1202,7 +1202,7 @@ impl TypeParameter {
         engines: &Engines,
         types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
-        mut types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<MetadataTypeId, ErrorEmitted> {
         let type_id = MetadataTypeId(self.initial_type_id.index());
         let type_parameter = program_abi::TypeMetadataDeclaration {
