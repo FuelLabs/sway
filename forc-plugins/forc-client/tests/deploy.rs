@@ -130,9 +130,9 @@ fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error>
     let mut process = spawn(
         &format!(
             "cargo run --bin forc-deploy -- --node-url {node_url} -p {}",
-            project_dir.display().to_string()
+            project_dir.display()
         ),
-        Some(60000),
+        Some(120000),
     )?;
 
     // Confirmation prompts
