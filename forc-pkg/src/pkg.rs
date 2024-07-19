@@ -2711,6 +2711,7 @@ pub fn check(
             .as_ref()
             .is_some_and(|b| b.load(std::sync::atomic::Ordering::SeqCst))
         {
+            eprintln!("🪓 🪓 compilation was cancelled 2716");
             bail!("compilation was retriggered")
         }
 

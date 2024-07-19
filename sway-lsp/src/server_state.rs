@@ -134,6 +134,7 @@ impl ServerState {
                         let uri = ctx.uri.as_ref().unwrap().clone();
                         let session = ctx.session.as_ref().unwrap().clone();
                         let mut engines_clone = session.engines.read().clone();
+                        eprintln!("\n ----------------- NEW COMPILATION TASK: triggered by {:?} -----------------", uri.path());
 
                         if let Some(version) = ctx.version {
                             // Perform garbage collection at configured intervals if enabled to manage memory usage.
@@ -151,6 +152,8 @@ impl ServerState {
                                         err.to_string()
                                     );
                                 }
+                            } else {
+                                eprintln!("No Garbabe collection applied");
                             }
                         }
 
@@ -161,6 +164,7 @@ impl ServerState {
 
                         // Set the is_compiling flag to true so that the wait_for_parsing function knows that we are compiling
                         is_compiling.store(true, Ordering::SeqCst);
+                        eprintln!("⚙️ ⚙️ ⚙️ ⚙️ session::parse_project ⚙️ ⚙️ ⚙️ ⚙️");
                         match session::parse_project(
                             &uri,
                             &engines_clone,
@@ -174,14 +178,17 @@ impl ServerState {
                                 // Find the module id from the path
                                 match session::program_id_from_path(&path, &engines_clone) {
                                     Ok(program_id) => {
+                                        eprintln!("👨‍💻 ✅ Compliation returned successfully 👨‍💻");
                                         // Use the module id to get the metrics for the module
                                         if let Some(metrics) = session.metrics.get(&program_id) {
                                             // It's very important to check if the workspace AST was reused to determine if we need to overwrite the engines.
                                             // Because the engines_clone has garbage collection applied. If the workspace AST was reused, we need to keep the old engines
                                             // as the engines_clone might have cleared some types that are still in use.
+                                            eprintln!("👨‍💻  metrics.reused_programs {} 👨‍💻", metrics.reused_programs);
                                             if metrics.reused_programs == 0 {
                                                 // The compiler did not reuse the workspace AST.
                                                 // We need to overwrite the old engines with the engines clone.
+                                                eprintln!("👨‍💻 ↪ Swapping engines 👨‍💻 ↪");
                                                 mem::swap(
                                                     &mut *session.engines.write(),
                                                     &mut engines_clone,
@@ -192,6 +199,7 @@ impl ServerState {
                                             LastCompilationState::Success;
                                     }
                                     Err(err) => {
+                                        eprintln!("👨‍💻 ❌ Compliation failed 👨‍💻");
                                         tracing::error!("{}", err.to_string());
                                         *last_compilation_state.write() =
                                             LastCompilationState::Failed;
@@ -199,6 +207,7 @@ impl ServerState {
                                 }
                             }
                             Err(_err) => {
+                                eprintln!("👨‍💻 ❌ Compliation failed 👨‍💻");
                                 *last_compilation_state.write() = LastCompilationState::Failed;
                             }
                         }

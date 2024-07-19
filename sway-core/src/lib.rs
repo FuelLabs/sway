@@ -409,7 +409,7 @@ fn parse_module_tree(
         .ok()
         .and_then(|m| m.modified().ok());
     let dependencies = submodules.into_iter().map(|s| s.path).collect::<Vec<_>>();
-    eprintln!("🐔 path {:?} | dependencies {:?}", path, dependencies);
+    //eprintln!("🐔 path {:?} | dependencies {:?}", path, dependencies);
     let version = lsp_mode
         .and_then(|lsp| lsp.file_versions.get(path.as_ref()).copied())
         .unwrap_or(None);
@@ -468,7 +468,7 @@ pub(crate) fn is_ty_module_cache_up_to_date(
                     );
                 if cache_up_to_date {
                     entry.common.dependencies.iter().all(|path| {
-                        eprint!("checking dep path {:?} ", path);
+                        //eprint!("checking dep path {:?} ", path);
                         is_ty_module_cache_up_to_date(engines, path, include_tests, build_config)
                     })
                 } else {
@@ -544,10 +544,18 @@ pub(crate) fn is_parse_module_cache_up_to_date(
         None => false,
     };
 
-    eprintln!(
-        "🀄 👓 Checking cache for parse module {:?} | is up to date? {}",
-        relevant_path, res
-    );
+    if res {
+        eprintln!(
+            "🀄 👓 Checking cache for parse module {:?} | is up to date? true 🟩",
+            relevant_path
+        );
+    } else {
+        eprintln!(
+            "🀄 👓 Checking cache for parse module {:?} | is up to date? FALSE 🟥",
+            relevant_path
+        );
+    }
+    
 
     res
 }
@@ -618,7 +626,7 @@ pub fn parsed_to_ast(
         package_name,
         build_config,
     );
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 629)?;
 
     // Only clear the parsed AST nodes if we are running a regular compilation pipeline.
     // LSP needs these to build its token map, and they are cleared by `clear_program` as
@@ -679,7 +687,7 @@ pub fn parsed_to_ast(
             None => (None, None),
         };
 
-        check_should_abort(handler, retrigger_compilation.clone())?;
+        check_should_abort(handler, retrigger_compilation.clone(), 690)?;
 
         // Perform control flow analysis and extend with any errors.
         let _ = perform_control_flow_analysis(
@@ -765,8 +773,8 @@ pub fn compile_to_ast(
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
 ) -> Result<Programs, ErrorEmitted> {
-    eprintln!("👨‍💻 compile_to_ast 👨‍💻");
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    eprintln!("🔨🔨 --- compile_to_ast --- 🔨🔨");
+    check_should_abort(handler, retrigger_compilation.clone(), 777)?;
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
     if let Some(config) = build_config {
@@ -794,7 +802,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 805)?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
         Ok(modules) => modules,
@@ -809,7 +817,7 @@ pub fn compile_to_ast(
         parsed_program.exclude_tests(engines);
     }
 
-    eprintln!("👩‍💻 parsed to typed AST 👩‍💻");
+    eprintln!("🔨🔨 --- parsed to typed AST 🔨🔨 ---");
     // Type check (+ other static analysis) the CST to a typed AST.
     let typed_res = time_expr!(
         "parse the concrete syntax tree (CST) to a typed AST",
@@ -827,7 +835,7 @@ pub fn compile_to_ast(
         metrics
     );
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 838)?;
 
     handler.dedup();
 
@@ -843,7 +851,7 @@ pub fn compile_to_ast(
         query_engine.insert_programs_cache_entry(cache_entry);
     }
 
-    check_should_abort(handler, retrigger_compilation.clone())?;
+    check_should_abort(handler, retrigger_compilation.clone(), 854)?;
 
     Ok(programs)
 }
@@ -1150,9 +1158,11 @@ fn module_return_path_analysis(
 fn check_should_abort(
     handler: &Handler,
     retrigger_compilation: Option<Arc<AtomicBool>>,
+    line_num: u32,
 ) -> Result<(), ErrorEmitted> {
     if let Some(ref retrigger_compilation) = retrigger_compilation {
         if retrigger_compilation.load(Ordering::SeqCst) {
+            eprintln!("🪓 🪓 compilation was cancelled at line {} 🪓 🪓", line_num);
             return Err(handler.cancel());
         }
     }

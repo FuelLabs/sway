@@ -233,15 +233,29 @@ fn did_change_stress_test() {
 #[test]
 fn did_change_stress_test_random_wait() {
     run_async!({
-        let test_duration = tokio::time::Duration::from_secs(5 * 60); // 5 minutes timeout
+        let test_duration = tokio::time::Duration::from_secs(250 * 60); // 5 minutes timeout
         let test_future = async {
             setup_panic_hook();
             let (mut service, _) = LspService::new(ServerState::new);
-            let example_dir = sway_workspace_dir()
-                .join(e2e_language_dir())
-                .join("generics_in_contract");
-            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
-            let times = 60;
+            // let example_dir = sway_workspace_dir()
+            //     .join(e2e_language_dir())
+                // .join("generics_in_contract");
+//            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
+
+            let uri = init_and_open(
+                &mut service,
+                PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
+                    .join("src/fpt_staking_interface.sw"),
+            )
+            .await;
+
+        // 1. randomise the file that is changed out of all the files in the project.
+        // 2. change the file
+        // 3. wait for the file to be parsed
+        // 4. try and do a hover or goto def for a random type
+        // 5. repeat.
+
+            let times = 6000;
             for version in 0..times {
                 //eprintln!("version: {}", version);
                 let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;

@@ -566,7 +566,7 @@ impl PackageManifest {
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         for warning in warnings {
-            println_warning(&warning);
+            //println_warning(&warning);
         }
         manifest.implicitly_include_std_if_missing();
         manifest.implicitly_include_default_build_profiles_if_missing();
@@ -955,7 +955,7 @@ impl WorkspaceManifest {
         })
         .map_err(|e| anyhow!("failed to parse manifest: {}.", e))?;
         for warning in warnings {
-            println_warning(&warning);
+            //println_warning(&warning);
         }
         Ok(manifest)
     }
