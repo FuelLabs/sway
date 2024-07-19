@@ -53,8 +53,6 @@ pub const CFG_EXPERIMENTAL_NEW_ENCODING: &str = "experimental_new_encoding";
 
 pub const DEPRECATED_ATTRIBUTE_NAME: &str = "deprecated";
 
-pub const NAMESPACE_ATTRIBUTE_NAME: &str = "namespace";
-
 pub const FALLBACK_ATTRIBUTE_NAME: &str = "fallback";
 
 /// The list of valid attributes.
