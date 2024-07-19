@@ -66,28 +66,15 @@ impl BuildPlanCache {
         }
     }
 
-    pub fn get_or_update<F>(
-        &self,
-        manifest_path: &Option<PathBuf>,
-        update_fn: F,
-    ) -> Result<BuildPlan, LanguageServerError>
+    pub fn get_or_update<F>(&self, manifest_path: &Option<PathBuf>, update_fn: F) -> Result<BuildPlan, LanguageServerError>
     where
         F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
     {
         let mut cache = self.cache.lock();
-        let should_update = match *cache {
-            Some((_, last_update)) => {
-                if let Some(manifest_path) = manifest_path {
-                    let modified_time = std::fs::metadata(manifest_path)
-                        .ok()
-                        .and_then(|m| m.modified().ok());
-                    modified_time.map_or(true, |t| t > last_update)
-                } else {
-                    false
-                }
-            }
-            None => true,
-        };
+        let should_update = manifest_path
+            .as_ref()
+            .and_then(|path| path.metadata().ok()?.modified().ok())
+            .map_or(cache.is_none(), |time| cache.as_ref().map_or(true, |&(_, last)| time > last));
 
         if should_update {
             let new_plan = update_fn()?;
