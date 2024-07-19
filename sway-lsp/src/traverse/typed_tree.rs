@@ -113,7 +113,7 @@ impl Parse for ty::TySideEffect {
                         if let Some(span) = ctx
                             .namespace
                             .submodule(ctx.engines, mod_path)
-                            .and_then(|tgt_submod| tgt_submod.span.clone())
+                            .and_then(|tgt_submod| tgt_submod.span().clone())
                         {
                             token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                         }
@@ -169,7 +169,7 @@ impl Parse for ty::TySideEffect {
                             if let Some(span) = ctx
                                 .namespace
                                 .submodule(ctx.engines, call_path)
-                                .and_then(|tgt_submod| tgt_submod.span.clone())
+                                .and_then(|tgt_submod| tgt_submod.span().clone())
                             {
                                 token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                             }
@@ -192,7 +192,7 @@ impl Parse for ty::TySideEffect {
                     if let Some(span) = ctx
                         .namespace
                         .submodule(ctx.engines, &[mod_name.clone()])
-                        .and_then(|tgt_submod| tgt_submod.span.clone())
+                        .and_then(|tgt_submod| tgt_submod.span().clone())
                     {
                         token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
                     }
@@ -1209,7 +1209,7 @@ fn collect_call_path_prefixes(ctx: &ParseContext, prefixes: &[Ident]) {
             if let Some(span) = ctx
                 .namespace
                 .submodule(ctx.engines, mod_path)
-                .and_then(|tgt_submod| tgt_submod.span.clone())
+                .and_then(|tgt_submod| tgt_submod.span().clone())
             {
                 token.kind = SymbolKind::Module;
                 token.type_def = Some(TypeDefinition::Ident(Ident::new(span)));
