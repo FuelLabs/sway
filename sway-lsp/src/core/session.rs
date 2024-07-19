@@ -231,7 +231,7 @@ impl Session {
 }
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
-pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
