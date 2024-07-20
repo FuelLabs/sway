@@ -1,6 +1,6 @@
 # Fuelup
 
-[`Fuelup`](https://github.com/FuelLabs/fuelup) is a tool used to manage the Sway toolchain. It allows the user to download compiled binaries and switch between different versions of Sway.
+[`Fuelup`](https://github.com/FuelLabs/fuelup) is the official package manager for Fuel that installs the Fuel toolchain from the official release channels, enabling you to easily switch between different toolchains and keep them updated. It makes building and maintaining Sway applications simpler with forc and fuel-core.
 
 The installation instructions can be found at the start of the [`Fuelup Book`](https://fuellabs.github.io/fuelup/latest).
 
