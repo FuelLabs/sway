@@ -1368,7 +1368,7 @@ impl ToDiagnostic for CompileError {
                 help: vec![
                     "Unlike constants, configurables cannot be matched against in pattern matching.".to_string(),
                     "That's not possible, because patterns to match against must be compile-time constants.".to_string(),
-                    "Configurables are run-time constants, whose values are defined during the deployment.".to_string(),
+                    "Configurables are run-time constants. Their values are defined during the deployment.".to_string(),
                     Diagnostic::help_empty_line(),
                     "To test against a configurable, consider:".to_string(),
                     format!("{}- replacing the `match` expression with `if-else`s altogether.", Indent::Single),
