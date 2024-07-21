@@ -42,11 +42,11 @@ impl SymbolCollectionContext {
         with_scoped_ctx: impl FnOnce(SymbolCollectionContext) -> Result<T, ErrorEmitted>,
     ) -> Result<T, ErrorEmitted> {
         self.namespace
-            .module_mut(engines)
+            .current_module_mut()
             .write(engines, |m| m.push_new_lexical_scope());
         let ret = with_scoped_ctx(self.clone());
         self.namespace
-            .module_mut(engines)
+            .current_module_mut()
             .write(engines, |m| m.pop_lexical_scope());
         ret
     }
@@ -80,7 +80,7 @@ impl SymbolCollectionContext {
         name: Ident,
         item: Declaration,
     ) -> Result<(), ErrorEmitted> {
-        self.namespace.module_mut(engines).write(engines, |m| {
+        self.namespace.current_module_mut().write(engines, |m| {
             m.current_items_mut().insert_parsed_symbol(
                 handler,
                 engines,
@@ -110,7 +110,7 @@ impl SymbolCollectionContext {
         src: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().mod_path().clone();
         self.namespace_mut()
             .root
             .star_import(handler, engines, src, &mod_path, visibility)
@@ -125,7 +125,7 @@ impl SymbolCollectionContext {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().mod_path().clone();
         self.namespace_mut()
             .root
             .variant_star_import(handler, engines, src, &mod_path, enum_name, visibility)
@@ -140,7 +140,7 @@ impl SymbolCollectionContext {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().mod_path().clone();
         self.namespace_mut()
             .root
             .self_import(handler, engines, src, &mod_path, alias, visibility)
@@ -156,7 +156,7 @@ impl SymbolCollectionContext {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().mod_path().clone();
         self.namespace_mut()
             .root
             .item_import(handler, engines, src, item, &mod_path, alias, visibility)
@@ -174,7 +174,7 @@ impl SymbolCollectionContext {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().mod_path().clone();
         self.namespace_mut().root.variant_import(
             handler,
             engines,

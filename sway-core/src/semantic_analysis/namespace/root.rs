@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::{
-    module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
+    module::Module, trait_map::TraitMap, Ident, ModuleName, ResolvedTraitImplItem,
 };
 use crate::{
     decl_engine::DeclRef,
@@ -18,8 +18,10 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{Named, Spanned};
+use sway_types::{span::Span, Named, Spanned};
 use sway_utils::iter_prefixes;
+use rustc_hash::FxHasher;
+use std::hash::BuildHasherDefault;
 
 #[derive(Clone, Debug)]
 pub enum ResolvedDeclaration {
@@ -137,10 +139,68 @@ impl ResolvedDeclaration {
 /// that canonical path to look up the symbol declaration.
 #[derive(Clone, Debug)]
 pub struct Root {
-    pub(crate) module: Module,
+    current_package: Module,
+    external_packages: im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>>,
 }
 
 impl Root {
+
+    // Initialize the root for the first time
+    pub(super) fn new(package_name: Ident, span: Option<Span>) -> Self {
+	let mut module = Module::new(package_name, Visibility::Public, span, vec!());
+	Self {
+	    current_package: module,
+	    external_package: Default::default(),
+	}
+    }
+
+    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
+	// TODO: reject if the new package name already exist
+	let old_package = self.current_package;
+	self.current_package = Module::new(next_package_name, Visibility::Public, span, vec!());
+	self.external_package.insert(old_package.name().clone, old_package);
+    }
+
+    pub(super) fn current_package_root_module(&self) -> &Module {
+	&self.current_package
+    }
+    
+    pub(super) fn current_package_name(&self) -> &Ident {
+	self.current_package.name()
+    }
+
+    fn check_path_is_in_current_package(&self, mod_path: &ModulePathBuf) -> bool {
+	!mod_path.is_empty() && mod_path[0] == self.current_package.name
+    }
+
+    fn package_relative_path(mod_path: &ModulePathBuf) -> ModulePathBuf {
+	mod_path.from_iter(&[1..].iter().cloned())
+    }
+
+    // Find a module in the current package. `mod_path` must be a fully qualified path
+    pub(super) fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
+	assert!(check_path_is_in_current_package(self, mod_path));
+	self.current_package.submodule(&package_relative_path(mod_path))
+    }
+
+    // Find a mutable module in the current package. `mod_path` must be a fully qualified path
+    pub(super) fn module_mut_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
+	assert!(check_path_is_in_current_package(self, mod_path));
+	self.current_package.submodule_mut(&package_relative_path(mod_path))
+    }
+
+    // Find module in the current environment. `mod_path` must be a fully qualified path
+    pub(super) fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
+	assert!(!mod_path.is_empty());
+	if mod_path[0] == self.current_package.name {
+	    self.current_package.submodule(&package_relative_path(mod_path))
+	} else if let Some(external_mod) = self.external_packages.get(mod_path[0]) {
+	    external_mod.submodule(&package_relative_path(mod_path))
+	} else {
+	    None
+	}
+    }
+
     ////// IMPORT //////
 
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
@@ -159,7 +219,7 @@ impl Root {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
 
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.current_package.lookup_submodule(handler, engines, src)?;
 
         let mut decls_and_item_imports = vec![];
 
@@ -214,7 +274,7 @@ impl Root {
         }
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
+        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -261,7 +321,7 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.current_package.lookup_submodule(handler, engines, src)?;
         let src_items = src_mod.current_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
@@ -335,7 +395,7 @@ impl Root {
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
-        let src_mod = self.module.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.current_package.lookup_submodule(handler, engines, src)?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
 
@@ -371,7 +431,7 @@ impl Root {
         }
 
         // no matter what, import it this way though.
-        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
+        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
         let check_name_clash = |name| {
             if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                 handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
@@ -433,7 +493,7 @@ impl Root {
                         enum_decl.variants.iter().find(|v| v.name == *variant_name)
                     {
                         // import it this way.
-                        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
+                        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
                         let check_name_clash = |name| {
                             if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
@@ -505,7 +565,7 @@ impl Root {
                         enum_decl.variants.iter().find(|v| v.name == *variant_name)
                     {
                         // import it this way.
-                        let dst_mod = self.module.lookup_submodule_mut(handler, engines, dst)?;
+                        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
                         let check_name_clash = |name| {
                             if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
@@ -603,7 +663,7 @@ impl Root {
                         });
 
                     // import it this way.
-                    self.module
+                    self.current_package
                         .lookup_submodule_mut(handler, engines, dst)?
                         .current_items_mut()
                         .insert_glob_use_symbol(
@@ -633,7 +693,7 @@ impl Root {
                         }));
 
                     // import it this way.
-                    self.module
+                    self.current_package
                         .lookup_submodule_mut(handler, engines, dst)?
                         .current_items_mut()
                         .insert_glob_use_symbol(
@@ -662,12 +722,12 @@ impl Root {
         engines: &Engines,
         src: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
-        let dst = self.module.mod_path();
+        let dst = self.current_package.mod_path();
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
             // we don't check the first prefix because direct children are always accessible
             for prefix in iter_prefixes(src).skip(1) {
-                let module = self.module.lookup_submodule(handler, engines, prefix)?;
+                let module = self.current_package.lookup_submodule(handler, engines, prefix)?;
                 if module.visibility().is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
@@ -816,7 +876,7 @@ impl Root {
         self_type: Option<TypeId>,
     ) -> Result<(ResolvedDeclaration, Vec<Ident>), ErrorEmitted> {
         // This block tries to resolve associated types
-        let mut module = &self.module;
+        let mut module = &self.current_package;
         let mut current_mod_path = vec![];
         let mut decl_opt = None;
         for ident in mod_path.iter() {
@@ -843,7 +903,7 @@ impl Root {
             return Ok((decl, current_mod_path));
         }
 
-        self.module
+        self.current_package
             .lookup_submodule(handler, engines, mod_path)
             .and_then(|module| {
                 let decl = self.resolve_symbol_helper(handler, engines, symbol, module)?;
@@ -1041,18 +1101,6 @@ impl Root {
             name: symbol.clone(),
             span: symbol.span(),
         }))
-    }
-}
-
-impl From<Module> for Root {
-    fn from(module: Module) -> Self {
-        Root { module }
-    }
-}
-
-impl From<Namespace> for Root {
-    fn from(namespace: Namespace) -> Self {
-        namespace.root
     }
 }
 

@@ -138,26 +138,7 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let mut is_external = false;
-    if let Some(submodule) = ctx
-        .namespace
-        .module(engines)
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external |= submodule.read(engines, |m| m.is_external);
-    }
-    // We create an inner module for each module being processed during the collection.
-    // This does not play well with the existing way we use to lookup an external module.
-    // So check again starting from the root to make sure we find the right module.
-    // Clean this up once paths are normalized before collection and we can just rely on
-    // absolute paths.
-    if let Some(submodule) = ctx
-        .namespace
-        .root_module()
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external |= submodule.read(engines, |m| m.is_external);
-    }
+    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
     let path = if is_external || stmt.is_absolute {
         stmt.call_path.clone()
     } else {
@@ -249,14 +230,9 @@ fn handle_use_statement(
     stmt: &UseStatement,
     handler: &Handler,
 ) {
-    let mut is_external = false;
-    if let Some(submodule) = ctx
+    let is_external = !ctx
         .namespace()
-        .module(engines)
-        .submodule(engines, &[stmt.call_path[0].clone()])
-    {
-        is_external = submodule.read(engines, |m| m.is_external);
-    }
+        .current_module_has_submodule(&stmt.call_path[0]);
     let path = if is_external || stmt.is_absolute {
         stmt.call_path.clone()
     } else {

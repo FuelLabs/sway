@@ -1063,20 +1063,20 @@ impl ty::TyExpression {
 
         if !ctx
             .namespace()
-            .program_id(engines)
+            .current_module()
             .read(engines, |m| m.current_items().has_storage_declared())
         {
             return Err(handler.emit_err(CompileError::NoDeclaredStorage { span: span.clone() }));
         }
 
-        let storage_fields = ctx.namespace().program_id(engines).read(engines, |m| {
+        let storage_fields = ctx.namespace().current_module().read(engines, |m| {
             m.current_items()
                 .get_storage_field_descriptors(handler, decl_engine)
         })?;
 
         // Do all namespace checking here!
         let (storage_access, mut access_type) =
-            ctx.namespace().program_id(engines).read(engines, |m| {
+            ctx.namespace().current_module().read(engines, |m| {
                 m.current_items().apply_storage_load(
                     handler,
                     ctx.engines,
@@ -1310,8 +1310,8 @@ impl ty::TyExpression {
         let not_module = {
             let h = Handler::default();
             ctx.namespace()
-                .program_id(engines)
-                .read(engines, |m| m.lookup_submodule(&h, engines, &path).is_err())
+                .current_module()
+                .read(engines, |m| m.lookup_submodule(&h, &path).is_err())
         };
 
         // Not a module? Not a `Enum::Variant` either?
@@ -1427,14 +1427,15 @@ impl ty::TyExpression {
             .is_none()
         {
             // Check if this could be a module
+	    // TODO: This is no longer correct - an absolute path to an external module can no
+	    // longer be looked up as a submodule of the current module
             is_module = {
                 let call_path_binding = unknown_call_path_binding.clone();
                 ctx.namespace()
-                    .program_id(ctx.engines())
+                    .current_module()
                     .read(ctx.engines(), |m| {
                         m.lookup_submodule(
                             &module_probe_handler,
-                            ctx.engines(),
                             &[
                                 call_path_binding.inner.call_path.prefixes.clone(),
                                 vec![call_path_binding.inner.call_path.suffix.clone()],
@@ -2247,7 +2248,7 @@ impl ty::TyExpression {
 
                 let indices = indices.into_iter().rev().collect::<Vec<_>>();
                 let (ty_of_field, _ty_of_parent) =
-                    ctx.namespace().program_id(engines).read(engines, |m| {
+                    ctx.namespace().current_module().read(engines, |m| {
                         m.current_items().find_subfield_type(
                             handler,
                             ctx.engines(),

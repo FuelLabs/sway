@@ -803,8 +803,7 @@ pub(crate) fn resolve_method_name(
             let type_info_prefix = ctx
                 .namespace()
                 .prepend_module_path(&call_path_binding.inner.prefixes);
-            ctx.namespace().lookup_submodule_from_absolute_path(
-                handler,
+            ctx.namespace().lookup_module_from_absolute_path(
                 engines,
                 &type_info_prefix,
             )?;
@@ -831,7 +830,7 @@ pub(crate) fn resolve_method_name(
                 let mut module_path = call_path.prefixes.clone();
                 if let (Some(root_mod), root_name) = (
                     module_path.first().cloned(),
-                    ctx.namespace().root_module_name().clone(),
+                    ctx.namespace().current_package_name().clone(),
                 ) {
                     if root_mod.as_str() == root_name.as_str() {
                         module_path.remove(0);

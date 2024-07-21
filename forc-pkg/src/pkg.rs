@@ -44,7 +44,7 @@ use sway_core::{
         fuel_crypto,
         fuel_tx::{self, Contract, ContractId, StorageSlot},
     },
-    language::{parsed::TreeType, Visibility},
+    language::parsed::TreeType,
     semantic_analysis::namespace,
     source_map::SourceMap,
     transform::AttributeKind,

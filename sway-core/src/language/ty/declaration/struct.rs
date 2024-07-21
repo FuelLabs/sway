@@ -162,7 +162,7 @@ impl StructAccessInfo {
         let struct_can_be_changed =
             module_can_be_changed(engines, namespace, &struct_decl.call_path.prefixes);
         let is_public_struct_access =
-            !namespace.module_is_submodule_of(engines, &struct_decl.call_path.prefixes, true);
+            !namespace.module_is_submodule_of(&struct_decl.call_path.prefixes, true);
 
         Self {
             struct_can_be_changed,

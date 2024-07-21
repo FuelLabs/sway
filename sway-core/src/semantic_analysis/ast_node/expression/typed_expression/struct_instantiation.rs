@@ -81,7 +81,7 @@ pub(crate) fn struct_instantiation(
     // find the module that the struct decl is in
     let type_info_prefix = ctx.namespace().prepend_module_path(prefixes);
     ctx.namespace()
-        .lookup_submodule_from_absolute_path(handler, engines, &type_info_prefix)?;
+        .lookup_module_from_absolute_path(engines, &type_info_prefix)?;
 
     // resolve the type of the struct decl
     let type_id = ctx
@@ -327,7 +327,7 @@ fn collect_struct_constructors(
     // Also, strictly speaking, we could also have public module functions that create structs,
     // but that would be a way too much of suggestions, and moreover, it is also not a design pattern/guideline
     // that we wish to encourage.
-    namespace.program_id(engines).read(engines, |m| {
+    namespace.current_module().read(engines, |m| {
         m.current_items()
             .get_items_for_type(engines, struct_type_id)
             .iter()

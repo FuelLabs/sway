@@ -25,8 +25,7 @@ impl<'a> AbiContext<'a> {
                 .program
                 .root
                 .namespace
-                .program_id(engines)
-                .read(engines, |m| m.name().to_string()),
+		.current_package_name().to_string(),
             abi_with_callpaths: self.abi_with_callpaths,
             abi_with_fully_specified_types,
         }

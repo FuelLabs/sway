@@ -336,7 +336,7 @@ impl CallPath {
     /// before the identifier is added to the environment.
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
         let mut res: Self = suffix.clone().into();
-        res.prefixes.push(namespace.root_module().name().clone());
+        res.prefixes.push(namespace.current_package_name().clone());
         for mod_path in namespace.mod_path() {
             res.prefixes.push(mod_path.clone())
         }
@@ -357,14 +357,15 @@ impl CallPath {
         }
 
         if self.prefixes.is_empty() {
-            // Given a path to a symbol that has no prefixes, discover the path to the symbol as a
-            // combination of the package name in which the symbol is defined and the path to the
-            // current submodule.
+	    // Unqualified path.
+	    //
+            // Discover the path to the symbol as a combination of the package name in which the
+            // symbol is defined and the path to the current submodule.
             let mut synonym_prefixes = vec![];
             let mut is_external = false;
             let mut is_absolute = false;
 
-            if let Some(mod_path) = namespace.program_id(engines).read(engines, |m| {
+            if let Some(mod_path) = namespace.current_module().read(engines, |m| {
                 if m.current_items().symbols().contains_key(&self.suffix) {
                     None
                 } else if let Some((_, path, _, _)) = m
@@ -391,18 +392,13 @@ impl CallPath {
             }) {
                 synonym_prefixes.clone_from(&mod_path);
                 is_absolute = true;
-                let submodule = namespace
-                    .module(engines)
-                    .submodule(engines, &[mod_path[0].clone()]);
-                if let Some(submodule) = submodule {
-                    is_external = submodule.read(engines, |m| m.is_external);
-                }
+                is_external = namespace.module_is_external(&mod_path);
             }
 
             let mut prefixes: Vec<Ident> = vec![];
 
             if !is_external {
-                prefixes.push(namespace.root_module().name().clone());
+                prefixes.push(namespace.current_package_name().clone());
 
                 if !is_absolute {
                     for mod_path in namespace.mod_path() {
@@ -418,38 +414,27 @@ impl CallPath {
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
-        } else if let Some(m) = namespace
-            .module(engines)
-            .submodule(engines, &[self.prefixes[0].clone()])
+        } else if namespace.current_module_has_submodule(&self.prefixes[0])
         {
-            // If some prefixes are already present, attempt to complete the path by adding the
-            // package name and the path to the current submodule.
-            //
-            // If the path starts with an external module (i.e. a module that is imported in
-            // `Forc.toml`), then do not change it since it's a complete path already.
-            if m.read(engines, |m| m.is_external) {
-                CallPath {
-                    prefixes: self.prefixes.clone(),
-                    suffix: self.suffix.clone(),
-                    is_absolute: true,
-                }
-            } else {
-                let mut prefixes: Vec<Ident> = vec![];
-                prefixes.push(namespace.root_module().name().clone());
-
-                for mod_path in namespace.mod_path() {
-                    prefixes.push(mod_path.clone());
-                }
-
-                prefixes.extend(self.prefixes.clone());
-
-                CallPath {
-                    prefixes,
-                    suffix: self.suffix.clone(),
-                    is_absolute: true,
-                }
+	    // Qualified path relative to the current module
+	    //
+            // Complete the path by prepending the package name and the path to the current module.
+            let mut prefixes: Vec<Ident> = vec![];
+            prefixes.push(namespace.current_package_name().clone());
+	    
+            for mod_path in namespace.mod_path() {
+                prefixes.push(mod_path.clone());
+            }
+	    
+            prefixes.extend(self.prefixes.clone());
+	    
+            CallPath {
+                prefixes,
+                suffix: self.suffix.clone(),
+                is_absolute: true,
             }
         } else {
+	    // Fully qualified path 
             CallPath {
                 prefixes: self.prefixes.clone(),
                 suffix: self.suffix.clone(),
@@ -468,7 +453,7 @@ impl CallPath {
         let converted = self.to_fullpath(engines, namespace);
 
         if let Some(first) = converted.prefixes.first() {
-            if namespace.root_module().name() == first {
+            if namespace.current_package_name() == first {
                 return converted.lshift();
             }
         }
