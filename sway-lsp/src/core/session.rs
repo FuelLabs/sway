@@ -20,7 +20,7 @@ use forc_pkg as pkg;
 use lsp_types::{
     CompletionItem, GotoDefinitionResponse, Location, Position, Range, SymbolInformation, Url,
 };
-use parking_lot::{Mutex, RwLock};
+use parking_lot::RwLock;
 use pkg::{
     manifest::{GenericManifestFile, ManifestFile},
     BuildPlan,
@@ -517,13 +517,13 @@ pub(crate) fn program_id_from_path(
 #[derive(Debug, Clone)]
 pub struct BuildPlanCache {
     /// The cached BuildPlan and its last update time
-    cache: Arc<Mutex<Option<(BuildPlan, SystemTime)>>>,
+    cache: Arc<RwLock<Option<(BuildPlan, SystemTime)>>>,
 }
 
 impl Default for BuildPlanCache {
     fn default() -> Self {
         Self {
-            cache: Arc::new(Mutex::new(None)),
+            cache: Arc::new(RwLock::new(None)),
         }
     }
 }
@@ -538,20 +538,27 @@ impl BuildPlanCache {
     where
         F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
     {
-        let mut cache = self.cache.lock();
-        let should_update = manifest_path
-            .as_ref()
-            .and_then(|path| path.metadata().ok()?.modified().ok())
-            .map_or(cache.is_none(), |time| {
-                cache.as_ref().map_or(true, |&(_, last)| time > last)
-            });
+        let should_update = {
+            let cache = self.cache.read();
+            manifest_path
+                .as_ref()
+                .and_then(|path| path.metadata().ok()?.modified().ok())
+                .map_or(cache.is_none(), |time| {
+                    cache.as_ref().map_or(true, |&(_, last)| time > last)
+                })
+        };
 
         if should_update {
             let new_plan = update_fn()?;
+            let mut cache = self.cache.write();
             *cache = Some((new_plan.clone(), SystemTime::now()));
             Ok(new_plan)
         } else {
-            Ok(cache.as_ref().unwrap().0.clone())
+            let cache = self.cache.read();
+            cache
+                .as_ref()
+                .map(|(plan, _)| plan.clone())
+                .ok_or(LanguageServerError::BuildPlanCacheIsEmpty)
         }
     }
 }
