@@ -171,7 +171,7 @@ fn did_open_fluid_libraries() {
             .finish();
         let uri = init_and_open(
             &mut service,
-            PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
+            PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
                 .join("src/interface.sw"),
         )
         .await;

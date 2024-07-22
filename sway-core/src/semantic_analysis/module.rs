@@ -273,7 +273,6 @@ impl ty::TyModule {
                 .iter()
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
                 .collect::<PathBuf>();
-            eprintln!("🥸 Checking cache for TY module {:?}", relevant_path);
 
             let key: ModuleCacheKey = ModuleCacheKey::new(path.clone().into(), include_tests);
             if let Some(entry) = engines.qe().get_module_cache_entry(&key) {
@@ -286,29 +285,24 @@ impl ty::TyModule {
                 // Let's check if we can re-use the dependency information
                 // we got from the cache.
                 if let Some(typed) = entry.typed {
-                    if is_ty_module_cache_up_to_date(
+                    let is_up_to_date = is_ty_module_cache_up_to_date(
                         engines,
                         &path.into(),
                         include_tests,
                         build_config,
-                    ) {
-                        eprintln!(
-                            "📟 👓 Checking cache for TY module {:?} | is up to date? true 🟩",
-                            relevant_path
-                        );
-
-                        eprintln!("✅ Cache hit for module {:?}", relevant_path);
-                        // Return the cached module
-                        return Some(typed.module);
+                    );
+                    let status = if is_up_to_date {
+                        "✅ Cache hit"
                     } else {
-                        eprintln!(
-                            "📟 👓 Checking cache for TY module {:?} | is up to date? false 🟥",
-                            relevant_path
-                        );
-
-                        eprintln!("🔄 🟨 🟨 🟨 Cache unable to be used for module {:?}", relevant_path);
+                        "🔄 Cache miss"
+                    };
+                    eprintln!("{} for module {:?} (up to date: {})", status, relevant_path, is_up_to_date);
+                    if is_up_to_date {
+                        return Some(typed.module);
                     }
                 }
+            } else {
+                eprintln!("❌ No cache entry for module {:?}", relevant_path);
             }
         }
         None
