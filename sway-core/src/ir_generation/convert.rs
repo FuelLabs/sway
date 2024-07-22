@@ -60,7 +60,7 @@ pub(super) fn convert_resolved_type_id(
     span: &Span,
 ) -> Result<Type, CompileError> {
     let t = type_engine.get(ast_type);
-    convert_resolved_type_info(type_engine, decl_engine, context, &*t, span)
+    convert_resolved_type_info(type_engine, decl_engine, context, &t, span)
 }
 
 pub(super) fn convert_resolved_typeid_no_span(

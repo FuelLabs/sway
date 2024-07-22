@@ -2168,7 +2168,7 @@ impl<'eng> FnCompiler<'eng> {
 
     fn compile_intrinsic_slice_elem(
         &mut self,
-        arguments: &Vec<ty::TyExpression>,
+        arguments: &[ty::TyExpression],
         context: &mut Context,
         md_mgr: &mut MetadataManager,
     ) -> Result<TerminatorValue, CompileError> {
@@ -2251,7 +2251,7 @@ impl<'eng> FnCompiler<'eng> {
 
     fn compile_intrinsic_slice(
         &mut self,
-        arguments: &Vec<ty::TyExpression>,
+        arguments: &[ty::TyExpression],
         context: &mut Context,
         md_mgr: &mut MetadataManager,
     ) -> Result<TerminatorValue, CompileError> {
