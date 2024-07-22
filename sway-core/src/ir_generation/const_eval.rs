@@ -1311,8 +1311,8 @@ fn const_eval_intrinsic(
 
             match &args[0].value {
                 ConstantValue::Array(v) => {
-                    let elem_type = v[0].ty.clone();
-                    let slice = (&v[start..end]).iter().cloned().collect::<Vec<_>>();
+                    let elem_type = v[0].ty;
+                    let slice = v[start..end].to_vec();
                     Ok(Some(Constant {
                         ty: Type::get_typed_slice(lookup.context, elem_type),
                         value: ConstantValue::Slice(slice),
@@ -1335,7 +1335,7 @@ fn const_eval_intrinsic(
                 ConstantValue::Slice(s) => {
                     let v = s[idx].clone();
                     Ok(Some(Constant {
-                        ty: Type::new_ptr(lookup.context, v.ty.clone()),
+                        ty: Type::new_ptr(lookup.context, v.ty),
                         value: ConstantValue::Reference(Box::new(v)),
                     }))
                 }
