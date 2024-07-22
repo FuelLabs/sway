@@ -609,7 +609,6 @@ impl Eq for raw_ptr {
     }
 }
 
-
 /// Trait to evaluate if one value is greater or less than another of the same type.
 pub trait Ord {
     /// Evaluates if one value of the same type is greater than another.

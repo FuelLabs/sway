@@ -699,7 +699,7 @@ impl AbiEncode for raw_slice {
 
 impl<T> AbiEncode for &__slice[T]
 where
-    T: AbiEncode
+    T: AbiEncode,
 {
     fn abi_encode(self, buffer: Buffer) -> Buffer {
         Buffer {
