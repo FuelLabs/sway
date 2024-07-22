@@ -45,7 +45,7 @@ pub struct DeploymentArtifact {
     chain_id: ChainId,
     contract_id: String,
     deployment_size: usize,
-    deployed_block_height: u32,
+    deployed_block_height: Option<u32>,
 }
 
 impl DeploymentArtifact {
@@ -275,6 +275,7 @@ pub async fn deploy_pkg(
     let tx = Transaction::from(tx);
 
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
+    let pkg_name = manifest.project_name();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
@@ -282,7 +283,6 @@ pub async fn deploy_pkg(
                 bail!("contract {} deployment timed out", &contract_id);
             }
             TransactionStatus::Success { block_height, .. } => {
-                let pkg_name = manifest.project_name();
                 info!("\n\nContract {pkg_name} Deployed!");
 
                 info!("\nNetwork: {node_url}");
@@ -290,25 +290,21 @@ pub async fn deploy_pkg(
                 info!("Deployed in block {}", &block_height);
 
                 // Create a deployment artifact.
-                let deployment_size = bytecode.len();
-                let deployment_artifact = DeploymentArtifact {
-                    transaction_id: format!("0x{}", tx.id(&chain_id)),
-                    salt: format!("0x{}", salt),
-                    network_endpoint: node_url.to_string(),
-                    chain_id,
-                    contract_id: format!("0x{}", contract_id),
-                    deployment_size,
-                    deployed_block_height: *block_height,
-                };
-
-                let output_dir = command
-                    .pkg
-                    .output_directory
-                    .as_ref()
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|| default_output_directory(manifest.dir()))
-                    .join("deployments");
-                deployment_artifact.to_file(&output_dir, pkg_name, contract_id)?;
+                create_deployment_artifact(
+                    DeploymentArtifact {
+                        transaction_id: format!("0x{}", tx.id(&chain_id)),
+                        salt: format!("0x{}", salt),
+                        network_endpoint: node_url.to_string(),
+                        chain_id,
+                        contract_id: format!("0x{}", contract_id),
+                        deployment_size: bytecode.len(),
+                        deployed_block_height: Some(*block_height),
+                    },
+                    command,
+                    manifest,
+                    pkg_name,
+                    contract_id
+                )?;
 
                 Ok(contract_id)
             }
@@ -323,18 +319,51 @@ pub async fn deploy_pkg(
         Err(e) => bail!("{e}"),
     });
 
-    // submit contract deployment with a timeout
-    let contract_id = tokio::time::timeout(
-        Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
-        deployment_request,
-    )
-    .await
-    .with_context(|| {
-        format!(
-            "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
-            &contract_id
+    // if just submitting the transaction, don't wait for the deployment to complete
+    let contract_id: ContractId = if command.submit_only {
+        match client.submit(&tx).await {
+            Ok(transaction_id) => {
+                // Create a deployment artifact.
+                create_deployment_artifact(
+                    DeploymentArtifact {
+                        transaction_id: format!("0x{}", transaction_id),
+                        salt: format!("0x{}", salt),
+                        network_endpoint: node_url.to_string(),
+                        chain_id,
+                        contract_id: format!("0x{}", contract_id),
+                        deployment_size: bytecode.len(),
+                        deployed_block_height: None,
+                    },
+                    command,
+                    manifest,
+                    pkg_name,
+                    contract_id
+                )?;
+
+                contract_id
+            },
+            Err(e) => {
+                bail!(
+                    "contract {} failed to deploy due to an error: {:?}",
+                    &contract_id,
+                    e
+                )
+            }
+        }
+    } else {
+        tokio::time::timeout(
+            Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
+            deployment_request,
         )
-    })??;
+            .await
+            .with_context(|| {
+                format!(
+                    "Timed out waiting for contract {} to deploy. The transaction may have been dropped.",
+                    &contract_id
+                )
+            })??
+    };
+
     Ok(DeployedContract { id: contract_id })
 }
 
@@ -377,6 +406,23 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
             new_encoding: !cmd.no_encoding_v1,
         },
     }
+}
+
+fn create_deployment_artifact(
+    deployment_artifact: DeploymentArtifact,
+    cmd: &cmd::Deploy,
+    manifest: &PackageManifestFile,
+    pkg_name: &str,
+    contract_id: ContractId,
+) -> Result<()> {
+    let output_dir = cmd
+        .pkg
+        .output_directory
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| default_output_directory(manifest.dir()))
+        .join("deployments");
+    deployment_artifact.to_file(&output_dir, pkg_name, contract_id)
 }
 
 #[cfg(test)]

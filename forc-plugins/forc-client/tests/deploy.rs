@@ -114,3 +114,43 @@ async fn simple_deploy() {
 
     assert_eq!(contract_ids, expected)
 }
+
+#[tokio::test]
+async fn deploy_submit_only() {
+    let (mut node, port) = run_node();
+    let tmp_dir = tempdir().unwrap();
+    let project_dir = test_data_path().join("standalone_contract");
+    copy_dir(&project_dir, tmp_dir.path()).unwrap();
+    patch_manifest_file_with_path_std(tmp_dir.path()).unwrap();
+
+    let pkg = Pkg {
+        path: Some(tmp_dir.path().display().to_string()),
+        ..Default::default()
+    };
+
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+
+    let target = NodeTarget {
+        node_url: Some(node_url),
+        target: None,
+        testnet: false,
+    };
+    let cmd = cmd::Deploy {
+        pkg,
+        salt: Some(vec![format!("{}", Salt::default())]),
+        node: target,
+        default_signer: true,
+        submit_only: true,
+        ..Default::default()
+    };
+    let contract_ids = deploy(cmd).await.unwrap();
+    node.kill().unwrap();
+    let expected = vec![DeployedContract {
+        id: ContractId::from_str(
+            "822c8d3672471f64f14f326447793c7377b6e430122db23b622880ccbd8a33ef",
+        )
+        .unwrap(),
+    }];
+
+    assert_eq!(contract_ids, expected)
+}
