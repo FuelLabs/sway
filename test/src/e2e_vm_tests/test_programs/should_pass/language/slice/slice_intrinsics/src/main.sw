@@ -132,4 +132,17 @@ fn main()  {
     assert(v.get(4), 5);
     assert(v.get(5), 6);
     assert(v.get(6), 7);
+
+    let a: [u64; 5] = [1, 2, 3, 4, 5];
+    let s = __slice(a, 0, 5);
+    assert(1, *__slice_elem(s, 0));
+    assert(2, *__slice_elem(s, 1));
+    assert(3, *__slice_elem(s, 2));
+    assert(4, *__slice_elem(s, 3));
+    assert(5, *__slice_elem(s, 4));
+
+    const ARRAY: [u64; 5] = [1, 2, 3, 4, 5];
+    const SLICE: &__slice[u64] = __slice(ARRAY, 0, 5);
+    const ELEM: u64 = *__slice_elem(SLICE, 0);
+    assert(1, ELEM);
 }

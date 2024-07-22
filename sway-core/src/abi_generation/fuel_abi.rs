@@ -407,8 +407,8 @@ impl TypeId {
                 }
             }
             TypeInfo::Slice(..) => {
-                if let TypeInfo::Array(elem_ty, _) = &*type_engine.get(resolved_type_id) {
-                    // The `program_abi::TypeDeclaration`s needed for the array element type
+                if let TypeInfo::Slice(elem_ty) = &*type_engine.get(resolved_type_id) {
+                    // The `program_abi::TypeDeclaration`s needed for the slice element type
                     let elem_abi_ty = program_abi::TypeDeclaration {
                         type_id: elem_ty.initial_type_id.index(),
                         type_field: elem_ty.initial_type_id.get_abi_type_str(

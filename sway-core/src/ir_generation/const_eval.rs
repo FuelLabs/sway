@@ -620,9 +620,24 @@ fn const_eval_typed_expr(
                 }
             }
         }
-        ty::TyExpressionVariant::Ref(_) | ty::TyExpressionVariant::Deref(_) => {
+        ty::TyExpressionVariant::Ref(_) => {
             return Err(ConstEvalError::CompileError);
         }
+        ty::TyExpressionVariant::Deref(v) => match &v.expression {
+            ty::TyExpressionVariant::IntrinsicFunction(f) => match f.kind {
+                Intrinsic::SliceElem => {
+                    let v = const_eval_intrinsic(lookup, known_consts, f)?
+                        .ok_or(ConstEvalError::CompileError)?;
+                    let v = match v.value {
+                        ConstantValue::Reference(v) => v,
+                        _ => todo!(),
+                    };
+                    Some((*v).clone())
+                }
+                _ => todo!(),
+            },
+            _ => return Err(ConstEvalError::CompileError),
+        },
         ty::TyExpressionVariant::EnumTag { exp } => {
             let value = const_eval_typed_expr(lookup, known_consts, exp)?.map(|x| x.value);
             if let Some(ConstantValue::Struct(fields)) = value {
@@ -1284,8 +1299,49 @@ fn const_eval_intrinsic(
                 value: ConstantValue::RawUntypedSlice(bytes[0..(len as usize)].to_vec()),
             }))
         }
-        Intrinsic::Slice => todo!(),
-        Intrinsic::SliceElem => todo!(),
+        Intrinsic::Slice => {
+            let start = match &args[1].value {
+                ConstantValue::Uint(v) => *v,
+                _ => todo!(),
+            } as usize;
+            let end = match &args[2].value {
+                ConstantValue::Uint(v) => *v,
+                _ => todo!(),
+            } as usize;
+
+            match &args[0].value {
+                ConstantValue::Array(v) => {
+                    let elem_type = v[0].ty.clone();
+                    let slice = (&v[start..end]).iter().cloned().collect::<Vec<_>>();
+                    Ok(Some(Constant {
+                        ty: Type::get_typed_slice(lookup.context, elem_type),
+                        value: ConstantValue::Slice(slice),
+                    }))
+                }
+                ConstantValue::Reference(r) => match &r.value {
+                    ConstantValue::Slice(_) => todo!(),
+                    _ => todo!(),
+                },
+                _ => todo!(),
+            }
+        }
+        Intrinsic::SliceElem => {
+            let idx = match &args[1].value {
+                ConstantValue::Uint(v) => *v,
+                _ => todo!(),
+            } as usize;
+
+            match &args[0].value {
+                ConstantValue::Slice(s) => {
+                    let v = s[idx].clone();
+                    Ok(Some(Constant {
+                        ty: Type::new_ptr(lookup.context, v.ty.clone()),
+                        value: ConstantValue::Reference(Box::new(v)),
+                    }))
+                }
+                _ => todo!(),
+            }
+        }
     }
 }
 

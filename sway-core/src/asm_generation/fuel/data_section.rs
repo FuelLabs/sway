@@ -123,6 +123,7 @@ impl Entry {
                 name,
                 padding,
             ),
+            ConstantValue::Slice(_) => todo!(),
             ConstantValue::Struct(_) => Entry::new_collection(
                 constant
                     .struct_fields_with_padding(context)

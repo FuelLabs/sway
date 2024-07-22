@@ -23,6 +23,7 @@ pub enum ConstantValue {
     B256(B256),
     String(Vec<u8>),
     Array(Vec<Constant>),
+    Slice(Vec<Constant>),
     Struct(Vec<Constant>),
     Reference(Box<Constant>),
     RawUntypedSlice(Vec<u8>),
