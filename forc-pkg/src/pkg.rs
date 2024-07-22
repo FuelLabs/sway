@@ -2468,7 +2468,7 @@ pub fn build(
             }
         };
 
-        let mut compiled = compile(
+        let compiled = compile(
             &descriptor,
             &profile,
             &engines,
