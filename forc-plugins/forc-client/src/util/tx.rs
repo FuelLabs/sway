@@ -1,10 +1,8 @@
-use std::{collections::BTreeMap, io::Write, path::Path, str::FromStr};
-
+use crate::{constants::DEFAULT_PRIVATE_KEY, util::target::Target};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use forc_tracing::println_warning;
-
 use dialoguer::{theme::ColorfulTheme, Confirm, Password, Select};
+use forc_tracing::println_warning;
 use forc_wallet::{
     account::{derive_secret_key, new_at_index_cli},
     balance::{
@@ -23,8 +21,7 @@ use fuels_core::types::{
     coin_type::CoinType,
     transaction_builders::{create_coin_input, create_coin_message_input},
 };
-
-use crate::{constants::DEFAULT_PRIVATE_KEY, util::target::Target};
+use std::{collections::BTreeMap, io::Write, path::Path, str::FromStr};
 
 #[derive(PartialEq, Eq)]
 pub enum WalletSelectionMode {
