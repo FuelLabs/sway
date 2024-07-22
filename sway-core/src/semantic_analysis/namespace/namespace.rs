@@ -87,7 +87,7 @@ impl Namespace {
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
     }
 
-    pub(crate) fn current_module_has_submodule(&mut self, submod_name: &Ident) -> bool {
+    pub(crate) fn current_module_has_submodule(&mut self, submod_name: Ident) -> bool {
 	self.current_module().submodule(&[submod_name]).is_some()
     }
 
@@ -129,7 +129,7 @@ impl Namespace {
 //    }
 
     /// A reference to the path of the module currently being processed.
-    pub fn mod_path(&self) -> &ModulePath {
+    pub fn current_mod_path(&self) -> &ModulePath {
         &self.current_mod_path
     }
 
@@ -150,14 +150,22 @@ impl Namespace {
         &self.root.current_package_root_module()
     }
 
-    pub fn lookup_module_from_absolute_path(
+    pub fn module_from_absolute_path(
         &self,
-        engines: &Engines,
-        path: &ModulePath,
-    ) -> Result<&Module, ErrorEmitted> {
-        self.root.lookup_module_from_absolute_path(engines, path)
+        path: &ModulePathBuf,
+    ) -> Option<&Module> {
+        self.root.module_from_absolute_path(path)
     }
-    
+
+    // Like module_from_absolute_path, but throws an error if the module is not found
+    pub fn require_module_from_absolute_path(
+        &self,
+	handler: &Handler,
+        path: &ModulePathBuf,
+    ) -> Result<&Module, ErrorEmitted> {
+	self.root.require_module_in_current_package(handler, path)
+    }
+
     /// Returns true if the current module being checked is a direct or indirect submodule of
     /// the module given by the `absolute_module_path`.
     ///
@@ -174,27 +182,13 @@ impl Namespace {
         absolute_module_path: &ModulePath,
         true_if_same: bool,
     ) -> bool {
-        // `mod_path` does not contain the root name, so we have to separately check
-        // that the root name is equal to the module package name.
-        let root_name = self.root.module.name();
-
-        let (package_name, modules) = absolute_module_path.split_first().expect("Absolute module path must have at least one element, because it always contains the package name.");
-
-        if root_name != package_name {
-            return false;
-        }
-
-        if self.current_mod_path.len() < modules.len() {
-            return false;
-        }
-
-        let is_submodule = modules
+        let is_submodule = absolute_module_path
             .iter()
             .zip(self.current_mod_path.iter())
             .all(|(left, right)| left == right);
 
         if is_submodule {
-            if self.current_mod_path.len() == modules.len() {
+            if self.current_mod_path.len() == absolute_module_path.len() {
                 true_if_same
             } else {
                 true
@@ -209,7 +203,7 @@ impl Namespace {
     pub(crate) fn module_is_external(&self, absolute_module_path: &ModulePath) -> bool {
         assert!(!absolute_module_path.is_empty(), "Absolute module path must have at least one element, because it always contains the package name.");
 
-        self.root.current_package_name != &absolute_module_path[0]
+        self.root.current_package_name() != &absolute_module_path[0]
     }
 
     pub fn get_root_trait_item_for_type(
@@ -221,7 +215,7 @@ impl Namespace {
         as_trait: Option<CallPath>,
     ) -> Result<ResolvedTraitImplItem, ErrorEmitted> {
         self.root
-            .module
+            .current_package_root_module()
             .current_items()
             .implemented_traits
             .get_trait_item_for_type(handler, engines, name, type_id, as_trait)
@@ -287,25 +281,33 @@ impl Namespace {
             .resolve_call_path(handler, engines, &self.current_mod_path, call_path, self_type)
     }
 
-    pub(crate) fn enter_submodule(&mut self, engines: &Engines, mod_name: Ident, visibility: Visibility, module_span: Span) -> SubmoduleNamespace {
-	let mut current_mod = self.module_mut(engines);
-	let new_mod = 
-	    if current_mod.submodules.contains_key(mod_name) {
-		current_mod.submodules.get(mod_name).unwrap()
-	    } else {
-		let mut submod = Module::new(mod_name, visibility, Some(module_span), self.current_mod_path);
-		self.import_implicits(&submod);
-	    };
+    pub(crate) fn enter_submodule(&mut self, mod_name: Ident, visibility: Visibility, module_span: Span) -> SubmoduleNamespace {
+	let mut current_mod = self.current_module_mut();
+	if !current_mod.submodules().contains_key(&mod_name.to_string()) {
+	    let submod_path = current_mod.add_new_submodule(mod_name, visibility, Some(module_span));
+	    self.import_implicits(&submod_path);
+	}
+	let new_mod = current_mod.submodules().get(&mod_name.to_string()).unwrap();
 	// TODO: Do we need to return a SubmoduleNamespace? Can't we just push the new name onto
 	// self.current_mod_path and pop it when done with the submodule? That's what happens in the
 	// collection phase (which uses push_new_submodule and pop_submodule).
-	let parent_mod_path = std::mem::replace(&mut self.current_mod_path, new_mod.mod_path());
+	let parent_mod_path = std::mem::replace(&mut self.current_mod_path, new_mod.mod_path().to_vec());
 	SubmoduleNamespace {
 	    namespace: self,
 	    parent_mod_path,
 	}
     }
-    
+
+    // TODO: Do we need to return a SubmoduleNamespace? Can't we just push the new name onto
+    // self.current_mod_path and pop it when done with the submodule? That's what happens in the
+    // collection phase (which uses push_new_submodule and pop_submodule).
+    // Replace the submodule path with the original module path.
+    // This ensures that the namespace's module path is reset when ownership over it is
+    // relinquished from the SubmoduleNamespace.
+    pub(crate) fn leave_submodule(&mut self, parent_mod_path: &ModulePathBuf) {
+	self.current_mod_path = parent_mod_path.clone();
+    }
+
 //    /// "Enter" the submodule at the given path by returning a new [SubmoduleNamespace].
 //    ///
 //    /// Here we temporarily change `mod_path` to the given `dep_mod_path` and wrap `self` in a
@@ -352,7 +354,7 @@ impl Namespace {
         visibility: Visibility,
         module_span: Span,
     ) {
-	let _ = self.enter_submodule(engines, mod_name, visibility, module_span);
+	self.enter_submodule(mod_name, visibility, module_span);
     }
  
     /// Pops the current submodule from the namespace's module hierarchy.

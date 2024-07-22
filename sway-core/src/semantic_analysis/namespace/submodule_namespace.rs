@@ -30,6 +30,6 @@ impl<'a> Drop for SubmoduleNamespace<'a> {
         // Replace the submodule path with the original module path.
         // This ensures that the namespace's module path is reset when ownership over it is
         // relinquished from the SubmoduleNamespace.
-        self.namespace.mod_path = std::mem::take(&mut self.parent_mod_path);
+        self.namespace.leave_submodule(&self.parent_mod_path);
     }
 }

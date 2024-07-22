@@ -268,7 +268,7 @@ impl<'a> TypeCheckContext<'a> {
         let engines = self.engines;
         let mut submod_ns =
             self.namespace_mut()
-                .enter_submodule(engines, mod_name, visibility, module_span);
+                .enter_submodule(mod_name, visibility, module_span);
         let submod_ctx = TypeCheckContext::from_namespace(&mut submod_ns, engines, experimental);
         with_submod_ctx(submod_ctx)
     }
@@ -451,7 +451,7 @@ impl<'a> TypeCheckContext<'a> {
     where
         T: MonomorphizeHelper + SubstTypes,
     {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().current_mod_path().clone();
         self.monomorphize_with_modpath(
             handler,
             value,
@@ -500,7 +500,7 @@ impl<'a> TypeCheckContext<'a> {
         let generic_shadowing_mode = self.generic_shadowing_mode;
         let engines = self.engines();
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .insert_symbol(
                 handler,
@@ -545,7 +545,7 @@ impl<'a> TypeCheckContext<'a> {
                         .resolve_call_path_and_root_type_id(
                             handler,
                             self.engines,
-                            self.namespace().module(engines),
+                            self.namespace().current_module(),
                             root_type_id,
                             None,
                             &qualified_call_path.clone().to_call_path(handler)?,
@@ -691,7 +691,7 @@ impl<'a> TypeCheckContext<'a> {
         enforce_type_arguments: EnforceTypeArguments,
         type_info_prefix: Option<&ModulePath>,
     ) -> Result<TypeId, ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().current_mod_path().clone();
         self.resolve(
             handler,
             type_id,
@@ -710,7 +710,7 @@ impl<'a> TypeCheckContext<'a> {
         span: &Span,
         type_info_prefix: Option<&ModulePath>,
     ) -> Result<TypeId, ErrorEmitted> {
-        let mod_path = self.namespace().mod_path.clone();
+        let mod_path = self.namespace().current_mod_path().clone();
         self.resolve(
             handler,
             type_id,
@@ -729,7 +729,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.resolve_call_path_with_visibility_check_and_modpath(
             handler,
-            &self.namespace().mod_path,
+            &self.namespace().current_mod_path(),
             call_path,
         )
     }
@@ -773,7 +773,7 @@ impl<'a> TypeCheckContext<'a> {
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
             let module = self
                 .namespace()
-                .lookup_submodule_from_absolute_path(handler, engines, prefix)?;
+                .require_submodule_from_absolute_path(handler, prefix)?;
             if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -801,7 +801,7 @@ impl<'a> TypeCheckContext<'a> {
     ) -> Result<ty::TyDecl, ErrorEmitted> {
         self.resolve_qualified_call_path_with_visibility_check_and_modpath(
             handler,
-            &self.namespace().mod_path.clone(),
+            &self.namespace().current_mod_path().clone(),
             qualified_call_path,
         )
     }

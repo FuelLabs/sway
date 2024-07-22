@@ -221,7 +221,7 @@ impl Module {
     }
 }
 
-fn module_not_found(path: &[Ident]) -> CompileError {
+pub(super) fn module_not_found(path: &[Ident]) -> CompileError {
     CompileError::ModuleNotFound {
         span: path.iter().fold(path[0].span(), |acc, this_one| {
             if acc.source_id() == this_one.span().source_id() {

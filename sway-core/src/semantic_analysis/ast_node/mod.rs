@@ -138,7 +138,7 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
+    let is_external = !ctx.namespace.current_module_has_submodule(stmt.call_path[0]);
     let path = if is_external || stmt.is_absolute {
         stmt.call_path.clone()
     } else {
@@ -232,7 +232,7 @@ fn handle_use_statement(
 ) {
     let is_external = !ctx
         .namespace()
-        .current_module_has_submodule(&stmt.call_path[0]);
+        .current_module_has_submodule(stmt.call_path[0]);
     let path = if is_external || stmt.is_absolute {
         stmt.call_path.clone()
     } else {

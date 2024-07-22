@@ -150,7 +150,7 @@ impl Root {
 	let mut module = Module::new(package_name, Visibility::Public, span, vec!());
 	Self {
 	    current_package: module,
-	    external_package: Default::default(),
+	    external_packages: Default::default(),
 	}
     }
 
@@ -158,7 +158,7 @@ impl Root {
 	// TODO: reject if the new package name already exist
 	let old_package = self.current_package;
 	self.current_package = Module::new(next_package_name, Visibility::Public, span, vec!());
-	self.external_package.insert(old_package.name().clone, old_package);
+	self.external_packages.insert(old_package.name().to_string(), old_package);
     }
 
     pub(super) fn current_package_root_module(&self) -> &Module {
@@ -170,37 +170,84 @@ impl Root {
     }
 
     fn check_path_is_in_current_package(&self, mod_path: &ModulePathBuf) -> bool {
-	!mod_path.is_empty() && mod_path[0] == self.current_package.name
+	!mod_path.is_empty() && mod_path[0] == *self.current_package.name()
     }
 
     fn package_relative_path(mod_path: &ModulePathBuf) -> ModulePathBuf {
-	mod_path.from_iter(&[1..].iter().cloned())
-    }
-
-    // Find a module in the current package. `mod_path` must be a fully qualified path
-    pub(super) fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
-	assert!(check_path_is_in_current_package(self, mod_path));
-	self.current_package.submodule(&package_relative_path(mod_path))
-    }
-
-    // Find a mutable module in the current package. `mod_path` must be a fully qualified path
-    pub(super) fn module_mut_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
-	assert!(check_path_is_in_current_package(self, mod_path));
-	self.current_package.submodule_mut(&package_relative_path(mod_path))
+	mod_path[1..].to_vec()
     }
 
     // Find module in the current environment. `mod_path` must be a fully qualified path
     pub(super) fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
 	assert!(!mod_path.is_empty());
-	if mod_path[0] == self.current_package.name {
-	    self.current_package.submodule(&package_relative_path(mod_path))
-	} else if let Some(external_mod) = self.external_packages.get(mod_path[0]) {
-	    external_mod.submodule(&package_relative_path(mod_path))
+	if mod_path[0] == *self.current_package.name() {
+	    self.current_package.submodule(&Self::package_relative_path(&mod_path))
+	} else if let Some(external_mod) = self.external_packages.get(&mod_path[0].to_string()) {
+	    external_mod.submodule(&Self::package_relative_path(mod_path))
 	} else {
 	    None
 	}
     }
 
+    // Find module in the current environment. `mod_path` must be a fully qualified path.
+    // Throw an error if the module doesn't exist
+    pub(super) fn require_module(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+	match self.module_from_absolute_path(mod_path) {
+	    Some(module) => Ok(module),
+	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path))),
+	}
+    }
+
+    // Find a module in the current package. `mod_path` must be a fully qualified path
+    pub(super) fn module_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
+	assert!(self.check_path_is_in_current_package(mod_path));
+	self.module_from_absolute_path(mod_path)
+    }
+
+    // Find a module in the current package. `mod_path` must be a fully qualified path
+    // Throw an error if the module doesn't exist
+    pub(super) fn require_module_in_current_package(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+	assert!(self.check_path_is_in_current_package(mod_path));
+	self.require_module(handler, mod_path)
+    }
+
+    // Find mutable module in the current environment. `mod_path` must be a fully qualified path
+    pub(super) fn module_mut_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
+	assert!(!mod_path.is_empty());
+	let package_relative_path = Self::package_relative_path(mod_path);
+	if *self.current_package.name() == mod_path[0] {
+	    self.current_package.submodule_mut(&package_relative_path)
+	} else if let Some(m) = self.external_packages.get(&mod_path[0].to_string()) {
+	    m.submodule_mut(&package_relative_path)
+	} else {
+	    None
+	}
+    }
+
+    // Find mutable module in the current environment. `mod_path` must be a fully qualified path.
+    // Throw an error if the module doesn't exist
+    pub(super) fn require_module_mut(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+	match self.module_mut_from_absolute_path(mod_path) {
+	    Some(module) => Ok(module),
+	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path))),
+	}
+    }
+
+    // Find a mutable module in the current package. `mod_path` must be a fully qualified path
+    pub(super) fn module_mut_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
+	assert!(self.check_path_is_in_current_package(mod_path));
+	self.module_mut_from_absolute_path(mod_path)
+    }
+
+    // Find a mutable module in the current package. `mod_path` must be a fully qualified path
+    // Throw an error if the module doesn't exist
+    pub(super) fn require_module_mut_in_current_package(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+	assert!(self.check_path_is_in_current_package(mod_path));
+	self.require_module_mut(handler, mod_path)
+    }
+
+
+    
     ////// IMPORT //////
 
     /// Given a path to a `src` module, create synonyms to every symbol in that module to the given
@@ -219,25 +266,9 @@ impl Root {
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
 
-        let src_mod = self.current_package.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.require_module(handler, &src.to_vec())?;
 
         let mut decls_and_item_imports = vec![];
-
-        let get_path = |mod_path: Vec<Ident>| {
-            let mut is_external = false;
-            if let Some(submodule) = src_mod.submodule(engines, &[mod_path[0].clone()]) {
-                is_external = submodule.is_external
-            };
-
-            let mut path = src[..1].to_vec();
-            if is_external {
-                path = mod_path;
-            } else {
-                path.extend(mod_path);
-            }
-
-            path
-        };
 
         // Collect all items declared in the source module
         for (symbol, decl) in src_mod.current_items().symbols.iter() {
@@ -251,7 +282,7 @@ impl Root {
             src_mod.current_items().use_item_synonyms.iter()
         {
             if src_visibility.is_public() {
-                decls_and_item_imports.push((symbol.clone(), decl.clone(), get_path(path.clone())))
+                decls_and_item_imports.push((symbol.clone(), decl.clone(), path.clone()))
             }
         }
 
@@ -267,14 +298,14 @@ impl Root {
             {
                 for (path, decl, src_visibility) in bindings.iter() {
                     if src_visibility.is_public() {
-                        glob_imports.push((symbol.clone(), decl.clone(), get_path(path.clone())))
+                        glob_imports.push((symbol.clone(), decl.clone(), path.clone()))
                     }
                 }
             }
         }
 
         let implemented_traits = src_mod.current_items().implemented_traits.clone();
-        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
+        let dst_mod = self.require_module_mut_in_current_package(handler, &dst.to_vec())?;
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -321,7 +352,7 @@ impl Root {
         src: &ModulePath,
         dst: &ModulePath,
     ) -> Result<(ResolvedDeclaration, ModulePathBuf), ErrorEmitted> {
-        let src_mod = self.current_package.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.require_module(handler, &src.to_vec())?;
         let src_items = src_mod.current_items();
 
         let (decl, path, src_visibility) = if let Some(decl) = src_items.symbols.get(item) {
@@ -395,7 +426,7 @@ impl Root {
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
         self.check_module_privacy(handler, engines, src)?;
-        let src_mod = self.current_package.lookup_submodule(handler, engines, src)?;
+        let src_mod = self.require_module(handler, &src.to_vec())?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
 
@@ -431,7 +462,7 @@ impl Root {
         }
 
         // no matter what, import it this way though.
-        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
+        let dst_mod = self.require_module_mut_in_current_package(handler, &dst.to_vec())?;
         let check_name_clash = |name| {
             if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                 handler.emit_err(CompileError::ShadowsOtherSymbol { name: name.into() });
@@ -493,7 +524,7 @@ impl Root {
                         enum_decl.variants.iter().find(|v| v.name == *variant_name)
                     {
                         // import it this way.
-                        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
+                        let dst_mod = self.require_module_mut_in_current_package(handler, &dst.to_vec())?;
                         let check_name_clash = |name| {
                             if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
@@ -565,7 +596,7 @@ impl Root {
                         enum_decl.variants.iter().find(|v| v.name == *variant_name)
                     {
                         // import it this way.
-                        let dst_mod = self.current_package.lookup_submodule_mut(handler, engines, dst)?;
+                        let dst_mod = self.require_module_mut_in_current_package(handler, &dst.to_vec())?;
                         let check_name_clash = |name| {
                             if dst_mod.current_items().use_item_synonyms.contains_key(name) {
                                 handler.emit_err(CompileError::ShadowsOtherSymbol {
@@ -663,8 +694,7 @@ impl Root {
                         });
 
                     // import it this way.
-                    self.current_package
-                        .lookup_submodule_mut(handler, engines, dst)?
+                    self.require_module_mut_in_current_package(handler, &dst.to_vec())?
                         .current_items_mut()
                         .insert_glob_use_symbol(
                             engines,
@@ -693,8 +723,7 @@ impl Root {
                         }));
 
                     // import it this way.
-                    self.current_package
-                        .lookup_submodule_mut(handler, engines, dst)?
+                    self.require_module_mut_in_current_package(handler, &dst.to_vec())?
                         .current_items_mut()
                         .insert_glob_use_symbol(
                             engines,
@@ -725,9 +754,8 @@ impl Root {
         let dst = self.current_package.mod_path();
         // you are always allowed to access your ancestor's symbols
         if !is_ancestor(src, dst) {
-            // we don't check the first prefix because direct children are always accessible
-            for prefix in iter_prefixes(src).skip(1) {
-                let module = self.current_package.lookup_submodule(handler, engines, prefix)?;
+            for prefix in iter_prefixes(src) {
+                let module = self.require_module(handler, &prefix.to_vec())?;
                 if module.visibility().is_private() {
                     let prefix_last = prefix[prefix.len() - 1].clone();
                     handler.emit_err(CompileError::ImportPrivateModule {
@@ -885,7 +913,7 @@ impl Root {
                     handler, engines, module, ident, decl, None, self_type,
                 )?);
             } else {
-                match module.submodules.get(ident.as_str()) {
+                match module.submodule(&[*ident]) {
                     Some(ns) => {
                         module = ns;
                         current_mod_path.push(ident.clone());
@@ -903,8 +931,7 @@ impl Root {
             return Ok((decl, current_mod_path));
         }
 
-        self.current_package
-            .lookup_submodule(handler, engines, mod_path)
+        self.require_module(handler, &mod_path.to_vec())
             .and_then(|module| {
                 let decl = self.resolve_symbol_helper(handler, engines, symbol, module)?;
                 Ok((decl, mod_path.to_vec()))

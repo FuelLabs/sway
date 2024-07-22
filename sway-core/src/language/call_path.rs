@@ -414,7 +414,7 @@ impl CallPath {
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
-        } else if namespace.current_module_has_submodule(&self.prefixes[0])
+        } else if namespace.current_module_has_submodule(self.prefixes[0])
         {
 	    // Qualified path relative to the current module
 	    //
