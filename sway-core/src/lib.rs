@@ -31,10 +31,12 @@ pub use asm_generation::{CompiledBytecode, FinalizedEntry};
 pub use build_config::{BuildConfig, BuildTarget, LspConfig, OptLevel, PrintAsm, PrintIr};
 use control_flow_analysis::ControlFlowGraph;
 pub use debug_generation::write_dwarf;
+use decl_engine::parsed_engine;
 use fuel_vm::fuel_merkle::common;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModuleCommonInfo, ParsedModuleInfo, ProgramsCacheEntry};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -348,6 +350,7 @@ fn parse_module_tree(
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
     let query_engine = engines.qe();
 
+    let lexed_now = std::time::Instant::now();
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
@@ -366,7 +369,9 @@ fn parse_module_tree(
         experimental,
         lsp_mode,
     );
+    eprintln!("⏱️ Lexed module took {:?}", lexed_now.elapsed());
 
+    let parsed_now = std::time::Instant::now();
     // Convert from the raw parsed module to the `ParseTree` ready for type-check.
     let (kind, tree) = to_parsed_lang::convert_parse_tree(
         &mut to_parsed_lang::Context::new(build_target, experimental),
@@ -376,6 +381,7 @@ fn parse_module_tree(
     )?;
     let module_kind_span = module.value.kind.span();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
+    eprintln!("⏱️ Parsed module took {:?}", parsed_now.elapsed());
 
     let lexed_submodules = submodules
         .iter()
@@ -555,7 +561,6 @@ pub(crate) fn is_parse_module_cache_up_to_date(
             relevant_path
         );
     }
-    
 
     res
 }
@@ -775,11 +780,15 @@ pub fn compile_to_ast(
 ) -> Result<Programs, ErrorEmitted> {
     eprintln!("🔨🔨 --- compile_to_ast --- 🔨🔨");
     check_should_abort(handler, retrigger_compilation.clone(), 777)?;
+
     let query_engine = engines.qe();
     let mut metrics = PerformanceData::default();
     if let Some(config) = build_config {
         let path = config.canonical_root_module();
         let include_tests = config.include_tests;
+
+        //eprintln!(" 📂  {}", path.display());
+        //eprintln!("{:?}", config.lsp_mode.as_ref().unwrap().file_versions);
 
         // Check if we can re-use the data in the cache.
         if is_parse_module_cache_up_to_date(engines, &path, include_tests, build_config) {

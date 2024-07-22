@@ -2671,6 +2671,7 @@ pub fn check(
         let contract_id_value =
             (idx == plan.compilation_order.len() - 1).then(|| DUMMY_CONTRACT_ID.to_string());
 
+        let dep_now = std::time::Instant::now();
         let mut dep_namespace = dependency_namespace(
             &lib_namespace_map,
             &compiled_contract_deps,
@@ -2681,12 +2682,14 @@ pub fn check(
             experimental,
         )
         .expect("failed to create dependency namespace");
+        eprintln!("⏱️ Dependency namespace took {:?}", dep_now.elapsed());
 
         let profile = BuildProfile {
             terse: terse_mode,
             ..BuildProfile::debug()
         };
 
+        let build_config_now = std::time::Instant::now();
         let build_config = sway_build_config(
             manifest.dir(),
             &manifest.entry_path(),
@@ -2695,9 +2698,11 @@ pub fn check(
         )?
         .with_include_tests(include_tests)
         .with_lsp_mode(lsp_mode.clone());
+        eprintln!("⏱️ Build config took {:?}", build_config_now.elapsed());
 
         let input = manifest.entry_string()?;
         let handler = Handler::default();
+        let compile_to_ast_now = std::time::Instant::now();
         let programs_res = sway_core::compile_to_ast(
             &handler,
             engines,
@@ -2707,6 +2712,7 @@ pub fn check(
             &pkg.name,
             retrigger_compilation.clone(),
         );
+        eprintln!("⏱️ Compile to AST took {:?}", compile_to_ast_now.elapsed());
 
         if retrigger_compilation
             .as_ref()

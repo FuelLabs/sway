@@ -310,6 +310,7 @@ pub fn traverse(
     let mut diagnostics: CompileResults = (Vec::default(), Vec::default());
     let results_len = results.len();
     for (i, (value, handler)) in results.into_iter().enumerate() {
+        let parse_now = std::time::Instant::now();
         // We can convert these destructured elements to a Vec<Diagnostic> later on.
         let current_diagnostics = handler.consume();
         diagnostics = current_diagnostics;
@@ -391,6 +392,7 @@ pub fn traverse(
                 dependency::collect_typed_declaration(node, ctx);
             });
         }
+        eprintln!("⏱️ Traversal took {:?}", parse_now.elapsed());
     }
     Ok(Some(diagnostics))
 }

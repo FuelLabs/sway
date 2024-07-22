@@ -244,7 +244,7 @@ fn did_change_stress_test_random_wait() {
 
             let uri = init_and_open(
                 &mut service,
-                PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
+                PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
                     .join("src/fpt_staking_interface.sw"),
             )
             .await;
