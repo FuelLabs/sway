@@ -162,9 +162,12 @@ async fn setup_output_predicate() -> (WalletUnlocked, WalletUnlocked, Predicate,
         ],
     );
 
-    let mut wallets = launch_custom_provider_and_get_wallets(wallets_config, None, None)
-        .await
-        .unwrap();
+    let mut node_config = NodeConfig::default();
+    node_config.static_gas_price = 0;
+    let mut wallets =
+        launch_custom_provider_and_get_wallets(wallets_config, Some(node_config), None)
+            .await
+            .unwrap();
     let wallet1 = wallets.pop().unwrap();
     let wallet2 = wallets.pop().unwrap();
 
@@ -918,13 +921,15 @@ mod outputs {
         #[tokio::test]
         async fn can_get_tx_output_type_for_contract_deployment() {
             // Setup Wallet
+            let mut node_config = NodeConfig::default();
+            node_config.static_gas_price = 0;
             let wallet = launch_custom_provider_and_get_wallets(
                 WalletsConfig::new(
                     Some(1),             /* Single wallet */
                     Some(1),             /* Single coin (UTXO) */
                     Some(1_000_000_000), /* Amount per coin */
                 ),
-                None,
+                Some(node_config),
                 None,
             )
             .await
