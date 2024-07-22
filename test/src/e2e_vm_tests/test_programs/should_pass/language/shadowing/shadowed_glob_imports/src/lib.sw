@@ -1,7 +1,9 @@
 library;
 
-pub const X1 = 5;
-pub const X2 = 5;
+pub const X1: u64 = 5;
+pub const X2: u64 = 5;
+pub const X3: u64 = 5;
+
 pub struct MyStruct11 {}
 pub enum MyEnum12 {}
 pub trait MyTrait13 {}

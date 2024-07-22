@@ -175,7 +175,6 @@ pub(crate) fn collect_duplicate_match_pattern_variables(
             ty::TyScrutineeVariant::Variable(ident) => add_variable(left_most_branch, ident, false),
             ty::TyScrutineeVariant::Literal(_) => (),
             ty::TyScrutineeVariant::Constant { .. } => (),
-            ty::TyScrutineeVariant::Configurable { .. } => (),
             ty::TyScrutineeVariant::StructScrutinee { fields, .. } => {
                 // If a field does not have a scrutinee, the field itself is a variable.
                 for field in fields {
@@ -244,6 +243,52 @@ pub(crate) fn collect_duplicate_match_pattern_variables(
                 .entry(ident.clone())
                 .and_modify(|(_, vec)| vec.push((is_struct_field, ident.span())))
                 .or_insert((is_struct_field, vec![]));
+        }
+    }
+}
+
+/// Returns [Ident]s for all match arm variables found in the `scrutinee`,
+/// together with the information if the variable is a struct field (true)
+/// or not (false), or empty [Vec] if there are no variables declared in
+/// the `scrutinee`.
+///
+/// If the `scrutinee` contains alternatives, and thus a variable is declared
+/// multiple times, each occurrence of the variable will be returned.
+pub(crate) fn collect_match_pattern_variables(scrutinee: &TyScrutinee) -> Vec<(Ident, bool)> {
+    let mut variables = vec![];
+
+    recursively_collect_variables(&mut variables, scrutinee);
+
+    return variables;
+
+    fn recursively_collect_variables(variables: &mut Vec<(Ident, bool)>, scrutinee: &TyScrutinee) {
+        match &scrutinee.variant {
+            ty::TyScrutineeVariant::CatchAll => (),
+            ty::TyScrutineeVariant::Variable(ident) => variables.push((ident.clone(), false)),
+            ty::TyScrutineeVariant::Literal(_) => (),
+            ty::TyScrutineeVariant::Constant { .. } => (),
+            ty::TyScrutineeVariant::StructScrutinee { fields, .. } => {
+                // If a field does not have a scrutinee, the field itself is a variable.
+                for field in fields {
+                    match &field.scrutinee {
+                        Some(scrutinee) => recursively_collect_variables(variables, scrutinee),
+                        None => variables.push((field.field.clone(), true)),
+                    }
+                }
+            }
+            ty::TyScrutineeVariant::Or(scrutinees) => {
+                for scrutinee in scrutinees {
+                    recursively_collect_variables(variables, scrutinee);
+                }
+            }
+            ty::TyScrutineeVariant::Tuple(scrutinees) => {
+                for scrutinee in scrutinees {
+                    recursively_collect_variables(variables, scrutinee);
+                }
+            }
+            ty::TyScrutineeVariant::EnumScrutinee { value, .. } => {
+                recursively_collect_variables(variables, value)
+            }
         }
     }
 }
