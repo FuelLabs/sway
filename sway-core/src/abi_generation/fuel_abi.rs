@@ -51,7 +51,7 @@ impl TypeId {
                     .root
                     .namespace
                     .program_id(engines)
-                    .read(engines, |m| m.name.clone().map(|v| v.as_str().to_string())),
+                    .read(engines, |m| m.name().clone().as_str().to_string()),
                 abi_with_callpaths: true,
                 abi_with_fully_specified_types: true,
                 abi_root_type_without_generic_type_parameters: false,
