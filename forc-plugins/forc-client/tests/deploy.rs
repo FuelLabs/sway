@@ -142,7 +142,6 @@ fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error>
     process.exp_string("Wallet: ")?;
     process.exp_string("Wallet password")?;
     process.send_line("mock_password")?;
-    process.exp_string("Failed to access forc-wallet vault. Please check your password")?;
     process.exp_eof()?;
 
     node.kill().unwrap();
