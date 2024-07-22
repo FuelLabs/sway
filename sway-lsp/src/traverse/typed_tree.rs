@@ -981,18 +981,11 @@ impl Parse for ty::TyIntrinsicFunctionKind {
 impl Parse for ty::TyScrutinee {
     fn parse(&self, ctx: &ParseContext) {
         use ty::TyScrutineeVariant::{
-            CatchAll, Configurable, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple,
-            Variable,
+            CatchAll, Constant, EnumScrutinee, Literal, Or, StructScrutinee, Tuple, Variable,
         };
         match &self.variant {
             CatchAll => {}
             Constant(name, _, decl) => {
-                if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
-                    token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
-                    token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));
-                }
-            }
-            Configurable(name, _, decl) => {
                 if let Some(mut token) = ctx.tokens.try_get_mut_with_retry(&ctx.ident(name)) {
                     token.typed = Some(TypedAstToken::TypedScrutinee(self.clone()));
                     token.type_def = Some(TypeDefinition::Ident(decl.call_path.suffix.clone()));

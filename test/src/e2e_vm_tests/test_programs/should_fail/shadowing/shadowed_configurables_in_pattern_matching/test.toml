@@ -1,0 +1,149 @@
+category = "fail"
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()X => 101,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()E::V((_, X, _)) => 101,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()E::V((X, Y, Z)) => 102,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()Y: u8 = 11,
+#nextln: $()Configurable "Y" is declared here.
+#check: $()E::V((X, Y, Z)) => 102,
+#nextln: $()"Y" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "Y"?
+#check: $()or consider renaming the configurable "Y".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()Z: u8 = 12,
+#nextln: $()Configurable "Z" is declared here.
+#check: $()E::V((X, Y, Z)) => 102,
+#nextln: $()"Z" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "Z"?
+#check: $()or consider renaming the configurable "Z".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()E::V((X, _, _)) | E::V((_, _, X)) => 103,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#not: $()E::V((X, _, _)) | E::V((_, _, X)) => 101,
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()S { x: X, .. } => 101,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()S { y: X, .. } => 102,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()S { x: X, y: Y, z: Z } => 103,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()Y: u8 = 11,
+#nextln: $()Configurable "Y" is declared here.
+#check: $()S { x: X, y: Y, z: Z } => 103,
+#nextln: $()"Y" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "Y"?
+#check: $()or consider renaming the configurable "Y".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()Z: u8 = 12,
+#nextln: $()Configurable "Z" is declared here.
+#check: $()S { x: X, y: Y, z: Z } => 103,
+#nextln: $()"Z" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "Z"?
+#check: $()or consider renaming the configurable "Z".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()X: u8 = 10,
+#nextln: $()Configurable "X" is declared here.
+#check: $()S { x: X, .. } | S { z: X, .. } => 104,
+#nextln: $()"X" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "X"?
+#check: $()or consider renaming the configurable "X".
+
+#not: $()S { x: X, .. } | S { z: X, .. } => 104,
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()CONFIG: u8 = 13,
+#nextln: $()Shadowed configurable "CONFIG" is declared here.
+#check: $()SConfig { CONFIG } => 101,
+#nextln: $()Pattern variable "CONFIG" shadows configurable of the same name.
+#nextln: $()"CONFIG" is a struct field that defines a pattern variable of the same name.
+#check: $()To rename the pattern variable use the `:`. E.g.: `CONFIG: some_other_name`.
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()CONFIG: u8 = 13,
+#nextln: $()Configurable "CONFIG" is declared here.
+#check: $()SConfig { CONFIG: CONFIG } => 102,
+#nextln: $()"CONFIG" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "CONFIG"?
+#check: $()or consider renaming the configurable "CONFIG".
+
+#check: $()error
+#sameln: $()Configurables cannot be matched against
+#check: $()CONFIG: u8 = 13,
+#nextln: $()Configurable "CONFIG" is declared here.
+#check: $()SConfig { CONFIG: CONFIG } | SConfig { CONFIG } => 103,
+#nextln: $()"CONFIG" is a configurable and configurables cannot be matched against.
+#nextln: $()Are you trying to define a pattern variable named "CONFIG"?
+#check: $()or consider renaming the configurable "CONFIG".
+
+#check: $()error
+#sameln: $()Configurables cannot be shadowed
+#check: $()CONFIG: u8 = 13,
+#nextln: $()Shadowed configurable "CONFIG" is declared here.
+#check: $()SConfig { CONFIG: CONFIG } | SConfig { CONFIG } => 103,
+#nextln: $()Pattern variable "CONFIG" shadows configurable of the same name.
+#nextln: $()"CONFIG" is a struct field that defines a pattern variable of the same name.
+#check: $()To rename the pattern variable use the `:`. E.g.: `CONFIG: some_other_name`.

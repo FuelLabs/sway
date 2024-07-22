@@ -29,6 +29,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
+    time::SystemTime,
 };
 use sway_core::{
     decl_engine::DeclEngine,
@@ -61,6 +62,7 @@ pub struct CompiledProgram {
 pub struct Session {
     token_map: TokenMap,
     pub runnables: RunnableMap,
+    pub build_plan_cache: BuildPlanCache,
     pub compiled_program: RwLock<CompiledProgram>,
     pub engines: RwLock<Engines>,
     pub sync: SyncWorkspace,
@@ -80,6 +82,7 @@ impl Session {
         Session {
             token_map: TokenMap::new(),
             runnables: DashMap::new(),
+            build_plan_cache: BuildPlanCache::default(),
             metrics: DashMap::new(),
             compiled_program: RwLock::new(CompiledProgram::default()),
             engines: <_>::default(),
@@ -228,7 +231,7 @@ impl Session {
 }
 
 /// Create a [BuildPlan] from the given [Url] appropriate for the language server.
-pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
+pub fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
     let _p = tracing::trace_span!("build_plan").entered();
     let manifest_dir = PathBuf::from(uri.path());
     let manifest =
@@ -254,17 +257,16 @@ pub(crate) fn build_plan(uri: &Url) -> Result<BuildPlan, LanguageServerError> {
 }
 
 pub fn compile(
-    uri: &Url,
+    build_plan: &BuildPlan,
     engines: &Engines,
     retrigger_compilation: Option<Arc<AtomicBool>>,
     lsp_mode: Option<LspConfig>,
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
-    let build_plan = build_plan(uri)?;
     let tests_enabled = true;
     pkg::check(
-        &build_plan,
+        build_plan,
         BuildTarget::default(),
         true,
         lsp_mode,
@@ -382,8 +384,11 @@ pub fn parse_project(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
+    let build_plan = session
+        .build_plan_cache
+        .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
     let results = compile(
-        uri,
+        &build_plan,
         engines,
         retrigger_compilation,
         lsp_mode.clone(),
@@ -506,6 +511,56 @@ pub(crate) fn program_id_from_path(
             path: path.to_string_lossy().to_string(),
         })?;
     Ok(program_id)
+}
+
+/// A cache for storing and retrieving BuildPlan objects.
+#[derive(Debug, Clone)]
+pub struct BuildPlanCache {
+    /// The cached BuildPlan and its last update time
+    cache: Arc<RwLock<Option<(BuildPlan, SystemTime)>>>,
+}
+
+impl Default for BuildPlanCache {
+    fn default() -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(None)),
+        }
+    }
+}
+
+impl BuildPlanCache {
+    /// Retrieves a BuildPlan from the cache or updates it if necessary.
+    pub fn get_or_update<F>(
+        &self,
+        manifest_path: &Option<PathBuf>,
+        update_fn: F,
+    ) -> Result<BuildPlan, LanguageServerError>
+    where
+        F: FnOnce() -> Result<BuildPlan, LanguageServerError>,
+    {
+        let should_update = {
+            let cache = self.cache.read();
+            manifest_path
+                .as_ref()
+                .and_then(|path| path.metadata().ok()?.modified().ok())
+                .map_or(cache.is_none(), |time| {
+                    cache.as_ref().map_or(true, |&(_, last)| time > last)
+                })
+        };
+
+        if should_update {
+            let new_plan = update_fn()?;
+            let mut cache = self.cache.write();
+            *cache = Some((new_plan.clone(), SystemTime::now()));
+            Ok(new_plan)
+        } else {
+            let cache = self.cache.read();
+            cache
+                .as_ref()
+                .map(|(plan, _)| plan.clone())
+                .ok_or(LanguageServerError::BuildPlanCacheIsEmpty)
+        }
+    }
 }
 
 #[cfg(test)]
