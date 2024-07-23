@@ -148,21 +148,6 @@ pub struct QueryEngine {
 }
 
 impl QueryEngine {
-    // pub fn get_module_cache_entry(&self, key: &ModuleCacheKey) -> Option<(RwLockReadGuard<'_, ModuleCacheMap>, &ModuleCacheEntry)> {
-    //     let cache = self.module_cache.read();
-    //     cache.get(key).map(|entry| (cache, entry))
-    // }
-
-    // pub fn get_module_cache_entry(&self, key: &ModuleCacheKey) -> Option<&ModuleCacheEntry> {
-    //     let cache = self.module_cache.read();
-    //     cache.get(key)
-    // }
-
-    // pub fn get_module_cache_entry(&self, key: &ModuleCacheKey) -> Option<ModuleCacheEntry> {
-    //     let cache = self.module_cache.read();
-    //     cache.get(key).cloned()
-    // }
-
     pub fn update_or_insert_parsed_module_cache_entry(&self, entry: ModuleCacheEntry) {
         let path = entry.common.path.clone();
         let include_tests = entry.common.include_tests;
@@ -177,11 +162,8 @@ impl QueryEngine {
     }
 
     pub fn get_programs_cache_entry(&self, path: &Arc<PathBuf>) -> Option<ProgramsCacheEntry> {
-        let now = std::time::Instant::now();
         let cache = self.programs_cache.read();
-        let res = cache.get(path).cloned();
-        eprintln!("⏱️ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!get_programs_cache_entry took: {:?}", now.elapsed());
-        res
+        cache.get(path).cloned()
     }
 
     pub fn insert_programs_cache_entry(&self, entry: ProgramsCacheEntry) {

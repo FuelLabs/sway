@@ -494,61 +494,38 @@ pub(crate) fn is_parse_module_cache_up_to_date(
     include_tests: bool,
     build_config: Option<&BuildConfig>,
 ) -> bool {
-    let n1 = std::time::Instant::now();
     let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
-    eprintln!("⏱️ split_points took: {:?}", n1.elapsed());
-
-    let n2 = std::time::Instant::now();
     let relevant_path = path
         .iter()
         .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
         .collect::<PathBuf>();
-    eprintln!("⏱️ relevant_path took: {:?}", n2.elapsed());
-
-    let n3 = std::time::Instant::now();
-    let query_engine = engines.qe();
-    eprintln!("⏱️ query_engine took: {:?}", n3.elapsed());
-
-    let n4 = std::time::Instant::now();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    eprintln!("⏱️ key took: {:?}", n4.elapsed());
-
-    let n5 = std::time::Instant::now();
-    // let entry = query_engine.get_module_cache_entry(&key);
-    let cache = query_engine.module_cache.read();
+    let cache = engines.qe().module_cache.read();
     let entry = cache.get(&key);
-    eprintln!("⏱️ entry took: {:?}", n5.elapsed());
     
     let res = match entry {
         Some(entry) => {
             // Let's check if we can re-use the dependency information
             // we got from the cache.
-            let n6 = std::time::Instant::now();
             let cache_up_to_date = build_config
                 .as_ref()
                 .and_then(|x| x.lsp_mode.as_ref())
                 .and_then(|lsp| {
-                    eprintln!("⏱️ cache_up_to_date lsp_mode: {:?}", n6.elapsed());
                     // First try to get the file version from lsp if it exists
                     lsp.file_versions.get(path.as_ref())
                 })
                 .map_or_else(
                     || {
-                        let n7 = std::time::Instant::now();
                         // Otherwise we can safely read the file from disk here, as the LSP has not modified it, or we are not in LSP mode.
                         // Check if the file has been modified or if its hash is the same as the last compilation
                         let modified_time = std::fs::metadata(path.as_path())
                             .ok()
                             .and_then(|m| m.modified().ok());
-                        eprintln!("⏱️ cache_up_to_date modified_time: {:?}", n7.elapsed());
-
-                        let n8 = std::time::Instant::now();
                         entry.parsed.modified_time == modified_time || {
                             let src = std::fs::read_to_string(path.as_path()).unwrap();
                             let mut hasher = DefaultHasher::new();
                             src.hash(&mut hasher);
                             let hash = hasher.finish();
-                            eprintln!("⏱️ cache_up_to_date hash: {:?}", n8.elapsed());
                             hash == entry.common.hash
                         }
                     },
@@ -557,20 +534,15 @@ pub(crate) fn is_parse_module_cache_up_to_date(
                         !version.map_or(false, |v| v > entry.parsed.version.unwrap_or(0))
                     },
                 );
-            eprintln!("⏱️ cache_up_to_date took: {:?}", n6.elapsed());
 
             // Look at the dependencies recursively to make sure they have not been
             // modified either.
             if cache_up_to_date {
-                let n9 = std::time::Instant::now();
                 //eprintln!("num dependencies for path {:?}: {}", path, entry.dependencies.len());
-
-                let res = entry.common.dependencies.iter().all(|path| {
+                entry.common.dependencies.iter().all(|path| {
                     //                    eprint!("checking dep path {:?} ", path);
                     is_parse_module_cache_up_to_date(engines, path, include_tests, build_config)
-                });
-                eprintln!("⏱️ is_parse_module_cache_up_to_date: {:?}", n9.elapsed());
-                res
+                })
             } else {
                 false
             }
@@ -830,6 +802,7 @@ pub fn compile_to_ast(
         };
     }
 
+    let parse_now = std::time::Instant::now();
     // Parse the program to a concrete syntax tree (CST).
     let parse_program_opt = time_expr!(
         "parse the program to a concrete syntax tree (CST)",
@@ -838,6 +811,7 @@ pub fn compile_to_ast(
         build_config,
         metrics
     );
+    eprintln!("⏱️ compile_to_ast took {:?}", parse_now.elapsed());
 
     check_should_abort(handler, retrigger_compilation.clone(), 805)?;
 
