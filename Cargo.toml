@@ -54,6 +54,9 @@ forc-wallet = "0.9.0"
 # Dependencies from the `fuel-abi-types` repository:
 fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
 
+[patch.crates-io]
+fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
+
 [workspace.package]
 edition = "2021"
 authors = ["Fuel Labs <contact@fuel.sh>"]

@@ -29,6 +29,9 @@ sha3 = "0.10.1"
 tai64 = { version = "4.0", features = ["serde"] }
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
+[patch.crates-io]
+fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
+
 [[test]]
 harness = true
 name = "integration_tests"
