@@ -26,7 +26,6 @@ use pkg::{
     BuildPlan,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use swayfmt::parse;
 use std::{
     path::PathBuf,
     sync::{atomic::AtomicBool, Arc},
@@ -44,6 +43,7 @@ use sway_core::{
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{ProgramId, SourceEngine, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
+use swayfmt::parse;
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;
@@ -144,7 +144,10 @@ impl Session {
         uri: &Url,
     ) -> Result<(), LanguageServerError> {
         let path = uri.to_file_path().unwrap();
-        eprintln!("🗑️ 🗑️ 🗑️ 🗑️ 🗑️   Garbage collecting module {:?}   🗑️ 🗑️ 🗑️ 🗑️ 🗑️", path);
+        eprintln!(
+            "🗑️ 🗑️ 🗑️ 🗑️ 🗑️   Garbage collecting module {:?}   🗑️ 🗑️ 🗑️ 🗑️ 🗑️",
+            path
+        );
         let source_id = { engines.se().get_source_id(&path) };
         engines.clear_module(&source_id);
         Ok(())
@@ -280,16 +283,12 @@ pub fn compile(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<Vec<(Option<Programs>, Handler)>, LanguageServerError> {
     let _p = tracing::trace_span!("compile").entered();
-    let build_plan_now = std::time::Instant::now();
-    let build_plan = build_plan(uri)?;
-    eprintln!("⏱️ Build Plan took {:?}", build_plan_now.elapsed());
-    let tests_enabled = true;
     pkg::check(
         build_plan,
         BuildTarget::default(),
         true,
         lsp_mode,
-        tests_enabled,
+        true,
         engines,
         retrigger_compilation,
         experimental,
@@ -407,9 +406,12 @@ pub fn parse_project(
     experimental: sway_core::ExperimentalFlags,
 ) -> Result<(), LanguageServerError> {
     let _p = tracing::trace_span!("parse_project").entered();
+    let build_plan_now = std::time::Instant::now();
     let build_plan = session
         .build_plan_cache
         .get_or_update(&session.sync.manifest_path(), || build_plan(uri))?;
+    eprintln!("⏱️ Build Plan took {:?}", build_plan_now.elapsed());
+
     let parse_now = std::time::Instant::now();
     let results = compile(
         &build_plan,
@@ -441,7 +443,10 @@ pub fn parse_project(
         create_runnables(&session.runnables, typed, engines.de(), engines.se());
     }
     eprintln!("⏱️ creating runnables took: {:?}", runnables_now.elapsed());
-    eprintln!("⏱️ TOTAL COMPILATION AND TRAVERSAL TIME: {:?}", parse_now.elapsed());
+    eprintln!(
+        "⏱️ TOTAL COMPILATION AND TRAVERSAL TIME: {:?}",
+        parse_now.elapsed()
+    );
     Ok(())
 }
 

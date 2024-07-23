@@ -2754,7 +2754,11 @@ pub fn check(
             return Ok(results);
         }
         results.push((programs_res.ok(), handler));
-        eprintln!("⏱️ Compiling package {:?} took {:?}", pkg.name, now.elapsed());
+        eprintln!(
+            "⏱️ Compiling package {:?} took {:?}",
+            pkg.name,
+            now.elapsed()
+        );
     }
 
     if results.is_empty() {

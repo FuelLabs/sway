@@ -171,7 +171,7 @@ fn did_open_fluid_libraries() {
             .finish();
         let uri = init_and_open(
             &mut service,
-            PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
+            PathBuf::from("/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
                 .join("src/interface.sw"),
         )
         .await;
@@ -239,21 +239,23 @@ fn did_change_stress_test_random_wait() {
             let (mut service, _) = LspService::new(ServerState::new);
             // let example_dir = sway_workspace_dir()
             //     .join(e2e_language_dir())
-                // .join("generics_in_contract");
-//            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
+            // .join("generics_in_contract");
+            //            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
 
             let uri = init_and_open(
                 &mut service,
-                PathBuf::from("/Users/joshuabatty/Documents/rust/fuel/user_projects/fluid-protocol/libraries")
-                    .join("src/fpt_staking_interface.sw"),
+                PathBuf::from(
+                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries",
+                )
+                .join("src/fpt_staking_interface.sw"),
             )
             .await;
 
-        // 1. randomise the file that is changed out of all the files in the project.
-        // 2. change the file
-        // 3. wait for the file to be parsed
-        // 4. try and do a hover or goto def for a random type
-        // 5. repeat.
+            // 1. randomise the file that is changed out of all the files in the project.
+            // 2. change the file
+            // 3. wait for the file to be parsed
+            // 4. try and do a hover or goto def for a random type
+            // 5. repeat.
 
             let times = 6000;
             for version in 0..times {
@@ -2194,4 +2196,37 @@ async fn write_all_example_asts() {
         }
     }
     let _ = server.shutdown_server();
+}
+
+#[test]
+fn test_url_to_session_existing_session() {
+    use std::sync::Arc;
+    run_async!({
+        let (mut service, _) = LspService::new(ServerState::new);
+        let uri = init_and_open(&mut service, doc_comments_dir().join("src/main.sw")).await;
+
+        // First call to uri_and_session_from_workspace
+        let (first_uri, first_session) = service
+            .inner()
+            .uri_and_session_from_workspace(&uri)
+            .await
+            .unwrap();
+
+        // Second call to uri_and_session_from_workspace
+        let (second_uri, second_session) = service
+            .inner()
+            .uri_and_session_from_workspace(&uri)
+            .await
+            .unwrap();
+
+        // Assert that the URIs are the same
+        assert_eq!(first_uri, second_uri, "URIs should be identical");
+
+        // Assert that the sessions are the same (they should point to the same Arc)
+        assert!(
+            Arc::ptr_eq(&first_session, &second_session),
+            "Sessions should be identical"
+        );
+        shutdown_and_exit(&mut service).await;
+    });
 }

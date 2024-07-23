@@ -296,7 +296,10 @@ impl ty::TyModule {
                     } else {
                         "🔄 Cache miss"
                     };
-                    eprintln!("{} for module {:?} (up to date: {})", status, relevant_path, is_up_to_date);
+                    eprintln!(
+                        "{} for module {:?} (up to date: {})",
+                        status, relevant_path, is_up_to_date
+                    );
                     if is_up_to_date {
                         return Some(typed.module);
                     }
@@ -329,7 +332,10 @@ impl ty::TyModule {
         } = parsed;
 
         // Check if the root module cache is up to date
-        eprintln!("Root Module: {:?}", parsed.span.source_id().map(|x| engines.se().get_path(x)));
+        eprintln!(
+            "Root Module: {:?}",
+            parsed.span.source_id().map(|x| engines.se().get_path(x))
+        );
         if let Some(module) =
             ty::TyModule::check_cache(parsed.span.source_id(), engines, build_config)
         {
@@ -372,8 +378,6 @@ impl ty::TyModule {
                 }
             })
             .collect::<Result<Vec<_>, _>>();
-
-        
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
