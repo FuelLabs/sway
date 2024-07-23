@@ -166,7 +166,6 @@ pub(super) fn bind_contract_id_in_root_module(
     let const_item_span = const_item.span();
 
     // perform the conversions from parser code to parse tree types
-    let name = const_item.name.clone();
     let attributes = Default::default();
     // convert to const decl
     let const_decl_id = to_parsed_lang::item_const_to_constant_declaration(
@@ -199,21 +198,18 @@ pub(super) fn bind_contract_id_in_root_module(
     };
 
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    let type_check_ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental);
-    let typed_node = TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap();
-    // get the decl out of the typed node:
-    // we know as an invariant this must be a const decl, as we hardcoded a const decl in
-    // the above `format!`.  if it isn't we report an
-    // error that only constant items are allowed, defensive programming etc...
-    let typed_decl = match typed_node.content {
-        TyAstNodeContent::Declaration(decl) => decl,
+    let type_check_ctx = TypeCheckContext::from_namespace(namespace, engines, experimental);
+    // Typecheck the const declaration. This will add the binding in the supplied namespace
+    match TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap().content {
+        TyAstNodeContent::Declaration(_) => Ok(()),
         _ => {
-            return Err(
+	    // TODO: Should this not be an ICE? If the typecheck fails then it's because our own
+	    // hardcoded declaration is wrong.
+            Err(
                 handler.emit_err(CompileError::ContractIdConstantNotAConstDecl {
                     span: const_item_span,
                 }),
-            );
-        }
-    };
-    Ok(())
+            )
+        },
+    }
 }

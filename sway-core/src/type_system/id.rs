@@ -617,7 +617,7 @@ impl TypeId {
         let mut found_error = false;
         let generic_trait_constraints_trait_names_and_args = ctx
             .namespace()
-            .module(ctx.engines())
+            .current_module()
             .current_items()
             .implemented_traits
             .get_trait_names_and_type_arguments_for_type(engines, *structure_type_id);

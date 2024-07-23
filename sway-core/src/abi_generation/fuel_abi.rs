@@ -17,7 +17,6 @@ pub struct AbiContext<'a> {
 impl<'a> AbiContext<'a> {
     fn to_str_context(
         &self,
-        engines: &Engines,
         abi_with_fully_specified_types: bool,
     ) -> AbiStrContext {
         AbiStrContext {
@@ -100,7 +99,7 @@ fn generate_logged_types(
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
             type_field: type_id.get_abi_type_str(
-                &ctx.to_str_context(engines, false),
+                &ctx.to_str_context(false),
                 engines,
                 *type_id,
             ),
@@ -150,7 +149,7 @@ fn generate_messages_types(
         .map(|(_, type_id)| program_abi::TypeDeclaration {
             type_id: type_id.index(),
             type_field: type_id.get_abi_type_str(
-                &ctx.to_str_context(engines, false),
+                &ctx.to_str_context(false),
                 engines,
                 *type_id,
             ),
@@ -190,7 +189,7 @@ fn generate_configurables(
         .map(|decl| program_abi::TypeDeclaration {
             type_id: decl.type_ascription.type_id.index(),
             type_field: decl.type_ascription.type_id.get_abi_type_str(
-                &ctx.to_str_context(engines, false),
+                &ctx.to_str_context(false),
                 engines,
                 decl.type_ascription.type_id,
             ),
@@ -278,7 +277,7 @@ impl TypeId {
                     .map(|x| program_abi::TypeDeclaration {
                         type_id: x.type_argument.initial_type_id.index(),
                         type_field: x.type_argument.initial_type_id.get_abi_type_str(
-                            &ctx.to_str_context(engines, false),
+                            &ctx.to_str_context(false),
                             engines,
                             x.type_argument.type_id,
                         ),
@@ -326,7 +325,7 @@ impl TypeId {
                     .map(|x| program_abi::TypeDeclaration {
                         type_id: x.type_argument.initial_type_id.index(),
                         type_field: x.type_argument.initial_type_id.get_abi_type_str(
-                            &ctx.to_str_context(engines, false),
+                            &ctx.to_str_context(false),
                             engines,
                             x.type_argument.type_id,
                         ),
@@ -370,7 +369,7 @@ impl TypeId {
                     let elem_abi_ty = program_abi::TypeDeclaration {
                         type_id: elem_ty.initial_type_id.index(),
                         type_field: elem_ty.initial_type_id.get_abi_type_str(
-                            &ctx.to_str_context(engines, false),
+                            &ctx.to_str_context(false),
                             engines,
                             elem_ty.type_id,
                         ),
@@ -413,7 +412,7 @@ impl TypeId {
                         .map(|x| program_abi::TypeDeclaration {
                             type_id: x.initial_type_id.index(),
                             type_field: x.initial_type_id.get_abi_type_str(
-                                &ctx.to_str_context(engines, false),
+                                &ctx.to_str_context(false),
                                 engines,
                                 x.type_id,
                             ),
@@ -462,7 +461,7 @@ impl TypeId {
                         .map(|(v, p)| program_abi::TypeDeclaration {
                             type_id: v.initial_type_id.index(),
                             type_field: v.initial_type_id.get_abi_type_str(
-                                &ctx.to_str_context(engines, false),
+                                &ctx.to_str_context(false),
                                 engines,
                                 p.type_id,
                             ),
@@ -527,7 +526,7 @@ impl TypeId {
                     .map(|(v, p)| program_abi::TypeDeclaration {
                         type_id: v.initial_type_id.index(),
                         type_field: v.initial_type_id.get_abi_type_str(
-                            &ctx.to_str_context(engines, false),
+                            &ctx.to_str_context(false),
                             engines,
                             p.type_id,
                         ),
@@ -564,7 +563,7 @@ impl TypeId {
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
                         type_field: v.type_id.get_abi_type_str(
-                            &ctx.to_str_context(engines, false),
+                            &ctx.to_str_context(false),
                             engines,
                             v.type_id,
                         ),
@@ -604,7 +603,7 @@ impl TypeId {
                     .map(|v| program_abi::TypeDeclaration {
                         type_id: v.type_id.index(),
                         type_field: v.type_id.get_abi_type_str(
-                            &ctx.to_str_context(engines, false),
+                            &ctx.to_str_context(false),
                             engines,
                             v.type_id,
                         ),
@@ -653,7 +652,7 @@ impl TyFunctionDecl {
             .map(|x| program_abi::TypeDeclaration {
                 type_id: x.type_argument.initial_type_id.index(),
                 type_field: x.type_argument.initial_type_id.get_abi_type_str(
-                    &ctx.to_str_context(engines, false),
+                    &ctx.to_str_context(false),
                     engines,
                     x.type_argument.type_id,
                 ),
@@ -676,7 +675,7 @@ impl TyFunctionDecl {
         let output_type = program_abi::TypeDeclaration {
             type_id: self.return_type.initial_type_id.index(),
             type_field: self.return_type.initial_type_id.get_abi_type_str(
-                &ctx.to_str_context(engines, false),
+                &ctx.to_str_context(false),
                 engines,
                 self.return_type.type_id,
             ),
@@ -760,7 +759,7 @@ impl TypeParameter {
         let type_parameter = program_abi::TypeDeclaration {
             type_id: self.initial_type_id.index(),
             type_field: self.initial_type_id.get_abi_type_str(
-                &ctx.to_str_context(engines, false),
+                &ctx.to_str_context(false),
                 engines,
                 self.type_id,
             ),

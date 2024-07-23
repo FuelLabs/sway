@@ -147,7 +147,7 @@ impl Root {
 
     // Initialize the root for the first time
     pub(super) fn new(package_name: Ident, span: Option<Span>) -> Self {
-	let mut module = Module::new(package_name, Visibility::Public, span, vec!());
+	let module = Module::new(package_name, Visibility::Public, span, &vec!());
 	Self {
 	    current_package: module,
 	    external_packages: Default::default(),
@@ -156,8 +156,8 @@ impl Root {
 
     pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
 	// TODO: reject if the new package name already exist
-	let old_package = self.current_package;
-	self.current_package = Module::new(next_package_name, Visibility::Public, span, vec!());
+	let new_package = Module::new(next_package_name, Visibility::Public, span, &vec!());
+	let old_package = std::mem::replace(&mut self.current_package, new_package);
 	self.external_packages.insert(old_package.name().to_string(), old_package);
     }
 
@@ -212,12 +212,12 @@ impl Root {
     }
 
     // Find mutable module in the current environment. `mod_path` must be a fully qualified path
-    pub(super) fn module_mut_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
+    pub(super) fn module_mut_from_absolute_path(&mut self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
 	assert!(!mod_path.is_empty());
 	let package_relative_path = Self::package_relative_path(mod_path);
 	if *self.current_package.name() == mod_path[0] {
 	    self.current_package.submodule_mut(&package_relative_path)
-	} else if let Some(m) = self.external_packages.get(&mod_path[0].to_string()) {
+	} else if let Some(m) = self.external_packages.get_mut(&mod_path[0].to_string()) {
 	    m.submodule_mut(&package_relative_path)
 	} else {
 	    None
@@ -226,7 +226,7 @@ impl Root {
 
     // Find mutable module in the current environment. `mod_path` must be a fully qualified path.
     // Throw an error if the module doesn't exist
-    pub(super) fn require_module_mut(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+    pub(super) fn require_module_mut(&mut self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&mut Module, ErrorEmitted> {
 	match self.module_mut_from_absolute_path(mod_path) {
 	    Some(module) => Ok(module),
 	    None => Err(handler.emit_err(crate::namespace::module::module_not_found(mod_path))),
@@ -234,14 +234,14 @@ impl Root {
     }
 
     // Find a mutable module in the current package. `mod_path` must be a fully qualified path
-    pub(super) fn module_mut_in_current_package(&self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
+    pub(super) fn module_mut_in_current_package(&mut self, mod_path: &ModulePathBuf) -> Option<&mut Module> {
 	assert!(self.check_path_is_in_current_package(mod_path));
 	self.module_mut_from_absolute_path(mod_path)
     }
 
     // Find a mutable module in the current package. `mod_path` must be a fully qualified path
     // Throw an error if the module doesn't exist
-    pub(super) fn require_module_mut_in_current_package(&self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&Module, ErrorEmitted> {
+    pub(super) fn require_module_mut_in_current_package(&mut self, handler: &Handler, mod_path: &ModulePathBuf) -> Result<&mut Module, ErrorEmitted> {
 	assert!(self.check_path_is_in_current_package(mod_path));
 	self.require_module_mut(handler, mod_path)
     }
@@ -264,7 +264,7 @@ impl Root {
         dst: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, src)?;
 
         let src_mod = self.require_module(handler, &src.to_vec())?;
 
@@ -425,7 +425,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, src)?;
         let src_mod = self.require_module(handler, &src.to_vec())?;
 
         let (decl, path) = self.item_lookup(handler, engines, item, src, dst)?;
@@ -508,7 +508,7 @@ impl Root {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, src)?;
 
         let decl_engine = engines.de();
         let parsed_decl_engine = engines.pe();
@@ -673,7 +673,7 @@ impl Root {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        self.check_module_privacy(handler, engines, src)?;
+        self.check_module_privacy(handler, src)?;
 
         let parsed_decl_engine = engines.pe();
         let decl_engine = engines.de();
@@ -748,7 +748,6 @@ impl Root {
     fn check_module_privacy(
         &self,
         handler: &Handler,
-        engines: &Engines,
         src: &ModulePath,
     ) -> Result<(), ErrorEmitted> {
         let dst = self.current_package.mod_path();
@@ -913,7 +912,7 @@ impl Root {
                     handler, engines, module, ident, decl, None, self_type,
                 )?);
             } else {
-                match module.submodule(&[*ident]) {
+                match module.submodule(&[ident.clone()]) {
                     Some(ns) => {
                         module = ns;
                         current_mod_path.push(ident.clone());

@@ -53,7 +53,7 @@ impl ty::TyAstNode {
         let node = ty::TyAstNode {
             content: match node.content.clone() {
                 AstNodeContent::UseStatement(stmt) => {
-                    handle_use_statement(&mut ctx, engines, &stmt, handler);
+                    handle_use_statement(&mut ctx, &stmt, handler);
                     ty::TyAstNodeContent::SideEffect(ty::TySideEffect {
                         side_effect: ty::TySideEffectVariant::UseStatement(ty::TyUseStatement {
                             alias: stmt.alias,
@@ -138,7 +138,7 @@ fn collect_use_statement(
     ctx: &mut SymbolCollectionContext,
     stmt: &UseStatement,
 ) {
-    let is_external = !ctx.namespace.current_module_has_submodule(stmt.call_path[0]);
+    let is_external = !ctx.namespace.current_module_has_submodule(&stmt.call_path[0]);
     let path = if is_external || stmt.is_absolute {
         stmt.call_path.clone()
     } else {
@@ -226,13 +226,12 @@ fn collect_use_statement(
 // To be removed once TypeCheckContext is ported to use SymbolCollectionContext.
 fn handle_use_statement(
     ctx: &mut TypeCheckContext<'_>,
-    engines: &Engines,
     stmt: &UseStatement,
     handler: &Handler,
 ) {
     let is_external = !ctx
         .namespace()
-        .current_module_has_submodule(stmt.call_path[0]);
+        .current_module_has_submodule(&stmt.call_path[0]);
     let path = if is_external || stmt.is_absolute {
         stmt.call_path.clone()
     } else {

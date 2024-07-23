@@ -561,8 +561,7 @@ pub(crate) fn type_check_method_application(
             .type_id
             .extract_inner_types(engines, IncludeSelf::Yes)
         {
-            let handler = Handler::default();
-            ctx.impls_import(&handler, engines, type_id);
+            ctx.impls_import(engines, type_id);
         }
 
         let args = old_arguments.iter().skip(1).cloned().collect();

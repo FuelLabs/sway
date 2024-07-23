@@ -337,7 +337,7 @@ impl CallPath {
     pub fn ident_to_fullpath(suffix: Ident, namespace: &Namespace) -> CallPath {
         let mut res: Self = suffix.clone().into();
         res.prefixes.push(namespace.current_package_name().clone());
-        for mod_path in namespace.mod_path() {
+        for mod_path in namespace.current_mod_path() {
             res.prefixes.push(mod_path.clone())
         }
         res.is_absolute = true;
@@ -401,7 +401,7 @@ impl CallPath {
                 prefixes.push(namespace.current_package_name().clone());
 
                 if !is_absolute {
-                    for mod_path in namespace.mod_path() {
+                    for mod_path in namespace.current_mod_path() {
                         prefixes.push(mod_path.clone());
                     }
                 }
@@ -414,7 +414,7 @@ impl CallPath {
                 suffix: self.suffix.clone(),
                 is_absolute: true,
             }
-        } else if namespace.current_module_has_submodule(self.prefixes[0])
+        } else if namespace.current_module_has_submodule(&self.prefixes[0])
         {
 	    // Qualified path relative to the current module
 	    //
@@ -422,7 +422,7 @@ impl CallPath {
             let mut prefixes: Vec<Ident> = vec![];
             prefixes.push(namespace.current_package_name().clone());
 	    
-            for mod_path in namespace.mod_path() {
+            for mod_path in namespace.current_mod_path() {
                 prefixes.push(mod_path.clone());
             }
 	    

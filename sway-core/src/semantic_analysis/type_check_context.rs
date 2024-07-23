@@ -530,7 +530,6 @@ impl<'a> TypeCheckContext<'a> {
         type_info_prefix: Option<&ModulePath>,
         mod_path: &ModulePath,
     ) -> Result<TypeId, ErrorEmitted> {
-        let engines = self.engines;
         let type_engine = self.engines.te();
         let module_path = type_info_prefix.unwrap_or(mod_path);
         let type_id = match (*type_engine.get(type_id)).clone() {
@@ -748,7 +747,6 @@ impl<'a> TypeCheckContext<'a> {
         mod_path: &ModulePath,
         call_path: &CallPath,
     ) -> Result<ty::TyDecl, ErrorEmitted> {
-        let engines = self.engines;
         let (decl, mod_path) = self.namespace().root.resolve_call_path_and_mod_path(
             handler,
             self.engines,
@@ -773,7 +771,7 @@ impl<'a> TypeCheckContext<'a> {
         for prefix in iter_prefixes(&call_path.prefixes).skip(1) {
             let module = self
                 .namespace()
-                .require_submodule_from_absolute_path(handler, prefix)?;
+                .require_module_from_absolute_path(handler, &prefix.to_vec())?;
             if module.visibility().is_private() {
                 let prefix_last = prefix[prefix.len() - 1].clone();
                 handler.emit_err(CompileError::ImportPrivateModule {
@@ -856,7 +854,7 @@ impl<'a> TypeCheckContext<'a> {
                 .resolve_call_path_and_root_type_id(
                     handler,
                     self.engines,
-                    &self.namespace().root.module,
+                    &self.namespace().current_package_root_module(),
                     root_type_id,
                     as_trait_opt,
                     &qualified_call_path.call_path,
@@ -1012,10 +1010,9 @@ impl<'a> TypeCheckContext<'a> {
         }
 
         // grab the local module
-        let local_module = self.namespace().lookup_submodule_from_absolute_path(
+        let local_module = self.namespace().require_module_from_absolute_path(
             handler,
-            self.engines(),
-            &self.namespace().mod_path,
+            &self.namespace().current_mod_path,
         )?;
 
         // grab the local items from the local module
@@ -1038,10 +1035,9 @@ impl<'a> TypeCheckContext<'a> {
             });
 
         // grab the module where the type itself is declared
-        let type_module = self.namespace().lookup_submodule_from_absolute_path(
+        let type_module = self.namespace().require_module_from_absolute_path(
             handler,
-            self.engines(),
-            item_prefix,
+            &item_prefix.to_vec(),
         )?;
 
         // grab the items from where the type is declared
@@ -1339,11 +1335,8 @@ impl<'a> TypeCheckContext<'a> {
         src: &ModulePath,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .star_import(handler, engines, src, &mod_path, visibility)
+	let engines = self.engines;
+        self.namespace_mut().star_import_to_current_module(handler, engines, src, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_star_import] with `mod_path` as the destination.
@@ -1354,11 +1347,8 @@ impl<'a> TypeCheckContext<'a> {
         enum_name: &Ident,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .variant_star_import(handler, engines, src, &mod_path, enum_name, visibility)
+	let engines = self.engines;
+        self.namespace_mut().variant_star_import_to_current_module(handler, engines, src, enum_name, visibility)
     }
 
     /// Short-hand for performing a [Module::self_import] with `mod_path` as the destination.
@@ -1369,15 +1359,12 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .self_import(handler, engines, src, &mod_path, alias, visibility)
+	let engines = self.engines;
+        self.namespace_mut().self_import_to_current_module(handler, engines, src, alias, visibility)
     }
 
     // Import all impls for a struct/enum. Do nothing for other types.
-    pub(crate) fn impls_import(&mut self, handler: &Handler, engines: &Engines, type_id: TypeId) {
+    pub(crate) fn impls_import(&mut self, engines: &Engines, type_id: TypeId) {
         let type_info = engines.te().get(type_id);
 
         let decl_call_path = match &*type_info {
@@ -1394,8 +1381,8 @@ impl<'a> TypeCheckContext<'a> {
 
         let mut impls_to_insert = TraitMap::default();
 
-        let root_mod = &self.namespace().root().module;
-        let Ok(src_mod) = root_mod.lookup_submodule(handler, engines, &decl_call_path.prefixes)
+	// TODO: prepend current package name?
+	let Some(src_mod) = &self.namespace().module_from_absolute_path(&decl_call_path.prefixes)
         else {
             return;
         };
@@ -1408,7 +1395,7 @@ impl<'a> TypeCheckContext<'a> {
             engines,
         );
 
-        let dst_mod = self.namespace_mut().module_mut(engines);
+        let dst_mod = self.namespace_mut().current_module_mut();
         dst_mod
             .current_items_mut()
             .implemented_traits
@@ -1424,11 +1411,8 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut()
-            .root
-            .item_import(handler, engines, src, item, &mod_path, alias, visibility)
+	let engines = self.engines;
+        self.namespace_mut().item_import_to_current_module(handler, engines, src, item, alias, visibility)
     }
 
     /// Short-hand for performing a [Module::variant_import] with `mod_path` as the destination.
@@ -1442,15 +1426,13 @@ impl<'a> TypeCheckContext<'a> {
         alias: Option<Ident>,
         visibility: Visibility,
     ) -> Result<(), ErrorEmitted> {
-        let engines = self.engines;
-        let mod_path = self.namespace().mod_path.clone();
-        self.namespace_mut().root.variant_import(
+	let engines = self.engines;
+        self.namespace_mut().variant_import_to_current_module(
             handler,
             engines,
             src,
             enum_name,
             variant_name,
-            &mod_path,
             alias,
             visibility,
         )
@@ -1478,7 +1460,7 @@ impl<'a> TypeCheckContext<'a> {
             .map(|item| ResolvedTraitImplItem::Typed(item.clone()))
             .collect::<Vec<_>>();
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .implemented_traits
             .insert(
@@ -1514,7 +1496,7 @@ impl<'a> TypeCheckContext<'a> {
         let trait_name = trait_name.to_fullpath(self.engines(), self.namespace());
 
         self.namespace()
-            .module(self.engines())
+            .current_module()
             .current_items()
             .implemented_traits
             .get_items_for_type_and_trait_name_and_trait_type_arguments_typed(
@@ -1701,7 +1683,7 @@ impl<'a> TypeCheckContext<'a> {
     pub(crate) fn insert_trait_implementation_for_type(&mut self, type_id: TypeId) {
         let engines = self.engines;
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .implemented_traits
             .insert_for_type(engines, type_id);
@@ -1716,7 +1698,7 @@ impl<'a> TypeCheckContext<'a> {
         let engines = self.engines;
 
         self.namespace_mut()
-            .module_mut(engines)
+            .current_module_mut()
             .current_items_mut()
             .implemented_traits
             .check_if_trait_constraints_are_satisfied_for_type(

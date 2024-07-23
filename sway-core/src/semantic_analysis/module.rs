@@ -580,7 +580,6 @@ impl ty::TySubmodule {
             visibility,
         } = submodule;
         parent_ctx.enter_submodule(
-            engines,
             mod_name,
             *visibility,
             module.span.clone(),

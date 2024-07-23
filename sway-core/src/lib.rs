@@ -640,7 +640,7 @@ pub fn parsed_to_ast(
         &mut ctx,
         &mut md_mgr,
         module,
-        typed_program.root.namespace.module(engines),
+        typed_program.root.namespace.current_module(),
     ) {
         handler.emit_err(e);
     }

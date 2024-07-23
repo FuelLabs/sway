@@ -49,7 +49,7 @@ pub struct Module {
 }
 
 impl Module {
-    pub(super) fn new(name: Ident, visibility: Visibility, span: Option<Span>, parent_mod_path: ModulePathBuf) -> Self {
+    pub(super) fn new(name: Ident, visibility: Visibility, span: Option<Span>, parent_mod_path: &ModulePathBuf) -> Self {
 	let mut mod_path = parent_mod_path.clone();
 	mod_path.push(name.clone());
         Self {
@@ -79,10 +79,11 @@ impl Module {
         self.span = Some(span);
     }
 
-    pub(super) fn add_new_submodule(&mut self, name: Ident, visibility: Visibility, span: Option<Span>) -> &ModulePathBuf {
-	let module = Self::new(name.clone(), visibility, span, self.mod_path);
+    pub(super) fn add_new_submodule(&mut self, name: &Ident, visibility: Visibility, span: Option<Span>) -> ModulePathBuf {
+	let module = Self::new(name.clone(), visibility, span, &self.mod_path);
+	let path = module.mod_path.clone();
 	self.submodules.insert(name.to_string(), module);
-	&module.mod_path
+	path
     }
 	
     
