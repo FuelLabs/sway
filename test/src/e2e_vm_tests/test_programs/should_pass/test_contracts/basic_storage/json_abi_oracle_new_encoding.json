@@ -203,8 +203,6 @@
     }
   ],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -293,5 +291,7 @@
         1
       ]
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }

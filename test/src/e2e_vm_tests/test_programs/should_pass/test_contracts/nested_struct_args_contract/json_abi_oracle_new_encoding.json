@@ -36,8 +36,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -69,5 +67,7 @@
       "metadataTypeId": 2,
       "type": "struct nested_struct_args_abi::StructTwo"
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }

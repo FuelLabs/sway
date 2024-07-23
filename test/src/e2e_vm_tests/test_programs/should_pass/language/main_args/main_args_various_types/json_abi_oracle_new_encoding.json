@@ -32,8 +32,6 @@
     }
   ],
   "messagesTypes": [],
-  "programType": "script",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -87,5 +85,7 @@
       "metadataTypeId": 4,
       "type": "struct OpName"
     }
-  ]
+  ],
+  "programType": "script",
+  "specVersion": "1"
 }

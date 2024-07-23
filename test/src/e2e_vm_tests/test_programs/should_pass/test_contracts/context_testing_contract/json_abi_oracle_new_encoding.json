@@ -77,8 +77,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "metadataTypeId": 0,
@@ -104,5 +102,7 @@
       "metadataTypeId": 2,
       "type": "struct std::contract_id::ContractId"
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }
