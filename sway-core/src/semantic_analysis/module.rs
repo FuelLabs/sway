@@ -262,7 +262,7 @@ impl ty::TyModule {
         source_id: Option<&SourceId>,
         engines: &Engines,
         build_config: Option<&BuildConfig>,
-    ) -> Option<ty::TyModule> {
+    ) -> Option<Arc<ty::TyModule>> {
         // Check if the module is already in the cache
         if let Some(source_id) = source_id {
             let path = engines.se().get_path(&source_id);
@@ -275,7 +275,8 @@ impl ty::TyModule {
                 .collect::<PathBuf>();
 
             let key: ModuleCacheKey = ModuleCacheKey::new(path.clone().into(), include_tests);
-            if let Some(entry) = engines.qe().get_module_cache_entry(&key) {
+            let cache = engines.qe().module_cache.read();
+            if let Some(entry) = cache.get(&key) {
                 // We now need to check if the module is up to date, if not, we need to recompute it so
                 // we will return None, otherwise we will return the cached module.
 
@@ -284,7 +285,7 @@ impl ty::TyModule {
 
                 // Let's check if we can re-use the dependency information
                 // we got from the cache.
-                if let Some(typed) = entry.typed {
+                if let Some(typed) = &entry.typed {
                     let is_up_to_date = is_ty_module_cache_up_to_date(
                         engines,
                         &path.into(),
@@ -301,7 +302,7 @@ impl ty::TyModule {
                         status, relevant_path, is_up_to_date
                     );
                     if is_up_to_date {
-                        return Some(typed.module);
+                        return Some(typed.module.clone());
                     }
                 }
             } else {
@@ -321,7 +322,7 @@ impl ty::TyModule {
         kind: TreeType,
         parsed: &ParseModule,
         build_config: Option<&BuildConfig>,
-    ) -> Result<Self, ErrorEmitted> {
+    ) -> Result<Arc<Self>, ErrorEmitted> {
         let ParseModule {
             submodules,
             tree,
@@ -458,13 +459,13 @@ impl ty::TyModule {
             }
         }
 
-        let ty_module = Self {
+        let ty_module = Arc::new(Self {
             span: span.clone(),
             submodules,
             namespace: ctx.namespace.clone(),
             all_nodes,
             attributes: attributes.clone(),
-        };
+        });
 
         // Cache the ty module
         if let Some(source_id) = span.source_id() {

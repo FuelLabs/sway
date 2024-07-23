@@ -82,7 +82,7 @@ impl TyProgram {
 
         let program = TyProgram {
             kind,
-            root,
+            root: (*root).clone(),
             declarations,
             configurables,
             storage_slots: vec![],
