@@ -381,6 +381,9 @@ impl ServerState {
 
         let session = self.sessions.get(&manifest_dir).unwrap_or({
             // If no session can be found, then we need to call init and insert a new session into the map
+            eprintln!("💥💥💥💥💥💥💥💥💥💥💥💥💥💥💥 Initializing new session for manifest_dir = {:?}", manifest_dir);
+
+
             self.init_session(uri).await?;
             self.sessions
                 .get(&manifest_dir)
