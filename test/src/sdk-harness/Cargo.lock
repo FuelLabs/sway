@@ -1509,7 +1509,7 @@ checksum = "6c2141d6d6c8512188a7891b4b01590a45f6dac67afb4f255c4124dbb86d4eaa"
 [[package]]
 name = "fuel-abi-types"
 version = "0.6.0"
-source = "git+https://github.com/FuelLabs/fuel-abi-types?branch=esdrubal/abi_changes2#25010513ad66c01b03a22474ae6ff1bd3ee04614"
+source = "git+https://github.com/FuelLabs/fuel-abi-types?branch=esdrubal/abi_changes2#ec2182cfcc66908041d7305511dbc6d4ee3d9e8a"
 dependencies = [
  "itertools 0.10.5",
  "lazy_static",

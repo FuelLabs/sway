@@ -2020,7 +2020,7 @@ dependencies = [
  "forc-tx",
  "forc-util",
  "forc-wallet",
- "fuel-abi-types 0.6.0 (git+https://github.com/FuelLabs/fuel-abi-types?branch=esdrubal/abi_changes2)",
+ "fuel-abi-types",
  "fuel-core-client",
  "fuel-core-types",
  "fuel-crypto",
@@ -2159,7 +2159,7 @@ dependencies = [
  "cid",
  "forc-tracing 0.62.0",
  "forc-util",
- "fuel-abi-types 0.6.0 (git+https://github.com/FuelLabs/fuel-abi-types?branch=esdrubal/abi_changes2)",
+ "fuel-abi-types",
  "futures",
  "git2",
  "gix-url",
@@ -2192,7 +2192,7 @@ version = "0.62.0"
 dependencies = [
  "anyhow",
  "forc-pkg",
- "fuel-abi-types 0.6.0 (git+https://github.com/FuelLabs/fuel-abi-types?branch=esdrubal/abi_changes2)",
+ "fuel-abi-types",
  "fuel-tx",
  "fuel-vm",
  "fuels-core",
@@ -2327,23 +2327,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "fuel-abi-types"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccb98391d7df3963bc3f30d3c8bfce301573a115fa92a35bed55e4c94b836be2"
-dependencies = [
- "itertools 0.10.5",
- "lazy_static",
- "proc-macro2",
- "quote",
- "regex",
- "serde",
- "serde_json",
- "syn 2.0.71",
- "thiserror",
 ]
 
 [[package]]
@@ -2719,7 +2702,7 @@ version = "0.65.1"
 source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#55e07435caec45ee6bf57eee9f0a989fe953cb10"
 dependencies = [
  "Inflector",
- "fuel-abi-types 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-abi-types",
  "itertools 0.12.1",
  "proc-macro2",
  "quote",
@@ -2736,7 +2719,7 @@ dependencies = [
  "async-trait",
  "bech32",
  "chrono",
- "fuel-abi-types 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-abi-types",
  "fuel-asm",
  "fuel-core-chain-config",
  "fuel-core-client",
@@ -2773,7 +2756,7 @@ version = "0.65.1"
 source = "git+https://github.com/FuelLabs/fuels-rs?branch=esdrubal/abi_changes2#55e07435caec45ee6bf57eee9f0a989fe953cb10"
 dependencies = [
  "async-trait",
- "fuel-abi-types 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fuel-abi-types",
  "fuel-asm",
  "fuel-tx",
  "fuel-types",
@@ -6579,7 +6562,7 @@ dependencies = [
  "derivative",
  "dirs 3.0.2",
  "either",
- "fuel-abi-types 0.6.0 (git+https://github.com/FuelLabs/fuel-abi-types?branch=esdrubal/abi_changes2)",
+ "fuel-abi-types",
  "fuel-ethabi",
  "fuel-etk-asm",
  "fuel-etk-ops",
