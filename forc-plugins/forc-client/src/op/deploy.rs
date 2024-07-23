@@ -277,48 +277,6 @@ pub async fn deploy_pkg(
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
     let pkg_name = manifest.project_name();
 
-    let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
-        Ok(logs) => match logs {
-            TransactionStatus::Submitted { .. } => {
-                bail!("contract {} deployment timed out", &contract_id);
-            }
-            TransactionStatus::Success { block_height, .. } => {
-                info!("\n\nContract {pkg_name} Deployed!");
-
-                info!("\nNetwork: {node_url}");
-                info!("Contract ID: 0x{contract_id}");
-                info!("Deployed in block {}", &block_height);
-
-                // Create a deployment artifact.
-                create_deployment_artifact(
-                    DeploymentArtifact {
-                        transaction_id: format!("0x{}", tx.id(&chain_id)),
-                        salt: format!("0x{}", salt),
-                        network_endpoint: node_url.to_string(),
-                        chain_id,
-                        contract_id: format!("0x{}", contract_id),
-                        deployment_size: bytecode.len(),
-                        deployed_block_height: Some(*block_height),
-                    },
-                    command,
-                    manifest,
-                    pkg_name,
-                    contract_id
-                )?;
-
-                Ok(contract_id)
-            }
-            e => {
-                bail!(
-                    "contract {} failed to deploy due to an error: {:?}",
-                    &contract_id,
-                    e
-                )
-            }
-        },
-        Err(e) => bail!("{e}"),
-    });
-
     // if just submitting the transaction, don't wait for the deployment to complete
     let contract_id: ContractId = if command.submit_only {
         match client.submit(&tx).await {
@@ -337,11 +295,11 @@ pub async fn deploy_pkg(
                     command,
                     manifest,
                     pkg_name,
-                    contract_id
+                    contract_id,
                 )?;
 
                 contract_id
-            },
+            }
             Err(e) => {
                 bail!(
                     "contract {} failed to deploy due to an error: {:?}",
@@ -351,6 +309,47 @@ pub async fn deploy_pkg(
             }
         }
     } else {
+        let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
+            Ok(logs) => match logs {
+                TransactionStatus::Submitted { .. } => {
+                    bail!("contract {} deployment timed out", &contract_id);
+                }
+                TransactionStatus::Success { block_height, .. } => {
+                    info!("\n\nContract {pkg_name} Deployed!");
+
+                    info!("\nNetwork: {node_url}");
+                    info!("Contract ID: 0x{contract_id}");
+                    info!("Deployed in block {}", &block_height);
+
+                    // Create a deployment artifact.
+                    create_deployment_artifact(
+                        DeploymentArtifact {
+                            transaction_id: format!("0x{}", tx.id(&chain_id)),
+                            salt: format!("0x{}", salt),
+                            network_endpoint: node_url.to_string(),
+                            chain_id,
+                            contract_id: format!("0x{}", contract_id),
+                            deployment_size: bytecode.len(),
+                            deployed_block_height: Some(*block_height),
+                        },
+                        command,
+                        manifest,
+                        pkg_name,
+                        contract_id,
+                    )?;
+
+                    Ok(contract_id)
+                }
+                e => {
+                    bail!(
+                        "contract {} failed to deploy due to an error: {:?}",
+                        &contract_id,
+                        e
+                    )
+                }
+            },
+            Err(e) => bail!("{e}"),
+        });
         tokio::time::timeout(
             Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),
             deployment_request,
