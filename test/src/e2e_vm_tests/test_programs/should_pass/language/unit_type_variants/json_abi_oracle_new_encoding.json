@@ -20,7 +20,7 @@
   "messagesTypes": [],
   "programType": "script",
   "specVersion": "1",
-  "typesMetadata": [
+  "metadataTypes": [
     {
       "metadataTypeId": 0,
       "type": "()"

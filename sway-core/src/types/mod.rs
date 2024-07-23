@@ -1,3 +1,3 @@
-mod collect_types_metadata;
+mod collect_metadata_types;
 
-pub(crate) use collect_types_metadata::*;
+pub(crate) use collect_metadata_types::*;

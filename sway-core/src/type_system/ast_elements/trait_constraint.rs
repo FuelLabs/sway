@@ -113,7 +113,7 @@ impl From<&Supertrait> for TraitConstraint {
 }
 
 impl CollectTypesMetadata for TraitConstraint {
-    fn collect_types_metadata(
+    fn collect_metadata_types(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
@@ -122,7 +122,7 @@ impl CollectTypesMetadata for TraitConstraint {
         handler.scope(|handler| {
             for type_arg in &self.type_arguments {
                 res.extend(
-                    match type_arg.type_id.collect_types_metadata(handler, ctx) {
+                    match type_arg.type_id.collect_metadata_types(handler, ctx) {
                         Ok(res) => res,
                         Err(_) => continue,
                     },
