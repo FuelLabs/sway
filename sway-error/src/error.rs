@@ -2676,6 +2676,9 @@ pub enum TypeNotAllowedReason {
 
     #[error("`str` or a type containing `str` on `const` is not allowed.")]
     StringSliceInConst,
+
+    #[error("slices or types containing slices on `const` are not allowed.")]
+    SliceInConst,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
