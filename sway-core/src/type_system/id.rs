@@ -55,7 +55,7 @@ impl From<usize> for TypeId {
 }
 
 impl CollectTypesMetadata for TypeId {
-    fn collect_types_metadata(
+    fn collect_metadata_types(
         &self,
         _handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,

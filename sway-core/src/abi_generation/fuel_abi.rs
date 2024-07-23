@@ -92,7 +92,7 @@ pub fn generate_program_abi(
     spec_version: program_abi::Version,
 ) -> Result<program_abi::ProgramABI, ErrorEmitted> {
     let decl_engine = engines.de();
-    let types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration> = &mut vec![];
+    let metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration> = &mut vec![];
     let concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration> = &mut vec![];
     let mut program_abi = match &ctx.program.kind {
         TyProgramKind::Contract { abi_entries, .. } => {
@@ -104,22 +104,22 @@ pub fn generate_program_abi(
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                     )
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let logged_types =
-                generate_logged_types(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_logged_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let messages_types =
-                generate_messages_types(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
-                generate_configurables(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             program_abi::ProgramABI {
                 program_type: "contract".to_string(),
                 spec_version,
                 encoding_version,
-                types_metadata: types_metadata.to_vec(),
+                metadata_types: metadata_types.to_vec(),
                 concrete_types: concrete_types.to_vec(),
                 functions,
                 logged_types: Some(logged_types),
@@ -133,20 +133,20 @@ pub fn generate_program_abi(
                 handler,
                 ctx,
                 engines,
-                types_metadata,
+                metadata_types,
                 concrete_types,
             )?];
             let logged_types =
-                generate_logged_types(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_logged_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let messages_types =
-                generate_messages_types(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
-                generate_configurables(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             program_abi::ProgramABI {
                 program_type: "script".to_string(),
                 spec_version,
                 encoding_version,
-                types_metadata: types_metadata.to_vec(),
+                metadata_types: metadata_types.to_vec(),
                 concrete_types: concrete_types.to_vec(),
                 functions,
                 logged_types: Some(logged_types),
@@ -160,20 +160,20 @@ pub fn generate_program_abi(
                 handler,
                 ctx,
                 engines,
-                types_metadata,
+                metadata_types,
                 concrete_types,
             )?];
             let logged_types =
-                generate_logged_types(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_logged_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let messages_types =
-                generate_messages_types(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_messages_types(handler, ctx, engines, metadata_types, concrete_types)?;
             let configurables =
-                generate_configurables(handler, ctx, engines, types_metadata, concrete_types)?;
+                generate_configurables(handler, ctx, engines, metadata_types, concrete_types)?;
             program_abi::ProgramABI {
                 program_type: "predicate".to_string(),
                 spec_version,
                 encoding_version,
-                types_metadata: types_metadata.to_vec(),
+                metadata_types: metadata_types.to_vec(),
                 concrete_types: concrete_types.to_vec(),
                 functions,
                 logged_types: Some(logged_types),
@@ -185,7 +185,7 @@ pub fn generate_program_abi(
             program_type: "library".to_string(),
             spec_version,
             encoding_version,
-            types_metadata: vec![],
+            metadata_types: vec![],
             concrete_types: vec![],
             functions: vec![],
             logged_types: None,
@@ -217,7 +217,7 @@ fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
 
         // Insert values in `deduped_types` if they haven't been inserted before. Otherwise, create
         // an appropriate mapping between type IDs in the HashMap `old_to_new_id`.
-        for decl in &json_abi_program.types_metadata {
+        for decl in &json_abi_program.metadata_types {
             // First replace metadata_type_id with concrete_type_id when possible
             if let Some(ty) = json_abi_program.concrete_types.iter().find(|d| {
                 d.type_field == decl.type_field
@@ -251,7 +251,7 @@ fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
             break;
         }
 
-        json_abi_program.types_metadata = deduped_types;
+        json_abi_program.metadata_types = deduped_types;
 
         update_all_types(json_abi_program, &old_to_new_id);
     }
@@ -266,7 +266,7 @@ fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
 
     // Sort the `program_abi::TypeMetadataDeclaration`s
     json_abi_program
-        .types_metadata
+        .metadata_types
         .sort_by(|t1, t2| t1.type_field.cmp(&t2.type_field));
 
     // Sort the `program_abi::TypeConcreteDeclaration`s
@@ -276,7 +276,7 @@ fn standardize_json_abi_types(json_abi_program: &mut program_abi::ProgramABI) {
 
     // Standardize IDs (i.e. change them to 0,1,2,... according to the alphabetical order above
     let mut old_to_new_id: HashMap<MetadataTypeId, program_abi::TypeId> = HashMap::new();
-    for (ix, decl) in json_abi_program.types_metadata.iter_mut().enumerate() {
+    for (ix, decl) in json_abi_program.metadata_types.iter_mut().enumerate() {
         old_to_new_id.insert(
             decl.metadata_type_id.clone(),
             program_abi::TypeId::Metadata(MetadataTypeId(ix)),
@@ -293,7 +293,7 @@ fn update_all_types(
     old_to_new_id: &HashMap<MetadataTypeId, program_abi::TypeId>,
 ) {
     // Update all `program_abi::TypeMetadataDeclaration`
-    for decl in &mut json_abi_program.types_metadata {
+    for decl in &mut json_abi_program.metadata_types {
         update_json_type_metadata_declaration(decl, old_to_new_id);
     }
 
@@ -366,12 +366,12 @@ fn generate_concrete_type_declaration(
     handler: &Handler,
     ctx: &mut AbiContext,
     engines: &Engines,
-    types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+    metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
     concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
     type_id: TypeId,
     resolved_type_id: TypeId,
 ) -> Result<ConcreteTypeId, ErrorEmitted> {
-    let mut new_types_metadata_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
+    let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
         type_field: type_id.get_abi_type_str(
@@ -383,19 +383,19 @@ fn generate_concrete_type_declaration(
             handler,
             ctx,
             engines,
-            types_metadata,
+            metadata_types,
             concrete_types,
             resolved_type_id,
-            &mut new_types_metadata_to_add,
+            &mut new_metadata_types_to_add,
         )?,
         type_parameters: type_id.get_abi_type_parameters(
             handler,
             ctx,
             engines,
-            types_metadata,
+            metadata_types,
             concrete_types,
             resolved_type_id,
-            &mut new_types_metadata_to_add,
+            &mut new_metadata_types_to_add,
         )?,
     };
 
@@ -411,7 +411,7 @@ fn generate_concrete_type_declaration(
             handler,
             ctx,
             engines,
-            types_metadata,
+            metadata_types,
             concrete_types,
             resolved_type_id,
         )?
@@ -419,8 +419,8 @@ fn generate_concrete_type_declaration(
         None
     };
 
-    types_metadata.push(type_metadata_decl);
-    types_metadata.extend(new_types_metadata_to_add);
+    metadata_types.push(type_metadata_decl);
+    metadata_types.extend(new_metadata_types_to_add);
 
     let (type_field, concrete_type_id) =
         type_id.get_abi_type_field_and_concrete_id(handler, ctx, engines, resolved_type_id)?;
@@ -441,30 +441,30 @@ fn generate_type_metadata_declaration(
     handler: &Handler,
     ctx: &mut AbiContext,
     engines: &Engines,
-    types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+    metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
     concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
     type_id: TypeId,
     resolved_type_id: TypeId,
-    types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+    metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
 ) -> Result<(), ErrorEmitted> {
-    let mut new_types_metadata_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
+    let mut new_metadata_types_to_add = Vec::<program_abi::TypeMetadataDeclaration>::new();
     let components = type_id.get_abi_type_components(
         handler,
         ctx,
         engines,
-        types_metadata,
+        metadata_types,
         concrete_types,
         resolved_type_id,
-        &mut new_types_metadata_to_add,
+        &mut new_metadata_types_to_add,
     )?;
     let type_parameters = type_id.get_abi_type_parameters(
         handler,
         ctx,
         engines,
-        types_metadata,
+        metadata_types,
         concrete_types,
         resolved_type_id,
-        &mut new_types_metadata_to_add,
+        &mut new_metadata_types_to_add,
     )?;
     let type_metadata_decl = program_abi::TypeMetadataDeclaration {
         metadata_type_id: MetadataTypeId(type_id.index()),
@@ -477,8 +477,8 @@ fn generate_type_metadata_declaration(
         type_parameters,
     };
 
-    types_metadata_to_add.push(type_metadata_decl.clone());
-    types_metadata_to_add.extend(new_types_metadata_to_add);
+    metadata_types_to_add.push(type_metadata_decl.clone());
+    metadata_types_to_add.extend(new_metadata_types_to_add);
 
     Ok(())
 }
@@ -487,7 +487,7 @@ fn generate_logged_types(
     handler: &Handler,
     ctx: &mut AbiContext,
     engines: &Engines,
-    types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+    metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
     concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
 ) -> Result<Vec<program_abi::LoggedType>, ErrorEmitted> {
     // Generate the JSON data for the logged types
@@ -508,7 +508,7 @@ fn generate_logged_types(
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         *type_id,
                         *type_id,
@@ -526,7 +526,7 @@ fn generate_messages_types(
     handler: &Handler,
     ctx: &mut AbiContext,
     engines: &Engines,
-    types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+    metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
     concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
 ) -> Result<Vec<program_abi::MessageType>, ErrorEmitted> {
     // Generate the JSON data for the messages types
@@ -540,7 +540,7 @@ fn generate_messages_types(
                     handler,
                     ctx,
                     engines,
-                    types_metadata,
+                    metadata_types,
                     concrete_types,
                     *type_id,
                     *type_id,
@@ -554,7 +554,7 @@ fn generate_configurables(
     handler: &Handler,
     ctx: &mut AbiContext,
     engines: &Engines,
-    types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+    metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
     concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
 ) -> Result<Vec<program_abi::Configurable>, ErrorEmitted> {
     // Generate the JSON data for the configurables types
@@ -568,7 +568,7 @@ fn generate_configurables(
                     handler,
                     ctx,
                     engines,
-                    types_metadata,
+                    metadata_types,
                     concrete_types,
                     decl.type_ascription.type_id,
                     decl.type_ascription.type_id,
@@ -591,10 +591,10 @@ impl TypeId {
         handler: &Handler,
         ctx: &mut AbiContext,
         engines: &Engines,
-        types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         resolved_type_id: TypeId,
-        types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<Option<Vec<MetadataTypeId>>, ErrorEmitted> {
         match self.is_generic_parameter(engines, resolved_type_id) {
             true => Ok(None),
@@ -607,9 +607,9 @@ impl TypeId {
                                 handler,
                                 ctx,
                                 engines,
-                                types_metadata,
+                                metadata_types,
                                 concrete_types,
-                                types_metadata_to_add,
+                                metadata_types_to_add,
                             )
                         })
                         .collect::<Result<Vec<_>, _>>()
@@ -628,10 +628,10 @@ impl TypeId {
         handler: &Handler,
         ctx: &mut AbiContext,
         engines: &Engines,
-        types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         resolved_type_id: TypeId,
-        types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<Option<Vec<program_abi::TypeApplication>>, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -639,18 +639,18 @@ impl TypeId {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
 
-                let mut new_types_metadata_to_add =
+                let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
                 for x in decl.variants.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         x.type_argument.initial_type_id,
                         x.type_argument.type_id,
-                        &mut new_types_metadata_to_add,
+                        &mut new_metadata_types_to_add,
                     )?;
                 }
 
@@ -672,10 +672,10 @@ impl TypeId {
                                     handler,
                                     ctx,
                                     engines,
-                                    types_metadata,
+                                    metadata_types,
                                     concrete_types,
                                     x.type_argument.type_id,
-                                    &mut new_types_metadata_to_add,
+                                    &mut new_metadata_types_to_add,
                                 )?,
                         })
                     })
@@ -684,25 +684,25 @@ impl TypeId {
                 if components.is_empty() {
                     None
                 } else {
-                    types_metadata_to_add.extend(new_types_metadata_to_add);
+                    metadata_types_to_add.extend(new_metadata_types_to_add);
                     Some(components)
                 }
             }
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
 
-                let mut new_types_metadata_to_add =
+                let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
                 for x in decl.fields.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         x.type_argument.initial_type_id,
                         x.type_argument.type_id,
-                        &mut new_types_metadata_to_add,
+                        &mut new_metadata_types_to_add,
                     )?;
                 }
 
@@ -724,10 +724,10 @@ impl TypeId {
                                     handler,
                                     ctx,
                                     engines,
-                                    types_metadata,
+                                    metadata_types,
                                     concrete_types,
                                     x.type_argument.type_id,
-                                    &mut new_types_metadata_to_add,
+                                    &mut new_metadata_types_to_add,
                                 )?,
                         })
                     })
@@ -736,7 +736,7 @@ impl TypeId {
                 if components.is_empty() {
                     None
                 } else {
-                    types_metadata_to_add.extend(new_types_metadata_to_add);
+                    metadata_types_to_add.extend(new_metadata_types_to_add);
                     Some(components)
                 }
             }
@@ -746,11 +746,11 @@ impl TypeId {
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         elem_ty.initial_type_id,
                         elem_ty.type_id,
-                        types_metadata_to_add,
+                        metadata_types_to_add,
                     )?;
 
                     // Generate the JSON data for the array. This is basically a single
@@ -764,10 +764,10 @@ impl TypeId {
                             handler,
                             ctx,
                             engines,
-                            types_metadata,
+                            metadata_types,
                             concrete_types,
                             elem_ty.type_id,
-                            types_metadata_to_add,
+                            metadata_types_to_add,
                         )?,
                     }])
                 } else {
@@ -817,18 +817,18 @@ impl TypeId {
             }
             TypeInfo::Tuple(_) => {
                 if let TypeInfo::Tuple(fields) = &*type_engine.get(resolved_type_id) {
-                    let mut new_types_metadata_to_add =
+                    let mut new_metadata_types_to_add =
                         Vec::<program_abi::TypeMetadataDeclaration>::new();
                     for x in fields.iter() {
                         generate_type_metadata_declaration(
                             handler,
                             ctx,
                             engines,
-                            types_metadata,
+                            metadata_types,
                             concrete_types,
                             x.initial_type_id,
                             x.type_id,
-                            &mut new_types_metadata_to_add,
+                            &mut new_metadata_types_to_add,
                         )?;
                     }
 
@@ -846,10 +846,10 @@ impl TypeId {
                                     handler,
                                     ctx,
                                     engines,
-                                    types_metadata,
+                                    metadata_types,
                                     concrete_types,
                                     x.type_id,
-                                    types_metadata_to_add,
+                                    metadata_types_to_add,
                                 )?,
                             })
                         })
@@ -857,7 +857,7 @@ impl TypeId {
                     if components.is_empty() {
                         None
                     } else {
-                        types_metadata_to_add.extend(new_types_metadata_to_add);
+                        metadata_types_to_add.extend(new_metadata_types_to_add);
                         Some(components)
                     }
                 } else {
@@ -876,21 +876,21 @@ impl TypeId {
                             handler,
                             ctx,
                             engines,
-                            types_metadata,
+                            metadata_types,
                             concrete_types,
                             v.initial_type_id,
                             p.type_id,
-                            types_metadata_to_add,
+                            metadata_types_to_add,
                         )?;
                     }
                     resolved_type_id.get_abi_type_components(
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         resolved_type_id,
-                        types_metadata_to_add,
+                        metadata_types_to_add,
                     )?
                 } else {
                     None
@@ -902,10 +902,10 @@ impl TypeId {
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         ty.type_id,
-                        types_metadata_to_add,
+                        metadata_types_to_add,
                     )?
                 } else {
                     None
@@ -920,10 +920,10 @@ impl TypeId {
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         resolved_type_id,
-                        types_metadata_to_add,
+                        metadata_types_to_add,
                     )?
                 }
             }
@@ -941,10 +941,10 @@ impl TypeId {
         handler: &Handler,
         ctx: &mut AbiContext,
         engines: &Engines,
-        types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         resolved_type_id: TypeId,
-        types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<Option<Vec<program_abi::TypeApplication>>, ErrorEmitted> {
         let type_engine = engines.te();
         let decl_engine = engines.de();
@@ -961,11 +961,11 @@ impl TypeId {
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         v.type_id,
                         p.type_id,
-                        types_metadata_to_add,
+                        metadata_types_to_add,
                     )?;
                 }
 
@@ -982,10 +982,10 @@ impl TypeId {
                                 handler,
                                 ctx,
                                 engines,
-                                types_metadata,
+                                metadata_types,
                                 concrete_types,
                                 p.type_id,
-                                types_metadata_to_add,
+                                metadata_types_to_add,
                             )?,
                         })
                     })
@@ -994,18 +994,18 @@ impl TypeId {
             TypeInfo::Enum(decl_ref) => {
                 let decl = decl_engine.get_enum(decl_ref);
 
-                let mut new_types_metadata_to_add =
+                let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
                 for v in decl.type_parameters.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         v.type_id,
                         v.type_id,
-                        &mut new_types_metadata_to_add,
+                        &mut new_metadata_types_to_add,
                     )?;
                 }
 
@@ -1022,10 +1022,10 @@ impl TypeId {
                                 handler,
                                 ctx,
                                 engines,
-                                types_metadata,
+                                metadata_types,
                                 concrete_types,
                                 arg.type_id,
-                                &mut new_types_metadata_to_add,
+                                &mut new_metadata_types_to_add,
                             )?,
                         })
                     })
@@ -1034,7 +1034,7 @@ impl TypeId {
                 if type_arguments.is_empty() {
                     None
                 } else {
-                    types_metadata_to_add.extend(new_types_metadata_to_add);
+                    metadata_types_to_add.extend(new_metadata_types_to_add);
                     Some(type_arguments)
                 }
             }
@@ -1042,18 +1042,18 @@ impl TypeId {
             TypeInfo::Struct(decl_ref) => {
                 let decl = decl_engine.get_struct(decl_ref);
 
-                let mut new_types_metadata_to_add =
+                let mut new_metadata_types_to_add =
                     Vec::<program_abi::TypeMetadataDeclaration>::new();
                 for v in decl.type_parameters.iter() {
                     generate_type_metadata_declaration(
                         handler,
                         ctx,
                         engines,
-                        types_metadata,
+                        metadata_types,
                         concrete_types,
                         v.type_id,
                         v.type_id,
-                        &mut new_types_metadata_to_add,
+                        &mut new_metadata_types_to_add,
                     )?;
                 }
 
@@ -1070,10 +1070,10 @@ impl TypeId {
                                 handler,
                                 ctx,
                                 engines,
-                                types_metadata,
+                                metadata_types,
                                 concrete_types,
                                 arg.type_id,
-                                &mut new_types_metadata_to_add,
+                                &mut new_metadata_types_to_add,
                             )?,
                         })
                     })
@@ -1082,7 +1082,7 @@ impl TypeId {
                 if type_arguments.is_empty() {
                     None
                 } else {
-                    types_metadata_to_add.extend(new_types_metadata_to_add);
+                    metadata_types_to_add.extend(new_metadata_types_to_add);
                     Some(type_arguments)
                 }
             }
@@ -1099,7 +1099,7 @@ impl TypeId {
         handler: &Handler,
         ctx: &mut AbiContext,
         engines: &Engines,
-        types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
         resolved_type_id: TypeId,
     ) -> Result<Option<Vec<program_abi::ConcreteTypeId>>, ErrorEmitted> {
@@ -1120,7 +1120,7 @@ impl TypeId {
                             handler,
                             ctx,
                             engines,
-                            types_metadata,
+                            metadata_types,
                             concrete_types,
                             arg.initial_type_id,
                             p.type_id,
@@ -1138,7 +1138,7 @@ impl TypeId {
                                 handler,
                                 ctx,
                                 engines,
-                                types_metadata,
+                                metadata_types,
                                 concrete_types,
                                 arg.type_id,
                                 arg.type_id,
@@ -1157,7 +1157,7 @@ impl TypeId {
                                 handler,
                                 ctx,
                                 engines,
-                                types_metadata,
+                                metadata_types,
                                 concrete_types,
                                 arg.type_id,
                                 arg.type_id,
@@ -1177,7 +1177,7 @@ impl TyFunctionDecl {
         handler: &Handler,
         ctx: &mut AbiContext,
         engines: &Engines,
-        types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
     ) -> Result<program_abi::ABIFunction, ErrorEmitted> {
         // Generate the JSON data for the function
@@ -1193,7 +1193,7 @@ impl TyFunctionDecl {
                             handler,
                             ctx,
                             engines,
-                            types_metadata,
+                            metadata_types,
                             concrete_types,
                             x.type_argument.initial_type_id,
                             x.type_argument.type_id,
@@ -1205,7 +1205,7 @@ impl TyFunctionDecl {
                 handler,
                 ctx,
                 engines,
-                types_metadata,
+                metadata_types,
                 concrete_types,
                 self.return_type.initial_type_id,
                 self.return_type.type_id,
@@ -1241,9 +1241,9 @@ impl TypeParameter {
         handler: &Handler,
         ctx: &mut AbiContext,
         engines: &Engines,
-        types_metadata: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types: &mut Vec<program_abi::TypeMetadataDeclaration>,
         concrete_types: &mut Vec<program_abi::TypeConcreteDeclaration>,
-        types_metadata_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
+        metadata_types_to_add: &mut Vec<program_abi::TypeMetadataDeclaration>,
     ) -> Result<MetadataTypeId, ErrorEmitted> {
         let type_id = MetadataTypeId(self.initial_type_id.index());
         let type_parameter = program_abi::TypeMetadataDeclaration {
@@ -1257,14 +1257,14 @@ impl TypeParameter {
                 handler,
                 ctx,
                 engines,
-                types_metadata,
+                metadata_types,
                 concrete_types,
                 self.type_id,
-                types_metadata_to_add,
+                metadata_types_to_add,
             )?,
             type_parameters: None,
         };
-        types_metadata_to_add.push(type_parameter);
+        metadata_types_to_add.push(type_parameter);
         Ok(type_id)
     }
 }

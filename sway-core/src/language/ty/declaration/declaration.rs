@@ -396,7 +396,7 @@ impl DebugWithEngines for TyDecl {
 
 impl CollectTypesMetadata for TyDecl {
     // this is only run on entry nodes, which must have all well-formed types
-    fn collect_types_metadata(
+    fn collect_metadata_types(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
@@ -404,24 +404,24 @@ impl CollectTypesMetadata for TyDecl {
         let decl_engine = ctx.engines.de();
         let metadata = match self {
             TyDecl::VariableDecl(decl) => {
-                let mut body = decl.body.collect_types_metadata(handler, ctx)?;
+                let mut body = decl.body.collect_metadata_types(handler, ctx)?;
                 body.append(
                     &mut decl
                         .type_ascription
                         .type_id
-                        .collect_types_metadata(handler, ctx)?,
+                        .collect_metadata_types(handler, ctx)?,
                 );
                 body
             }
             TyDecl::FunctionDecl(FunctionDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_function(decl_id);
-                decl.collect_types_metadata(handler, ctx)?
+                decl.collect_metadata_types(handler, ctx)?
             }
             TyDecl::ConstantDecl(ConstantDecl { decl_id, .. }) => {
                 let decl = decl_engine.get_constant(decl_id);
                 let TyConstantDecl { value, .. } = &*decl;
                 if let Some(value) = value {
-                    value.collect_types_metadata(handler, ctx)?
+                    value.collect_metadata_types(handler, ctx)?
                 } else {
                     return Ok(vec![]);
                 }
@@ -430,7 +430,7 @@ impl CollectTypesMetadata for TyDecl {
                 let decl = decl_engine.get_configurable(decl_id);
                 let TyConfigurableDecl { value, .. } = &*decl;
                 if let Some(value) = value {
-                    value.collect_types_metadata(handler, ctx)?
+                    value.collect_metadata_types(handler, ctx)?
                 } else {
                     return Ok(vec![]);
                 }

@@ -127,7 +127,7 @@ impl<'cx> CollectTypesMetadataContext<'cx> {
 }
 
 pub(crate) trait CollectTypesMetadata {
-    fn collect_types_metadata(
+    fn collect_metadata_types(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,

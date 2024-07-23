@@ -34,8 +34,6 @@ pub use debug_generation::write_dwarf;
 use indexmap::IndexMap;
 use metadata::MetadataManager;
 use query_engine::{ModuleCacheKey, ModulePath, ProgramsCacheEntry};
-use semantic_analysis::symbol_resolve::ResolveSymbols;
-use semantic_analysis::symbol_resolve_context::SymbolResolveContext;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -539,12 +537,8 @@ pub fn parsed_to_ast(
 
     let namespace = Namespace::init_root(initial_namespace);
     // Collect the program symbols.
-    let mut symbol_collection_ctx =
+    let _collection_ctx =
         ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
-
-    // Resolve the program symbols.
-    let resolve_ctx = SymbolResolveContext::new(engines, &mut symbol_collection_ctx);
-    parse_program.resolve_symbols(handler, resolve_ctx);
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
@@ -579,36 +573,34 @@ pub fn parsed_to_ast(
         }
     };
 
-    // Skip collecting type metadata and control-flow analysis
-    // if we triggered an optimised build from LSP.
-
-    let is_lsp_optimized_build = lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build);
-    let types_metadata = if !is_lsp_optimized_build {
+    // Skip collecting metadata if we triggered an optimised build from LSP.
+    let metadata_types = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
-        let types_metadata_result = typed_program.collect_types_metadata(
+        let metadata_types_result = typed_program.collect_metadata_types(
             handler,
             &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
         );
-
-        let types_metadata = match types_metadata_result {
-            Ok(types_metadata) => types_metadata,
+        let metadata_types = match metadata_types_result {
+            Ok(metadata_types) => metadata_types,
             Err(e) => {
                 handler.dedup();
                 return Err(e);
             }
         };
 
-        let logged_types = types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
-            _ => None,
-        });
-        typed_program.logged_types.extend(logged_types);
+        typed_program
+            .logged_types
+            .extend(metadata_types.iter().filter_map(|m| match m {
+                TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
+                _ => None,
+            }));
 
-        let message_types = types_metadata.iter().filter_map(|m| match m {
-            TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
-            _ => None,
-        });
-        typed_program.messages_types.extend(message_types);
+        typed_program
+            .messages_types
+            .extend(metadata_types.iter().filter_map(|m| match m {
+                TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
+                _ => None,
+            }));
 
         let (print_graph, print_graph_url_format) = match build_config {
             Some(cfg) => (
@@ -629,7 +621,7 @@ pub fn parsed_to_ast(
             print_graph_url_format,
         );
 
-        types_metadata
+        metadata_types
     } else {
         vec![]
     };
@@ -677,7 +669,7 @@ pub fn parsed_to_ast(
     };
 
     // All unresolved types lead to compile errors.
-    for err in types_metadata.iter().filter_map(|m| match m {
+    for err in metadata_types.iter().filter_map(|m| match m {
         TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
             Some(CompileError::UnableToInferGeneric {
                 ty: name.as_str().to_string(),
@@ -836,13 +828,10 @@ pub(crate) fn compile_ast_to_ir_to_asm(
     program: &ty::TyProgram,
     build_config: &BuildConfig,
 ) -> Result<FinalizedAsm, ErrorEmitted> {
-    // IR generaterion requires type information to be fully resolved.
-    //
-    // If type information is found to still be generic inside of
-    // IR, this is considered an internal compiler error.
-    //
-    // But, there are genuine cases for types be unknown here, like `let a = []`. These should
-    // have friendly errors.
+    // The IR pipeline relies on type information being fully resolved.
+    // If type information is found to still be generic or unresolved inside of
+    // IR, this is considered an internal compiler error. To resolve this situation,
+    // we need to explicitly ensure all types are resolved before going into IR.
     //
     // We _could_ introduce a new type here that uses TypeInfo instead of TypeId and throw away
     // the engine, since we don't need inference for IR. That'd be a _lot_ of copy-pasted code,

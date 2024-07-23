@@ -125,12 +125,12 @@ impl TypeCheckFinalization for TyAstNode {
 }
 
 impl CollectTypesMetadata for TyAstNode {
-    fn collect_types_metadata(
+    fn collect_metadata_types(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
-        self.content.collect_types_metadata(handler, ctx)
+        self.content.collect_metadata_types(handler, ctx)
     }
 }
 
@@ -409,15 +409,15 @@ impl TypeCheckFinalization for TyAstNodeContent {
 }
 
 impl CollectTypesMetadata for TyAstNodeContent {
-    fn collect_types_metadata(
+    fn collect_metadata_types(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         use TyAstNodeContent::*;
         match self {
-            Declaration(decl) => decl.collect_types_metadata(handler, ctx),
-            Expression(expr) => expr.collect_types_metadata(handler, ctx),
+            Declaration(decl) => decl.collect_metadata_types(handler, ctx),
+            Expression(expr) => expr.collect_metadata_types(handler, ctx),
             SideEffect(_) => Ok(vec![]),
             Error(_, _) => Ok(vec![]),
         }
