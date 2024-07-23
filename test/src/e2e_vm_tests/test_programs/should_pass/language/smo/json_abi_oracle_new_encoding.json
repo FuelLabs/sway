@@ -125,8 +125,6 @@
       "messageId": "9"
     }
   ],
-  "programType": "script",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "metadataTypeId": 0,
@@ -198,5 +196,7 @@
         4
       ]
     }
-  ]
+  ],
+  "programType": "script",
+  "specVersion": "1"
 }

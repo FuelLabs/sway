@@ -18,8 +18,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "script",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "metadataTypeId": 0,
@@ -35,5 +33,7 @@
       "metadataTypeId": 1,
       "type": "struct Wrapper"
     }
-  ]
+  ],
+  "programType": "script",
+  "specVersion": "1"
 }

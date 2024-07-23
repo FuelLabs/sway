@@ -52,8 +52,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "metadataTypeId": 0,
@@ -120,5 +118,7 @@
       "metadataTypeId": 6,
       "type": "struct dep_2::MyStructDuplicated"
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }

@@ -132,8 +132,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -382,5 +380,7 @@
         16
       ]
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }

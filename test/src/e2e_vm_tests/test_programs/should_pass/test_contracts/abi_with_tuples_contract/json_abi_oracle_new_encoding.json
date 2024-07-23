@@ -54,8 +54,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "metadataTypeId": 0,
@@ -133,5 +131,7 @@
       "metadataTypeId": 7,
       "type": "u64"
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }

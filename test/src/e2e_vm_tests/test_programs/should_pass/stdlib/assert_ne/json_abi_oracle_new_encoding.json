@@ -103,8 +103,6 @@
     }
   ],
   "messagesTypes": [],
-  "programType": "script",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -192,5 +190,7 @@
       "metadataTypeId": 7,
       "type": "struct std::contract_id::ContractId"
     }
-  ]
+  ],
+  "programType": "script",
+  "specVersion": "1"
 }

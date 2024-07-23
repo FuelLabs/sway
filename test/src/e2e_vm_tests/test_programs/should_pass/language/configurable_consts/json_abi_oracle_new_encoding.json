@@ -151,8 +151,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "script",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -220,5 +218,7 @@
       "metadataTypeId": 5,
       "type": "u64"
     }
-  ]
+  ],
+  "programType": "script",
+  "specVersion": "1"
 }

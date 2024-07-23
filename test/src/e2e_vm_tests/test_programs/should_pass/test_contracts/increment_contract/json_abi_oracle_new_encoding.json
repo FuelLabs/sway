@@ -70,8 +70,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "metadataTypeId": 0,
@@ -98,5 +96,7 @@
       "metadataTypeId": 2,
       "type": "generic T"
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }

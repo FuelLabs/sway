@@ -31,8 +31,6 @@
   ],
   "loggedTypes": [],
   "messagesTypes": [],
-  "programType": "script",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -44,5 +42,7 @@
       "metadataTypeId": 0,
       "type": "struct TestStruct"
     }
-  ]
+  ],
+  "programType": "script",
+  "specVersion": "1"
 }

@@ -692,8 +692,6 @@
     }
   ],
   "messagesTypes": [],
-  "programType": "contract",
-  "specVersion": "1",
   "metadataTypes": [
     {
       "components": [
@@ -765,5 +763,7 @@
       "metadataTypeId": 2,
       "type": "struct storage_access_abi::T"
     }
-  ]
+  ],
+  "programType": "contract",
+  "specVersion": "1"
 }
