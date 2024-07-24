@@ -1,4 +1,4 @@
-use parking_lot::{RwLock, RwLockReadGuard};
+use parking_lot::RwLock;
 use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
@@ -47,7 +47,6 @@ pub struct ParsedModuleInfo {
 #[derive(Clone, Debug)]
 pub struct TypedModuleInfo {
     pub module: Arc<TyModule>,
-    pub modified_time: Option<SystemTime>,
     pub version: Option<u64>,
 }
 

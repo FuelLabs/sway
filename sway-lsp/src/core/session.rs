@@ -43,7 +43,6 @@ use sway_core::{
 use sway_error::{error::CompileError, handler::Handler, warning::CompileWarning};
 use sway_types::{ProgramId, SourceEngine, Spanned};
 use sway_utils::{helpers::get_sway_files, PerformanceData};
-use swayfmt::parse;
 
 pub type RunnableMap = DashMap<PathBuf, Vec<Box<dyn Runnable>>>;
 pub type ProjectDirectory = PathBuf;

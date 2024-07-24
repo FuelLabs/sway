@@ -267,12 +267,10 @@ impl ty::TyModule {
         engines: &Engines,
         build_config: Option<&BuildConfig>,
     ) -> Option<Arc<ty::TyModule>> {
-        let Some(source_id) = source_id else {
-            return None;
-        };
+        let source_id = source_id?;
 
         // Create a cache key and get the module cache
-        let path = engines.se().get_path(&source_id);
+        let path = engines.se().get_path(source_id);
         let include_tests = build_config.map_or(false, |x| x.include_tests);
         let key = ModuleCacheKey::new(path.clone().into(), include_tests);
         let cache = engines.qe().module_cache.read();
@@ -477,16 +475,13 @@ impl ty::TyModule {
 
         // Cache the ty module
         if let Some(source_id) = span.source_id() {
-            let path = engines.se().get_path(&source_id);
+            let path = engines.se().get_path(source_id);
             let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
             let relevant_path = path
                 .iter()
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
                 .collect::<PathBuf>();
 
-            let modified_time = std::fs::metadata(path.as_path())
-                .ok()
-                .and_then(|m| m.modified().ok());
             let version = build_config
                 .and_then(|config| config.lsp_mode.as_ref())
                 .and_then(|lsp| lsp.file_versions.get(&path).copied())
@@ -499,7 +494,6 @@ impl ty::TyModule {
                 &key,
                 TypedModuleInfo {
                     module: ty_module.clone(),
-                    modified_time,
                     version,
                 },
             );
