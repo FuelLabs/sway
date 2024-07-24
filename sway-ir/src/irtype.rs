@@ -461,6 +461,15 @@ impl Type {
         }
     }
 
+    /// Get the type of the array element, if applicable.
+    pub fn get_typed_slice_elem_type(&self, context: &Context) -> Option<Type> {
+        if let TypeContent::TypedSlice(ty) = *self.get_content(context) {
+            Some(ty)
+        } else {
+            None
+        }
+    }
+
     /// Get the length of the array , if applicable.
     pub fn get_array_len(&self, context: &Context) -> Option<u64> {
         if let TypeContent::Array(_, n) = *self.get_content(context) {

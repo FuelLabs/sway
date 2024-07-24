@@ -270,4 +270,11 @@ impl Constant {
                 _ => false,
             }
     }
+
+    pub fn as_uint(&self) -> Option<u64> {
+        match &self.value {
+            ConstantValue::Uint(v) => Some(*v),
+            _ => None,
+        }
+    }
 }

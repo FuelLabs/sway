@@ -123,7 +123,6 @@ impl Entry {
                 name,
                 padding,
             ),
-            ConstantValue::Slice(_) => todo!(),
             ConstantValue::Struct(_) => Entry::new_collection(
                 constant
                     .struct_fields_with_padding(context)
@@ -137,6 +136,9 @@ impl Entry {
             ConstantValue::RawUntypedSlice(bytes) => Entry::new_slice(bytes.clone(), name, padding),
             ConstantValue::Reference(_) => {
                 todo!("Constant references are currently not supported.")
+            }
+            ConstantValue::Slice(_) => {
+                todo!("Constant slices are currently not supported.")
             }
         }
     }

@@ -113,6 +113,9 @@ where
 fn main()  {
     // slice arrays
     let a: [u64; 5] = [1, 2, 3, 4, 5];
+
+    
+
     let s = __slice(a, 0, 5);
     assert(1, *__slice_elem(s, 0));
     assert(2, *__slice_elem(s, 1));

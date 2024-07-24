@@ -623,21 +623,23 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::Ref(_) => {
             return Err(ConstEvalError::CompileError);
         }
-        ty::TyExpressionVariant::Deref(v) => match &v.expression {
-            ty::TyExpressionVariant::IntrinsicFunction(f) => match f.kind {
-                Intrinsic::SliceElem => {
-                    let v = const_eval_intrinsic(lookup, known_consts, f)?
-                        .ok_or(ConstEvalError::CompileError)?;
-                    let v = match v.value {
-                        ConstantValue::Reference(v) => v,
-                        _ => todo!(),
-                    };
-                    Some((*v).clone())
-                }
-                _ => todo!(),
-            },
-            _ => return Err(ConstEvalError::CompileError),
-        },
+        // We support *__slice_elem(...)
+        ty::TyExpressionVariant::Deref(expr) => {
+            let value = expr
+                .as_intrinsic()
+                .filter(|x| matches!(x.kind, Intrinsic::SliceElem))
+                .ok_or(ConstEvalError::CompileError)
+                .and_then(|kind| const_eval_intrinsic(lookup, known_consts, kind));
+            if let Ok(Some(Constant {
+                value: ConstantValue::Reference(value),
+                ..
+            })) = value
+            {
+                Some(*value.clone())
+            } else {
+                return Err(ConstEvalError::CompileError);
+            }
+        }
         ty::TyExpressionVariant::EnumTag { exp } => {
             let value = const_eval_typed_expr(lookup, known_consts, exp)?.map(|x| x.value);
             if let Some(ConstantValue::Struct(fields)) = value {
@@ -1300,46 +1302,68 @@ fn const_eval_intrinsic(
             }))
         }
         Intrinsic::Slice => {
-            let start = match &args[1].value {
-                ConstantValue::Uint(v) => *v,
-                _ => todo!(),
-            } as usize;
-            let end = match &args[2].value {
-                ConstantValue::Uint(v) => *v,
-                _ => todo!(),
-            } as usize;
+            let start = args[1].as_uint().expect("Type check allowed non u64") as usize;
+            let end = args[2].as_uint().expect("Type check allowed non u64") as usize;
 
             match &args[0].value {
-                ConstantValue::Array(v) => {
-                    let elem_type = v[0].ty;
-                    let slice = v[start..end].to_vec();
+                ConstantValue::Array(elements) => {
+                    let slice = elements
+                        .get(start..end)
+                        .ok_or(ConstEvalError::CompileError)?;
+                    let elem_type = args[0]
+                        .ty
+                        .get_array_elem_type(lookup.context)
+                        .expect("unexpected non array");
                     Ok(Some(Constant {
                         ty: Type::get_typed_slice(lookup.context, elem_type),
-                        value: ConstantValue::Slice(slice),
+                        value: ConstantValue::Slice(slice.to_vec()),
                     }))
                 }
                 ConstantValue::Reference(r) => match &r.value {
-                    ConstantValue::Slice(_) => todo!(),
-                    _ => todo!(),
+                    ConstantValue::Slice(elements) => {
+                        let slice = elements
+                            .get(start..end)
+                            .ok_or(ConstEvalError::CompileError)?;
+                        let elem_type = args[0]
+                            .ty
+                            .get_typed_slice_elem_type(lookup.context)
+                            .expect("unexpected non slice");
+                        Ok(Some(Constant {
+                            ty: Type::get_typed_slice(lookup.context, elem_type),
+                            value: ConstantValue::Slice(slice.to_vec()),
+                        }))
+                    }
+                    _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    }),
+                    _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    }),
                 },
-                _ => todo!(),
+                _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    span: intrinsic.span.clone(),
+                })
             }
         }
         Intrinsic::SliceElem => {
-            let idx = match &args[1].value {
-                ConstantValue::Uint(v) => *v,
-                _ => todo!(),
-            } as usize;
+            let idx = args[1].as_uint().expect("Type check allowed non u64") as usize;
 
             match &args[0].value {
-                ConstantValue::Slice(s) => {
-                    let v = s[idx].clone();
-                    Ok(Some(Constant {
-                        ty: Type::new_ptr(lookup.context, v.ty),
-                        value: ConstantValue::Reference(Box::new(v)),
-                    }))
-                }
-                _ => todo!(),
+                ConstantValue::Reference(r) => match &r.value {
+                    ConstantValue::Slice(elements) => {
+                        let v = elements[idx].clone();
+                        Ok(Some(Constant {
+                            ty: Type::new_ptr(lookup.context, v.ty),
+                            value: ConstantValue::Reference(Box::new(v)),
+                        }))
+                    }
+                    _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                        span: intrinsic.span.clone(),
+                    }),
+                },
+                _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
+                    span: intrinsic.span.clone(),
+                }),
             }
         }
     }
