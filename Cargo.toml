@@ -52,10 +52,7 @@ fuels-accounts = "0.66.0"
 forc-wallet = "0.9.0"
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
-
-[patch.crates-io]
-fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
+fuel-abi-types = "0.7.0"
 
 [workspace.package]
 edition = "2021"
