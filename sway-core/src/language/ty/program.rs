@@ -451,7 +451,7 @@ impl TyProgram {
 
 impl CollectTypesMetadata for TyProgram {
     /// Collect various type information such as unresolved types and types of logged data
-    fn collect_metadata_types(
+    fn collect_types_metadata(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
@@ -472,7 +472,7 @@ impl CollectTypesMetadata for TyProgram {
                 ..
             } => {
                 let main_function = decl_engine.get_function(main_function);
-                metadata.append(&mut main_function.collect_metadata_types(handler, ctx)?);
+                metadata.append(&mut main_function.collect_types_metadata(handler, ctx)?);
             }
             // For contracts, collect metadata for all the types starting with each ABI method as
             // an entry point.
@@ -482,12 +482,12 @@ impl CollectTypesMetadata for TyProgram {
             } => {
                 if let Some(main_function) = main_function {
                     let entry = decl_engine.get_function(main_function);
-                    metadata.append(&mut entry.collect_metadata_types(handler, ctx)?);
+                    metadata.append(&mut entry.collect_types_metadata(handler, ctx)?);
                 }
 
                 for entry in abi_entries.iter() {
                     let entry = decl_engine.get_function(entry);
-                    metadata.append(&mut entry.collect_metadata_types(handler, ctx)?);
+                    metadata.append(&mut entry.collect_types_metadata(handler, ctx)?);
                 }
             }
             // For libraries, collect metadata for all the types starting with each `pub` node as
@@ -502,7 +502,7 @@ impl CollectTypesMetadata for TyProgram {
                     for node in module.all_nodes.iter() {
                         let is_generic_function = node.is_generic_function(decl_engine);
                         if node.is_public(decl_engine) {
-                            let node_metadata = node.collect_metadata_types(handler, ctx)?;
+                            let node_metadata = node.collect_types_metadata(handler, ctx)?;
                             metadata.append(
                                 &mut node_metadata
                                     .iter()
@@ -530,7 +530,7 @@ impl CollectTypesMetadata for TyProgram {
         ) {
             for node in module.all_nodes.iter() {
                 if node.is_test_function(decl_engine) {
-                    metadata.append(&mut node.collect_metadata_types(handler, ctx)?);
+                    metadata.append(&mut node.collect_types_metadata(handler, ctx)?);
                 }
             }
         }

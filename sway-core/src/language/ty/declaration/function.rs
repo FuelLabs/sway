@@ -249,30 +249,30 @@ impl MonomorphizeHelper for TyFunctionDecl {
 }
 
 impl CollectTypesMetadata for TyFunctionDecl {
-    fn collect_metadata_types(
+    fn collect_types_metadata(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         let mut body = vec![];
         for content in self.body.contents.iter() {
-            body.append(&mut content.collect_metadata_types(handler, ctx)?);
+            body.append(&mut content.collect_types_metadata(handler, ctx)?);
         }
         body.append(
             &mut self
                 .return_type
                 .type_id
-                .collect_metadata_types(handler, ctx)?,
+                .collect_types_metadata(handler, ctx)?,
         );
         for type_param in self.type_parameters.iter() {
-            body.append(&mut type_param.type_id.collect_metadata_types(handler, ctx)?);
+            body.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
         }
         for param in self.parameters.iter() {
             body.append(
                 &mut param
                     .type_argument
                     .type_id
-                    .collect_metadata_types(handler, ctx)?,
+                    .collect_types_metadata(handler, ctx)?,
             );
         }
         Ok(body)

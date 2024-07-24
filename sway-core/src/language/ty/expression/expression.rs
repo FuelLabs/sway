@@ -128,14 +128,14 @@ impl TypeCheckFinalization for TyExpression {
 }
 
 impl CollectTypesMetadata for TyExpression {
-    fn collect_metadata_types(
+    fn collect_types_metadata(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
         use TyExpressionVariant::*;
         let decl_engine = ctx.engines.de();
-        let mut res = self.return_type.collect_metadata_types(handler, ctx)?;
+        let mut res = self.return_type.collect_types_metadata(handler, ctx)?;
         match &self.expression {
             FunctionApplication {
                 arguments,
@@ -144,7 +144,7 @@ impl CollectTypesMetadata for TyExpression {
                 ..
             } => {
                 for arg in arguments.iter() {
-                    res.append(&mut arg.1.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut arg.1.collect_types_metadata(handler, ctx)?);
                 }
                 let function_decl = decl_engine.get_function(fn_ref);
 
@@ -154,19 +154,19 @@ impl CollectTypesMetadata for TyExpression {
                 }
 
                 for content in function_decl.body.contents.iter() {
-                    res.append(&mut content.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
                 ctx.call_site_pop();
             }
             Tuple { fields } => {
                 for field in fields.iter() {
-                    res.append(&mut field.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut field.collect_types_metadata(handler, ctx)?);
                 }
             }
             AsmExpression { registers, .. } => {
                 for register in registers.iter() {
                     if let Some(init) = register.initializer.as_ref() {
-                        res.append(&mut init.collect_metadata_types(handler, ctx)?);
+                        res.append(&mut init.collect_types_metadata(handler, ctx)?);
                     }
                 }
             }
@@ -187,42 +187,42 @@ impl CollectTypesMetadata for TyExpression {
                     }
                 }
                 for field in fields.iter() {
-                    res.append(&mut field.value.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut field.value.collect_types_metadata(handler, ctx)?);
                 }
             }
             LazyOperator { lhs, rhs, .. } => {
-                res.append(&mut lhs.collect_metadata_types(handler, ctx)?);
-                res.append(&mut rhs.collect_metadata_types(handler, ctx)?);
+                res.append(&mut lhs.collect_types_metadata(handler, ctx)?);
+                res.append(&mut rhs.collect_types_metadata(handler, ctx)?);
             }
             Array {
                 elem_type: _,
                 contents,
             } => {
                 for content in contents.iter() {
-                    res.append(&mut content.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
             ArrayIndex { prefix, index } => {
-                res.append(&mut (**prefix).collect_metadata_types(handler, ctx)?);
-                res.append(&mut (**index).collect_metadata_types(handler, ctx)?);
+                res.append(&mut (**prefix).collect_types_metadata(handler, ctx)?);
+                res.append(&mut (**index).collect_types_metadata(handler, ctx)?);
             }
             CodeBlock(block) => {
                 for content in block.contents.iter() {
-                    res.append(&mut content.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
             MatchExp { desugared, .. } => {
-                res.append(&mut desugared.collect_metadata_types(handler, ctx)?)
+                res.append(&mut desugared.collect_types_metadata(handler, ctx)?)
             }
             IfExp {
                 condition,
                 then,
                 r#else,
             } => {
-                res.append(&mut condition.collect_metadata_types(handler, ctx)?);
-                res.append(&mut then.collect_metadata_types(handler, ctx)?);
+                res.append(&mut condition.collect_types_metadata(handler, ctx)?);
+                res.append(&mut then.collect_types_metadata(handler, ctx)?);
                 if let Some(r#else) = r#else {
-                    res.append(&mut r#else.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut r#else.collect_types_metadata(handler, ctx)?);
                 }
             }
             StructFieldAccess {
@@ -230,16 +230,16 @@ impl CollectTypesMetadata for TyExpression {
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.collect_metadata_types(handler, ctx)?);
-                res.append(&mut resolved_type_of_parent.collect_metadata_types(handler, ctx)?);
+                res.append(&mut prefix.collect_types_metadata(handler, ctx)?);
+                res.append(&mut resolved_type_of_parent.collect_types_metadata(handler, ctx)?);
             }
             TupleElemAccess {
                 prefix,
                 resolved_type_of_parent,
                 ..
             } => {
-                res.append(&mut prefix.collect_metadata_types(handler, ctx)?);
-                res.append(&mut resolved_type_of_parent.collect_metadata_types(handler, ctx)?);
+                res.append(&mut prefix.collect_types_metadata(handler, ctx)?);
+                res.append(&mut resolved_type_of_parent.collect_types_metadata(handler, ctx)?);
             }
             EnumInstantiation {
                 enum_ref,
@@ -252,55 +252,55 @@ impl CollectTypesMetadata for TyExpression {
                     ctx.call_site_insert(type_param.type_id, call_path_binding.inner.suffix.span())
                 }
                 if let Some(contents) = contents {
-                    res.append(&mut contents.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut contents.collect_types_metadata(handler, ctx)?);
                 }
                 for variant in enum_decl.variants.iter() {
                     res.append(
                         &mut variant
                             .type_argument
                             .type_id
-                            .collect_metadata_types(handler, ctx)?,
+                            .collect_types_metadata(handler, ctx)?,
                     );
                 }
                 for type_param in enum_decl.type_parameters.iter() {
-                    res.append(&mut type_param.type_id.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut type_param.type_id.collect_types_metadata(handler, ctx)?);
                 }
             }
             AbiCast { address, .. } => {
-                res.append(&mut address.collect_metadata_types(handler, ctx)?);
+                res.append(&mut address.collect_types_metadata(handler, ctx)?);
             }
             IntrinsicFunction(kind) => {
-                res.append(&mut kind.collect_metadata_types(handler, ctx)?);
+                res.append(&mut kind.collect_types_metadata(handler, ctx)?);
             }
             EnumTag { exp } => {
-                res.append(&mut exp.collect_metadata_types(handler, ctx)?);
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?);
             }
             UnsafeDowncast {
                 exp,
                 variant,
                 call_path_decl: _,
             } => {
-                res.append(&mut exp.collect_metadata_types(handler, ctx)?);
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?);
                 res.append(
                     &mut variant
                         .type_argument
                         .type_id
-                        .collect_metadata_types(handler, ctx)?,
+                        .collect_types_metadata(handler, ctx)?,
                 );
             }
             WhileLoop { condition, body } => {
-                res.append(&mut condition.collect_metadata_types(handler, ctx)?);
+                res.append(&mut condition.collect_types_metadata(handler, ctx)?);
                 for content in body.contents.iter() {
-                    res.append(&mut content.collect_metadata_types(handler, ctx)?);
+                    res.append(&mut content.collect_types_metadata(handler, ctx)?);
                 }
             }
             ForLoop { desugared } => {
-                res.append(&mut desugared.collect_metadata_types(handler, ctx)?);
+                res.append(&mut desugared.collect_types_metadata(handler, ctx)?);
             }
             ImplicitReturn(exp) | Return(exp) => {
-                res.append(&mut exp.collect_metadata_types(handler, ctx)?)
+                res.append(&mut exp.collect_types_metadata(handler, ctx)?)
             }
-            Ref(exp) | Deref(exp) => res.append(&mut exp.collect_metadata_types(handler, ctx)?),
+            Ref(exp) | Deref(exp) => res.append(&mut exp.collect_types_metadata(handler, ctx)?),
             // storage access can never be generic
             // variable expressions don't ever have return types themselves, they're stored in
             // `TyExpression::return_type`. Variable expressions are just names of variables.
@@ -314,7 +314,7 @@ impl CollectTypesMetadata for TyExpression {
             | Continue
             | FunctionParameter => {}
             Reassignment(reassignment) => {
-                res.append(&mut reassignment.rhs.collect_metadata_types(handler, ctx)?);
+                res.append(&mut reassignment.rhs.collect_types_metadata(handler, ctx)?);
             }
         }
         Ok(res)

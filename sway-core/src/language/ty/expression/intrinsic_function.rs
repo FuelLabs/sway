@@ -99,23 +99,23 @@ impl DebugWithEngines for TyIntrinsicFunctionKind {
 }
 
 impl CollectTypesMetadata for TyIntrinsicFunctionKind {
-    fn collect_metadata_types(
+    fn collect_types_metadata(
         &self,
         handler: &Handler,
         ctx: &mut CollectTypesMetadataContext,
     ) -> Result<Vec<TypeMetadata>, ErrorEmitted> {
-        let mut metadata_types = vec![];
+        let mut types_metadata = vec![];
         for type_arg in self.type_arguments.iter() {
-            metadata_types.append(&mut type_arg.type_id.collect_metadata_types(handler, ctx)?);
+            types_metadata.append(&mut type_arg.type_id.collect_types_metadata(handler, ctx)?);
         }
         for arg in self.arguments.iter() {
-            metadata_types.append(&mut arg.collect_metadata_types(handler, ctx)?);
+            types_metadata.append(&mut arg.collect_types_metadata(handler, ctx)?);
         }
 
         match self.kind {
             Intrinsic::Log => {
                 let logged_type = self.get_logged_type(ctx.experimental.new_encoding).unwrap();
-                metadata_types.push(TypeMetadata::LoggedType(
+                types_metadata.push(TypeMetadata::LoggedType(
                     LogId::new(logged_type.get_abi_type_str(
                         &AbiStrContext {
                             program_name: ctx.program_name.clone(),
@@ -130,7 +130,7 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
                 ));
             }
             Intrinsic::Smo => {
-                metadata_types.push(TypeMetadata::MessageType(
+                types_metadata.push(TypeMetadata::MessageType(
                     MessageId::new(ctx.message_id_counter()),
                     self.arguments[1].return_type,
                 ));
@@ -139,6 +139,6 @@ impl CollectTypesMetadata for TyIntrinsicFunctionKind {
             _ => {}
         }
 
-        Ok(metadata_types)
+        Ok(types_metadata)
     }
 }
