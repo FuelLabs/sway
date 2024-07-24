@@ -241,8 +241,6 @@ pub struct PkgOpts {
     ///
     /// By default, this is `<project-root>/out`.
     pub output_directory: Option<String>,
-    /// Outputs json abi with callpath instead of struct and enum names.
-    pub json_abi_with_callpaths: bool,
     /// The IPFS node to be used for fetching IPFS sources.
     pub ipfs_node: IPFSNode,
 }
@@ -1845,7 +1843,7 @@ pub fn compile(
                     &handler,
                     &mut AbiContext {
                         program: typed_program,
-                        abi_with_callpaths: profile.json_abi_with_callpaths,
+                        abi_with_callpaths: true,
                         type_ids_to_full_type_str: HashMap::<String, String>::new(),
                     },
                     engines,
@@ -2109,7 +2107,6 @@ fn build_profile_from_opts(
         profile.metrics_outfile.clone_from(metrics_outfile);
     }
     profile.include_tests |= tests;
-    profile.json_abi_with_callpaths |= pkg.json_abi_with_callpaths;
     profile.error_on_warnings |= error_on_warnings;
     profile.experimental = ExperimentalFlags {
         new_encoding: experimental.new_encoding,
