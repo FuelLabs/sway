@@ -1336,13 +1336,10 @@ fn const_eval_intrinsic(
                     _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
                         span: intrinsic.span.clone(),
                     }),
-                    _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
-                        span: intrinsic.span.clone(),
-                    }),
                 },
                 _ => Err(ConstEvalError::CannotBeEvaluatedToConst {
                     span: intrinsic.span.clone(),
-                })
+                }),
             }
         }
         Intrinsic::SliceElem => {
@@ -1404,7 +1401,6 @@ mod tests {
             None,
         ));
 
-        dbg!(2);
         let r = crate::compile_to_ast(
             &handler,
             &engines,
@@ -1415,15 +1411,12 @@ mod tests {
             None,
         );
 
-        dbg!(2);
         let (errors, _warnings) = handler.consume();
 
-        dbg!(1);
         if !errors.is_empty() {
             panic!("{:#?}", errors);
         }
 
-        dbg!(1);
         let f = r.unwrap();
         let f = f.typed.unwrap();
 
