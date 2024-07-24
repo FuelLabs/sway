@@ -4,33 +4,34 @@ use crate::{
     util::{
         node_url::get_node_url,
         pkg::built_pkgs,
+        target::Target,
         tx::{prompt_forc_wallet_password, select_secret_key, WalletSelectionMode},
     },
 };
 use anyhow::{bail, Context, Result};
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
-use forc_tracing::println_warning;
+use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
-use fuel_tx::Salt;
+use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
+    str::FromStr,
 };
+use std::{sync::Arc, time::Duration};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use tracing::info;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DeployedContract {
@@ -135,8 +136,17 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
+    let pkgs_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Contract])
+                .is_ok()
+        })
+        .collect::<Vec<_>>();
 
-    if built_pkgs.is_empty() {
+    if pkgs_to_deploy.is_empty() {
         println_warning("No deployable contracts found in the current directory.");
         return Ok(contract_ids);
     }
@@ -178,57 +188,105 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
+    // Ensure that all packages are being deployed to the same node.
+    let node_url = get_node_url(
+        &command.node,
+        &pkgs_to_deploy[0].descriptor.manifest_file.network,
+    )?;
+    if !pkgs_to_deploy.iter().all(|pkg| {
+        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
+            == Some(node_url.clone())
+    }) {
+        bail!("All contracts in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all contracts is the same.");
+    }
+
+    // Confirmation step. Summarize the transaction(s) for the deployment.
+    let (provider, signing_key) =
+        confirm_transaction_details(&pkgs_to_deploy, &command, node_url.clone()).await?;
+
+    for pkg in pkgs_to_deploy {
+        let salt = match (&contract_salt_map, command.default_salt) {
+            (Some(map), false) => {
+                if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
+                    *salt
+                } else {
+                    Default::default()
+                }
+            }
+            (None, true) => Default::default(),
+            (None, false) => rand::random(),
+            (Some(_), true) => {
+                bail!("Both `--salt` and `--default-salt` were specified: must choose one")
+            }
+        };
+        let contract_id = deploy_pkg(
+            &command,
+            pkg,
+            salt,
+            &provider,
+            &signing_key,
+            node_url.clone(),
+        )
+        .await?;
+        contract_ids.push(contract_id);
+    }
+    Ok(contract_ids)
+}
+
+/// Prompt the user to confirm the transactions required for deployment, as well as the signing key.
+async fn confirm_transaction_details(
+    pkgs_to_deploy: &[&Arc<BuiltPackage>],
+    command: &cmd::Deploy,
+    node_url: String,
+) -> Result<(Provider, SecretKey)> {
+    // Confirmation step. Summarize the transaction(s) for the deployment.
+    let tx_summary = pkgs_to_deploy
+        .iter()
+        .map(|pkg| format!("deploy {}", pkg.descriptor.manifest_file.project_name()))
+        .collect::<Vec<_>>()
+        .join(" + ");
+
+    let tx_count = pkgs_to_deploy.len();
+
+    println_action_green("Confirming", &format!("transactions [{tx_summary}]"));
+    println_action_green("", &format!("Network: {node_url}"));
+
+    let provider = Provider::connect(node_url.clone()).await?;
+
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
         WalletSelectionMode::Manual
     } else {
-        let password = prompt_forc_wallet_password(&default_wallet_path())?;
+        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
+        let password = prompt_forc_wallet_password()?;
         WalletSelectionMode::ForcWallet(password)
     };
 
-    for pkg in built_pkgs {
-        if pkg
-            .descriptor
-            .manifest_file
-            .check_program_type(&[TreeType::Contract])
-            .is_ok()
-        {
-            let salt = match (&contract_salt_map, command.default_salt) {
-                (Some(map), false) => {
-                    if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
-                        *salt
-                    } else {
-                        Default::default()
-                    }
-                }
-                (None, true) => Default::default(),
-                (None, false) => rand::random(),
-                (Some(_), true) => {
-                    bail!("Both `--salt` and `--default-salt` were specified: must choose one")
-                }
-            };
-            let contract_id = deploy_pkg(
-                &command,
-                &pkg.descriptor.manifest_file,
-                &pkg,
-                salt,
-                &wallet_mode,
-            )
-            .await?;
-            contract_ids.push(contract_id);
-        }
-    }
-    Ok(contract_ids)
+    // TODO: Display the estimated gas cost of the transaction(s).
+    // https://github.com/FuelLabs/sway/issues/6277
+
+    let signing_key = select_secret_key(
+        &wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+        tx_count,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
+
+    Ok((provider.clone(), signing_key))
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
 pub async fn deploy_pkg(
     command: &cmd::Deploy,
-    manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
     salt: Salt,
-    wallet_mode: &WalletSelectionMode,
+    provider: &Provider,
+    signing_key: &SecretKey,
+    node_url: String,
 ) -> Result<DeployedContract> {
-    let node_url = get_node_url(&command.node, &manifest.network)?;
+    let manifest = &compiled.descriptor.manifest_file;
     let client = FuelClient::new(node_url.clone())?;
 
     let bytecode = &compiled.bytecode.bytes;
@@ -247,8 +305,6 @@ pub async fn deploy_pkg(
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-
-    let provider = Provider::connect(node_url.clone()).await?;
     let tx_policies = TxPolicies::default();
 
     let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
@@ -259,22 +315,15 @@ pub async fn deploy_pkg(
         storage_slots.clone(),
         tx_policies,
     );
-    let signing_key = select_secret_key(
-        wallet_mode,
-        command.default_signer || command.unsigned,
-        command.signing_key,
-        &provider,
-    )
-    .await?
-    .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
-    let wallet = WalletUnlocked::new_from_private_key(signing_key, Some(provider.clone()));
+    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
 
     wallet.add_witnesses(&mut tb)?;
     wallet.adjust_for_fee(&mut tb, 0).await?;
     let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);
 
-    let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
+    let chain_info = client.chain_info().await?;
+    let chain_id = chain_info.consensus_parameters.chain_id();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
@@ -283,11 +332,25 @@ pub async fn deploy_pkg(
             }
             TransactionStatus::Success { block_height, .. } => {
                 let pkg_name = manifest.project_name();
-                info!("\n\nContract {pkg_name} Deployed!");
+                let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+                let (contract_url, block_url) = match target.explorer_url() {
+                    Some(explorer_url) => (
+                        format!("{explorer_url}/contract/0x"),
+                        format!("{explorer_url}/block/"),
+                    ),
+                    None => ("".to_string(), "".to_string()),
+                };
+                println_action_green(
+                    "Finished",
+                    &format!("deploying {pkg_name} {contract_url}{contract_id}"),
+                );
+                let block_height_formatted =
+                    match u32::from_str_radix(&block_height.to_string(), 16) {
+                        Ok(decimal) => format!("{block_url}{decimal}"),
+                        Err(_) => block_height.to_string(),
+                    };
 
-                info!("\nNetwork: {node_url}");
-                info!("Contract ID: 0x{contract_id}");
-                info!("Deployed in block {}", &block_height);
+                println_action_green("Deployed", &format!("in block {block_height_formatted}"));
 
                 // Create a deployment artifact.
                 let deployment_size = bytecode.len();

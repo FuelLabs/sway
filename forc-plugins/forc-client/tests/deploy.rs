@@ -1,10 +1,3 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    process::{Child, Command},
-    str::FromStr,
-};
-
 use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
@@ -13,6 +6,13 @@ use forc_client::{
 };
 use fuel_tx::{ContractId, Salt};
 use portpicker::Port;
+use rexpect::spawn;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::{Child, Command},
+    str::FromStr,
+};
 use tempfile::tempdir;
 use toml_edit::{Document, InlineTable, Item, Value};
 
@@ -78,7 +78,7 @@ fn patch_manifest_file_with_path_std(manifest_dir: &Path) -> anyhow::Result<()> 
 }
 
 #[tokio::test]
-async fn simple_deploy() {
+async fn test_simple_deploy() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_data_path().join("standalone_contract");
@@ -113,4 +113,37 @@ async fn simple_deploy() {
     }];
 
     assert_eq!(contract_ids, expected)
+}
+
+// TODO: https://github.com/FuelLabs/sway/issues/6283
+// Add interactive tests for the happy path cases. This requires starting the node with funded accounts and setting up
+// the wallet with the correct password. The tests should be run in a separate test suite that is not run by default.
+// It would also require overriding `default_wallet_path` function for tests, so as not to interfere with the user's wallet.
+
+#[test]
+fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error> {
+    let (mut node, port) = run_node();
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+
+    // Spawn the forc-deploy binary using cargo run
+    let project_dir = test_data_path().join("standalone_contract");
+    let mut process = spawn(
+        &format!(
+            "cargo run --bin forc-deploy -- --node-url {node_url} -p {}",
+            project_dir.display()
+        ),
+        Some(300000),
+    )?;
+
+    // Confirmation prompts
+    process
+        .exp_string("\u{1b}[1;32mConfirming\u{1b}[0m transactions [deploy standalone_contract]")?;
+    process.exp_string(&format!("Network: {node_url}"))?;
+    process.exp_string("Wallet: ")?;
+    process.exp_string("Wallet password")?;
+    process.send_line("mock_password")?;
+
+    process.process.exit()?;
+    node.kill().unwrap();
+    Ok(())
 }
