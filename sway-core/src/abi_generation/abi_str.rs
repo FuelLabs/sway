@@ -3,7 +3,7 @@ use sway_types::integer_bits::IntegerBits;
 use crate::{language::CallPath, Engines, TypeArgument, TypeId, TypeInfo};
 
 pub struct AbiStrContext {
-    pub program_name: Option<String>,
+    pub program_name: String,
     pub abi_with_callpaths: bool,
     pub abi_with_fully_specified_types: bool,
 }
@@ -182,9 +182,8 @@ fn call_path_display(ctx: &AbiStrContext, call_path: &CallPath) -> String {
         return call_path.suffix.as_str().to_string();
     }
     let mut buf = String::new();
-    let root_name = ctx.program_name.as_deref();
     for (index, prefix) in call_path.prefixes.iter().enumerate() {
-        if index == 0 && Some(prefix.as_str()) == root_name {
+        if index == 0 && prefix.as_str() == ctx.program_name {
             continue;
         }
         buf.push_str(prefix.as_str());
