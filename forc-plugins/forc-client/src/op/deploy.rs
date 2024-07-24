@@ -281,6 +281,10 @@ pub async fn deploy_pkg(
     let contract_id: ContractId = if command.submit_only {
         match client.submit(&tx).await {
             Ok(transaction_id) => {
+                info!("\n\nContract {pkg_name} Deployed!");
+                info!("\nNetwork: {node_url}");
+                info!("Contract ID: 0x{contract_id}");
+
                 // Create a deployment artifact.
                 create_deployment_artifact(
                     DeploymentArtifact {
