@@ -3,12 +3,12 @@ category = "fail"
 #check: $()error
 #nextln: $()main.sw:7
 #check: $()use lib::Struct;
-#check: $()The imported symbol "Struct" shadows another symbol with the same name.
+#check: $()Imported symbol "Struct" shadows another symbol of the same name.
 
 #check: $()error
 #nextln: $()main.sw:8
 #check: $()use lib::Struct;
-#check: $()The imported symbol "Struct" shadows another symbol with the same name.
+#check: $()Imported symbol "Struct" shadows another symbol of the same name.
 
 #check: $()Constants cannot be shadowed
 #nextln: $()main.sw:13
