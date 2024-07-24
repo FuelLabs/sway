@@ -52,7 +52,6 @@ fn build_opts_from_cmd(cmd: &ContractIdCommand) -> pkg::BuildOpts {
             terse: cmd.pkg.terse,
             locked: cmd.pkg.locked,
             output_directory: cmd.pkg.output_directory.clone(),
-            json_abi_with_callpaths: cmd.pkg.json_abi_with_callpaths,
             ipfs_node: cmd.pkg.ipfs_node.clone().unwrap_or_default(),
         },
         print: pkg::PrintOpts {

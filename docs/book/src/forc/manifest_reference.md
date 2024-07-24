@@ -76,7 +76,6 @@ The following fields can be provided for a build-profile:
 * `terse` - Terse mode. Limited warning and error output, defaults to false.
 * `time_phases` - Whether to output the time elapsed over each part of the compilation process, defaults to false.
 * `include_tests` -  Whether or not to include test functions in parsing, type-checking, and code generation. This is set to true by invocations like `forc test`, but defaults to false.
-* `json_abi_with_callpaths` - Whether to generate a JSON ABI with `callpaths` instead of names for structs and enums, defaults to false. This option can help prevent conflicting struct or enum definitions by using the full path instead of the name.
 * `error_on_warnings` - Whether to treat errors as warnings, defaults to false.
 
 There are two default `[build-profile]` available with every manifest file. These are `debug` and `release` profiles. If you want to override these profiles, you can provide them explicitly in the manifest file like the following example:
