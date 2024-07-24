@@ -451,41 +451,34 @@ fn parse_module_tree(
     })
 }
 
-// TODO: This function can probably be written better and more concisely.
+/// Checks if the typed module cache for a given path is up to date.
+///
+/// Returns `true` if the cache is up to date, `false` otherwise.
 pub(crate) fn is_ty_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
     include_tests: bool,
     build_config: Option<&BuildConfig>,
 ) -> bool {
-    let query_engine = engines.qe();
+    let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-    let cache = query_engine.module_cache.read();
-    let entry = cache.get(&key);
-    match entry {
-        Some(entry) => match &entry.typed {
-            Some(typed) => {
-                let cache_up_to_date = build_config
-                    .as_ref()
-                    .and_then(|x| x.lsp_mode.as_ref())
-                    .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
-                    .map_or_else(
-                        || false,
-                        |version| !version.map_or(false, |v| v > typed.version.unwrap_or(0)),
-                    );
-                if cache_up_to_date {
-                    entry.common.dependencies.iter().all(|path| {
-                        //eprint!("checking dep path {:?} ", path);
-                        is_ty_module_cache_up_to_date(engines, path, include_tests, build_config)
-                    })
-                } else {
-                    false
-                }
-            }
-            None => false,
-        },
-        None => false,
-    }
+
+    cache.get(&key).map_or(false, |entry| {
+        entry.typed.as_ref().map_or(false, |typed| {
+            // Check if the cache is up to date based on file versions
+            let cache_up_to_date = build_config
+                .and_then(|x| x.lsp_mode.as_ref())
+                .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
+                .map_or(true, |version| {
+                    version.map_or(true, |v| v <= typed.version.unwrap_or(0))
+                });
+
+            // If the cache is up to date, recursively check all dependencies
+            cache_up_to_date && entry.common.dependencies.iter().all(|dep_path| 
+                is_ty_module_cache_up_to_date(engines, dep_path, include_tests, build_config)
+            )
+        })
+    })
 }
 
 pub(crate) fn is_parse_module_cache_up_to_date(
