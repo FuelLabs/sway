@@ -52,10 +52,7 @@ fuels-accounts = { git = "https://github.com/FuelLabs/fuels-rs", branch = "esdru
 forc-wallet = { git = "https://github.com/FuelLabs/forc-wallet", branch = "esdrubal/abi_changes" }
 
 # Dependencies from the `fuel-abi-types` repository:
-fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
-
-[patch.crates-io]
-fuel-abi-types = { git = "https://github.com/FuelLabs/fuel-abi-types", branch = "esdrubal/abi_changes2" }
+fuel-abi-types = "0.7.0"
 
 [workspace.package]
 edition = "2021"
