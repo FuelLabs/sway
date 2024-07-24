@@ -574,14 +574,14 @@ pub fn parsed_to_ast(
     };
 
     // Skip collecting metadata if we triggered an optimised build from LSP.
-    let metadata_types = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
+    let types_metadata = if !lsp_config.as_ref().is_some_and(|lsp| lsp.optimized_build) {
         // Collect information about the types used in this program
-        let metadata_types_result = typed_program.collect_metadata_types(
+        let types_metadata_result = typed_program.collect_types_metadata(
             handler,
             &mut CollectTypesMetadataContext::new(engines, experimental, package_name.to_string()),
         );
-        let metadata_types = match metadata_types_result {
-            Ok(metadata_types) => metadata_types,
+        let types_metadata = match types_metadata_result {
+            Ok(types_metadata) => types_metadata,
             Err(e) => {
                 handler.dedup();
                 return Err(e);
@@ -590,14 +590,14 @@ pub fn parsed_to_ast(
 
         typed_program
             .logged_types
-            .extend(metadata_types.iter().filter_map(|m| match m {
+            .extend(types_metadata.iter().filter_map(|m| match m {
                 TypeMetadata::LoggedType(log_id, type_id) => Some((*log_id, *type_id)),
                 _ => None,
             }));
 
         typed_program
             .messages_types
-            .extend(metadata_types.iter().filter_map(|m| match m {
+            .extend(types_metadata.iter().filter_map(|m| match m {
                 TypeMetadata::MessageType(message_id, type_id) => Some((*message_id, *type_id)),
                 _ => None,
             }));
@@ -621,7 +621,7 @@ pub fn parsed_to_ast(
             print_graph_url_format,
         );
 
-        metadata_types
+        types_metadata
     } else {
         vec![]
     };
@@ -669,7 +669,7 @@ pub fn parsed_to_ast(
     };
 
     // All unresolved types lead to compile errors.
-    for err in metadata_types.iter().filter_map(|m| match m {
+    for err in types_metadata.iter().filter_map(|m| match m {
         TypeMetadata::UnresolvedType(name, call_site_span_opt) => {
             Some(CompileError::UnableToInferGeneric {
                 ty: name.as_str().to_string(),
