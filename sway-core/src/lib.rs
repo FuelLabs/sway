@@ -453,7 +453,11 @@ fn parse_module_tree(
 
 /// Checks if the typed module cache for a given path is up to date.
 ///
-/// Returns `true` if the cache is up to date, `false` otherwise.
+/// This function determines whether the cached typed representation of a module
+/// is still valid based on file versions and dependencies.
+///
+/// Note: This functionality is currently only supported when the compiler is
+/// initiated from the language server.
 pub(crate) fn is_ty_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
@@ -462,7 +466,6 @@ pub(crate) fn is_ty_module_cache_up_to_date(
 ) -> bool {
     let cache = engines.qe().module_cache.read();
     let key = ModuleCacheKey::new(path.clone(), include_tests);
-
     cache.get(&key).map_or(false, |entry| {
         entry.typed.as_ref().map_or(false, |typed| {
             // Check if the cache is up to date based on file versions
@@ -474,13 +477,18 @@ pub(crate) fn is_ty_module_cache_up_to_date(
                 });
 
             // If the cache is up to date, recursively check all dependencies
-            cache_up_to_date && entry.common.dependencies.iter().all(|dep_path| 
-                is_ty_module_cache_up_to_date(engines, dep_path, include_tests, build_config)
-            )
+            cache_up_to_date
+                && entry.common.dependencies.iter().all(|dep_path| {
+                    is_ty_module_cache_up_to_date(engines, dep_path, include_tests, build_config)
+                })
         })
     })
 }
 
+/// Checks if the parsed module cache for a given path is up to date.
+///
+/// This function determines whether the cached parsed representation of a module
+/// is still valid based on file versions, modification times, or content hashes.
 pub(crate) fn is_parse_module_cache_up_to_date(
     engines: &Engines,
     path: &Arc<PathBuf>,
@@ -492,69 +500,50 @@ pub(crate) fn is_parse_module_cache_up_to_date(
         .iter()
         .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
         .collect::<PathBuf>();
-    let key = ModuleCacheKey::new(path.clone(), include_tests);
+
     let cache = engines.qe().module_cache.read();
-    let entry = cache.get(&key);
-    
-    let res = match entry {
-        Some(entry) => {
-            // Let's check if we can re-use the dependency information
-            // we got from the cache.
-            let cache_up_to_date = build_config
-                .as_ref()
-                .and_then(|x| x.lsp_mode.as_ref())
-                .and_then(|lsp| {
-                    // First try to get the file version from lsp if it exists
-                    lsp.file_versions.get(path.as_ref())
-                })
-                .map_or_else(
-                    || {
-                        // Otherwise we can safely read the file from disk here, as the LSP has not modified it, or we are not in LSP mode.
-                        // Check if the file has been modified or if its hash is the same as the last compilation
-                        let modified_time = std::fs::metadata(path.as_path())
-                            .ok()
-                            .and_then(|m| m.modified().ok());
-                        entry.parsed.modified_time == modified_time || {
-                            let src = std::fs::read_to_string(path.as_path()).unwrap();
-                            let mut hasher = DefaultHasher::new();
-                            src.hash(&mut hasher);
-                            let hash = hasher.finish();
-                            hash == entry.common.hash
-                        }
-                    },
-                    |version| {
-                        // The cache is invalid if the lsp version is greater than the last compilation
-                        !version.map_or(false, |v| v > entry.parsed.version.unwrap_or(0))
-                    },
-                );
+    let key = ModuleCacheKey::new(path.clone(), include_tests);
 
-            // Look at the dependencies recursively to make sure they have not been
-            // modified either.
-            if cache_up_to_date {
-                //eprintln!("num dependencies for path {:?}: {}", path, entry.dependencies.len());
-                entry.common.dependencies.iter().all(|path| {
-                    //                    eprint!("checking dep path {:?} ", path);
-                    is_parse_module_cache_up_to_date(engines, path, include_tests, build_config)
-                })
-            } else {
-                false
-            }
-        }
-        None => false,
-    };
+    let res = cache.get(&key).map_or(false, |entry| {
+        // Determine if the cached dependency information is still valid
+        let cache_up_to_date = build_config
+            .and_then(|x| x.lsp_mode.as_ref())
+            .and_then(|lsp| lsp.file_versions.get(path.as_ref()))
+            .map_or_else(
+                || {
+                    // If LSP mode is not active or file version is unavailable, fall back to filesystem checks.
+                    let modified_time = std::fs::metadata(path.as_path())
+                        .ok()
+                        .and_then(|m| m.modified().ok());
+                    // Check if modification time matches, or if not, compare file content hash
+                    entry.parsed.modified_time == modified_time || {
+                        let src = std::fs::read_to_string(path.as_path()).unwrap();
+                        let mut hasher = DefaultHasher::new();
+                        src.hash(&mut hasher);
+                        hasher.finish() == entry.common.hash
+                    }
+                },
+                |version| {
+                    // In LSP mode, cache is valid if the current version is not greater
+                    // than the version at last compilation.
+                    !version.map_or(false, |v| v > entry.parsed.version.unwrap_or(0))
+                },
+            );
 
-    if res {
-        eprintln!(
-            "🀄 👓 Checking cache for parse module {:?} | is up to date? true 🟩",
-            relevant_path
-        );
-    } else {
-        eprintln!(
-            "🀄 👓 Checking cache for parse module {:?} | is up to date? FALSE 🟥",
-            relevant_path
-        );
-    }
+        // Checks if the typed module cache for a given path is up to date// If the cache is up to date, recursively check all dependencies to make sure they have not been
+        // modified either.
+        cache_up_to_date
+            && entry.common.dependencies.iter().all(|dep_path| {
+                is_parse_module_cache_up_to_date(engines, dep_path, include_tests, build_config)
+            })
+    });
 
+    eprintln!(
+        "🀄 👓 Checking cache for parse module {:?} | is up to date? {} {}",
+        relevant_path,
+        if res { "true 🟩" } else { "FALSE 🟥" },
+        if res { "   " } else { "" }
+    );
     res
 }
 

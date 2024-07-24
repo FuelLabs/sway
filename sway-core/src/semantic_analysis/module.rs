@@ -11,12 +11,12 @@ use sway_error::{
     error::CompileError,
     handler::{ErrorEmitted, Handler},
 };
-use sway_types::{BaseIdent, Named, SourceId, Spanned};
+use sway_types::{BaseIdent, Named, SourceId};
 
 use crate::{
     decl_engine::{DeclEngineGet, DeclId},
     engine_threading::DebugWithEngines,
-    is_parse_module_cache_up_to_date, is_ty_module_cache_up_to_date,
+    is_ty_module_cache_up_to_date,
     language::{
         parsed::*,
         ty::{self, TyAstNodeContent, TyDecl},
@@ -258,58 +258,60 @@ impl ty::TyModule {
         Ok(())
     }
 
-    fn check_cache(
+    /// Retrieves a cached typed module if it's up to date.
+    ///
+    /// This function checks the cache for a typed module corresponding to the given source ID.
+    /// If found and up to date, it returns the cached module. Otherwise, it returns None.
+    fn get_cached_ty_module_if_up_to_date(
         source_id: Option<&SourceId>,
         engines: &Engines,
         build_config: Option<&BuildConfig>,
     ) -> Option<Arc<ty::TyModule>> {
-        // Check if the module is already in the cache
-        if let Some(source_id) = source_id {
-            let path = engines.se().get_path(&source_id);
-            let include_tests = build_config.map_or(false, |x| x.include_tests);
+        let Some(source_id) = source_id else {
+            return None;
+        };
 
-            let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
-            let relevant_path = path
-                .iter()
-                .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
-                .collect::<PathBuf>();
+        // Create a cache key and get the module cache
+        let path = engines.se().get_path(&source_id);
+        let include_tests = build_config.map_or(false, |x| x.include_tests);
+        let key = ModuleCacheKey::new(path.clone().into(), include_tests);
+        let cache = engines.qe().module_cache.read();
 
-            let key: ModuleCacheKey = ModuleCacheKey::new(path.clone().into(), include_tests);
-            let cache = engines.qe().module_cache.read();
-            if let Some(entry) = cache.get(&key) {
-                // We now need to check if the module is up to date, if not, we need to recompute it so
-                // we will return None, otherwise we will return the cached module.
+        let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+        let relevant_path = path
+            .iter()
+            .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
+            .collect::<PathBuf>();
 
-                // For now we will duplicate the logic of the parsed cache entry check but
-                // we should ideally have a way of sharing this logic.
+        cache.get(&key).and_then(|entry| {
+            entry.typed.as_ref().and_then(|typed| {
+                // Check if the cached module is up to date
+                let is_up_to_date = is_ty_module_cache_up_to_date(
+                    engines,
+                    &path.into(),
+                    include_tests,
+                    build_config,
+                );
 
-                // Let's check if we can re-use the dependency information
-                // we got from the cache.
-                if let Some(typed) = &entry.typed {
-                    let is_up_to_date = is_ty_module_cache_up_to_date(
-                        engines,
-                        &path.into(),
-                        include_tests,
-                        build_config,
-                    );
-                    let status = if is_up_to_date {
-                        "✅ Cache hit"
-                    } else {
-                        "🔄 Cache miss"
-                    };
-                    eprintln!(
-                        "{} for module {:?} (up to date: {})",
-                        status, relevant_path, is_up_to_date
-                    );
-                    if is_up_to_date {
-                        return Some(typed.module.clone());
-                    }
+                // Log the cache status
+                let status = if is_up_to_date {
+                    "✅ Cache hit"
+                } else {
+                    "🔄 Cache miss"
+                };
+                eprintln!(
+                    "{} for module {:?} (up to date: {})",
+                    status, relevant_path, is_up_to_date
+                );
+
+                // Return the cached module if it's up to date, otherwise None
+                if is_up_to_date {
+                    Some(typed.module.clone())
+                } else {
+                    None
                 }
-            } else {
-                eprintln!("❌ No cache entry for module {:?}", relevant_path);
-            }
-        }
-        None
+            })
+        })
     }
 
     /// Type-check the given parsed module to produce a typed module.
@@ -337,48 +339,54 @@ impl ty::TyModule {
             "Root Module: {:?}",
             parsed.span.source_id().map(|x| engines.se().get_path(x))
         );
-        if let Some(module) =
-            ty::TyModule::check_cache(parsed.span.source_id(), engines, build_config)
-        {
+
+        // Try to get the cached root module
+        if let Some(module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
+            parsed.span.source_id(),
+            engines,
+            build_config,
+        ) {
             return Ok(module);
         }
 
         // Type-check submodules first in order of evaluation previously computed by the dependency graph.
-        let submodules_res = module_eval_order
+        let submodules_res: Result<Vec<_>, _> = module_eval_order
             .iter()
             .map(|eval_mod_name| {
                 let (name, submodule) = submodules
                     .iter()
-                    .find(|(submod_name, _submodule)| eval_mod_name == submod_name)
+                    .find(|(submod_name, _)| eval_mod_name == submod_name)
                     .unwrap();
 
-                // Check if the submodule cache is up to date
-                if let Some(module) = ty::TyModule::check_cache(
+                // Try to get the cached submodule
+                if let Some(cached_module) = ty::TyModule::get_cached_ty_module_if_up_to_date(
                     submodule.module.span.source_id(),
                     engines,
                     build_config,
                 ) {
-                    let submodule = ty::TySubmodule {
-                        module,
-                        mod_name_span: submodule.mod_name_span.clone(),
-                    };
-                    Ok((name.clone(), submodule))
-                } else {
-                    Ok((
+                    // If cached, create TySubmodule from cached module
+                    Ok::<(BaseIdent, ty::TySubmodule), ErrorEmitted>((
                         name.clone(),
-                        ty::TySubmodule::type_check(
-                            handler,
-                            ctx.by_ref(),
-                            engines,
-                            name.clone(),
-                            kind,
-                            submodule,
-                            build_config,
-                        )?,
+                        ty::TySubmodule {
+                            module: cached_module,
+                            mod_name_span: submodule.mod_name_span.clone(),
+                        },
                     ))
+                } else {
+                    // If not cached, type-check the submodule
+                    let type_checked_submodule = ty::TySubmodule::type_check(
+                        handler,
+                        ctx.by_ref(),
+                        engines,
+                        name.clone(),
+                        kind,
+                        submodule,
+                        build_config,
+                    )?;
+                    Ok((name.clone(), type_checked_submodule))
                 }
             })
-            .collect::<Result<Vec<_>, _>>();
+            .collect();
 
         // TODO: Ordering should be solved across all modules prior to the beginning of type-check.
         let ordered_nodes = node_dependencies::order_ast_nodes_by_dependency(
