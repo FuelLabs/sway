@@ -3,7 +3,7 @@
 use crate::{
     config::{Config, GarbageCollectionConfig, Warnings},
     core::{
-        document::Documents,
+        document::{Documents, PidLockedFiles},
         session::{self, Session},
     },
     error::{DirectoryError, DocumentError, LanguageServerError},
@@ -49,6 +49,7 @@ pub struct ServerState {
     pub(crate) cb_tx: Sender<TaskMessage>,
     pub(crate) cb_rx: Arc<Receiver<TaskMessage>>,
     pub(crate) finished_compilation: Arc<Notify>,
+    pub(crate) pid_locked_files: PidLockedFiles,
     last_compilation_state: Arc<RwLock<LastCompilationState>>,
 }
 
@@ -66,6 +67,7 @@ impl Default for ServerState {
             cb_tx,
             cb_rx: Arc::new(cb_rx),
             finished_compilation: Arc::new(Notify::new()),
+            pid_locked_files: PidLockedFiles::new(),
             last_compilation_state: Arc::new(RwLock::new(LastCompilationState::Uninitialized)),
         };
         // Spawn a new thread dedicated to handling compilation tasks
