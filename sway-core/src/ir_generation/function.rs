@@ -6,14 +6,20 @@ use super::{
     CompiledFunctionCache,
 };
 use crate::{
-    decl_engine::DeclEngine, engine_threading::*, ir_generation::const_eval::{
+    engine_threading::*,
+    ir_generation::const_eval::{
         compile_constant_expression, compile_constant_expression_to_constant,
-    }, language::{
+    },
+    language::{
         ty::{
-            self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression, TyExpressionVariant, TyStorageField
+            self, ProjectionKind, TyConfigurableDecl, TyConstantDecl, TyExpression,
+            TyExpressionVariant, TyStorageField,
         },
         *,
-    }, metadata::MetadataManager, type_system::*, types::*
+    },
+    metadata::MetadataManager,
+    type_system::*,
+    types::*,
 };
 
 use indexmap::IndexMap;
@@ -2160,18 +2166,26 @@ impl<'eng> FnCompiler<'eng> {
         }
     }
 
-    fn ptr_to_first_element(&mut self, context: &mut Context, first_argument_expr: &TyExpression, first_argument_value: Value, md_mgr: &mut MetadataManager,) -> Result<(Value, TypeId), CompileError> {
+    fn ptr_to_first_element(
+        &mut self,
+        context: &mut Context,
+        first_argument_expr: &TyExpression,
+        first_argument_value: Value,
+        _md_mgr: &mut MetadataManager,
+    ) -> Result<(Value, TypeId), CompileError> {
         let te = self.engines.te();
 
-        let err = CompileError::TypeArgumentsNotAllowed { span: first_argument_expr.span.clone() };
-       
+        let err = CompileError::TypeArgumentsNotAllowed {
+            span: first_argument_expr.span.clone(),
+        };
+
         let first_argument_value = save_to_local_return_ptr(self, context, first_argument_value)?;
 
         match &*te.get(first_argument_expr.return_type) {
-            TypeInfo::Array(elem_ty, _) => {
-                Ok((first_argument_value, elem_ty.type_id))
-            },
-            TypeInfo::Ref { referenced_type, .. } => match &*te.get(referenced_type.type_id) {
+            TypeInfo::Array(elem_ty, _) => Ok((first_argument_value, elem_ty.type_id)),
+            TypeInfo::Ref {
+                referenced_type, ..
+            } => match &*te.get(referenced_type.type_id) {
                 TypeInfo::Slice(elem_ty) => {
                     let ptr_arg = AsmArg {
                         name: Ident::new_no_span("ptr".into()),
@@ -2180,24 +2194,27 @@ impl<'eng> FnCompiler<'eng> {
 
                     let return_type = Type::get_uint64(context);
                     let ptr_to_first_element = self.current_block.append(context).asm_block(
-                        vec![
-                            ptr_arg,
-                        ],
-                        vec![
-                            AsmInstruction::lw_no_span("ptr", "ptr", "i0"),
-                        ],
+                        vec![ptr_arg],
+                        vec![AsmInstruction::lw_no_span("ptr", "ptr", "i0")],
                         return_type,
                         Some(Ident::new_no_span("ptr".into())),
                     );
                     Ok((ptr_to_first_element, elem_ty.type_id))
-                },
+                }
                 _ => Err(err),
             },
-            _ => Err(err)
+            _ => Err(err),
         }
     }
 
-    fn advance_ptr_n_elements(&mut self, context: &mut Context, first_argument_expr: &TyExpression, ptr: Value, elem_type_id: TypeId, idx: Value) -> Result<(Value, Type), CompileError> {
+    fn advance_ptr_n_elements(
+        &mut self,
+        context: &mut Context,
+        first_argument_expr: &TyExpression,
+        ptr: Value,
+        elem_type_id: TypeId,
+        idx: Value,
+    ) -> Result<(Value, Type), CompileError> {
         let te = self.engines.te();
         let de = self.engines.de();
 
@@ -2227,11 +2244,7 @@ impl<'eng> FnCompiler<'eng> {
 
         let return_type = Type::get_uint64(context);
         let ptr = self.current_block.append(context).asm_block(
-            vec![
-                idx_arg,
-                elem_ir_type_size_arg,
-                ptr_arg,
-            ],
+            vec![idx_arg, elem_ir_type_size_arg, ptr_arg],
             vec![
                 AsmInstruction::mul_no_span("idx", "idx", "elem_ir_type_size"),
                 AsmInstruction::add_no_span("ptr", "ptr", "idx"),
@@ -2255,13 +2268,20 @@ impl<'eng> FnCompiler<'eng> {
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
         );
-        let (ptr_to_first_elem, elem_type_id) = self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
+        let (ptr_to_first_elem, elem_type_id) =
+            self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
 
         let idx = &arguments[1];
         let idx = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, idx)?
         );
-        let (ptr_to_elem, _) = self.advance_ptr_n_elements(context, first_argument_expr, ptr_to_first_elem, elem_type_id, idx)?;
+        let (ptr_to_elem, _) = self.advance_ptr_n_elements(
+            context,
+            first_argument_expr,
+            ptr_to_first_elem,
+            elem_type_id,
+            idx,
+        )?;
 
         Ok(TerminatorValue::new(ptr_to_elem, context))
     }
@@ -2278,20 +2298,29 @@ impl<'eng> FnCompiler<'eng> {
         let first_argument_value = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, first_argument_expr)?
         );
-        let (ptr_to_first_elem, elem_type_id) = self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
+        let (ptr_to_first_elem, elem_type_id) =
+            self.ptr_to_first_element(context, first_argument_expr, first_argument_value, md_mgr)?;
 
         let start = &arguments[1];
         let start = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, start)?
         );
-        let (ptr_to_elem, elem_ir_type) = self.advance_ptr_n_elements(context, first_argument_expr, ptr_to_first_elem, elem_type_id, start.clone())?;
+        let (ptr_to_elem, elem_ir_type) = self.advance_ptr_n_elements(
+            context,
+            first_argument_expr,
+            ptr_to_first_elem,
+            elem_type_id,
+            start,
+        )?;
 
         let end = &arguments[2];
         let end = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, end)?
         );
 
-        let slice_len = self.current_block.append(context)
+        let slice_len = self
+            .current_block
+            .append(context)
             .binary_op(BinaryOpKind::Sub, end, start);
 
         // compile the slice together

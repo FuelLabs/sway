@@ -144,11 +144,11 @@ fn type_check_elem_at(
     // first argument can be array or ref to slice
     let elem_type = match &*type_engine.get(first_argument_type) {
         TypeInfo::Array(elem_ty, _) => Some(elem_ty.type_id),
-        TypeInfo::Ref { referenced_type, .. } => {
-            match &*type_engine.get(referenced_type.type_id) {
-                TypeInfo::Slice(elem_ty) => Some(elem_ty.type_id),
-                _ => None
-            }
+        TypeInfo::Ref {
+            referenced_type, ..
+        } => match &*type_engine.get(referenced_type.type_id) {
+            TypeInfo::Slice(elem_ty) => Some(elem_ty.type_id),
+            _ => None,
         },
         _ => None,
     };
@@ -336,20 +336,20 @@ fn type_check_slice(
                 create_ref_to_slice(engines, elem_type_arg.clone()),
             ))
         }
-        TypeInfo::Ref { referenced_type, .. } => {
-            match &*type_engine.get(referenced_type.type_id) {
-                TypeInfo::Slice(elem_type_arg) => Some((
-                    TyIntrinsicFunctionKind {
-                        kind,
-                        arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
-                        type_arguments: vec![],
-                        span,
-                    },
-                    create_ref_to_slice(engines, elem_type_arg.clone()),
-                )),
-                _ => None,
-            }
-        },       
+        TypeInfo::Ref {
+            referenced_type, ..
+        } => match &*type_engine.get(referenced_type.type_id) {
+            TypeInfo::Slice(elem_type_arg) => Some((
+                TyIntrinsicFunctionKind {
+                    kind,
+                    arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
+                    type_arguments: vec![],
+                    span,
+                },
+                create_ref_to_slice(engines, elem_type_arg.clone()),
+            )),
+            _ => None,
+        },
         _ => None,
     };
 
