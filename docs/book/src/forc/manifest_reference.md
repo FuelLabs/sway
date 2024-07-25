@@ -110,7 +110,6 @@ print-asm = { virtual = true, allocated = true, final = true }
 terse = false
 time-phases = false
 include-tests = false
-json-abi-with-callpaths = false
 error-on-warnings = false
 experimental-private-modules = false
 ```
