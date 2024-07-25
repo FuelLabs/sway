@@ -1,6 +1,4 @@
-#![allow(dead_code)]
-use std::sync::Arc;
-
+// #![allow(dead_code)]
 use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::document,
@@ -12,7 +10,6 @@ use tokio::{fs::File, io::AsyncWriteExt};
 
 #[derive(Debug, Clone)]
 pub struct TextDocument {
-    language_id: String,
     version: i32,
     uri: String,
     content: String,
@@ -26,7 +23,6 @@ impl TextDocument {
             .map(|content| {
                 let line_offsets = TextDocument::calculate_line_offsets(&content);
                 Self {
-                    language_id: "sway".into(),
                     version: 1,
                     uri: path.into(),
                     content: content,
@@ -137,31 +133,31 @@ impl Documents {
         }
     }
 
-    /// Asynchronously writes the changes to the file and updates the document.
-    pub async fn write_changes_to_file(
-        &self,
-        uri: &Url,
-        changes: &[TextDocumentContentChangeEvent],
-    ) -> Result<(), LanguageServerError> {
-        let src = self.update_text_document(uri, changes)?;
+    // / Asynchronously writes the changes to the file and updates the document.
+    // pub async fn write_changes_to_file(
+    //     &self,
+    //     uri: &Url,
+    //     changes: &[TextDocumentContentChangeEvent],
+    // ) -> Result<(), LanguageServerError> {
+    //     let src = self.update_text_document(uri, changes)?;
 
-        let mut file =
-            File::create(uri.path())
-                .await
-                .map_err(|err| DocumentError::UnableToCreateFile {
-                    path: uri.path().to_string(),
-                    err: err.to_string(),
-                })?;
+    //     let mut file =
+    //         File::create(uri.path())
+    //             .await
+    //             .map_err(|err| DocumentError::UnableToCreateFile {
+    //                 path: uri.path().to_string(),
+    //                 err: err.to_string(),
+    //             })?;
 
-        file.write_all(src.as_bytes())
-            .await
-            .map_err(|err| DocumentError::UnableToWriteFile {
-                path: uri.path().to_string(),
-                err: err.to_string(),
-            })?;
+    //     file.write_all(src.as_bytes())
+    //         .await
+    //         .map_err(|err| DocumentError::UnableToWriteFile {
+    //             path: uri.path().to_string(),
+    //             err: err.to_string(),
+    //         })?;
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     /// Update the document at the given [Url] with the Vec of changes returned by the client.
     pub fn update_text_document(
@@ -279,7 +275,6 @@ mod tests {
         let result = TextDocument::build_from_path(&path).await;
         assert!(result.is_ok(), "result = {result:?}");
         let document = result.unwrap();
-        assert_eq!(document.language_id, "sway");
         assert_eq!(document.version, 1);
         assert_eq!(document.uri, path);
         assert!(!document.content.is_empty());
@@ -324,7 +319,6 @@ mod tests {
         let content = "line1\nline2\nline3".to_string();
         let line_offsets = TextDocument::calculate_line_offsets(&content);
         let document = TextDocument {
-            language_id: "sway".into(),
             version: 1,
             uri: "test.sw".into(),
             content,
@@ -340,7 +334,6 @@ mod tests {
         let content = "Hello, world!".to_string();
         let line_offsets = TextDocument::calculate_line_offsets(&content);
         let mut document = TextDocument {
-            language_id: "sway".into(),
             version: 1,
             uri: "test.sw".into(),
             content,
@@ -360,7 +353,6 @@ mod tests {
         let content = "line1\nline2\nline3".to_string();
         let line_offsets = TextDocument::calculate_line_offsets(&content);
         let document = TextDocument {
-            language_id: "sway".into(),
             version: 1,
             uri: "test.sw".into(),
             content,
