@@ -133,6 +133,7 @@ impl Parse for Declaration {
             Declaration::StorageDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TypeAliasDeclaration(decl_id) => decl_id.parse(ctx),
             Declaration::TraitTypeDeclaration(decl_id) => decl_id.parse(ctx),
+            Declaration::TraitFnDeclaration(decl_id) => decl_id.parse(ctx),
         }
     }
 }

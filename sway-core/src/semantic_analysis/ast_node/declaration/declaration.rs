@@ -42,6 +42,10 @@ impl TyDecl {
                 let trait_type_decl = engines.pe().get_trait_type(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, trait_type_decl.name.clone(), decl)?;
             }
+            parsed::Declaration::TraitFnDeclaration(decl_id) => {
+                let trait_fn_decl = engines.pe().get_trait_fn(decl_id).as_ref().clone();
+                ctx.insert_parsed_symbol(handler, engines, trait_fn_decl.name.clone(), decl)?;
+            }
             parsed::Declaration::EnumDeclaration(decl_id) => {
                 let enum_decl = engines.pe().get_enum(decl_id).as_ref().clone();
                 ctx.insert_parsed_symbol(handler, engines, enum_decl.name.clone(), decl)?;
@@ -608,6 +612,9 @@ impl TyDecl {
                 // insert the type alias name and decl into namespace
                 ctx.insert_symbol(handler, name, decl.clone())?;
                 decl
+            }
+            parsed::Declaration::TraitFnDeclaration(_decl_id) => {
+                unreachable!();
             }
         };
 

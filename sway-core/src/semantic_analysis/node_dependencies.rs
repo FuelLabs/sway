@@ -315,6 +315,10 @@ impl Dependencies {
                 let decl = engines.pe().get_trait_type(decl_id);
                 self.gather_from_type_decl(engines, &decl)
             }
+            Declaration::TraitFnDeclaration(decl_id) => {
+                let decl = engines.pe().get_trait_fn(decl_id);
+                self.gather_from_trait_fn_decl(engines, &decl)
+            }
             Declaration::FunctionDeclaration(decl_id) => {
                 let fn_decl = engines.pe().get_function(decl_id);
                 self.gather_from_fn_decl(engines, &fn_decl)
@@ -503,6 +507,18 @@ impl Dependencies {
             Some(value) => self.gather_from_type_argument(engines, value),
             None => self,
         }
+    }
+
+    fn gather_from_trait_fn_decl(self, engines: &Engines, fn_decl: &TraitFn) -> Self {
+        let TraitFn {
+            parameters,
+            return_type,
+            ..
+        } = fn_decl;
+        self.gather_from_iter(parameters.iter(), |deps, param| {
+            deps.gather_from_type_argument(engines, &param.type_argument)
+        })
+        .gather_from_type_argument(engines, return_type)
     }
 
     fn gather_from_fn_decl(self, engines: &Engines, fn_decl: &FunctionDeclaration) -> Self {
@@ -892,6 +908,10 @@ fn decl_name(engines: &Engines, decl: &Declaration) -> Option<DependentSymbol> {
         }
         Declaration::TraitTypeDeclaration(decl_id) => {
             let decl = engines.pe().get_trait_type(decl_id);
+            dep_sym(decl.name.clone())
+        }
+        Declaration::TraitFnDeclaration(decl_id) => {
+            let decl = engines.pe().get_trait_fn(decl_id);
             dep_sym(decl.name.clone())
         }
         Declaration::StructDeclaration(decl_id) => {

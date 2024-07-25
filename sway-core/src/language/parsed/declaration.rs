@@ -53,6 +53,7 @@ pub enum Declaration {
     StorageDeclaration(ParsedDeclId<StorageDeclaration>),
     TypeAliasDeclaration(ParsedDeclId<TypeAliasDeclaration>),
     TraitTypeDeclaration(ParsedDeclId<TraitTypeDeclaration>),
+    TraitFnDeclaration(ParsedDeclId<TraitFn>),
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +85,7 @@ impl Declaration {
             TraitTypeDeclaration(_) => "type",
             FunctionDeclaration(_) => "function",
             TraitDeclaration(_) => "trait",
+            TraitFnDeclaration(_) => "trait fn",
             StructDeclaration(_) => "struct",
             EnumDeclaration(_) => "enum",
             EnumVariantDeclaration(_) => "enum variant",
@@ -111,6 +113,7 @@ impl Declaration {
             StorageDeclaration(decl_id) => pe.get_storage(decl_id).span(),
             TypeAliasDeclaration(decl_id) => pe.get_type_alias(decl_id).span(),
             TraitTypeDeclaration(decl_id) => pe.get_trait_type(decl_id).span(),
+            TraitFnDeclaration(decl_id) => pe.get_trait_fn(decl_id).span(),
         }
     }
 
@@ -138,7 +141,8 @@ impl Declaration {
             Declaration::ImplSelfOrTrait(_)
             | Declaration::StorageDeclaration(_)
             | Declaration::AbiDeclaration(_)
-            | Declaration::TraitTypeDeclaration(_) => Visibility::Public,
+            | Declaration::TraitTypeDeclaration(_)
+            | Declaration::TraitFnDeclaration(_) => Visibility::Public,
         }
     }
 }
