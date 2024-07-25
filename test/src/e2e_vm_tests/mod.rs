@@ -9,6 +9,7 @@ use crate::{FilterConfig, RunConfig};
 use anyhow::{anyhow, bail, Result};
 use colored::*;
 use core::fmt;
+use forc_pkg::manifest::{GenericManifestFile, ManifestFile};
 use forc_pkg::BuildProfile;
 use forc_test::decode_log_data;
 use fuel_vm::fuel_tx;
@@ -653,6 +654,47 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         .as_ref()
         .map(|exclude| tests.retained(|t| !exclude.is_match(&t.name)))
         .unwrap_or_default();
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+
+    if filter_config.no_core_only {
+        tests.retain(|t| {
+            let file_name = &t.name;
+            let manifest_path =
+                format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
+            match ManifestFile::from_dir(manifest_path) {
+                Ok(manifest_file) => {
+                    let member_manifests = manifest_file.member_manifests().unwrap();
+                    !member_manifests.iter().any(|(_name, manifest)| {
+                        //eprintln!("{} {:#?}", file_name, manifest.dependencies);
+                        manifest
+                            .dependencies
+                            .as_ref()
+                            .is_some_and(|map| map.contains_key("core"))
+                    })
+                }
+                Err(_) => true,
+            }
+        });
+    }
+    if filter_config.no_std_only {
+        tests.retain(|t| {
+            let file_name = &t.name;
+            let manifest_path =
+                format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
+            match ManifestFile::from_dir(manifest_path) {
+                Ok(manifest_file) => {
+                    let member_manifests = manifest_file.member_manifests().unwrap();
+                    !member_manifests.iter().any(|(_name, manifest)| {
+                        manifest
+                            .dependencies
+                            .as_ref()
+                            .is_some_and(|map| map.contains_key("std"))
+                    })
+                }
+                Err(_) => true,
+            }
+        });
+    }
     if filter_config.abi_only {
         tests.retain(|t| t.validate_abi);
     }
