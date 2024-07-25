@@ -276,7 +276,6 @@ pub async fn deploy_pkg(
     let tx = Transaction::from(tx);
 
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
-    let pkg_name = manifest.project_name();
 
     // If only submitting the transaction, don't wait for the deployment to complete
     let contract_id: ContractId = if command.submit_only {
@@ -295,7 +294,6 @@ pub async fn deploy_pkg(
                     },
                     command,
                     manifest,
-                    pkg_name,
                 )?;
 
                 contract_id
@@ -328,7 +326,6 @@ pub async fn deploy_pkg(
                         },
                         command,
                         manifest,
-                        pkg_name,
                     )?;
 
                     Ok(contract_id)
@@ -404,9 +401,9 @@ fn create_deployment_artifact(
     deployment_artifact: DeploymentArtifact,
     cmd: &cmd::Deploy,
     manifest: &PackageManifestFile,
-    pkg_name: &str,
 ) -> Result<()> {
     let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
+    let pkg_name = manifest.project_name();
 
     info!("\n\nContract {pkg_name} Deployed!");
     info!("\nNetwork: {}", &deployment_artifact.network_endpoint);
