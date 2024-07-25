@@ -19,28 +19,18 @@ Example:
 ```console
 > forc deploy
 
-  Building /Users/test/test-projects/test-contract
-  Finished release [optimized + fuel] target(s) in 11.39s
-
-Please provide the password of your encrypted wallet vault at "/Users/ceylinbormali/.fuel/wallets/.wallet":
-   Deploying contract: impl-contract
-
----------------------------------------------------------------------------
-Account 0: fuel12pls73y9hnqdqthvduy2x44x48zt8s50pkerf32kq26f2afeqdwq6rj9ar
-
-Asset ID : f8f8b6283d7fa5b672b530cbb84fcccb4ff8dc40f8176ef4544ddb1f1952ad07
-Amount   : 2197245
----------------------------------------------------------------------------
-
-Please provide the index of account to use for signing: 0
-Do you agree to sign this transaction with fuel12pls73y9hnqdqthvduy2x44x48zt8s50pkerf32kq26f2afeqdwq6rj9ar? [y/N]: y
-
-
-Contract impl-contract Deployed!
-
-Network: https://testnet.fuel.network
-Contract ID: 0x94b712901f04332682d14c998a5fc5a078ed15321438f46d58d0383200cde43d
-Deployed in block 00114d4d
+    Building /Users/yourname/test-projects/test-contract
+    Finished release [optimized + fuel] target(s) in 11.39s
+  Confirming transactions [deploy impl-contract]
+             Network: https://testnet.fuel.network
+             Wallet: /Users/yourname/.fuel/wallets/.wallet
+✔ Wallet password · ********
+? Wallet account ›
+❯ [0] fuel12pls73y9hnqdqthvduy2x44x48zt8s50pkerf32kq26f2afeqdwq6rj9ar - 0.002197245 ETH
+  [1] fuel1vzrm6kw9s3tv85gl25lpptsxrdguyzfhq6c8rk07tr6ft5g45nwqqh0uty - 0.001963631 ETH
+? Do you agree to sign 1 transaction? (y/n) › yes
+     Finished deploying impl-contract https://app.fuel.network/contract/0x94b712901f04332682d14c998a5fc5a078ed15321438f46d58d0383200cde43d
+     Deployed in block https://app.fuel.network/block/5958351
 ```
 
 As it can be seen from the example, `forc-client` asks for your password to decrypt the `forc-wallet` vault, and list your accounts so that you can select the one you want to fund the transaction with.
@@ -54,16 +44,12 @@ Example:
 ```console
 > forc deploy --default-signer
 
-  Building /Users/test/test-projects/test-contract
-  Finished release [optimized + fuel] target(s) in 11.40s
-   Deploying contract: impl-contract
-
-
-Contract impl-contract Deployed!
-
-Network: http://127.0.0.1:4000
-Contract ID: 0xf9fb08ef18ce226954270d6d4f67677d484b8782a5892b3d436572b405407544
-Deployed in block 00000001
+    Building /Users/test/test-projects/test-contract
+    Finished release [optimized + fuel] target(s) in 11.40s
+  Confirming transactions [deploy impl-contract]
+             Network: http://127.0.0.1:4000
+    Finished deploying impl-contract 0xf9fb08ef18ce226954270d6d4f67677d484b8782a5892b3d436572b405407544
+    Deployed in block 00000001
 ```
 
 ## Option 3: Manually signing through forc-wallet (Deprecated)
