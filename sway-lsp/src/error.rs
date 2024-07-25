@@ -14,6 +14,8 @@ pub enum LanguageServerError {
     // Top level errors
     #[error("Failed to create build plan. {0}")]
     BuildPlanFailed(anyhow::Error),
+    #[error("Build Plan Cache is empty")]
+    BuildPlanCacheIsEmpty,
     #[error("Failed to compile. {0}")]
     FailedToCompile(anyhow::Error),
     #[error("Failed to parse document")]

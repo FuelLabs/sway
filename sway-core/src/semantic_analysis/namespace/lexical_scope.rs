@@ -14,7 +14,7 @@ use crate::{
 use super::{root::ResolvedDeclaration, TraitMap};
 
 use sway_error::{
-    error::{CompileError, StructFieldUsageContext},
+    error::{CompileError, ShadowingSource, StructFieldUsageContext},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{span::Span, Spanned};
@@ -215,6 +215,13 @@ impl Items {
                     const_shadowing_mode,
                     generic_shadowing_mode,
                 ) {
+                    // A general remark for using the `ShadowingSource::LetVar`.
+                    // If the shadowing is detected at this stage, the variable is for
+                    // sure a local variable, because in the case of pattern matching
+                    // struct field variables, the error is already reported and
+                    // the compilation do not proceed to the point of inserting
+                    // the pattern variable into the items.
+
                     // variable shadowing a constant
                     (
                         constant_ident,
@@ -226,15 +233,31 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
-                            variable_or_constant: "Variable".to_string(),
+                            shadowing_source: ShadowingSource::LetVar,
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
+                            constant_decl_span: if is_imported_constant {
                                 parsed_decl_engine.get(decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
                             is_alias,
+                        });
+                    }
+                    // variable shadowing a configurable
+                    (
+                        configurable_ident,
+                        ConfigurableDeclaration(_),
+                        _,
+                        _,
+                        VariableDeclaration { .. },
+                        _,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::LetVar,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
                         });
                     }
                     // constant shadowing a constant sequentially
@@ -248,15 +271,31 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
-                            variable_or_constant: "Constant".to_string(),
+                            shadowing_source: ShadowingSource::Const,
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
+                            constant_decl_span: if is_imported_constant {
                                 parsed_decl_engine.get(decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
                             is_alias,
+                        });
+                    }
+                    // constant shadowing a configurable sequentially
+                    (
+                        configurable_ident,
+                        ConfigurableDeclaration(_),
+                        _,
+                        _,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::Sequential,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::Const,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
                         });
                     }
                     // constant shadowing a variable
@@ -268,7 +307,7 @@ impl Items {
                     }
                     // constant shadowing a constant item-style (outside of a function body)
                     (
-                        _,
+                        constant_ident,
                         ConstantDeclaration { .. },
                         _,
                         _,
@@ -276,9 +315,45 @@ impl Items {
                         ConstShadowingMode::ItemStyle,
                         _,
                     ) => {
-                        handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
-                            name: name.clone(),
-                            span: name.span(),
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
+                        });
+                    }
+                    // constant shadowing a configurable item-style (outside of a function body)
+                    (
+                        configurable_ident,
+                        ConfigurableDeclaration { .. },
+                        _,
+                        _,
+                        ConstantDeclaration { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Configurable",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: configurable_ident.span(),
+                        });
+                    }
+                    // configurable shadowing a constant item-style (outside of a function body)
+                    (
+                        constant_ident,
+                        ConstantDeclaration { .. },
+                        _,
+                        _,
+                        ConfigurableDeclaration { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Configurable",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
                         });
                     }
                     // type or type alias shadowing another type or type alias
@@ -327,6 +402,13 @@ impl Items {
                     const_shadowing_mode,
                     generic_shadowing_mode,
                 ) {
+                    // A general remark for using the `ShadowingSource::LetVar`.
+                    // If the shadowing is detected at this stage, the variable is for
+                    // sure a local variable, because in the case of pattern matching
+                    // struct field variables, the error is already reported and
+                    // the compilation do not proceed to the point of inserting
+                    // the pattern variable into the items.
+
                     // variable shadowing a constant
                     (
                         constant_ident,
@@ -338,15 +420,23 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
-                            variable_or_constant: "Variable".to_string(),
+                            shadowing_source: ShadowingSource::LetVar,
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
+                            constant_decl_span: if is_imported_constant {
                                 decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
                             is_alias,
+                        });
+                    }
+                    // variable shadowing a configurable
+                    (configurable_ident, ConfigurableDecl(_), _, _, VariableDecl { .. }, _, _) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::LetVar,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
                         });
                     }
                     // constant shadowing a constant sequentially
@@ -360,15 +450,31 @@ impl Items {
                         _,
                     ) => {
                         handler.emit_err(CompileError::ConstantsCannotBeShadowed {
-                            variable_or_constant: "Constant".to_string(),
+                            shadowing_source: ShadowingSource::Const,
                             name: (&name).into(),
                             constant_span: constant_ident.span(),
-                            constant_decl: if is_imported_constant {
+                            constant_decl_span: if is_imported_constant {
                                 decl_engine.get(&constant_decl.decl_id).span.clone()
                             } else {
                                 Span::dummy()
                             },
                             is_alias,
+                        });
+                    }
+                    // constant shadowing a configurable sequentially
+                    (
+                        configurable_ident,
+                        ConfigurableDecl(_),
+                        _,
+                        _,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::Sequential,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::Const,
+                            name: (&name).into(),
+                            configurable_span: configurable_ident.span(),
                         });
                     }
                     // constant shadowing a variable
@@ -380,7 +486,7 @@ impl Items {
                     }
                     // constant shadowing a constant item-style (outside of a function body)
                     (
-                        _,
+                        constant_ident,
                         ConstantDecl { .. },
                         _,
                         _,
@@ -388,9 +494,45 @@ impl Items {
                         ConstShadowingMode::ItemStyle,
                         _,
                     ) => {
-                        handler.emit_err(CompileError::MultipleDefinitionsOfConstant {
-                            name: name.clone(),
-                            span: name.span(),
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
+                        });
+                    }
+                    // constant shadowing a configurable item-style (outside of a function body)
+                    (
+                        configurable_ident,
+                        ConfigurableDecl { .. },
+                        _,
+                        _,
+                        ConstantDecl { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Configurable",
+                            new_constant_or_configurable: "Constant",
+                            name: (&name).into(),
+                            existing_span: configurable_ident.span(),
+                        });
+                    }
+                    // configurable shadowing a constant item-style (outside of a function body)
+                    (
+                        constant_ident,
+                        ConstantDecl { .. },
+                        _,
+                        _,
+                        ConfigurableDecl { .. },
+                        ConstShadowingMode::ItemStyle,
+                        _,
+                    ) => {
+                        handler.emit_err(CompileError::ConstantDuplicatesConstantOrConfigurable {
+                            existing_constant_or_configurable: "Constant",
+                            new_constant_or_configurable: "Configurable",
+                            name: (&name).into(),
+                            existing_span: constant_ident.span(),
                         });
                     }
                     // type or type alias shadowing another type or type alias

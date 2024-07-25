@@ -307,10 +307,24 @@ impl Hint {
         }
     }
 
+    pub fn multi_info(source_engine: &SourceEngine, span: &Span, hints: Vec<String>) -> Vec<Self> {
+        hints
+            .into_iter()
+            .map(|hint| Self::info(source_engine, span.clone(), hint))
+            .collect()
+    }
+
     pub fn help(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
             label: Label::help(source_engine, span, text),
         }
+    }
+
+    pub fn multi_help(source_engine: &SourceEngine, span: &Span, hints: Vec<String>) -> Vec<Self> {
+        hints
+            .into_iter()
+            .map(|hint| Self::help(source_engine, span.clone(), hint))
+            .collect()
     }
 
     pub fn warning(source_engine: &SourceEngine, span: Span, text: String) -> Self {
@@ -319,10 +333,28 @@ impl Hint {
         }
     }
 
+    pub fn multi_warning(
+        source_engine: &SourceEngine,
+        span: &Span,
+        hints: Vec<String>,
+    ) -> Vec<Self> {
+        hints
+            .into_iter()
+            .map(|hint| Self::warning(source_engine, span.clone(), hint))
+            .collect()
+    }
+
     pub fn error(source_engine: &SourceEngine, span: Span, text: String) -> Self {
         Self {
             label: Label::error(source_engine, span, text),
         }
+    }
+
+    pub fn multi_error(source_engine: &SourceEngine, span: &Span, hints: Vec<String>) -> Vec<Self> {
+        hints
+            .into_iter()
+            .map(|hint| Self::error(source_engine, span.clone(), hint))
+            .collect()
     }
 
     /// A [Hint] that will never be displayed. Convenient when defining [Hint]s that
