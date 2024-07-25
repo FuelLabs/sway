@@ -501,11 +501,8 @@ impl ResolveSymbols for Expression {
             ExpressionKind::Literal(_) => {}
             ExpressionKind::AmbiguousPathExpression(_) => {}
             ExpressionKind::FunctionApplication(expr) => {
-                let result = SymbolResolveTypeBinding::resolve_symbol(
-                    &mut expr.call_path_binding,
-                    &Handler::default(),
-                    ctx.by_ref(),
-                );
+                let result = expr.call_path_binding.resolve_symbol(handler, ctx.by_ref());
+
                 if let Ok(result) = result {
                     expr.resolved_call_path_binding = Some(TypeBinding::<
                         ResolvedCallPath<ParsedDeclId<FunctionDeclaration>>,
@@ -541,13 +538,11 @@ impl ResolveSymbols for Expression {
                 .iter_mut()
                 .for_each(|e| e.resolve_symbols(handler, ctx.by_ref())),
             ExpressionKind::Struct(expr) => {
-                expr.call_path_binding
-                    .resolve_symbols(handler, ctx.by_ref());
-                let result = SymbolResolveTypeBinding::resolve_symbol(
-                    &mut expr.call_path_binding,
-                    &Handler::default(),
-                    ctx.by_ref(),
-                );
+                // expr.call_path_binding
+                //     .resolve_symbols(handler, ctx.by_ref());
+
+                let result = expr.call_path_binding.resolve_symbol(handler, ctx.by_ref());
+
                 if let Ok(result) = result {
                     expr.resolved_call_path_binding = Some(TypeBinding::<
                         ResolvedCallPath<ParsedDeclId<StructDeclaration>>,
@@ -597,13 +592,13 @@ impl ResolveSymbols for Expression {
                     .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref()));
             }
             ExpressionKind::Subfield(expr) => expr.prefix.resolve_symbols(handler, ctx),
-            ExpressionKind::DelineatedPath(ref mut expr) => {
-                expr.call_path_binding
-                    .resolve_symbols(handler, ctx.by_ref());
+            ExpressionKind::DelineatedPath(expr) => {
+                // expr.call_path_binding
+                //     .resolve_symbols(handler, ctx.by_ref());
 
-                // let result =
-                //     expr.call_path_binding
-                //         .resolve_symbol(handler, ctx.by_ref(), self.span.clone());
+                let result =
+                    expr.call_path_binding
+                        .resolve_symbol(handler, ctx.by_ref(), self.span.clone());
 
                 // if let Ok(result) = result {
                 //     expr.resolved_call_path_binding = Some(TypeBinding::<

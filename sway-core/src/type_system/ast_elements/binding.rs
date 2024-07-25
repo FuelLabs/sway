@@ -642,6 +642,24 @@ impl TypeBinding<QualifiedCallPath> {
     }
 }
 
+impl SymbolResolveTypeBinding<ParsedDeclId<ConstantDeclaration>> for TypeBinding<CallPath> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
+        // Grab the declaration.
+        let unknown_decl = ctx
+            .resolve_call_path_with_visibility_check(handler, &self.inner)?
+            .expect_parsed();
+
+        // Check to see if this is a const declaration.
+        let const_ref = unknown_decl.to_const_decl(handler, ctx.engines())?;
+
+        Ok(const_ref)
+    }
+}
+
 impl SymbolResolveTypeBinding<(ParsedDeclId<ConstantDeclaration>, TypeBinding<CallPath>)>
     for TypeBinding<QualifiedCallPath>
 {
@@ -736,23 +754,5 @@ impl TypeCheckTypeBinding<ty::TyConstantDecl> for TypeBinding<CallPath> {
         let const_ref = unknown_decl.to_const_ref(handler, ctx.engines())?;
 
         Ok((const_ref, None, None))
-    }
-}
-
-impl SymbolResolveTypeBinding<ParsedDeclId<ConstantDeclaration>> for TypeBinding<CallPath> {
-    fn resolve_symbol(
-        &mut self,
-        handler: &Handler,
-        ctx: SymbolResolveContext,
-    ) -> Result<ParsedDeclId<ConstantDeclaration>, ErrorEmitted> {
-        // Grab the declaration.
-        let unknown_decl = ctx
-            .resolve_call_path_with_visibility_check(handler, &self.inner)?
-            .expect_parsed();
-
-        // Check to see if this is a const declaration.
-        let const_ref = unknown_decl.to_const_decl(handler, ctx.engines())?;
-
-        Ok(const_ref)
     }
 }
