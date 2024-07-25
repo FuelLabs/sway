@@ -103,10 +103,13 @@ pub(crate) fn update_proxy_address_in_manifest(
 
 /// Creates a proxy contract project at the given path, adds a forc.toml and source file.
 pub(crate) fn create_proxy_contract(
-    addr: &str,
-    impl_contract_id: &str,
+    owner_addr: &fuels_core::types::Address,
+    impl_contract_id: &fuel_tx::ContractId,
     pkg_name: &str,
 ) -> Result<PathBuf> {
+    let owner_addr = &format!("0x{}", owner_addr);
+    let impl_contract_id = &format!("0x{}", impl_contract_id);
+
     // Create the proxy contract folder.
     let proxy_contract_dir = user_forc_directory()
         .join(PROXY_CONTRACT_FOLDER_NAME)
@@ -133,7 +136,7 @@ pub(crate) fn create_proxy_contract(
         .truncate(true)
         .open(proxy_contract_dir.join(SRC_DIR).join(MAIN_ENTRY))?;
 
-    let contract_str = generate_proxy_contract_src(addr, impl_contract_id);
+    let contract_str = generate_proxy_contract_src(owner_addr, impl_contract_id);
     write!(f, "{}", contract_str)?;
     Ok(proxy_contract_dir)
 }
@@ -171,8 +174,8 @@ pub(crate) fn built_pkgs(path: &Path, build_opts: &BuildOpts) -> Result<Vec<Arc<
 /// First creates the contract project at the current dir. The source code for the proxy contract is updated
 /// with 'owner_addr'.
 pub fn build_proxy_contract(
-    owner_addr: &str,
-    impl_contract_id: &str,
+    owner_addr: &fuels_core::types::Address,
+    impl_contract_id: &fuel_tx::ContractId,
     pkg_name: &str,
     build_opts: &BuildOpts,
 ) -> Result<Arc<BuiltPackage>> {
@@ -190,18 +193,17 @@ pub fn build_proxy_contract(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
+    use super::{build_proxy_contract, PROXY_CONTRACT_FOLDER_NAME};
     use forc_pkg::BuildOpts;
     use forc_util::user_forc_directory;
-
-    use super::{build_proxy_contract, PROXY_CONTRACT_FOLDER_NAME};
+    use fuel_tx::ContractId;
+    use fuels_core::types::Address;
+    use std::path::PathBuf;
 
     #[test]
     fn test_build_proxy_contract() {
-        let owner_address = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        let impl_contract_address =
-            "0x0000000000000000000000000000000000000000000000000000000000000000";
+        let owner_address = Address::new([0u8; 32]);
+        let impl_contract_address = ContractId::new([0u8; 32]);
         let target_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("test")
             .join("data")
@@ -211,8 +213,12 @@ mod tests {
         build_opts.pkg.path = Some(target_path);
         let pkg_name = "standalone_contract";
 
-        let proxy_contract =
-            build_proxy_contract(owner_address, impl_contract_address, pkg_name, &build_opts);
+        let proxy_contract = build_proxy_contract(
+            &owner_address,
+            &impl_contract_address,
+            pkg_name,
+            &build_opts,
+        );
         // We want to make sure proxy_contract is building
         proxy_contract.unwrap();
 

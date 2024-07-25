@@ -4,40 +4,38 @@ use crate::{
     util::{
         node_url::get_node_url,
         pkg::{build_proxy_contract, built_pkgs, update_proxy_address_in_manifest},
+        target::Target,
         tx::{
-            bech32_from_secret, check_and_create_wallet_at_default_path, first_user_account,
-            prompt_forc_wallet_password, select_manual_secret_key, select_secret_key,
+            bech32_from_secret, prompt_forc_wallet_password, select_secret_key,
             update_proxy_contract_target, WalletSelectionMode,
         },
     },
 };
 use anyhow::{bail, Context, Result};
-use colored::Colorize;
 use forc_pkg::manifest::GenericManifestFile;
 use forc_pkg::{self as pkg, PackageManifestFile};
-use forc_tracing::println_warning;
+use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
 use fuel_core_client::client::types::TransactionStatus;
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
-use fuel_tx::Salt;
+use fuel_tx::{Salt, Transaction};
 use fuel_vm::prelude::*;
-use fuels::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
-use fuels_core::types::bech32::Bech32Address;
+use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTransactionBuilder};
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildOpts, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 use std::{
     collections::BTreeMap,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
+    time::Duration,
 };
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
-use tracing::info;
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub struct DeployedContract {
@@ -123,54 +121,30 @@ fn validate_and_parse_salts<'a>(
     Ok(contract_salt_map)
 }
 
+/// Deploys a new proxy contract for the given package.
 async fn deploy_new_proxy(
     pkg: &BuiltPackage,
-    owner_account_address: &mut Bech32Address,
     impl_contract: &fuel_tx::ContractId,
     build_opts: &BuildOpts,
     command: &cmd::Deploy,
     salt: Salt,
-    wallet_mode: &WalletSelectionMode,
+    provider: &Provider,
+    signing_key: &SecretKey,
 ) -> Result<fuel_tx::ContractId> {
-    info!("  {} proxy contract", "Creating".bold().green());
-    let user_addr = if *owner_account_address != Bech32Address::default() {
-        anyhow::Ok(owner_account_address.clone())
-    } else {
-        // Check if the wallet exists and if not create it at the default path.
-        match wallet_mode {
-            WalletSelectionMode::ForcWallet(password) => {
-                let default_path = default_wallet_path();
-                check_and_create_wallet_at_default_path(&default_path)?;
-                let account = first_user_account(&default_wallet_path(), password)?;
-                *owner_account_address = account.clone();
-                Ok(account)
-            }
-            WalletSelectionMode::Manual => {
-                let secret_key =
-                    select_manual_secret_key(command.default_signer, command.signing_key)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("couldn't resolve the secret key for manual signing")
-                        })?;
-                bech32_from_secret(&secret_key)
-            }
-        }
-    }?;
-    let user_addr_hex: fuels_core::types::Address = user_addr.into();
-    let user_addr = format!("0x{}", user_addr_hex);
     let pkg_name = pkg.descriptor.manifest_file.project_name();
-    let contract_addr = format!("0x{}", impl_contract);
-    let proxy_contract = build_proxy_contract(&user_addr, &contract_addr, pkg_name, build_opts)?;
-    info!("   {} proxy contract", "Deploying".bold().green());
-    let proxy = deploy_pkg(
-        command,
-        &pkg.descriptor.manifest_file,
-        &proxy_contract,
-        salt,
-        wallet_mode,
-    )
-    .await?;
-    Ok(proxy)
+    println_action_green("Creating", &format!("proxy contract for {pkg_name}"));
+    let user_addr_bech32 = bech32_from_secret(signing_key)?;
+    let proxy_built_package = build_proxy_contract(
+        &user_addr_bech32.into(),
+        impl_contract,
+        pkg_name,
+        build_opts,
+    )?;
+    let proxy_contract_id =
+        deploy_pkg(command, &proxy_built_package, salt, provider, signing_key).await?;
+    Ok(proxy_contract_id)
 }
+
 /// Builds and deploys contract(s). If the given path corresponds to a workspace, all deployable members
 /// will be built and deployed.
 ///
@@ -191,8 +165,17 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     let build_opts = build_opts_from_cmd(&command);
     let built_pkgs = built_pkgs(&curr_dir, &build_opts)?;
+    let pkgs_to_deploy = built_pkgs
+        .iter()
+        .filter(|pkg| {
+            pkg.descriptor
+                .manifest_file
+                .check_program_type(&[TreeType::Contract])
+                .is_ok()
+        })
+        .collect::<Vec<_>>();
 
-    if built_pkgs.is_empty() {
+    if pkgs_to_deploy.is_empty() {
         println_warning("No deployable contracts found in the current directory.");
         return Ok(deployed_contracts);
     }
@@ -214,6 +197,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
             // OK to index into salt_input and built_pkgs_with_manifest here,
             // since both are known to be len 1.
+
             let salt = salt_input[0]
                 .parse::<Salt>()
                 .map_err(|e| anyhow::anyhow!(e))
@@ -233,131 +217,171 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         None
     };
 
-    info!("  {} deployment", "Starting".bold().green());
+    // Ensure that all packages are being deployed to the same node.
+    let node_url = get_node_url(
+        &command.node,
+        &pkgs_to_deploy[0].descriptor.manifest_file.network,
+    )?;
+    if !pkgs_to_deploy.iter().all(|pkg| {
+        get_node_url(&command.node, &pkg.descriptor.manifest_file.network).ok()
+            == Some(node_url.clone())
+    }) {
+        bail!("All contracts in a deployment should be deployed to the same node. Please ensure that the network specified in the Forc.toml files of all contracts is the same.");
+    }
+
+    // Confirmation step. Summarize the transaction(s) for the deployment.
+    let (provider, signing_key) =
+        confirm_transaction_details(&pkgs_to_deploy, &command, node_url.clone()).await?;
+
+    for pkg in pkgs_to_deploy {
+        let salt = match (&contract_salt_map, command.default_salt) {
+            (Some(map), false) => {
+                if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
+                    *salt
+                } else {
+                    Default::default()
+                }
+            }
+            (None, true) => Default::default(),
+            (None, false) => rand::random(),
+            (Some(_), true) => {
+                bail!("Both `--salt` and `--default-salt` were specified: must choose one")
+            }
+        };
+        let deployed_contract_id = deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?;
+
+        let proxy_id = match &pkg.descriptor.manifest_file.proxy {
+            Some(forc_pkg::manifest::Proxy {
+                enabled: true,
+                address: Some(proxy_addr),
+            }) => {
+                // Make a call into the contract to update impl contract address to 'deployed_contract'.
+
+                // Create a contract instance for the proxy contract using default proxy contract abi and
+                // specified address.
+                let proxy_contract =
+                    ContractId::from_str(proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
+
+                update_proxy_contract_target(
+                    &provider,
+                    signing_key,
+                    proxy_contract,
+                    deployed_contract_id,
+                )
+                .await?;
+                Some(proxy_contract)
+            }
+            Some(forc_pkg::manifest::Proxy {
+                enabled: true,
+                address: None,
+            }) => {
+                // Deploy a new proxy contract.
+                let deployed_proxy_contract = deploy_new_proxy(
+                    pkg,
+                    &deployed_contract_id,
+                    &build_opts,
+                    &command,
+                    salt,
+                    &provider,
+                    &signing_key,
+                )
+                .await?;
+
+                // Update manifest file such that the proxy address field points to the new proxy contract.
+                update_proxy_address_in_manifest(
+                    &format!("0x{}", deployed_proxy_contract),
+                    &pkg.descriptor.manifest_file,
+                )?;
+                Some(deployed_proxy_contract)
+            }
+            // Proxy not enabled.
+            _ => None,
+        };
+
+        let deployed_contract = DeployedContract {
+            id: deployed_contract_id,
+            proxy: proxy_id,
+        };
+        deployed_contracts.push(deployed_contract);
+    }
+    Ok(deployed_contracts)
+}
+
+/// Prompt the user to confirm the transactions required for deployment, as well as the signing key.
+async fn confirm_transaction_details(
+    pkgs_to_deploy: &[&Arc<BuiltPackage>],
+    command: &cmd::Deploy,
+    node_url: String,
+) -> Result<(Provider, SecretKey)> {
+    // Confirmation step. Summarize the transaction(s) for the deployment.
+    let mut tx_count = 0;
+    let tx_summary = pkgs_to_deploy
+        .iter()
+        .map(|pkg| {
+            tx_count += 1;
+            let proxy_text = match &pkg.descriptor.manifest_file.proxy {
+                Some(forc_pkg::manifest::Proxy {
+                    enabled: true,
+                    address,
+                }) => {
+                    if address.is_some() {
+                        " + update proxy"
+                    } else {
+                        " + deploy proxy"
+                    }
+                }
+                _ => "",
+            };
+
+            format!(
+                "deploy {}{proxy_text}",
+                pkg.descriptor.manifest_file.project_name()
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(" + ");
+
+    println_action_green("Confirming", &format!("transactions [{tx_summary}]"));
+    println_action_green("", &format!("Network: {node_url}"));
+
+    let provider = Provider::connect(node_url.clone()).await?;
+
     let wallet_mode = if command.default_signer || command.signing_key.is_some() {
         WalletSelectionMode::Manual
     } else {
-        let password = prompt_forc_wallet_password(&default_wallet_path())?;
+        println_action_green("", &format!("Wallet: {}", default_wallet_path().display()));
+        let password = prompt_forc_wallet_password()?;
         WalletSelectionMode::ForcWallet(password)
     };
 
-    let mut owner_account_address = Bech32Address::default();
-    for pkg in built_pkgs {
-        if pkg
-            .descriptor
-            .manifest_file
-            .check_program_type(&[TreeType::Contract])
-            .is_ok()
-        {
-            let salt = match (&contract_salt_map, command.default_salt) {
-                (Some(map), false) => {
-                    if let Some(salt) = map.get(pkg.descriptor.manifest_file.project_name()) {
-                        *salt
-                    } else {
-                        Default::default()
-                    }
-                }
-                (None, true) => Default::default(),
-                (None, false) => rand::random(),
-                (Some(_), true) => {
-                    bail!("Both `--salt` and `--default-salt` were specified: must choose one")
-                }
-            };
-            let node_url = get_node_url(&command.node, &pkg.descriptor.manifest_file.network)?;
-            info!(
-                "  {} contract: {}",
-                "Deploying".bold().green(),
-                &pkg.descriptor.name
-            );
-            let deployed_contract_id = deploy_pkg(
-                &command,
-                &pkg.descriptor.manifest_file,
-                &pkg,
-                salt,
-                &wallet_mode,
-            )
-            .await?;
-            let proxy = &pkg.descriptor.manifest_file.proxy();
-            let proxy_id = if let Some(proxy) = proxy {
-                if proxy.enabled {
-                    if let Some(proxy_addr) = &proxy.address {
-                        // Make a call into the contract to update impl contract address to 'deployed_contract'.
+    // TODO: Display the estimated gas cost of the transaction(s).
+    // https://github.com/FuelLabs/sway/issues/6277
 
-                        // Create a contract instance for the proxy contract using default proxy contract abi and
-                        // specified address.
-                        info!("  {} proxy contract", "Updating".bold().green());
-                        let provider = Provider::connect(node_url.clone()).await?;
-                        // TODO: once https://github.com/FuelLabs/sway/issues/6071 is closed, this will return just a result
-                        // and we won't need to handle the manual prompt based signature case.
-                        let signing_key = select_secret_key(
-                            &wallet_mode,
-                            command.default_signer,
-                            command.signing_key,
-                            &provider,
-                        )
-                        .await?;
+    let signing_key = select_secret_key(
+        &wallet_mode,
+        command.default_signer || command.unsigned,
+        command.signing_key,
+        &provider,
+        tx_count,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
 
-                        let signing_key = signing_key.ok_or_else(
-
-                            || anyhow::anyhow!("proxy contract deployments are not supported with manual prompt based signing")
-                        )?;
-                        let proxy_contract =
-                            ContractId::from_str(proxy_addr).map_err(|e| anyhow::anyhow!(e))?;
-
-                        update_proxy_contract_target(
-                            provider,
-                            signing_key,
-                            proxy_contract,
-                            deployed_contract_id,
-                        )
-                        .await?;
-                        Some(proxy_contract)
-                    } else {
-                        // Deploy a new proxy contract.
-                        let deployed_proxy_contract = deploy_new_proxy(
-                            &pkg,
-                            &mut owner_account_address,
-                            &deployed_contract_id,
-                            &build_opts,
-                            &command,
-                            salt,
-                            &wallet_mode,
-                        )
-                        .await?;
-
-                        // Update manifest file such that the proxy address field points to the new proxy contract.
-                        update_proxy_address_in_manifest(
-                            &format!("0x{}", deployed_proxy_contract),
-                            &pkg.descriptor.manifest_file,
-                        )?;
-                        Some(deployed_proxy_contract)
-                    }
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-            let deployed_contract = DeployedContract {
-                id: deployed_contract_id,
-                proxy: proxy_id,
-            };
-            deployed_contracts.push(deployed_contract);
-        }
-    }
-    Ok(deployed_contracts)
+    Ok((provider.clone(), signing_key))
 }
 
 /// Deploy a single pkg given deploy command and the manifest file
 pub async fn deploy_pkg(
     command: &cmd::Deploy,
-    manifest: &PackageManifestFile,
     compiled: &BuiltPackage,
     salt: Salt,
-    wallet_mode: &WalletSelectionMode,
+    provider: &Provider,
+    signing_key: &SecretKey,
 ) -> Result<fuel_tx::ContractId> {
-    let node_url = get_node_url(&command.node, &manifest.network)?;
-    let client = FuelClient::new(node_url.clone())?;
+    let manifest = &compiled.descriptor.manifest_file;
+    let node_url = provider.url();
+    let client = FuelClient::new(node_url)?;
+
     let bytecode = &compiled.bytecode.bytes;
 
     let mut storage_slots =
@@ -369,12 +393,11 @@ pub async fn deploy_pkg(
             compiled.storage_slots.clone()
         };
     storage_slots.sort();
-    let contract = Contract::from(bytecode.as_slice());
+
+    let contract = Contract::from(bytecode.clone());
     let root = contract.root();
     let state_root = Contract::initial_state_root(storage_slots.iter());
     let contract_id = contract.id(&salt, &root, &state_root);
-
-    let provider = Provider::connect(node_url.clone()).await?;
     let tx_policies = TxPolicies::default();
 
     let mut tb = CreateTransactionBuilder::prepare_contract_deployment(
@@ -385,22 +408,15 @@ pub async fn deploy_pkg(
         storage_slots.clone(),
         tx_policies,
     );
-    let signing_key = select_secret_key(
-        wallet_mode,
-        command.default_signer || command.unsigned,
-        command.signing_key,
-        &provider,
-    )
-    .await?
-    .ok_or_else(|| anyhow::anyhow!("failed to select a signer for the transaction"))?;
-    let wallet = WalletUnlocked::new_from_private_key(signing_key, Some(provider.clone()));
+    let wallet = WalletUnlocked::new_from_private_key(*signing_key, Some(provider.clone()));
 
     wallet.add_witnesses(&mut tb)?;
     wallet.adjust_for_fee(&mut tb, 0).await?;
     let tx = tb.build(provider).await?;
     let tx = Transaction::from(tx);
 
-    let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
+    let chain_info = client.chain_info().await?;
+    let chain_id = chain_info.consensus_parameters.chain_id();
 
     let deployment_request = client.submit_and_await_commit(&tx).map(|res| match res {
         Ok(logs) => match logs {
@@ -409,10 +425,25 @@ pub async fn deploy_pkg(
             }
             TransactionStatus::Success { block_height, .. } => {
                 let pkg_name = manifest.project_name();
-                info!("\n\n  {} {pkg_name}!", "Deployed".bold().green());
-                info!("  {}: {node_url}", "Network".bold().green());
-                info!("  {}: 0x{contract_id}", "Contract ID".bold().green());
-                info!("  {}: {}\n", "Block".bold().green(), &block_height);
+                let target = Target::from_str(&chain_info.name).unwrap_or(Target::testnet());
+                let (contract_url, block_url) = match target.explorer_url() {
+                    Some(explorer_url) => (
+                        format!("{explorer_url}/contract/0x"),
+                        format!("{explorer_url}/block/"),
+                    ),
+                    None => ("".to_string(), "".to_string()),
+                };
+                println_action_green(
+                    "Finished",
+                    &format!("deploying {pkg_name} {contract_url}{contract_id}"),
+                );
+                let block_height_formatted =
+                    match u32::from_str_radix(&block_height.to_string(), 16) {
+                        Ok(decimal) => format!("{block_url}{decimal}"),
+                        Err(_) => block_height.to_string(),
+                    };
+
+                println_action_green("Deployed", &format!("in block {block_height_formatted}"));
 
                 // Create a deployment artifact.
                 let deployment_size = bytecode.len();
@@ -447,6 +478,7 @@ pub async fn deploy_pkg(
         },
         Err(e) => bail!("{e}"),
     });
+
     // submit contract deployment with a timeout
     let contract_id = tokio::time::timeout(
         Duration::from_millis(TX_SUBMIT_TIMEOUT_MS),

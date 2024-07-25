@@ -1,10 +1,3 @@
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    process::{Child, Command},
-    str::FromStr,
-};
-
 use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
@@ -18,6 +11,13 @@ use fuels::{macros::abigen, types::transaction::TxPolicies};
 use fuels_accounts::{provider::Provider, wallet::WalletUnlocked, Account};
 use portpicker::Port;
 use rand::thread_rng;
+use rexpect::spawn;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    process::{Child, Command},
+    str::FromStr,
+};
 use tempfile::tempdir;
 use toml_edit::{value, Document, InlineTable, Item, Table, Value};
 
@@ -111,7 +111,7 @@ fn update_main_sw(tmp_dir: &Path) -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn simple_deploy() {
+async fn test_simple_deploy() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_data_path().join("standalone_contract");
@@ -150,7 +150,7 @@ async fn simple_deploy() {
 }
 
 #[tokio::test]
-async fn deploy_fresh_proxy() {
+async fn test_deploy_fresh_proxy() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_data_path().join("standalone_contract");
@@ -189,7 +189,7 @@ async fn deploy_fresh_proxy() {
         .unwrap(),
         proxy: Some(
             ContractId::from_str(
-                "58ed1aca6e781609b2ff04488f0299fcb9f548874e477938937b5d2a2b001f74",
+                "2b49d9d74f2d54274c01584523f64e0a5f8d2c4df4bdda760efe5c7b451f6b2c",
             )
             .unwrap(),
         ),
@@ -200,7 +200,7 @@ async fn deploy_fresh_proxy() {
 }
 
 #[tokio::test]
-async fn proxy_contract_re_routes_call() {
+async fn test_proxy_contract_re_routes_call() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_data_path().join("standalone_contract");
@@ -292,7 +292,7 @@ async fn proxy_contract_re_routes_call() {
 }
 
 #[tokio::test]
-async fn non_owner_fails_to_set_target() {
+async fn test_non_owner_fails_to_set_target() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_data_path().join("standalone_contract");
@@ -377,4 +377,37 @@ async fn non_owner_fails_to_set_target() {
         }
         _ => panic!("Expected a Reverted transaction error, but got: {:?}", res),
     }
+}
+
+// TODO: https://github.com/FuelLabs/sway/issues/6283
+// Add interactive tests for the happy path cases. This requires starting the node with funded accounts and setting up
+// the wallet with the correct password. The tests should be run in a separate test suite that is not run by default.
+// It would also require overriding `default_wallet_path` function for tests, so as not to interfere with the user's wallet.
+
+#[test]
+fn test_deploy_interactive_wrong_password() -> Result<(), rexpect::error::Error> {
+    let (mut node, port) = run_node();
+    let node_url = format!("http://127.0.0.1:{}/v1/graphql", port);
+
+    // Spawn the forc-deploy binary using cargo run
+    let project_dir = test_data_path().join("standalone_contract");
+    let mut process = spawn(
+        &format!(
+            "cargo run --bin forc-deploy -- --node-url {node_url} -p {}",
+            project_dir.display()
+        ),
+        Some(300000),
+    )?;
+
+    // Confirmation prompts
+    process
+        .exp_string("\u{1b}[1;32mConfirming\u{1b}[0m transactions [deploy standalone_contract]")?;
+    process.exp_string(&format!("Network: {node_url}"))?;
+    process.exp_string("Wallet: ")?;
+    process.exp_string("Wallet password")?;
+    process.send_line("mock_password")?;
+
+    process.process.exit()?;
+    node.kill().unwrap();
+    Ok(())
 }
