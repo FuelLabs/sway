@@ -667,11 +667,6 @@ impl PackageManifest {
         self.proxy.as_ref()
     }
 
-    /// Returns true if the proxy table's `enabled` field is set to true.
-    pub fn proxy_enabled(&self) -> bool {
-        self.proxy.as_ref().map(|p| p.enabled).unwrap_or(false)
-    }
-
     /// Check for the `core` and `std` packages under `[dependencies]`. If both are missing, add
     /// `std` implicitly.
     ///
