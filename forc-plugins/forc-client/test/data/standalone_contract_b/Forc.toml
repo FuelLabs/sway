@@ -6,4 +6,4 @@ license = "Apache-2.0"
 name = "standalone_contract_b"
 
 [dependencies]
-std = { path = "../../../../../../../../sway-lib-std/" }
+std = { path = "../../../../../sway-lib-std/" }

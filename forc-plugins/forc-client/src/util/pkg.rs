@@ -103,10 +103,13 @@ pub(crate) fn update_proxy_address_in_manifest(
 
 /// Creates a proxy contract project at the given path, adds a forc.toml and source file.
 pub(crate) fn create_proxy_contract(
-    addr: &str,
-    impl_contract_id: &str,
+    owner_addr: &fuels_core::types::Address,
+    impl_contract_id: &fuel_tx::ContractId,
     pkg_name: &str,
 ) -> Result<PathBuf> {
+    let owner_addr = &format!("0x{}", owner_addr);
+    let impl_contract_id = &format!("0x{}", impl_contract_id);
+
     // Create the proxy contract folder.
     let proxy_contract_dir = user_forc_directory()
         .join(PROXY_CONTRACT_FOLDER_NAME)
@@ -133,7 +136,7 @@ pub(crate) fn create_proxy_contract(
         .truncate(true)
         .open(proxy_contract_dir.join(SRC_DIR).join(MAIN_ENTRY))?;
 
-    let contract_str = generate_proxy_contract_src(addr, impl_contract_id);
+    let contract_str = generate_proxy_contract_src(owner_addr, impl_contract_id);
     write!(f, "{}", contract_str)?;
     Ok(proxy_contract_dir)
 }
@@ -171,8 +174,8 @@ pub(crate) fn built_pkgs(path: &Path, build_opts: &BuildOpts) -> Result<Vec<Arc<
 /// First creates the contract project at the current dir. The source code for the proxy contract is updated
 /// with 'owner_addr'.
 pub fn build_proxy_contract(
-    owner_addr: &str,
-    impl_contract_id: &str,
+    owner_addr: &fuels_core::types::Address,
+    impl_contract_id: &fuel_tx::ContractId,
     pkg_name: &str,
     build_opts: &BuildOpts,
 ) -> Result<Arc<BuiltPackage>> {
