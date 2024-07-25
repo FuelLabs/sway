@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 
 use crate::{
     language::{
-        ty::{self, TyConfigurableDecl, TyConstantDecl},
+        ty::{self, TyConstantDecl},
         CallPath, Literal,
     },
     semantic_analysis::{
@@ -229,9 +229,6 @@ pub(super) fn matcher(
         ty::TyScrutineeVariant::Constant(_, _, const_decl) => {
             Ok(match_constant(ctx, exp, const_decl, span))
         }
-        ty::TyScrutineeVariant::Configurable(_, _, config_decl) => {
-            Ok(match_configurable(ctx, exp, config_decl, span))
-        }
         ty::TyScrutineeVariant::StructScrutinee {
             struct_ref: _,
             fields,
@@ -412,31 +409,6 @@ fn match_constant(
             expression: ty::TyExpressionVariant::ConstantExpression {
                 span: span.clone(),
                 decl: Box::new(const_decl),
-                call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
-            },
-            return_type,
-            span,
-        },
-    );
-
-    ReqDeclTree::req(req)
-}
-
-fn match_configurable(
-    ctx: TypeCheckContext,
-    exp: &ty::TyExpression,
-    decl: TyConfigurableDecl,
-    span: Span,
-) -> ReqDeclTree {
-    let name = decl.name().clone();
-    let return_type = decl.type_ascription.type_id;
-
-    let req = (
-        exp.to_owned(),
-        ty::TyExpression {
-            expression: ty::TyExpressionVariant::ConfigurableExpression {
-                span: span.clone(),
-                decl: Box::new(decl),
                 call_path: Some(CallPath::from(name).to_fullpath(ctx.engines(), ctx.namespace())),
             },
             return_type,

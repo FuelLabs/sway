@@ -1,7 +1,8 @@
 use ast_node::expression::match_expression::typed::matcher::{ReqDeclNode, ReqOrVarDecl};
+use indexmap::IndexSet;
 use itertools::{multiunzip, Itertools};
 use sway_error::{
-    error::CompileError,
+    error::{CompileError, ShadowingSource},
     handler::{ErrorEmitted, Handler},
 };
 use sway_types::{Ident, Span, Spanned};
@@ -43,10 +44,10 @@ impl ty::TyMatchBranch {
         let type_engine = ctx.engines.te();
         let engines = ctx.engines();
 
-        // type check the scrutinee
+        // Type check the scrutinee.
         let typed_scrutinee = ty::TyScrutinee::type_check(handler, ctx.by_ref(), scrutinee)?;
 
-        // calculate the requirements and variable declarations
+        // Calculate the requirements and variable declarations.
         let req_decl_tree = matcher(
             handler,
             ctx.by_ref(),
@@ -71,6 +72,48 @@ impl ty::TyMatchBranch {
                     duplicate: duplicate.duplicate.1,
                     duplicate_is_struct_field: duplicate.duplicate.0,
                 });
+            }
+
+            Ok(())
+        })?;
+
+        // Emit errors for eventual uses of configurables in patterns.
+        // Configurables cannot be used in pattern matching, since they are not compile-time
+        // constants. Using a configurable will define a pattern variable, that will
+        // then shadow the configurable of the same name, which is not allowed.
+        // This can be very confusing in case someone tries to use configurables in pattern matching
+        // in the same way as constants. So we provide helpful hints here.
+        // We stop further compilation in case of finding configurables in patterns.
+        handler.scope(|handler| {
+            // All the first occurrences of variables in order of appearance, while respecting
+            // if they are struct field variables.
+            let variables: IndexSet<(Ident, bool)> =
+                IndexSet::from_iter(collect_match_pattern_variables(&typed_scrutinee));
+            for (ident, is_struct_field) in variables {
+                let default_handler = &Handler::default();
+                // If there exist a configurable with the same name as the pattern variable.
+                if let Ok(ty::TyDecl::ConfigurableDecl(configurable_decl)) = ctx
+                    .namespace()
+                    .resolve_symbol_typed(default_handler, engines, &ident, ctx.self_type())
+                {
+                    let name = (&ident).into();
+                    let configurable_span = engines
+                        .de()
+                        .get_configurable(&configurable_decl.decl_id)
+                        .span();
+                    if is_struct_field {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeShadowed {
+                            shadowing_source: ShadowingSource::PatternMatchingStructFieldVar,
+                            name,
+                            configurable_span,
+                        });
+                    } else {
+                        handler.emit_err(CompileError::ConfigurablesCannotBeMatchedAgainst {
+                            name,
+                            configurable_span,
+                        });
+                    }
+                }
             }
 
             Ok(())

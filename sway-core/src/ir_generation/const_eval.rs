@@ -1316,12 +1316,11 @@ mod tests {
             },
         );
         let mut md_mgr = MetadataManager::default();
-        let mut core_lib = namespace::Root::from(namespace::Module {
-            name: Some(sway_types::Ident::new_no_span(
-                "assert_is_constant_test".to_string(),
-            )),
-            ..Default::default()
-        });
+        let mut core_lib = namespace::Root::from(namespace::Module::new(
+            sway_types::Ident::new_no_span("assert_is_constant_test".to_string()),
+            crate::Visibility::Private,
+            None,
+        ));
 
         let r = crate::compile_to_ast(
             &handler,
