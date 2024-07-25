@@ -357,10 +357,32 @@ impl PackageManifestFile {
 
     /// Produces the string of the entry point file.
     pub fn entry_string(&self) -> Result<Arc<str>> {
+        dbg!();
         let entry_path = self.entry_path();
+        dbg!();
         let entry_string = std::fs::read_to_string(entry_path)?;
+        dbg!();
+        if entry_string.is_empty() {
+            eprintln!("entry_string empty! | entry_path: {:?}", self.entry_path());
+        } else {
+            eprintln!("entry_string not empty! | entry_path: {:?}", self.entry_path());
+        }
         Ok(Arc::from(entry_string))
     }
+
+    // we could try to read the file 3 times, but it feels like a hack
+    // pub fn entry_string(&self) -> Result<Arc<str>> {
+    //     for attempt in 1..=3 {
+    //         let entry_path = self.entry_path();
+    //         let entry_string = std::fs::read_to_string(&entry_path)?;
+    //         if !entry_string.is_empty() {
+    //             return Ok(Arc::from(entry_string));
+    //         }
+    //         eprintln!("Attempt {}: File empty, retrying...", attempt);
+    //         std::thread::sleep(std::time::Duration::from_millis(100));
+    //     }
+    //     Err(anyhow::anyhow!("File remained empty after multiple attempts"))
+    // }
 
     /// Parse and return the associated project's program type.
     pub fn program_type(&self) -> Result<TreeType> {

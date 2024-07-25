@@ -142,7 +142,7 @@ pub async fn random_delay() {
 /// Sets up the environment and a custom panic hook to print panic information and exit the program.
 pub fn setup_panic_hook() {
     // Enable backtrace to get more information about panic
-    std::env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("RUST_BACKTRACE", "FULL");
 
     // Take the default panic hook
     let default_panic = std::panic::take_hook();

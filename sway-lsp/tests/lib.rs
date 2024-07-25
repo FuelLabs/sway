@@ -242,12 +242,21 @@ fn did_change_stress_test_random_wait() {
             // .join("generics_in_contract");
             //            let uri = init_and_open(&mut service, example_dir.join("src/main.sw")).await;
 
+            // let uri = init_and_open(
+            //     &mut service,
+            //     PathBuf::from(
+            //         "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries",
+            //     )
+            //     .join("src/fpt_staking_interface.sw"),
+            // )
+            // .await;
+
             let uri = init_and_open(
                 &mut service,
                 PathBuf::from(
-                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/libraries",
+                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/contracts/multi-trove-getter-contract",
                 )
-                .join("src/fpt_staking_interface.sw"),
+                .join("src/main.sw"),
             )
             .await;
 
@@ -289,6 +298,55 @@ fn did_change_stress_test_random_wait() {
         }
     });
 }
+
+
+#[test]
+fn did_change_stress_test_enter_uzi() {
+    run_async!({
+        let test_duration = tokio::time::Duration::from_secs(250 * 60); // 5 minutes timeout
+        let test_future = async {
+            setup_panic_hook();
+            let (mut service, _) = LspService::new(ServerState::new);
+            let uri = init_and_open(
+                &mut service,
+                PathBuf::from(
+                    "/Users/josh/Documents/rust/fuel/user_projects/fluid-protocol/contracts/multi-trove-getter-contract",
+                )
+                .join("src/main.sw"),
+            )
+            .await;
+
+            let times = 6000;
+            for version in 0..times {
+                //eprintln!("version: {}", version);
+                let _ = lsp::did_change_request(&mut service, &uri, version + 1, None).await;
+                if version == 0 {
+                    service.inner().wait_for_parsing().await;
+                }
+                // wait for a random amount of time between 1s
+                tokio::time::sleep(tokio::time::Duration::from_millis(2)).await;
+
+                // there is a 10% chance that a longer 100-800ms wait will be added
+                if rand::random::<u64>() % 100 < 2 {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(
+                        rand::random::<u64>() % 100,
+                    ))
+                    .await;
+                }
+            }
+            shutdown_and_exit(&mut service).await;
+        };
+        if tokio::time::timeout(test_duration, test_future)
+            .await
+            .is_err()
+        {
+            panic!(
+                "did_change_stress_test_random_wait did not complete within the timeout period."
+            );
+        }
+    });
+}
+
 
 fn garbage_collection_runner(path: PathBuf) {
     run_async!({

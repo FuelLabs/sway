@@ -275,7 +275,7 @@ impl ty::TyModule {
         let key = ModuleCacheKey::new(path.clone().into(), include_tests);
         let cache = engines.qe().module_cache.read();
 
-        let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+        let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
         let relevant_path = path
             .iter()
             .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
@@ -476,7 +476,7 @@ impl ty::TyModule {
         // Cache the ty module
         if let Some(source_id) = span.source_id() {
             let path = engines.se().get_path(source_id);
-            let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+            let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
             let relevant_path = path
                 .iter()
                 .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))

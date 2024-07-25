@@ -43,6 +43,7 @@ pub(crate) async fn initialize_request(service: &mut LspService<ServerState>) ->
         1.into(),
         json!({ "capabilities": sway_lsp::server_capabilities() }),
     );
+    eprintln!("initialize response: {:?}", response);
     assert_json_eq!(expected, response.ok().unwrap());
     initialize
 }

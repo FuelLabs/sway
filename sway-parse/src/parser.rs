@@ -209,6 +209,8 @@ impl<'a, 'e> Parser<'a, 'e> {
 
     /// Parses a `T` in its canonical way.
     pub fn parse<T: Parse>(&mut self) -> ParseResult<T> {
+        //eprintln!("parse Type of T: {}", std::any::type_name::<T>());
+        
         T::parse(self)
     }
 
@@ -220,6 +222,9 @@ impl<'a, 'e> Parser<'a, 'e> {
     }
 
     pub fn parse_to_end<T: ParseToEnd>(self) -> ParseResult<(T, ParserConsumed<'a>)> {
+        // eprintln! type of T
+        // eprintln!("parse_to_end Type of T: {}", std::any::type_name::<T>());
+
         T::parse_to_end(self)
     }
 

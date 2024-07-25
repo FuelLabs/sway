@@ -21,6 +21,7 @@ impl Parse for ModuleKind {
         } else if let Some(library_token) = parser.take() {
             Ok(Self::Library { library_token })
         } else {
+            eprintln!("❔⁉️ Expected Module Kind, how the hell did we get here?");
             Err(parser.emit_error(ParseErrorKind::ExpectedModuleKind))
         }
     }
@@ -28,10 +29,13 @@ impl Parse for ModuleKind {
 
 impl ParseToEnd for Annotated<Module> {
     fn parse_to_end<'a, 'e>(mut parser: Parser<'a, '_>) -> ParseResult<(Self, ParserConsumed<'a>)> {
+        dbg!();
         // Parse the attribute list.
         let mut attribute_list = Vec::new();
         while let Some(DocComment { .. }) = parser.peek() {
+            dbg!();
             let doc_comment = parser.parse::<DocComment>()?;
+            dbg!();
             // TODO: Use a Literal instead of an Ident when Attribute args
             // start supporting them and remove `Ident::new_no_trim`.
             let name = Ident::new_no_trim(doc_comment.content_span.clone());
@@ -55,14 +59,16 @@ impl ParseToEnd for Annotated<Module> {
                     ),
                 }),
                 DocStyle::Outer => {
+                    dbg!();
                     parser.emit_error(ParseErrorKind::ExpectedModuleDocComment);
                 }
             }
         }
+        dbg!();
         let (kind, semicolon_token) = parser.parse()?;
-
+        dbg!();
         let (items, consumed) = parser.parse_to_end()?;
-
+        dbg!();
         let module = Annotated {
             attribute_list,
             value: Module {

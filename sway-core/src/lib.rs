@@ -90,6 +90,7 @@ pub fn parse(
     engines: &Engines,
     config: Option<&BuildConfig>,
 ) -> Result<(lexed::LexedProgram, parsed::ParseProgram), ErrorEmitted> {
+    dbg!();
     match config {
         None => parse_in_memory(
             handler,
@@ -257,13 +258,15 @@ fn parse_submodules(
     experimental: ExperimentalFlags,
     lsp_mode: Option<&LspConfig>,
 ) -> Submodules {
+    dbg!();
     // Assume the happy path, so there'll be as many submodules as dependencies, but no more.
     let mut submods = Vec::with_capacity(module.submodules().count());
-
+    dbg!();
     module.submodules().for_each(|submod| {
         // Read the source code from the dependency.
         // If we cannot, record as an error, but continue with other files.
         let submod_path = Arc::new(module_path(module_dir, module_name, submod));
+        dbg!();
         let submod_str: Arc<str> = match std::fs::read_to_string(&*submod_path) {
             Ok(s) => Arc::from(s),
             Err(e) => {
@@ -275,7 +278,7 @@ fn parse_submodules(
                 return;
             }
         };
-
+        dbg!();
         if let Ok(ParsedModuleTree {
             tree_type: kind,
             lexed_module,
@@ -318,7 +321,7 @@ fn parse_submodules(
             submods.push(submodule);
         }
     });
-
+    dbg!();
     submods
 }
 
@@ -345,14 +348,23 @@ fn parse_module_tree(
     experimental: ExperimentalFlags,
     lsp_mode: Option<&LspConfig>,
 ) -> Result<ParsedModuleTree, ErrorEmitted> {
+    dbg!();
     let query_engine = engines.qe();
 
     let lexed_now = std::time::Instant::now();
     // Parse this module first.
     let module_dir = path.parent().expect("module file has no parent directory");
     let source_id = engines.se().get_source_id(&path.clone());
-    let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
-
+    dbg!();
+    let module = match sway_parse::parse_file(handler, src.clone(), Some(source_id)) {
+        Ok(module) => module,
+        Err(e) => {
+            eprintln!("ERROR PARSING MODULE | {:?} | src_file: {}", e, src.clone());
+            return Err(e);
+        }
+    };
+    //let module = sway_parse::parse_file(handler, src.clone(), Some(source_id))?;
+    dbg!();
     // Parse all submodules before converting to the `ParseTree`.
     // This always recovers on parse errors for the file itself by skipping that file.
     let submodules = parse_submodules(
@@ -366,6 +378,7 @@ fn parse_module_tree(
         experimental,
         lsp_mode,
     );
+    dbg!();
     eprintln!("⏱️ Lexed module took {:?}", lexed_now.elapsed());
 
     let parsed_now = std::time::Instant::now();
@@ -376,8 +389,11 @@ fn parse_module_tree(
         engines,
         module.value.clone(),
     )?;
+    dbg!();
     let module_kind_span = module.value.kind.span();
+    dbg!();
     let attributes = module_attrs_to_map(handler, &module.attribute_list)?;
+    dbg!();
     eprintln!("⏱️ Parsed module took {:?}", parsed_now.elapsed());
 
     let lexed_submodules = submodules
@@ -429,7 +445,7 @@ fn parse_module_tree(
     };
     let cache_entry = ModuleCacheEntry::new(common_info, parsed_info);
 
-    let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+    let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
     let relevant_path = path
         .iter()
         .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
@@ -492,7 +508,7 @@ pub(crate) fn is_parse_module_cache_up_to_date(
     include_tests: bool,
     build_config: Option<&BuildConfig>,
 ) -> bool {
-    let split_points = ["sway-lib-core", "sway-lib-std", "libraries"];
+    let split_points = ["sway-lib-core", "sway-lib-std", "libraries", "multi-trove-getter-contract"];
     let relevant_path = path
         .iter()
         .skip_while(|&comp| !split_points.contains(&comp.to_str().unwrap()))
@@ -777,9 +793,13 @@ pub fn compile_to_ast(
             let (warnings, errors) = entry.handler_data;
             let new_handler = Handler::from_parts(warnings, errors);
             handler.append(new_handler);
+            eprintln!("programs cache valid, returning");
             return Ok(entry.programs);
         };
     }
+
+    eprintln!("programs cache invalid, continuing to parse");
+    let input_clone = input.clone();    
 
     let parse_now = std::time::Instant::now();
     // Parse the program to a concrete syntax tree (CST).
@@ -795,8 +815,14 @@ pub fn compile_to_ast(
     check_should_abort(handler, retrigger_compilation.clone(), 805)?;
 
     let (lexed_program, mut parsed_program) = match parse_program_opt {
-        Ok(modules) => modules,
+        Ok(modules) => {
+            dbg!();
+            modules
+        },
         Err(e) => {
+            dbg!();
+            // Input string is completely empty. how?
+            eprintln!("ERROR PARSING PROGRAM | {:?} | src_file: {}", e, input_clone);
             handler.dedup();
             return Err(e);
         }

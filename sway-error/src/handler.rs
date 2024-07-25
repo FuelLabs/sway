@@ -35,6 +35,7 @@ impl Handler {
 
     // Compilation should be cancelled.
     pub fn cancel(&self) -> ErrorEmitted {
+        eprintln!("CANCELLED");
         ErrorEmitted { _priv: () }
     }
 

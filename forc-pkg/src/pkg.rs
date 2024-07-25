@@ -2700,7 +2700,9 @@ pub fn check(
         .with_lsp_mode(lsp_mode.clone());
         eprintln!("⏱️ Build config took {:?}", build_config_now.elapsed());
 
+        eprintln!("Forc pacakge loading input string");
         let input = manifest.entry_string()?;
+        eprintln!("Forc package input string loaded | {}", input.clone());
         let handler = Handler::default();
         let compile_to_ast_now = std::time::Instant::now();
         let programs_res = sway_core::compile_to_ast(
@@ -2712,6 +2714,7 @@ pub fn check(
             &pkg.name,
             retrigger_compilation.clone(),
         );
+        eprintln!("programs res: {:?}", programs_res.is_ok());
         eprintln!("⏱️ Compile to AST took {:?}", compile_to_ast_now.elapsed());
 
         if retrigger_compilation
@@ -2723,8 +2726,13 @@ pub fn check(
         }
 
         let programs = match programs_res.as_ref() {
-            Ok(programs) => programs,
+            Ok(programs) => {
+                dbg!();
+                programs
+            },
             _ => {
+                eprintln!("ERROR PARSING MODULE | {:?}", programs_res.clone().ok());
+                eprintln!("Returning results with handler | {:?}", handler);
                 results.push((programs_res.ok(), handler));
                 return Ok(results);
             }
