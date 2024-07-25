@@ -105,12 +105,12 @@ impl ty::TyIntrinsicFunctionKind {
             Intrinsic::Slice => {
                 type_check_slice(handler, ctx, kind, arguments, type_arguments, span)
             }
-            Intrinsic::SliceElem => type_check_slice_elem(arguments, handler, kind, span, ctx),
+            Intrinsic::ElemAt => type_check_elem_at(arguments, handler, kind, span, ctx),
         }
     }
 }
 
-fn type_check_slice_elem(
+fn type_check_elem_at(
     arguments: &[Expression],
     handler: &Handler,
     kind: Intrinsic,
@@ -141,11 +141,18 @@ fn type_check_slice_elem(
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
-    let first_argument_ref_to_type = type_engine
-        .get(first_argument_type)
-        .as_reference()
-        .map(|(_, t)| type_engine.get(t.type_id));
-    let Some(TypeInfo::Slice(elem_type)) = first_argument_ref_to_type.as_deref() else {
+    // first argument can be array or ref to slice
+    let elem_type = match &*type_engine.get(first_argument_type) {
+        TypeInfo::Array(elem_ty, _) => Some(elem_ty.type_id),
+        TypeInfo::Ref { referenced_type, .. } => {
+            match &*type_engine.get(referenced_type.type_id) {
+                TypeInfo::Slice(elem_ty) => Some(elem_ty.type_id),
+                _ => None
+            }
+        },
+        _ => None,
+    };
+    let Some(elem_type_type_id) = elem_type else {
         return Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
             name: kind.to_string(),
             span: first_argument_span,
@@ -172,8 +179,8 @@ fn type_check_slice_elem(
         TypeInfo::Ref {
             to_mutable_value: true,
             referenced_type: TypeArgument {
-                type_id: elem_type.type_id,
-                initial_type_id: elem_type.type_id,
+                type_id: elem_type_type_id,
+                initial_type_id: elem_type_type_id,
                 span: Span::dummy(),
                 call_path_tree: None,
             },
@@ -240,13 +247,13 @@ fn type_check_slice(
     };
 
     // check first argument
-    let array_span = arguments[0].span.clone();
-    let array_type = type_engine.insert(engines, TypeInfo::Unknown, None);
-    let array_ty_expr = {
+    let first_argument_span = arguments[0].span.clone();
+    let first_argument_type = type_engine.insert(engines, TypeInfo::Unknown, None);
+    let first_argument_ty_expr = {
         let ctx = ctx
             .by_ref()
             .with_help_text("")
-            .with_type_annotation(array_type);
+            .with_type_annotation(first_argument_type);
         ty::TyExpression::type_check(handler, ctx, &arguments[0])?
     };
 
@@ -290,7 +297,12 @@ fn type_check_slice(
     }
 
     // We can slice arrays or other slices
-    match &*type_engine.get(array_type) {
+    let err = CompileError::IntrinsicUnsupportedArgType {
+        name: kind.to_string(),
+        span: first_argument_span,
+        hint: "".to_string(),
+    };
+    let r = match &*type_engine.get(first_argument_type) {
         TypeInfo::Array(elem_type_arg, array_len) => {
             let array_len = array_len.val() as u64;
 
@@ -314,30 +326,36 @@ fn type_check_slice(
                 }
             }
 
-            Ok((
+            Some((
                 TyIntrinsicFunctionKind {
                     kind,
-                    arguments: vec![array_ty_expr, start_ty_expr, end_ty_expr],
+                    arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
                     type_arguments: vec![],
                     span,
                 },
                 create_ref_to_slice(engines, elem_type_arg.clone()),
             ))
         }
-        TypeInfo::Slice(elem_type_arg) => Ok((
-            TyIntrinsicFunctionKind {
-                kind,
-                arguments: vec![array_ty_expr, start_ty_expr, end_ty_expr],
-                type_arguments: vec![],
-                span,
-            },
-            create_ref_to_slice(engines, elem_type_arg.clone()),
-        )),
-        _ => Err(handler.emit_err(CompileError::IntrinsicUnsupportedArgType {
-            name: kind.to_string(),
-            span: array_span,
-            hint: "".to_string(),
-        })),
+        TypeInfo::Ref { referenced_type, .. } => {
+            match &*type_engine.get(referenced_type.type_id) {
+                TypeInfo::Slice(elem_type_arg) => Some((
+                    TyIntrinsicFunctionKind {
+                        kind,
+                        arguments: vec![first_argument_ty_expr, start_ty_expr, end_ty_expr],
+                        type_arguments: vec![],
+                        span,
+                    },
+                    create_ref_to_slice(engines, elem_type_arg.clone()),
+                )),
+                _ => None,
+            }
+        },       
+        _ => None,
+    };
+
+    match r {
+        Some(r) => Ok(r),
+        None => Err(handler.emit_err(err)),
     }
 }
 

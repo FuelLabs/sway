@@ -627,7 +627,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::Deref(expr) => {
             let value = expr
                 .as_intrinsic()
-                .filter(|x| matches!(x.kind, Intrinsic::SliceElem))
+                .filter(|x| matches!(x.kind, Intrinsic::ElemAt))
                 .ok_or(ConstEvalError::CompileError)
                 .and_then(|kind| const_eval_intrinsic(lookup, known_consts, kind));
             if let Ok(Some(Constant {
@@ -1342,7 +1342,7 @@ fn const_eval_intrinsic(
                 }),
             }
         }
-        Intrinsic::SliceElem => {
+        Intrinsic::ElemAt => {
             let idx = args[1].as_uint().expect("Type check allowed non u64") as usize;
 
             match &args[0].value {

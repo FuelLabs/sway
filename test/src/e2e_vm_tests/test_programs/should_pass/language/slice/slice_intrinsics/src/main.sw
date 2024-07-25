@@ -73,7 +73,7 @@ impl<T> Vec<T> {
             ("    After realloc: ", self).dbgln();
         }
 
-        let v: &mut T = __slice_elem(self.buf, new_item_idx);
+        let v: &mut T = __elem_at(self.buf, new_item_idx);
 
         let buffer_addr = asm(v: self.buf.ptr()) { v: u64 };
         let elem_addr = asm(v: v) { v: u64 };
@@ -89,7 +89,7 @@ impl<T> Vec<T> {
         ("Vec::get(", index, ")").dbgln();
         ("    ", self).dbgln();
 
-        let item: &mut T = __slice_elem(self.buf, index);
+        let item: &mut T = __elem_at(self.buf, index);
 
         let buffer_addr = asm(v: self.buf.ptr()) { v: u64 };
         let elem_addr = asm(v: item) { v: u64 };
@@ -111,23 +111,27 @@ where
 }
 
 fn main()  {
+    // index arrays
+    let some_array: [u64; 5] = [1, 2, 3, 4, 5];
+    assert(1, *__elem_at(some_array, 0));
+    assert(2, *__elem_at(some_array, 1));
+    assert(3, *__elem_at(some_array, 2));
+    assert(4, *__elem_at(some_array, 3));
+    assert(5, *__elem_at(some_array, 4));
+
     // slice arrays
-    let a: [u64; 5] = [1, 2, 3, 4, 5];
-
-    
-
-    let s = __slice(a, 0, 5);
-    assert(1, *__slice_elem(s, 0));
-    assert(2, *__slice_elem(s, 1));
-    assert(3, *__slice_elem(s, 2));
-    assert(4, *__slice_elem(s, 3));
-    assert(5, *__slice_elem(s, 4));
+    let some_slice: &__slice[u64] = __slice(some_array, 0, 5);
+    assert(1, *__elem_at(some_slice, 0));
+    assert(2, *__elem_at(some_slice, 1));
+    assert(3, *__elem_at(some_slice, 2));
+    assert(4, *__elem_at(some_slice, 3));
+    assert(5, *__elem_at(some_slice, 4));
 
     // slice another slice
-    let s = __slice(a, 1, 4);
-    assert(2, *__slice_elem(s, 0));
-    assert(3, *__slice_elem(s, 1));
-    assert(4, *__slice_elem(s, 2));
+    let another_slice: &__slice[u64] = __slice(some_slice, 1, 4);
+    assert(2, *__elem_at(another_slice, 0));
+    assert(3, *__elem_at(another_slice, 1));
+    assert(4, *__elem_at(another_slice, 2));
 
     // Vec impl using slices
     let mut v: Vec<u64> = Vec::new();
