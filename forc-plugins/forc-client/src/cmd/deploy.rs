@@ -55,7 +55,7 @@ pub struct Command {
     /// Deprecated in favor of `--default-signer`.
     #[clap(long)]
     pub unsigned: bool,
-    /// Submit the deployment transaction without wait execution.
+    /// Submit the deployment transaction(s) without waiting for execution to complete.
     #[clap(long)]
     pub submit_only: bool,
     /// Set the key to be used for signing.

@@ -277,7 +277,7 @@ pub async fn deploy_pkg(
     let chain_id = client.chain_info().await?.consensus_parameters.chain_id();
     let pkg_name = manifest.project_name();
 
-    // if just submitting the transaction, don't wait for the deployment to complete
+    // If only submitting the transaction, don't wait for the deployment to complete
     let contract_id: ContractId = if command.submit_only {
         match client.submit(&tx).await {
             Ok(transaction_id) => {
