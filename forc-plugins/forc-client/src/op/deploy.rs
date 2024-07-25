@@ -164,7 +164,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
         println_warning("--unsigned flag is deprecated, please prefer using --default-signer. Assuming `--default-signer` is passed. This means your transaction will be signed by an account that is funded by fuel-core by default for testing purposes.");
     }
 
-    let mut contract_ids = Vec::new();
+    let mut deployed_contracts = Vec::new();
     let curr_dir = if let Some(ref path) = command.pkg.path {
         PathBuf::from(path)
     } else {
@@ -185,7 +185,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
 
     if pkgs_to_deploy.is_empty() {
         println_warning("No deployable contracts found in the current directory.");
-        return Ok(contract_ids);
+        return Ok(deployed_contracts);
     }
 
     let contract_salt_map = if let Some(salt_input) = &command.salt {
@@ -320,9 +320,9 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             id: deployed_contract_id,
             proxy: proxy_id,
         };
-        contract_ids.push(deployed_contract);
+        deployed_contracts.push(deployed_contract);
     }
-    Ok(contract_ids)
+    Ok(deployed_contracts)
 }
 
 /// Prompt the user to confirm the transactions required for deployment, as well as the signing key.
