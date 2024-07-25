@@ -23,6 +23,7 @@ use fuels_core::types::{transaction::TxPolicies, transaction_builders::CreateTra
 use futures::FutureExt;
 use pkg::{manifest::build_profile::ExperimentalFlags, BuildProfile, BuiltPackage};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::time::Duration;
 use std::{
     collections::BTreeMap,
@@ -281,10 +282,6 @@ pub async fn deploy_pkg(
     let contract_id: ContractId = if command.submit_only {
         match client.submit(&tx).await {
             Ok(transaction_id) => {
-                info!("\n\nContract {pkg_name} Deployed!");
-                info!("\nNetwork: {node_url}");
-                info!("Contract ID: 0x{contract_id}");
-
                 // Create a deployment artifact.
                 create_deployment_artifact(
                     DeploymentArtifact {
@@ -299,7 +296,6 @@ pub async fn deploy_pkg(
                     command,
                     manifest,
                     pkg_name,
-                    contract_id,
                 )?;
 
                 contract_id
@@ -319,12 +315,6 @@ pub async fn deploy_pkg(
                     bail!("contract {} deployment timed out", &contract_id);
                 }
                 TransactionStatus::Success { block_height, .. } => {
-                    info!("\n\nContract {pkg_name} Deployed!");
-
-                    info!("\nNetwork: {node_url}");
-                    info!("Contract ID: 0x{contract_id}");
-                    info!("Deployed in block {}", &block_height);
-
                     // Create a deployment artifact.
                     create_deployment_artifact(
                         DeploymentArtifact {
@@ -339,7 +329,6 @@ pub async fn deploy_pkg(
                         command,
                         manifest,
                         pkg_name,
-                        contract_id,
                     )?;
 
                     Ok(contract_id)
@@ -416,8 +405,18 @@ fn create_deployment_artifact(
     cmd: &cmd::Deploy,
     manifest: &PackageManifestFile,
     pkg_name: &str,
-    contract_id: ContractId,
 ) -> Result<()> {
+    let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
+
+    info!("\n\nContract {pkg_name} Deployed!");
+    info!("\nNetwork: {}", &deployment_artifact.network_endpoint);
+    info!("Contract ID: 0x{}", contract_id);
+
+    let block_height = deployment_artifact.deployed_block_height;
+    if block_height.is_some() {
+        info!("Deployed in block {}", block_height.unwrap());
+    }
+
     let output_dir = cmd
         .pkg
         .output_directory
