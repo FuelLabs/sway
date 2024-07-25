@@ -155,4 +155,10 @@ fn main()  {
     assert(v.get(4), 5);
     assert(v.get(5), 6);
     assert(v.get(6), 7);
+
+    //indices as expressions
+    assert(2, *__elem_at(some_array, v.get(0)));
+
+    let _some_slice: &__slice[u64] = __slice(some_array, v.get(0), v.get(4));
+    assert(2, *__elem_at(some_slice, v.get(0)));
 }

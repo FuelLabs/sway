@@ -2192,13 +2192,19 @@ impl<'eng> FnCompiler<'eng> {
                         initializer: Some(first_argument_value),
                     };
 
+                    let ptr_out_arg = AsmArg {
+                        name: Ident::new_no_span("ptr_out".into()),
+                        initializer: Some(first_argument_value),
+                    };
+
                     let return_type = Type::get_uint64(context);
                     let ptr_to_first_element = self.current_block.append(context).asm_block(
-                        vec![ptr_arg],
-                        vec![AsmInstruction::lw_no_span("ptr", "ptr", "i0")],
+                        vec![ptr_arg, ptr_out_arg],
+                        vec![AsmInstruction::lw_no_span("ptr_out", "ptr", "i0")],
                         return_type,
-                        Some(Ident::new_no_span("ptr".into())),
+                        Some(Ident::new_no_span("ptr_out".into())),
                     );
+                    
                     Ok((ptr_to_first_element, elem_ty.type_id))
                 }
                 _ => Err(err),
@@ -2232,6 +2238,11 @@ impl<'eng> FnCompiler<'eng> {
             initializer: Some(elem_ir_type_size),
         };
 
+        let offset_temp_arg = AsmArg {
+            name: Ident::new_no_span("offset_temp".into()),
+            initializer: None,
+        };
+
         let idx_arg = AsmArg {
             name: Ident::new_no_span("idx".into()),
             initializer: Some(idx),
@@ -2242,12 +2253,17 @@ impl<'eng> FnCompiler<'eng> {
             initializer: Some(ptr),
         };
 
+        let ptr_out_arg = AsmArg {
+            name: Ident::new_no_span("ptr_out".into()),
+            initializer: Some(ptr),
+        };
+
         let return_type = Type::get_uint64(context);
         let ptr = self.current_block.append(context).asm_block(
-            vec![idx_arg, elem_ir_type_size_arg, ptr_arg],
+            vec![idx_arg, elem_ir_type_size_arg, ptr_arg, offset_temp_arg, ptr_out_arg],
             vec![
-                AsmInstruction::mul_no_span("idx", "idx", "elem_ir_type_size"),
-                AsmInstruction::add_no_span("ptr", "ptr", "idx"),
+                AsmInstruction::mul_no_span("offset_temp", "idx", "elem_ir_type_size"),
+                AsmInstruction::add_no_span("ptr_out", "ptr", "offset_temp"),
             ],
             return_type,
             Some(Ident::new_no_span("ptr".into())),
@@ -2317,6 +2333,23 @@ impl<'eng> FnCompiler<'eng> {
         let end = return_on_termination_or_extract!(
             self.compile_expression_to_value(context, md_mgr, end)?
         );
+
+        let return_type = Type::get_unit(context);
+        self.current_block.append(context).asm_block(
+            vec![AsmArg {
+                name: Ident::new_no_span("end".into()),
+                initializer: Some(end),
+            }, AsmArg {
+                name: Ident::new_no_span("start".into()),
+                initializer: Some(start),
+            }],
+            vec![
+                AsmInstruction::log_no_span("end", "start", "end", "start")
+            ],
+            return_type,
+            None
+        );
+
 
         let slice_len = self
             .current_block
