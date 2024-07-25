@@ -27,6 +27,7 @@ pub struct FunctionDeclaration {
     pub type_parameters: Vec<TypeParameter>,
     pub where_clause: Vec<(Ident, Vec<TraitConstraint>)>,
     pub kind: FunctionDeclarationKind,
+    pub implementing_type: Option<Declaration>,
 }
 
 impl EqWithEngines for FunctionDeclaration {}

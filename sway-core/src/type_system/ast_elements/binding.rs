@@ -3,10 +3,18 @@ use sway_error::handler::{ErrorEmitted, Handler};
 use sway_types::{Span, Spanned};
 
 use crate::{
-    decl_engine::{DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef},
+    decl_engine::{
+        parsed_id::ParsedDeclId, DeclEngineGetParsedDeclId, DeclEngineInsert, DeclId, DeclRef,
+    },
     engine_threading::{EqWithEngines, PartialEqWithEngines, PartialEqWithEnginesContext},
-    language::{ty, CallPath, QualifiedCallPath},
-    semantic_analysis::{type_check_context::EnforceTypeArguments, TypeCheckContext},
+    language::{
+        parsed::{FunctionDeclaration, StructDeclaration},
+        ty, CallPath, QualifiedCallPath,
+    },
+    semantic_analysis::{
+        symbol_resolve::ResolveSymbols, symbol_resolve_context::SymbolResolveContext,
+        type_check_context::EnforceTypeArguments, TypeCheckContext,
+    },
     type_system::priv_prelude::*,
     Ident,
 };
@@ -184,6 +192,17 @@ impl<T> TypeBinding<T> {
             span: self.span,
         }
     }
+
+    pub(crate) fn resolve_symbols(&mut self, handler: &Handler, mut ctx: SymbolResolveContext<'_>) {
+        match self.type_arguments {
+            TypeArgs::Regular(ref mut args) => args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
+            TypeArgs::Prefix(ref mut args) => args
+                .iter_mut()
+                .for_each(|arg| arg.resolve_symbols(handler, ctx.by_ref())),
+        }
+    }
 }
 
 impl TypeBinding<CallPath<(TypeInfo, Ident)>> {
@@ -249,6 +268,32 @@ pub(crate) trait TypeCheckTypeBinding<T> {
     ) -> Result<(DeclRef<DeclId<T>>, Option<TypeId>, Option<ty::TyDecl>), ErrorEmitted>;
 }
 
+#[allow(clippy::type_complexity)]
+pub trait SymbolResolveTypeBinding<T> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<T>, ErrorEmitted>;
+}
+
+impl SymbolResolveTypeBinding<FunctionDeclaration> for TypeBinding<CallPath> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
+        let engines = ctx.engines();
+        // Grab the declaration.
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        // Check to see if this is a function declaration.
+        let fn_decl = unknown_decl
+            .resolve_parsed(engines.de())
+            .to_fn_ref(handler, engines)?;
+        Ok(fn_decl)
+    }
+}
+
 impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
     fn type_check(
         &mut self,
@@ -306,6 +351,23 @@ impl TypeCheckTypeBinding<ty::TyFunctionDecl> for TypeBinding<CallPath> {
             )
             .with_parent(ctx.engines.de(), fn_ref.id().into());
         Ok((new_fn_ref, None, None))
+    }
+}
+
+impl SymbolResolveTypeBinding<StructDeclaration> for TypeBinding<CallPath> {
+    fn resolve_symbol(
+        &mut self,
+        handler: &Handler,
+        ctx: SymbolResolveContext,
+    ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
+        let engines = ctx.engines();
+        // Grab the declaration.
+        let unknown_decl = ctx.resolve_call_path_with_visibility_check(handler, &self.inner)?;
+        // Check to see if this is a struct declaration.
+        let struct_decl_id = unknown_decl
+            .resolve_parsed(engines.de())
+            .to_struct_decl(handler, engines)?;
+        Ok(struct_decl_id)
     }
 }
 

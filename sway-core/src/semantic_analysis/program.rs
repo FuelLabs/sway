@@ -19,7 +19,7 @@ use super::{
 };
 
 impl TyProgram {
-    /// Collects the given parsed program to produce a symbol map and module evaluation order.
+    /// Collects the given parsed program to produce a symbol maps.
     ///
     /// The given `initial_namespace` acts as an initial state for each module within this program.
     /// It should contain a submodule for each library package dependency.

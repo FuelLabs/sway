@@ -21,6 +21,10 @@ pub use r#enum::*;
 pub use r#struct::*;
 pub use r#trait::*;
 pub use storage::*;
+use sway_error::{
+    error::CompileError,
+    handler::{ErrorEmitted, Handler},
+};
 use sway_types::{Ident, Span, Spanned};
 pub use type_alias::*;
 pub use variable::*;
@@ -117,6 +121,35 @@ impl Declaration {
         }
     }
 
+    pub(crate) fn to_fn_ref(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<FunctionDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::FunctionDeclaration(decl_id) => Ok(*decl_id),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAFunction {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    pub(crate) fn to_struct_decl(
+        &self,
+        handler: &Handler,
+        engines: &Engines,
+    ) -> Result<ParsedDeclId<StructDeclaration>, ErrorEmitted> {
+        match self {
+            Declaration::StructDeclaration(decl_id) => Ok(*decl_id),
+            decl => Err(handler.emit_err(CompileError::DeclIsNotAStruct {
+                actually: decl.friendly_type_name().to_string(),
+                span: decl.span(engines),
+            })),
+        }
+    }
+
+    #[allow(unused)]
     pub(crate) fn visibility(&self, decl_engine: &ParsedDeclEngine) -> Visibility {
         match self {
             Declaration::TraitDeclaration(decl_id) => decl_engine.get_trait(decl_id).visibility,

@@ -10,9 +10,10 @@ use crate::{
     },
     namespace::{IsExtendingExistingImpl, IsImplSelf},
     semantic_analysis::{
-        symbol_collection_context::SymbolCollectionContext, type_check_context::EnforceTypeArguments,
-        ConstShadowingMode, GenericShadowingMode, TypeCheckAnalysis, TypeCheckAnalysisContext,
-        TypeCheckContext, TypeCheckFinalization, TypeCheckFinalizationContext,
+        symbol_collection_context::SymbolCollectionContext,
+        type_check_context::EnforceTypeArguments, ConstShadowingMode, GenericShadowingMode,
+        TypeCheckAnalysis, TypeCheckAnalysisContext, TypeCheckContext, TypeCheckFinalization,
+        TypeCheckFinalizationContext,
     },
     type_system::*,
     Engines,
@@ -52,7 +53,7 @@ impl TyDecl {
             }
             parsed::Declaration::EnumVariantDeclaration(_decl) => {}
             parsed::Declaration::FunctionDeclaration(decl_id) => {
-                let fn_decl = engines.pe().get_function(decl_id);
+                let fn_decl = engines.pe().get_function(decl_id).as_ref().clone();
                 let _ = ctx.insert_parsed_symbol(handler, engines, fn_decl.name.clone(), decl);
             }
             parsed::Declaration::TraitDeclaration(decl_id) => {

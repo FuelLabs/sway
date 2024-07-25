@@ -4,7 +4,7 @@ use super::{
     module::Module, namespace::Namespace, trait_map::TraitMap, Ident, ResolvedTraitImplItem,
 };
 use crate::{
-    decl_engine::DeclRef,
+    decl_engine::{DeclEngine, DeclRef},
     engine_threading::*,
     language::{
         parsed::*,
@@ -66,6 +66,15 @@ impl ResolvedDeclaration {
         match self {
             ResolvedDeclaration::Parsed(_) => false,
             ResolvedDeclaration::Typed(_) => true,
+        }
+    }
+
+    pub fn resolve_parsed(self, decl_engine: &DeclEngine) -> Declaration {
+        match self {
+            ResolvedDeclaration::Parsed(decl) => decl,
+            ResolvedDeclaration::Typed(ty_decl) => ty_decl
+                .get_parsed_decl(decl_engine)
+                .expect("expecting valid parsed declaration"),
         }
     }
 
