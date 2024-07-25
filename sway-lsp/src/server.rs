@@ -2,7 +2,6 @@
 //! It provides an interface between the LSP protocol and the sway-lsp internals.
 
 use crate::{
-    core::document,
     handlers::{notification, request},
     lsp_ext::{MetricsParams, OnEnterParams, ShowAstParams, VisualizeParams},
     server_state::ServerState,
@@ -43,7 +42,10 @@ impl LanguageServer for ServerState {
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        if let Err(err) = document::remove_dirty_flag(&params.text_document.uri) {
+        if let Err(err) = self
+            .pid_locked_files
+            .remove_dirty_flag(&params.text_document.uri)
+        {
             tracing::error!("{}", err.to_string());
         }
     }
