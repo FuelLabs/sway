@@ -12,7 +12,7 @@ use sway_types::{Ident, Named, Span, Spanned};
 use crate::{
     decl_engine::*,
     engine_threading::*,
-    language::{ty::*, Visibility},
+    language::{parsed::Declaration, ty::*, Visibility},
     type_system::*,
     types::*,
 };
@@ -496,6 +496,26 @@ impl GetDeclIdent for TyDecl {
 }
 
 impl TyDecl {
+    pub(crate) fn get_parsed_decl(&self, decl_engine: &DeclEngine) -> Option<Declaration> {
+        match self {
+            TyDecl::VariableDecl(_decl) => None,
+            TyDecl::ConstantDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::ConfigurableDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::TraitTypeDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::FunctionDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::TraitDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::StructDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::EnumDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::EnumVariantDecl(decl) => decl_engine.get_parsed_decl(decl.enum_ref.id()),
+            TyDecl::ImplSelfOrTrait(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::AbiDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::GenericTypeForFunctionScope(_data) => None,
+            TyDecl::ErrorRecovery(_, _) => None,
+            TyDecl::StorageDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+            TyDecl::TypeAliasDecl(decl) => decl_engine.get_parsed_decl(&decl.decl_id),
+        }
+    }
+
     /// Retrieves the declaration as a `DeclId<TyEnumDecl>`.
     ///
     /// Returns an error if `self` is not the [TyDecl][EnumDecl] variant.
