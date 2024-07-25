@@ -193,15 +193,15 @@ pub fn build_proxy_contract(
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-    use fuels_core::types::Address;
-    use fuel_tx::ContractId;
+    use super::{build_proxy_contract, PROXY_CONTRACT_FOLDER_NAME};
     use forc_pkg::BuildOpts;
     use forc_util::user_forc_directory;
-    use super::{build_proxy_contract, PROXY_CONTRACT_FOLDER_NAME};
+    use fuel_tx::ContractId;
+    use fuels_core::types::Address;
+    use std::path::PathBuf;
 
     #[test]
-    fn test_build_proxy_contract() {    
+    fn test_build_proxy_contract() {
         let owner_address = Address::new([0u8; 32]);
         let impl_contract_address = ContractId::new([0u8; 32]);
         let target_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -213,8 +213,12 @@ mod tests {
         build_opts.pkg.path = Some(target_path);
         let pkg_name = "standalone_contract";
 
-        let proxy_contract =
-            build_proxy_contract(&owner_address, &impl_contract_address, pkg_name, &build_opts);
+        let proxy_contract = build_proxy_contract(
+            &owner_address,
+            &impl_contract_address,
+            pkg_name,
+            &build_opts,
+        );
         // We want to make sure proxy_contract is building
         proxy_contract.unwrap();
 

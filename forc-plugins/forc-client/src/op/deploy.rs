@@ -140,14 +140,8 @@ async fn deploy_new_proxy(
         pkg_name,
         build_opts,
     )?;
-    let proxy_contract_id = deploy_pkg(
-        command,
-        &proxy_built_package,
-        salt,
-        provider,
-        signing_key,
-    )
-    .await?;
+    let proxy_contract_id =
+        deploy_pkg(command, &proxy_built_package, salt, provider, signing_key).await?;
     Ok(proxy_contract_id)
 }
 
@@ -254,14 +248,7 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
                 bail!("Both `--salt` and `--default-salt` were specified: must choose one")
             }
         };
-        let deployed_contract_id = deploy_pkg(
-            &command,
-            pkg,
-            salt,
-            &provider,
-            &signing_key,
-        )
-        .await?;
+        let deployed_contract_id = deploy_pkg(&command, pkg, salt, &provider, &signing_key).await?;
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
             Some(forc_pkg::manifest::Proxy {
