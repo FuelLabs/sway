@@ -130,11 +130,10 @@ async fn deploy_new_proxy(
     salt: Salt,
     provider: &Provider,
     signing_key: &SecretKey,
-    node_url: String,
 ) -> Result<fuel_tx::ContractId> {
     let pkg_name = pkg.descriptor.manifest_file.project_name();
     println_action_green("Creating", &format!("proxy contract for {pkg_name}"));
-    let user_addr_bech32 = bech32_from_secret(&signing_key)?;
+    let user_addr_bech32 = bech32_from_secret(signing_key)?;
     let proxy_built_package = build_proxy_contract(
         &user_addr_bech32.into(),
         impl_contract,
@@ -147,7 +146,6 @@ async fn deploy_new_proxy(
         salt,
         provider,
         signing_key,
-        node_url.clone(),
     )
     .await?;
     Ok(proxy_contract_id)
@@ -262,10 +260,8 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             salt,
             &provider,
             &signing_key,
-            node_url.clone(),
         )
         .await?;
-        let proxy_config = &pkg.descriptor.manifest_file.proxy;
 
         let proxy_id = match &pkg.descriptor.manifest_file.proxy {
             Some(forc_pkg::manifest::Proxy {
@@ -294,14 +290,13 @@ pub async fn deploy(command: cmd::Deploy) -> Result<Vec<DeployedContract>> {
             }) => {
                 // Deploy a new proxy contract.
                 let deployed_proxy_contract = deploy_new_proxy(
-                    &pkg,
+                    pkg,
                     &deployed_contract_id,
                     &build_opts,
                     &command,
                     salt,
                     &provider,
                     &signing_key,
-                    node_url.clone(),
                 )
                 .await?;
 
@@ -342,13 +337,13 @@ async fn confirm_transaction_details(
                     enabled: true,
                     address,
                 }) => {
-                    if let Some(proxy_addr) = address {
-                        format!(" + update proxy")
+                    if address.is_some() {
+                        " + update proxy"
                     } else {
-                        format!(" + deploy proxy")
+                        " + deploy proxy"
                     }
                 }
-                _ => "".to_string(),
+                _ => "",
             };
 
             format!(
@@ -395,10 +390,10 @@ pub async fn deploy_pkg(
     salt: Salt,
     provider: &Provider,
     signing_key: &SecretKey,
-    node_url: String,
 ) -> Result<fuel_tx::ContractId> {
     let manifest = &compiled.descriptor.manifest_file;
-    let client = FuelClient::new(node_url.clone())?;
+    let node_url = provider.url();
+    let client = FuelClient::new(node_url)?;
 
     let bytecode = &compiled.bytecode.bytes;
 
