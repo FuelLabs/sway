@@ -15,7 +15,7 @@ use fuel_crypto::{Message, PublicKey, SecretKey, Signature};
 use fuel_tx::{
     field, Address, AssetId, Buildable, ContractId, Input, Output, TransactionBuilder, Witness,
 };
-use fuels::macros::abigen;
+use fuels::{macros::abigen, programs::responses::CallResponse};
 use fuels_accounts::{
     provider::Provider,
     wallet::{Wallet, WalletUnlocked},
@@ -256,12 +256,12 @@ pub(crate) async fn select_secret_key(
     Ok(signing_key)
 }
 
-pub(crate) async fn update_proxy_contract_target(
+pub async fn update_proxy_contract_target(
     provider: &Provider,
     secret_key: SecretKey,
     proxy_contract_id: ContractId,
     new_target: ContractId,
-) -> Result<()> {
+) -> Result<CallResponse<()>> {
     abigen!(Contract(
         name = "ProxyContract",
         abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
@@ -272,7 +272,7 @@ pub(crate) async fn update_proxy_contract_target(
     let proxy_contract = ProxyContract::new(proxy_contract_id, wallet);
 
     // TODO: what happens if the call fails? Does 'FuelCallResponse' is returned as Err() in that case?
-    proxy_contract
+    let result = proxy_contract
         .methods()
         .set_proxy_target(new_target)
         .call()
@@ -281,7 +281,7 @@ pub(crate) async fn update_proxy_contract_target(
         "Updated",
         &format!("proxy contract target to 0x{new_target}"),
     );
-    Ok(())
+    Ok(result)
 }
 
 #[async_trait]

@@ -2,6 +2,7 @@ use forc::cli::shared::Pkg;
 use forc_client::{
     cmd,
     op::{deploy, DeployedContract},
+    util::tx::update_proxy_contract_target,
     NodeTarget,
 };
 use forc_pkg::manifest::Proxy;
@@ -326,16 +327,19 @@ async fn test_non_owner_fails_to_set_target() {
     // Proxy contract's id.
     let proxy_id = contract_id.first().and_then(|f| f.proxy).unwrap();
 
-    // create an another account and fund it.
+    // Create and fund an owner account and an attacker account.
     let provider = Provider::connect(&node_url).await.unwrap();
-    let secret_key = SecretKey::random(&mut thread_rng());
-    let attacker_wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let attacker_secret_key = SecretKey::random(&mut thread_rng());
+    let attacker_wallet =
+        WalletUnlocked::new_from_private_key(attacker_secret_key, Some(provider.clone()));
 
-    let secret_key = SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
-    let owner_wallet = WalletUnlocked::new_from_private_key(secret_key, Some(provider.clone()));
+    let owner_secret_key =
+        SecretKey::from_str(forc_client::constants::DEFAULT_PRIVATE_KEY).unwrap();
+    let owner_wallet =
+        WalletUnlocked::new_from_private_key(owner_secret_key, Some(provider.clone()));
     let base_asset_id = provider.base_asset_id();
 
-    // fund attacker wallet so that it can try to make a set proxy target call.
+    // Fund attacker wallet so that it can try to make a set proxy target call.
     owner_wallet
         .transfer(
             attacker_wallet.address(),
@@ -352,31 +356,21 @@ async fn test_non_owner_fails_to_set_target() {
         abi = "forc-plugins/forc-client/abi/proxy_contract-abi.json"
     ));
 
-    let proxy_contract = ProxyContract::new(proxy_id, attacker_wallet);
-    // try to change target of the proxy with a random wallet which is not the
-    // owner of the proxy.
-    let res = proxy_contract
-        .methods()
-        .set_proxy_target(dummy_contract_id_target)
-        .call()
-        .await
-        .err()
-        .unwrap();
+    // Try to change target of the proxy with a random wallet which is not the owner of the proxy.
+    let res = update_proxy_contract_target(
+        &provider,
+        attacker_secret_key,
+        proxy_id,
+        dummy_contract_id_target,
+    )
+    .await
+    .err()
+    .unwrap();
 
     node.kill().unwrap();
-    match res {
-        fuels::types::errors::Error::Transaction(
-            fuels::types::errors::transaction::Reason::Reverted { reason, .. },
-        ) => {
-            assert_eq!(
-                reason,
-                "NotOwner".to_string(),
-                "Expected 'NotOwner' error, but got: {}",
-                reason
-            );
-        }
-        _ => panic!("Expected a Reverted transaction error, but got: {:?}", res),
-    }
+    assert!(res
+        .to_string()
+        .starts_with("transaction reverted: NotOwner"));
 }
 
 // TODO: https://github.com/FuelLabs/sway/issues/6283
