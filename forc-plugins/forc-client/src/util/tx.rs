@@ -121,13 +121,6 @@ pub(crate) fn secret_key_from_forc_wallet(
     Ok(secret_key)
 }
 
-pub(crate) fn bech32_from_secret(secret_key: &SecretKey) -> Result<Bech32Address> {
-    let public_key = PublicKey::from(secret_key);
-    let hashed = public_key.hash();
-    let bech32 = Bech32Address::new(FUEL_BECH32_HRP, hashed);
-    Ok(bech32)
-}
-
 pub(crate) fn select_manual_secret_key(
     default_signer: bool,
     signing_key: Option<SecretKey>,

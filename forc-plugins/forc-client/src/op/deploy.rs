@@ -34,6 +34,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
+use std::{sync::Arc, time::Duration};
 use sway_core::language::parsed::TreeType;
 use sway_core::BuildTarget;
 
@@ -381,7 +382,6 @@ pub async fn deploy_pkg(
     let manifest = &compiled.descriptor.manifest_file;
     let node_url = provider.url();
     let client = FuelClient::new(node_url)?;
-
     let bytecode = &compiled.bytecode.bytes;
 
     let mut storage_slots =
