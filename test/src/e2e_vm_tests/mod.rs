@@ -654,46 +654,12 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         .as_ref()
         .map(|exclude| tests.retained(|t| !exclude.is_match(&t.name)))
         .unwrap_or_default();
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
 
-    if filter_config.no_core_only {
-        tests.retain(|t| {
-            let file_name = &t.name;
-            let manifest_path =
-                format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
-            match ManifestFile::from_dir(manifest_path) {
-                Ok(manifest_file) => {
-                    let member_manifests = manifest_file.member_manifests().unwrap();
-                    !member_manifests.iter().any(|(_name, manifest)| {
-                        //eprintln!("{} {:#?}", file_name, manifest.dependencies);
-                        manifest
-                            .dependencies
-                            .as_ref()
-                            .is_some_and(|map| map.contains_key("core"))
-                    })
-                }
-                Err(_) => true,
-            }
-        });
+    if filter_config.exclude_core {
+        tests.retain(|t| exclude_tests_dependency(t, "core"));
     }
-    if filter_config.no_std_only {
-        tests.retain(|t| {
-            let file_name = &t.name;
-            let manifest_path =
-                format!("{manifest_dir}/src/e2e_vm_tests/test_programs/{file_name}");
-            match ManifestFile::from_dir(manifest_path) {
-                Ok(manifest_file) => {
-                    let member_manifests = manifest_file.member_manifests().unwrap();
-                    !member_manifests.iter().any(|(_name, manifest)| {
-                        manifest
-                            .dependencies
-                            .as_ref()
-                            .is_some_and(|map| map.contains_key("std"))
-                    })
-                }
-                Err(_) => true,
-            }
-        });
+    if filter_config.exclude_std {
+        tests.retain(|t| exclude_tests_dependency(t, "std"));
     }
     if filter_config.abi_only {
         tests.retain(|t| t.validate_abi);
@@ -831,6 +797,25 @@ pub async fn run(filter_config: &FilterConfig, run_config: &RunConfig) -> Result
         Err(anyhow::Error::msg("Failed tests"))
     } else {
         Ok(())
+    }
+}
+
+fn exclude_tests_dependency(t: &TestDescription, dep: &str) -> bool {
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
+    let tests_root_dir = format!("{manifest_dir}/src/e2e_vm_tests/test_programs");
+    let file_name = &t.name;
+    let manifest_path = format!("{tests_root_dir}/{file_name}");
+    match ManifestFile::from_dir(manifest_path) {
+        Ok(manifest_file) => {
+            let member_manifests = manifest_file.member_manifests().unwrap();
+            !member_manifests.iter().any(|(_name, manifest)| {
+                manifest
+                    .dependencies
+                    .as_ref()
+                    .is_some_and(|map| map.contains_key(dep))
+            })
+        }
+        Err(_) => true,
     }
 }
 
