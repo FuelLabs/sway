@@ -19,6 +19,8 @@ pub mod const_demotion;
 pub use const_demotion::*;
 pub mod constants;
 pub use constants::*;
+pub mod cse;
+pub use cse::*;
 pub mod dce;
 pub use dce::*;
 pub mod inline;

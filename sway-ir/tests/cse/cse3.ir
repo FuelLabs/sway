@@ -1,0 +1,22 @@
+script {
+    entry fn main(a: u64, b: u64) -> () {
+        entry(a: u64, b: u64):
+        v5v1 = add a, b
+        v6v1 = const u64 0
+        br while(v6v1, v5v1)
+
+        while(v3v1: u64, v4v1: u64):
+        v8v1 = cmp lt v3v1 v4v1
+        cbr v8v1, while_body(), end_while()
+
+        while_body():
+        v10v1 = add a, b
+        v11v1 = const u64 1
+        v12v1 = add v3v1, v11v1
+        br while(v12v1, v10v1)
+
+        end_while():
+        v14v1 = const unit ()
+        ret () v14v1
+    }
+}

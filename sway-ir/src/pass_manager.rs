@@ -1,14 +1,5 @@
 use crate::{
-    create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass,
-    create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass,
-    create_fn_dce_pass, create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass,
-    create_fn_inline_pass, create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass,
-    create_module_printer_pass, create_module_verifier_pass, create_postorder_pass,
-    create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function,
-    IrError, Module, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME, DCE_NAME,
-    FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME,
-    MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME,
-    SROA_NAME,
+    create_arg_demotion_pass, create_const_demotion_pass, create_const_folding_pass, create_cse_pass, create_dce_pass, create_dom_fronts_pass, create_dominators_pass, create_escaped_symbols_pass, create_fn_dce_pass, create_fn_dedup_debug_profile_pass, create_fn_dedup_release_profile_pass, create_fn_inline_pass, create_mem2reg_pass, create_memcpyopt_pass, create_misc_demotion_pass, create_module_printer_pass, create_module_verifier_pass, create_postorder_pass, create_ret_demotion_pass, create_simplify_cfg_pass, create_sroa_pass, Context, Function, IrError, Module, ARG_DEMOTION_NAME, CONST_DEMOTION_NAME, CONST_FOLDING_NAME, CSE_NAME, DCE_NAME, FN_DCE_NAME, FN_DEDUP_DEBUG_PROFILE_NAME, FN_DEDUP_RELEASE_PROFILE_NAME, FN_INLINE_NAME, MEM2REG_NAME, MEMCPYOPT_NAME, MISC_DEMOTION_NAME, RET_DEMOTION_NAME, SIMPLIFY_CFG_NAME, SROA_NAME
 };
 use downcast_rs::{impl_downcast, Downcast};
 use rustc_hash::FxHashMap;
@@ -399,6 +390,7 @@ pub fn register_known_passes(pm: &mut PassManager) {
     pm.register(create_simplify_cfg_pass());
     pm.register(create_fn_dce_pass());
     pm.register(create_dce_pass());
+    pm.register(create_cse_pass());
     pm.register(create_arg_demotion_pass());
     pm.register(create_const_demotion_pass());
     pm.register(create_ret_demotion_pass());
@@ -417,6 +409,7 @@ pub fn create_o1_pass_group() -> PassGroup {
     o1.append_pass(FN_DCE_NAME);
     o1.append_pass(FN_INLINE_NAME);
     o1.append_pass(CONST_FOLDING_NAME);
+    o1.append_pass(CSE_NAME);
     o1.append_pass(SIMPLIFY_CFG_NAME);
     o1.append_pass(CONST_FOLDING_NAME);
     o1.append_pass(SIMPLIFY_CFG_NAME);

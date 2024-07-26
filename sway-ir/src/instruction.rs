@@ -204,19 +204,19 @@ pub enum FuelVmInstruction {
 }
 
 /// Comparison operations.
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Predicate {
     Equal,
     LessThan,
     GreaterThan,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum UnaryOpKind {
     Not,
 }
 
-#[derive(Debug, Clone, Copy, Hash)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum BinaryOpKind {
     Add,
     Sub,
