@@ -1,4 +1,6 @@
 #![allow(dead_code)]
+use std::sync::Arc;
+
 use crate::{
     error::{DirectoryError, DocumentError, LanguageServerError},
     utils::document,
@@ -109,30 +111,6 @@ impl TextDocument {
     }
 }
 
-/// Marks the specified file as "dirty" by creating a corresponding flag file.
-///
-/// This function ensures the necessary directory structure exists before creating the flag file.
-pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
-    let path = document::get_path_from_url(uri)?;
-    Ok(PidFileLocking::lsp(path)
-        .lock()
-        .map_err(|e| DirectoryError::LspLocksDirFailed(e.to_string()))?)
-}
-
-/// Removes the corresponding flag file for the specified Url.
-///
-/// If the flag file does not exist, this function will do nothing.
-pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
-    let path = document::get_path_from_url(uri)?;
-    let uri = uri.clone();
-    Ok(PidFileLocking::lsp(path)
-        .release()
-        .map_err(|err| DocumentError::UnableToRemoveFile {
-            path: uri.path().to_string(),
-            err: err.to_string(),
-        })?)
-}
-
 #[derive(Debug)]
 struct EditText<'text> {
     start_index: usize,
@@ -239,6 +217,57 @@ impl std::ops::Deref for Documents {
     type Target = DashMap<String, TextDocument>;
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+/// Manages process-based file locking for multiple files.
+pub struct PidLockedFiles {
+    locks: DashMap<Url, Arc<PidFileLocking>>,
+}
+
+impl Default for PidLockedFiles {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PidLockedFiles {
+    pub fn new() -> Self {
+        Self {
+            locks: DashMap::new(),
+        }
+    }
+
+    /// Marks the specified file as "dirty" by creating a corresponding flag file.
+    ///
+    /// This function ensures the necessary directory structure exists before creating the flag file.
+    /// If the file is already locked, this function will do nothing. This is to reduce the number of
+    /// unnecessary file IO operations.
+    pub fn mark_file_as_dirty(&self, uri: &Url) -> Result<(), LanguageServerError> {
+        if !self.locks.contains_key(uri) {
+            let path = document::get_path_from_url(uri)?;
+            let file_lock = Arc::new(PidFileLocking::lsp(path));
+            file_lock
+                .lock()
+                .map_err(|e| DirectoryError::LspLocksDirFailed(e.to_string()))?;
+            self.locks.insert(uri.clone(), file_lock);
+        }
+        Ok(())
+    }
+
+    /// Removes the corresponding flag file for the specified Url.
+    ///
+    /// If the flag file does not exist, this function will do nothing.
+    pub fn remove_dirty_flag(&self, uri: &Url) -> Result<(), LanguageServerError> {
+        if let Some((uri, file_lock)) = self.locks.remove(uri) {
+            file_lock
+                .release()
+                .map_err(|err| DocumentError::UnableToRemoveFile {
+                    path: uri.path().to_string(),
+                    err: err.to_string(),
+                })?;
+        }
+        Ok(())
     }
 }
 
