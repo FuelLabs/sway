@@ -28,7 +28,6 @@ impl ty::TyConstantDecl {
             span,
             mut type_ascription,
             value,
-            is_configurable,
             attributes,
             visibility,
         } = decl;
@@ -53,48 +52,28 @@ impl ty::TyConstantDecl {
             })
         }
 
-        // Configurables will be encoded and must be type_checked into "slice"
-        let (value, return_type) = if is_configurable && ctx.experimental.new_encoding {
-            let mut ctx = ctx
-                .by_ref()
-                .with_type_annotation(type_engine.insert(engines, TypeInfo::RawUntypedSlice, None))
-                .with_help_text("Configurables must evaluate to slices.");
+        let mut ctx = ctx
+            .by_ref()
+            .with_type_annotation(type_ascription.type_id)
+            .with_help_text(
+                "This declaration's type annotation does not match up with the assigned \
+        expression's type.",
+            );
 
-            let value = value.map(|value| {
-                ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
-            });
-
-            (
-                value,
-                type_engine.insert(engines, TypeInfo::RawUntypedSlice, None),
-            )
-        } else {
-            let mut ctx = ctx
-                .by_ref()
-                .with_type_annotation(type_ascription.type_id)
-                .with_help_text(
-                    "This declaration's type annotation does not match up with the assigned \
-            expression's type.",
-                );
-
-            let value = value.map(|value| {
-                ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
-                    .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
-            });
-            // Integers are special in the sense that we can't only rely on the type of `expression`
-            // to get the type of the variable. The type of the variable *has* to follow
-            // `type_ascription` if `type_ascription` is a concrete integer type that does not
-            // conflict with the type of `expression` (i.e. passes the type checking above).
-            let return_type = match &*type_engine.get(type_ascription.type_id) {
-                TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
-                _ => match &value {
-                    Some(value) => value.return_type,
-                    None => type_ascription.type_id,
-                },
-            };
-
-            (value, return_type)
+        let value = value.map(|value| {
+            ty::TyExpression::type_check(handler, ctx.by_ref(), &value)
+                .unwrap_or_else(|err| ty::TyExpression::error(err, name.span(), engines))
+        });
+        // Integers are special in the sense that we can't only rely on the type of `expression`
+        // to get the type of the variable. The type of the variable *has* to follow
+        // `type_ascription` if `type_ascription` is a concrete integer type that does not
+        // conflict with the type of `expression` (i.e. passes the type checking above).
+        let return_type = match &*type_engine.get(type_ascription.type_id) {
+            TypeInfo::UnsignedInteger(_) => type_ascription.type_id,
+            _ => match &value {
+                Some(value) => value.return_type,
+                None => type_ascription.type_id,
+            },
         };
 
         let mut call_path: CallPath = name.into();
