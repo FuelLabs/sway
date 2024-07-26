@@ -21,8 +21,20 @@ fn main()  {
     __slice(0, 0, 0);
 
     // Wrong start index
-    __slice(0, "", 0);
+    __slice(a, "", 0);
 
     // Wrong end index
-    __slice(0, 0, "");
+    __slice(a, 0, "");
+
+    let a: [u64; 5] = [1, 2, 3, 4, 5];
+    let s: &__slice[u64] = __slice(LOCAL_ARRAY, 0, 5);
+
+    // Wrong first argument
+    __elem_at(0, 0);
+
+    // Wrong index type
+    __elem_at(a, "");
+
+    // Wrong index type
+    __elem_at(s, "");
 }
