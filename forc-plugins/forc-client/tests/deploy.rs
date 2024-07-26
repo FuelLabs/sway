@@ -116,7 +116,7 @@ async fn test_simple_deploy() {
 }
 
 #[tokio::test]
-async fn deploy_submit_only() {
+async fn test_deploy_submit_only() {
     let (mut node, port) = run_node();
     let tmp_dir = tempdir().unwrap();
     let project_dir = test_data_path().join("standalone_contract");

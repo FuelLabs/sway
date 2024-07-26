@@ -14,7 +14,7 @@ use forc_pkg::{self as pkg, PackageManifestFile};
 use forc_tracing::{println_action_green, println_warning};
 use forc_util::default_output_directory;
 use forc_wallet::utils::default_wallet_path;
-use fuel_core_client::client::types::TransactionStatus;
+use fuel_core_client::client::types::{ChainInfo, TransactionStatus};
 use fuel_core_client::client::FuelClient;
 use fuel_crypto::fuel_types::ChainId;
 use fuel_tx::{Salt, Transaction};
@@ -342,6 +342,7 @@ pub async fn deploy_pkg(
                     },
                     command,
                     manifest,
+                    chain_info,
                 )?;
 
                 contract_id
@@ -374,6 +375,7 @@ pub async fn deploy_pkg(
                         },
                         command,
                         manifest,
+                        chain_info,
                     )?;
 
                     Ok(contract_id)
@@ -449,6 +451,7 @@ fn create_deployment_artifact(
     deployment_artifact: DeploymentArtifact,
     cmd: &cmd::Deploy,
     manifest: &PackageManifestFile,
+    chain_info: ChainInfo,
 ) -> Result<()> {
     let contract_id = ContractId::from_str(&deployment_artifact.contract_id).unwrap();
     let pkg_name = manifest.project_name();
@@ -471,10 +474,9 @@ fn create_deployment_artifact(
         let block_height_formatted =
             match u32::from_str_radix(&block_height.unwrap().to_string(), 16) {
                 Ok(decimal) => format!("{block_url}{decimal}"),
-                Err(_) => block_height.to_string(),
+                Err(_) => block_height.unwrap().to_string(),
             };
 
-        println_action_green("Deployed", &format!("in block {block_height_formatted}"));
         println_action_green("Deployed", &format!("in block {block_height_formatted}"));
     }
 
