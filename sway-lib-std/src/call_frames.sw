@@ -63,7 +63,7 @@ pub fn msg_asset_id() -> AssetId {
 /// }
 /// ```
 pub fn code_size() -> u64 {
-    let pr = asm(size, ptr, offset: 576) {
+    let ptr = asm(size, ptr, offset: 576) {
         add size fp offset;
         size: u64
     };
