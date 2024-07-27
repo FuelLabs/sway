@@ -13,7 +13,7 @@ Scripts are used for complex on-chain interactions that won't persist. An exampl
 
 Libraries are for code that is reusable and useful for handling common situations. A good example of this would be a library to handle fixed-point math or big number math.
 
-- [Contracts](./smart_contracts.md)
+- [Smart contracts](./smart_contracts.md)
 - [Libraries](./libraries.md)
 - [Scripts](./scripts.md)
 - [Predicates](./predicates.md)
