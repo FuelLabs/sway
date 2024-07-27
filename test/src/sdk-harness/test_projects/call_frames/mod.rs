@@ -36,7 +36,7 @@ async fn can_get_id_contract_id_this() {
 async fn can_get_code_size() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.methods().get_code_size().call().await.unwrap();
-    assert!(is_within_range(result.value));
+    assert!(10000 > result.value && result.value > 1000);
 }
 
 #[tokio::test]
