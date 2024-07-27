@@ -623,7 +623,7 @@ fn const_eval_typed_expr(
         ty::TyExpressionVariant::Ref(_) => {
             return Err(ConstEvalError::CompileError);
         }
-        // We support *__slice_elem(...)
+        // We support *__elem_at(...)
         ty::TyExpressionVariant::Deref(expr) => {
             let value = expr
                 .as_intrinsic()
