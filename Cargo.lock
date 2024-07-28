@@ -2006,6 +2006,7 @@ dependencies = [
  "forc-util",
  "fs_extra",
  "fuel-asm",
+ "fuels-core",
  "hex",
  "serde",
  "serde_json",
