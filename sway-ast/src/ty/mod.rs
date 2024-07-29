@@ -19,7 +19,7 @@ pub enum Ty {
         ty: SquareBrackets<Box<Ty>>,
     },
     Slice {
-        slice_token: SliceToken,
+        slice_token: Option<SliceToken>,
         ty: SquareBrackets<Box<Ty>>,
     },
     Ref {
@@ -42,7 +42,10 @@ impl Spanned for Ty {
             Ty::StringArray { str_token, length } => Span::join(str_token.span(), &length.span()),
             Ty::Infer { underscore_token } => underscore_token.span(),
             Ty::Ptr { ptr_token, ty } => Span::join(ptr_token.span(), &ty.span()),
-            Ty::Slice { slice_token, ty } => Span::join(slice_token.span(), &ty.span()),
+            Ty::Slice { slice_token, ty } => {
+                let span = slice_token.as_ref().map(|s| Span::join(s.span(), &ty.span()));
+                span.unwrap_or_else(|| ty.span())
+            },
             Ty::Ref {
                 ampersand_token,
                 mut_token: _,

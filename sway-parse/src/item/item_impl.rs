@@ -88,12 +88,16 @@ mod tests {
 
     #[test]
     fn parse_impl_slice() {
-        let item = parse::<ItemImpl>(
-            r#"
-            impl __slice[T] {}
-            "#,
-        );
-        assert_matches!(item.ty, Ty::Slice { .. });
+        // deprecated syntax
+        let item = parse::<ItemImpl>("impl __slice[T] {}");
+        assert_matches!(item.ty, Ty::Slice { slice_token: Some(..), ty: _ });
+
+        // "new" syntax
+        let item = parse::<ItemImpl>("impl [T] {}");
+        assert_matches!(item.ty, Ty::Slice { slice_token: None, ty: _ });
+
+        let item = parse::<ItemImpl>("impl &[T] {}");
+        assert_matches!(item.ty, Ty::Ref { ty, .. } if matches!(&*ty, Ty::Slice { .. }));
     }
 
     #[test]
