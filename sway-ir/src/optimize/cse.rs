@@ -10,8 +10,9 @@ use std::{
 };
 
 use crate::{
-    AnalysisResults, BinaryOpKind, Context, DebugWithContext, Function, InstOp, IrError, Pass,
-    PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind, Value, POSTORDER_NAME,
+    block, function_print, AnalysisResults, BinaryOpKind, Context, DebugWithContext, Function,
+    InstOp, IrError, Pass, PassMutability, PostOrder, Predicate, ScopedPass, Type, UnaryOpKind,
+    Value, POSTORDER_NAME,
 };
 
 pub const CSE_NAME: &str = "cse";
@@ -97,7 +98,7 @@ fn instr_to_expr(context: &Context, vntable: &VNTable, instr: Value) -> Option<E
         )),
         InstOp::ConditionalBranch { .. } => None,
         InstOp::ContractCall { .. } => None,
-        InstOp::FuelVm(_) => todo!(),
+        InstOp::FuelVm(_) => None,
         InstOp::GetLocal(_) => None,
         InstOp::GetConfig(_, _) => None,
         InstOp::GetElemPtr {
@@ -171,6 +172,13 @@ pub fn cse(
     // Function arg values map to themselves.
     for arg in function.args_iter(context) {
         vntable.value_map.insert(arg.1, ValueNumber::Number(arg.1));
+    }
+
+    // Map all other arg values map to Top.
+    for block in function.block_iter(context).skip(1) {
+        for arg in block.arg_iter(context) {
+            vntable.value_map.insert(*arg, ValueNumber::Top);
+        }
     }
 
     // Initialize all instructions and constants. Constants need special treatmemt.
@@ -305,6 +313,5 @@ pub fn cse(
         vntable.expr_map.clear();
     }
 
-    dbg!(vntable);
     Ok(false)
 }
