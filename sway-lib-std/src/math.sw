@@ -113,27 +113,40 @@ impl Power for u64 {
 
 impl Power for u32 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+        assert(res <= Self::max().as_u64());
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
 
 impl Power for u16 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+        assert(res <= Self::max().as_u64());
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
 
 impl Power for u8 {
     fn pow(self, exponent: u32) -> Self {
-        asm(r1: self, r2: exponent, r3) {
+        let res = asm(r1: self, r2: exponent, r3) {
             exp r3 r1 r2;
-            r3: Self
+            r3: u64
+        };
+
+        assert(res <= Self::max().as_u64());
+        asm(r1: res) {
+            r1: Self
         }
     }
 }
