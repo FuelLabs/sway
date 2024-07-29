@@ -33,20 +33,17 @@ impl Parse for Ty {
         if let Some((mut inner_parser, span)) = parser.enter_delimited(Delimiter::Bracket) {
             // array like [type; len]
             if let Ok((array, _)) = inner_parser.try_parse_to_end::<TyArrayDescriptor>(false) {
-                return Ok(Ty::Array(SquareBrackets { 
-                    inner: array, 
-                    span
-                }));
+                return Ok(Ty::Array(SquareBrackets { inner: array, span }));
             }
 
             // slice like [type]
             if let Ok(Some((ty, _))) = inner_parser.try_parse_and_check_empty::<Ty>(false) {
-                return Ok(Ty::Slice { 
+                return Ok(Ty::Slice {
                     slice_token: None,
-                    ty: SquareBrackets{
+                    ty: SquareBrackets {
                         inner: Box::new(ty),
                         span,
-                    }
+                    },
                 });
             }
         }
@@ -78,7 +75,10 @@ impl Parse for Ty {
             let ty = SquareBrackets::<Box<Ty>>::parse_all_inner(parser, |mut parser| {
                 parser.emit_error(ParseErrorKind::UnexpectedTokenAfterSliceType)
             })?;
-            return Ok(Ty::Slice { slice_token: Some(slice_token), ty });
+            return Ok(Ty::Slice {
+                slice_token: Some(slice_token),
+                ty,
+            });
         }
 
         if let Some(ampersand_token) = parser.take() {
@@ -90,7 +90,7 @@ impl Parse for Ty {
                 ty,
             });
         }
-        
+
         if let Some(bang_token) = parser.take() {
             return Ok(Ty::Never { bang_token });
         }

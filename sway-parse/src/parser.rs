@@ -208,11 +208,14 @@ impl<'a, 'e> Parser<'a, 'e> {
     }
 
     /// This method is useful if `T` does not impl `ParseToEnd`
-    pub fn try_parse_and_check_empty<T: Parse>(mut self, append_diagnostics: bool) -> ParseResult<Option<(T, ParserConsumed<'a>)>> {
+    pub fn try_parse_and_check_empty<T: Parse>(
+        mut self,
+        append_diagnostics: bool,
+    ) -> ParseResult<Option<(T, ParserConsumed<'a>)>> {
         let value = self.try_parse(append_diagnostics)?;
         match self.check_empty() {
             Some(consumed) => Ok(Some((value, consumed))),
-            None => return Ok(None),
+            None => Ok(None),
         }
     }
 
@@ -233,7 +236,10 @@ impl<'a, 'e> Parser<'a, 'e> {
     }
 
     /// Do not advance the parser on failure
-    pub fn try_parse_to_end<T: ParseToEnd>(&mut self, append_diagnostics: bool) -> ParseResult<(T, ParserConsumed<'a>)> {
+    pub fn try_parse_to_end<T: ParseToEnd>(
+        &mut self,
+        append_diagnostics: bool,
+    ) -> ParseResult<(T, ParserConsumed<'a>)> {
         let handler = Handler::default();
         let fork = Parser {
             token_trees: self.token_trees,
@@ -241,12 +247,7 @@ impl<'a, 'e> Parser<'a, 'e> {
             handler: &handler,
             check_double_underscore: self.check_double_underscore,
         };
-        let r = match T::parse_to_end(fork) {
-            Ok(result) => {
-                Ok(result)
-            }
-            Err(err) => Err(err),
-        };
+        let r = T::parse_to_end(fork);
         if append_diagnostics {
             self.handler.append(handler);
         }

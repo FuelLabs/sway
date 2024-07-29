@@ -24,9 +24,7 @@ where
 {
     let handler = <_>::default();
     let ts = crate::token::lex(&handler, &Arc::from(input), 0, input.len(), None).unwrap();
-    let r = Parser::new(&handler, &ts)
-        .parse_to_end()
-        .map(|(m, _)| m);
+    let r = Parser::new(&handler, &ts).parse_to_end().map(|(m, _)| m);
 
     if handler.has_errors() || handler.has_warnings() {
         panic!("{:?}", handler.consume());
