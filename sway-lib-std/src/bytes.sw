@@ -700,6 +700,10 @@ impl Bytes {
             return;
         };
 
+        if self.buf.ptr == other.buf.ptr {
+            return
+        };
+
         let both_len = self.len + other_len;
         let other_start = self.len;
 
