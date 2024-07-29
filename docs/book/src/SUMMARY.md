@@ -70,6 +70,7 @@
   - [Attributes](./reference/attributes.md)
   - [Style Guide](./reference/style_guide.md)
   - [Known Issues and Workarounds](./reference/known_issues_and_workarounds.md)
+  - [Behavior Considered Undefined](./reference/undefined_behavior.md)
   - [Differences From Solidity](./reference/solidity_differences.md)
   - [Differences From Rust](./reference/rust_differences.md)
   - [Contributing To Sway](./reference/contributing_to_sway.md)
