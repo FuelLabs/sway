@@ -1,9 +1,10 @@
 use crate::{
     engine_threading::*,
-    language::{CallPath, Visibility},
+    language::{CallPath, QualifiedCallPath, Visibility},
     namespace::{ModulePath, ResolvedDeclaration},
     semantic_analysis::{ast_node::ConstShadowingMode, Namespace},
-    type_system::TypeId,
+    type_system::{TypeArgument, TypeId, TypeInfo},
+    TraitConstraint,
 };
 use sway_error::{
     error::CompileError,
@@ -243,6 +244,227 @@ impl<'a> SymbolResolveContext<'a> {
         }
 
         Ok(decl)
+    }
+
+    #[allow(unused)]
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check(
+        &mut self,
+        handler: &Handler,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        self.resolve_qualified_call_path_with_visibility_check_and_modpath(
+            handler,
+            &self.namespace().mod_path.clone(),
+            qualified_call_path,
+        )
+    }
+
+    pub(crate) fn resolve_qualified_call_path_with_visibility_check_and_modpath(
+        &mut self,
+        handler: &Handler,
+        mod_path: &ModulePath,
+        qualified_call_path: &QualifiedCallPath,
+    ) -> Result<ResolvedDeclaration, ErrorEmitted> {
+        let engines = self.engines();
+        let type_engine = self.engines().te();
+        if let Some(qualified_path_root) = qualified_call_path.clone().qualified_path_root {
+            let root_type_id = match &&*type_engine.get(qualified_path_root.ty.type_id) {
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    type_arguments,
+                    ..
+                } => {
+                    let type_decl = self.resolve_call_path_with_visibility_check_and_modpath(
+                        handler,
+                        mod_path,
+                        &call_path.clone().to_call_path(handler)?,
+                    )?;
+                    self.type_decl_opt_to_type_id(
+                        handler,
+                        Some(type_decl),
+                        call_path.clone(),
+                        &qualified_path_root.ty.span(),
+                        EnforceTypeArguments::No,
+                        mod_path,
+                        type_arguments.clone(),
+                    )?
+                }
+                _ => qualified_path_root.ty.type_id,
+            };
+
+            let as_trait_opt = match &&*type_engine.get(qualified_path_root.as_trait) {
+                TypeInfo::Custom {
+                    qualified_call_path: call_path,
+                    ..
+                } => Some(
+                    call_path
+                        .clone()
+                        .to_call_path(handler)?
+                        .to_fullpath(engines, self.namespace()),
+                ),
+                _ => None,
+            };
+
+            self.namespace().root.resolve_call_path_and_root_type_id(
+                handler,
+                engines,
+                self.namespace().module(engines),
+                root_type_id,
+                as_trait_opt,
+                &qualified_call_path.call_path,
+                self.self_type(),
+            )
+        } else {
+            self.resolve_call_path_with_visibility_check_and_modpath(
+                handler,
+                mod_path,
+                &qualified_call_path.call_path,
+            )
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[allow(unused)]
+    fn type_decl_opt_to_type_id(
+        &mut self,
+        handler: &Handler,
+        type_decl_opt: Option<ResolvedDeclaration>,
+        call_path: QualifiedCallPath,
+        span: &Span,
+        enforce_type_arguments: EnforceTypeArguments,
+        mod_path: &ModulePath,
+        type_arguments: Option<Vec<TypeArgument>>,
+    ) -> Result<TypeId, ErrorEmitted> {
+        todo!();
+        // TODO/tritao
+        // let decl_engine = self.engines.de();
+        // let type_engine = self.engines.te();
+        // Ok(match type_decl_opt {
+        //     Some(ty::TyDecl::StructDecl(ty::StructDecl {
+        //         decl_id: original_id,
+        //         ..
+        //     })) => {
+        //         // get the copy from the declaration engine
+        //         let mut new_copy = (*decl_engine.get_struct(&original_id)).clone();
+
+        //         // monomorphize the copy, in place
+        //         self.monomorphize_with_modpath(
+        //             handler,
+        //             &mut new_copy,
+        //             &mut type_arguments.unwrap_or_default(),
+        //             enforce_type_arguments,
+        //             span,
+        //             mod_path,
+        //         )?;
+
+        //         // insert the new copy in the decl engine
+        //         let new_decl_ref = decl_engine.insert(new_copy);
+
+        //         // create the type id from the copy
+        //         type_engine.insert(
+        //             self.engines,
+        //             TypeInfo::Struct(new_decl_ref.clone()),
+        //             new_decl_ref.span().source_id(),
+        //         )
+        //     }
+        //     Some(ty::TyDecl::EnumDecl(ty::EnumDecl {
+        //         decl_id: original_id,
+        //         ..
+        //     })) => {
+        //         // get the copy from the declaration engine
+        //         let mut new_copy = (*decl_engine.get_enum(&original_id)).clone();
+
+        //         // monomorphize the copy, in place
+        //         self.monomorphize_with_modpath(
+        //             handler,
+        //             &mut new_copy,
+        //             &mut type_arguments.unwrap_or_default(),
+        //             enforce_type_arguments,
+        //             span,
+        //             mod_path,
+        //         )?;
+
+        //         // insert the new copy in the decl engine
+        //         let new_decl_ref = decl_engine.insert(new_copy);
+
+        //         // create the type id from the copy
+        //         type_engine.insert(
+        //             self.engines,
+        //             TypeInfo::Enum(new_decl_ref.clone()),
+        //             new_decl_ref.span().source_id(),
+        //         )
+        //     }
+        //     Some(ty::TyDecl::TypeAliasDecl(ty::TypeAliasDecl {
+        //         decl_id: original_id,
+        //         ..
+        //     })) => {
+        //         let new_copy = decl_engine.get_type_alias(&original_id);
+
+        //         // TODO: monomorphize the copy, in place, when generic type aliases are
+        //         // supported
+
+        //         new_copy.create_type_id(self.engines)
+        //     }
+        //     Some(ty::TyDecl::GenericTypeForFunctionScope(ty::GenericTypeForFunctionScope {
+        //         type_id,
+        //         ..
+        //     })) => type_id,
+        //     Some(ty::TyDecl::TraitTypeDecl(ty::TraitTypeDecl {
+        //         decl_id,
+        //         name,
+        //         decl_span: _,
+        //     })) => {
+        //         let decl_type = decl_engine.get_type(&decl_id);
+
+        //         if let Some(ty) = &decl_type.ty {
+        //             ty.type_id
+        //         } else if let Some(implementing_type) = self.self_type() {
+        //             type_engine.insert(
+        //                 self.engines,
+        //                 TypeInfo::TraitType {
+        //                     name: name.clone(),
+        //                     trait_type_id: implementing_type,
+        //                 },
+        //                 name.span().source_id(),
+        //             )
+        //         } else {
+        //             return Err(handler.emit_err(CompileError::Internal(
+        //                 "Self type not provided.",
+        //                 span.clone(),
+        //             )));
+        //         }
+        //     }
+        //     _ => {
+        //         let err = handler.emit_err(CompileError::UnknownTypeName {
+        //             name: call_path.call_path.to_string(),
+        //             span: call_path.call_path.span(),
+        //         });
+        //         type_engine.insert(self.engines, TypeInfo::ErrorRecovery(err), None)
+        //     }
+        // })
+    }
+
+    pub fn check_type_impls_traits(
+        &mut self,
+        type_id: TypeId,
+        constraints: &[TraitConstraint],
+    ) -> bool {
+        let handler = Handler::default();
+        let engines = self.engines;
+
+        self.namespace_mut()
+            .module_mut(engines)
+            .current_items_mut()
+            .implemented_traits
+            .check_if_trait_constraints_are_satisfied_for_type(
+                &handler,
+                type_id,
+                constraints,
+                &Span::dummy(),
+                engines,
+                crate::namespace::TryInsertingTraitImplOnFailure::Yes,
+            )
+            .is_ok()
     }
 }
 
