@@ -1,5 +1,4 @@
 use crate::{
-    build_config::ExperimentalFlags,
     language::{ty, CallPath, Visibility},
     Engines, Ident, TypeId,
 };
@@ -9,7 +8,6 @@ use super::{
     root::{ResolvedDeclaration, Root},
     submodule_namespace::SubmoduleNamespace,
     trait_map::ResolvedTraitImplItem,
-    contract_helpers::*,
     ModulePath, ModulePathBuf,
 };
 
@@ -44,40 +42,32 @@ pub struct Namespace {
 }
 
 impl Namespace {
-    /// Initialize the namespace 
-    pub fn new(handler: &Handler, engines: &Engines, package_name: Ident, span: Option<Span>, contract_id: Option<String>, experimental: crate::ExperimentalFlags) -> Result<Self, ErrorEmitted> {
-	let root = Root::new(package_name.clone(), span);
-	let mut res = Self {
-	    root,
-	    current_mod_path: vec!(package_name),
-	    is_contract_package: contract_id.is_some(),
-	};
-	if let Some(id) = contract_id {
-	    bind_contract_id_in_root_module(handler, engines, id, &mut res, experimental)?;
+    /// Initialize the namespace
+    /// See also the factory functions in contract_helpers.rs
+    pub fn new(package_root: Root, is_contract_package: bool) -> Self {
+	let mod_path = package_root.current_package_name().clone();
+	Self {
+	    root: package_root,
+	    current_mod_path: vec!(mod_path),
+	    is_contract_package,
 	}
-	Ok(res)
     }
 
-    pub fn next_package(&mut self, handler: &Handler, engines: &Engines, next_package_name: Ident, span: Option<Span>, contract_id: Option<String>, experimental: ExperimentalFlags) -> Result<(), ErrorEmitted> {
-	self.root.next_package(next_package_name, span);
-	self.current_mod_path = vec!(self.root.current_package_name().clone());
-	self.is_contract_package = contract_id.is_some();
-	self.import_implicits(&self.current_mod_path.clone());
-	if let Some(id) = contract_id {
-	    bind_contract_id_in_root_module(handler, engines, id, self, experimental)?;
-	}
-	Ok(())
+//    pub fn next_package(&mut self, handler: &Handler, engines: &Engines, next_package_name: Ident, span: Option<Span>, contract_id: Option<String>, experimental: ExperimentalFlags) -> Result<(), ErrorEmitted> {
+//	self.root.next_package(next_package_name, span);
+//	self.current_mod_path = vec!(self.root.current_package_name().clone());
+//	self.is_contract_package = contract_id.is_some();
+//	self.import_implicits(&self.current_mod_path.clone());
+//	if let Some(id) = contract_id {
+//	    bind_contract_id_in_root_module(handler, engines, id, self, experimental)?;
+//	}
+//	Ok(())
+//    }
+    
+    pub fn root(self) -> Root {
+	self.root
     }
-
-    // Import core::prelude (not for core), std::prelude (not for core and std)
-    // and contract_id (only for contract packages)
-    fn import_implicits(&mut self, _mod_path: &ModulePathBuf) {
-	// TODO
-	// if next_package_name != "core" && root.external_modules.contains("core") { import core prelude }
-	// if next_package_name != "core" && next_package_name != "std" && root.external_modules.contains("std") { import std prelude }
-	// if self.is_contract_package { import ::CONTRACT_ID }
-    }
-
+    
     pub fn current_module(&self) -> &Module {
 	self.root.module_in_current_package(&self.current_mod_path)
             .unwrap_or_else(|| panic!("Could not retrieve submodule for mod_path."))
@@ -282,6 +272,15 @@ impl Namespace {
             .resolve_call_path(handler, engines, &self.current_mod_path, call_path, self_type)
     }
 
+    fn import_implicits(&mut self, _mod_path: &ModulePathBuf) {
+	// TODO
+	// If package_name == "core" do nothing
+	// else if package_name == "std" import core::prelude (if it exists)
+	// else import std::prelude and core::prelude (if it exists)
+	//
+	// If is_contract_package import ::CONTRACT_ID
+    }
+    
     pub(crate) fn enter_submodule(&mut self, mod_name: Ident, visibility: Visibility, module_span: Span) -> SubmoduleNamespace {
 	if !self.current_module().submodules().contains_key(&mod_name.to_string()) {
 	    let submod_path = self.current_module_mut().add_new_submodule(&mod_name, visibility, Some(module_span));

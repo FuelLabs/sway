@@ -11,7 +11,7 @@ use crate::{
         parsed::{AstNode, AstNodeContent, Declaration, ExpressionKind},
         ty::{TyAstNode, TyAstNodeContent},
     },
-    semantic_analysis::TypeCheckContext,
+    semantic_analysis::{TypeCheckContext, namespace::Root},
     transform::to_parsed_lang,
     Engines, Ident, Namespace,
 };
@@ -129,14 +129,23 @@ use crate::{
 //    Ok(ret)
 //}
 
-pub fn namespace_with_contract_id(
+/// Factory function for non-contract libraries
+pub fn package_without_contract_id(
+    package_name: Ident,
+) -> Result<Root, vec1::Vec1<CompileError>> {
+    Ok(Root::new(package_name, None))
+}
+
+/// Factory function for contracts
+pub fn package_with_contract_id(
     engines: &Engines,
     package_name: Ident,
     contract_id_value: String,
     experimental: crate::ExperimentalFlags,
-) -> Result<Namespace, vec1::Vec1<CompileError>> {
+) -> Result<Root, vec1::Vec1<CompileError>> {
+    let root = Root::new(package_name, None);
     let handler = <_>::default();
-    Namespace::new(&handler, engines, package_name, None, Some(contract_id_value), experimental)
+    bind_contract_id_in_root_module(&handler, engines, contract_id_value, root, experimental)
 	.map_err(|_| {
             let (errors, warnings) = handler.consume();
             assert!(warnings.is_empty());
@@ -146,13 +155,13 @@ pub fn namespace_with_contract_id(
 	})
 }
 
-pub(super) fn bind_contract_id_in_root_module(
+fn bind_contract_id_in_root_module(
     handler: &Handler,
     engines: &Engines,
     contract_id_value: String,
-    namespace: &mut Namespace,
+    root: Root,
     experimental: crate::ExperimentalFlags,
-) -> Result<(), ErrorEmitted> {
+) -> Result<Root, ErrorEmitted> {
     // this for loop performs a miniature compilation of each const item in the config
     // FIXME(Centril): Stop parsing. Construct AST directly instead!
     // parser config
@@ -198,10 +207,11 @@ pub(super) fn bind_contract_id_in_root_module(
     };
 
     // This is pretty hacky but that's okay because of this code is being removed pretty soon
-    let type_check_ctx = TypeCheckContext::from_namespace(namespace, engines, experimental);
+    let mut namespace = Namespace::new(root, true);
+    let type_check_ctx = TypeCheckContext::from_namespace(&mut namespace, engines, experimental);
     // Typecheck the const declaration. This will add the binding in the supplied namespace
     match TyAstNode::type_check(handler, type_check_ctx, &ast_node).unwrap().content {
-        TyAstNodeContent::Declaration(_) => Ok(()),
+        TyAstNodeContent::Declaration(_) => Ok(namespace.root()),
         _ => {
 	    // TODO: Should this not be an ICE? If the typecheck fails then it's because our own
 	    // hardcoded declaration is wrong.

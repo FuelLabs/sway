@@ -520,7 +520,7 @@ pub fn parsed_to_ast(
     handler: &Handler,
     engines: &Engines,
     parse_program: &mut parsed::ParseProgram,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Namespace,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -535,17 +535,18 @@ pub fn parsed_to_ast(
     // Build the dependency graph for the submodules.
     build_module_dep_graph(handler, &mut parse_program.root)?;
 
-    let namespace = Namespace::init_root(initial_namespace);
+    //let namespace = Namespace::init_root(initial_namespace);
     // Collect the program symbols.
+    // TODO: Eliminate this cloning step?
     let _collection_ctx =
-        ty::TyProgram::collect(handler, engines, parse_program, namespace.clone())?;
+        ty::TyProgram::collect(handler, engines, parse_program, initial_namespace.clone() /*namespace.clone()*/)?;
 
     // Type check the program.
     let typed_program_opt = ty::TyProgram::type_check(
         handler,
         engines,
         parse_program,
-        namespace,
+	initial_namespace, // namespace,
         package_name,
         build_config,
     );
@@ -691,7 +692,7 @@ pub fn compile_to_ast(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Namespace,
     build_config: Option<&BuildConfig>,
     package_name: &str,
     retrigger_compilation: Option<Arc<AtomicBool>>,
@@ -783,7 +784,7 @@ pub fn compile_to_asm(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Namespace,
     build_config: &BuildConfig,
     package_name: &str,
 ) -> Result<CompiledAsm, ErrorEmitted> {
@@ -944,7 +945,7 @@ pub fn compile_to_bytecode(
     handler: &Handler,
     engines: &Engines,
     input: Arc<str>,
-    initial_namespace: &mut namespace::Root,
+    initial_namespace: namespace::Namespace,
     build_config: &BuildConfig,
     source_map: &mut SourceMap,
     package_name: &str,

@@ -129,7 +129,7 @@ impl ResolvedDeclaration {
     }
 }
 
-/// The root module, from which all other modules can be accessed.
+/// The root module, from which all other module dependencies can be accessed.
 ///
 /// This is equivalent to the "crate root" of a Rust crate.
 ///
@@ -139,13 +139,23 @@ impl ResolvedDeclaration {
 /// that canonical path to look up the symbol declaration.
 #[derive(Clone, Debug)]
 pub struct Root {
+    // The contents of the package being compiled.
     current_package: Module,
-    external_packages: im::HashMap<ModuleName, Module, BuildHasherDefault<FxHasher>>,
+    // The external dependencies of the current package. Note that an external package is
+    // represented as a `Root` object. This is because external packages may have their own external
+    // dependencies which are needed for lookups, but which are not directly accessible to the
+    // current package.
+    external_packages: im::HashMap<ModuleName, Root, BuildHasherDefault<FxHasher>>,
 }
 
 impl Root {
 
-    // Initialize the root for the first time
+    // Create a new root object with a root module in the current package.
+    //
+    // To ensure the correct initialization the factory functions `package_root_without_contract_id`
+    // and `package_root_with_contract_id` are supplied in `contract_helpers`.
+    //
+    // External packages must be added afterwards by calling `add_external`
     pub(super) fn new(package_name: Ident, span: Option<Span>) -> Self {
 	let module = Module::new(package_name, Visibility::Public, span, &vec!());
 	Self {
@@ -154,12 +164,18 @@ impl Root {
 	}
     }
 
-    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
-	// TODO: reject if the new package name already exist
-	let new_package = Module::new(next_package_name, Visibility::Public, span, &vec!());
-	let old_package = std::mem::replace(&mut self.current_package, new_package);
-	self.external_packages.insert(old_package.name().to_string(), old_package);
+    pub fn add_external(&mut self, external_package: Root) {
+	let external_package_name = external_package.current_package_name().to_string();
+	assert!(!self.external_packages.contains_key(&external_package_name));
+	self.external_packages.insert(external_package_name, external_package);
     }
+
+//    pub(super) fn next_package(&mut self, next_package_name: Ident, span: Option<Span>) {
+//	// TODO: reject if the new package name already exist
+//	let new_package = Module::new(next_package_name, Visibility::Public, span, &vec!());
+//	let old_package = std::mem::replace(&mut self.current_package, new_package);
+//	self.external_packages.insert(old_package.name().to_string(), old_package);
+//    }
 
     pub(super) fn current_package_root_module(&self) -> &Module {
 	&self.current_package
@@ -180,10 +196,11 @@ impl Root {
     // Find module in the current environment. `mod_path` must be a fully qualified path
     pub(super) fn module_from_absolute_path(&self, mod_path: &ModulePathBuf) -> Option<&Module> {
 	assert!(!mod_path.is_empty());
+	let package_relative_path = Self::package_relative_path(mod_path);
 	if mod_path[0] == *self.current_package.name() {
-	    self.current_package.submodule(&Self::package_relative_path(&mod_path))
-	} else if let Some(external_mod) = self.external_packages.get(&mod_path[0].to_string()) {
-	    external_mod.submodule(&Self::package_relative_path(mod_path))
+	    self.current_package.submodule(&package_relative_path)
+	} else if let Some(external_package) = self.external_packages.get(&mod_path[0].to_string()) {
+	    external_package.module_in_current_package(&package_relative_path)
 	} else {
 	    None
 	}
@@ -217,8 +234,8 @@ impl Root {
 	let package_relative_path = Self::package_relative_path(mod_path);
 	if *self.current_package.name() == mod_path[0] {
 	    self.current_package.submodule_mut(&package_relative_path)
-	} else if let Some(m) = self.external_packages.get_mut(&mod_path[0].to_string()) {
-	    m.submodule_mut(&package_relative_path)
+	} else if let Some(external_package) = self.external_packages.get_mut(&mod_path[0].to_string()) {
+	    external_package.module_mut_in_current_package(&package_relative_path)
 	} else {
 	    None
 	}
