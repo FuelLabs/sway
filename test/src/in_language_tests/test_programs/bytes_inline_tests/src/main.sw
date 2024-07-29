@@ -767,6 +767,35 @@ fn bytes_append_to_empty() {
     };
 }
 
+
+#[test()]
+fn bytes_append_self() {
+    let (mut bytes, a, b, c) = setup();
+    assert(bytes.len() == 3);
+    assert(bytes.get(0).unwrap() == a);
+    assert(bytes.get(1).unwrap() == b);
+    assert(bytes.get(2).unwrap() == c);
+
+    let length = bytes.len();
+    let capacity = bytes.capacity();
+
+    bytes.append(bytes);
+
+    assert(bytes.len() == length);
+    assert(bytes.capacity() == capacity);
+    let values = [a, b, c];
+    let mut i = 0;
+    while i < 3 {
+        assert(bytes.get(i).unwrap() == values[i]);
+        i += 1;
+    };
+
+    let mut empty_bytes = Bytes::new();
+    empty_bytes.append(empty_bytes);
+    assert(empty_bytes.len() == 0);
+    assert(empty_bytes.capacity() == 0);
+}
+
 #[test()]
 fn bytes_eq() {
     let (mut bytes, _a, _b, _c) = setup();
