@@ -7,6 +7,7 @@ use ::intrinsics::size_of_val;
 use ::option::Option::{self, *};
 use ::convert::{From, Into, *};
 use ::clone::Clone;
+use ::revert::revert;
 
 struct RawBytes {
     ptr: raw_ptr,
@@ -659,6 +660,10 @@ impl Bytes {
     ///
     /// * `other`: [Bytes] - The Bytes to append to self.
     ///
+    /// # Reverts
+    ///
+    /// * When appending to self.
+    ///
     /// # Examples
     ///
     /// ```sway
@@ -688,6 +693,10 @@ impl Bytes {
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {
+        if __addr_of::<Bytes>(self) == __addr_of::<Bytes>(other) {
+            revert(0)
+        };
+        
         let other_len = other.len();
         if other_len == 0 {
             return
@@ -698,10 +707,6 @@ impl Bytes {
             self = other;
             other.clear();
             return;
-        };
-
-        if self.buf.ptr == other.buf.ptr {
-            return
         };
 
         let both_len = self.len + other_len;
