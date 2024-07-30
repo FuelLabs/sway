@@ -134,7 +134,7 @@ impl Documents {
         }
     }
 
-    ///  Asynchronously writes the changes to the file and updates the document.
+    /// Asynchronously writes the changes to the file and updates the document.
     pub async fn write_changes_to_file(
         &self,
         uri: &Url,
