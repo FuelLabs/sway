@@ -1,4 +1,3 @@
-use fuel_vm::consts::VM_MAX_RAM;
 use fuels::{accounts::wallet::WalletUnlocked, prelude::*, types::ContractId};
 
 abigen!(Contract(
@@ -36,9 +35,9 @@ async fn can_get_id_contract_id_this() {
 async fn can_get_code_size() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.methods().get_code_size().call().await.unwrap();
-    // Check if codesize is between 1000 and 10000. Arbitrary endpoints, current codesize is around 9000
+    // Check if codesize is between 1000 and 7000. Arbitrary endpoints, current codesize is 6816
     // but the lower bound future proofs against compiler optimizations
-    assert!(10000 > result.value && result.value > 1000);
+    assert!(result.value > 1000 && result.value < 7000);
 }
 
 #[tokio::test]
