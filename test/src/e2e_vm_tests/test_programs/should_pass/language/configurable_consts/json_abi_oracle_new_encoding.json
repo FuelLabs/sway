@@ -7,7 +7,7 @@
         "typeArguments": null
       },
       "name": "BOOL",
-      "offset": 6968
+       "offset": 6984
     },
     {
       "configurableType": {
@@ -16,7 +16,7 @@
         "typeArguments": null
       },
       "name": "U8",
-      "offset": 7112
+       "offset": 7128
     },
     {
       "configurableType": {
@@ -25,7 +25,7 @@
         "typeArguments": null
       },
       "name": "ANOTHER_U8",
-      "offset": 6896
+       "offset": 6912
     },
     {
       "configurableType": {
@@ -34,7 +34,7 @@
         "typeArguments": null
       },
       "name": "U16",
-      "offset": 7056
+      "offset": 7072
     },
     {
       "configurableType": {
@@ -43,7 +43,7 @@
         "typeArguments": null
       },
       "name": "U32",
-      "offset": 7096
+      "offset": 7112
     },
     {
       "configurableType": {
@@ -52,7 +52,7 @@
         "typeArguments": null
       },
       "name": "U64",
-      "offset": 7104
+      "offset": 7120
     },
     {
       "configurableType": {
@@ -61,7 +61,7 @@
         "typeArguments": null
       },
       "name": "U256",
-      "offset": 7064
+      "offset": 7080
     },
     {
       "configurableType": {
@@ -70,7 +70,7 @@
         "typeArguments": null
       },
       "name": "B256",
-      "offset": 6936
+      "offset": 6952
     },
     {
       "configurableType": {
@@ -79,7 +79,7 @@
         "typeArguments": []
       },
       "name": "CONFIGURABLE_STRUCT",
-      "offset": 7008
+      "offset": 7024
     },
     {
       "configurableType": {
@@ -88,7 +88,7 @@
         "typeArguments": []
       },
       "name": "CONFIGURABLE_ENUM_A",
-      "offset": 6976
+      "offset": 6992
     },
     {
       "configurableType": {
@@ -97,7 +97,7 @@
         "typeArguments": []
       },
       "name": "CONFIGURABLE_ENUM_B",
-      "offset": 6992
+      "offset": 7008
     },
     {
       "configurableType": {
@@ -106,7 +106,7 @@
         "typeArguments": null
       },
       "name": "ARRAY_BOOL",
-      "offset": 6904
+      "offset": 6920
     },
     {
       "configurableType": {
@@ -115,7 +115,7 @@
         "typeArguments": null
       },
       "name": "ARRAY_U64",
-      "offset": 6912
+      "offset": 6928
     },
     {
       "configurableType": {
@@ -124,7 +124,7 @@
         "typeArguments": null
       },
       "name": "TUPLE_BOOL_U64",
-      "offset": 7040
+      "offset": 7056
     },
     {
       "configurableType": {
@@ -133,7 +133,7 @@
         "typeArguments": null
       },
       "name": "STR_4",
-      "offset": 7032
+       "offset": 7048
     },
     {
       "configurableType": {
@@ -142,7 +142,7 @@
         "typeArguments": null
       },
       "name": "NOT_USED",
-      "offset": 7024
+       "offset": 7040
     }
   ],
   "encoding": "1",
