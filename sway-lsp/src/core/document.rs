@@ -26,7 +26,7 @@ impl TextDocument {
                 Self {
                     version: 1,
                     uri: path.into(),
-                    content: content,
+                    content,
                     line_offsets,
                 }
             })
@@ -77,7 +77,7 @@ impl TextDocument {
             self.content
                 .replace_range(start_index..end_index, &change.text);
         } else {
-            self.content = change.text.clone();
+            self.content.clone_from(&change.text);
         }
         self.line_offsets = Self::calculate_line_offsets(&self.content);
         self.version += 1;
