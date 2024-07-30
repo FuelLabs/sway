@@ -362,27 +362,3 @@ mod tests {
         assert_eq!(document.position_to_index(Position::new(1, 2)), 8);
     }
 }
-
-/// Marks the specified file as "dirty" by creating a corresponding flag file.
-///
-/// This function ensures the necessary directory structure exists before creating the flag file.
-pub fn mark_file_as_dirty(uri: &Url) -> Result<(), LanguageServerError> {
-    let path = document::get_path_from_url(uri)?;
-    Ok(PidFileLocking::lsp(path)
-        .lock()
-        .map_err(|e| DirectoryError::LspLocksDirFailed(e.to_string()))?)
-}
-
-/// Removes the corresponding flag file for the specified Url.
-///
-/// If the flag file does not exist, this function will do nothing.
-pub fn remove_dirty_flag(uri: &Url) -> Result<(), LanguageServerError> {
-    let path = document::get_path_from_url(uri)?;
-    let uri = uri.clone();
-    Ok(PidFileLocking::lsp(path)
-        .release()
-        .map_err(|err| DocumentError::UnableToRemoveFile {
-            path: uri.path().to_string(),
-            err: err.to_string(),
-        })?)
-}
