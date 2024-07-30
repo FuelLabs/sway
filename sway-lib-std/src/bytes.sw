@@ -693,7 +693,7 @@ impl Bytes {
     /// }
     /// ```
     pub fn append(ref mut self, ref mut other: self) {
-        if __addr_of::<Bytes>(self) == __addr_of::<Bytes>(other) {
+        if __addr_of::<Self>(self) == __addr_of::<Self>(other) {
             revert(0)
         };
         
