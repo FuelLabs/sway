@@ -696,7 +696,7 @@ impl Bytes {
         if __addr_of::<Self>(self) == __addr_of::<Self>(other) {
             revert(0)
         };
-        
+
         let other_len = other.len();
         if other_len == 0 {
             return

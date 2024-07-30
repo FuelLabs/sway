@@ -767,7 +767,6 @@ fn bytes_append_to_empty() {
     };
 }
 
-
 #[test(should_revert)]
 fn revert_bytes_append_self() {
     let (mut bytes, a, b, c) = setup();
