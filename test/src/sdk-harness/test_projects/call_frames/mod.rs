@@ -36,6 +36,8 @@ async fn can_get_id_contract_id_this() {
 async fn can_get_code_size() {
     let (instance, _id) = get_call_frames_instance().await;
     let result = instance.methods().get_code_size().call().await.unwrap();
+    // Check if codesize is between 1000 and 10000. Arbitrary endpoints, current codesize is around 9000
+    // but the lower bound future proofs against compiler optimizations
     assert!(10000 > result.value && result.value > 1000);
 }
 
@@ -109,8 +111,4 @@ async fn can_get_second_param_multiple_params2() {
         .await
         .unwrap();
     assert_eq!(result.value, (300, expected_struct, expected_struct2));
-}
-
-fn is_within_range(n: u64) -> bool {
-    n > 0 && n <= VM_MAX_RAM
 }
