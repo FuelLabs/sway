@@ -447,6 +447,12 @@ fn build_opts_from_cmd(cmd: &cmd::Deploy) -> pkg::BuildOpts {
     }
 }
 
+/// Creates a deployment artifact and writes it to a file.
+///
+/// This function is used to generate a deployment artifact containing details
+/// about the deployment, such as the transaction ID, salt, network endpoint,
+/// chain ID, contract ID, deployment size, and deployed block height. It then
+/// writes this artifact to a specified output directory.
 fn create_deployment_artifact(
     deployment_artifact: DeploymentArtifact,
     cmd: &cmd::Deploy,
